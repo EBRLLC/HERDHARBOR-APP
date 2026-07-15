@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0D2540">
+  <meta name="description" content="HerdHarbor pre-alpha livestock recordkeeping app.">
+  <title>HerdHarbor Pre-Alpha</title>
+  <link rel="icon" href="assets/icon-64.png">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+  <section id="onboarding" class="onboarding-shell hidden" aria-labelledby="onboarding-title">
+    <div class="onboarding-card">
+      <img src="assets/icon-192.png" alt="HerdHarbor" class="onboarding-logo">
+      <p class="eyebrow">HerdHarbor pre-alpha</p>
+      <h1 id="onboarding-title">Set up your operation.</h1>
+      <p class="muted">
+        This pre-alpha stores data only on this device. It is designed for workflow testing before cloud accounts are added.
+      </p>
+
+      <form id="onboarding-form" class="stack-form">
+        <label>
+          Farm, rabbitry, or homestead name
+          <input name="operationName" required maxlength="80" placeholder="Harbor View Rabbitry">
+        </label>
+        <label>
+          Your name
+          <input name="ownerName" required maxlength="80" autocomplete="name" placeholder="Your name">
+        </label>
+        <label>
+          Email
+          <input name="email" type="email" required autocomplete="email" placeholder="you@example.com">
+        </label>
+        <button type="submit" class="button button-primary button-full">Enter HerdHarbor</button>
+      </form>
+    </div>
+  </section>
+
+  <div id="app-shell" class="app-shell hidden">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-top">
+        <a class="brand" href="#dashboard" data-route="dashboard" aria-label="HerdHarbor dashboard">
+          <img src="assets/icon-64.png" alt="">
+          <div>
+            <strong>HerdHarbor</strong>
+            <span>Pre-Alpha</span>
+          </div>
+        </a>
+
+        <nav class="main-nav" aria-label="Application">
+          <button class="nav-item active" data-route="dashboard">
+            <span class="nav-icon">⌂</span><span>Dashboard</span>
+          </button>
+          <button class="nav-item" data-route="animals">
+            <span class="nav-icon">♞</span><span>Animals</span>
+          </button>
+          <button class="nav-item" data-route="breeding">
+            <span class="nav-icon">♡</span><span>Breeding</span>
+          </button>
+          <button class="nav-item" data-route="litters">
+            <span class="nav-icon">◉</span><span>Litters</span>
+          </button>
+          <button class="nav-item" data-route="health">
+            <span class="nav-icon">✚</span><span>Health</span>
+          </button>
+          <button class="nav-item" data-route="tasks">
+            <span class="nav-icon">✓</span><span>Tasks</span>
+          </button>
+          <button class="nav-item" data-route="settings">
+            <span class="nav-icon">⚙</span><span>Settings</span>
+          </button>
+        </nav>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="local-badge">
+          <span class="status-dot"></span>
+          <div>
+            <strong>Local data mode</strong>
+            <small>Not yet synced to cloud</small>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <button id="menu-button" class="icon-button menu-button" aria-label="Open navigation">☰</button>
+        <div class="topbar-title">
+          <p id="operation-name">HerdHarbor</p>
+          <span id="page-subtitle">Overview</span>
+        </div>
+        <div class="topbar-actions">
+          <button class="button button-ghost" id="quick-add-button">+ Quick add</button>
+          <button class="profile-button" id="profile-button" aria-label="Open settings">
+            <span id="profile-initials">HH</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="main-content">
+        <section id="view-dashboard" class="view active"></section>
+        <section id="view-animals" class="view"></section>
+        <section id="view-breeding" class="view"></section>
+        <section id="view-litters" class="view"></section>
+        <section id="view-health" class="view"></section>
+        <section id="view-tasks" class="view"></section>
+        <section id="view-settings" class="view"></section>
+      </main>
+    </div>
+  </div>
+
+  <div id="modal-backdrop" class="modal-backdrop hidden" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow" id="modal-kicker">HerdHarbor</p>
+          <h2 id="modal-title">Add record</h2>
+        </div>
+        <button class="icon-button" id="modal-close" aria-label="Close">×</button>
+      </div>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
