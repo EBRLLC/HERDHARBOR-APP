@@ -1,43 +1,83 @@
-# HerdHarbor landing page
+# HerdHarbor Pre-Alpha v0.2.1
 
-This folder contains a complete responsive static landing page for HerdHarbor.
+## Interface and Pedigree Workflow Update
 
-## Files
+This build preserves the existing browser data key used by v0.2.0, so current tester records should remain available after replacing `index.html`. Testers should still export a backup before updating.
 
-- `index.html` — page structure and content
-- `styles.css` — approved HerdHarbor colors and responsive design
-- `script.js` — mobile navigation and early-access form behavior
-- `assets/herdharbor-icon.png` — approved app icon
+## New in v0.2.1
 
-## Current signup behavior
+### Cleaner interface
 
-The early-access form opens the visitor's email app and prepares a message addressed to:
+- Simplified and grouped sidebar navigation
+- More whitespace and calmer card styling
+- Collapsible desktop sidebar
+- Improved mobile spacing and pedigree controls
+- Existing HerdHarbor navy, teal, green, cream, and gray palette retained
 
-`hello@herdharbor.com`
+### Light and dark appearance
 
-This works without a server or paid form service. Before public launch, the form can be connected to a database-backed signup service so submissions happen directly on the page.
+- Persistent light/dark toggle in the app header
+- New-user default follows the device appearance
+- Light, dark, and system options in Settings
+- The selected appearance remains after closing the app
+- Printable pedigrees always use a clean white page
 
-## Publish with GitHub Pages
+### Easier pedigree workflow
 
-1. Create a new GitHub repository, such as `herdharbor-site`.
-2. Upload the contents of this folder to the repository root.
-3. Open **Settings → Pages**.
-4. Under **Build and deployment**, choose **Deploy from a branch**.
-5. Select the `main` branch and `/ (root)`.
-6. Save and wait for GitHub Pages to publish the site.
-7. In GitHub Pages settings, add the custom domain `herdharbor.com`.
-8. GitHub will show the DNS records that need to be entered in Porkbun.
+- Five-step guided pedigree builder:
+  1. Animal and source
+  2. Parents
+  3. Grandparents
+  4. Great-grandparents
+  5. Review and save
+- Each ancestor can be linked to an existing record, entered as a new ancestor, or left unknown
+- Simplified duplicate warnings
+- Save an unfinished pedigree as a draft and resume later
+- Drafts are listed on the Pedigrees page
+- Drag-and-drop pedigree upload
+- Large JPG and PNG photos are automatically resized and compressed
+- PDF limit increased to 1.25 MB for this browser-only build
 
-## Recommended production URL structure
+### Printable sale pedigree
 
-- `herdharbor.com` — public landing page
-- `app.herdharbor.com` — future application
-- `herdharbor.app` — redirect to the public page or app download page
+- Print from an animal profile, completed pedigree, or pedigree details
+- Includes:
+  - animal identity and registration information
+  - parents, grandparents, and great-grandparents
+  - seller and buyer fields
+  - sale date and price
+  - transfer/certificate number
+  - notes
+  - buyer and seller signature lines
+- Browser print dialog supports physical printing or Save as PDF
 
-## Brand palette
+## Important limitations
 
-- Deep Navy: `#0D2540`
-- Harbor Teal: `#2E7D7B`
-- Pasture Green: `#3F5F44`
-- Warm Cream: `#F7F3EA`
-- Stone Gray: `#8E979D`
+- Records, drafts, and uploaded documents are still stored only in the browser
+- There are no cloud accounts or cross-device synchronization
+- Automatic OCR is not included
+- PDFs cannot be compressed in the browser
+- Clearing browser storage may erase records
+- Export regular JSON backups
+
+## Install on the tester site
+
+1. Open `https://app.herdharbor.com`.
+2. Export a JSON backup from **Settings → Export backup**.
+3. Open the `HERDHARBOR-APP` GitHub repository.
+4. Upload this package's `index.html` to the repository root.
+5. Replace the existing `index.html`.
+6. Commit directly to `main` with:
+
+   `Release v0.2.1 interface and pedigree workflow`
+
+7. Wait for GitHub Pages to redeploy.
+8. Open:
+
+   `https://app.herdharbor.com/?v=21`
+
+9. Press `Ctrl + F5` on desktop if an older version appears.
+
+## Rollback
+
+The existing GitHub release `v0.2.0-pre-alpha` remains the rollback copy.
