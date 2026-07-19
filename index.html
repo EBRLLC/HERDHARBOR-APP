@@ -746,6 +746,146 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
+
+.topbar-operation {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.operation-logo {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  padding: 3px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.branding-preview {
+  min-height: 152px;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(255,255,255,.52);
+  border: 1px dashed rgba(13,37,64,.24);
+  border-radius: 16px;
+}
+
+.branding-preview img {
+  max-width: 220px;
+  max-height: 120px;
+  object-fit: contain;
+}
+
+.photo-upload-card {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 16px;
+  background: rgba(255,255,255,.52);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.photo-preview {
+  width: 132px;
+  height: 132px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: white;
+  background: var(--navy);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  font-size: 3rem;
+}
+
+.photo-preview img,
+.animal-avatar img,
+.animal-detail-photo img,
+.print-animal-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-upload-copy p {
+  margin: 5px 0 12px;
+  color: var(--muted);
+  font-size: .84rem;
+}
+
+.photo-upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.animal-avatar {
+  overflow: hidden;
+}
+
+.animal-avatar.has-photo {
+  padding: 0;
+  background: var(--cream-2);
+}
+
+.animal-detail-hero {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+  margin-bottom: 18px;
+}
+
+.animal-detail-photo {
+  width: 150px;
+  height: 150px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: white;
+  background: var(--navy);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 3.5rem;
+}
+
+.animal-detail-photo.has-photo {
+  background: var(--cream-2);
+}
+
+.brand-file-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: .8rem;
+}
+
+@media (max-width: 620px) {
+  .photo-upload-card,
+  .animal-detail-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .photo-preview,
+  .animal-detail-photo {
+    width: 118px;
+    height: 118px;
+  }
+
+  .operation-logo {
+    width: 36px;
+    height: 36px;
+  }
+}
+
 @media (max-width: 1120px) {
   .stats-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .cards-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
@@ -1034,6 +1174,21 @@ html[data-theme="dark"] .badge { color: #D8EEEC; background: #18433F; }
 html[data-theme="dark"] .badge.green { color: #DCEADB; background: #24452E; }
 html[data-theme="dark"] .badge.gray { color: #D2DBE0; background: #263A49; }
 html[data-theme="dark"] .pedigree-source-preview { background: #0A2033; border-color: rgba(208,225,235,.12); }
+
+
+html[data-theme="dark"] .operation-logo,
+html[data-theme="dark"] .branding-preview,
+html[data-theme="dark"] .photo-upload-card,
+html[data-theme="dark"] .photo-preview,
+html[data-theme="dark"] .animal-detail-photo {
+  background: #102A41;
+  border-color: rgba(208,225,235,.14);
+}
+
+html[data-theme="dark"] .photo-upload-copy p,
+html[data-theme="dark"] .brand-file-note {
+  color: #AAB8C3;
+}
 
 @media (max-width: 1000px) {
   .pedigree-stepper { grid-template-columns: 1fr; }
@@ -1371,9 +1526,12 @@ html[data-theme="dark"] .pedigree-source-preview { background: #0A2033; border-c
     <div class="workspace">
       <header class="topbar">
         <button id="menu-button" class="icon-button menu-button" aria-label="Open navigation">☰</button>
-        <div class="topbar-title">
-          <p id="operation-name">HerdHarbor</p>
-          <span id="page-subtitle">Overview</span>
+        <div class="topbar-operation">
+          <img id="operation-logo" class="operation-logo hidden" alt="">
+          <div class="topbar-title">
+            <p id="operation-name">HerdHarbor</p>
+            <span id="page-subtitle">Overview</span>
+          </div>
         </div>
         <div class="topbar-actions">
           <button class="icon-button theme-toggle" id="theme-toggle" type="button" aria-label="Switch appearance" title="Switch appearance">☾</button>
@@ -1511,7 +1669,7 @@ html[data-theme="dark"] .pedigree-source-preview { background: #0A2033; border-c
       if (message) toast(message, "success");
       return true;
     } catch (error) {
-      toast("This device does not have enough browser storage. Export a backup and remove large pedigree documents.", "error");
+      toast("This device does not have enough browser storage. Export a backup and remove large pedigree documents or animal photos.", "error");
       return false;
     }
   }
@@ -1655,6 +1813,18 @@ html[data-theme="dark"] .pedigree-source-preview { background: #0A2033; border-c
     return icons[species] || "◈";
   }
 
+  function animalVisualHtml(animal, compact = false) {
+    if (animal?.photoData) {
+      return `<img src="${animal.photoData}" alt="${esc(animal.name || "Animal")} photo">`;
+    }
+    return `<span aria-hidden="true">${speciesIcon(animal?.species)}</span>`;
+  }
+
+  function defaultHerdHarborLogo() {
+    return $(".brand img")?.src || "";
+  }
+
+
   function ageText(dob) {
     if (!dob) return "Age unknown";
     const diff = Math.max(0, Math.floor((new Date() - new Date(`${dob}T12:00:00`)) / 86400000));
@@ -1770,6 +1940,16 @@ html[data-theme="dark"] .pedigree-source-preview { background: #0A2033; border-c
     $("#app-shell").classList.remove("hidden");
     $("#operation-name").textContent = state.profile.operationName;
     $("#profile-initials").textContent = initials(state.profile.ownerName);
+    const operationLogo = $("#operation-logo");
+    if (state.profile?.logoData) {
+      operationLogo.src = state.profile.logoData;
+      operationLogo.alt = `${state.profile.operationName || "Rabbitry"} logo`;
+      operationLogo.classList.remove("hidden");
+    } else {
+      operationLogo.removeAttribute("src");
+      operationLogo.alt = "";
+      operationLogo.classList.add("hidden");
+    }
     navigate(currentRoute);
   }
 
@@ -2000,7 +2180,7 @@ html[data-theme="dark"] .pedigree-source-preview { background: #0A2033; border-c
   function animalCardHtml(a) {
     return `<article class="animal-card">
       <div class="animal-card-top">
-        <div class="animal-avatar">${speciesIcon(a.species)}</div>
+        <div class="animal-avatar ${a.photoData ? "has-photo" : ""}">${animalVisualHtml(a, true)}</div>
         <span class="badge ${a.status === "Active" ? "green" : a.status === "For Sale" ? "warning" : "gray"}">${esc(a.status || "Active")}</span>
       </div>
       <h3>${esc(a.name || "Unnamed animal")}</h3>
@@ -2015,8 +2195,27 @@ html[data-theme="dark"] .pedigree-source-preview { background: #0A2033; border-c
 
   function openAnimalForm(id = "") {
     const animal = state.animals.find((a) => a.id === id) || {};
+    let pendingPhotoData = animal.photoData || "";
+    let pendingPhotoFileName = animal.photoFileName || "";
+
     openModal(id ? "Edit animal" : "Add animal", `
       <form id="animal-form">
+        <div class="photo-upload-card">
+          <div class="photo-preview" id="animal-photo-preview">
+            ${pendingPhotoData ? `<img src="${pendingPhotoData}" alt="${esc(animal.name || "Animal")} photo">` : `<span>${speciesIcon(animal.species || "Rabbit")}</span>`}
+          </div>
+          <div class="photo-upload-copy">
+            <strong>Animal photo</strong>
+            <p>Upload a JPG, PNG, or WebP photo for this animal. HerdHarbor creates a small compressed profile image for cards and pedigrees. Leave it blank to use the default species icon.</p>
+            <div class="photo-upload-actions">
+              <label class="button button-primary button-small" for="animal-photo-file">${pendingPhotoData ? "Replace photo" : "Upload photo"}</label>
+              <input id="animal-photo-file" class="hidden" type="file" accept="image/jpeg,image/png,image/webp">
+              <button type="button" class="button button-ghost button-small" id="use-default-animal-photo" ${pendingPhotoData ? "" : "disabled"}>Use default icon</button>
+            </div>
+            <div class="brand-file-note" id="animal-photo-status">${pendingPhotoFileName ? esc(pendingPhotoFileName) : "No custom photo selected."}</div>
+          </div>
+        </div>
+
         <div class="form-grid two">
           ${field("Name", "name", animal.name, true)}
           ${field("ID or tag", "tag", animal.tag)}
@@ -2042,18 +2241,78 @@ html[data-theme="dark"] .pedigree-source-preview { background: #0A2033; border-c
       </form>
     `, "Animal record");
 
+    const photoInput = $("#animal-photo-file");
+    const photoPreview = $("#animal-photo-preview");
+    const photoStatus = $("#animal-photo-status");
+    const defaultButton = $("#use-default-animal-photo");
+    const speciesSelect = $('[name="species"]', $("#animal-form"));
+
+    const refreshPhotoPreview = () => {
+      const currentSpecies = speciesSelect?.value || animal.species || "Rabbit";
+      photoPreview.innerHTML = pendingPhotoData
+        ? `<img src="${pendingPhotoData}" alt="Animal photo preview">`
+        : `<span>${speciesIcon(currentSpecies)}</span>`;
+      photoStatus.textContent = pendingPhotoFileName || "Using the default species icon.";
+      defaultButton.disabled = !pendingPhotoData;
+    };
+
+    speciesSelect?.addEventListener("change", refreshPhotoPreview);
+
+    photoInput.addEventListener("change", async () => {
+      const file = photoInput.files?.[0];
+      if (!file) return;
+      try {
+        photoStatus.textContent = "Preparing photo…";
+        const prepared = await prepareProfileImage(file, {
+          maxDimension: 720,
+          targetBytes: 115000,
+          outputType: "image/jpeg",
+          background: "#ffffff"
+        });
+        pendingPhotoData = prepared.dataUrl;
+        pendingPhotoFileName = prepared.fileName;
+        refreshPhotoPreview();
+        toast(prepared.compressed ? "Animal photo compressed and ready." : "Animal photo ready.", "success");
+      } catch (error) {
+        photoInput.value = "";
+        photoStatus.textContent = error.message || "The photo could not be prepared.";
+        toast(photoStatus.textContent, "error");
+      }
+    });
+
+    defaultButton.addEventListener("click", () => {
+      pendingPhotoData = "";
+      pendingPhotoFileName = "";
+      photoInput.value = "";
+      refreshPhotoPreview();
+    });
+
     $("#cancel-modal").addEventListener("click", closeModal);
     $("#animal-form").addEventListener("submit", (event) => {
       event.preventDefault();
       const data = Object.fromEntries(new FormData(event.currentTarget));
+      data.photoData = pendingPhotoData;
+      data.photoFileName = pendingPhotoFileName;
       if (id) {
+        const original = { ...animal };
         Object.assign(animal, data, { updatedAt: new Date().toISOString() });
         recordActivity(`Updated ${data.name}.`, "animal");
+        if (!saveState("Animal updated.")) {
+          Object.keys(animal).forEach((key) => delete animal[key]);
+          Object.assign(animal, original);
+          state.activity.shift();
+          return;
+        }
       } else {
-        state.animals.push({ id: uid("animal"), ...data, createdAt: new Date().toISOString() });
+        const newAnimal = { id: uid("animal"), ...data, createdAt: new Date().toISOString() };
+        state.animals.push(newAnimal);
         recordActivity(`Added ${data.name} to animal records.`, "animal");
+        if (!saveState("Animal added.")) {
+          state.animals = state.animals.filter((item) => item.id !== newAnimal.id);
+          state.activity.shift();
+          return;
+        }
       }
-      saveState(id ? "Animal updated." : "Animal added.");
       closeModal();
       renderCurrentView();
     });
@@ -2087,6 +2346,14 @@ html[data-theme="dark"] .pedigree-source-preview { background: #0A2033; border-c
     const pedigreeImports = state.pedigrees.filter((p) => p.subjectAnimalId === id);
 
     openModal(a.name, `
+      <div class="animal-detail-hero">
+        <div class="animal-detail-photo ${a.photoData ? "has-photo" : ""}">${animalVisualHtml(a)}</div>
+        <div>
+          <p class="eyebrow">${esc(a.species || "Animal")} profile</p>
+          <h2 style="margin-bottom:5px">${esc(a.name)}</h2>
+          <p class="muted">${esc([a.tag || a.tattoo, a.breed, a.color].filter(Boolean).join(" · ") || "No additional identity details")}</p>
+        </div>
+      </div>
       <div class="detail-grid">
         ${detailField("Species", a.species)}
         ${detailField("Breed", a.breed)}
@@ -2859,6 +3126,76 @@ html[data-theme="dark"] .pedigree-source-preview { background: #0A2033; border-c
     ));
   }
 
+  async function prepareProfileImage(file, options = {}) {
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowed.includes(file.type)) throw new Error("Use a JPG, PNG, or WebP image.");
+
+    const maxDimension = Number(options.maxDimension || 720);
+    const targetBytes = Number(options.targetBytes || 120000);
+    const outputType = options.outputType || "image/jpeg";
+    const background = Object.prototype.hasOwnProperty.call(options, "background")
+      ? options.background
+      : "#ffffff";
+
+    const originalUrl = await readFileAsDataURL(file);
+    const image = await loadPedigreeImage(originalUrl);
+    let width = image.naturalWidth;
+    let height = image.naturalHeight;
+    let scale = Math.min(1, maxDimension / Math.max(width, height));
+    width = Math.max(1, Math.round(width * scale));
+    height = Math.max(1, Math.round(height * scale));
+
+    let quality = .84;
+    let blob = null;
+    let attempts = 0;
+
+    while (attempts < 10) {
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d", { alpha: outputType !== "image/jpeg" });
+      if (background) {
+        context.fillStyle = background;
+        context.fillRect(0, 0, width, height);
+      } else {
+        context.clearRect(0, 0, width, height);
+      }
+      context.drawImage(image, 0, 0, width, height);
+      blob = await canvasToImageBlob(canvas, outputType, quality);
+
+      if (blob.size <= targetBytes) break;
+      if (quality > .5) {
+        quality -= .08;
+      } else {
+        width = Math.max(240, Math.round(width * .84));
+        height = Math.max(240, Math.round(height * .84));
+        quality = .72;
+      }
+      attempts += 1;
+    }
+
+    if (!blob || blob.size > Math.max(targetBytes * 1.5, 220000)) {
+      throw new Error("The image is still too large after compression. Crop it closer and try again.");
+    }
+
+    const extension = outputType === "image/webp" ? "webp" : "jpg";
+    return {
+      fileName: file.name.replace(/\.[^.]+$/, "") + `-profile.${extension}`,
+      mimeType: outputType,
+      size: blob.size,
+      dataUrl: await readFileAsDataURL(blob),
+      compressed: blob.size < file.size || width !== image.naturalWidth || height !== image.naturalHeight
+    };
+  }
+
+  function canvasToImageBlob(canvas, type, quality) {
+    return new Promise((resolve, reject) => canvas.toBlob(
+      (blob) => blob ? resolve(blob) : reject(new Error("The image could not be compressed.")),
+      type,
+      quality
+    ));
+  }
+
   function formatFileSize(bytes = 0) {
     if (!bytes) return "0 KB";
     if (bytes < 1_000_000) return `${Math.max(1, Math.round(bytes / 1000))} KB`;
@@ -3104,7 +3441,8 @@ html[data-theme="dark"] .pedigree-source-preview { background: #0A2033; border-c
       damDamSire: byId(damDam?.sireId),
       damDamDam: byId(damDam?.damId)
     };
-    const logo = $(".brand img")?.src || "";
+    const logo = state.profile?.logoData || defaultHerdHarborLogo();
+    const subjectPhoto = subject.photoData || "";
     const popup = window.open("", "_blank");
     if (!popup) return toast("Allow pop-ups to open the printable pedigree.", "error");
 
@@ -3120,7 +3458,10 @@ html[data-theme="dark"] .pedigree-source-preview { background: #0A2033; border-c
       .sheet { width: 100%; }
       .header { display:flex; align-items:center; justify-content:space-between; gap:20px; padding-bottom:12px; border-bottom:3px solid #0D2540; }
       .brand-print { display:flex; align-items:center; gap:12px; }
-      .brand-print img { width:58px; height:58px; border-radius:14px; }
+      .brand-print img { width:72px; height:72px; object-fit:contain; padding:4px; background:white; border:1px solid #D9DEE2; border-radius:14px; }
+      .print-subject { display:flex; align-items:center; gap:12px; text-align:right; }
+      .print-animal-photo { width:72px; height:72px; display:grid; place-items:center; overflow:hidden; color:white; background:#0D2540; border:1px solid #D9DEE2; border-radius:14px; font-size:32px; }
+      .print-animal-photo img { width:100%; height:100%; object-fit:cover; }
       h1 { margin:0; color:#0D2540; font-size:28px; }
       .tagline { color:#2E7D7B; font-weight:700; }
       .subject-info { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin:12px 0; }
@@ -3142,7 +3483,7 @@ html[data-theme="dark"] .pedigree-source-preview { background: #0A2033; border-c
       .no-print { position:fixed; right:18px; bottom:18px; padding:11px 16px; color:white; background:#2E7D7B; border:0; border-radius:9px; font-weight:800; cursor:pointer; }
       @media print { .no-print { display:none; } }
     </style></head><body><div class="sheet">
-      <div class="header"><div class="brand-print"><img src="${logo}" alt=""><div><h1>${esc(operationName)}</h1><div class="tagline">Official three-generation sale pedigree</div></div></div><div><strong>${esc(subject.name)}</strong><br><small>Generated ${new Date().toLocaleDateString()}</small></div></div>
+      <div class="header"><div class="brand-print"><img src="${logo}" alt="${esc(operationName)} logo"><div><h1>${esc(operationName)}</h1><div class="tagline">Official three-generation sale pedigree</div></div></div><div class="print-subject"><div><strong>${esc(subject.name)}</strong><br><small>Generated ${new Date().toLocaleDateString()}</small></div><div class="print-animal-photo">${subjectPhoto ? `<img src="${subjectPhoto}" alt="${esc(subject.name)} photo">` : `<span>${speciesIcon(subject.species)}</span>`}</div></div></div>
       <div class="subject-info">
         <div class="info"><small>Animal</small><strong>${esc(subject.name)}</strong></div>
         <div class="info"><small>ID / tattoo</small><strong>${esc(subject.tag || subject.tattoo || "—")}</strong></div>
@@ -3941,6 +4282,22 @@ html[data-theme="dark"] .pedigree-source-preview { background: #0A2033; border-c
         </article>
 
         <article class="settings-card">
+          <h3>Rabbitry branding</h3>
+          <p>Upload a custom rabbitry or farm logo. It appears in the app header and on printed sale pedigrees.</p>
+          <div class="branding-preview" id="rabbitry-logo-preview">
+            ${state.profile?.logoData
+              ? `<img src="${state.profile.logoData}" alt="${esc(state.profile.operationName || "Rabbitry")} logo">`
+              : `<div class="empty-state" style="width:100%"><strong>No custom logo</strong><p>Printed pedigrees currently use the HerdHarbor logo.</p></div>`}
+          </div>
+          <div class="action-row">
+            <label class="button button-primary" for="rabbitry-logo-file">${state.profile?.logoData ? "Replace logo" : "Upload logo"}</label>
+            <input class="hidden" id="rabbitry-logo-file" type="file" accept="image/jpeg,image/png,image/webp">
+            <button class="button button-ghost" id="remove-rabbitry-logo" ${state.profile?.logoData ? "" : "disabled"}>Use HerdHarbor logo</button>
+          </div>
+          <p class="brand-file-note">JPG, PNG, or WebP. The image is compressed for browser storage. Transparent PNG/WebP logos work best.</p>
+        </article>
+
+        <article class="settings-card">
           <h3>Appearance</h3>
           <p>Choose a light or dark interface, or follow this device's system setting.</p>
           <div class="action-row">
@@ -3986,16 +4343,18 @@ html[data-theme="dark"] .pedigree-source-preview { background: #0A2033; border-c
 
         <article class="settings-card">
           <h3>Pre-alpha limitations</h3>
-          <p>This build has no user accounts, cloud sync, payment processing, shared access, OCR, or guaranteed data recovery. Pedigree documents, budget records, and drafts are stored only in this browser. Budget results are management estimates and are not tax advice.</p>
+          <p>This build has no user accounts, cloud sync, payment processing, shared access, OCR, or guaranteed data recovery. Pedigree documents, animal photos, rabbitry logos, budget records, and drafts are stored only in this browser. Budget results are management estimates and are not tax advice.</p>
         </article>
 
         <article class="settings-card">
           <h3>Build information</h3>
-          <p>HerdHarbor pre-alpha v0.2.2 · Budgeting and cost-per-head build · ${new Date().toLocaleDateString()}</p>
+          <p>HerdHarbor pre-alpha v0.2.3 · Rabbitry branding and animal photos build · ${new Date().toLocaleDateString()}</p>
         </article>
       </div>`;
 
     $("#edit-profile").addEventListener("click", openProfileForm);
+    $("#rabbitry-logo-file").addEventListener("change", handleRabbitryLogoUpload);
+    $("#remove-rabbitry-logo").addEventListener("click", removeRabbitryLogo);
     $$('[data-theme-choice]', $("#view-settings")).forEach((button) => button.addEventListener("click", () => {
       applyTheme(button.dataset.themeChoice);
       renderSettings();
@@ -4006,6 +4365,60 @@ html[data-theme="dark"] .pedigree-source-preview { background: #0A2033; border-c
     $("#import-file").addEventListener("change", importData);
     $("#open-budget-settings").addEventListener("click", () => navigate("budget"));
     $("#clear-data").addEventListener("click", clearData);
+  }
+
+  async function handleRabbitryLogoUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      toast("Preparing rabbitry logo…");
+      const prepared = await prepareProfileImage(file, {
+        maxDimension: 560,
+        targetBytes: 100000,
+        outputType: "image/webp",
+        background: null
+      });
+      const previous = {
+        logoData: state.profile.logoData || "",
+        logoFileName: state.profile.logoFileName || "",
+        logoUpdatedAt: state.profile.logoUpdatedAt || ""
+      };
+      state.profile.logoData = prepared.dataUrl;
+      state.profile.logoFileName = prepared.fileName;
+      state.profile.logoUpdatedAt = new Date().toISOString();
+      recordActivity("Updated the rabbitry logo.", "settings");
+      if (!saveState("Rabbitry logo saved.")) {
+        state.profile.logoData = previous.logoData;
+        state.profile.logoFileName = previous.logoFileName;
+        state.profile.logoUpdatedAt = previous.logoUpdatedAt;
+        state.activity.shift();
+        return;
+      }
+      showApp();
+    } catch (error) {
+      event.target.value = "";
+      toast(error.message || "The rabbitry logo could not be uploaded.", "error");
+    }
+  }
+
+  function removeRabbitryLogo() {
+    if (!state.profile?.logoData) return;
+    if (!confirm("Remove the custom rabbitry logo and use the HerdHarbor logo on pedigrees?")) return;
+    const previous = {
+      logoData: state.profile.logoData,
+      logoFileName: state.profile.logoFileName,
+      logoUpdatedAt: state.profile.logoUpdatedAt
+    };
+    delete state.profile.logoData;
+    delete state.profile.logoFileName;
+    delete state.profile.logoUpdatedAt;
+    recordActivity("Removed the custom rabbitry logo.", "settings");
+    if (!saveState("Custom rabbitry logo removed.")) {
+      Object.assign(state.profile, previous);
+      state.activity.shift();
+      return;
+    }
+    showApp();
   }
 
   function openProfileForm() {
@@ -4055,7 +4468,7 @@ html[data-theme="dark"] .pedigree-source-preview { background: #0A2033; border-c
     openModal("Send tester feedback", `
       <form id="feedback-form" action="https://formspree.io/f/xpqvpwwb" method="POST">
         <input type="hidden" name="_subject" value="New HerdHarbor tester feedback">
-        <input type="hidden" name="app_version" value="HerdHarbor Pre-Alpha v0.2.2">
+        <input type="hidden" name="app_version" value="HerdHarbor Pre-Alpha v0.2.3">
         <input type="hidden" name="current_url" value="${esc(window.location.href)}">
         <input type="hidden" name="device_details" value="${esc(deviceSummary)}">
         <input type="text" name="_gotcha" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true">
@@ -4296,7 +4709,7 @@ html[data-theme="dark"] .pedigree-source-preview { background: #0A2033; border-c
   function exportData() {
     const payload = JSON.stringify({
       app: "HerdHarbor Pre-Alpha",
-      version: "0.2.2",
+      version: "0.2.3",
       exportedAt: new Date().toISOString(),
       data: state
     }, null, 2);

@@ -1,77 +1,47 @@
-# HerdHarbor Pre-Alpha v0.2.2
+# HerdHarbor Pre-Alpha v0.2.3
 
-## Budgeting and Cost-per-Head Update
+## Rabbitry Branding and Animal Photos
 
-This version adds the budgeting system requested by HerdHarbor testers while preserving the existing animals, pedigrees, breedings, litters, health records, tasks, theme settings, and tester-feedback form.
+This update adds custom rabbitry branding and optional animal profile photos while preserving the existing budgeting, pedigree, breeding, litter, health, task, appearance, and tester-feedback systems.
 
-The browser storage key remains unchanged, so existing tester data should carry forward. Every tester should still export a backup before updating.
+The browser storage key is unchanged, so existing tester records should carry forward. Every tester should export a backup before updating.
 
-## New in v0.2.2
+## New in v0.2.3
 
-### Budget tab
+### Custom rabbitry or farm logo
 
-- New **Budget** section under Management
-- Record income and expenses
-- Edit or delete transactions
-- Monthly filtering
-- Species filtering
-- Transaction filtering for:
-  - all records
-  - income
-  - operating expenses
-  - capital expenses
-- CSV export for the selected month and species
-- Financial snapshot added to the dashboard
+- Upload a custom logo under **Settings → Rabbitry branding**
+- Supports JPG, PNG, and WebP
+- Automatically resizes and compresses the logo
+- Displays the logo beside the operation name in the app header
+- Adds the custom logo to printable sale pedigrees
+- Replace the logo at any time
+- Remove it and return to the default HerdHarbor logo
 
-### Transaction assignment
+### Animal profile photos
 
-Transactions may be assigned to:
+- Upload an optional photo when adding or editing an animal
+- Supports JPG, PNG, and WebP
+- Automatically creates a small compressed profile image
+- Shows the photo:
+  - on animal cards
+  - in the animal detail screen
+  - on printable sale pedigrees
+- Replace or remove the photo at any time
+- Animals without a custom photo continue using the default species icon
 
-- the whole operation
-- a livestock species
-- one specific animal
+### Backup support
 
-Income categories include animal sales, stud fees, meat sales, egg sales, milk/fiber, show winnings, and other income.
-
-Expense categories include feed, hay/fodder, bedding, veterinary care, medication, breeding fees, registration, show expenses, equipment, utilities, housing/cages, supplies, processing, transportation, and other expenses.
-
-### Operating vs. capital expenses
-
-- **Operating expenses** are included in cost-per-head calculations.
-- **Capital purchases** remain visible in total expenses and net results but are excluded from operating cost per head.
-
-This prevents a major cage, barn, or equipment purchase from distorting ordinary monthly animal costs.
-
-### Monthly budgets
-
-- Set planned spending by month and category
-- Create whole-operation or species-specific budgets
-- Compare actual operating expenses with planned amounts
-- View category variances
-- Remove or replace category budgets
-- Optionally enter an average monthly active head count for more accurate whole-operation cost per head
-
-### Cost-per-head reporting
-
-HerdHarbor now calculates:
-
-- whole-operation operating cost per head
-- cost per head by species
-- estimated cost by individual animal
-- direct animal costs
-- allocated species costs
-- allocated whole-operation costs
-
-Whole-operation costs are allocated by active head count. Species costs are divided among active animals of that species. Animal-assigned costs remain linked directly to that animal.
+Rabbitry logos and animal profile thumbnails are included in the existing JSON backup and restore process.
 
 ## Important limitations
 
-- Budget data is stored only in the browser
-- There are no cloud accounts or cross-device synchronization
-- Cost-per-head values are management estimates, not tax accounting
-- Current active-animal counts are used unless an average monthly head-count override is entered
-- Historical inventory counts are not yet tracked
-- Users should export regular JSON backups
+- Images are stored only in this browser
+- Photos are compressed thumbnails, not full-resolution originals
+- Adding photos to many animals can eventually reach the browser's storage limit
+- Use default species icons for animals that do not need a photo
+- There are still no cloud accounts or cross-device synchronization
+- Export backups regularly
 
 ## Install on the tester site
 
@@ -82,15 +52,15 @@ Whole-operation costs are allocated by active head count. Species costs are divi
 5. Replace the existing `index.html`.
 6. Commit directly to `main` with:
 
-   `Release v0.2.2 budgeting and cost per head`
+   `Release v0.2.3 rabbitry branding and animal photos`
 
 7. Wait for GitHub Pages to redeploy.
 8. Open:
 
-   `https://app.herdharbor.com/?v=22`
+   `https://app.herdharbor.com/?v=23`
 
 9. Press `Ctrl + F5` if an older version appears.
 
 ## Rollback
 
-Keep the existing v0.2.1 and v0.2.0 GitHub releases available as rollback copies.
+Keep the existing v0.2.2, v0.2.1, and v0.2.0 GitHub releases available as rollback copies.
