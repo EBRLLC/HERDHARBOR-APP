@@ -1,16 +1,43 @@
 (() => {
   "use strict";
 
-  // HerdHarbor cloud integration v1.1 — stable password-recovery flow.
+  // HerdHarbor cloud integration v1.2 — conflict-safe sync and local recovery.
 
   const SUPABASE_URL = "https://okynebbksifqppwicghj.supabase.co";
   const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_jxsX6uS9nnh2FOFtlSF9TA_8v6C7C09";
   const STORAGE_KEY = "herdharbor_pre_alpha_v1";
   const TABLE_NAME = "herdharbor_user_data";
   const SYNC_DELAY_MS = 700;
+  const ACTIVE_OWNER_KEY = "herdharbor_active_user_v1";
+  const RECOVERY_DB_NAME = "herdharbor_recovery_v1";
+  const RECOVERY_STORE_NAME = "snapshots";
+  const MAX_RECOVERY_SNAPSHOTS = 6;
 
   if (!window.supabase?.createClient) {
     console.error("HerdHarbor Cloud: Supabase JavaScript library did not load.");
+    const failureStyle = document.createElement("style");
+    failureStyle.textContent = `
+      html.hh-auth-locked body > *:not(#hh-cloud-startup-error) { visibility: hidden !important; }
+      #hh-cloud-startup-error {
+        position: fixed;
+        inset: 0;
+        z-index: 100000;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        color: #18212A;
+        background: #F7F2E8;
+        font: 700 1rem/1.5 system-ui, sans-serif;
+        text-align: center;
+      }
+      #hh-cloud-startup-error strong { display: block; margin-bottom: 8px; color: #0D2540; font-size: 1.5rem; }
+    `;
+    document.head.appendChild(failureStyle);
+    document.documentElement.classList.add("hh-auth-locked");
+    const failure = document.createElement("div");
+    failure.id = "hh-cloud-startup-error";
+    failure.innerHTML = "<div><strong>HerdHarbor could not start securely.</strong>Your local records were not removed. Check your connection and reload the app.</div>";
+    document.body.appendChild(failure);
     return;
   }
 
@@ -20,9 +47,14 @@
 
   let session = null;
   let syncTimer = null;
+  let syncInFlight = null;
+  let pendingSync = null;
+  let writeSequence = 0;
+  let lastCloudCheckAt = 0;
   let internalStorageWrite = false;
   let accountButton = null;
   let accountDialog = null;
+  let syncConflict = null;
   let syncState = "Checking account…";
   let recoveryMode = (() => {
     try {
@@ -50,6 +82,8 @@
 
   const cacheKey = (userId) => `herdharbor_user_cache_${userId}`;
   const dirtyKey = (userId) => `herdharbor_user_dirty_${userId}`;
+  const baseKey = (userId) => `herdharbor_user_cloud_base_${userId}`;
+  const versionKey = (userId) => `herdharbor_user_cloud_version_${userId}`;
 
   function safeParse(value) {
     if (!value) return null;
@@ -57,6 +91,47 @@
       return JSON.parse(value);
     } catch {
       return null;
+    }
+  }
+
+  function canonicalize(value) {
+    if (Array.isArray(value)) return value.map(canonicalize);
+    if (value && typeof value === "object") {
+      return Object.keys(value)
+        .sort()
+        .reduce((result, key) => {
+          result[key] = canonicalize(value[key]);
+          return result;
+        }, {});
+    }
+    return value;
+  }
+
+  function stateFingerprint(rawValue) {
+    const parsed = safeParse(rawValue);
+    return parsed ? JSON.stringify(canonicalize(parsed)) : "";
+  }
+
+  function sameState(left, right) {
+    const leftFingerprint = stateFingerprint(left);
+    return Boolean(leftFingerprint) && leftFingerprint === stateFingerprint(right);
+  }
+
+  function safeStorageSet(key, value) {
+    try {
+      originalSetItem.call(localStorage, key, value);
+      return true;
+    } catch (error) {
+      console.warn(`HerdHarbor could not retain local safety key ${key}:`, error);
+      return false;
+    }
+  }
+
+  function safeStorageRemove(key) {
+    try {
+      originalRemoveItem.call(localStorage, key);
+    } catch (error) {
+      console.warn(`HerdHarbor could not remove local safety key ${key}:`, error);
     }
   }
 
@@ -78,6 +153,90 @@
     }
   }
 
+  function openRecoveryDatabase() {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) {
+        reject(new Error("IndexedDB is unavailable."));
+        return;
+      }
+
+      const request = indexedDB.open(RECOVERY_DB_NAME, 1);
+      request.onupgradeneeded = () => {
+        const database = request.result;
+        if (!database.objectStoreNames.contains(RECOVERY_STORE_NAME)) {
+          const store = database.createObjectStore(RECOVERY_STORE_NAME, {
+            keyPath: "id",
+            autoIncrement: true
+          });
+          store.createIndex("userId", "userId");
+          store.createIndex("createdAt", "createdAt");
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("Recovery storage could not open."));
+    });
+  }
+
+  async function recordRecoverySnapshot(userId, rawValue, reason) {
+    if (!userId || !rawValue || !safeParse(rawValue)) return false;
+
+    try {
+      const database = await openRecoveryDatabase();
+      await new Promise((resolve, reject) => {
+        const transaction = database.transaction(RECOVERY_STORE_NAME, "readwrite");
+        const store = transaction.objectStore(RECOVERY_STORE_NAME);
+        const index = store.index("userId");
+        const request = index.getAll(userId);
+
+        request.onsuccess = () => {
+          const snapshots = request.result
+            .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)));
+
+          store.add({
+            userId,
+            createdAt: new Date().toISOString(),
+            reason,
+            rawValue
+          });
+
+          snapshots.slice(MAX_RECOVERY_SNAPSHOTS - 1).forEach((snapshot) => {
+            store.delete(snapshot.id);
+          });
+        };
+        request.onerror = () => reject(request.error);
+        transaction.oncomplete = () => {
+          database.close();
+          resolve();
+        };
+        transaction.onerror = () => reject(transaction.error);
+        transaction.onabort = () => reject(transaction.error);
+      });
+      return true;
+    } catch (error) {
+      console.warn("HerdHarbor local recovery snapshot was not stored:", error);
+      return false;
+    }
+  }
+
+  function preserveActiveForUser(userId, reason) {
+    if (!userId) return;
+    const activeRaw = originalGetItem.call(localStorage, STORAGE_KEY);
+    if (!activeRaw || !safeParse(activeRaw)) return;
+    safeStorageSet(cacheKey(userId), activeRaw);
+    safeStorageSet(ACTIVE_OWNER_KEY, userId);
+    recordRecoverySnapshot(userId, activeRaw, reason);
+  }
+
+  function setActiveUserData(userId, rawValue) {
+    setInternalStorage(STORAGE_KEY, rawValue);
+    setInternalStorage(ACTIVE_OWNER_KEY, userId);
+  }
+
+  function clearActiveUserData() {
+    removeInternalStorage(STORAGE_KEY);
+    removeInternalStorage(ACTIVE_OWNER_KEY);
+  }
+
   function setSyncState(message, type = "info") {
     syncState = message;
     if (accountButton) {
@@ -89,6 +248,7 @@
       status.textContent = message;
       status.dataset.type = type;
     }
+    updateConflictControls();
   }
 
   function installStorageBridge() {
@@ -96,6 +256,10 @@
     window.__HERDHARBOR_STORAGE_BRIDGE__ = true;
 
     Storage.prototype.setItem = function patchedSetItem(key, value) {
+      const previousValue =
+        this === localStorage && key === STORAGE_KEY
+          ? originalGetItem.call(localStorage, STORAGE_KEY)
+          : null;
       const result = originalSetItem.call(this, key, value);
 
       if (
@@ -105,15 +269,25 @@
         session?.user?.id
       ) {
         const userId = session.user.id;
-        originalSetItem.call(localStorage, cacheKey(userId), value);
-        originalSetItem.call(localStorage, dirtyKey(userId), "1");
-        scheduleCloudSync(value);
+        writeSequence += 1;
+        syncConflict = null;
+        safeStorageSet(ACTIVE_OWNER_KEY, userId);
+        safeStorageSet(cacheKey(userId), value);
+        safeStorageSet(dirtyKey(userId), "1");
+        if (previousValue && !sameState(previousValue, value)) {
+          recordRecoverySnapshot(userId, previousValue, "Before local change");
+        }
+        scheduleCloudSync(value, writeSequence);
       }
 
       return result;
     };
 
     Storage.prototype.removeItem = function patchedRemoveItem(key) {
+      const previousValue =
+        this === localStorage && key === STORAGE_KEY
+          ? originalGetItem.call(localStorage, STORAGE_KEY)
+          : null;
       const result = originalRemoveItem.call(this, key);
 
       if (
@@ -123,16 +297,92 @@
         session?.user?.id
       ) {
         const userId = session.user.id;
-        originalRemoveItem.call(localStorage, cacheKey(userId));
-        originalSetItem.call(localStorage, dirtyKey(userId), "1");
-        scheduleCloudSync("{}");
+        writeSequence += 1;
+        syncConflict = null;
+        safeStorageSet(ACTIVE_OWNER_KEY, userId);
+        safeStorageSet(cacheKey(userId), "{}");
+        safeStorageSet(dirtyKey(userId), "1");
+        if (previousValue) {
+          recordRecoverySnapshot(userId, previousValue, "Before clearing local records");
+        }
+        scheduleCloudSync("{}", writeSequence);
       }
 
       return result;
     };
   }
 
-  async function syncValueToCloud(rawValue) {
+  async function fetchCloudRecord(userId) {
+    const { data, error } = await client
+      .from(TABLE_NAME)
+      .select("app_state, updated_at")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    return { data, error };
+  }
+
+  async function markConflict(userId, localRaw, remoteRecord, message) {
+    const remoteRaw = remoteRecord?.app_state
+      ? JSON.stringify(remoteRecord.app_state)
+      : null;
+
+    syncConflict = {
+      userId,
+      localRaw,
+      remoteRaw,
+      remoteUpdatedAt: remoteRecord?.updated_at || null
+    };
+
+    await Promise.all([
+      recordRecoverySnapshot(userId, localRaw, "Local copy saved during sync conflict"),
+      recordRecoverySnapshot(userId, remoteRaw, "Cloud copy saved during sync conflict")
+    ]);
+
+    setSyncState(
+      message || "Sync paused: this device and the cloud both changed. Choose which copy to keep.",
+      "error"
+    );
+    return false;
+  }
+
+  async function writeCloudRecord(userId, appState, remoteRecord) {
+    const nextVersion = new Date().toISOString();
+
+    if (!remoteRecord) {
+      const { data, error } = await client
+        .from(TABLE_NAME)
+        .insert({
+          user_id: userId,
+          app_state: appState,
+          updated_at: nextVersion
+        })
+        .select("app_state, updated_at")
+        .single();
+
+      return { data, error, raced: error?.code === "23505" };
+    }
+
+    let update = client
+      .from(TABLE_NAME)
+      .update({
+        app_state: appState,
+        updated_at: nextVersion
+      })
+      .eq("user_id", userId);
+
+    update = remoteRecord.updated_at
+      ? update.eq("updated_at", remoteRecord.updated_at)
+      : update.is("updated_at", null);
+
+    const { data, error } = await update
+      .select("app_state, updated_at")
+      .maybeSingle();
+
+    return { data, error, raced: !error && !data };
+  }
+
+  async function syncValueToCloud(rawValue, sequence = writeSequence, options = {}) {
     if (!session?.user?.id) return false;
 
     const appState = safeParse(rawValue);
@@ -144,32 +394,122 @@
     const userId = session.user.id;
     setSyncState("Saving to cloud…", "working");
 
-    const { error } = await client
-      .from(TABLE_NAME)
-      .upsert(
-        {
-          user_id: userId,
-          app_state: appState
-        },
-        { onConflict: "user_id" }
-      );
+    const { data: remoteRecord, error: loadError } = await fetchCloudRecord(userId);
 
-    if (error) {
-      console.error("HerdHarbor cloud save failed:", error);
-      setSyncState("Cloud save failed; local copy retained.", "error");
+    if (loadError) {
+      console.error("HerdHarbor cloud preflight failed:", loadError);
+      setSyncState("Cloud unavailable; changes are safe on this device and will retry.", "error");
       return false;
     }
 
-    originalRemoveItem.call(localStorage, dirtyKey(userId));
-    originalSetItem.call(localStorage, cacheKey(userId), rawValue);
+    const remoteRaw = remoteRecord?.app_state
+      ? JSON.stringify(remoteRecord.app_state)
+      : null;
+    const confirmedBase = originalGetItem.call(localStorage, baseKey(userId));
+
+    if (remoteRaw && sameState(remoteRaw, rawValue)) {
+      safeStorageSet(baseKey(userId), remoteRaw);
+      if (remoteRecord.updated_at) {
+        safeStorageSet(versionKey(userId), remoteRecord.updated_at);
+      }
+      if (sequence === writeSequence && !pendingSync) {
+        safeStorageSet(cacheKey(userId), rawValue);
+        safeStorageRemove(dirtyKey(userId));
+      } else {
+        safeStorageSet(dirtyKey(userId), "1");
+      }
+      syncConflict = null;
+      setSyncState("Saved to cloud", "success");
+      return true;
+    }
+
+    const remoteChangedSinceBase =
+      remoteRaw &&
+      (!confirmedBase || !sameState(remoteRaw, confirmedBase));
+
+    if (remoteChangedSinceBase && !options.force) {
+      return markConflict(userId, rawValue, remoteRecord);
+    }
+
+    if (options.force && remoteRaw) {
+      await recordRecoverySnapshot(userId, remoteRaw, "Cloud copy before manual conflict resolution");
+    }
+
+    const { data: savedRecord, error, raced } = await writeCloudRecord(
+      userId,
+      appState,
+      remoteRecord || null
+    );
+
+    if (error) {
+      console.error("HerdHarbor cloud save failed:", error);
+      setSyncState("Cloud save failed; changes are safe on this device and will retry.", "error");
+      return false;
+    }
+
+    if (raced) {
+      const latest = await fetchCloudRecord(userId);
+      if (latest.error) {
+        setSyncState("Cloud changed during save; local copy retained.", "error");
+        return false;
+      }
+      return markConflict(
+        userId,
+        rawValue,
+        latest.data,
+        "Sync paused because another device saved at the same time."
+      );
+    }
+
+    const savedRaw = savedRecord?.app_state
+      ? JSON.stringify(savedRecord.app_state)
+      : rawValue;
+    safeStorageSet(baseKey(userId), savedRaw);
+    if (savedRecord?.updated_at) {
+      safeStorageSet(versionKey(userId), savedRecord.updated_at);
+    }
+
+    if (sequence === writeSequence && !pendingSync) {
+      safeStorageSet(cacheKey(userId), rawValue);
+      safeStorageRemove(dirtyKey(userId));
+    } else {
+      safeStorageSet(dirtyKey(userId), "1");
+    }
+
+    syncConflict = null;
     setSyncState("Saved to cloud", "success");
     return true;
   }
 
-  function scheduleCloudSync(rawValue) {
+  async function drainSyncQueue() {
+    if (syncInFlight) return syncInFlight;
+
+    syncInFlight = (async () => {
+      let lastResult = true;
+      while (pendingSync) {
+        const next = pendingSync;
+        pendingSync = null;
+        lastResult = await syncValueToCloud(next.rawValue, next.sequence);
+        if (!lastResult && syncConflict) break;
+      }
+      return lastResult;
+    })();
+
+    try {
+      return await syncInFlight;
+    } finally {
+      syncInFlight = null;
+      if (pendingSync && !syncConflict) {
+        queueMicrotask(() => drainSyncQueue());
+      }
+    }
+  }
+
+  function scheduleCloudSync(rawValue, sequence = writeSequence) {
     clearTimeout(syncTimer);
+    pendingSync = { rawValue, sequence };
     syncTimer = setTimeout(() => {
-      syncValueToCloud(rawValue);
+      drainSyncQueue();
     }, SYNC_DELAY_MS);
   }
 
@@ -180,7 +520,54 @@
       return false;
     }
     clearTimeout(syncTimer);
-    return syncValueToCloud(raw);
+    pendingSync = { rawValue: raw, sequence: writeSequence };
+    return drainSyncQueue();
+  }
+
+  async function checkForCloudChanges() {
+    const userId = session?.user?.id;
+    if (!userId || syncInFlight || syncConflict) return false;
+    if (Date.now() - lastCloudCheckAt < 15000) return false;
+    lastCloudCheckAt = Date.now();
+
+    if (originalGetItem.call(localStorage, dirtyKey(userId)) === "1") {
+      return syncNow();
+    }
+
+    const { data, error } = await fetchCloudRecord(userId);
+    if (error || !data?.app_state) return false;
+
+    const remoteRaw = JSON.stringify(data.app_state);
+    const activeRaw = originalGetItem.call(localStorage, STORAGE_KEY);
+    const confirmedBase = originalGetItem.call(localStorage, baseKey(userId));
+
+    if (activeRaw && sameState(activeRaw, remoteRaw)) {
+      safeStorageSet(baseKey(userId), remoteRaw);
+      if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
+      return false;
+    }
+
+    if (confirmedBase && sameState(activeRaw, confirmedBase)) {
+      await recordRecoverySnapshot(userId, activeRaw, "Local copy before receiving another device's changes");
+      setActiveUserData(userId, remoteRaw);
+      safeStorageSet(cacheKey(userId), remoteRaw);
+      safeStorageSet(baseKey(userId), remoteRaw);
+      if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
+      setSyncState("Newer cloud records found; reloading…", "success");
+      window.location.reload();
+      return true;
+    }
+
+    if (activeRaw) {
+      return markConflict(
+        userId,
+        activeRaw,
+        data,
+        "Sync paused because this device and another device both have changes."
+      );
+    }
+
+    return false;
   }
 
   function ensureStyles() {
@@ -353,8 +740,22 @@
       #hh-account-sync-status[data-type="error"] { color: #7C2020; background: #F9E8E8; }
       .hh-account-actions { display: grid; gap: 10px; }
       .hh-account-sync { color: white; background: #2E7D7B; }
+      .hh-account-backup { color: #0D2540; background: #E9F0F5; }
       .hh-account-close { color: #0D2540; background: #EDF2F3; }
       .hh-account-signout { color: white; background: #AA3E3E; }
+      .hh-conflict-actions {
+        display: grid;
+        gap: 10px;
+        margin: 0 0 16px;
+        padding: 14px;
+        background: #FFF3DC;
+        border: 1px solid #E9C46A;
+        border-radius: 12px;
+      }
+      .hh-conflict-actions[hidden] { display: none !important; }
+      .hh-conflict-actions p { margin: 0; color: #694713; line-height: 1.45; }
+      .hh-conflict-local { color: white; background: #2E7D7B; }
+      .hh-conflict-cloud { color: white; background: #0D2540; }
 
       @media (max-width: 620px) {
         #hh-auth-root { padding: 14px; }
@@ -613,6 +1014,76 @@
     });
   }
 
+  function updateConflictControls() {
+    if (!accountDialog) return;
+    const controls = accountDialog.querySelector("#hh-conflict-actions");
+    if (controls) controls.hidden = !syncConflict;
+  }
+
+  function downloadSafetyBackup() {
+    const rawValue = originalGetItem.call(localStorage, STORAGE_KEY);
+    const appState = safeParse(rawValue);
+    if (!appState) {
+      setSyncState("No readable local records are available to back up.", "error");
+      return;
+    }
+
+    const payload = JSON.stringify({
+      app: "HerdHarbor",
+      version: "0.2.13",
+      backupType: "local-safety-backup",
+      exportedAt: new Date().toISOString(),
+      data: appState
+    }, null, 2);
+    const blob = new Blob([payload], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `herdharbor-safety-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setSyncState("Safety backup downloaded.", "success");
+  }
+
+  async function resolveConflict(choice) {
+    if (!syncConflict || !session?.user?.id) return false;
+
+    const conflict = syncConflict;
+    if (choice === "cloud") {
+      if (!conflict.remoteRaw || !safeParse(conflict.remoteRaw)) {
+        setSyncState("The cloud copy could not be read; the local copy was not changed.", "error");
+        return false;
+      }
+
+      await recordRecoverySnapshot(
+        conflict.userId,
+        conflict.localRaw,
+        "Local copy before choosing cloud conflict version"
+      );
+      setActiveUserData(conflict.userId, conflict.remoteRaw);
+      safeStorageSet(cacheKey(conflict.userId), conflict.remoteRaw);
+      safeStorageSet(baseKey(conflict.userId), conflict.remoteRaw);
+      if (conflict.remoteUpdatedAt) {
+        safeStorageSet(versionKey(conflict.userId), conflict.remoteUpdatedAt);
+      }
+      safeStorageRemove(dirtyKey(conflict.userId));
+      syncConflict = null;
+      setSyncState("Cloud copy selected; reloading records…", "success");
+      window.location.reload();
+      return true;
+    }
+
+    const accepted = window.confirm(
+      "Replace the cloud copy with the records currently on this device? A safety snapshot of both copies has already been retained."
+    );
+    if (!accepted) return false;
+
+    pendingSync = null;
+    const saved = await syncValueToCloud(conflict.localRaw, writeSequence, { force: true });
+    updateConflictControls();
+    return saved;
+  }
+
   function buildAccountControls() {
     if (!accountButton) {
       accountButton = document.createElement("button");
@@ -639,8 +1110,14 @@
           <h2 id="hh-account-title">HerdHarbor account</h2>
           <p id="hh-account-email" class="hh-account-email"></p>
           <p id="hh-account-sync-status">Checking sync status…</p>
+          <div id="hh-conflict-actions" class="hh-conflict-actions" hidden>
+            <p>Both copies are protected. Choose which version should become the current record set.</p>
+            <button id="hh-keep-local" class="hh-conflict-local" type="button">Keep this device's records</button>
+            <button id="hh-use-cloud" class="hh-conflict-cloud" type="button">Use cloud records</button>
+          </div>
           <div class="hh-account-actions">
             <button id="hh-sync-now" class="hh-account-sync" type="button">Save to cloud now</button>
+            <button id="hh-download-safety" class="hh-account-backup" type="button">Download safety backup</button>
             <button id="hh-close-account" class="hh-account-close" type="button">Close</button>
             <button id="hh-sign-out" class="hh-account-signout" type="button">Sign out</button>
           </div>
@@ -659,13 +1136,31 @@
         await syncNow();
       });
 
+      accountDialog.querySelector("#hh-download-safety").addEventListener("click", () => {
+        downloadSafetyBackup();
+      });
+
+      accountDialog.querySelector("#hh-keep-local").addEventListener("click", async () => {
+        await resolveConflict("local");
+      });
+
+      accountDialog.querySelector("#hh-use-cloud").addEventListener("click", async () => {
+        await resolveConflict("cloud");
+      });
+
       accountDialog.querySelector("#hh-sign-out").addEventListener("click", async () => {
-        await syncNow();
-        if (session?.user?.id) {
-          const active = originalGetItem.call(localStorage, STORAGE_KEY);
-          if (active) originalSetItem.call(localStorage, cacheKey(session.user.id), active);
+        const userId = session?.user?.id;
+        const hasUnsyncedChanges =
+          Boolean(userId) &&
+          originalGetItem.call(localStorage, dirtyKey(userId)) === "1";
+        if (hasUnsyncedChanges && !(await syncNow())) {
+          setSyncState(
+            "Sign-out paused to protect unsynced records. Reconnect and try Save to cloud now.",
+            "error"
+          );
+          return;
         }
-        removeInternalStorage(STORAGE_KEY);
+        preserveActiveForUser(userId, "Local copy retained at sign out");
         accountDialog.hidden = true;
         await client.auth.signOut();
       });
@@ -673,7 +1168,7 @@
       document.body.appendChild(accountDialog);
     }
 
-    setSyncState(syncState, "success");
+    setSyncState(syncState, syncConflict ? "error" : "success");
   }
 
   async function hydrateUserData(activeSession) {
@@ -686,36 +1181,39 @@
     }
 
     const userId = session.user.id;
-    const activeRaw = originalGetItem.call(localStorage, STORAGE_KEY);
+    const storedActiveRaw = originalGetItem.call(localStorage, STORAGE_KEY);
+    const activeOwner = originalGetItem.call(localStorage, ACTIVE_OWNER_KEY);
+    const activeRaw =
+      !activeOwner || activeOwner === userId
+        ? storedActiveRaw
+        : null;
     const cachedRaw = originalGetItem.call(localStorage, cacheKey(userId));
     const dirty = originalGetItem.call(localStorage, dirtyKey(userId)) === "1";
 
     if (dirty) {
       const unsyncedRaw = activeRaw || cachedRaw;
       if (unsyncedRaw && safeParse(unsyncedRaw)) {
-        if (!activeRaw) setInternalStorage(STORAGE_KEY, unsyncedRaw);
+        if (!activeRaw) setActiveUserData(userId, unsyncedRaw);
         unlockApp();
         setSyncState("Unsynced local changes found; saving…", "working");
-        await syncValueToCloud(unsyncedRaw);
+        pendingSync = { rawValue: unsyncedRaw, sequence: writeSequence };
+        await drainSyncQueue();
         return;
       }
     }
 
     setSyncState("Loading cloud records…", "working");
 
-    const { data, error } = await client
-      .from(TABLE_NAME)
-      .select("app_state, updated_at")
-      .eq("user_id", userId)
-      .maybeSingle();
+    const { data, error } = await fetchCloudRecord(userId);
 
     if (error) {
       console.error("HerdHarbor cloud load failed:", error);
 
-      if (cachedRaw && safeParse(cachedRaw)) {
-        setInternalStorage(STORAGE_KEY, cachedRaw);
+      const offlineRaw = activeRaw || cachedRaw;
+      if (offlineRaw && safeParse(offlineRaw)) {
+        setActiveUserData(userId, offlineRaw);
         unlockApp();
-        setSyncState("Offline cache loaded; cloud unavailable.", "error");
+        setSyncState("Offline copy loaded; changes will sync when connection returns.", "error");
         return;
       }
 
@@ -729,11 +1227,17 @@
 
     if (data?.app_state) {
       const cloudRaw = JSON.stringify(data.app_state);
-      const stateChanged = activeRaw !== cloudRaw;
+      const stateChanged = !activeRaw || !sameState(activeRaw, cloudRaw);
 
-      setInternalStorage(STORAGE_KEY, cloudRaw);
-      setInternalStorage(cacheKey(userId), cloudRaw);
-      originalRemoveItem.call(localStorage, dirtyKey(userId));
+      if (activeRaw && stateChanged) {
+        await recordRecoverySnapshot(userId, activeRaw, "Local copy before loading newer cloud records");
+      }
+      setActiveUserData(userId, cloudRaw);
+      safeStorageSet(cacheKey(userId), cloudRaw);
+      safeStorageSet(baseKey(userId), cloudRaw);
+      if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
+      safeStorageRemove(dirtyKey(userId));
+      syncConflict = null;
 
       if (stateChanged) {
         const reloadKey = `hh_cloud_loaded_${userId}_${data.updated_at || "current"}`;
@@ -751,15 +1255,26 @@
 
     const newUserRaw = cachedRaw || activeRaw;
     if (newUserRaw && safeParse(newUserRaw)) {
-      setInternalStorage(STORAGE_KEY, newUserRaw);
+      const stateChanged = !activeRaw || !sameState(activeRaw, newUserRaw);
+      setActiveUserData(userId, newUserRaw);
+      pendingSync = { rawValue: newUserRaw, sequence: writeSequence };
+      await drainSyncQueue();
+      if (stateChanged) {
+        window.location.reload();
+        return;
+      }
       unlockApp();
-      await syncValueToCloud(newUserRaw);
       return;
     }
 
-    removeInternalStorage(STORAGE_KEY);
+    if (storedActiveRaw && activeOwner && activeOwner !== userId) {
+      await recordRecoverySnapshot(activeOwner, storedActiveRaw, "Retained while switching accounts");
+    }
+    clearActiveUserData();
+    safeStorageSet(ACTIVE_OWNER_KEY, userId);
     unlockApp();
     setSyncState("New cloud account ready", "success");
+    if (storedActiveRaw) window.location.reload();
   }
 
   async function initialize() {
@@ -778,7 +1293,6 @@
     }
 
     if (!data.session) {
-      removeInternalStorage(STORAGE_KEY);
       authMessage();
       showAuth("signin");
       return;
@@ -815,8 +1329,9 @@
     }
 
     if (event === "SIGNED_OUT") {
+      const previousUserId = session?.user?.id;
+      preserveActiveForUser(previousUserId, "Local copy retained after session ended");
       session = null;
-      removeInternalStorage(STORAGE_KEY);
       if (accountButton) accountButton.remove();
       if (accountDialog) accountDialog.remove();
       accountButton = null;
@@ -826,15 +1341,57 @@
     }
   });
 
+  window.addEventListener("online", () => {
+    const userId = session?.user?.id;
+    if (
+      userId &&
+      originalGetItem.call(localStorage, dirtyKey(userId)) === "1" &&
+      !syncConflict
+    ) {
+      syncNow();
+    } else {
+      checkForCloudChanges();
+    }
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    const userId = session?.user?.id;
+    if (
+      document.visibilityState === "hidden" &&
+      userId &&
+      originalGetItem.call(localStorage, dirtyKey(userId)) === "1" &&
+      !syncConflict
+    ) {
+      syncNow();
+    } else if (document.visibilityState === "visible") {
+      checkForCloudChanges();
+    }
+  });
+
+  window.addEventListener("focus", () => {
+    checkForCloudChanges();
+  });
+
   window.HerdHarborCloud = {
     syncNow,
     getSession: () => session,
-    getSyncState: () => syncState
+    getSyncState: () => syncState,
+    hasUnsyncedChanges: () => {
+      const userId = session?.user?.id;
+      return Boolean(userId) &&
+        originalGetItem.call(localStorage, dirtyKey(userId)) === "1";
+    },
+    hasConflict: () => Boolean(syncConflict),
+    downloadSafetyBackup
   };
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initialize, { once: true });
-  } else {
-    initialize();
-  }
+  initialize().catch((error) => {
+    console.error("HerdHarbor cloud initialization failed:", error);
+    ensureStyles();
+    showAuth("signin");
+    authMessage(
+      "HerdHarbor could not start the secure account connection. Your local records were not removed. Refresh and try again.",
+      "error"
+    );
+  });
 })();

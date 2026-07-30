@@ -1,49 +1,41 @@
-# HerdHarbor v0.2.1 Tester Checklist
+# HerdHarbor v0.2.13 Release Checklist
 
-## Before updating
+## Existing-data protection
 
-- Export a JSON backup from v0.2.0
-- Confirm the backup file downloads successfully
+- Sign in to an existing tester account and confirm all current records load
+- Add an animal and confirm the Account status reaches **Saved to cloud**
+- Reload and confirm the animal remains
+- Turn off the connection, edit a record, close and reopen the app, and confirm the offline copy remains
+- Reconnect and confirm the pending change reaches the cloud
+- Confirm signing out is blocked while an unsynced change cannot be saved
+- Download an Account safety backup and confirm it contains the current profile and animals
 
-## Appearance
+## Multi-device conflict protection
 
-- Switch from light to dark mode
-- Close and reopen the app
-- Confirm the selected mode remains
-- Select Use System in Settings
-- Collapse and expand the desktop sidebar
-- Check navigation on a phone
+- Open the same test account on two devices
+- Make both devices start from the same cloud data
+- Take one device offline and edit a record
+- Edit and sync a different record on the online device
+- Reconnect the offline device
+- Confirm HerdHarbor pauses instead of silently overwriting either copy
+- Test **Keep this device's records**
+- Repeat and test **Use cloud records**
 
-## Pedigree builder
+## Installation and updates
 
-- Start a pedigree for an existing animal
-- Upload a pedigree photo larger than 1 MB
-- Confirm the app compresses and displays it
-- Test a PDF under 1.25 MB
-- Add parents
-- Add grandparents
-- Leave at least one ancestor unknown
-- Link one ancestor to an existing animal
-- Enter one new ancestor-only record
-- Save the pedigree as a draft
-- Close the app and resume the draft
-- Reach the review step
-- Confirm duplicate warnings appear when expected
-- Save the completed pedigree
-- Reopen it from the Pedigrees page
+- Confirm the manifest reports HerdHarbor with 192px and 512px icons
+- Install on Android or a desktop browser
+- Add to Home Screen from Safari on iPhone/iPad
+- Confirm the installed app opens in standalone mode
+- Confirm the app shell opens without a connection for a previously signed-in tester
+- Confirm cloud/auth requests are absent from Cache Storage
+- Publish a service-worker version change and confirm the update prompt appears
+- Confirm an update is paused when unsynced data cannot be protected
 
-## Printing
+## Regression
 
-- Print from an animal profile
-- Print from a completed pedigree
-- Enter buyer and sale details
-- Confirm the print preview is white in both light and dark mode
-- Test Save as PDF
-- Confirm parents, grandparents, and great-grandparents display correctly
-
-## Data safety
-
-- Export a new JSON backup after testing
-- Confirm existing v0.2.0 animal records remain present
-
-Use the in-app **Send Feedback** button for every bug or confusing step.
+- Test sign in, sign out, account creation, and password reset
+- Confirm no random sign-in flash appears
+- Test animals, breeding, litters, pedigrees, health, tasks, budgeting, photos, breed memory, and dark mode
+- Test JSON export/import
+- Test on phone and desktop sizes
