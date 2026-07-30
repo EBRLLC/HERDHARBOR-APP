@@ -1,66 +1,42 @@
-# HerdHarbor Pre-Alpha v0.2.3
+# HerdHarbor Pre-Alpha v0.2.13
 
-## Rabbitry Branding and Animal Photos
+HerdHarbor is an installable farm and livestock recordkeeping app for the current private tester group.
 
-This update adds custom rabbitry branding and optional animal profile photos while preserving the existing budgeting, pedigree, breeding, litter, health, task, appearance, and tester-feedback systems.
+## Current capabilities
 
-The browser storage key is unchanged, so existing tester records should carry forward. Every tester should export a backup before updating.
+- Protected email/password accounts and password recovery
+- Cloud synchronization with an offline device copy
+- Conflict detection when two devices edit the same account
+- Atomic cloud updates so a stale device cannot silently overwrite newer records
+- Automatic local recovery snapshots before material changes or conflict resolution
+- Installable PWA for Android, iPhone/iPad, Windows, macOS, and supported browsers
+- Animals, breeding, litters, pedigrees, health, tasks, budgeting, photos, farm branding, breed memory, and dark mode
+- JSON backup export and import
 
-## New in v0.2.3
+## Data-safety design
 
-### Custom rabbitry or farm logo
+The application state remains in `localStorage` for immediate offline operation. Each signed-in account also has:
 
-- Upload a custom logo under **Settings → Rabbitry branding**
-- Supports JPG, PNG, and WebP
-- Automatically resizes and compresses the logo
-- Displays the logo beside the operation name in the app header
-- Adds the custom logo to printable sale pedigrees
-- Replace the logo at any time
-- Remove it and return to the default HerdHarbor logo
+- a last-confirmed cloud base used for conflict checks;
+- a per-user offline recovery copy;
+- a dirty marker retained until cloud confirmation;
+- serialized writes so older requests cannot finish after newer requests;
+- compare-and-swap updates using the cloud row's `updated_at` value;
+- IndexedDB recovery snapshots retained on the device.
 
-### Animal profile photos
+Authentication and Supabase data requests are never handled by the service-worker cache. The service worker caches only the static application shell.
 
-- Upload an optional photo when adding or editing an animal
-- Supports JPG, PNG, and WebP
-- Automatically creates a small compressed profile image
-- Shows the photo:
-  - on animal cards
-  - in the animal detail screen
-  - on printable sale pedigrees
-- Replace or remove the photo at any time
-- Animals without a custom photo continue using the default species icon
+## Install
 
-### Backup support
+Open `https://app.herdharbor.com`, sign in, then use **Install app** or **Settings → Install HerdHarbor**. On iPhone and iPad, use Safari's **Share → Add to Home Screen**.
 
-Rabbitry logos and animal profile thumbnails are included in the existing JSON backup and restore process.
+## Important tester guidance
 
-## Important limitations
+- Keep periodic downloaded JSON backups for important farm records.
+- If HerdHarbor reports a sync conflict, both copies are retained. Open **Account** and choose which copy to keep.
+- Do not clear browser/site data while unsynced changes are present.
+- Report issues through the in-app **Send feedback** button.
 
-- Images are stored only in this browser
-- Photos are compressed thumbnails, not full-resolution originals
-- Adding photos to many animals can eventually reach the browser's storage limit
-- Use default species icons for animals that do not need a photo
-- There are still no cloud accounts or cross-device synchronization
-- Export backups regularly
+## Deployment
 
-## Install on the tester site
-
-1. Open `https://app.herdharbor.com`.
-2. Go to **Settings → Export backup**.
-3. Open the `HERDHARBOR-APP` GitHub repository.
-4. Upload this package's `index.html` to the repository root.
-5. Replace the existing `index.html`.
-6. Commit directly to `main` with:
-
-   `Release v0.2.3 rabbitry branding and animal photos`
-
-7. Wait for GitHub Pages to redeploy.
-8. Open:
-
-   `https://app.herdharbor.com/?v=23`
-
-9. Press `Ctrl + F5` if an older version appears.
-
-## Rollback
-
-Keep the existing v0.2.2, v0.2.1, and v0.2.0 GitHub releases available as rollback copies.
+The live custom domain is configured by `CNAME` and deployed from the `main` branch through GitHub Pages.

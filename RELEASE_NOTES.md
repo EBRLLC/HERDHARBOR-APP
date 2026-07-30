@@ -1,25 +1,22 @@
-# HerdHarbor Pre-Alpha v0.2.3
+# HerdHarbor Pre-Alpha v0.2.13
 
-This release adds personalized rabbitry branding and optional animal profile photos.
+This release makes HerdHarbor installable and adds stronger protection against lost or overwritten tester records.
 
 ## Highlights
 
-- Added custom rabbitry/farm logo upload
-- Added automatic logo resizing and compression
-- Added the rabbitry logo to the app header
-- Added the rabbitry logo to printed sale pedigrees
-- Added optional photos to animal records
-- Added animal photos to cards, profiles, and printed pedigrees
-- Added a one-click option to return to the default species icon
-- Included logos and compressed animal photos in JSON backups
-- Preserved budgeting, cost-per-head, guided pedigree building, printing, dark mode, and tester feedback
+- Added a complete PWA manifest, correct 192px and 512px icons, standalone launching, and app installation controls
+- Added a versioned offline application shell
+- Bundled the Supabase browser client locally so an installed app can open without relying on a third-party CDN
+- Excluded authentication, database, storage, feedback, and all cross-origin requests from service-worker caching
+- Added serialized cloud writes and atomic conflict checks
+- Prevented an older device copy from silently overwriting newer cloud records
+- Preserved local records when a session expires or sign-in is temporarily unavailable
+- Added automatic IndexedDB recovery snapshots
+- Added explicit conflict resolution with both local and cloud copies protected
+- Blocked sign-out when unsynced records cannot be confirmed in the cloud
+- Added a downloadable safety backup from the Account panel
+- Added safe update prompts that protect unsynced records before reloading
 
-## Important pre-alpha limitations
+## Tester note
 
-- Images remain stored only in the browser
-- Animal photos are compressed profile thumbnails
-- A large number of photos may eventually reach browser storage limits
-- There is no cloud media storage or synchronization yet
-- Export backups regularly
-
-Please report image-upload, display, printing, and storage issues through the in-app **Send Feedback** button.
+Existing account and livestock data uses the same storage key and Supabase table. No tester record migration is required.
