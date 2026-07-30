@@ -436,16 +436,13 @@
       .hh-auth-mark {
         width: 52px;
         height: 52px;
-        display: grid;
-        place-items: center;
+        display: block;
         flex: 0 0 auto;
-        color: #0D2540;
-        background: #FFFFFF;
+        object-fit: cover;
+        background: #0D2540;
+        border: 1px solid rgba(255,255,255,.24);
         border-radius: 15px;
         box-shadow: 0 10px 28px rgba(0,0,0,.18);
-        font-size: 1rem;
-        font-weight: 900;
-        letter-spacing: -.06em;
       }
 
       .hh-auth-wordmark,
@@ -893,7 +890,7 @@
       <main class="hh-auth-shell">
         <aside class="hh-auth-promise" aria-label="Why HerdHarbor">
           <div class="hh-auth-identity">
-            <span class="hh-auth-mark" aria-hidden="true">HH</span>
+            <img class="hh-auth-mark" src="${document.querySelector('link[rel=\"icon\"]')?.href || ''}" alt="" aria-hidden="true">
             <span>
               <span class="hh-auth-wordmark">HerdHarbor</span>
               <span class="hh-auth-descriptor">Livestock recordkeeping</span>
@@ -916,7 +913,7 @@
 
         <section class="hh-auth-panel">
           <div class="hh-auth-mobile-brand" aria-label="HerdHarbor">
-            <span class="hh-auth-mark" aria-hidden="true">HH</span>
+            <img class="hh-auth-mark" src="${document.querySelector('link[rel=\"icon\"]')?.href || ''}" alt="" aria-hidden="true">
             <span>
               <span class="hh-auth-wordmark">HerdHarbor</span>
               <span class="hh-auth-descriptor">Livestock recordkeeping</span>
