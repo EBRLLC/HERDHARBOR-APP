@@ -1,9 +1,19 @@
-# HerdHarbor Pre-Alpha v0.2.15
+# HerdHarbor Pre-Alpha v0.3.01
 
-This release corrects the ineffective v0.2.14 rotation control by making the installed HerdHarbor PWA portrait-only.
+This release adds reviewed Excel imports for Animals, Budgeting, and Medical records while preserving the current farm record and cloud-sync safeguards.
 
 ## Highlights
 
+- Added `.xlsx` and `.xlsm` workbook upload from Settings
+- Added automatic Animals, Budgeting, and Medical sheet recognition
+- Added flexible column-name matching for common existing farm spreadsheets
+- Added a review screen with valid-record counts, row errors, warnings, and duplicate skips
+- Made spreadsheet imports additive so current records are never replaced
+- Added animal matching by ID/tag, tattoo, registration number, or unique name
+- Added parent matching for imported sires and dams
+- Added a downloadable HerdHarbor Excel import template
+- Kept spreadsheet contents on the tester's device; only confirmed HerdHarbor records enter normal cloud sync
+- Added all-or-nothing local commit behavior so a failed browser save rolls back the import
 - Changed the web app manifest orientation from `any` to `portrait`
 - Removed the Auto-rotate setting because web browsers cannot provide a dependable cross-platform On/Off lock
 - Removed the portrait warning overlay that covered the app without preventing device rotation
@@ -23,4 +33,4 @@ This release corrects the ineffective v0.2.14 rotation control by making the ins
 
 ## Tester note
 
-Existing accounts and livestock data use the same storage key and Supabase table. No tester record migration is required. Existing Home Screen installations may need to be removed and installed again before the operating system adopts the changed orientation manifest.
+Existing accounts and livestock data use the same storage key and Supabase table. No tester record migration is required. Spreadsheet imports append approved records to the current farm and skip duplicates or invalid rows.

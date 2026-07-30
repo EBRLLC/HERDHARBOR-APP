@@ -1,4 +1,21 @@
-# HerdHarbor v0.2.15 Release Checklist
+# HerdHarbor v0.3.01 Release Checklist
+
+## Excel spreadsheet import
+
+- Download the HerdHarbor Excel template from Settings and confirm it opens with Instructions, Animals, Budgeting, and Medical sheets
+- Import a workbook containing valid rows in all three data sheets
+- Confirm the review screen shows correct ready, skipped, warning, and error counts
+- Confirm no records are added before **Import records** is selected
+- Confirm approved animals, transactions, and medical records appear in their normal app sections
+- Import the same workbook again and confirm duplicate records are skipped
+- Confirm Medical and animal-assigned Budgeting rows match animals by tag, tattoo, registration number, or unique name
+- Confirm missing or ambiguous animal references are rejected without changing existing records
+- Confirm sire and dam references connect when they match an existing or newly imported animal
+- Confirm invalid dates, amounts, status values, and unsupported species are flagged by sheet and row
+- Confirm a legacy `.xls` file is rejected with instructions to resave it as `.xlsx`
+- Confirm a workbook over 10 MB and a workbook over 5,000 data rows are rejected
+- Confirm the imported records reach **Saved to cloud**, survive reload, and appear on a second device
+- Confirm the spreadsheet itself is never sent through an app network request
 
 ## Mobile rotation
 
