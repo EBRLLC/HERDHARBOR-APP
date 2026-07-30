@@ -348,99 +348,469 @@
         place-items: center;
         overflow: auto;
         padding: 24px;
-        color: #18212A;
+        color: #182536;
+        color-scheme: light;
         background:
-          radial-gradient(circle at top left, rgba(46,125,123,.18), transparent 34%),
-          linear-gradient(160deg, #F7F2E8, #EDF3F4);
+          radial-gradient(circle at 12% 10%, rgba(23,58,91,.10), transparent 30%),
+          radial-gradient(circle at 88% 90%, rgba(201,154,61,.10), transparent 26%),
+          #F4F1EA;
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      #hh-auth-root::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        opacity: .32;
+        background-image: radial-gradient(rgba(13,37,64,.15) .7px, transparent .7px);
+        background-size: 18px 18px;
+        mask-image: linear-gradient(to bottom right, black, transparent 66%);
       }
 
       #hh-auth-root[hidden],
       #hh-auth-loading[hidden],
       #hh-auth-card[hidden] { display: none !important; }
 
-      .hh-auth-shell { width: min(520px, 100%); }
-      .hh-auth-brand { margin-bottom: 14px; text-align: center; }
-      .hh-auth-brand h1 {
-        margin: 0;
+      .hh-auth-shell {
+        position: relative;
+        z-index: 1;
+        width: min(1100px, 100%);
+        min-height: min(720px, calc(100vh - 48px));
+        display: grid;
+        grid-template-columns: minmax(0, 1.06fr) minmax(440px, .94fr);
+        overflow: hidden;
+        background: #FFFFFF;
+        border: 1px solid rgba(13,37,64,.11);
+        border-radius: 28px;
+        box-shadow: 0 28px 80px rgba(13,37,64,.18);
+      }
+
+      .hh-auth-promise {
+        position: relative;
+        isolation: isolate;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        overflow: hidden;
+        padding: clamp(38px, 5vw, 64px);
+        color: #FFFFFF;
+        background: linear-gradient(145deg, #0D2540 0%, #173A5B 100%);
+      }
+
+      .hh-auth-promise::before,
+      .hh-auth-promise::after {
+        content: "";
+        position: absolute;
+        z-index: -1;
+        border-radius: 50%;
+      }
+
+      .hh-auth-promise::before {
+        width: 360px;
+        height: 360px;
+        right: -210px;
+        top: -140px;
+        border: 1px solid rgba(255,255,255,.12);
+        box-shadow:
+          0 0 0 54px rgba(255,255,255,.035),
+          0 0 0 108px rgba(255,255,255,.025);
+      }
+
+      .hh-auth-promise::after {
+        width: 240px;
+        height: 240px;
+        left: -150px;
+        bottom: -130px;
+        background: rgba(201,154,61,.12);
+      }
+
+      .hh-auth-identity,
+      .hh-auth-mobile-brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .hh-auth-mark {
+        width: 52px;
+        height: 52px;
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
         color: #0D2540;
-        font-size: clamp(2.2rem, 8vw, 3.5rem);
-        letter-spacing: -.045em;
+        background: #FFFFFF;
+        border-radius: 15px;
+        box-shadow: 0 10px 28px rgba(0,0,0,.18);
+        font-size: 1rem;
+        font-weight: 900;
+        letter-spacing: -.06em;
       }
-      .hh-auth-brand p { margin: 7px 0 0; color: #65727E; }
+
+      .hh-auth-wordmark,
+      .hh-auth-descriptor { display: block; }
+
+      .hh-auth-wordmark {
+        color: #FFFFFF;
+        font-size: 1.22rem;
+        font-weight: 850;
+        letter-spacing: -.025em;
+      }
+
+      .hh-auth-descriptor {
+        margin-top: 2px;
+        color: #B9CAD7;
+        font-size: .76rem;
+        font-weight: 650;
+        letter-spacing: .035em;
+      }
+
+      .hh-auth-promise-copy {
+        max-width: 510px;
+        padding: 52px 0;
+      }
+
+      .hh-auth-kicker,
+      .hh-auth-panel-kicker {
+        margin: 0 0 13px;
+        color: #DDB45F;
+        font-size: .75rem;
+        font-weight: 850;
+        letter-spacing: .13em;
+        text-transform: uppercase;
+      }
+
+      .hh-auth-promise h1 {
+        margin: 0;
+        max-width: 500px;
+        color: #FFFFFF;
+        font-size: clamp(2.35rem, 4vw, 3.7rem);
+        line-height: 1.02;
+        letter-spacing: -.05em;
+      }
+
+      .hh-auth-promise-copy > p:not(.hh-auth-kicker) {
+        margin: 22px 0 0;
+        max-width: 475px;
+        color: #D8E2E9;
+        font-size: 1.02rem;
+        line-height: 1.7;
+      }
+
+      .hh-auth-benefits {
+        display: grid;
+        gap: 13px;
+        margin: 28px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .hh-auth-benefits li {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        color: #F3F6F8;
+        font-size: .93rem;
+        font-weight: 700;
+      }
+
+      .hh-auth-benefits li::before {
+        content: "✓";
+        width: 24px;
+        height: 24px;
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        color: #0D2540;
+        background: #DDB45F;
+        border-radius: 50%;
+        font-size: .75rem;
+        font-weight: 950;
+      }
+
+      .hh-auth-reassurance {
+        margin: 0;
+        color: #AFC1CF;
+        font-size: .76rem;
+        font-weight: 650;
+        line-height: 1.6;
+      }
+
+      .hh-auth-panel {
+        min-width: 0;
+        display: grid;
+        place-items: center;
+        padding: clamp(32px, 5vw, 66px);
+        background:
+          linear-gradient(rgba(255,255,255,.96), rgba(255,255,255,.96)),
+          radial-gradient(circle at top right, rgba(13,37,64,.09), transparent 40%);
+      }
+
+      .hh-auth-mobile-brand {
+        display: none;
+        width: min(440px, 100%);
+        margin-bottom: 30px;
+      }
+
+      .hh-auth-mobile-brand .hh-auth-mark {
+        color: #FFFFFF;
+        background: #0D2540;
+        box-shadow: 0 8px 22px rgba(13,37,64,.18);
+      }
+
+      .hh-auth-mobile-brand .hh-auth-wordmark { color: #0D2540; }
+      .hh-auth-mobile-brand .hh-auth-descriptor { color: #647181; }
+
       .hh-auth-card {
-        padding: clamp(22px, 5vw, 36px);
-        background: rgba(255,255,255,.96);
-        border: 1px solid rgba(13,37,64,.12);
-        border-radius: 24px;
-        box-shadow: 0 24px 70px rgba(13,37,64,.16);
+        width: min(440px, 100%);
+        padding: 0;
+        color: #182536;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
       }
-      .hh-auth-card h2 { margin: 0 0 8px; color: #0D2540; }
-      .hh-auth-intro { margin: 0 0 20px; color: #65727E; line-height: 1.5; }
+
+      #hh-auth-loading {
+        padding: 30px;
+        background: #FFFFFF;
+        border: 1px solid #DCE3E8;
+        border-radius: 18px;
+        box-shadow: 0 16px 42px rgba(13,37,64,.10);
+      }
+
+      #hh-auth-loading::before {
+        content: "";
+        width: 34px;
+        height: 34px;
+        display: block;
+        margin-bottom: 22px;
+        border: 3px solid #DCE3E8;
+        border-top-color: #0D2540;
+        border-radius: 50%;
+        animation: hh-auth-spin .85s linear infinite;
+      }
+
+      @keyframes hh-auth-spin { to { transform: rotate(360deg); } }
+
+      .hh-auth-panel-kicker { color: #6D5527; }
+
+      .hh-auth-card h2 {
+        margin: 0 0 10px;
+        color: #0D2540;
+        font-size: clamp(2rem, 4vw, 2.65rem);
+        line-height: 1.08;
+        letter-spacing: -.04em;
+      }
+
+      .hh-auth-intro {
+        margin: 0 0 26px;
+        color: #5F6C79;
+        line-height: 1.58;
+      }
+
       .hh-auth-tabs {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        margin-bottom: 20px;
+        gap: 6px;
+        margin-bottom: 24px;
         padding: 5px;
-        background: #EDF2F3;
-        border-radius: 14px;
+        background: #EEF1F3;
+        border: 1px solid #E3E8EB;
+        border-radius: 13px;
       }
+
       .hh-auth-tab,
       .hh-auth-button,
       .hh-account-button,
       .hh-account-dialog button {
-        min-height: 44px;
-        padding: 10px 14px;
+        min-height: 46px;
+        padding: 11px 15px;
+        appearance: none;
+        -webkit-appearance: none;
         border: 0;
-        border-radius: 11px;
+        border-radius: 10px;
         font: inherit;
-        font-weight: 850;
+        font-weight: 800;
         cursor: pointer;
       }
-      .hh-auth-tab { color: #0D2540; background: transparent; }
-      .hh-auth-tab.active { color: white; background: #0D2540; }
-      .hh-auth-form { display: grid; gap: 14px; }
+
+      .hh-auth-tab {
+        color: #33485C;
+        background: transparent;
+        transition: color .16s ease, background .16s ease, box-shadow .16s ease;
+      }
+
+      .hh-auth-tab:hover { color: #0D2540; background: rgba(255,255,255,.72); }
+
+      .hh-auth-tab.active {
+        color: #FFFFFF;
+        background: #0D2540;
+        box-shadow: 0 4px 12px rgba(13,37,64,.18);
+      }
+
+      .hh-auth-form { display: grid; gap: 16px; }
       .hh-auth-form[hidden] { display: none !important; }
+
       .hh-auth-form label {
         display: grid;
-        gap: 7px;
-        color: #0D2540;
-        font-weight: 750;
+        gap: 8px;
+        color: #21364B;
+        font-size: .84rem;
+        font-weight: 800;
       }
+
       .hh-auth-form input {
         width: 100%;
-        min-height: 48px;
-        padding: 11px 13px;
-        color: #18212A;
-        background: white;
-        border: 1px solid #D8E0E5;
-        border-radius: 12px;
+        min-height: 50px;
+        padding: 12px 14px;
+        appearance: none;
+        -webkit-appearance: none;
+        color: #182536 !important;
+        -webkit-text-fill-color: #182536;
+        caret-color: #0D2540;
+        background: #FFFFFF !important;
+        border: 1px solid #CCD6DE;
+        border-radius: 11px;
+        outline: none;
+        box-shadow: 0 1px 2px rgba(13,37,64,.03);
         font: inherit;
+        transition: border-color .16s ease, box-shadow .16s ease;
       }
+
+      .hh-auth-form input:hover { border-color: #9FB0BD; }
+
       .hh-auth-form input:focus {
-        outline: 3px solid rgba(46,125,123,.18);
-        border-color: #2E7D7B;
+        border-color: #335A7A;
+        box-shadow: 0 0 0 4px rgba(51,90,122,.14);
       }
-      .hh-auth-primary { color: white; background: #2E7D7B; }
+
+      .hh-auth-form input:-webkit-autofill,
+      .hh-auth-form input:-webkit-autofill:hover,
+      .hh-auth-form input:-webkit-autofill:focus {
+        -webkit-text-fill-color: #182536;
+        -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset;
+        transition: background-color 9999s ease-out 0s;
+      }
+
+      .hh-auth-primary {
+        width: 100%;
+        margin-top: 2px;
+        color: #FFFFFF !important;
+        background: #0D2540 !important;
+        border: 1px solid #0D2540;
+        box-shadow: 0 9px 22px rgba(13,37,64,.18);
+        transition: transform .16s ease, background .16s ease, box-shadow .16s ease;
+      }
+
+      .hh-auth-primary:hover {
+        background: #173A5B !important;
+        box-shadow: 0 11px 26px rgba(13,37,64,.24);
+        transform: translateY(-1px);
+      }
+
+      .hh-auth-primary:active { transform: translateY(0); }
+
       .hh-auth-link {
         min-height: auto;
-        padding: 4px;
-        color: #2E7D7B;
-        background: transparent;
+        justify-self: center;
+        padding: 3px 6px;
+        color: #173A5B !important;
+        background: transparent !important;
+        text-decoration: none;
+      }
+
+      .hh-auth-link:hover {
+        color: #0D2540 !important;
         text-decoration: underline;
       }
+
+      .hh-auth-security-note {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin: 22px 0 0;
+        color: #687583;
+        font-size: .76rem;
+        font-weight: 650;
+        text-align: center;
+      }
+
+      .hh-auth-security-note::before {
+        content: "●";
+        color: #3F704B;
+        font-size: .58rem;
+      }
+
       .hh-auth-message {
         display: none;
-        margin: 0 0 17px;
+        margin: 0 0 20px;
         padding: 12px 14px;
-        border-radius: 12px;
+        border: 1px solid transparent;
+        border-radius: 11px;
         line-height: 1.45;
       }
+
       .hh-auth-message.show { display: block; }
-      .hh-auth-message.info { color: #0D2540; background: #E9F0F5; }
-      .hh-auth-message.success { color: #2E6A45; background: #E8F4EC; }
-      .hh-auth-message.error { color: #7C2020; background: #F9E8E8; }
+      .hh-auth-message.info { color: #173A5B; background: #EDF3F7; border-color: #D4E1E9; }
+      .hh-auth-message.success { color: #285B39; background: #E9F4EC; border-color: #CBE2D1; }
+      .hh-auth-message.error { color: #7C2020; background: #F9E8E8; border-color: #EFCACA; }
+
+      .hh-auth-button:disabled,
+      .hh-auth-tab:disabled {
+        opacity: .62;
+        cursor: wait;
+        transform: none;
+      }
+
+      @media (max-width: 860px) {
+        #hh-auth-root { padding: 20px; }
+
+        .hh-auth-shell {
+          width: min(560px, 100%);
+          min-height: 0;
+          display: block;
+        }
+
+        .hh-auth-promise { display: none; }
+        .hh-auth-panel { display: block; padding: clamp(28px, 7vw, 54px); }
+        .hh-auth-mobile-brand { display: flex; }
+        .hh-auth-card { margin-inline: auto; }
+      }
+
+      @media (max-width: 520px) {
+        #hh-auth-root {
+          display: block;
+          padding: 0;
+          background: #FFFFFF;
+        }
+
+        #hh-auth-root::before { display: none; }
+
+        .hh-auth-shell {
+          width: 100%;
+          min-height: 100vh;
+          border: 0;
+          border-radius: 0;
+          box-shadow: none;
+        }
+
+        .hh-auth-panel {
+          min-height: 100vh;
+          padding: 28px 20px 36px;
+        }
+
+        .hh-auth-mobile-brand { margin-bottom: 38px; }
+        .hh-auth-card h2 { font-size: 2rem; }
+        .hh-auth-tabs { margin-bottom: 22px; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #hh-auth-loading::before { animation-duration: 1.8s; }
+        .hh-auth-primary { transition: none; }
+      }
 
       .hh-account-button {
         position: fixed;
@@ -521,71 +891,103 @@
     root.id = "hh-auth-root";
     root.innerHTML = `
       <main class="hh-auth-shell">
-        <header class="hh-auth-brand">
-          <h1>HerdHarbor</h1>
-          <p>Secure livestock records, available wherever you sign in</p>
-        </header>
-
-        <section id="hh-auth-loading" class="hh-auth-card">
-          <h2>Opening your account</h2>
-          <p class="hh-auth-intro">Checking your secure session and protecting any unsynced records…</p>
-        </section>
-
-        <section id="hh-auth-card" class="hh-auth-card" hidden>
-          <div id="hh-auth-message" class="hh-auth-message" role="status" aria-live="polite"></div>
-
-          <div id="hh-standard-auth">
-            <h2 id="hh-auth-title">Sign in</h2>
-            <p class="hh-auth-intro">Sign in to load your protected HerdHarbor records.</p>
-
-            <div class="hh-auth-tabs">
-              <button id="hh-signin-tab" class="hh-auth-tab active" type="button">Sign in</button>
-              <button id="hh-signup-tab" class="hh-auth-tab" type="button">Create account</button>
-            </div>
-
-            <form id="hh-signin-form" class="hh-auth-form">
-              <label>
-                Email
-                <input id="hh-signin-email" type="email" autocomplete="email" required>
-              </label>
-              <label>
-                Password
-                <input id="hh-signin-password" type="password" autocomplete="current-password" minlength="8" required>
-              </label>
-              <button class="hh-auth-button hh-auth-primary" type="submit">Sign in</button>
-              <button id="hh-forgot-password" class="hh-auth-button hh-auth-link" type="button">Forgot password?</button>
-            </form>
-
-            <form id="hh-signup-form" class="hh-auth-form" hidden>
-              <label>
-                Email
-                <input id="hh-signup-email" type="email" autocomplete="email" required>
-              </label>
-              <label>
-                Password
-                <input id="hh-signup-password" type="password" autocomplete="new-password" minlength="8" required>
-              </label>
-              <label>
-                Confirm password
-                <input id="hh-signup-confirm" type="password" autocomplete="new-password" minlength="8" required>
-              </label>
-              <button class="hh-auth-button hh-auth-primary" type="submit">Create account</button>
-            </form>
+        <aside class="hh-auth-promise" aria-label="Why HerdHarbor">
+          <div class="hh-auth-identity">
+            <span class="hh-auth-mark" aria-hidden="true">HH</span>
+            <span>
+              <span class="hh-auth-wordmark">HerdHarbor</span>
+              <span class="hh-auth-descriptor">Livestock recordkeeping</span>
+            </span>
           </div>
 
-          <form id="hh-recovery-form" class="hh-auth-form" hidden>
-            <h2>Choose a new password</h2>
-            <p class="hh-auth-intro">Enter a new password for your HerdHarbor account.</p>
-            <label>
-              New password
-              <input id="hh-recovery-password" type="password" autocomplete="new-password" minlength="8" required>
-            </label>
-            <label>
-              Confirm new password
-              <input id="hh-recovery-confirm" type="password" autocomplete="new-password" minlength="8" required>
-            </label>
-            <button class="hh-auth-button hh-auth-primary" type="submit">Update password</button>
-          </form>
+          <div class="hh-auth-promise-copy">
+            <p class="hh-auth-kicker">Built for everyday herd management</p>
+            <h1>Your records. Secure, synced, and ready when you are.</h1>
+            <p>Manage livestock details, breeding history, health records, and costs from one dependable workspace.</p>
+            <ul class="hh-auth-benefits">
+              <li>Protected records tied to your account</li>
+              <li>Automatic cross-device cloud sync</li>
+              <li>Durable recovery for unsynced changes</li>
+            </ul>
+          </div>
+
+          <p class="hh-auth-reassurance">Purpose-built for breeders, homesteads, farms, and 4-H families.</p>
+        </aside>
+
+        <section class="hh-auth-panel">
+          <div class="hh-auth-mobile-brand" aria-label="HerdHarbor">
+            <span class="hh-auth-mark" aria-hidden="true">HH</span>
+            <span>
+              <span class="hh-auth-wordmark">HerdHarbor</span>
+              <span class="hh-auth-descriptor">Livestock recordkeeping</span>
+            </span>
+          </div>
+
+          <section id="hh-auth-loading" class="hh-auth-card">
+            <h2>Opening your account</h2>
+            <p class="hh-auth-intro">Checking your secure session and protecting any unsynced records…</p>
+          </section>
+
+          <section id="hh-auth-card" class="hh-auth-card" hidden>
+            <div id="hh-auth-message" class="hh-auth-message" role="status" aria-live="polite"></div>
+
+            <div id="hh-standard-auth">
+              <p class="hh-auth-panel-kicker">Secure account access</p>
+              <h2 id="hh-auth-title">Welcome back</h2>
+              <p id="hh-auth-intro" class="hh-auth-intro">Sign in to continue to your protected HerdHarbor workspace.</p>
+
+              <div class="hh-auth-tabs" role="tablist" aria-label="Account options">
+                <button id="hh-signin-tab" class="hh-auth-tab active" type="button" role="tab" aria-selected="true">Sign in</button>
+                <button id="hh-signup-tab" class="hh-auth-tab" type="button" role="tab" aria-selected="false">Create account</button>
+              </div>
+
+              <form id="hh-signin-form" class="hh-auth-form">
+                <label>
+                  Email address
+                  <input id="hh-signin-email" type="email" inputmode="email" autocomplete="email" spellcheck="false" required>
+                </label>
+                <label>
+                  Password
+                  <input id="hh-signin-password" type="password" autocomplete="current-password" minlength="8" required>
+                </label>
+                <button class="hh-auth-button hh-auth-primary" type="submit">Sign in securely</button>
+                <button id="hh-forgot-password" class="hh-auth-button hh-auth-link" type="button">Forgot your password?</button>
+              </form>
+
+              <form id="hh-signup-form" class="hh-auth-form" hidden>
+                <label>
+                  Email address
+                  <input id="hh-signup-email" type="email" inputmode="email" autocomplete="email" spellcheck="false" required>
+                </label>
+                <label>
+                  Password
+                  <input id="hh-signup-password" type="password" autocomplete="new-password" minlength="8" required>
+                </label>
+                <label>
+                  Confirm password
+                  <input id="hh-signup-confirm" type="password" autocomplete="new-password" minlength="8" required>
+                </label>
+                <button class="hh-auth-button hh-auth-primary" type="submit">Create secure account</button>
+              </form>
+
+              <p class="hh-auth-security-note">Your HerdHarbor records stay connected to your account.</p>
+            </div>
+
+            <form id="hh-recovery-form" class="hh-auth-form" hidden>
+              <p class="hh-auth-panel-kicker">Account recovery</p>
+              <h2>Choose a new password</h2>
+              <p class="hh-auth-intro">Enter a new password for your HerdHarbor account.</p>
+              <label>
+                New password
+                <input id="hh-recovery-password" type="password" autocomplete="new-password" minlength="8" required>
+              </label>
+              <label>
+                Confirm new password
+                <input id="hh-recovery-confirm" type="password" autocomplete="new-password" minlength="8" required>
+              </label>
+              <button class="hh-auth-button hh-auth-primary" type="submit">Update password</button>
+            </form>
+          </section>
         </section>
       </main>
     `;
@@ -631,7 +1033,12 @@
     root.querySelector("#hh-signup-form").hidden = isSignin;
     root.querySelector("#hh-signin-tab").classList.toggle("active", isSignin);
     root.querySelector("#hh-signup-tab").classList.toggle("active", !isSignin);
-    root.querySelector("#hh-auth-title").textContent = isSignin ? "Sign in" : "Create account";
+    root.querySelector("#hh-signin-tab").setAttribute("aria-selected", String(isSignin));
+    root.querySelector("#hh-signup-tab").setAttribute("aria-selected", String(!isSignin));
+    root.querySelector("#hh-auth-title").textContent = isSignin ? "Welcome back" : "Create your account";
+    root.querySelector("#hh-auth-intro").textContent = isSignin
+      ? "Sign in to continue to your protected HerdHarbor workspace."
+      : "Create an account to protect and sync your HerdHarbor records.";
   }
 
   function showRecovery() {
