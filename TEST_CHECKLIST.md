@@ -1,4 +1,14 @@
-# HerdHarbor v0.2.13 Release Checklist
+# HerdHarbor v0.2.14 Release Checklist
+
+## Mobile rotation
+
+- Open Settings and confirm **Auto-rotate: Off** is the default on a device that has no saved preference
+- Rotate an Android installed app and confirm HerdHarbor remains upright in portrait
+- Turn Auto-rotate on and confirm the app follows the device orientation
+- Turn Auto-rotate off again and confirm portrait lock returns
+- On an iPhone/iPad or browser without native orientation locking, turn the device sideways and confirm the portrait guard appears
+- Reload the app and confirm the selected rotation preference remains on that device
+- Sign into the same account on a second device and confirm its rotation preference remains independent
 
 ## Existing-data protection
 
