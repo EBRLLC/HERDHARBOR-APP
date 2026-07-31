@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  // HerdHarbor cloud integration v1.3 — visible conflict-safe sync and local recovery.
+  // HerdHarbor cloud integration v1.4 — automatic three-way merge and local recovery.
 
   const SUPABASE_URL = "https://okynebbksifqppwicghj.supabase.co";
   const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_jxsX6uS9nnh2FOFtlSF9TA_8v6C7C09";
@@ -57,6 +57,7 @@
   let syncConflict = null;
   let syncState = "Checking account…";
   let syncStateType = "info";
+  let reloadAfterSync = false;
   let recoveryMode = (() => {
     try {
       const url = new URL(window.location.href);
@@ -85,6 +86,7 @@
   const dirtyKey = (userId) => `herdharbor_user_dirty_${userId}`;
   const baseKey = (userId) => `herdharbor_user_cloud_base_${userId}`;
   const versionKey = (userId) => `herdharbor_user_cloud_version_${userId}`;
+  const DEVICE_LOCAL_SETTINGS = new Set(["theme", "sidebarCollapsed"]);
 
   function getSyncDetails() {
     const userId = session?.user?.id || "";
@@ -128,27 +130,254 @@
     }
   }
 
-  function canonicalize(value) {
-    if (Array.isArray(value)) return value.map(canonicalize);
+  function canonicalize(value, path = [], includeDeviceSettings = false) {
+    if (Array.isArray(value)) {
+      return value.map((item, index) =>
+        canonicalize(item, [...path, String(index)], includeDeviceSettings)
+      );
+    }
     if (value && typeof value === "object") {
       return Object.keys(value)
         .sort()
         .reduce((result, key) => {
-          result[key] = canonicalize(value[key]);
+          if (
+            !includeDeviceSettings &&
+            path.length === 1 &&
+            path[0] === "settings" &&
+            DEVICE_LOCAL_SETTINGS.has(key)
+          ) {
+            return result;
+          }
+          result[key] = canonicalize(
+            value[key],
+            [...path, key],
+            includeDeviceSettings
+          );
           return result;
         }, {});
     }
     return value;
   }
 
-  function stateFingerprint(rawValue) {
+  function stateFingerprint(rawValue, includeDeviceSettings = false) {
     const parsed = safeParse(rawValue);
-    return parsed ? JSON.stringify(canonicalize(parsed)) : "";
+    return parsed
+      ? JSON.stringify(canonicalize(parsed, [], includeDeviceSettings))
+      : "";
   }
 
   function sameState(left, right) {
     const leftFingerprint = stateFingerprint(left);
     return Boolean(leftFingerprint) && leftFingerprint === stateFingerprint(right);
+  }
+
+  function exactSameState(left, right) {
+    const leftFingerprint = stateFingerprint(left, true);
+    return Boolean(leftFingerprint) &&
+      leftFingerprint === stateFingerprint(right, true);
+  }
+
+  function valueFingerprint(value) {
+    if (value === undefined) return "undefined:";
+    return `${typeof value}:${JSON.stringify(canonicalize(value, [], true))}`;
+  }
+
+  function sameValue(left, right) {
+    return valueFingerprint(left) === valueFingerprint(right);
+  }
+
+  function isPlainObject(value) {
+    return Boolean(value) &&
+      typeof value === "object" &&
+      !Array.isArray(value);
+  }
+
+  function isIdRecordArray(values) {
+    const definedArrays = values.filter(Array.isArray);
+    const items = definedArrays.flat();
+    return Boolean(items.length) &&
+      items.every((item) =>
+        isPlainObject(item) &&
+        typeof item.id === "string" &&
+        Boolean(item.id)
+      );
+  }
+
+  function mergePrimitiveArray(base, local, remote, path) {
+    const pathKey = path.join(".");
+    const isAdditiveSetting =
+      pathKey === "settings.species" ||
+      pathKey.startsWith("settings.breedsBySpecies.");
+
+    if (!isAdditiveSetting) {
+      return {
+        value: local,
+        conflicts: [pathKey || "farm records"]
+      };
+    }
+
+    const merged = [];
+    [...(local || []), ...(remote || []), ...(base || [])].forEach((item) => {
+      if (!merged.some((existing) => sameValue(existing, item))) {
+        merged.push(item);
+      }
+    });
+    return { value: merged, conflicts: [] };
+  }
+
+  function mergeIdRecordArray(base = [], local = [], remote = [], path = []) {
+    const baseMap = new Map(base.map((item) => [item.id, item]));
+    const localMap = new Map(local.map((item) => [item.id, item]));
+    const remoteMap = new Map(remote.map((item) => [item.id, item]));
+    const orderedIds = [
+      ...local.map((item) => item.id),
+      ...remote.map((item) => item.id),
+      ...base.map((item) => item.id)
+    ].filter((id, index, values) => values.indexOf(id) === index);
+    const conflicts = [];
+    const value = [];
+
+    orderedIds.forEach((id) => {
+      const merged = mergeValue(
+        baseMap.get(id),
+        localMap.get(id),
+        remoteMap.get(id),
+        [...path, id]
+      );
+      conflicts.push(...merged.conflicts);
+      if (merged.value !== undefined) value.push(merged.value);
+    });
+
+    if (path.join(".") === "activity") {
+      value.sort((left, right) =>
+        String(right.date || "").localeCompare(String(left.date || ""))
+      );
+      value.splice(30);
+    }
+
+    return { value, conflicts };
+  }
+
+  function mergeValue(base, local, remote, path = []) {
+    const pathKey = path.join(".");
+    const fieldName = path[path.length - 1] || "";
+    if (
+      path.length === 2 &&
+      path[0] === "settings" &&
+      DEVICE_LOCAL_SETTINGS.has(path[1])
+    ) {
+      return {
+        value: local !== undefined ? local : remote,
+        conflicts: []
+      };
+    }
+
+    if (sameValue(local, remote)) return { value: local, conflicts: [] };
+    if (sameValue(local, base)) return { value: remote, conflicts: [] };
+    if (sameValue(remote, base)) return { value: local, conflicts: [] };
+
+    if (
+      ["updatedAt", "savedAt", "logoUpdatedAt"].includes(fieldName) &&
+      typeof local === "string" &&
+      typeof remote === "string" &&
+      Number.isFinite(Date.parse(local)) &&
+      Number.isFinite(Date.parse(remote))
+    ) {
+      return {
+        value: Date.parse(local) >= Date.parse(remote) ? local : remote,
+        conflicts: []
+      };
+    }
+
+    if (local === undefined || remote === undefined) {
+      return {
+        value: local,
+        conflicts: [pathKey || "farm records"]
+      };
+    }
+
+    if (Array.isArray(local) && Array.isArray(remote)) {
+      if (isIdRecordArray([base, local, remote])) {
+        return mergeIdRecordArray(
+          Array.isArray(base) ? base : [],
+          local,
+          remote,
+          path
+        );
+      }
+      return mergePrimitiveArray(
+        Array.isArray(base) ? base : [],
+        local,
+        remote,
+        path
+      );
+    }
+
+    if (isPlainObject(local) && isPlainObject(remote)) {
+      const baseObject = isPlainObject(base) ? base : {};
+      const keys = [...new Set([
+        ...Object.keys(baseObject),
+        ...Object.keys(local),
+        ...Object.keys(remote)
+      ])].sort();
+      const value = {};
+      const conflicts = [];
+
+      keys.forEach((key) => {
+        const merged = mergeValue(
+          baseObject[key],
+          local[key],
+          remote[key],
+          [...path, key]
+        );
+        conflicts.push(...merged.conflicts);
+        if (merged.value !== undefined) value[key] = merged.value;
+      });
+
+      return { value, conflicts };
+    }
+
+    return {
+      value: local,
+      conflicts: [pathKey || "farm records"]
+    };
+  }
+
+  function mergeRawStates(baseRaw, localRaw, remoteRaw) {
+    const base = safeParse(baseRaw);
+    const local = safeParse(localRaw);
+    const remote = safeParse(remoteRaw);
+    if (!base || !local || !remote) {
+      return {
+        ok: false,
+        conflicts: ["farm records"],
+        rawValue: localRaw
+      };
+    }
+
+    const merged = mergeValue(base, local, remote);
+    return {
+      ok: merged.conflicts.length === 0,
+      conflicts: [...new Set(merged.conflicts)],
+      value: merged.value,
+      rawValue: JSON.stringify(merged.value)
+    };
+  }
+
+  function applyDevicePreferences(cloudRaw, deviceRaw) {
+    const cloudState = safeParse(cloudRaw);
+    const deviceState = safeParse(deviceRaw);
+    if (!cloudState || !deviceState?.settings) return cloudRaw;
+
+    cloudState.settings = isPlainObject(cloudState.settings)
+      ? cloudState.settings
+      : {};
+    DEVICE_LOCAL_SETTINGS.forEach((key) => {
+      if (deviceState.settings[key] !== undefined) {
+        cloudState.settings[key] = deviceState.settings[key];
+      }
+    });
+    return JSON.stringify(cloudState);
   }
 
   function safeStorageSet(key, value) {
@@ -421,13 +650,15 @@
   async function syncValueToCloud(rawValue, sequence = writeSequence, options = {}) {
     if (!session?.user?.id) return false;
 
-    const appState = safeParse(rawValue);
+    let appState = safeParse(rawValue);
     if (!appState) {
       setSyncState("Local data could not be read.", "error");
       return false;
     }
 
     const userId = session.user.id;
+    let localRawBeforeMerge = null;
+    let autoMerged = false;
     setSyncState("Saving to cloud…", "working");
 
     const { data: remoteRecord, error: loadError } = await fetchCloudRecord(userId);
@@ -464,7 +695,45 @@
       (!confirmedBase || !sameState(remoteRaw, confirmedBase));
 
     if (remoteChangedSinceBase && !options.force) {
-      return markConflict(userId, rawValue, remoteRecord);
+      const merged = confirmedBase
+        ? mergeRawStates(confirmedBase, rawValue, remoteRaw)
+        : { ok: false, conflicts: ["missing sync history"] };
+
+      if (!merged.ok) {
+        const conflictLabel = merged.conflicts?.[0]
+          ? ` The overlapping change is ${merged.conflicts[0]}.`
+          : "";
+        return markConflict(
+          userId,
+          rawValue,
+          remoteRecord,
+          `Sync paused because the same record changed on two devices.${conflictLabel}`
+        );
+      }
+
+      localRawBeforeMerge = rawValue;
+      rawValue = applyDevicePreferences(merged.rawValue, rawValue);
+      appState = safeParse(rawValue);
+      autoMerged = true;
+      reloadAfterSync = true;
+      await Promise.all([
+        recordRecoverySnapshot(
+          userId,
+          localRawBeforeMerge,
+          "Local copy before automatic cloud merge"
+        ),
+        recordRecoverySnapshot(
+          userId,
+          remoteRaw,
+          "Cloud copy before automatic device merge"
+        )
+      ]);
+      if (sequence === writeSequence) {
+        setActiveUserData(userId, rawValue);
+        safeStorageSet(cacheKey(userId), rawValue);
+      }
+      safeStorageSet(dirtyKey(userId), "1");
+      setSyncState("Combining protected changes from both devices…", "working");
     }
 
     if (options.force && remoteRaw) {
@@ -505,7 +774,35 @@
       safeStorageSet(versionKey(userId), savedRecord.updated_at);
     }
 
-    if (sequence === writeSequence && !pendingSync) {
+    if (autoMerged && sequence !== writeSequence) {
+      const currentRaw = originalGetItem.call(localStorage, STORAGE_KEY);
+      const rebased = mergeRawStates(
+        localRawBeforeMerge,
+        currentRaw,
+        savedRaw
+      );
+
+      if (!rebased.ok) {
+        return markConflict(
+          userId,
+          currentRaw,
+          {
+            app_state: safeParse(savedRaw),
+            updated_at: savedRecord?.updated_at || null
+          },
+          "Sync paused because a record was edited again while device changes were being combined."
+        );
+      }
+
+      const rebasedRaw = applyDevicePreferences(rebased.rawValue, currentRaw);
+      setActiveUserData(userId, rebasedRaw);
+      safeStorageSet(cacheKey(userId), rebasedRaw);
+      safeStorageSet(dirtyKey(userId), "1");
+      pendingSync = {
+        rawValue: rebasedRaw,
+        sequence: writeSequence
+      };
+    } else if (sequence === writeSequence && !pendingSync) {
       safeStorageSet(cacheKey(userId), rawValue);
       safeStorageRemove(dirtyKey(userId));
     } else {
@@ -513,7 +810,10 @@
     }
 
     syncConflict = null;
-    setSyncState("Saved to cloud", "success");
+    setSyncState(
+      autoMerged ? "Device and cloud changes combined and saved" : "Saved to cloud",
+      "success"
+    );
     return true;
   }
 
@@ -537,6 +837,9 @@
       syncInFlight = null;
       if (pendingSync && !syncConflict) {
         queueMicrotask(() => drainSyncQueue());
+      } else if (reloadAfterSync && !syncConflict) {
+        reloadAfterSync = false;
+        setTimeout(() => window.location.reload(), 0);
       }
     }
   }
@@ -586,8 +889,9 @@
 
     if (confirmedBase && sameState(activeRaw, confirmedBase)) {
       await recordRecoverySnapshot(userId, activeRaw, "Local copy before receiving another device's changes");
-      setActiveUserData(userId, remoteRaw);
-      safeStorageSet(cacheKey(userId), remoteRaw);
+      const deviceCloudRaw = applyDevicePreferences(remoteRaw, activeRaw);
+      setActiveUserData(userId, deviceCloudRaw);
+      safeStorageSet(cacheKey(userId), deviceCloudRaw);
       safeStorageSet(baseKey(userId), remoteRaw);
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       setSyncState("Newer cloud records found; reloading…", "success");
@@ -1067,7 +1371,7 @@
 
     const payload = JSON.stringify({
       app: "HerdHarbor",
-      version: "0.3.03",
+      version: "0.3.04",
       backupType: "local-safety-backup",
       exportedAt: new Date().toISOString(),
       data: appState
@@ -1097,8 +1401,12 @@
         conflict.localRaw,
         "Local copy before choosing cloud conflict version"
       );
-      setActiveUserData(conflict.userId, conflict.remoteRaw);
-      safeStorageSet(cacheKey(conflict.userId), conflict.remoteRaw);
+      const deviceCloudRaw = applyDevicePreferences(
+        conflict.remoteRaw,
+        conflict.localRaw
+      );
+      setActiveUserData(conflict.userId, deviceCloudRaw);
+      safeStorageSet(cacheKey(conflict.userId), deviceCloudRaw);
       safeStorageSet(baseKey(conflict.userId), conflict.remoteRaw);
       if (conflict.remoteUpdatedAt) {
         safeStorageSet(versionKey(conflict.userId), conflict.remoteUpdatedAt);
@@ -1265,12 +1573,16 @@
     if (data?.app_state) {
       const cloudRaw = JSON.stringify(data.app_state);
       const stateChanged = !activeRaw || !sameState(activeRaw, cloudRaw);
+      const deviceCloudRaw = applyDevicePreferences(
+        cloudRaw,
+        activeRaw || cachedRaw
+      );
 
       if (activeRaw && stateChanged) {
         await recordRecoverySnapshot(userId, activeRaw, "Local copy before loading newer cloud records");
       }
-      setActiveUserData(userId, cloudRaw);
-      safeStorageSet(cacheKey(userId), cloudRaw);
+      setActiveUserData(userId, deviceCloudRaw);
+      safeStorageSet(cacheKey(userId), deviceCloudRaw);
       safeStorageSet(baseKey(userId), cloudRaw);
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       safeStorageRemove(dirtyKey(userId));
