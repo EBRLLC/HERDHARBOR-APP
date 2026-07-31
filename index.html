@@ -1829,10 +1829,11 @@ html[data-theme="dark"] textarea::placeholder {
   </div>
 
   <script src="vendor/supabase-2.111.0.js"></script>
+  <script src="vendor/jszip-3.10.1.min.js"></script>
   <script src="vendor/exceljs-4.4.0.min.js"></script>
-  <script src="spreadsheet-import.js?v=1"></script>
+  <script src="spreadsheet-import.js?v=2"></script>
   <script src="herdharbor-cloud.js?v=4"></script>
-  <script src="pwa.js?v=4"></script>
+  <script src="pwa.js?v=5"></script>
   <script>
 (() => {
   "use strict";
@@ -1850,6 +1851,7 @@ html[data-theme="dark"] textarea::placeholder {
     tasks: [],
     transactions: [],
     budgetPlans: [],
+    annualBudgetPlans: [],
     budgetMonthSettings: {},
     activity: [],
     settings: {
@@ -1864,6 +1866,7 @@ html[data-theme="dark"] textarea::placeholder {
   let currentRoute = "dashboard";
   let budgetView = {
     month: new Date().toISOString().slice(0, 7),
+    year: new Date().getFullYear(),
     species: "",
     expenseView: "All"
   };
@@ -2182,6 +2185,7 @@ html[data-theme="dark"] textarea::placeholder {
     state.pedigreeDrafts = Array.isArray(state.pedigreeDrafts) ? state.pedigreeDrafts : [];
     state.transactions = Array.isArray(state.transactions) ? state.transactions : [];
     state.budgetPlans = Array.isArray(state.budgetPlans) ? state.budgetPlans : [];
+    state.annualBudgetPlans = Array.isArray(state.annualBudgetPlans) ? state.annualBudgetPlans : [];
     state.budgetMonthSettings = state.budgetMonthSettings && typeof state.budgetMonthSettings === "object"
       ? state.budgetMonthSettings
       : {};
@@ -2431,7 +2435,7 @@ html[data-theme="dark"] textarea::placeholder {
         <input id="animal-search" type="search" placeholder="Search name, tag, registration, breeder, breed, or location">
         <select id="animal-species"><option value="">All species</option>${state.settings.species.map((s) => `<option>${esc(s)}</option>`).join("")}</select>
         <select id="animal-sex"><option value="">Any sex</option><option>Female</option><option>Male</option><option>Unknown</option></select>
-        <select id="animal-status"><option value="">Any status</option><option>Active</option><option>For Sale</option><option>Sold</option><option>Deceased</option><option>Ancestor Only</option></select>
+        <select id="animal-status"><option value="">Any status</option><option>Active</option><option>Breeding</option><option>Growing</option><option>Retired</option><option>For Sale</option><option>Sold</option><option>Deceased</option><option>Ancestor Only</option></select>
       </div>
       <div id="animal-results"></div>`;
 
@@ -2471,7 +2475,7 @@ html[data-theme="dark"] textarea::placeholder {
     return `<article class="animal-card">
       <div class="animal-card-top">
         <div class="animal-avatar ${a.photoData ? "has-photo" : ""}">${animalVisualHtml(a, true)}</div>
-        <span class="badge ${a.status === "Active" ? "green" : a.status === "For Sale" ? "warning" : "gray"}">${esc(a.status || "Active")}</span>
+        <span class="badge ${["Active", "Breeding", "Growing"].includes(a.status) ? "green" : a.status === "For Sale" ? "warning" : "gray"}">${esc(a.status || "Active")}</span>
       </div>
       <h3>${esc(a.name || "Unnamed animal")}</h3>
       <div class="meta">${esc([a.tag, a.breed, a.sex].filter(Boolean).join(" · "))}</div>
@@ -2518,7 +2522,7 @@ html[data-theme="dark"] textarea::placeholder {
           ${field("Date of birth", "dob", animal.dob, false, "date")}
           ${field("Color or variety", "color", animal.color)}
           ${field("Location / cage / pen", "location", animal.location)}
-          ${selectField("Status", "status", ["Active", "For Sale", "Sold", "Deceased", "Ancestor Only"], animal.status || "Active", true)}
+          ${selectField("Status", "status", ["Active", "Breeding", "Growing", "Retired", "For Sale", "Sold", "Deceased", "Ancestor Only"], animal.status || "Active", true)}
           ${selectAnimalField("Sire", "sireId", animal.sireId, "Male")}
           ${selectAnimalField("Dam", "damId", animal.damId, "Female")}
         </div>
@@ -4102,6 +4106,32 @@ html[data-theme="dark"] textarea::placeholder {
     );
   }
 
+  function annualBudgetYears() {
+    return [...new Set([
+      new Date().getFullYear(),
+      ...state.annualBudgetPlans.map((plan) => Number(plan.year)).filter(Number.isInteger)
+    ])].sort((a, b) => b - a);
+  }
+
+  function annualBudgetPlansFor(year, speciesFilter = "") {
+    return state.annualBudgetPlans.filter((plan) => {
+      if (Number(plan.year) !== Number(year)) return false;
+      if (!speciesFilter) return true;
+      if (plan.species === speciesFilter) return true;
+      return state.animals.find((animal) => animal.id === plan.animalId)?.species === speciesFilter;
+    });
+  }
+
+  function annualPlanSummary(plans) {
+    const expenses = plans
+      .filter((plan) => plan.type === "Expense")
+      .reduce((sum, plan) => sum + Number(plan.amount || 0), 0);
+    const income = plans
+      .filter((plan) => plan.type === "Income")
+      .reduce((sum, plan) => sum + Number(plan.amount || 0), 0);
+    return { expenses, income, net: income - expenses };
+  }
+
   function allocatedExpenseAmount(transaction, speciesFilter = "") {
     const amount = Number(transaction.amount || 0);
     if (!speciesFilter) return amount;
@@ -4198,6 +4228,7 @@ html[data-theme="dark"] textarea::placeholder {
 
   function renderBudget() {
     const monthKey = budgetView.month || currentMonthKey();
+    const annualYear = Number(budgetView.year) || new Date().getFullYear();
     const speciesFilter = budgetView.species || "";
     const summary = budgetSummary(monthKey, speciesFilter);
     const allActive = activeAnimals();
@@ -4209,6 +4240,19 @@ html[data-theme="dark"] textarea::placeholder {
       : effectiveHeadCount(monthKey);
     const costPerHead = headCount > 0 ? summary.operating / headCount : 0;
     const plans = budgetPlansFor(monthKey, speciesFilter);
+    const annualPlans = annualBudgetPlansFor(annualYear, speciesFilter);
+    const annualSummary = annualPlanSummary(annualPlans);
+    const annualByCategory = {};
+    annualPlans.forEach((plan) => {
+      const key = `${plan.type || "Expense"}|${plan.category || "Other"}`;
+      annualByCategory[key] = (annualByCategory[key] || 0) + Number(plan.amount || 0);
+    });
+    const annualCategoryRows = Object.entries(annualByCategory)
+      .map(([key, amount]) => {
+        const [type, category] = key.split("|");
+        return { type, category, amount };
+      })
+      .sort((a, b) => a.type.localeCompare(b.type) || b.amount - a.amount);
     const plannedTotal = plans.reduce((sum, plan) => sum + Number(plan.amount || 0), 0);
     const actualByCategory = budgetActualByCategory(monthKey, speciesFilter);
     const planByCategory = {};
@@ -4264,6 +4308,13 @@ html[data-theme="dark"] textarea::placeholder {
             ).join("")}
           </select>
         </label>
+        <label>Annual plan
+          <select id="annual-budget-year">
+            ${annualBudgetYears().map((year) =>
+              `<option value="${year}" ${year === annualYear ? "selected" : ""}>${year}</option>`
+            ).join("")}
+          </select>
+        </label>
         <label>Transactions
           <select id="budget-view">
             ${["All", "Income", "Operating", "Capital"].map((value) =>
@@ -4283,6 +4334,40 @@ html[data-theme="dark"] textarea::placeholder {
         ${statCard("Net", formatMoney(summary.net), `${formatMoney(summary.capital)} capital expenses`)}
         ${statCard("Cost per head", formatMoney(costPerHead), `${headCount} ${speciesFilter ? speciesFilter.toLowerCase() : "average active"} head`)}
       </div>
+
+      <section class="panel" style="margin-bottom:18px">
+        <div class="panel-header">
+          <div>
+            <h3>Annual planned budget</h3>
+            <small>${annualYear}${speciesFilter ? ` · ${esc(speciesFilter)}` : ""} · separate from actual transactions</small>
+          </div>
+          <div class="action-row">
+            <span class="badge">${annualPlans.length} plan record${annualPlans.length === 1 ? "" : "s"}</span>
+            ${annualPlans.length
+              ? '<button class="button button-ghost button-small" id="clear-annual-budget">Remove shown plan</button>'
+              : ""}
+          </div>
+        </div>
+        ${annualPlans.length ? `
+          <div class="stats-grid" style="margin-bottom:14px">
+            ${statCard("Planned expenses", formatMoney(annualSummary.expenses), `${annualYear} annual`)}
+            ${statCard("Projected income", formatMoney(annualSummary.income), `${annualYear} annual`)}
+            ${statCard("Projected net", formatMoney(annualSummary.net), "Income minus planned expenses")}
+          </div>
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Type</th><th>Category</th><th>Planned amount</th></tr></thead>
+              <tbody>${annualCategoryRows.map((row) => `
+                <tr>
+                  <td><span class="badge ${row.type === "Income" ? "green" : ""}">${esc(row.type)}</span></td>
+                  <td>${esc(row.category)}</td>
+                  <td><strong>${formatMoney(row.amount)}</strong></td>
+                </tr>`).join("")}</tbody>
+            </table>
+          </div>
+          <p class="budget-note">These figures are annual plans only. They do not create dated income or expense transactions and do not affect monthly actuals or cost per head.</p>
+        ` : emptyState(`No annual plan for ${annualYear}.`, "Import an Annual Budget sheet from Settings to add yearly planned figures.")}
+      </section>
 
       <div class="budget-layout">
         <section class="panel">
@@ -4416,6 +4501,10 @@ html[data-theme="dark"] textarea::placeholder {
       budgetView.species = event.target.value;
       renderBudget();
     });
+    $("#annual-budget-year").addEventListener("change", (event) => {
+      budgetView.year = Number(event.target.value) || new Date().getFullYear();
+      renderBudget();
+    });
     $("#budget-view").addEventListener("change", (event) => {
       budgetView.expenseView = event.target.value;
       renderBudget();
@@ -4424,6 +4513,16 @@ html[data-theme="dark"] textarea::placeholder {
     $("#add-income").addEventListener("click", () => openTransactionForm("", "Income"));
     $("#set-budget-plan").addEventListener("click", () => openBudgetPlanForm(monthKey, speciesFilter));
     $("#export-budget-csv").addEventListener("click", () => exportBudgetCsv(monthKey, speciesFilter));
+    $("#clear-annual-budget")?.addEventListener("click", () => {
+      const selectedIds = new Set(annualPlans.map((plan) => plan.id));
+      if (!confirm(
+        `Remove ${annualPlans.length} annual plan record${annualPlans.length === 1 ? "" : "s"} for ${annualYear}` +
+        `${speciesFilter ? ` and ${speciesFilter}` : ""}? Actual transactions will not be changed.`
+      )) return;
+      state.annualBudgetPlans = state.annualBudgetPlans.filter((plan) => !selectedIds.has(plan.id));
+      saveState("Annual plan removed.");
+      renderBudget();
+    });
     $$("[data-edit-transaction]", $("#view-budget")).forEach((button) =>
       button.addEventListener("click", () => openTransactionForm(button.dataset.editTransaction)));
     $$("[data-delete-budget-plan]", $("#view-budget")).forEach((button) =>
@@ -4758,7 +4857,7 @@ html[data-theme="dark"] textarea::placeholder {
 
         <article class="settings-card">
           <h3>Excel spreadsheet import</h3>
-          <p>Add existing Animals, Budgeting, and Medical records from an Excel workbook. HerdHarbor previews valid rows and flags duplicates or errors before anything is saved.</p>
+          <p>Add existing Animals, actual Budgeting transactions, annual planned budgets, and Medical records from an Excel workbook. HerdHarbor previews valid rows and flags duplicates or errors before anything is saved.</p>
           <div class="action-row">
             <button class="button button-primary" type="button" id="download-spreadsheet-template">Download Excel template</button>
             <label class="button button-ghost" for="spreadsheet-import-file">Upload Excel file</label>
@@ -4786,7 +4885,7 @@ html[data-theme="dark"] textarea::placeholder {
 
         <article class="settings-card">
           <h3>Build information</h3>
-          <p>HerdHarbor pre-alpha v0.3.01 · Reviewed Excel imports for animals, budgeting, and medical records · ${new Date().toLocaleDateString()}</p>
+          <p>HerdHarbor pre-alpha v0.3.01 · Reviewed Excel imports for animals, actual transactions, annual planned budgets, and medical records · ${new Date().toLocaleDateString()}</p>
         </article>
       </div>`;
 
@@ -5164,17 +5263,20 @@ html[data-theme="dark"] textarea::placeholder {
           const previousState = structuredClone(state);
           const animalCount = records.animals.length;
           const transactionCount = records.transactions.length;
+          const annualPlanCount = records.annualBudgetPlans.length;
           const healthCount = records.health.length;
-          const total = animalCount + transactionCount + healthCount;
+          const total = animalCount + transactionCount + annualPlanCount + healthCount;
 
           state.animals.push(...records.animals);
           state.transactions.push(...records.transactions);
+          state.annualBudgetPlans.push(...records.annualBudgetPlans);
           state.health.push(...records.health);
           records.animals.forEach((animal) => rememberBreed(animal.species, animal.breed));
           recordActivity(
             `Imported ${total} spreadsheet record${total === 1 ? "" : "s"} from ${metadata.fileName}: ` +
             `${animalCount} animal${animalCount === 1 ? "" : "s"}, ` +
-            `${transactionCount} budget record${transactionCount === 1 ? "" : "s"}, and ` +
+            `${transactionCount} transaction${transactionCount === 1 ? "" : "s"}, ` +
+            `${annualPlanCount} annual budget plan${annualPlanCount === 1 ? "" : "s"}, and ` +
             `${healthCount} medical record${healthCount === 1 ? "" : "s"}.`,
             "import"
           );
@@ -5278,6 +5380,7 @@ html[data-theme="dark"] textarea::placeholder {
         pedigreeDrafts: Array.isArray(imported.pedigreeDrafts) ? imported.pedigreeDrafts : [],
         transactions: Array.isArray(imported.transactions) ? imported.transactions : [],
         budgetPlans: Array.isArray(imported.budgetPlans) ? imported.budgetPlans : [],
+        annualBudgetPlans: Array.isArray(imported.annualBudgetPlans) ? imported.annualBudgetPlans : [],
         budgetMonthSettings: imported.budgetMonthSettings && typeof imported.budgetMonthSettings === "object"
           ? imported.budgetMonthSettings
           : {},

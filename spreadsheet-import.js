@@ -2,6 +2,7 @@
   "use strict";
 
   const MAX_FILE_BYTES = 10 * 1024 * 1024;
+  const MAX_COMPAT_XML_BYTES = 50 * 1024 * 1024;
   const MAX_DATA_ROWS = 5000;
   const ALLOWED_EXTENSIONS = [".xlsx", ".xlsm"];
   const RECORD_TYPES = [
@@ -12,7 +13,26 @@
     "Observation",
     "Veterinary visit"
   ];
-  const ANIMAL_STATUSES = ["Active", "For Sale", "Sold", "Deceased", "Ancestor Only"];
+  const ANIMAL_STATUSES = [
+    "Active",
+    "Breeding",
+    "Growing",
+    "Retired",
+    "For Sale",
+    "Sold",
+    "Deceased",
+    "Ancestor Only"
+  ];
+  const ANNUAL_PLAN_FIELDS = [
+    { field: "feedBudget", type: "Expense", category: "Feed" },
+    { field: "housingBudget", type: "Expense", category: "Housing / Bedding" },
+    { field: "medicalBudget", type: "Expense", category: "Routine Medical" },
+    { field: "breedingBudget", type: "Expense", category: "Breeding" },
+    { field: "otherCosts", type: "Expense", category: "Other Costs" },
+    { field: "projectedSaleIncome", type: "Income", category: "Projected Sale Income" },
+    { field: "productIncome", type: "Income", category: "Product Income" },
+    { field: "offspringIncome", type: "Income", category: "Offspring Income" }
+  ];
 
   const SCHEMAS = {
     animals: {
@@ -35,7 +55,7 @@
       ],
       fields: {
         name: ["name", "animal name", "livestock name"],
-        tag: ["id", "tag", "id or tag", "animal id", "animal tag", "ear tag"],
+        tag: ["id", "tag", "id or tag", "animal id", "animal tag", "ear tag", "tag microchip"],
         tattoo: ["tattoo", "ear number", "tattoo or ear number", "tattoo ear number"],
         registrationNumber: ["registration", "registration number", "registration no", "reg number", "reg no"],
         breeder: ["breeder", "breeder name", "seller", "source breeder"],
@@ -44,11 +64,39 @@
         sex: ["sex", "gender"],
         dob: ["date of birth", "birth date", "dob", "born", "birthday"],
         color: ["color", "colour", "variety", "color or variety"],
-        location: ["location", "cage", "pen", "stall", "location cage pen"],
+        location: ["location", "cage", "pen", "stall", "location cage pen", "pen pasture"],
         status: ["status", "animal status"],
-        sireRef: ["sire", "sire id", "sire tag", "father", "father id", "father tag"],
-        damRef: ["dam", "dam id", "dam tag", "mother", "mother id", "mother tag"],
+        weight: ["weight", "animal weight"],
+        weightUnit: ["weight unit", "unit", "units"],
+        acquisitionDate: ["acquisition date", "acquired date", "purchase date"],
+        purchaseCost: ["purchase cost", "acquisition cost", "purchase price"],
+        medicalStatus: ["medical status", "health status"],
+        sireRef: ["sire", "sire id", "sire tag", "sire id tag name", "father", "father id", "father tag"],
+        damRef: ["dam", "dam id", "dam tag", "dam id tag name", "mother", "mother id", "mother tag"],
         notes: ["notes", "comments", "description"]
+      }
+    },
+    annualPlans: {
+      sheetNames: [
+        "annual budget",
+        "annual budgets",
+        "annual budget plan",
+        "annual plan",
+        "budget plan",
+        "budget plans"
+      ],
+      fields: {
+        year: ["year", "budget year", "plan year", "annual budget year"],
+        animalRef: ["animal", "animal name", "animal id", "animal tag", "id or tag", "animal id tag name"],
+        species: ["species", "animal type", "livestock type"],
+        feedBudget: ["feed budget", "annual feed budget", "feed cost", "feed costs"],
+        housingBudget: ["housing bedding", "housing and bedding", "housing bedding budget", "housing cost", "bedding cost"],
+        medicalBudget: ["routine medical", "medical budget", "medical cost", "veterinary budget", "vet budget"],
+        breedingBudget: ["breeding", "breeding budget", "breeding cost", "breeding costs"],
+        otherCosts: ["other costs", "other cost", "other budget", "miscellaneous costs"],
+        projectedSaleIncome: ["projected sale income", "sale income", "animal sale income"],
+        productIncome: ["product income", "projected product income"],
+        offspringIncome: ["offspring income", "projected offspring income"]
       }
     },
     transactions: {
@@ -69,7 +117,7 @@
         category: ["category", "income category", "expense category"],
         scope: ["scope", "assign to", "assigned to", "allocation"],
         species: ["species", "animal type", "livestock type"],
-        animalRef: ["animal", "animal name", "animal id", "animal tag", "id or tag"],
+        animalRef: ["animal", "animal name", "animal id", "animal tag", "id or tag", "animal id tag name"],
         amount: ["amount", "total", "cost", "price", "value"],
         party: ["vendor", "customer", "vendor customer", "vendor or customer", "payee", "payer", "party"],
         description: ["description", "item", "purchase", "sale", "details"],
@@ -87,10 +135,18 @@
         "weights"
       ],
       fields: {
-        animalRef: ["animal", "animal name", "animal id", "animal tag", "id or tag"],
+        animalRef: ["animal", "animal name", "animal id", "animal tag", "id or tag", "animal id tag name"],
         date: ["date", "record date", "treatment date", "visit date"],
         type: ["type", "record type", "medical type", "health type"],
-        details: ["details", "description", "treatment", "medication", "observation", "notes"],
+        details: ["details", "description", "observation"],
+        condition: ["condition", "reason", "condition reason", "condition or reason"],
+        treatment: ["treatment", "procedure", "treatment procedure", "treatment or procedure"],
+        medication: ["medication", "medicine", "drug"],
+        dose: ["dose", "dosage"],
+        provider: ["provider", "veterinarian", "vet", "clinic"],
+        cost: ["medical cost", "cost", "amount"],
+        followUpStatus: ["follow up status", "followup status", "medical status"],
+        notes: ["notes", "comments"],
         weight: ["weight", "animal weight"],
         weightUnit: ["weight unit", "unit", "units"],
         followUpDate: ["follow up date", "followup date", "follow up", "next date", "recheck date"]
@@ -127,7 +183,7 @@
     style.textContent = `
       .hh-import-summary {
         display:grid;
-        grid-template-columns:repeat(4,minmax(0,1fr));
+        grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
         gap:10px;
         margin:14px 0;
       }
@@ -224,12 +280,35 @@
 
   function detectSheetType(worksheet, header) {
     const normalizedName = normalize(worksheet.name);
+    if ([
+      "instruction",
+      "instructions",
+      "read me",
+      "readme",
+      "list",
+      "lists",
+      "reference",
+      "references",
+      "dashboard",
+      "summary"
+    ].includes(normalizedName)) return "";
+    const annualMap = schemaHeaderMap(SCHEMAS.annualPlans, header.values);
+    const annualAmountFieldCount = ANNUAL_PLAN_FIELDS
+      .filter(({ field }) => Boolean(annualMap[field]))
+      .length;
+    if (
+      annualMap.animalRef &&
+      (
+        annualAmountFieldCount >= 2 ||
+        SCHEMAS.annualPlans.sheetNames.some((name) => normalize(name) === normalizedName)
+      )
+    ) {
+      return "annualPlans";
+    }
     const byName = Object.entries(SCHEMAS).find(([, schema]) =>
       schema.sheetNames.some((name) => normalize(name) === normalizedName)
     );
     if (byName) return byName[0];
-    if (["instruction", "instructions", "read me", "readme"].includes(normalizedName)) return "";
-
     const scored = Object.entries(SCHEMAS)
       .map(([type, schema]) => ({
         type,
@@ -269,9 +348,9 @@
 
   function dateToISO(value) {
     if (value instanceof Date && !Number.isNaN(value.getTime())) {
-      const year = value.getFullYear();
-      const month = String(value.getMonth() + 1).padStart(2, "0");
-      const day = String(value.getDate()).padStart(2, "0");
+      const year = value.getUTCFullYear();
+      const month = String(value.getUTCMonth() + 1).padStart(2, "0");
+      const day = String(value.getUTCDate()).padStart(2, "0");
       return `${year}-${month}-${day}`;
     }
     if (typeof value === "number") return excelDateNumberToISO(value);
@@ -365,6 +444,9 @@
       cow: "Female",
       ewe: "Female",
       sow: "Female",
+      spayed: "Female",
+      "spayed female": "Female",
+      "neutered female": "Female",
       m: "Male",
       buck: "Male",
       rooster: "Male",
@@ -372,6 +454,11 @@
       boar: "Male",
       bull: "Male",
       stallion: "Male",
+      gelding: "Male",
+      steer: "Male",
+      wether: "Male",
+      neutered: "Male",
+      "neutered male": "Male",
       unknown: "Unknown",
       u: "Unknown"
     };
@@ -383,6 +470,10 @@
       weigh: "Weight",
       weighing: "Weight",
       treatment: "Treatment",
+      deworming: "Treatment",
+      "hoof claw trim": "Treatment",
+      "injury treatment": "Treatment",
+      "parasite treatment": "Treatment",
       med: "Medication",
       medicine: "Medication",
       meds: "Medication",
@@ -390,6 +481,9 @@
       shot: "Vaccination",
       check: "Observation",
       note: "Observation",
+      "pregnancy check": "Veterinary visit",
+      "respiratory check": "Veterinary visit",
+      "wellness exam": "Veterinary visit",
       vet: "Veterinary visit",
       veterinarian: "Veterinary visit",
       "vet visit": "Veterinary visit",
@@ -548,6 +642,31 @@
           return;
         }
 
+        const existingNotes = cleanText(fieldValue(row, map, "notes"));
+        const importedWeight = cleanText(fieldValue(row, map, "weight"));
+        const importedWeightUnit = cleanText(fieldValue(row, map, "weightUnit"));
+        const acquisitionDateRaw = fieldValue(row, map, "acquisitionDate");
+        const acquisitionDate = dateToISO(acquisitionDateRaw);
+        const purchaseCostRaw = fieldValue(row, map, "purchaseCost");
+        const purchaseCost = cleanText(purchaseCostRaw) ? moneyNumber(purchaseCostRaw) : NaN;
+        const medicalStatus = cleanText(fieldValue(row, map, "medicalStatus"));
+        const preservedNotes = [
+          existingNotes,
+          sexRaw && normalize(sexRaw) !== normalize(sex)
+            ? `Imported sex: ${sexRaw}`
+            : "",
+          importedWeight
+            ? `Imported weight: ${importedWeight}${importedWeightUnit ? ` ${importedWeightUnit}` : ""}`
+            : "",
+          cleanText(acquisitionDateRaw)
+            ? `Acquisition date: ${acquisitionDate || cleanText(acquisitionDateRaw)}`
+            : "",
+          cleanText(purchaseCostRaw)
+            ? `Purchase cost: ${Number.isFinite(purchaseCost) ? `$${purchaseCost.toFixed(2)}` : cleanText(purchaseCostRaw)}`
+            : "",
+          medicalStatus ? `Medical status: ${medicalStatus}` : ""
+        ].filter(Boolean).join("\n");
+
         const animal = {
           id: uid("animal"),
           name,
@@ -564,7 +683,7 @@
           status,
           sireId: "",
           damId: "",
-          notes: cleanText(fieldValue(row, map, "notes")),
+          notes: preservedNotes,
           importSource: {
             type: "Excel spreadsheet",
             fileName: context.fileName || "",
@@ -676,8 +795,44 @@
           return;
         }
 
-        const details = cleanText(fieldValue(row, map, "details")) ||
-          `${type} imported from spreadsheet.`;
+        const medicalCostRaw = fieldValue(row, map, "cost");
+        const medicalCost = cleanText(medicalCostRaw) ? moneyNumber(medicalCostRaw) : NaN;
+        if (cleanText(medicalCostRaw) && (!Number.isFinite(medicalCost) || medicalCost < 0)) {
+          issue(result, source, `Medical cost “${cleanText(medicalCostRaw)}” is invalid.`);
+          return;
+        }
+        const medication = cleanText(fieldValue(row, map, "medication"));
+        const dose = cleanText(fieldValue(row, map, "dose"));
+        const detailParts = [
+          typeRaw && normalize(typeRaw) !== normalize(type)
+            ? `Original record type: ${typeRaw}`
+            : "",
+          cleanText(fieldValue(row, map, "details")),
+          cleanText(fieldValue(row, map, "condition"))
+            ? `Condition / reason: ${cleanText(fieldValue(row, map, "condition"))}`
+            : "",
+          cleanText(fieldValue(row, map, "treatment"))
+            ? `Treatment / procedure: ${cleanText(fieldValue(row, map, "treatment"))}`
+            : "",
+          medication
+            ? `Medication: ${medication}${dose ? ` · Dose: ${dose}` : ""}`
+            : dose
+              ? `Dose: ${dose}`
+              : "",
+          cleanText(fieldValue(row, map, "provider"))
+            ? `Provider: ${cleanText(fieldValue(row, map, "provider"))}`
+            : "",
+          Number.isFinite(medicalCost)
+            ? `Medical cost: $${medicalCost.toFixed(2)}`
+            : "",
+          cleanText(fieldValue(row, map, "followUpStatus"))
+            ? `Follow-up status: ${cleanText(fieldValue(row, map, "followUpStatus"))}`
+            : "",
+          cleanText(fieldValue(row, map, "notes"))
+        ].filter(Boolean);
+        const details = detailParts.length
+          ? detailParts.join("\n")
+          : `${type} imported from spreadsheet.`;
         const record = {
           id: uid("health"),
           animalId: resolved.animal.id,
@@ -708,6 +863,119 @@
         }
         duplicateKeys.add(duplicateKey);
         result.records.health.push(record);
+      });
+    });
+  }
+
+  function annualPlanDuplicateKey(record) {
+    return [
+      String(record.year || ""),
+      normalize(record.type),
+      normalize(record.category),
+      record.animalId || normalize(record.species)
+    ].join("|");
+  }
+
+  function stageAnnualPlans(sheets, context, result) {
+    const lookup = buildAnimalLookup([...context.animals, ...result.records.animals]);
+    const duplicateKeys = new Set(
+      (context.annualBudgetPlans || []).map(annualPlanDuplicateKey)
+    );
+
+    sheets.forEach(({ worksheet, header, map }) => {
+      const usesDefaultYear = !map.year;
+      if (usesDefaultYear) {
+        issue(
+          result,
+          { sheet: worksheet.name, row: header.rowNumber },
+          `No budget year column was found. Annual plans will use ${context.defaultBudgetYear}.`,
+          "warning"
+        );
+      }
+
+      worksheetRows(worksheet, header).forEach((row) => {
+        const source = sourceFor(worksheet, row);
+        const animalRef = cleanText(fieldValue(row, map, "animalRef"));
+        const resolved = resolveAnimal(animalRef, lookup);
+        const yearRaw = cleanText(fieldValue(row, map, "year"));
+        const year = yearRaw ? Number(yearRaw) : context.defaultBudgetYear;
+
+        if (!animalRef || !resolved.animal) {
+          const reason = resolved.reason === "ambiguous" ? "matches more than one animal" : "was not found";
+          issue(result, source, `Annual budget animal “${animalRef || "(blank)"}” ${reason}.`);
+          return;
+        }
+        if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+          issue(result, source, `Annual budget year “${yearRaw || "(blank)"}” is invalid.`);
+          return;
+        }
+
+        let recognizedAmounts = 0;
+        let addedAmounts = 0;
+        const duplicateCategories = [];
+        const invalidCategories = [];
+
+        ANNUAL_PLAN_FIELDS.forEach(({ field, type, category }) => {
+          const rawAmount = fieldValue(row, map, field);
+          if (!cleanText(rawAmount)) return;
+          recognizedAmounts += 1;
+          const amount = moneyNumber(rawAmount);
+          if (!Number.isFinite(amount) || amount < 0) {
+            invalidCategories.push(category);
+            return;
+          }
+          if (amount === 0) return;
+
+          const record = {
+            id: uid("annual_budget"),
+            year,
+            type,
+            category,
+            scope: "Animal",
+            species: resolved.animal.species || "",
+            animalId: resolved.animal.id,
+            amount: amount.toFixed(2),
+            importSource: {
+              type: "Excel spreadsheet",
+              fileName: context.fileName || "",
+              sheet: worksheet.name,
+              row: row.rowNumber,
+              column: field
+            },
+            createdAt: new Date().toISOString()
+          };
+          const duplicateKey = annualPlanDuplicateKey(record);
+          if (duplicateKeys.has(duplicateKey)) {
+            duplicateCategories.push(category);
+            return;
+          }
+          duplicateKeys.add(duplicateKey);
+          result.records.annualBudgetPlans.push(record);
+          addedAmounts += 1;
+        });
+
+        if (!recognizedAmounts) {
+          issue(result, source, "No recognized annual budget amounts were found on this row.");
+          return;
+        }
+        if (invalidCategories.length) {
+          issue(
+            result,
+            source,
+            `Invalid annual amount${invalidCategories.length === 1 ? "" : "s"}: ${invalidCategories.join(", ")}.`
+          );
+        }
+        if (duplicateCategories.length) {
+          issue(
+            result,
+            source,
+            `${duplicateCategories.join(", ")} already ${duplicateCategories.length === 1 ? "has" : "have"} an annual plan for ${year} and will be skipped.`,
+            "duplicate"
+          );
+        }
+        if (!addedAmounts && !invalidCategories.length && !duplicateCategories.length) {
+          issue(result, source, "Annual budget amounts are all zero; no plan records will be added.", "warning");
+        }
       });
     });
   }
@@ -830,6 +1098,7 @@
     const required = {
       animals: ["name", "species"],
       health: ["animalRef", "date", "type"],
+      annualPlans: ["animalRef"],
       transactions: ["date", "type", "amount"]
     }[type];
     return required.filter((field) => {
@@ -842,15 +1111,60 @@
     });
   }
 
+  async function normalizePrefixedWorkbook(buffer) {
+    if (!window.JSZip?.loadAsync) {
+      throw new Error("The Excel compatibility reader did not load. Close and reopen HerdHarbor, then try again.");
+    }
+    const zip = await window.JSZip.loadAsync(buffer);
+    const workbookEntry = zip.file("xl/workbook.xml");
+    if (!workbookEntry) throw new Error("This file does not contain a readable Excel workbook.");
+    const workbookXml = await workbookEntry.async("string");
+    if (!/<\/?x:/.test(workbookXml)) return buffer;
+
+    let xmlBytes = 0;
+    const xmlEntries = Object.values(zip.files).filter(
+      (entry) => !entry.dir && entry.name.toLowerCase().endsWith(".xml")
+    );
+    for (const entry of xmlEntries) {
+      const xml = await entry.async("string");
+      xmlBytes += xml.length;
+      if (xmlBytes > MAX_COMPAT_XML_BYTES) {
+        throw new Error("This workbook expands beyond the safe import limit. Split it into smaller files.");
+      }
+      const normalizedXml = xml
+        .replace(/<x:tableParts\b[\s\S]*?<\/x:tableParts>/g, "")
+        .replace(/(<\/?)x:/g, "$1");
+      if (normalizedXml !== xml) zip.file(entry.name, normalizedXml);
+    }
+    return zip.generateAsync({
+      type: "arraybuffer",
+      compression: "DEFLATE",
+      compressionOptions: { level: 6 }
+    });
+  }
+
+  async function loadCompatibleWorkbook(buffer) {
+    const workbook = new window.ExcelJS.Workbook();
+    try {
+      await workbook.xlsx.load(buffer);
+      return workbook;
+    } catch (originalError) {
+      const normalizedBuffer = await normalizePrefixedWorkbook(buffer);
+      if (normalizedBuffer === buffer) throw originalError;
+      const compatibleWorkbook = new window.ExcelJS.Workbook();
+      await compatibleWorkbook.xlsx.load(normalizedBuffer);
+      return compatibleWorkbook;
+    }
+  }
+
   async function parseWorkbookBuffer(buffer, context) {
     if (!window.ExcelJS?.Workbook) {
       throw new Error("The Excel reader did not load. Close and reopen HerdHarbor, then try again.");
     }
 
-    const workbook = new window.ExcelJS.Workbook();
-    await workbook.xlsx.load(buffer);
+    const workbook = await loadCompatibleWorkbook(buffer);
     const result = {
-      records: { animals: [], transactions: [], health: [] },
+      records: { animals: [], transactions: [], annualBudgetPlans: [], health: [] },
       issues: [],
       parsedSheets: [],
       ignoredSheets: [],
@@ -859,7 +1173,7 @@
       duplicateCount: 0,
       totalRows: 0
     };
-    const sheetsByType = { animals: [], transactions: [], health: [] };
+    const sheetsByType = { animals: [], transactions: [], annualPlans: [], health: [] };
 
     workbook.eachSheet((worksheet) => {
       const header = findHeaderRow(worksheet);
@@ -890,7 +1204,7 @@
     });
 
     if (!result.parsedSheets.length) {
-      throw new Error("No Animals, Budgeting, or Medical sheet could be recognized.");
+      throw new Error("No Animals, Budgeting, Annual Budget, or Medical sheet could be recognized.");
     }
     if (result.totalRows > MAX_DATA_ROWS) {
       throw new Error(`This workbook has ${result.totalRows.toLocaleString()} data rows. The current limit is ${MAX_DATA_ROWS.toLocaleString()}.`);
@@ -899,12 +1213,14 @@
     stageAnimals(sheetsByType.animals, context, result);
     stageHealth(sheetsByType.health, context, result);
     stageTransactions(sheetsByType.transactions, context, result);
+    stageAnnualPlans(sheetsByType.annualPlans, context, result);
     return result;
   }
 
   function summaryCount(result) {
     return result.records.animals.length +
       result.records.transactions.length +
+      result.records.annualBudgetPlans.length +
       result.records.health.length;
   }
 
@@ -924,6 +1240,12 @@
         date: record.date,
         subject: `${record.type} · $${record.amount}`,
         details: [record.category, record.description || record.party].filter(Boolean).join(" · ")
+      })),
+      ...result.records.annualBudgetPlans.map((record) => ({
+        area: "Annual plan",
+        date: String(record.year),
+        subject: `${record.type} · $${record.amount}`,
+        details: [animalById.get(record.animalId)?.name, record.category].filter(Boolean).join(" · ")
       })),
       ...result.records.health.map((record) => ({
         area: "Medical",
@@ -953,7 +1275,8 @@
       </div>
       <div class="hh-import-summary">
         <div class="hh-import-stat"><strong>${result.records.animals.length}</strong><span>Animals ready</span></div>
-        <div class="hh-import-stat"><strong>${result.records.transactions.length}</strong><span>Budget records ready</span></div>
+        <div class="hh-import-stat"><strong>${result.records.transactions.length}</strong><span>Transactions ready</span></div>
+        <div class="hh-import-stat"><strong>${result.records.annualBudgetPlans.length}</strong><span>Annual plans ready</span></div>
         <div class="hh-import-stat"><strong>${result.records.health.length}</strong><span>Medical records ready</span></div>
         <div class="hh-import-stat"><strong>${result.duplicateCount + result.errorCount}</strong><span>Rows skipped</span></div>
       </div>
@@ -1036,8 +1359,12 @@
       animals: Array.isArray(options.state.animals) ? options.state.animals : [],
       transactions: Array.isArray(options.state.transactions) ? options.state.transactions : [],
       health: Array.isArray(options.state.health) ? options.state.health : [],
+      annualBudgetPlans: Array.isArray(options.state.annualBudgetPlans)
+        ? options.state.annualBudgetPlans
+        : [],
       species: options.species || [],
-      fileName: file.name
+      fileName: file.name,
+      defaultBudgetYear: new Date().getFullYear()
     });
     showReview(file, result, options);
     return result;
@@ -1073,12 +1400,12 @@
     const instructions = workbook.addWorksheet("Instructions");
     instructions.addRows([
       ["HerdHarbor Excel Import Template", ""],
-      ["How to use", "Enter records in any or all of the Animals, Budgeting, and Medical sheets. Keep the header row unchanged."],
+      ["How to use", "Enter records in any or all of the Animals, Budgeting, Annual Budget, and Medical sheets. Keep the header row unchanged."],
       ["Review first", "HerdHarbor previews valid records and flags duplicate or invalid rows before import."],
       ["Existing data", "Spreadsheet imports add records. They do not replace current farm records."],
       ["Animal matching", "Medical and animal-assigned budget rows can match an animal by ID/tag, tattoo, registration number, or unique name."],
       ["Dates", "Use Excel dates or YYYY-MM-DD."],
-      ["Money", "Amounts must be greater than zero. Use the Type column to identify Income or Expense."],
+      ["Money", "Transaction amounts must be greater than zero. Annual Budget values remain yearly planned figures and never become actual transactions."],
       ["Supported files", "Save as .xlsx. Legacy .xls files must be resaved as .xlsx before upload."]
     ]);
     instructions.mergeCells("A1:B1");
@@ -1156,6 +1483,27 @@
       type: "list",
       allowBlank: true,
       formulae: ['"Operation,Species,Animal"']
+    });
+
+    const annualBudget = workbook.addWorksheet("Annual Budget");
+    annualBudget.addRow([
+      "Year",
+      "Animal ID / Tag / Name",
+      "Species",
+      "Feed Budget",
+      "Housing / Bedding",
+      "Routine Medical",
+      "Breeding",
+      "Other Costs",
+      "Projected Sale Income",
+      "Product Income",
+      "Offspring Income"
+    ]);
+    styleTemplateSheet(annualBudget, [12, 28, 14, 16, 20, 18, 16, 16, 22, 18, 18]);
+    annualBudget.dataValidations.add("C2:C5000", {
+      type: "list",
+      allowBlank: true,
+      formulae: ['"Rabbit,Chicken,Duck,Turkey,Dog,Horse,Goat,Sheep,Cattle,Pig,Other"']
     });
 
     const medical = workbook.addWorksheet("Medical");

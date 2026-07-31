@@ -1,17 +1,23 @@
 # HerdHarbor Pre-Alpha v0.3.01
 
-This release adds reviewed Excel imports for Animals, Budgeting, and Medical records while preserving the current farm record and cloud-sync safeguards.
+This release adds reviewed Excel imports for Animals, actual Budgeting transactions, annual planned budgets, and Medical records while preserving the current farm record and cloud-sync safeguards.
 
 ## Highlights
 
 - Added `.xlsx` and `.xlsm` workbook upload from Settings
-- Added automatic Animals, Budgeting, and Medical sheet recognition
+- Added automatic Animals, actual transaction, annual planned budget, and Medical sheet recognition
 - Added flexible column-name matching for common existing farm spreadsheets
+- Added compatibility handling for valid Excel workbooks that use prefixed SpreadsheetML XML
+- Added annual planned budgets that stay separate from monthly actual transactions
+- Added support for Breeding, Growing, and Retired animal statuses
+- Preserved neutered-sex labels and additional imported animal details in notes
+- Preserved condition, treatment, medication, dose, provider, medical cost, follow-up status, and notes in Medical imports
+- Corrected Excel date handling so U.S. timezones do not shift dates backward
 - Added a review screen with valid-record counts, row errors, warnings, and duplicate skips
 - Made spreadsheet imports additive so current records are never replaced
 - Added animal matching by ID/tag, tattoo, registration number, or unique name
 - Added parent matching for imported sires and dams
-- Added a downloadable HerdHarbor Excel import template
+- Added a downloadable HerdHarbor Excel import template with a separate Annual Budget sheet
 - Kept spreadsheet contents on the tester's device; only confirmed HerdHarbor records enter normal cloud sync
 - Added all-or-nothing local commit behavior so a failed browser save rolls back the import
 - Changed the web app manifest orientation from `any` to `portrait`

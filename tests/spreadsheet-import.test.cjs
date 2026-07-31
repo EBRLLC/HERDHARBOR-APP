@@ -1,7 +1,9 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 
+const JSZip = require("../vendor/jszip-3.10.1.min.js");
 const ExcelJS = require("../vendor/exceljs-4.4.0.min.js");
-global.window = { ExcelJS };
+global.window = { ExcelJS, JSZip };
 require("../spreadsheet-import.js");
 
 const { parseWorkbookBuffer, dateToISO, moneyNumber } =
@@ -119,6 +121,21 @@ async function buildWorkbook() {
     ""
   ]);
 
+  const annualBudget = workbook.addWorksheet("Annual Budget");
+  annualBudget.addRow([
+    "Year",
+    "Animal ID / Tag / Name",
+    "Feed Budget",
+    "Housing / Bedding",
+    "Routine Medical",
+    "Breeding",
+    "Other Costs",
+    "Projected Sale Income",
+    "Product Income",
+    "Offspring Income"
+  ]);
+  annualBudget.addRow([2026, "A-1", 100, 50, 25, 10, 15, 200, 75, 50]);
+
   return workbook.xlsx.writeBuffer();
 }
 
@@ -138,6 +155,8 @@ async function run() {
       status: "Active"
     }],
     health: [],
+    annualBudgetPlans: [],
+    defaultBudgetYear: 2026,
     transactions: [{
       id: "transaction_existing",
       date: "2026-07-01",
@@ -167,6 +186,11 @@ async function run() {
   assert.equal(result.records.transactions.length, 2);
   assert.equal(result.records.transactions[0].animalId, result.records.animals[0].id);
   assert.equal(result.records.transactions[0].amount, "12.50");
+  assert.equal(result.records.annualBudgetPlans.length, 8);
+  assert.equal(result.records.annualBudgetPlans[0].year, 2026);
+  assert.equal(result.records.annualBudgetPlans[0].animalId, result.records.animals[0].id);
+  assert.equal(result.records.annualBudgetPlans[0].type, "Expense");
+  assert.equal(result.records.annualBudgetPlans[5].type, "Income");
   assert.equal(result.duplicateCount, 2);
   assert.equal(result.errorCount, 2);
   assert.equal(dateToISO("7/30/2026"), "2026-07-30");
@@ -203,10 +227,11 @@ async function run() {
   await templateWorkbook.xlsx.load(await downloadedBlob.arrayBuffer());
   assert.deepEqual(
     templateWorkbook.worksheets.map((worksheet) => worksheet.name),
-    ["Instructions", "Animals", "Budgeting", "Medical"]
+    ["Instructions", "Animals", "Budgeting", "Annual Budget", "Medical"]
   );
   assert.equal(templateWorkbook.getWorksheet("Animals").getCell("A1").value, "Name");
   assert.equal(templateWorkbook.getWorksheet("Budgeting").getCell("H1").value, "Amount");
+  assert.equal(templateWorkbook.getWorksheet("Annual Budget").getCell("D1").value, "Feed Budget");
   assert.equal(templateWorkbook.getWorksheet("Medical").getCell("C1").value, "Record Type");
   if (process.env.HH_TEMPLATE_QA_PATH) {
     require("node:fs").writeFileSync(
@@ -231,6 +256,64 @@ async function run() {
   assert.equal(flexibleResult.records.animals[0].sex, "Female");
   assert.equal(flexibleResult.records.health[0].type, "Weight");
   assert.equal(flexibleResult.records.health[0].animalId, flexibleResult.records.animals[0].id);
+
+  const realWorkbookPath = require("node:path").resolve(
+    __dirname,
+    "../../upload/HerdHarbor_100_Animal_Test_Data(1).xlsx"
+  );
+  const realContext = {
+    species: context.species,
+    animals: [],
+    health: [],
+    annualBudgetPlans: [],
+    transactions: [],
+    defaultBudgetYear: 2026,
+    fileName: "HerdHarbor_100_Animal_Test_Data(1).xlsx"
+  };
+  const realOriginal = JSON.stringify(realContext);
+  const realResult = await parseWorkbookBuffer(fs.readFileSync(realWorkbookPath), realContext);
+  assert.equal(JSON.stringify(realContext), realOriginal, "real workbook preview must not mutate current records");
+  assert.equal(realResult.errorCount, 0);
+  assert.equal(realResult.records.animals.length, 100);
+  assert.equal(realResult.records.health.length, 100);
+  assert.equal(realResult.records.transactions.length, 0);
+  assert.equal(realResult.records.annualBudgetPlans.length, 800);
+  const plannedExpenseTotal = realResult.records.annualBudgetPlans
+    .filter((plan) => plan.type === "Expense")
+    .reduce((sum, plan) => sum + Number(plan.amount), 0);
+  const projectedIncomeTotal = realResult.records.annualBudgetPlans
+    .filter((plan) => plan.type === "Income")
+    .reduce((sum, plan) => sum + Number(plan.amount), 0);
+  assert.ok(Math.abs(plannedExpenseTotal - 96021.35) < 0.001);
+  assert.ok(Math.abs(projectedIncomeTotal - 125381.9) < 0.001);
+  assert.ok(Math.abs(projectedIncomeTotal - plannedExpenseTotal - 29360.55) < 0.001);
+  assert.equal(realResult.records.animals[0].dob, "2024-06-05");
+  assert.equal(realResult.records.animals[3].sex, "Male");
+  assert.match(realResult.records.animals[3].notes, /Imported sex: Neutered Male/);
+  assert.match(realResult.records.animals[0].notes, /Imported weight: 5\.5 lb/);
+  assert.match(realResult.records.animals[0].notes, /Purchase cost: \$104\.38/);
+  assert.equal(realResult.records.animals[2].status, "Breeding");
+  assert.equal(realResult.records.health[0].date, "2026-04-29");
+  assert.match(realResult.records.health[0].details, /Ivermectin/);
+  assert.match(realResult.records.health[0].details, /County Mobile Vet/);
+  assert.match(realResult.records.health[0].details, /Medical cost: \$111\.98/);
+  assert.match(realResult.records.health[0].details, /Original record type: Deworming/);
+  assert.equal(realResult.records.annualBudgetPlans[0].year, 2026);
+
+  const reimportContext = {
+    ...realContext,
+    animals: realResult.records.animals,
+    health: realResult.records.health,
+    annualBudgetPlans: realResult.records.annualBudgetPlans
+  };
+  const reimportResult = await parseWorkbookBuffer(
+    fs.readFileSync(realWorkbookPath),
+    reimportContext
+  );
+  assert.equal(reimportResult.records.animals.length, 0);
+  assert.equal(reimportResult.records.health.length, 0);
+  assert.equal(reimportResult.records.annualBudgetPlans.length, 0);
+  assert.equal(reimportResult.records.transactions.length, 0);
 
   console.log("spreadsheet importer tests passed");
 }
