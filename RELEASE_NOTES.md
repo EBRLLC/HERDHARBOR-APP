@@ -1,8 +1,18 @@
-# HerdHarbor Pre-Alpha v0.3.03
+# HerdHarbor Pre-Alpha v0.3.04
 
-This tester-stability release makes cloud protection easier to see, adds readable Excel record exports, and gives spreadsheet import errors concrete correction steps.
+This sync-reliability release prevents ordinary changes from separate devices from repeatedly pausing automatic synchronization.
 
 ## Highlights
+
+- Added record-by-record, field-by-field three-way merging using each device's last-confirmed cloud base
+- Automatically combines changes made to different animals, medical records, budgets, activity entries, pedigrees, or fields
+- Keeps genuine same-field edits and delete-versus-edit cases behind the existing protected conflict choice
+- Saves recovery snapshots of both device and cloud copies before an automatic merge
+- Rebases edits made during an in-progress merge so rapid saves are not discarded
+- Keeps theme and sidebar preferences local to each device instead of treating them as farm-data conflicts
+- Preserves the existing storage key, Supabase table, account records, and farm-data structure
+
+## Continued capabilities
 
 - Added a Settings cloud-sync card with the live status, connection state, pending-change state, and last-confirmed cloud timestamp
 - Added a clear **Sync now** button without changing automatic synchronization
@@ -14,10 +24,6 @@ This tester-stability release makes cloud protection easier to see, adds readabl
 - Added a downloadable CSV issue report so large workbook corrections can be handled outside the review modal
 - Added current connection and sync details to tester bug reports without sending livestock records
 - Corrected outdated onboarding language that incorrectly said cloud accounts were not available
-- Kept the existing storage key, account table, farm-data structure, and conflict-protection behavior unchanged
-
-## Continued capabilities
-
 - Added `.xlsx` and `.xlsm` workbook upload from Settings
 - Added automatic Animals, actual transaction, annual planned budget, and Medical sheet recognition
 - Added flexible column-name matching for common existing farm spreadsheets
@@ -53,4 +59,4 @@ This tester-stability release makes cloud protection easier to see, adds readabl
 
 ## Tester note
 
-Existing accounts and livestock data use the same storage key and Supabase table. No tester record migration is required. Excel export is read-only, and spreadsheet imports still append approved records while skipping duplicates or invalid rows.
+Existing accounts and livestock data use the same storage key and Supabase table. No tester record migration is required. Backups and manual conflict choices remain available for genuine overlapping edits.
