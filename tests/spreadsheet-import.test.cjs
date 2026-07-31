@@ -6,7 +6,7 @@ const ExcelJS = require("../vendor/exceljs-4.4.0.min.js");
 global.window = { ExcelJS, JSZip };
 require("../spreadsheet-import.js");
 
-const { parseWorkbookBuffer, dateToISO, moneyNumber } =
+const { parseWorkbookBuffer, dateToISO, moneyNumber, issueAdvice, buildExportWorkbook } =
   global.window.HerdHarborSpreadsheet.__test;
 
 async function buildWorkbook() {
@@ -239,6 +239,119 @@ async function run() {
       Buffer.from(await downloadedBlob.arrayBuffer())
     );
   }
+
+  assert.match(
+    issueAdvice("Medical date “tomorrow” is invalid."),
+    /YYYY-MM-DD/,
+    "date errors include a concrete correction"
+  );
+  assert.match(
+    issueAdvice("Animal “Clover” matches more than one animal."),
+    /unique ID\/tag/,
+    "animal matching errors explain how to resolve ambiguity"
+  );
+
+  const exportState = {
+    profile: { operationName: "Harbor Test Farm" },
+    animals: [{
+      id: "animal_export",
+      name: "Willow",
+      tag: "R-20",
+      tattoo: "",
+      registrationNumber: "",
+      breeder: "Harbor Test Farm",
+      species: "Rabbit",
+      breed: "Holland Lop",
+      sex: "Female",
+      dob: "2025-04-15",
+      color: "Tort",
+      location: "Barn A",
+      status: "Active",
+      sireId: "",
+      damId: "",
+      notes: "=SUM(A1:A2)"
+    }],
+    health: [{
+      id: "health_export",
+      animalId: "animal_export",
+      date: "2026-07-30",
+      type: "Weight",
+      details: "Monthly weight",
+      weight: "4.2",
+      weightUnit: "lb",
+      followUpDate: "2026-08-30"
+    }],
+    transactions: [{
+      id: "transaction_export",
+      date: "2026-07-30",
+      type: "Expense",
+      classification: "Operating",
+      category: "Feed",
+      scope: "Animal",
+      species: "Rabbit",
+      animalId: "animal_export",
+      amount: "12.50",
+      party: "Farm Store",
+      description: "Pellets",
+      notes: ""
+    }],
+    annualBudgetPlans: [
+      ["Expense", "Feed", "100.00"],
+      ["Expense", "Housing / Bedding", "50.00"],
+      ["Expense", "Routine Medical", "25.00"],
+      ["Expense", "Breeding", "10.00"],
+      ["Expense", "Other Costs", "15.00"],
+      ["Income", "Projected Sale Income", "200.00"],
+      ["Income", "Product Income", "75.00"],
+      ["Income", "Offspring Income", "50.00"]
+    ].map(([type, category, amount], index) => ({
+      id: `annual_export_${index}`,
+      year: 2026,
+      type,
+      category,
+      scope: "Animal",
+      species: "Rabbit",
+      animalId: "animal_export",
+      amount
+    }))
+  };
+  const exportWorkbook = buildExportWorkbook(exportState, { operationName: "Harbor Test Farm" });
+  assert.deepEqual(
+    exportWorkbook.worksheets.map((worksheet) => worksheet.name),
+    ["Overview", "Animals", "Medical", "Budgeting", "Annual Budget"]
+  );
+  assert.equal(exportWorkbook.getWorksheet("Animals").getCell("A2").value, "Willow");
+  assert.equal(exportWorkbook.getWorksheet("Animals").getCell("O2").value, "=SUM(A1:A2)");
+  assert.equal(
+    exportWorkbook.getWorksheet("Animals").getCell("O2").type,
+    ExcelJS.ValueType.String,
+    "formula-looking source text remains a non-executable Excel string"
+  );
+  assert.equal(exportWorkbook.getWorksheet("Medical").getCell("M2").value, 4.2);
+  assert.equal(exportWorkbook.getWorksheet("Budgeting").getCell("H2").value, 12.5);
+  assert.equal(exportWorkbook.getWorksheet("Annual Budget").getCell("D2").value, 100);
+
+  const exportBuffer = await exportWorkbook.xlsx.writeBuffer();
+  if (process.env.HH_EXPORT_QA_PATH) {
+    require("node:fs").writeFileSync(
+      process.env.HH_EXPORT_QA_PATH,
+      Buffer.from(exportBuffer)
+    );
+  }
+  const roundTrip = await parseWorkbookBuffer(exportBuffer, {
+    species: context.species,
+    animals: [],
+    health: [],
+    annualBudgetPlans: [],
+    transactions: [],
+    defaultBudgetYear: 2026,
+    fileName: "harbor-test-export.xlsx"
+  });
+  assert.equal(roundTrip.errorCount, 0, "the Excel export can be reviewed and imported again");
+  assert.equal(roundTrip.records.animals.length, 1);
+  assert.equal(roundTrip.records.health.length, 1);
+  assert.equal(roundTrip.records.transactions.length, 1);
+  assert.equal(roundTrip.records.annualBudgetPlans.length, 8);
 
   const flexibleWorkbook = new ExcelJS.Workbook();
   const rabbits = flexibleWorkbook.addWorksheet("Rabbits");

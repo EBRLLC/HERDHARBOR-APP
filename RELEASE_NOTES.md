@@ -1,8 +1,22 @@
-# HerdHarbor Pre-Alpha v0.3.01
+# HerdHarbor Pre-Alpha v0.3.03
 
-This release adds reviewed Excel imports for Animals, actual Budgeting transactions, annual planned budgets, and Medical records while preserving the current farm record and cloud-sync safeguards.
+This tester-stability release makes cloud protection easier to see, adds readable Excel record exports, and gives spreadsheet import errors concrete correction steps.
 
 ## Highlights
+
+- Added a Settings cloud-sync card with the live status, connection state, pending-change state, and last-confirmed cloud timestamp
+- Added a clear **Sync now** button without changing automatic synchronization
+- Made the sidebar cloud indicator reflect syncing, offline, protected, and attention-required states
+- Added one-click Excel export with Overview, Animals, Medical, Budgeting, and Annual Budget sheets
+- Kept annual planned budgets separate from dated actual transactions in exported workbooks
+- Made exported workbooks compatible with HerdHarbor's reviewed import workflow
+- Added a specific **How to fix** explanation to every spreadsheet warning, duplicate, and error
+- Added a downloadable CSV issue report so large workbook corrections can be handled outside the review modal
+- Added current connection and sync details to tester bug reports without sending livestock records
+- Corrected outdated onboarding language that incorrectly said cloud accounts were not available
+- Kept the existing storage key, account table, farm-data structure, and conflict-protection behavior unchanged
+
+## Continued capabilities
 
 - Added `.xlsx` and `.xlsm` workbook upload from Settings
 - Added automatic Animals, actual transaction, annual planned budget, and Medical sheet recognition
@@ -39,4 +53,4 @@ This release adds reviewed Excel imports for Animals, actual Budgeting transacti
 
 ## Tester note
 
-Existing accounts and livestock data use the same storage key and Supabase table. No tester record migration is required. Spreadsheet imports append approved records to the current farm and skip duplicates or invalid rows.
+Existing accounts and livestock data use the same storage key and Supabase table. No tester record migration is required. Excel export is read-only, and spreadsheet imports still append approved records while skipping duplicates or invalid rows.
