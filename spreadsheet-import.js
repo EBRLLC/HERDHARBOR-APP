@@ -218,6 +218,13 @@
         background:var(--cream-2);
         font-size:.82rem;
       }
+      .hh-import-issue small {
+        display:block;
+        margin-top:7px;
+        color:var(--muted);
+        font-size:.78rem;
+        line-height:1.45;
+      }
       .hh-import-issue.error { border-left-color:var(--danger); }
       .hh-import-issue.duplicate { border-left-color:var(--teal); }
       .hh-import-preview {
@@ -577,12 +584,59 @@
     return [];
   }
 
+  function issueAdvice(message, level = "error") {
+    const normalizedMessage = normalize(message);
+    if (level === "duplicate") {
+      return "No action is required if this record is already in HerdHarbor. Change its unique ID, tag, date, or amount only if it is a different record.";
+    }
+    if (normalizedMessage.includes("date") && normalizedMessage.includes("invalid")) {
+      return "Use a real Excel date or type the date as YYYY-MM-DD, such as 2026-07-31.";
+    }
+    if (
+      normalizedMessage.includes("animal") &&
+      (
+        normalizedMessage.includes("not found") ||
+        normalizedMessage.includes("was not found") ||
+        normalizedMessage.includes("matches more than one") ||
+        normalizedMessage.includes("matched uniquely")
+      )
+    ) {
+      return "Identify the animal with a unique ID/tag, tattoo, registration number, or an exact name that is used by only one animal.";
+    }
+    if (normalizedMessage.includes("species")) {
+      return "Use one of the species shown in HerdHarbor Settings, or add the species to the workspace before importing.";
+    }
+    if (normalizedMessage.includes("sex")) {
+      return "Use Female, Male, Unknown, Doe, Buck, Hen, Rooster, Mare, Stallion, Gelding, or another recognized sex label.";
+    }
+    if (normalizedMessage.includes("status")) {
+      return `Use one of these statuses: ${ANIMAL_STATUSES.join(", ")}.`;
+    }
+    if (normalizedMessage.includes("amount") || normalizedMessage.includes("cost")) {
+      return "Enter a number without extra words. Actual transactions must be greater than zero; annual planned amounts may be zero or greater.";
+    }
+    if (normalizedMessage.includes("weight")) {
+      return "Enter a numeric weight and use lb, oz, kg, or g for the unit.";
+    }
+    if (normalizedMessage.includes("record type") || normalizedMessage.includes("medical type")) {
+      return `Use a common medical label; HerdHarbor maps it to ${RECORD_TYPES.join(", ")}.`;
+    }
+    if (normalizedMessage.includes("required") || normalizedMessage.includes("blank")) {
+      return "Fill in the named cell on this row, then upload the corrected workbook again.";
+    }
+    if (level === "warning") {
+      return "Review this row. It can still import, but part of the source information may need a manual correction afterward.";
+    }
+    return "Correct the named value on this workbook row, save the file as .xlsx, and upload it again.";
+  }
+
   function issue(result, source, message, level = "error") {
     result.issues.push({
       level,
       sheet: source.sheet,
       row: source.row,
-      message
+      message,
+      advice: issueAdvice(message, level)
     });
     if (level === "error") result.errorCount += 1;
     if (level === "duplicate") result.duplicateCount += 1;
@@ -1258,6 +1312,34 @@
     ].slice(0, 12);
   }
 
+  function csvCell(value) {
+    const rawText = String(value ?? "");
+    const text = /^[=+\-@]/.test(rawText.trimStart()) ? `'${rawText}` : rawText;
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+
+  function downloadIssueReport(file, result) {
+    const rows = [
+      ["Workbook", "Sheet", "Row", "Level", "Problem", "How to fix"],
+      ...result.issues.map((item) => [
+        file.name,
+        item.sheet,
+        item.row,
+        item.level,
+        item.message,
+        item.advice || issueAdvice(item.message, item.level)
+      ])
+    ];
+    const csv = rows.map((row) => row.map(csvCell).join(",")).join("\r\n");
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${file.name.replace(/\.[^.]+$/, "")}-HerdHarbor-import-issues.csv`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   function showReview(file, result, api) {
     ensureStyles();
     const validCount = summaryCount(result);
@@ -1285,7 +1367,9 @@
         <div class="hh-import-issues">
           ${shownIssues.map((item) => `
             <div class="hh-import-issue ${esc(item.level)}">
-              <strong>${esc(item.sheet)} · row ${item.row}</strong><br>${esc(item.message)}
+              <strong>${esc(item.sheet)} · row ${item.row}</strong><br>
+              ${esc(item.message)}
+              <small><strong>How to fix:</strong> ${esc(item.advice || issueAdvice(item.message, item.level))}</small>
             </div>
           `).join("")}
           ${extraIssues > 0
@@ -1315,6 +1399,9 @@
       </p>
       <div class="modal-actions">
         <button type="button" class="button button-ghost" id="hh-cancel-spreadsheet-import">Cancel</button>
+        ${result.issues.length
+          ? '<button type="button" class="button button-ghost" id="hh-download-import-issues">Download issue report</button>'
+          : ""}
         <button type="button" class="button button-primary" id="hh-confirm-spreadsheet-import" ${validCount ? "" : "disabled"}>
           Import ${validCount} record${validCount === 1 ? "" : "s"}
         </button>
@@ -1323,6 +1410,8 @@
 
     document.querySelector("#hh-cancel-spreadsheet-import")
       ?.addEventListener("click", api.closeModal);
+    document.querySelector("#hh-download-import-issues")
+      ?.addEventListener("click", () => downloadIssueReport(file, result));
     document.querySelector("#hh-confirm-spreadsheet-import")
       ?.addEventListener("click", async (event) => {
         const button = event.currentTarget;
@@ -1387,6 +1476,298 @@
       from: { row: 1, column: 1 },
       to: { row: 1, column: worksheet.columnCount }
     };
+  }
+
+  function safeExcelText(value) {
+    const text = cleanText(value);
+    if (!text) return null;
+    return text;
+  }
+
+  function dateOnlyValue(value) {
+    const match = cleanText(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return safeExcelText(value);
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12);
+  }
+
+  function numericExcelValue(value) {
+    if (!cleanText(value)) return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function animalExportReference(animal) {
+    return safeExcelText(
+      animal?.tag ||
+      animal?.tattoo ||
+      animal?.registrationNumber ||
+      animal?.name ||
+      ""
+    );
+  }
+
+  function styleExportSheet(worksheet, widths, options = {}) {
+    styleTemplateSheet(worksheet, widths);
+    (options.dateColumns || []).forEach((columnNumber) => {
+      worksheet.getColumn(columnNumber).numFmt = "yyyy-mm-dd";
+    });
+    (options.currencyColumns || []).forEach((columnNumber) => {
+      worksheet.getColumn(columnNumber).numFmt = "$#,##0.00";
+    });
+    for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber += 1) {
+      const row = worksheet.getRow(rowNumber);
+      row.alignment = { vertical: "top", wrapText: true };
+      if (rowNumber % 2 === 0) {
+        row.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFF7F3EA" }
+        };
+      }
+    }
+  }
+
+  function buildExportWorkbook(state = {}, options = {}) {
+    if (!window.ExcelJS?.Workbook) {
+      throw new Error("The Excel export tool did not load. Close and reopen HerdHarbor, then try again.");
+    }
+
+    const animals = Array.isArray(state.animals) ? state.animals : [];
+    const health = Array.isArray(state.health) ? state.health : [];
+    const transactions = Array.isArray(state.transactions) ? state.transactions : [];
+    const annualBudgetPlans = Array.isArray(state.annualBudgetPlans) ? state.annualBudgetPlans : [];
+    const animalById = new Map(animals.map((animal) => [animal.id, animal]));
+    const workbook = new window.ExcelJS.Workbook();
+    workbook.creator = "HerdHarbor";
+    workbook.created = new Date();
+    workbook.modified = new Date();
+    workbook.title = `${options.operationName || state.profile?.operationName || "HerdHarbor"} farm records`;
+
+    const overview = workbook.addWorksheet("Overview");
+    overview.addRows([
+      ["HerdHarbor Farm Records Export", ""],
+      ["Operation", safeExcelText(options.operationName || state.profile?.operationName || "HerdHarbor")],
+      ["Exported", new Date()],
+      ["App version", "0.3.03"],
+      ["Animals", animals.length],
+      ["Medical records", health.length],
+      ["Actual transactions", transactions.length],
+      ["Annual plan entries", annualBudgetPlans.length],
+      ["Safety note", "This workbook is a readable record export. Keep the JSON safety backup for complete HerdHarbor restoration."]
+    ]);
+    overview.mergeCells("A1:B1");
+    overview.getRow(1).height = 34;
+    overview.getRow(1).font = { bold: true, size: 16, color: { argb: "FFFFFFFF" } };
+    overview.getRow(1).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF0D2540" }
+    };
+    overview.getColumn(1).width = 24;
+    overview.getColumn(2).width = 56;
+    overview.getColumn(2).alignment = { vertical: "top", wrapText: true };
+    overview.getCell("B3").numFmt = "yyyy-mm-dd h:mm AM/PM";
+    overview.getRow(9).height = 42;
+    overview.getRow(9).alignment = { vertical: "top", wrapText: true };
+    overview.views = [{ state: "frozen", ySplit: 1 }];
+
+    const animalSheet = workbook.addWorksheet("Animals");
+    animalSheet.addRow([
+      "Name",
+      "ID or Tag",
+      "Tattoo / Ear Number",
+      "Registration Number",
+      "Breeder Name",
+      "Species",
+      "Breed",
+      "Sex",
+      "Date of Birth",
+      "Color or Variety",
+      "Location / Cage / Pen",
+      "Status",
+      "Sire ID / Tag / Name",
+      "Dam ID / Tag / Name",
+      "Notes"
+    ]);
+    animals.forEach((animal) => {
+      animalSheet.addRow([
+        safeExcelText(animal.name),
+        safeExcelText(animal.tag),
+        safeExcelText(animal.tattoo),
+        safeExcelText(animal.registrationNumber),
+        safeExcelText(animal.breeder),
+        safeExcelText(animal.species),
+        safeExcelText(animal.breed),
+        safeExcelText(animal.sex),
+        dateOnlyValue(animal.dob),
+        safeExcelText(animal.color),
+        safeExcelText(animal.location),
+        safeExcelText(animal.status),
+        animalExportReference(animalById.get(animal.sireId)),
+        animalExportReference(animalById.get(animal.damId)),
+        safeExcelText(animal.notes)
+      ]);
+    });
+    styleExportSheet(
+      animalSheet,
+      [24, 16, 20, 20, 22, 14, 22, 14, 16, 20, 22, 16, 24, 24, 38],
+      { dateColumns: [9] }
+    );
+
+    const medicalSheet = workbook.addWorksheet("Medical");
+    medicalSheet.addRow([
+      "Animal ID / Tag / Name",
+      "Date",
+      "Record Type",
+      "Details",
+      "Condition / Reason",
+      "Treatment / Procedure",
+      "Medication",
+      "Dose",
+      "Provider",
+      "Medical Cost",
+      "Follow Up Status",
+      "Notes",
+      "Weight",
+      "Weight Unit",
+      "Follow-up Date"
+    ]);
+    health.forEach((record) => {
+      medicalSheet.addRow([
+        animalExportReference(animalById.get(record.animalId)),
+        dateOnlyValue(record.date),
+        safeExcelText(record.type),
+        safeExcelText(record.details),
+        safeExcelText(record.condition),
+        safeExcelText(record.treatment),
+        safeExcelText(record.medication),
+        safeExcelText(record.dose),
+        safeExcelText(record.provider),
+        numericExcelValue(record.cost),
+        safeExcelText(record.followUpStatus),
+        safeExcelText(record.notes),
+        numericExcelValue(record.weight),
+        safeExcelText(record.weightUnit),
+        dateOnlyValue(record.followUpDate)
+      ]);
+    });
+    styleExportSheet(
+      medicalSheet,
+      [28, 16, 20, 42, 24, 26, 22, 16, 24, 16, 20, 36, 14, 14, 18],
+      { dateColumns: [2, 15], currencyColumns: [10] }
+    );
+
+    const budgetSheet = workbook.addWorksheet("Budgeting");
+    budgetSheet.addRow([
+      "Date",
+      "Type",
+      "Classification",
+      "Category",
+      "Scope",
+      "Species",
+      "Animal ID / Tag / Name",
+      "Amount",
+      "Vendor or Customer",
+      "Description",
+      "Notes"
+    ]);
+    transactions.forEach((record) => {
+      budgetSheet.addRow([
+        dateOnlyValue(record.date),
+        safeExcelText(record.type),
+        safeExcelText(record.classification),
+        safeExcelText(record.category),
+        safeExcelText(record.scope),
+        safeExcelText(record.species),
+        animalExportReference(animalById.get(record.animalId)),
+        numericExcelValue(record.amount),
+        safeExcelText(record.party),
+        safeExcelText(record.description),
+        safeExcelText(record.notes)
+      ]);
+    });
+    styleExportSheet(
+      budgetSheet,
+      [16, 14, 18, 22, 14, 14, 28, 14, 24, 30, 38],
+      { dateColumns: [1], currencyColumns: [8] }
+    );
+
+    const annualColumns = [
+      { header: "Feed Budget", type: "Expense", category: "Feed" },
+      { header: "Housing / Bedding", type: "Expense", category: "Housing / Bedding" },
+      { header: "Routine Medical", type: "Expense", category: "Routine Medical" },
+      { header: "Breeding", type: "Expense", category: "Breeding" },
+      { header: "Other Costs", type: "Expense", category: "Other Costs" },
+      { header: "Projected Sale Income", type: "Income", category: "Projected Sale Income" },
+      { header: "Product Income", type: "Income", category: "Product Income" },
+      { header: "Offspring Income", type: "Income", category: "Offspring Income" }
+    ];
+    const annualGroups = new Map();
+    annualBudgetPlans.forEach((record) => {
+      const key = [record.year, record.animalId || "", record.species || ""].join("|");
+      if (!annualGroups.has(key)) {
+        annualGroups.set(key, {
+          year: Number(record.year) || "",
+          animalId: record.animalId || "",
+          species: record.species || "",
+          amounts: new Map()
+        });
+      }
+      const group = annualGroups.get(key);
+      const amountKey = `${normalize(record.type)}|${normalize(record.category)}`;
+      group.amounts.set(amountKey, (group.amounts.get(amountKey) || 0) + Number(record.amount || 0));
+    });
+
+    const annualSheet = workbook.addWorksheet("Annual Budget");
+    annualSheet.addRow([
+      "Year",
+      "Animal ID / Tag / Name",
+      "Species",
+      ...annualColumns.map((column) => column.header)
+    ]);
+    [...annualGroups.values()]
+      .sort((left, right) =>
+        Number(left.year || 0) - Number(right.year || 0) ||
+        String(animalExportReference(animalById.get(left.animalId)) || "")
+          .localeCompare(String(animalExportReference(animalById.get(right.animalId)) || ""))
+      )
+      .forEach((group) => {
+        annualSheet.addRow([
+          group.year,
+          animalExportReference(animalById.get(group.animalId)),
+          safeExcelText(group.species || animalById.get(group.animalId)?.species),
+          ...annualColumns.map((column) =>
+            group.amounts.get(`${normalize(column.type)}|${normalize(column.category)}`) || 0
+          )
+        ]);
+      });
+    styleExportSheet(
+      annualSheet,
+      [12, 28, 14, 16, 20, 18, 16, 16, 22, 18, 18],
+      { currencyColumns: [4, 5, 6, 7, 8, 9, 10, 11] }
+    );
+
+    return workbook;
+  }
+
+  async function downloadExport(state, options = {}) {
+    const workbook = buildExportWorkbook(state, options);
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob(
+      [buffer],
+      { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
+    );
+    const operationSlug = cleanText(options.operationName || state.profile?.operationName || "herdharbor")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || "herdharbor";
+    const exportedDate = new Date().toISOString().slice(0, 10);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${operationSlug}-herdharbor-records-${exportedDate}.xlsx`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   async function downloadTemplate() {
@@ -1544,11 +1925,14 @@
   window.HerdHarborSpreadsheet = {
     openImport,
     downloadTemplate,
+    downloadExport,
     __test: {
       parseWorkbookBuffer,
       dateToISO,
       moneyNumber,
-      normalize
+      normalize,
+      issueAdvice,
+      buildExportWorkbook
     }
   };
 })();
