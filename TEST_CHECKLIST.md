@@ -1,4 +1,31 @@
-# HerdHarbor v0.3.01 Release Checklist
+# HerdHarbor v0.3.03 Release Checklist
+
+## Visible cloud sync
+
+- Open Settings and confirm the cloud card shows the current status, connection, pending-change state, and last-synced timestamp
+- Add or edit a record and confirm the card moves through a pending/saving state to **Protected**
+- Select **Sync now** and confirm the newest local records reach **Saved to cloud**
+- Disconnect the device and confirm HerdHarbor says the offline copy is protected
+- Reconnect and confirm pending changes save automatically
+- Confirm the sidebar indicator matches the Settings status
+- Confirm a multi-device conflict is shown as action required and neither copy is erased
+
+## Excel record export
+
+- Select **Export records to Excel** from Settings
+- Confirm the workbook opens with Overview, Animals, Medical, Budgeting, and Annual Budget sheets
+- Confirm headers are readable, frozen, filtered, and date/currency columns retain their types
+- Confirm animal parent references, medical-to-animal links, and animal-assigned transactions use a unique animal reference
+- Confirm annual planned figures remain annual plans and are not listed as actual transactions
+- Upload the exported workbook to the reviewed importer and confirm the counts, dates, amounts, and animal links round-trip correctly
+- Confirm values beginning with `=`, `+`, `-`, or `@` are exported as text rather than executable spreadsheet formulas
+
+## Import diagnostics
+
+- Import a workbook containing invalid dates, amounts, animal references, statuses, species, and weights
+- Confirm each problem includes a specific **How to fix** explanation
+- Select **Download issue report** and confirm the CSV includes workbook, sheet, row, level, problem, and correction columns
+- Confirm the review still imports valid rows only after explicit confirmation
 
 ## Excel spreadsheet import
 
