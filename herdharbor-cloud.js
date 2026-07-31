@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  // HerdHarbor cloud integration v1.2 — conflict-safe sync and local recovery.
+  // HerdHarbor cloud integration v1.3 — visible conflict-safe sync and local recovery.
 
   const SUPABASE_URL = "https://okynebbksifqppwicghj.supabase.co";
   const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_jxsX6uS9nnh2FOFtlSF9TA_8v6C7C09";
@@ -56,6 +56,7 @@
   let accountDialog = null;
   let syncConflict = null;
   let syncState = "Checking account…";
+  let syncStateType = "info";
   let recoveryMode = (() => {
     try {
       const url = new URL(window.location.href);
@@ -84,6 +85,39 @@
   const dirtyKey = (userId) => `herdharbor_user_dirty_${userId}`;
   const baseKey = (userId) => `herdharbor_user_cloud_base_${userId}`;
   const versionKey = (userId) => `herdharbor_user_cloud_version_${userId}`;
+
+  function getSyncDetails() {
+    const userId = session?.user?.id || "";
+    const unsynced = Boolean(userId) &&
+      (
+        originalGetItem.call(localStorage, dirtyKey(userId)) === "1" ||
+        Boolean(pendingSync)
+      );
+
+    return {
+      message: syncState,
+      type: syncStateType,
+      signedIn: Boolean(userId),
+      email: session?.user?.email || "",
+      online: navigator.onLine !== false,
+      unsynced,
+      syncing: Boolean(syncInFlight) || syncStateType === "working",
+      conflict: Boolean(syncConflict),
+      lastSyncedAt: userId
+        ? originalGetItem.call(localStorage, versionKey(userId)) || ""
+        : ""
+    };
+  }
+
+  function dispatchSyncStatus() {
+    try {
+      document.dispatchEvent(new CustomEvent("herdharbor:sync-status", {
+        detail: getSyncDetails()
+      }));
+    } catch (error) {
+      console.warn("HerdHarbor could not publish the sync status:", error);
+    }
+  }
 
   function safeParse(value) {
     if (!value) return null;
@@ -239,6 +273,7 @@
 
   function setSyncState(message, type = "info") {
     syncState = message;
+    syncStateType = type;
     if (accountButton) {
       accountButton.dataset.state = type;
       accountButton.title = `HerdHarbor account: ${message}`;
@@ -249,6 +284,7 @@
       status.dataset.type = type;
     }
     updateConflictControls();
+    dispatchSyncStatus();
   }
 
   function installStorageBridge() {
@@ -544,6 +580,7 @@
     if (activeRaw && sameState(activeRaw, remoteRaw)) {
       safeStorageSet(baseKey(userId), remoteRaw);
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
+      setSyncState("Saved to cloud", "success");
       return false;
     }
 
@@ -1030,7 +1067,7 @@
 
     const payload = JSON.stringify({
       app: "HerdHarbor",
-      version: "0.3.01",
+      version: "0.3.03",
       backupType: "local-safety-backup",
       exportedAt: new Date().toISOString(),
       data: appState
@@ -1354,6 +1391,13 @@
     }
   });
 
+  window.addEventListener("offline", () => {
+    setSyncState(
+      "Offline; changes stay protected on this device and will sync after reconnection.",
+      "error"
+    );
+  });
+
   document.addEventListener("visibilitychange", () => {
     const userId = session?.user?.id;
     if (
@@ -1376,6 +1420,7 @@
     syncNow,
     getSession: () => session,
     getSyncState: () => syncState,
+    getSyncDetails,
     hasUnsyncedChanges: () => {
       const userId = session?.user?.id;
       return Boolean(userId) &&
