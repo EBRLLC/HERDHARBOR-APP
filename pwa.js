@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const PWA_BUILD = "0.2.15";
+  const PWA_BUILD = "0.3.01-import-2";
   let installPrompt = null;
   let registration = null;
   let updateToast = null;
