@@ -8,11 +8,11 @@ const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const spreadsheet = fs.readFileSync(path.join(root, "spreadsheet-import.js"), "utf8");
 const serviceWorker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 
-assert.match(html, /HerdHarbor installable tester build v0\.3\.03/);
+assert.match(html, /HerdHarbor installable tester build v0\.3\.04/);
 assert.match(html, /id="settings-sync-now"/);
 assert.match(html, /id="settings-last-synced"/);
 assert.match(html, /id="export-excel"/);
-assert.match(html, /HerdHarbor Pre-Alpha v0\.3\.03/);
+assert.match(html, /HerdHarbor Pre-Alpha v0\.3\.04/);
 assert.match(html, /protected cloud copy and an offline copy on this device/);
 assert.doesNotMatch(
   html,
@@ -32,8 +32,8 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /v0\.3\.03-/);
+assert.match(serviceWorker, /v0\.3\.04-/);
 assert.match(serviceWorker, /spreadsheet-import\.js\?v=3/);
-assert.match(serviceWorker, /herdharbor-cloud\.js\?v=5/);
+assert.match(serviceWorker, /herdharbor-cloud\.js\?v=6/);
 
-console.log("v0.3.03 stability release tests passed");
+console.log("v0.3.04 stability release tests passed");
