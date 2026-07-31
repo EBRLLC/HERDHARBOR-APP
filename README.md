@@ -1,4 +1,4 @@
-# HerdHarbor Pre-Alpha v0.3.03
+# HerdHarbor Pre-Alpha v0.3.04
 
 HerdHarbor is an installable farm and livestock recordkeeping app for the current private tester group.
 
@@ -7,7 +7,8 @@ HerdHarbor is an installable farm and livestock recordkeeping app for the curren
 - Protected email/password accounts and password recovery
 - Cloud synchronization with an offline device copy
 - Visible sync status, last-confirmed timestamp, and a manual **Sync now** control in Settings
-- Conflict detection when two devices edit the same account
+- Automatic record-by-record merging when two devices change different records or fields
+- Conflict detection when two devices change the same field or one deletes a record the other edits
 - Atomic cloud updates so a stale device cannot silently overwrite newer records
 - Automatic local recovery snapshots before material changes or conflict resolution
 - Installable PWA for Android, iPhone/iPad, Windows, macOS, and supported browsers
@@ -23,7 +24,7 @@ HerdHarbor is an installable farm and livestock recordkeeping app for the curren
 
 The application state remains in `localStorage` for immediate offline operation. Each signed-in account also has:
 
-- a last-confirmed cloud base used for conflict checks;
+- a last-confirmed cloud base used for safe three-way merges and conflict checks;
 - a per-user offline recovery copy;
 - a dirty marker retained until cloud confirmation;
 - serialized writes so older requests cannot finish after newer requests;
@@ -39,7 +40,7 @@ Open `https://app.herdharbor.com`, sign in, then use **Install app** or **Settin
 ## Important tester guidance
 
 - Keep periodic downloaded JSON backups for important farm records.
-- If HerdHarbor reports a sync conflict, both copies are retained. Open **Account** and choose which copy to keep.
+- HerdHarbor automatically combines non-overlapping changes from multiple devices. If it reports a true same-field conflict, both copies are retained; open **Account** and choose which copy to keep.
 - Review every spreadsheet import before confirming it. Imports add records and never replace the current farm record.
 - Annual budget columns remain yearly planned figures. They never become dated actual transactions.
 - Do not clear browser/site data while unsynced changes are present.
