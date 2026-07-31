@@ -1,4 +1,4 @@
-# HerdHarbor Pre-Alpha v0.3.01
+# HerdHarbor Pre-Alpha v0.3.02
 
 HerdHarbor is an installable farm and livestock recordkeeping app for the current private tester group.
 
