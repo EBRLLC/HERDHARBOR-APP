@@ -1,4 +1,17 @@
-# HerdHarbor v0.3.03 Release Checklist
+# HerdHarbor v0.3.04 Release Checklist
+
+## Automatic multi-device merge
+
+- Start two devices from the same confirmed cloud copy
+- Change different animals on each device and confirm both changes save automatically
+- Change different fields on the same animal and confirm both field values survive
+- Add a medical record on one device and a budgeting record on the other and confirm both survive
+- Confirm device theme and sidebar preferences do not create a farm-data conflict
+- Edit the same field differently on both devices and confirm synchronization pauses for a protected choice
+- Delete a record on one device while editing it on the other and confirm synchronization pauses
+- Confirm automatic merging creates recovery snapshots for both the local and cloud copies
+- Make another local edit while a merge is saving and confirm the newest edit is rebased and saved
+- Confirm automatic sync resumes after a successful merge
 
 ## Visible cloud sync
 
@@ -8,7 +21,7 @@
 - Disconnect the device and confirm HerdHarbor says the offline copy is protected
 - Reconnect and confirm pending changes save automatically
 - Confirm the sidebar indicator matches the Settings status
-- Confirm a multi-device conflict is shown as action required and neither copy is erased
+- Confirm a genuine overlapping multi-device conflict is shown as action required and neither copy is erased
 
 ## Excel record export
 
@@ -78,7 +91,8 @@
 - Take one device offline and edit a record
 - Edit and sync a different record on the online device
 - Reconnect the offline device
-- Confirm HerdHarbor pauses instead of silently overwriting either copy
+- Confirm HerdHarbor automatically combines changes to different records
+- Repeat with both devices changing the same field and confirm HerdHarbor pauses instead of silently overwriting either copy
 - Test **Keep this device's records**
 - Repeat and test **Use cloud records**
 
