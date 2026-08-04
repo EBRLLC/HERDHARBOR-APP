@@ -1,4 +1,29 @@
-# HerdHarbor v0.3.05 Release Checklist
+# HerdHarbor v0.3.06 Release Checklist
+
+## Faster production entry
+
+- Open Budgeting and confirm Eggs, Milk, Broilers, and Custom product quick-entry buttons open the correct form defaults
+- Add an entry, select **Repeat last entry**, and confirm quantities, assignments, customer, notes, and group/batch name are copied to a new record dated today
+- Confirm repeating an entry creates a new ID and exactly one new linked income transaction rather than changing or duplicating the source transaction
+- Use the Repeat action on a historical row and confirm the source record remains unchanged
+- Add a flock, herd, or broiler batch name and confirm it remains after reload and on a second device
+
+## Production reports
+
+- Switch between Today, This week, This month, This year, and All records
+- Enter a custom From and To range and confirm the app safely corrects a reversed range
+- Filter by product, species, and animal and confirm every total, warning, comparison, and history row updates
+- Switch **Totals by** between Day, Week, Month, and Year
+- Confirm quantities remain separated by product and unit and are never added across eggs, dozens, gallons, birds, pounds, or custom units
+- Confirm product totals show produced, sold, used on farm/stored, donated, waste amount/rate, average sale price, and revenue
+- Confirm an individual dairy cow's History action filters to that cow and Milk
+- Compare two cows, two named flocks/herds, and two named broiler batches
+- With three prior daily entries, add a newest daily quantity at least 25% lower and confirm the production-drop warning appears
+- Add 10% or more waste for a report period and confirm the waste warning appears
+- Print the report and confirm its totals, comparisons, warnings, and detailed history are readable
+- Download the Production report and confirm its Overview, Product Totals, Period Totals, Comparisons, Production History, and Warnings sheets open cleanly
+- Confirm the Excel report uses typed dates, numbers, currency, and percentages and keeps long headers readable
+- Import/export a Production record with a group/flock/herd/batch name and confirm it round-trips unchanged
 
 ## Production and sales
 

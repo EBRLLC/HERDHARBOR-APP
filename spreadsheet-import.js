@@ -141,6 +141,7 @@
         scope: ["scope", "assign to", "assigned to", "allocation"],
         species: ["species", "animal type", "livestock type"],
         animalRef: ["animal", "animal name", "animal id", "animal tag", "id or tag", "animal id tag name", "cow"],
+        groupName: ["group name", "flock", "herd", "batch", "batch name", "flock herd batch", "group flock herd batch name"],
         session: ["session", "milking session", "shift"],
         unit: ["unit", "units", "production unit", "quantity unit"],
         quantity: ["total produced", "total collected", "quantity produced", "quantity collected", "production quantity", "total quantity", "quantity"],
@@ -1235,6 +1236,7 @@
         Number(record.soldQuantity || 0).toFixed(2),
         normalize(record.scope),
         record.animalId || normalize(record.species),
+        normalize(record.groupName),
         Number(record.saleAmount || 0).toFixed(2)
       ].join("|"))
     );
@@ -1336,6 +1338,7 @@
               ? species
               : "",
           animalId: scope === "Animal" ? resolved.animal.id : "",
+          groupName: cleanText(fieldValue(row, map, "groupName")),
           session: product === "Milk" ? cleanText(fieldValue(row, map, "session")) : "",
           unit,
           quantity: String(quantity),
@@ -1370,6 +1373,7 @@
           Number(record.soldQuantity).toFixed(2),
           normalize(record.scope),
           record.animalId || normalize(record.species),
+          normalize(record.groupName),
           Number(record.saleAmount).toFixed(2)
         ].join("|");
         if (duplicateKeys.has(duplicateKey)) {
@@ -1803,7 +1807,7 @@
       ["HerdHarbor Farm Records Export", ""],
       ["Operation", safeExcelText(options.operationName || state.profile?.operationName || "HerdHarbor")],
       ["Exported", new Date()],
-      ["App version", "0.3.05"],
+      ["App version", "0.3.06"],
       ["Animals", animals.length],
       ["Medical records", health.length],
       ["Actual transactions", transactions.length],
@@ -1920,6 +1924,7 @@
       "Scope",
       "Species",
       "Animal ID / Tag / Name",
+      "Group / Flock / Herd / Batch Name",
       "Milking Session",
       "Unit",
       "Total Produced",
@@ -1943,6 +1948,7 @@
         safeExcelText(record.scope),
         safeExcelText(record.species),
         animalExportReference(animalById.get(record.animalId)),
+        safeExcelText(record.groupName),
         safeExcelText(record.session),
         safeExcelText(record.unit),
         numericExcelValue(record.quantity),
@@ -1962,8 +1968,8 @@
     });
     styleExportSheet(
       productionSheet,
-      [16, 18, 14, 14, 28, 18, 14, 16, 16, 16, 24, 20, 14, 20, 16, 16, 14, 24, 30, 38],
-      { dateColumns: [1], currencyColumns: [15], numberColumns: [8, 9, 10, 11, 12, 13, 14, 16] }
+      [16, 18, 14, 14, 28, 28, 18, 14, 16, 16, 16, 24, 20, 14, 20, 16, 16, 14, 24, 30, 38],
+      { dateColumns: [1], currencyColumns: [16], numberColumns: [9, 10, 11, 12, 13, 14, 15, 17] }
     );
 
     const budgetSheet = workbook.addWorksheet("Budgeting");
@@ -2059,6 +2065,165 @@
     return workbook;
   }
 
+  function buildProductionReportWorkbook(data = {}, options = {}) {
+    if (!window.ExcelJS?.Workbook) {
+      throw new Error("The Excel report tool did not load. Close and reopen HerdHarbor, then try again.");
+    }
+    const records = Array.isArray(data.records) ? data.records : [];
+    const summaryRows = Array.isArray(data.summaryRows) ? data.summaryRows : [];
+    const timelineRows = Array.isArray(data.timelineRows) ? data.timelineRows : [];
+    const comparisonRows = Array.isArray(data.comparisonRows) ? data.comparisonRows : [];
+    const warnings = Array.isArray(data.warnings) ? data.warnings : [];
+    const animalById = new Map((Array.isArray(data.animals) ? data.animals : []).map((animal) => [animal.id, animal]));
+    const workbook = new window.ExcelJS.Workbook();
+    workbook.creator = "HerdHarbor";
+    workbook.created = new Date();
+    workbook.modified = new Date();
+    workbook.title = `${options.operationName || "HerdHarbor"} production and sales report`;
+    const setReportPrintLayout = (worksheet, orientation = "landscape") => {
+      worksheet.pageSetup = {
+        paperSize: 1,
+        orientation,
+        fitToPage: true,
+        fitToWidth: 1,
+        fitToHeight: 0,
+        horizontalCentered: true
+      };
+      worksheet.pageMargins = {
+        left: 0.25,
+        right: 0.25,
+        top: 0.45,
+        bottom: 0.45,
+        header: 0.2,
+        footer: 0.2
+      };
+      worksheet.headerFooter = { oddFooter: "HerdHarbor Production & Sales · Page &P of &N" };
+    };
+
+    const overview = workbook.addWorksheet("Overview");
+    const totalRevenue = summaryRows.reduce((sum, row) => sum + Number(row.revenue || 0), 0);
+    overview.addRows([
+      ["HerdHarbor Production & Sales Report", null],
+      ["Operation", safeExcelText(options.operationName || "HerdHarbor")],
+      ["Report period", safeExcelText(options.rangeLabel || "All recorded dates")],
+      ["Product filter", safeExcelText(options.product || "All products")],
+      ["Species filter", safeExcelText(options.species || "All species")],
+      ["Animal filter", safeExcelText(options.animal || "All animals and groups")],
+      ["Totals grouped by", safeExcelText(options.groupBy || "Day")],
+      ["Production records", records.length],
+      ["Sale revenue", totalRevenue],
+      ["Warnings", warnings.length],
+      ["Exported", new Date()],
+      ["App version", "0.3.06"],
+      ["Quantity note", "Quantities stay separated by product and unit so eggs, dozens, gallons, birds, pounds, and custom units are never combined into a misleading total."]
+    ]);
+    overview.mergeCells("A1:B1");
+    overview.getRow(1).height = 34;
+    overview.getRow(1).font = { bold: true, size: 16, color: { argb: "FFFFFFFF" } };
+    overview.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0D2540" } };
+    overview.getColumn(1).width = 24;
+    overview.getColumn(2).width = 62;
+    overview.getColumn(2).alignment = { vertical: "top", wrapText: true };
+    overview.getCell("B9").numFmt = "$#,##0.00";
+    overview.getCell("B11").numFmt = "yyyy-mm-dd h:mm AM/PM";
+    overview.getRow(13).height = 58;
+    overview.views = [{ state: "frozen", ySplit: 1 }];
+    setReportPrintLayout(overview, "portrait");
+
+    const totals = workbook.addWorksheet("Product Totals");
+    totals.addRow(["Product", "Unit", "Produced", "Sold", "Used on Farm / Stored", "Donated", "Waste", "Waste %", "Average Sale Price", "Revenue", "Records"]);
+    summaryRows.forEach((row) => totals.addRow([
+      safeExcelText(row.product), safeExcelText(row.unit), numericExcelValue(row.produced), numericExcelValue(row.sold),
+      numericExcelValue(row.farmUse), numericExcelValue(row.donated), numericExcelValue(row.waste), Number(row.wasteRate || 0),
+      numericExcelValue(row.averagePrice), numericExcelValue(row.revenue), Number(row.recordCount || 0)
+    ]));
+    styleExportSheet(totals, [20, 14, 14, 14, 22, 14, 14, 14, 20, 16, 12], { currencyColumns: [9, 10], numberColumns: [3, 4, 5, 6, 7] });
+    totals.getColumn(8).numFmt = "0.0%";
+    setReportPrintLayout(totals);
+
+    const timeline = workbook.addWorksheet("Period Totals");
+    timeline.addRow(["Period", "Product", "Unit", "Produced", "Sold", "Used on Farm / Stored", "Donated", "Waste", "Waste %", "Average Sale Price", "Revenue"]);
+    timelineRows.forEach((row) => timeline.addRow([
+      safeExcelText(row.label), safeExcelText(row.product), safeExcelText(row.unit), numericExcelValue(row.produced),
+      numericExcelValue(row.sold), numericExcelValue(row.farmUse), numericExcelValue(row.donated), numericExcelValue(row.waste),
+      Number(row.wasteRate || 0), numericExcelValue(row.averagePrice), numericExcelValue(row.revenue)
+    ]));
+    styleExportSheet(timeline, [24, 20, 14, 14, 14, 22, 14, 14, 14, 20, 16], { currencyColumns: [10, 11], numberColumns: [4, 5, 6, 7, 8] });
+    timeline.getColumn(9).numFmt = "0.0%";
+    setReportPrintLayout(timeline);
+
+    const comparisons = workbook.addWorksheet("Comparisons");
+    comparisons.addRow(["Animal / Group", "Type", "Product", "Unit", "Produced", "Sold", "Used on Farm / Stored", "Waste", "Waste %", "Average Sale Price", "Revenue"]);
+    comparisonRows.forEach((row) => comparisons.addRow([
+      safeExcelText(row.label), safeExcelText(row.kind), safeExcelText(row.product), safeExcelText(row.unit),
+      numericExcelValue(row.produced), numericExcelValue(row.sold), numericExcelValue(row.farmUse), numericExcelValue(row.waste),
+      Number(row.wasteRate || 0), numericExcelValue(row.averagePrice), numericExcelValue(row.revenue)
+    ]));
+    styleExportSheet(comparisons, [28, 14, 20, 14, 14, 14, 22, 14, 14, 20, 16], { currencyColumns: [10, 11], numberColumns: [5, 6, 7, 8] });
+    comparisons.getColumn(9).numFmt = "0.0%";
+    setReportPrintLayout(comparisons);
+
+    const history = workbook.addWorksheet("Production History");
+    history.addRow([
+      "Date", "Product", "Scope", "Species", "Animal", "Group / Flock / Herd / Batch", "Milking Session", "Unit",
+      "Produced", "Sold", "Household Use", "Fed to Livestock / Calves", "Stored / Set Aside", "Donated",
+      "Waste", "Waste %", "Average Sale Price", "Sale Revenue", "Customer", "Waste / Discard Reason", "Notes"
+    ]);
+    records.forEach((record) => {
+      const quantity = Number(record.quantity || 0);
+      const waste = Number(record.wasteQuantity || 0);
+      const sold = Number(record.soldQuantity || 0);
+      const revenue = Number(record.saleAmount || 0);
+      history.addRow([
+        dateOnlyValue(record.date), safeExcelText(record.product), safeExcelText(record.scope), safeExcelText(record.species),
+        safeExcelText(animalById.get(record.animalId)?.name), safeExcelText(record.groupName), safeExcelText(record.session), safeExcelText(record.unit),
+        numericExcelValue(record.quantity), numericExcelValue(record.soldQuantity), numericExcelValue(record.householdQuantity),
+        numericExcelValue(record.feedQuantity), numericExcelValue(record.setAsideQuantity), numericExcelValue(record.donatedQuantity),
+        numericExcelValue(record.wasteQuantity), quantity > 0 ? waste / quantity : 0, sold > 0 ? revenue / sold : null,
+        numericExcelValue(record.saleAmount), safeExcelText(record.customer), safeExcelText(record.wasteReason), safeExcelText(record.notes)
+      ]);
+    });
+    styleExportSheet(
+      history,
+      [16, 18, 14, 14, 24, 28, 18, 14, 14, 14, 18, 24, 20, 14, 14, 14, 20, 16, 24, 30, 38],
+      { dateColumns: [1], currencyColumns: [17, 18], numberColumns: [9, 10, 11, 12, 13, 14, 15] }
+    );
+    history.getColumn(16).numFmt = "0.0%";
+    setReportPrintLayout(history);
+    history.pageSetup.fitToWidth = 2;
+
+    const warningSheet = workbook.addWorksheet("Warnings");
+    warningSheet.addRow(["Level", "Type", "Message"]);
+    if (warnings.length) {
+      warnings.forEach((warning) => warningSheet.addRow([
+        safeExcelText(warning.severity === "danger" ? "High" : "Review"),
+        safeExcelText(warning.type),
+        safeExcelText(warning.message)
+      ]));
+    } else {
+      warningSheet.addRow(["Information", "None", "No basic production-drop or high-waste warnings were found for this report period."]);
+    }
+    styleExportSheet(warningSheet, [14, 18, 80]);
+    setReportPrintLayout(warningSheet);
+
+    return workbook;
+  }
+
+  async function downloadProductionReport(data, options = {}) {
+    const workbook = buildProductionReportWorkbook(data, options);
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const operationSlug = cleanText(options.operationName || "herdharbor")
+      .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "herdharbor";
+    const rangeSlug = cleanText(options.start || "all-dates").replace(/[^0-9a-z-]+/gi, "-").toLowerCase();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${operationSlug}-production-report-${rangeSlug}.xlsx`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   async function downloadExport(state, options = {}) {
     const workbook = buildExportWorkbook(state, options);
     const buffer = await workbook.xlsx.writeBuffer();
@@ -2152,6 +2317,7 @@
       "Scope",
       "Species",
       "Animal ID / Tag / Name",
+      "Group / Flock / Herd / Batch Name",
       "Milking Session",
       "Unit",
       "Total Produced",
@@ -2170,7 +2336,7 @@
     ]);
     styleTemplateSheet(
       production,
-      [16, 18, 14, 14, 28, 18, 14, 16, 16, 16, 24, 20, 14, 20, 16, 16, 14, 24, 30, 38]
+      [16, 18, 14, 14, 28, 28, 18, 14, 16, 16, 16, 24, 20, 14, 20, 16, 16, 14, 24, 30, 38]
     );
     production.dataValidations.add("B2:B5000", {
       type: "list",
@@ -2187,17 +2353,17 @@
       allowBlank: true,
       formulae: ['"Rabbit,Chicken,Duck,Turkey,Dog,Horse,Goat,Sheep,Cattle,Pig,Other"']
     });
-    production.dataValidations.add("F2:F5000", {
+    production.dataValidations.add("G2:G5000", {
       type: "list",
       allowBlank: true,
       formulae: ['"Morning,Evening,Combined,Other"']
     });
-    production.dataValidations.add("G2:G5000", {
+    production.dataValidations.add("H2:H5000", {
       type: "list",
       allowBlank: false,
       formulae: ['"eggs,dozen,cartons,birds,lb,kg,gallons,quarts,liters,pints,other"']
     });
-    production.dataValidations.add("Q2:Q5000", {
+    production.dataValidations.add("R2:R5000", {
       type: "list",
       allowBlank: true,
       formulae: ['"lb,kg"']
@@ -2294,13 +2460,15 @@
     openImport,
     downloadTemplate,
     downloadExport,
+    downloadProductionReport,
     __test: {
       parseWorkbookBuffer,
       dateToISO,
       moneyNumber,
       normalize,
       issueAdvice,
-      buildExportWorkbook
+      buildExportWorkbook,
+      buildProductionReportWorkbook
     }
   };
 })();

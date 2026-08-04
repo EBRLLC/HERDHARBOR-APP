@@ -6,7 +6,7 @@ const ExcelJS = require("../vendor/exceljs-4.4.0.min.js");
 global.window = { ExcelJS, JSZip };
 require("../spreadsheet-import.js");
 
-const { parseWorkbookBuffer, dateToISO, moneyNumber, issueAdvice, buildExportWorkbook } =
+const { parseWorkbookBuffer, dateToISO, moneyNumber, issueAdvice, buildExportWorkbook, buildProductionReportWorkbook } =
   global.window.HerdHarborSpreadsheet.__test;
 
 async function buildWorkbook() {
@@ -230,7 +230,8 @@ async function run() {
     ["Instructions", "Animals", "Production", "Budgeting", "Annual Budget", "Medical"]
   );
   assert.equal(templateWorkbook.getWorksheet("Animals").getCell("A1").value, "Name");
-  assert.equal(templateWorkbook.getWorksheet("Production").getCell("H1").value, "Total Produced");
+  assert.equal(templateWorkbook.getWorksheet("Production").getCell("F1").value, "Group / Flock / Herd / Batch Name");
+  assert.equal(templateWorkbook.getWorksheet("Production").getCell("I1").value, "Total Produced");
   assert.equal(templateWorkbook.getWorksheet("Budgeting").getCell("H1").value, "Amount");
   assert.equal(templateWorkbook.getWorksheet("Annual Budget").getCell("D1").value, "Feed Budget");
   assert.equal(templateWorkbook.getWorksheet("Medical").getCell("C1").value, "Record Type");
@@ -321,6 +322,7 @@ async function run() {
       scope: "Species",
       species: "Chicken",
       animalId: "",
+      groupName: "Layer flock A",
       session: "",
       unit: "dozen",
       quantity: "12",
@@ -371,12 +373,50 @@ async function run() {
     "formula-looking source text remains a non-executable Excel string"
   );
   assert.equal(exportWorkbook.getWorksheet("Medical").getCell("M2").value, 4.2);
-  assert.equal(exportWorkbook.getWorksheet("Production").getCell("H2").value, 12);
-  assert.equal(exportWorkbook.getWorksheet("Production").getCell("I2").value, 8);
-  assert.equal(exportWorkbook.getWorksheet("Production").getCell("O2").value, 24);
+  assert.equal(exportWorkbook.getWorksheet("Production").getCell("F2").value, "Layer flock A");
+  assert.equal(exportWorkbook.getWorksheet("Production").getCell("I2").value, 12);
+  assert.equal(exportWorkbook.getWorksheet("Production").getCell("J2").value, 8);
+  assert.equal(exportWorkbook.getWorksheet("Production").getCell("P2").value, 24);
   assert.equal(exportWorkbook.getWorksheet("Budgeting").getCell("H2").value, 12.5);
   assert.equal(exportWorkbook.getWorksheet("Budgeting").rowCount, 2, "linked production income is not duplicated on the Budgeting sheet");
   assert.equal(exportWorkbook.getWorksheet("Annual Budget").getCell("D2").value, 100);
+
+  const reportWorkbook = buildProductionReportWorkbook({
+    records: exportState.productionRecords,
+    animals: exportState.animals,
+    summaryRows: [{
+      product: "Eggs", unit: "dozen", produced: 12, sold: 8, farmUse: 3,
+      donated: 0, waste: 1, wasteRate: 1 / 12, averagePrice: 3, revenue: 24, recordCount: 1
+    }],
+    timelineRows: [{
+      label: "Jul 30, 2026", product: "Eggs", unit: "dozen", produced: 12, sold: 8,
+      farmUse: 3, donated: 0, waste: 1, wasteRate: 1 / 12, averagePrice: 3, revenue: 24
+    }],
+    comparisonRows: [{
+      label: "Layer flock A", kind: "Group", product: "Eggs", unit: "dozen", produced: 12,
+      sold: 8, farmUse: 3, waste: 1, wasteRate: 1 / 12, averagePrice: 3, revenue: 24
+    }],
+    warnings: [{ type: "waste", severity: "warning", message: "Egg waste is above the review threshold." }]
+  }, {
+    operationName: "Harbor Test Farm",
+    rangeLabel: "Jul 1, 2026 – Jul 31, 2026",
+    groupBy: "Day"
+  });
+  assert.deepEqual(
+    reportWorkbook.worksheets.map((worksheet) => worksheet.name),
+    ["Overview", "Product Totals", "Period Totals", "Comparisons", "Production History", "Warnings"]
+  );
+  assert.equal(reportWorkbook.getWorksheet("Product Totals").getCell("C2").value, 12);
+  assert.equal(reportWorkbook.getWorksheet("Product Totals").getCell("J2").value, 24);
+  assert.equal(reportWorkbook.getWorksheet("Production History").getCell("F2").value, "Layer flock A");
+  assert.equal(reportWorkbook.getWorksheet("Warnings").getCell("C2").value, "Egg waste is above the review threshold.");
+  const reportBuffer = await reportWorkbook.xlsx.writeBuffer();
+  const reportReload = new ExcelJS.Workbook();
+  await reportReload.xlsx.load(reportBuffer);
+  assert.equal(reportReload.getWorksheet("Overview").getCell("B12").value, "0.3.06");
+  if (process.env.HH_PRODUCTION_REPORT_QA_PATH) {
+    require("node:fs").writeFileSync(process.env.HH_PRODUCTION_REPORT_QA_PATH, Buffer.from(reportBuffer));
+  }
 
   const exportBuffer = await exportWorkbook.xlsx.writeBuffer();
   if (process.env.HH_EXPORT_QA_PATH) {
@@ -399,6 +439,7 @@ async function run() {
   assert.equal(roundTrip.records.health.length, 1);
   assert.equal(roundTrip.records.transactions.length, 1);
   assert.equal(roundTrip.records.productionRecords.length, 1);
+  assert.equal(roundTrip.records.productionRecords[0].groupName, "Layer flock A");
   assert.equal(roundTrip.records.productionRecords[0].wasteQuantity, "1");
   assert.equal(roundTrip.records.productionRecords[0].saleAmount, "24.00");
   assert.equal(roundTrip.records.annualBudgetPlans.length, 8);
