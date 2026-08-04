@@ -45,6 +45,7 @@ const base = {
   ],
   health: [],
   transactions: [],
+  productionRecords: [],
   activity: [],
   settings: {
     species: ["Rabbit"],
@@ -61,6 +62,13 @@ const base = {
     id: "activity-local",
     text: "Added local animal",
     date: "2026-07-31T02:00:00.000Z"
+  });
+  local.productionRecords.push({
+    id: "production-local",
+    date: "2026-08-04",
+    product: "Eggs",
+    quantity: "24",
+    unit: "eggs"
   });
   local.settings.theme = "dark";
 
@@ -86,6 +94,11 @@ const base = {
   assert.deepEqual(
     result.value.health.map((item) => item.id),
     ["health-remote"]
+  );
+  assert.deepEqual(
+    result.value.productionRecords.map((item) => item.id),
+    ["production-local"],
+    "new production records merge without changing the cloud schema"
   );
   assert.deepEqual(
     result.value.activity.map((item) => item.id),
