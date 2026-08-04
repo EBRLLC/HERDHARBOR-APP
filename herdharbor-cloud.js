@@ -277,14 +277,16 @@
     if (sameValue(remote, base)) return { value: local, conflicts: [] };
 
     if (
-      ["updatedAt", "savedAt", "logoUpdatedAt"].includes(fieldName) &&
+      ["createdAt", "updatedAt", "savedAt", "logoUpdatedAt", "completedAt"].includes(fieldName) &&
       typeof local === "string" &&
       typeof remote === "string" &&
       Number.isFinite(Date.parse(local)) &&
       Number.isFinite(Date.parse(remote))
     ) {
       return {
-        value: Date.parse(local) >= Date.parse(remote) ? local : remote,
+        value: fieldName === "createdAt"
+          ? (Date.parse(local) <= Date.parse(remote) ? local : remote)
+          : (Date.parse(local) >= Date.parse(remote) ? local : remote),
         conflicts: []
       };
     }
@@ -1371,7 +1373,7 @@
 
     const payload = JSON.stringify({
       app: "HerdHarbor",
-      version: "0.3.06",
+      version: "0.3.07",
       backupType: "local-safety-backup",
       exportedAt: new Date().toISOString(),
       data: appState

@@ -44,6 +44,7 @@ const base = {
     }
   ],
   health: [],
+  tasks: [],
   transactions: [],
   productionRecords: [],
   activity: [],
@@ -110,6 +111,48 @@ const base = {
     false,
     "device-only settings stay local"
   );
+}
+
+{
+  const recurringBase = structuredClone(base);
+  recurringBase.tasks = [{
+    id: "task-feed",
+    title: "Feed broilers",
+    dueDate: "2026-08-04",
+    recurrence: "Daily",
+    completed: false
+  }];
+  const local = structuredClone(recurringBase);
+  const remote = structuredClone(recurringBase);
+  [
+    [local, "2026-08-04T12:00:00.000Z"],
+    [remote, "2026-08-04T12:00:03.000Z"]
+  ].forEach(([copy, timestamp]) => {
+    Object.assign(copy.tasks[0], {
+      completed: true,
+      completedAt: timestamp,
+      updatedAt: timestamp,
+      seriesId: "task-feed",
+      nextTaskId: "task_occurrence_task-feed_20260805"
+    });
+    copy.tasks.push({
+      id: "task_occurrence_task-feed_20260805",
+      title: "Feed broilers",
+      dueDate: "2026-08-05",
+      recurrence: "Daily",
+      completed: false,
+      seriesId: "task-feed",
+      generatedFromTaskId: "task-feed",
+      createdAt: timestamp,
+      updatedAt: timestamp
+    });
+  });
+
+  const result = mergeRawStates(raw(recurringBase), raw(local), raw(remote));
+  assert.equal(result.ok, true, "the same recurring occurrence created on two devices merges safely");
+  assert.equal(result.value.tasks.length, 2, "the deterministic occurrence ID prevents duplicates");
+  assert.equal(result.value.tasks[0].completedAt, "2026-08-04T12:00:03.000Z", "the latest completion timestamp wins");
+  assert.equal(result.value.tasks[1].createdAt, "2026-08-04T12:00:00.000Z", "the earliest creation timestamp wins");
 }
 
 {
