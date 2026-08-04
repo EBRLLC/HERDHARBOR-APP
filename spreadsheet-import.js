@@ -124,6 +124,40 @@
         notes: ["notes", "comments"]
       }
     },
+    production: {
+      sheetNames: [
+        "production",
+        "production sales",
+        "production and sales",
+        "farm products",
+        "egg production",
+        "broiler production",
+        "milk production",
+        "dairy production"
+      ],
+      fields: {
+        date: ["date", "production date", "collection date", "processing date", "milking date"],
+        product: ["product", "product type", "production type", "item"],
+        scope: ["scope", "assign to", "assigned to", "allocation"],
+        species: ["species", "animal type", "livestock type"],
+        animalRef: ["animal", "animal name", "animal id", "animal tag", "id or tag", "animal id tag name", "cow"],
+        session: ["session", "milking session", "shift"],
+        unit: ["unit", "units", "production unit", "quantity unit"],
+        quantity: ["total produced", "total collected", "quantity produced", "quantity collected", "production quantity", "total quantity", "quantity"],
+        soldQuantity: ["quantity sold", "sold quantity", "sold"],
+        householdQuantity: ["household use", "family use", "home use"],
+        feedQuantity: ["fed to livestock calves", "fed to livestock", "calf feed", "fed to calves", "animal feed"],
+        setAsideQuantity: ["stored set aside", "stored", "set aside", "hatching", "frozen"],
+        donatedQuantity: ["donated", "donation quantity"],
+        wasteQuantity: ["wasted discarded", "waste", "wasted", "discarded", "loss condemned", "condemned"],
+        saleAmount: ["sale income", "sales income", "revenue", "income", "sale amount"],
+        totalWeight: ["batch weight", "total weight", "processed weight"],
+        weightUnit: ["weight unit", "batch weight unit"],
+        customer: ["customer", "buyer"],
+        wasteReason: ["waste discard reason", "waste reason", "discard reason", "loss reason"],
+        notes: ["notes", "comments"]
+      }
+    },
     health: {
       sheetNames: [
         "medical",
@@ -530,6 +564,42 @@
     });
   }
 
+  function canonicalProductionProduct(value) {
+    const text = cleanText(value);
+    const normalized = normalize(text);
+    const aliases = {
+      egg: "Eggs",
+      eggs: "Eggs",
+      "table eggs": "Eggs",
+      broiler: "Broilers",
+      broilers: "Broilers",
+      "broiler chicken": "Broilers",
+      "broiler chickens": "Broilers",
+      chicken: "Broilers",
+      chickens: "Broilers",
+      dairy: "Milk",
+      milk: "Milk",
+      "cow milk": "Milk",
+      "goat milk": "Milk"
+    };
+    return aliases[normalized] || text;
+  }
+
+  function productionDefaults(product) {
+    if (product === "Eggs") return { species: "Chicken", unit: "eggs" };
+    if (product === "Broilers") return { species: "Chicken", unit: "birds" };
+    if (product === "Milk") return { species: "Cattle", unit: "gallons" };
+    return { species: "", unit: "units" };
+  }
+
+  function productFromSheetName(sheetName) {
+    const normalizedName = normalize(sheetName);
+    if (normalizedName.includes("egg")) return "Eggs";
+    if (normalizedName.includes("broiler")) return "Broilers";
+    if (normalizedName.includes("milk") || normalizedName.includes("dairy")) return "Milk";
+    return "";
+  }
+
   function animalReferenceKeys(animal) {
     return [
       animal.id ? `id:${normalize(animal.id)}` : "",
@@ -614,6 +684,12 @@
     }
     if (normalizedMessage.includes("amount") || normalizedMessage.includes("cost")) {
       return "Enter a number without extra words. Actual transactions must be greater than zero; annual planned amounts may be zero or greater.";
+    }
+    if (normalizedMessage.includes("quantity")) {
+      return "Enter numeric quantities only. Total production must be greater than zero, and sold, used, stored, donated, and wasted quantities cannot exceed that total.";
+    }
+    if (normalizedMessage.includes("product")) {
+      return "Enter Eggs, Broilers, Milk, or a clear name for another farm product.";
     }
     if (normalizedMessage.includes("weight")) {
       return "Enter a numeric weight and use lb, oz, kg, or g for the unit.";
@@ -1148,12 +1224,171 @@
     });
   }
 
+  function stageProduction(sheets, context, result) {
+    const lookup = buildAnimalLookup([...context.animals, ...result.records.animals]);
+    const duplicateKeys = new Set(
+      (context.productionRecords || []).map((record) => [
+        record.date,
+        normalize(record.product),
+        normalize(record.unit),
+        Number(record.quantity || 0).toFixed(2),
+        Number(record.soldQuantity || 0).toFixed(2),
+        normalize(record.scope),
+        record.animalId || normalize(record.species),
+        Number(record.saleAmount || 0).toFixed(2)
+      ].join("|"))
+    );
+
+    sheets.forEach(({ worksheet, header, map }) => {
+      worksheetRows(worksheet, header).forEach((row) => {
+        const source = sourceFor(worksheet, row);
+        const dateRaw = fieldValue(row, map, "date");
+        const date = dateToISO(dateRaw);
+        const product = canonicalProductionProduct(fieldValue(row, map, "product")) ||
+          productFromSheetName(worksheet.name);
+        const defaults = productionDefaults(product);
+        const unit = cleanText(fieldValue(row, map, "unit")) || defaults.unit;
+        const quantityRaw = fieldValue(row, map, "quantity");
+        const quantity = moneyNumber(quantityRaw);
+        const animalRef = cleanText(fieldValue(row, map, "animalRef"));
+        const speciesRaw = cleanText(fieldValue(row, map, "species"));
+        const defaultSpecies = defaults.species
+          ? canonicalSpecies(defaults.species, context.species)
+          : "";
+        const species = speciesRaw
+          ? canonicalSpecies(speciesRaw, context.species)
+          : defaultSpecies;
+        const scopeRaw = cleanText(fieldValue(row, map, "scope"));
+        let scope = scopeRaw ? canonicalScope(scopeRaw) : "";
+        if (!scope) scope = animalRef ? "Animal" : species ? "Species" : "Operation";
+        const resolved = animalRef ? resolveAnimal(animalRef, lookup) : { animal: null, reason: "blank" };
+        const numericFields = [
+          "soldQuantity", "householdQuantity", "feedQuantity", "setAsideQuantity",
+          "donatedQuantity", "wasteQuantity", "saleAmount", "totalWeight"
+        ];
+        const numbers = {};
+        let invalidNumericField = "";
+        numericFields.forEach((fieldName) => {
+          const raw = fieldValue(row, map, fieldName);
+          if (!cleanText(raw)) {
+            numbers[fieldName] = 0;
+            return;
+          }
+          const parsed = moneyNumber(raw);
+          if (!Number.isFinite(parsed) || parsed < 0) invalidNumericField ||= fieldName;
+          numbers[fieldName] = parsed;
+        });
+
+        if (!date) {
+          issue(result, source, `Production date “${cleanText(dateRaw) || "(blank)"}” is invalid.`);
+          return;
+        }
+        if (!product) {
+          issue(result, source, "Production product is blank.");
+          return;
+        }
+        if (!Number.isFinite(quantity) || quantity <= 0) {
+          issue(result, source, `Production quantity “${cleanText(quantityRaw) || "(blank)"}” must be greater than zero.`);
+          return;
+        }
+        if (!unit) {
+          issue(result, source, "Production unit is blank.");
+          return;
+        }
+        if (invalidNumericField) {
+          issue(result, source, `${invalidNumericField} must be zero or greater.`);
+          return;
+        }
+        if (scopeRaw && !canonicalScope(scopeRaw)) {
+          issue(result, source, `Scope “${scopeRaw}” must be Operation, Species, or Animal.`);
+          return;
+        }
+        if (scope === "Animal" && !resolved.animal) {
+          const reason = resolved.reason === "ambiguous" ? "matches more than one animal" : "was not found";
+          issue(result, source, `Production animal “${animalRef || "(blank)"}” ${reason}.`);
+          return;
+        }
+        if (scope === "Species" && !species) {
+          issue(result, source, speciesRaw
+            ? `Species “${speciesRaw}” is not supported in this workspace.`
+            : "A species-assigned production record requires a species.");
+          return;
+        }
+        const allocated = numbers.soldQuantity + numbers.householdQuantity + numbers.feedQuantity +
+          numbers.setAsideQuantity + numbers.donatedQuantity + numbers.wasteQuantity;
+        if (allocated > quantity + 0.0001) {
+          issue(result, source, `Allocated production quantity ${allocated} is greater than total production ${quantity}.`);
+          return;
+        }
+        if (numbers.saleAmount > 0 && !(numbers.soldQuantity > 0)) {
+          issue(result, source, "Sale income requires a quantity sold greater than zero.");
+          return;
+        }
+
+        const record = {
+          id: uid("production"),
+          date,
+          product,
+          scope,
+          species: scope === "Animal"
+            ? resolved.animal.species || ""
+            : scope === "Species"
+              ? species
+              : "",
+          animalId: scope === "Animal" ? resolved.animal.id : "",
+          session: product === "Milk" ? cleanText(fieldValue(row, map, "session")) : "",
+          unit,
+          quantity: String(quantity),
+          soldQuantity: String(numbers.soldQuantity),
+          householdQuantity: String(numbers.householdQuantity),
+          feedQuantity: String(numbers.feedQuantity),
+          setAsideQuantity: String(numbers.setAsideQuantity),
+          donatedQuantity: String(numbers.donatedQuantity),
+          wasteQuantity: String(numbers.wasteQuantity),
+          saleAmount: Number(numbers.saleAmount || 0).toFixed(2),
+          totalWeight: numbers.totalWeight > 0 ? String(numbers.totalWeight) : "",
+          weightUnit: numbers.totalWeight > 0
+            ? cleanText(fieldValue(row, map, "weightUnit")) || "lb"
+            : "",
+          customer: cleanText(fieldValue(row, map, "customer")),
+          wasteReason: cleanText(fieldValue(row, map, "wasteReason")),
+          notes: cleanText(fieldValue(row, map, "notes")),
+          transactionId: "",
+          importSource: {
+            type: "Excel spreadsheet",
+            fileName: context.fileName || "",
+            sheet: worksheet.name,
+            row: row.rowNumber
+          },
+          createdAt: new Date().toISOString()
+        };
+        const duplicateKey = [
+          record.date,
+          normalize(record.product),
+          normalize(record.unit),
+          Number(record.quantity).toFixed(2),
+          Number(record.soldQuantity).toFixed(2),
+          normalize(record.scope),
+          record.animalId || normalize(record.species),
+          Number(record.saleAmount).toFixed(2)
+        ].join("|");
+        if (duplicateKeys.has(duplicateKey)) {
+          issue(result, source, `${record.product} production on ${date} already exists and will be skipped.`, "duplicate");
+          return;
+        }
+        duplicateKeys.add(duplicateKey);
+        result.records.productionRecords.push(record);
+      });
+    });
+  }
+
   function requiredFieldsPresent(type, map, worksheet, context) {
     const required = {
       animals: ["name", "species"],
       health: ["animalRef", "date", "type"],
       annualPlans: ["animalRef"],
-      transactions: ["date", "type", "amount"]
+      transactions: ["date", "type", "amount"],
+      production: ["date", "product", "quantity"]
     }[type];
     return required.filter((field) => {
       if (map[field]) return false;
@@ -1161,6 +1396,7 @@
         speciesFromSheetName(worksheet.name, context.species)) return false;
       if (type === "health" && field === "type" &&
         (normalize(worksheet.name) === "weights" || map.weight)) return false;
+      if (type === "production" && field === "product" && productFromSheetName(worksheet.name)) return false;
       return true;
     });
   }
@@ -1218,7 +1454,7 @@
 
     const workbook = await loadCompatibleWorkbook(buffer);
     const result = {
-      records: { animals: [], transactions: [], annualBudgetPlans: [], health: [] },
+      records: { animals: [], transactions: [], productionRecords: [], annualBudgetPlans: [], health: [] },
       issues: [],
       parsedSheets: [],
       ignoredSheets: [],
@@ -1227,7 +1463,7 @@
       duplicateCount: 0,
       totalRows: 0
     };
-    const sheetsByType = { animals: [], transactions: [], annualPlans: [], health: [] };
+    const sheetsByType = { animals: [], transactions: [], production: [], annualPlans: [], health: [] };
 
     workbook.eachSheet((worksheet) => {
       const header = findHeaderRow(worksheet);
@@ -1258,7 +1494,7 @@
     });
 
     if (!result.parsedSheets.length) {
-      throw new Error("No Animals, Budgeting, Annual Budget, or Medical sheet could be recognized.");
+      throw new Error("No Animals, Production, Budgeting, Annual Budget, or Medical sheet could be recognized.");
     }
     if (result.totalRows > MAX_DATA_ROWS) {
       throw new Error(`This workbook has ${result.totalRows.toLocaleString()} data rows. The current limit is ${MAX_DATA_ROWS.toLocaleString()}.`);
@@ -1267,6 +1503,7 @@
     stageAnimals(sheetsByType.animals, context, result);
     stageHealth(sheetsByType.health, context, result);
     stageTransactions(sheetsByType.transactions, context, result);
+    stageProduction(sheetsByType.production, context, result);
     stageAnnualPlans(sheetsByType.annualPlans, context, result);
     return result;
   }
@@ -1274,6 +1511,7 @@
   function summaryCount(result) {
     return result.records.animals.length +
       result.records.transactions.length +
+      result.records.productionRecords.length +
       result.records.annualBudgetPlans.length +
       result.records.health.length;
   }
@@ -1294,6 +1532,16 @@
         date: record.date,
         subject: `${record.type} · $${record.amount}`,
         details: [record.category, record.description || record.party].filter(Boolean).join(" · ")
+      })),
+      ...result.records.productionRecords.map((record) => ({
+        area: "Production",
+        date: record.date,
+        subject: `${record.product} · ${record.quantity} ${record.unit}`,
+        details: [
+          record.soldQuantity > 0 ? `${record.soldQuantity} sold` : "",
+          record.wasteQuantity > 0 ? `${record.wasteQuantity} wasted` : "",
+          record.saleAmount > 0 ? `$${record.saleAmount} income` : ""
+        ].filter(Boolean).join(" · ") || "Production record"
       })),
       ...result.records.annualBudgetPlans.map((record) => ({
         area: "Annual plan",
@@ -1358,6 +1606,7 @@
       <div class="hh-import-summary">
         <div class="hh-import-stat"><strong>${result.records.animals.length}</strong><span>Animals ready</span></div>
         <div class="hh-import-stat"><strong>${result.records.transactions.length}</strong><span>Transactions ready</span></div>
+        <div class="hh-import-stat"><strong>${result.records.productionRecords.length}</strong><span>Production ready</span></div>
         <div class="hh-import-stat"><strong>${result.records.annualBudgetPlans.length}</strong><span>Annual plans ready</span></div>
         <div class="hh-import-stat"><strong>${result.records.health.length}</strong><span>Medical records ready</span></div>
         <div class="hh-import-stat"><strong>${result.duplicateCount + result.errorCount}</strong><span>Rows skipped</span></div>
@@ -1447,6 +1696,7 @@
     const result = await parseWorkbookBuffer(await file.arrayBuffer(), {
       animals: Array.isArray(options.state.animals) ? options.state.animals : [],
       transactions: Array.isArray(options.state.transactions) ? options.state.transactions : [],
+      productionRecords: Array.isArray(options.state.productionRecords) ? options.state.productionRecords : [],
       health: Array.isArray(options.state.health) ? options.state.health : [],
       annualBudgetPlans: Array.isArray(options.state.annualBudgetPlans)
         ? options.state.annualBudgetPlans
@@ -1514,6 +1764,9 @@
     (options.currencyColumns || []).forEach((columnNumber) => {
       worksheet.getColumn(columnNumber).numFmt = "$#,##0.00";
     });
+    (options.numberColumns || []).forEach((columnNumber) => {
+      worksheet.getColumn(columnNumber).numFmt = "0.00";
+    });
     for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber += 1) {
       const row = worksheet.getRow(rowNumber);
       row.alignment = { vertical: "top", wrapText: true };
@@ -1535,6 +1788,8 @@
     const animals = Array.isArray(state.animals) ? state.animals : [];
     const health = Array.isArray(state.health) ? state.health : [];
     const transactions = Array.isArray(state.transactions) ? state.transactions : [];
+    const productionRecords = Array.isArray(state.productionRecords) ? state.productionRecords : [];
+    const standaloneTransactions = transactions.filter((record) => record.sourceType !== "production");
     const annualBudgetPlans = Array.isArray(state.annualBudgetPlans) ? state.annualBudgetPlans : [];
     const animalById = new Map(animals.map((animal) => [animal.id, animal]));
     const workbook = new window.ExcelJS.Workbook();
@@ -1548,12 +1803,13 @@
       ["HerdHarbor Farm Records Export", ""],
       ["Operation", safeExcelText(options.operationName || state.profile?.operationName || "HerdHarbor")],
       ["Exported", new Date()],
-      ["App version", "0.3.03"],
+      ["App version", "0.3.05"],
       ["Animals", animals.length],
       ["Medical records", health.length],
       ["Actual transactions", transactions.length],
+      ["Production records", productionRecords.length],
       ["Annual plan entries", annualBudgetPlans.length],
-      ["Safety note", "This workbook is a readable record export. Keep the JSON safety backup for complete HerdHarbor restoration."]
+      ["Safety note", "This workbook is a readable record export. Production-linked sale income appears on the Production sheet and is recreated on import instead of being duplicated on Budgeting. Keep the JSON safety backup for complete HerdHarbor restoration."]
     ]);
     overview.mergeCells("A1:B1");
     overview.getRow(1).height = 34;
@@ -1567,8 +1823,8 @@
     overview.getColumn(2).width = 56;
     overview.getColumn(2).alignment = { vertical: "top", wrapText: true };
     overview.getCell("B3").numFmt = "yyyy-mm-dd h:mm AM/PM";
-    overview.getRow(9).height = 42;
-    overview.getRow(9).alignment = { vertical: "top", wrapText: true };
+    overview.getRow(10).height = 56;
+    overview.getRow(10).alignment = { vertical: "top", wrapText: true };
     overview.views = [{ state: "frozen", ySplit: 1 }];
 
     const animalSheet = workbook.addWorksheet("Animals");
@@ -1657,6 +1913,59 @@
       { dateColumns: [2, 15], currencyColumns: [10] }
     );
 
+    const productionSheet = workbook.addWorksheet("Production");
+    productionSheet.addRow([
+      "Date",
+      "Product",
+      "Scope",
+      "Species",
+      "Animal ID / Tag / Name",
+      "Milking Session",
+      "Unit",
+      "Total Produced",
+      "Quantity Sold",
+      "Household Use",
+      "Fed to Livestock / Calves",
+      "Stored / Set Aside",
+      "Donated",
+      "Wasted / Discarded",
+      "Sale Income",
+      "Total Weight",
+      "Weight Unit",
+      "Customer",
+      "Waste / Discard Reason",
+      "Notes"
+    ]);
+    productionRecords.forEach((record) => {
+      productionSheet.addRow([
+        dateOnlyValue(record.date),
+        safeExcelText(record.product),
+        safeExcelText(record.scope),
+        safeExcelText(record.species),
+        animalExportReference(animalById.get(record.animalId)),
+        safeExcelText(record.session),
+        safeExcelText(record.unit),
+        numericExcelValue(record.quantity),
+        numericExcelValue(record.soldQuantity),
+        numericExcelValue(record.householdQuantity),
+        numericExcelValue(record.feedQuantity),
+        numericExcelValue(record.setAsideQuantity),
+        numericExcelValue(record.donatedQuantity),
+        numericExcelValue(record.wasteQuantity),
+        numericExcelValue(record.saleAmount),
+        numericExcelValue(record.totalWeight),
+        safeExcelText(record.weightUnit),
+        safeExcelText(record.customer),
+        safeExcelText(record.wasteReason),
+        safeExcelText(record.notes)
+      ]);
+    });
+    styleExportSheet(
+      productionSheet,
+      [16, 18, 14, 14, 28, 18, 14, 16, 16, 16, 24, 20, 14, 20, 16, 16, 14, 24, 30, 38],
+      { dateColumns: [1], currencyColumns: [15], numberColumns: [8, 9, 10, 11, 12, 13, 14, 16] }
+    );
+
     const budgetSheet = workbook.addWorksheet("Budgeting");
     budgetSheet.addRow([
       "Date",
@@ -1671,7 +1980,7 @@
       "Description",
       "Notes"
     ]);
-    transactions.forEach((record) => {
+    standaloneTransactions.forEach((record) => {
       budgetSheet.addRow([
         dateOnlyValue(record.date),
         safeExcelText(record.type),
@@ -1781,11 +2090,12 @@
     const instructions = workbook.addWorksheet("Instructions");
     instructions.addRows([
       ["HerdHarbor Excel Import Template", ""],
-      ["How to use", "Enter records in any or all of the Animals, Budgeting, Annual Budget, and Medical sheets. Keep the header row unchanged."],
+      ["How to use", "Enter records in any or all of the Animals, Production, Budgeting, Annual Budget, and Medical sheets. Keep the header row unchanged."],
       ["Review first", "HerdHarbor previews valid records and flags duplicate or invalid rows before import."],
       ["Existing data", "Spreadsheet imports add records. They do not replace current farm records."],
-      ["Animal matching", "Medical and animal-assigned budget rows can match an animal by ID/tag, tattoo, registration number, or unique name."],
+      ["Animal matching", "Medical, production, and animal-assigned budget rows can match an animal by ID/tag, tattoo, registration number, or unique name."],
       ["Dates", "Use Excel dates or YYYY-MM-DD."],
+      ["Production", "Total Produced must be greater than zero and must cover all sold, household, feed, stored, donated, and wasted quantities. Sale Income becomes one linked Budgeting transaction."],
       ["Money", "Transaction amounts must be greater than zero. Annual Budget values remain yearly planned figures and never become actual transactions."],
       ["Supported files", "Save as .xlsx. Legacy .xls files must be resaved as .xlsx before upload."]
     ]);
@@ -1833,6 +2143,64 @@
       type: "list",
       allowBlank: true,
       formulae: ['"Active,For Sale,Sold,Deceased,Ancestor Only"']
+    });
+
+    const production = workbook.addWorksheet("Production");
+    production.addRow([
+      "Date",
+      "Product",
+      "Scope",
+      "Species",
+      "Animal ID / Tag / Name",
+      "Milking Session",
+      "Unit",
+      "Total Produced",
+      "Quantity Sold",
+      "Household Use",
+      "Fed to Livestock / Calves",
+      "Stored / Set Aside",
+      "Donated",
+      "Wasted / Discarded",
+      "Sale Income",
+      "Total Weight",
+      "Weight Unit",
+      "Customer",
+      "Waste / Discard Reason",
+      "Notes"
+    ]);
+    styleTemplateSheet(
+      production,
+      [16, 18, 14, 14, 28, 18, 14, 16, 16, 16, 24, 20, 14, 20, 16, 16, 14, 24, 30, 38]
+    );
+    production.dataValidations.add("B2:B5000", {
+      type: "list",
+      allowBlank: false,
+      formulae: ['"Eggs,Broilers,Milk,Other"']
+    });
+    production.dataValidations.add("C2:C5000", {
+      type: "list",
+      allowBlank: true,
+      formulae: ['"Operation,Species,Animal"']
+    });
+    production.dataValidations.add("D2:D5000", {
+      type: "list",
+      allowBlank: true,
+      formulae: ['"Rabbit,Chicken,Duck,Turkey,Dog,Horse,Goat,Sheep,Cattle,Pig,Other"']
+    });
+    production.dataValidations.add("F2:F5000", {
+      type: "list",
+      allowBlank: true,
+      formulae: ['"Morning,Evening,Combined,Other"']
+    });
+    production.dataValidations.add("G2:G5000", {
+      type: "list",
+      allowBlank: false,
+      formulae: ['"eggs,dozen,cartons,birds,lb,kg,gallons,quarts,liters,pints,other"']
+    });
+    production.dataValidations.add("Q2:Q5000", {
+      type: "list",
+      allowBlank: true,
+      formulae: ['"lb,kg"']
     });
 
     const budgeting = workbook.addWorksheet("Budgeting");
