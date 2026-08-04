@@ -1,9 +1,19 @@
-# HerdHarbor Pre-Alpha v0.3.04
+# HerdHarbor Pre-Alpha v0.3.05
 
-This sync-reliability release prevents ordinary changes from separate devices from repeatedly pausing automatic synchronization.
+This production-and-sales release adds quantity-based farm-product records for egg, broiler, dairy, and other livestock operations while preserving v0.3.04 cloud-sync reliability.
 
 ## Highlights
 
+- Added Production & Sales inside Budgeting for eggs, broilers, milk, and custom farm products
+- Tracks total production, quantities sold, household use, livestock or calf feed, stored or hatching quantities, donations, and waste
+- Adds dairy records by individual cow, species, or whole operation, including milking session and waste/discard reason
+- Adds broiler batch quantities and optional processed weight
+- Links sale income to Budgeting automatically and updates the same transaction when production records change
+- Prevents allocation totals from exceeding the quantity produced
+- Adds Product, Quantity Sold, and Unit columns to Budget CSV exports
+- Adds Production worksheets to Excel import, readable exports, and the downloadable template
+- Keeps production-linked income from being duplicated during Excel round-trip import
+- Adds production records to the existing field-level multi-device merge without changing the cloud table or storage key
 - Added record-by-record, field-by-field three-way merging using each device's last-confirmed cloud base
 - Automatically combines changes made to different animals, medical records, budgets, activity entries, pedigrees, or fields
 - Keeps genuine same-field edits and delete-versus-edit cases behind the existing protected conflict choice
