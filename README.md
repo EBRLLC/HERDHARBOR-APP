@@ -1,4 +1,4 @@
-# HerdHarbor Pre-Alpha v0.3.04
+# HerdHarbor Pre-Alpha v0.3.05
 
 HerdHarbor is an installable farm and livestock recordkeeping app for the current private tester group.
 
@@ -13,11 +13,13 @@ HerdHarbor is an installable farm and livestock recordkeeping app for the curren
 - Automatic local recovery snapshots before material changes or conflict resolution
 - Installable PWA for Android, iPhone/iPad, Windows, macOS, and supported browsers
 - Portrait-only orientation for the installed mobile app
-- Animals, breeding, litters, pedigrees, health, tasks, budgeting, photos, farm branding, breed memory, and dark mode
-- Reviewed `.xlsx`/`.xlsm` imports for Animals, actual transactions, annual planned budgets, and Medical records
+- Animals, breeding, litters, pedigrees, health, tasks, budgeting, production and sales, photos, farm branding, breed memory, and dark mode
+- Quantity-based egg, broiler, dairy, and custom farm-product records with sold, household, feed, stored, donated, and waste allocations
+- Linked product-sale income that updates Budgeting without duplicate transactions
+- Reviewed `.xlsx`/`.xlsm` imports for Animals, Production, actual transactions, annual planned budgets, and Medical records
 - Row-by-row import corrections with a downloadable issue report
 - Downloadable Excel import template with duplicate and validation checks
-- One-click Excel export for Animals, Medical, actual Budgeting, and annual planned budgets
+- One-click Excel export for Animals, Medical, Production, actual Budgeting, and annual planned budgets
 - JSON backup export and import
 
 ## Data-safety design
