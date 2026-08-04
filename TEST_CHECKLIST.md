@@ -1,4 +1,20 @@
-# HerdHarbor v0.3.06 Release Checklist
+# HerdHarbor v0.3.07 Release Checklist
+
+## Recurring tasks and daily workflow
+
+- Create daily, weekly, every-two-weeks, monthly, and custom-day tasks and confirm each schedule label is correct
+- Complete each recurring task and confirm exactly one open next occurrence is created with the same title, category, animal, notes, and recurrence
+- Reopen and complete the same task again and confirm a second next occurrence is not created
+- On two devices, complete the same recurring task from the same cloud base and confirm the deterministic next occurrence merges without duplication
+- Create monthly tasks due January 29, 30, and 31 and confirm the next dates clamp to the last valid February date, including February 29 in a leap year
+- Confirm one-time tasks do not create a next occurrence
+- Complete a recurring task several intervals late and confirm HerdHarbor schedules the next future occurrence without creating missed-date backlog records
+- Confirm Today includes both tasks due today and overdue tasks
+- Confirm Upcoming excludes today and overdue tasks
+- Filter by category, linked animal, completion state, and search text
+- Select **Tomorrow** and confirm the task moves to tomorrow without changing its recurrence
+- Complete a task from the dashboard **Today’s work** panel and confirm the Task screen and cloud copy update
+- Confirm task controls remain readable and tappable on phone and desktop sizes
 
 ## Faster production entry
 

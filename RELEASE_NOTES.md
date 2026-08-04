@@ -1,8 +1,23 @@
-# HerdHarbor Pre-Alpha v0.3.06
+# HerdHarbor Pre-Alpha v0.3.07
 
-This production reporting and faster-entry release turns v0.3.05 farm-product records into practical daily management reports while preserving the existing farm record, cloud table, storage key, and linked-income behavior.
+This daily-workflow release adds dependable recurring chores and task filters while preserving the existing farm record, cloud table, storage key, production reporting, and linked-income behavior.
 
 ## Highlights
+
+- Added daily, weekly, every-two-weeks, monthly, and custom-day recurring tasks
+- Completing a recurring task creates exactly one next occurrence while preserving completed history
+- Added deterministic occurrence IDs so the same completion on two devices merges without creating duplicate tasks
+- Added month-end clamping so January 29–31 monthly tasks remain valid in February and continue correctly afterward
+- Late recurring-task completion advances to the next future occurrence instead of creating a backlog of already-overdue copies
+- Added Today, Upcoming, Overdue, All open, and Completed task views
+- Kept overdue work in Today until it is completed or explicitly rescheduled
+- Added task search plus category and animal filters
+- Added one-tap **Tomorrow** rescheduling
+- Added a dashboard **Today’s work** panel with one-tap completion and recurring-task creation
+- Added Feeding, Cleaning, Milking, Production, Breeding, Nest box, Weaning, Health, Maintenance, and Other task categories
+- Preserved one-time tasks and existing tester records without a migration
+
+## Continued production reporting capabilities
 
 - Added one-tap entry buttons for eggs, milk, broilers, and custom farm products
 - Added **Repeat last entry** and per-row Repeat actions that copy the source values into a new dated record without copying its ID or linked transaction

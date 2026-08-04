@@ -1807,7 +1807,7 @@
       ["HerdHarbor Farm Records Export", ""],
       ["Operation", safeExcelText(options.operationName || state.profile?.operationName || "HerdHarbor")],
       ["Exported", new Date()],
-      ["App version", "0.3.06"],
+      ["App version", "0.3.07"],
       ["Animals", animals.length],
       ["Medical records", health.length],
       ["Actual transactions", transactions.length],
@@ -2114,7 +2114,7 @@
       ["Sale revenue", totalRevenue],
       ["Warnings", warnings.length],
       ["Exported", new Date()],
-      ["App version", "0.3.06"],
+      ["App version", "0.3.07"],
       ["Quantity note", "Quantities stay separated by product and unit so eggs, dozens, gallons, birds, pounds, and custom units are never combined into a misleading total."]
     ]);
     overview.mergeCells("A1:B1");

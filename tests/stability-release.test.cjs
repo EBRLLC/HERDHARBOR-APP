@@ -8,11 +8,14 @@ const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const spreadsheet = fs.readFileSync(path.join(root, "spreadsheet-import.js"), "utf8");
 const serviceWorker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 
-assert.match(html, /HerdHarbor installable tester build v0\.3\.06/);
+assert.match(html, /HerdHarbor installable tester build v0\.3\.07/);
 assert.match(html, /id="settings-sync-now"/);
 assert.match(html, /id="settings-last-synced"/);
 assert.match(html, /id="export-excel"/);
-assert.match(html, /HerdHarbor Pre-Alpha v0\.3\.06/);
+assert.match(html, /HerdHarbor Pre-Alpha v0\.3\.07/);
+assert.match(html, /id="task-status-filter"/);
+assert.match(html, /id="task-custom-interval"/);
+assert.match(html, /function ensureNextRecurringTask\(/);
 assert.match(html, /id="add-production"/);
 assert.match(html, /id="repeat-last-production"/);
 assert.match(html, /id="download-production-report"/);
@@ -40,9 +43,9 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /v0\.3\.06-/);
-assert.match(serviceWorker, /spreadsheet-import\.js\?v=5/);
-assert.match(serviceWorker, /herdharbor-cloud\.js\?v=8/);
-assert.match(serviceWorker, /pwa\.js\?v=8/);
+assert.match(serviceWorker, /v0\.3\.07-/);
+assert.match(serviceWorker, /spreadsheet-import\.js\?v=6/);
+assert.match(serviceWorker, /herdharbor-cloud\.js\?v=9/);
+assert.match(serviceWorker, /pwa\.js\?v=9/);
 
-console.log("v0.3.06 stability release tests passed");
+console.log("v0.3.07 stability release tests passed");
