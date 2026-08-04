@@ -1,26 +1,24 @@
-# HerdHarbor Pre-Alpha v0.3.05
+# HerdHarbor Pre-Alpha v0.3.06
 
-This production-and-sales release adds quantity-based farm-product records for egg, broiler, dairy, and other livestock operations while preserving v0.3.04 cloud-sync reliability.
+This production reporting and faster-entry release turns v0.3.05 farm-product records into practical daily management reports while preserving the existing farm record, cloud table, storage key, and linked-income behavior.
 
 ## Highlights
 
-- Added Production & Sales inside Budgeting for eggs, broilers, milk, and custom farm products
-- Tracks total production, quantities sold, household use, livestock or calf feed, stored or hatching quantities, donations, and waste
-- Adds dairy records by individual cow, species, or whole operation, including milking session and waste/discard reason
-- Adds broiler batch quantities and optional processed weight
-- Links sale income to Budgeting automatically and updates the same transaction when production records change
-- Prevents allocation totals from exceeding the quantity produced
-- Adds Product, Quantity Sold, and Unit columns to Budget CSV exports
-- Adds Production worksheets to Excel import, readable exports, and the downloadable template
-- Keeps production-linked income from being duplicated during Excel round-trip import
-- Adds production records to the existing field-level multi-device merge without changing the cloud table or storage key
-- Added record-by-record, field-by-field three-way merging using each device's last-confirmed cloud base
-- Automatically combines changes made to different animals, medical records, budgets, activity entries, pedigrees, or fields
-- Keeps genuine same-field edits and delete-versus-edit cases behind the existing protected conflict choice
-- Saves recovery snapshots of both device and cloud copies before an automatic merge
-- Rebases edits made during an in-progress merge so rapid saves are not discarded
-- Keeps theme and sidebar preferences local to each device instead of treating them as farm-data conflicts
-- Preserves the existing storage key, Supabase table, account records, and farm-data structure
+- Added one-tap entry buttons for eggs, milk, broilers, and custom farm products
+- Added **Repeat last entry** and per-row Repeat actions that copy the source values into a new dated record without copying its ID or linked transaction
+- Added date-range, product, species, and animal filters
+- Added daily, weekly, monthly, and yearly production totals without combining incompatible units
+- Added average sale price per egg, dozen, gallon, bird, pound, kilogram, or custom unit
+- Added exact produced, sold, used-on-farm, stored, donated, wasted, waste-rate, and revenue totals
+- Added individual-animal production history for dairy cows and other tracked livestock
+- Added comparisons between animals, flocks, herds, species, whole-operation records, and broiler batches
+- Added an optional group, flock, herd, or batch name to Production entries
+- Added basic warnings when filtered waste reaches 10% or the newest daily output is at least 25% below three or more recent entries
+- Added printable Production & Sales reports
+- Added a six-sheet Excel report with Overview, Product Totals, Period Totals, Comparisons, Production History, and Warnings
+- Added group/flock/herd/batch support to Production Excel import, full record export, and the downloadable template
+- Preserved linked sale-income deduplication and the v0.3.04 field-level multi-device merge
+- Preserved the existing storage key, Supabase table, account records, and farm-data structure; no migration is required
 
 ## Continued capabilities
 
