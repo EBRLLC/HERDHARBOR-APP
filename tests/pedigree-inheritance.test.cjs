@@ -49,3 +49,4 @@ assert.match(
 );
 
 console.log("pedigree inheritance tests passed");
+

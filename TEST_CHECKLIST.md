@@ -1,4 +1,19 @@
-# HerdHarbor v0.3.04 Release Checklist
+# HerdHarbor v0.3.05 Release Checklist
+
+## Production and sales
+
+- Add an egg record with collected, sold, household, hatching, and waste quantities
+- Confirm allocated quantities cannot exceed the total collected
+- Add sale income and confirm exactly one linked **Egg Sales** transaction appears in Budgeting
+- Edit the egg quantity and sale amount and confirm the linked transaction updates instead of duplicating
+- Remove sale income and confirm only the linked income transaction is removed
+- Add a broiler batch with birds processed, birds sold, frozen or household quantities, loss/condemned quantity, and total batch weight
+- Add a milk record assigned to an individual cow with morning/evening session, sold, household, calf feed, stored, and discarded quantities
+- Confirm milk discard quantity and reason remain visible after reload and on a second device
+- Add a custom product and confirm its quantity, unit, sale income, and notes are retained
+- Filter Budgeting by month and species and confirm matching production records and summaries appear
+- Delete a production record and confirm its linked income is deleted after confirmation
+- Edit a production-linked transaction from the transaction table and confirm HerdHarbor opens the source production record
 
 ## Automatic multi-device merge
 
@@ -26,10 +41,12 @@
 ## Excel record export
 
 - Select **Export records to Excel** from Settings
-- Confirm the workbook opens with Overview, Animals, Medical, Budgeting, and Annual Budget sheets
+- Confirm the workbook opens with Overview, Animals, Medical, Production, Budgeting, and Annual Budget sheets
 - Confirm headers are readable, frozen, filtered, and date/currency columns retain their types
 - Confirm animal parent references, medical-to-animal links, and animal-assigned transactions use a unique animal reference
 - Confirm annual planned figures remain annual plans and are not listed as actual transactions
+- Confirm production quantities, allocations, waste reasons, batch weights, and sale income remain typed values on the Production sheet
+- Confirm production-linked income is not duplicated on the Budgeting sheet and is recreated from Production during import
 - Upload the exported workbook to the reviewed importer and confirm the counts, dates, amounts, and animal links round-trip correctly
 - Confirm values beginning with `=`, `+`, `-`, or `@` are exported as text rather than executable spreadsheet formulas
 
@@ -42,11 +59,11 @@
 
 ## Excel spreadsheet import
 
-- Download the HerdHarbor Excel template from Settings and confirm it opens with Instructions, Animals, Budgeting, Annual Budget, and Medical sheets
-- Import a workbook containing valid rows in all four data sheets
+- Download the HerdHarbor Excel template from Settings and confirm it opens with Instructions, Animals, Production, Budgeting, Annual Budget, and Medical sheets
+- Import a workbook containing valid rows in all five data sheets
 - Confirm the review screen shows correct ready, skipped, warning, and error counts
 - Confirm no records are added before **Import records** is selected
-- Confirm approved animals, transactions, annual plans, and medical records appear in their normal app sections
+- Confirm approved animals, production, transactions, annual plans, and medical records appear in their normal app sections
 - Import the same workbook again and confirm duplicate records are skipped
 - Confirm Medical and animal-assigned Budgeting rows match animals by tag, tattoo, registration number, or unique name
 - Confirm missing or ambiguous animal references are rejected without changing existing records
@@ -64,6 +81,8 @@
 - Confirm a workbook over 10 MB and a workbook over 5,000 data rows are rejected
 - Confirm the imported records reach **Saved to cloud**, survive reload, and appear on a second device
 - Confirm the spreadsheet itself is never sent through an app network request
+- Import Egg Production, Broiler Production, and Milk Production sheets without a Product column and confirm the sheet name supplies the correct product
+- Confirm an imported milk record preserves calf-feed quantity, discarded quantity, discard reason, and optional sale income
 
 ## Mobile rotation
 
@@ -111,6 +130,6 @@
 
 - Test sign in, sign out, account creation, and password reset
 - Confirm no random sign-in flash appears
-- Test animals, breeding, litters, pedigrees, health, tasks, budgeting, photos, breed memory, and dark mode
+- Test animals, breeding, litters, pedigrees, health, tasks, budgeting, production and sales, photos, breed memory, and dark mode
 - Test JSON export/import
 - Test on phone and desktop sizes
