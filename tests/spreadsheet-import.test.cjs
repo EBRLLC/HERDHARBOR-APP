@@ -227,9 +227,10 @@ async function run() {
   await templateWorkbook.xlsx.load(await downloadedBlob.arrayBuffer());
   assert.deepEqual(
     templateWorkbook.worksheets.map((worksheet) => worksheet.name),
-    ["Instructions", "Animals", "Budgeting", "Annual Budget", "Medical"]
+    ["Instructions", "Animals", "Production", "Budgeting", "Annual Budget", "Medical"]
   );
   assert.equal(templateWorkbook.getWorksheet("Animals").getCell("A1").value, "Name");
+  assert.equal(templateWorkbook.getWorksheet("Production").getCell("H1").value, "Total Produced");
   assert.equal(templateWorkbook.getWorksheet("Budgeting").getCell("H1").value, "Amount");
   assert.equal(templateWorkbook.getWorksheet("Annual Budget").getCell("D1").value, "Feed Budget");
   assert.equal(templateWorkbook.getWorksheet("Medical").getCell("C1").value, "Record Type");
@@ -281,19 +282,61 @@ async function run() {
       weightUnit: "lb",
       followUpDate: "2026-08-30"
     }],
-    transactions: [{
-      id: "transaction_export",
+    transactions: [
+      {
+        id: "transaction_export",
+        date: "2026-07-30",
+        type: "Expense",
+        classification: "Operating",
+        category: "Feed",
+        scope: "Animal",
+        species: "Rabbit",
+        animalId: "animal_export",
+        amount: "12.50",
+        party: "Farm Store",
+        description: "Pellets",
+        notes: ""
+      },
+      {
+        id: "transaction_production_export",
+        date: "2026-07-30",
+        type: "Income",
+        classification: "",
+        category: "Egg Sales",
+        scope: "Species",
+        species: "Chicken",
+        animalId: "",
+        amount: "24.00",
+        party: "Farm stand",
+        description: "Eggs: 8 dozen sold",
+        notes: "",
+        sourceType: "production",
+        sourceId: "production_export"
+      }
+    ],
+    productionRecords: [{
+      id: "production_export",
       date: "2026-07-30",
-      type: "Expense",
-      classification: "Operating",
-      category: "Feed",
-      scope: "Animal",
-      species: "Rabbit",
-      animalId: "animal_export",
-      amount: "12.50",
-      party: "Farm Store",
-      description: "Pellets",
-      notes: ""
+      product: "Eggs",
+      scope: "Species",
+      species: "Chicken",
+      animalId: "",
+      session: "",
+      unit: "dozen",
+      quantity: "12",
+      soldQuantity: "8",
+      householdQuantity: "1",
+      feedQuantity: "0",
+      setAsideQuantity: "2",
+      donatedQuantity: "0",
+      wasteQuantity: "1",
+      saleAmount: "24.00",
+      totalWeight: "",
+      weightUnit: "",
+      customer: "Farm stand",
+      wasteReason: "Cracked",
+      notes: "Friday collection",
+      transactionId: "transaction_production_export"
     }],
     annualBudgetPlans: [
       ["Expense", "Feed", "100.00"],
@@ -318,7 +361,7 @@ async function run() {
   const exportWorkbook = buildExportWorkbook(exportState, { operationName: "Harbor Test Farm" });
   assert.deepEqual(
     exportWorkbook.worksheets.map((worksheet) => worksheet.name),
-    ["Overview", "Animals", "Medical", "Budgeting", "Annual Budget"]
+    ["Overview", "Animals", "Medical", "Production", "Budgeting", "Annual Budget"]
   );
   assert.equal(exportWorkbook.getWorksheet("Animals").getCell("A2").value, "Willow");
   assert.equal(exportWorkbook.getWorksheet("Animals").getCell("O2").value, "=SUM(A1:A2)");
@@ -328,7 +371,11 @@ async function run() {
     "formula-looking source text remains a non-executable Excel string"
   );
   assert.equal(exportWorkbook.getWorksheet("Medical").getCell("M2").value, 4.2);
+  assert.equal(exportWorkbook.getWorksheet("Production").getCell("H2").value, 12);
+  assert.equal(exportWorkbook.getWorksheet("Production").getCell("I2").value, 8);
+  assert.equal(exportWorkbook.getWorksheet("Production").getCell("O2").value, 24);
   assert.equal(exportWorkbook.getWorksheet("Budgeting").getCell("H2").value, 12.5);
+  assert.equal(exportWorkbook.getWorksheet("Budgeting").rowCount, 2, "linked production income is not duplicated on the Budgeting sheet");
   assert.equal(exportWorkbook.getWorksheet("Annual Budget").getCell("D2").value, 100);
 
   const exportBuffer = await exportWorkbook.xlsx.writeBuffer();
@@ -351,6 +398,9 @@ async function run() {
   assert.equal(roundTrip.records.animals.length, 1);
   assert.equal(roundTrip.records.health.length, 1);
   assert.equal(roundTrip.records.transactions.length, 1);
+  assert.equal(roundTrip.records.productionRecords.length, 1);
+  assert.equal(roundTrip.records.productionRecords[0].wasteQuantity, "1");
+  assert.equal(roundTrip.records.productionRecords[0].saleAmount, "24.00");
   assert.equal(roundTrip.records.annualBudgetPlans.length, 8);
 
   const flexibleWorkbook = new ExcelJS.Workbook();
@@ -369,6 +419,28 @@ async function run() {
   assert.equal(flexibleResult.records.animals[0].sex, "Female");
   assert.equal(flexibleResult.records.health[0].type, "Weight");
   assert.equal(flexibleResult.records.health[0].animalId, flexibleResult.records.animals[0].id);
+
+  const dairyWorkbook = new ExcelJS.Workbook();
+  const milkProduction = dairyWorkbook.addWorksheet("Milk Production");
+  milkProduction.addRow([
+    "Date", "Scope", "Species", "Milking Session", "Unit", "Total Produced",
+    "Quantity Sold", "Household Use", "Fed to Livestock / Calves",
+    "Stored / Set Aside", "Wasted / Discarded", "Sale Income", "Waste / Discard Reason"
+  ]);
+  milkProduction.addRow([
+    "2026-08-04", "Species", "Cattle", "Morning", "gallons", 6,
+    2, 1, 1.5, 0.5, 1, 12, "Medication withdrawal"
+  ]);
+  const dairyResult = await parseWorkbookBuffer(
+    await dairyWorkbook.xlsx.writeBuffer(),
+    { ...context, productionRecords: [] }
+  );
+  assert.equal(dairyResult.errorCount, 0);
+  assert.equal(dairyResult.records.productionRecords.length, 1);
+  assert.equal(dairyResult.records.productionRecords[0].product, "Milk");
+  assert.equal(dairyResult.records.productionRecords[0].feedQuantity, "1.5");
+  assert.equal(dairyResult.records.productionRecords[0].wasteQuantity, "1");
+  assert.equal(dairyResult.records.productionRecords[0].wasteReason, "Medication withdrawal");
 
   const realWorkbookPath = require("node:path").resolve(
     __dirname,
