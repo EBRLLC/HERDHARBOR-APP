@@ -1,6 +1,21 @@
-# HerdHarbor Pre-Alpha v0.4.0
+# HerdHarbor Pre-Alpha v0.5.0
 
-This release adds complete breeding-through-birth workflows while preserving existing animals, basic breeding and litter records, farm data, cloud synchronization, storage keys, recurring tasks, budgets, and production records.
+This release adds a complete customer-to-sale workflow while preserving existing animals, pedigrees, breeding and birth records, farm data, cloud synchronization, storage keys, recurring tasks, budgets, and production records.
+
+## Sales, customers, QR cards, and transfers
+
+- Added customer records with phone, email, mailing address, and private notes
+- Added multi-animal Draft, Reserved, Completed, and Cancelled sales with item prices, discounts, tax/fees, due dates, terms, and balances
+- Added Available, Reserved, and Sold animal workflow handling without removing the existing animal status choices
+- Added deposits and payments with method, reference, notes, and overpayment protection
+- Linked each received payment to exactly one Budget income transaction so invoices do not count as revenue before money is received
+- Added printable invoices, receipts, and bills of sale with farm and buyer contact details, animal identity, pedigree summary, payment history, and signature lines
+- Added printable animal and cage/pen QR cards, including bulk cards for the current animal filter
+- Added authenticated QR deep links that open the selected animal without exposing farm data publicly
+- Added downloadable transfer files with a subject animal and up to three pedigree generations
+- Added duplicate-safe transfer import that matches existing ancestors by registration, tattoo, or tag and preserves pedigree relationships
+- Added Customers, Sales, and Payments sheets to Excel import, export, and the downloadable template
+- Kept customers, sales, payments, and transfer history inside the existing farm record and record-level multi-device merge system
 
 ## Tester-requested hotfix
 

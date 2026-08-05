@@ -19,10 +19,14 @@
     "Growing",
     "Retired",
     "For Sale",
+    "Reserved",
     "Sold",
     "Deceased",
     "Ancestor Only"
   ];
+  const SALE_STATUSES = ["Draft", "Reserved", "Completed", "Cancelled"];
+  const PAYMENT_TYPES = ["Deposit", "Payment"];
+  const PAYMENT_METHODS = ["Cash", "Check", "Card", "Bank transfer", "PayPal / Venmo", "Other"];
   const ANNUAL_PLAN_FIELDS = [
     { field: "feedBudget", type: "Expense", category: "Feed" },
     { field: "housingBudget", type: "Expense", category: "Housing / Bedding" },
@@ -66,6 +70,7 @@
         color: ["color", "colour", "variety", "color or variety"],
         location: ["location", "cage", "pen", "stall", "location cage pen", "pen pasture"],
         status: ["status", "animal status"],
+        askingPrice: ["asking price", "list price", "sale asking price"],
         weight: ["weight", "animal weight"],
         weightUnit: ["weight unit", "unit", "units"],
         acquisitionDate: ["acquisition date", "acquired date", "purchase date"],
@@ -112,6 +117,47 @@
         expectedWeanDate: ["expected weaning date", "weaning date", "expected wean date"],
         offspringPrefix: ["offspring tag prefix", "tag prefix", "offspring prefix"],
         notes: ["notes", "comments"]
+      }
+    },
+    customers: {
+      sheetNames: ["customer", "customers", "buyers", "buyer records", "customer records"],
+      fields: {
+        recordId: ["customer record id", "customer id", "buyer id"],
+        name: ["customer name", "buyer name", "name"],
+        phone: ["phone", "phone number", "customer phone"],
+        email: ["email", "email address", "customer email"],
+        address: ["address", "mailing address", "customer address"],
+        notes: ["notes", "customer notes", "comments"]
+      }
+    },
+    sales: {
+      sheetNames: ["sale", "sales", "animal sales", "invoices", "reservations"],
+      fields: {
+        saleNumber: ["sale number", "invoice number", "invoice no", "sale id"],
+        saleDate: ["sale date", "invoice date", "date"],
+        dueDate: ["payment due date", "due date"],
+        status: ["sale status", "invoice status", "status"],
+        customerRef: ["customer id or name", "customer", "buyer", "buyer name"],
+        animalRef: ["animal id tag name", "animal", "animal id", "animal tag"],
+        itemPrice: ["item price", "animal price", "sale price", "price"],
+        discount: ["discount", "sale discount"],
+        tax: ["tax fees", "tax and fees", "tax", "fees"],
+        transferNumber: ["transfer number", "certificate number"],
+        terms: ["terms", "payment terms"],
+        notes: ["notes", "sale notes", "comments"]
+      }
+    },
+    payments: {
+      sheetNames: ["payment", "payments", "deposits", "sale payments", "receipts"],
+      fields: {
+        paymentId: ["payment record id", "payment id"],
+        saleNumber: ["sale number", "invoice number", "invoice no", "sale id"],
+        date: ["payment date", "date received", "date"],
+        type: ["payment type", "type"],
+        amount: ["amount received", "payment amount", "amount"],
+        method: ["payment method", "method"],
+        reference: ["reference", "check number", "transaction reference"],
+        notes: ["notes", "payment notes", "comments"]
       }
     },
     annualPlans: {
@@ -248,6 +294,11 @@
 
   const uid = (prefix) =>
     `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+
+  const importedId = (prefix, value) => {
+    const candidate = cleanText(value);
+    return /^[a-zA-Z0-9_-]{1,120}$/.test(candidate) ? candidate : uid(prefix);
+  };
 
   function ensureStyles() {
     if (document.querySelector("#hh-spreadsheet-import-styles")) return;
@@ -711,6 +762,18 @@
     if (normalizedMessage.includes("breeding status")) {
       return "Use Planned, Bred, Pregnancy check due, Confirmed pregnant, Not pregnant, Due soon, Delivered, or Cancelled.";
     }
+    if (normalizedMessage.includes("sale status")) {
+      return "Use Draft, Reserved, Completed, or Cancelled.";
+    }
+    if (normalizedMessage.includes("payment type")) {
+      return "Use Deposit or Payment.";
+    }
+    if (normalizedMessage.includes("payment method")) {
+      return "Use Cash, Check, Card, Bank transfer, PayPal / Venmo, or Other.";
+    }
+    if (normalizedMessage.includes("customer") && (normalizedMessage.includes("not found") || normalizedMessage.includes("not unique"))) {
+      return "Use a Customer ID, exact customer name, or unique customer email from the Customers sheet or existing HerdHarbor records.";
+    }
     if (normalizedMessage.includes("pregnancy check result") || normalizedMessage.includes("pregnancy-check result")) {
       return "Use Not checked, Positive, Negative, or Inconclusive.";
     }
@@ -809,6 +872,8 @@
           : "Active";
         const dobRaw = fieldValue(row, map, "dob");
         const dob = dateToISO(dobRaw);
+        const askingPriceRaw = fieldValue(row, map, "askingPrice");
+        const askingPrice = cleanText(askingPriceRaw) ? moneyNumber(askingPriceRaw) : NaN;
 
         if (!name) {
           issue(result, source, "Animal name is required.");
@@ -830,6 +895,10 @@
         }
         if (cleanText(dobRaw) && !dob) {
           issue(result, source, `Date of birth “${cleanText(dobRaw)}” is invalid.`);
+          return;
+        }
+        if (cleanText(askingPriceRaw) && (!Number.isFinite(askingPrice) || askingPrice < 0)) {
+          issue(result, source, `Asking price “${cleanText(askingPriceRaw)}” must be zero or more.`);
           return;
         }
 
@@ -872,6 +941,7 @@
           color: cleanText(fieldValue(row, map, "color")),
           location: cleanText(fieldValue(row, map, "location")),
           status,
+          askingPrice: Number.isFinite(askingPrice) ? askingPrice.toFixed(2) : "",
           sireId: "",
           damId: "",
           sourceBirthId: "",
@@ -1169,6 +1239,196 @@
         if (!addedAmounts && !invalidCategories.length && !duplicateCategories.length) {
           issue(result, source, "Annual budget amounts are all zero; no plan records will be added.", "warning");
         }
+      });
+    });
+  }
+
+  function customerLookup(customers = []) {
+    const lookup = new Map();
+    customers.forEach((customer) => {
+      [customer.id, customer.name, customer.email]
+        .map((value) => normalize(value))
+        .filter(Boolean)
+        .forEach((key) => {
+          if (!lookup.has(key)) lookup.set(key, []);
+          lookup.get(key).push(customer);
+        });
+    });
+    return lookup;
+  }
+
+  function resolveCustomer(reference, lookup) {
+    const matches = lookup.get(normalize(reference)) || [];
+    const unique = [...new Map(matches.map((customer) => [customer.id, customer])).values()];
+    return unique.length === 1 ? unique[0] : null;
+  }
+
+  function canonicalSaleStatus(value) {
+    return canonicalFromList(value || "Draft", SALE_STATUSES, {
+      open: "Draft", pending: "Draft", hold: "Reserved", complete: "Completed", sold: "Completed", canceled: "Cancelled"
+    });
+  }
+
+  function canonicalPaymentType(value) {
+    return canonicalFromList(value || "Payment", PAYMENT_TYPES, { downpayment: "Deposit", "down payment": "Deposit", paid: "Payment" });
+  }
+
+  function canonicalPaymentMethod(value) {
+    return canonicalFromList(value || "Other", PAYMENT_METHODS, {
+      bank: "Bank transfer", transfer: "Bank transfer", paypal: "PayPal / Venmo", venmo: "PayPal / Venmo", credit: "Card", debit: "Card"
+    });
+  }
+
+  function stageCustomers(sheets, context, result) {
+    const existingIds = new Set((context.customers || []).map((customer) => customer.id));
+    const duplicateKeys = new Set((context.customers || []).map((customer) => `${normalize(customer.name)}|${normalize(customer.email)}`));
+    sheets.forEach(({ worksheet, header, map }) => {
+      worksheetRows(worksheet, header).forEach((row) => {
+        const source = sourceFor(worksheet, row);
+        const name = cleanText(fieldValue(row, map, "name"));
+        const recordId = cleanText(fieldValue(row, map, "recordId"));
+        const email = cleanText(fieldValue(row, map, "email"));
+        if (!name) {
+          issue(result, source, "Customer name is blank.");
+          return;
+        }
+        const duplicateKey = `${normalize(name)}|${normalize(email)}`;
+        if ((recordId && existingIds.has(recordId)) || duplicateKeys.has(duplicateKey)) {
+          issue(result, source, `Customer ${name} already exists and will be skipped.`, "duplicate");
+          return;
+        }
+        const id = recordId && !existingIds.has(recordId) ? importedId("customer", recordId) : uid("customer");
+        existingIds.add(id);
+        duplicateKeys.add(duplicateKey);
+        const now = new Date().toISOString();
+        result.records.customers.push({
+          id, name, email,
+          phone: cleanText(fieldValue(row, map, "phone")),
+          address: cleanText(fieldValue(row, map, "address")),
+          notes: cleanText(fieldValue(row, map, "notes")),
+          importSource: { type: "Excel spreadsheet", fileName: context.fileName || "", sheet: worksheet.name, row: row.rowNumber },
+          createdAt: now, updatedAt: now
+        });
+      });
+    });
+  }
+
+  function stageSales(sheets, context, result) {
+    const animals = [...(context.animals || []), ...result.records.animals];
+    const animalLookup = buildAnimalLookup(animals);
+    const customers = [...(context.customers || []), ...result.records.customers];
+    const customersByRef = customerLookup(customers);
+    const existingNumbers = new Set((context.sales || []).map((sale) => normalize(sale.saleNumber)));
+    const stagedByNumber = new Map();
+    sheets.forEach(({ worksheet, header, map }) => {
+      worksheetRows(worksheet, header).forEach((row) => {
+        const source = sourceFor(worksheet, row);
+        const saleNumber = cleanText(fieldValue(row, map, "saleNumber"));
+        const saleDateRaw = fieldValue(row, map, "saleDate");
+        const saleDate = dateToISO(saleDateRaw);
+        const dueDateRaw = fieldValue(row, map, "dueDate");
+        const dueDate = cleanText(dueDateRaw) ? dateToISO(dueDateRaw) : saleDate;
+        const statusRaw = cleanText(fieldValue(row, map, "status")) || "Draft";
+        const status = canonicalSaleStatus(statusRaw);
+        const customerRef = cleanText(fieldValue(row, map, "customerRef"));
+        const customer = resolveCustomer(customerRef, customersByRef);
+        const animalRef = cleanText(fieldValue(row, map, "animalRef"));
+        const resolvedAnimal = resolveAnimal(animalRef, animalLookup);
+        const priceRaw = fieldValue(row, map, "itemPrice");
+        const itemPrice = moneyNumber(priceRaw);
+        if (!saleNumber) { issue(result, source, "Sale number is blank."); return; }
+        if (existingNumbers.has(normalize(saleNumber))) { issue(result, source, `Sale ${saleNumber} already exists and will be skipped.`, "duplicate"); return; }
+        if (!saleDate) { issue(result, source, `Sale date “${cleanText(saleDateRaw) || "(blank)"}” is invalid.`); return; }
+        if (!dueDate) { issue(result, source, `Payment due date “${cleanText(dueDateRaw)}” is invalid.`); return; }
+        if (!status) { issue(result, source, `Sale status “${statusRaw}” is not recognized.`); return; }
+        if (!customer) { issue(result, source, `Customer “${customerRef || "(blank)"}” was not found or is not unique.`); return; }
+        if (!resolvedAnimal.animal) { issue(result, source, `Sale animal “${animalRef || "(blank)"}” ${resolvedAnimal.reason === "ambiguous" ? "matches more than one animal" : "was not found"}.`); return; }
+        if (!Number.isFinite(itemPrice) || itemPrice < 0) { issue(result, source, `Item price “${cleanText(priceRaw) || "(blank)"}” must be zero or more.`); return; }
+        const lockedSale = [...(context.sales || []), ...result.records.sales].find((record) =>
+          normalize(record.saleNumber) !== normalize(saleNumber) &&
+          record.status !== "Cancelled" &&
+          (record.items || []).some((item) => item.animalId === resolvedAnimal.animal.id)
+        );
+        if (status !== "Cancelled" && lockedSale) {
+          issue(result, source, `${resolvedAnimal.animal.name} is already connected to sale ${lockedSale.saleNumber}.`);
+          return;
+        }
+        const key = normalize(saleNumber);
+        let sale = stagedByNumber.get(key);
+        if (!sale) {
+          const discount = moneyNumber(fieldValue(row, map, "discount"));
+          const tax = moneyNumber(fieldValue(row, map, "tax"));
+          if (cleanText(fieldValue(row, map, "discount")) && (!Number.isFinite(discount) || discount < 0)) { issue(result, source, "Sale discount must be zero or more."); return; }
+          if (cleanText(fieldValue(row, map, "tax")) && (!Number.isFinite(tax) || tax < 0)) { issue(result, source, "Sale tax or fees must be zero or more."); return; }
+          const now = new Date().toISOString();
+          sale = {
+            id: uid("sale"), saleNumber, saleDate, dueDate, status, customerId: customer.id, items: [],
+            discount: Number.isFinite(discount) ? discount.toFixed(2) : "0.00",
+            tax: Number.isFinite(tax) ? tax.toFixed(2) : "0.00",
+            transferNumber: cleanText(fieldValue(row, map, "transferNumber")) || `TR-${saleNumber}`,
+            terms: cleanText(fieldValue(row, map, "terms")), notes: cleanText(fieldValue(row, map, "notes")),
+            importSource: { type: "Excel spreadsheet", fileName: context.fileName || "", sheet: worksheet.name, row: row.rowNumber },
+            createdAt: now, updatedAt: now
+          };
+          stagedByNumber.set(key, sale);
+          result.records.sales.push(sale);
+        } else if (sale.customerId !== customer.id || sale.saleDate !== saleDate || sale.status !== status) {
+          issue(result, source, `Rows for sale ${saleNumber} must use the same customer, date, and status.`);
+          return;
+        }
+        if (sale.items.some((item) => item.animalId === resolvedAnimal.animal.id)) {
+          issue(result, source, `${resolvedAnimal.animal.name} is already listed on sale ${saleNumber}.`, "duplicate");
+          return;
+        }
+        sale.items.push({ id: `saleitem_${sale.id}_${resolvedAnimal.animal.id.replace(/[^a-z0-9_-]/gi, "")}`, animalId: resolvedAnimal.animal.id, quantity: "1", unitPrice: itemPrice.toFixed(2) });
+      });
+    });
+  }
+
+  function stagePayments(sheets, context, result) {
+    const sales = [...(context.sales || []), ...result.records.sales];
+    const saleByNumber = new Map(sales.map((sale) => [normalize(sale.saleNumber), sale]));
+    const duplicateKeys = new Set((context.payments || []).map((payment) => [payment.saleId, payment.date, Number(payment.amount || 0).toFixed(2), normalize(payment.type), normalize(payment.reference)].join("|")));
+    const paidBySale = new Map();
+    (context.payments || []).forEach((payment) => paidBySale.set(payment.saleId, (paidBySale.get(payment.saleId) || 0) + Number(payment.amount || 0)));
+    sheets.forEach(({ worksheet, header, map }) => {
+      worksheetRows(worksheet, header).forEach((row) => {
+        const source = sourceFor(worksheet, row);
+        const saleNumber = cleanText(fieldValue(row, map, "saleNumber"));
+        const sale = saleByNumber.get(normalize(saleNumber));
+        const dateRaw = fieldValue(row, map, "date");
+        const date = dateToISO(dateRaw);
+        const typeRaw = cleanText(fieldValue(row, map, "type")) || "Payment";
+        const type = canonicalPaymentType(typeRaw);
+        const methodRaw = cleanText(fieldValue(row, map, "method")) || "Other";
+        const method = canonicalPaymentMethod(methodRaw);
+        const amountRaw = fieldValue(row, map, "amount");
+        const amount = moneyNumber(amountRaw);
+        if (!sale) { issue(result, source, `Sale “${saleNumber || "(blank)"}” was not found.`); return; }
+        if (!date) { issue(result, source, `Payment date “${cleanText(dateRaw) || "(blank)"}” is invalid.`); return; }
+        if (!type) { issue(result, source, `Payment type “${typeRaw}” must be Deposit or Payment.`); return; }
+        if (!method) { issue(result, source, `Payment method “${methodRaw}” is not recognized.`); return; }
+        if (!Number.isFinite(amount) || amount <= 0) { issue(result, source, `Payment amount “${cleanText(amountRaw) || "(blank)"}” must be greater than zero.`); return; }
+        const invoiceTotal = Math.max(0,
+          (sale.items || []).reduce((sum, item) => sum + Number(item.unitPrice || 0) * Number(item.quantity || 1), 0) -
+          Number(sale.discount || 0) + Number(sale.tax || 0)
+        );
+        if ((paidBySale.get(sale.id) || 0) + amount > invoiceTotal + 0.005) {
+          issue(result, source, `Payment for ${saleNumber} is greater than the remaining invoice balance.`);
+          return;
+        }
+        const reference = cleanText(fieldValue(row, map, "reference"));
+        const duplicateKey = [sale.id, date, amount.toFixed(2), normalize(type), normalize(reference)].join("|");
+        if (duplicateKeys.has(duplicateKey)) { issue(result, source, `Payment for ${saleNumber} on ${date} already exists and will be skipped.`, "duplicate"); return; }
+        duplicateKeys.add(duplicateKey);
+        const now = new Date().toISOString();
+        result.records.payments.push({
+          id: importedId("payment", fieldValue(row, map, "paymentId")), saleId: sale.id, date, type, amount: amount.toFixed(2), method, reference,
+          notes: cleanText(fieldValue(row, map, "notes")), transactionId: "",
+          importSource: { type: "Excel spreadsheet", fileName: context.fileName || "", sheet: worksheet.name, row: row.rowNumber },
+          createdAt: now, updatedAt: now
+        });
+        paidBySale.set(sale.id, (paidBySale.get(sale.id) || 0) + amount);
       });
     });
   }
@@ -1714,6 +1974,9 @@
       animals: ["name", "species"],
       breedings: ["femaleRef", "maleRef", "breedingDate"],
       births: ["damRef", "sireRef", "birthDate"],
+      customers: ["name"],
+      sales: ["saleNumber", "saleDate", "customerRef", "animalRef", "itemPrice"],
+      payments: ["saleNumber", "date", "amount"],
       health: ["animalRef", "date", "type"],
       annualPlans: ["animalRef"],
       transactions: ["date", "type", "amount"],
@@ -1783,7 +2046,7 @@
 
     const workbook = await loadCompatibleWorkbook(buffer);
     const result = {
-      records: { animals: [], breedings: [], litters: [], transactions: [], productionRecords: [], annualBudgetPlans: [], health: [] },
+      records: { animals: [], breedings: [], litters: [], customers: [], sales: [], payments: [], transactions: [], productionRecords: [], annualBudgetPlans: [], health: [] },
       issues: [],
       parsedSheets: [],
       ignoredSheets: [],
@@ -1792,7 +2055,7 @@
       duplicateCount: 0,
       totalRows: 0
     };
-    const sheetsByType = { animals: [], breedings: [], births: [], transactions: [], production: [], annualPlans: [], health: [] };
+    const sheetsByType = { animals: [], breedings: [], births: [], customers: [], sales: [], payments: [], transactions: [], production: [], annualPlans: [], health: [] };
 
     workbook.eachSheet((worksheet) => {
       const header = findHeaderRow(worksheet);
@@ -1823,7 +2086,7 @@
     });
 
     if (!result.parsedSheets.length) {
-      throw new Error("No Animals, Breeding, Births, Production, Budgeting, Annual Budget, or Medical sheet could be recognized.");
+      throw new Error("No Animals, Breeding, Births, Customers, Sales, Payments, Production, Budgeting, Annual Budget, or Medical sheet could be recognized.");
     }
     if (result.totalRows > MAX_DATA_ROWS) {
       throw new Error(`This workbook has ${result.totalRows.toLocaleString()} data rows. The current limit is ${MAX_DATA_ROWS.toLocaleString()}.`);
@@ -1832,6 +2095,9 @@
     stageAnimals(sheetsByType.animals, context, result);
     stageBreedings(sheetsByType.breedings, context, result);
     stageBirths(sheetsByType.births, context, result);
+    stageCustomers(sheetsByType.customers, context, result);
+    stageSales(sheetsByType.sales, context, result);
+    stagePayments(sheetsByType.payments, context, result);
     stageHealth(sheetsByType.health, context, result);
     stageTransactions(sheetsByType.transactions, context, result);
     stageProduction(sheetsByType.production, context, result);
@@ -1843,6 +2109,9 @@
     return result.records.animals.length +
       result.records.breedings.length +
       result.records.litters.length +
+      result.records.customers.length +
+      result.records.sales.length +
+      result.records.payments.length +
       result.records.transactions.length +
       result.records.productionRecords.length +
       result.records.annualBudgetPlans.length +
@@ -1852,6 +2121,12 @@
   function previewRows(result, context) {
     const animalById = new Map(
       [...(context.state?.animals || []), ...result.records.animals].map((animal) => [animal.id, animal])
+    );
+    const customerById = new Map(
+      [...(context.state?.customers || []), ...result.records.customers].map((customer) => [customer.id, customer])
+    );
+    const saleById = new Map(
+      [...(context.state?.sales || []), ...result.records.sales].map((sale) => [sale.id, sale])
     );
     return [
       ...result.records.animals.map((record) => ({
@@ -1871,6 +2146,17 @@
         date: record.birthDate,
         subject: `${animalById.get(record.damId)?.name || "Dam"} × ${animalById.get(record.sireId)?.name || "Sire"}`,
         details: `${record.bornAlive} born alive · ${record.weaned} weaned`
+      })),
+      ...result.records.customers.map((record) => ({
+        area: "Customer", date: "—", subject: record.name, details: [record.phone, record.email].filter(Boolean).join(" · ") || "Customer record"
+      })),
+      ...result.records.sales.map((record) => ({
+        area: "Sale", date: record.saleDate, subject: record.saleNumber,
+        details: [customerById.get(record.customerId)?.name, record.status, `${record.items.length} animal${record.items.length === 1 ? "" : "s"}`].filter(Boolean).join(" · ")
+      })),
+      ...result.records.payments.map((record) => ({
+        area: "Payment", date: record.date, subject: `$${record.amount}`,
+        details: [saleById.get(record.saleId)?.saleNumber, record.type, record.method].filter(Boolean).join(" · ")
       })),
       ...result.records.transactions.map((record) => ({
         area: "Budgeting",
@@ -1952,6 +2238,9 @@
         <div class="hh-import-stat"><strong>${result.records.animals.length}</strong><span>Animals ready</span></div>
         <div class="hh-import-stat"><strong>${result.records.breedings.length}</strong><span>Breedings ready</span></div>
         <div class="hh-import-stat"><strong>${result.records.litters.length}</strong><span>Births ready</span></div>
+        <div class="hh-import-stat"><strong>${result.records.customers.length}</strong><span>Customers ready</span></div>
+        <div class="hh-import-stat"><strong>${result.records.sales.length}</strong><span>Sales ready</span></div>
+        <div class="hh-import-stat"><strong>${result.records.payments.length}</strong><span>Payments ready</span></div>
         <div class="hh-import-stat"><strong>${result.records.transactions.length}</strong><span>Transactions ready</span></div>
         <div class="hh-import-stat"><strong>${result.records.productionRecords.length}</strong><span>Production ready</span></div>
         <div class="hh-import-stat"><strong>${result.records.annualBudgetPlans.length}</strong><span>Annual plans ready</span></div>
@@ -2044,6 +2333,9 @@
       animals: Array.isArray(options.state.animals) ? options.state.animals : [],
       breedings: Array.isArray(options.state.breedings) ? options.state.breedings : [],
       litters: Array.isArray(options.state.litters) ? options.state.litters : [],
+      customers: Array.isArray(options.state.customers) ? options.state.customers : [],
+      sales: Array.isArray(options.state.sales) ? options.state.sales : [],
+      payments: Array.isArray(options.state.payments) ? options.state.payments : [],
       transactions: Array.isArray(options.state.transactions) ? options.state.transactions : [],
       productionRecords: Array.isArray(options.state.productionRecords) ? options.state.productionRecords : [],
       health: Array.isArray(options.state.health) ? options.state.health : [],
@@ -2060,6 +2352,22 @@
 
   function styleTemplateSheet(worksheet, widths) {
     worksheet.views = [{ state: "frozen", ySplit: 1 }];
+    worksheet.pageSetup = {
+      paperSize: 1,
+      orientation: "landscape",
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      horizontalCentered: true
+    };
+    worksheet.pageMargins = {
+      left: 0.25,
+      right: 0.25,
+      top: 0.45,
+      bottom: 0.45,
+      header: 0.2,
+      footer: 0.2
+    };
     worksheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
     worksheet.getRow(1).fill = {
       type: "pattern",
@@ -2137,12 +2445,17 @@
     const animals = Array.isArray(state.animals) ? state.animals : [];
     const breedings = Array.isArray(state.breedings) ? state.breedings : [];
     const litters = Array.isArray(state.litters) ? state.litters : [];
+    const customers = Array.isArray(state.customers) ? state.customers : [];
+    const sales = Array.isArray(state.sales) ? state.sales : [];
+    const payments = Array.isArray(state.payments) ? state.payments : [];
     const health = Array.isArray(state.health) ? state.health : [];
     const transactions = Array.isArray(state.transactions) ? state.transactions : [];
     const productionRecords = Array.isArray(state.productionRecords) ? state.productionRecords : [];
-    const standaloneTransactions = transactions.filter((record) => record.sourceType !== "production");
+    const standaloneTransactions = transactions.filter((record) => !["production", "sale-payment"].includes(record.sourceType));
     const annualBudgetPlans = Array.isArray(state.annualBudgetPlans) ? state.annualBudgetPlans : [];
     const animalById = new Map(animals.map((animal) => [animal.id, animal]));
+    const customerById = new Map(customers.map((customer) => [customer.id, customer]));
+    const saleById = new Map(sales.map((sale) => [sale.id, sale]));
     const workbook = new window.ExcelJS.Workbook();
     workbook.creator = "HerdHarbor";
     workbook.created = new Date();
@@ -2154,15 +2467,18 @@
       ["HerdHarbor Farm Records Export", ""],
       ["Operation", safeExcelText(options.operationName || state.profile?.operationName || "HerdHarbor")],
       ["Exported", new Date()],
-      ["App version", "0.4.0"],
+      ["App version", "0.5.0"],
       ["Animals", animals.length],
       ["Breeding records", breedings.length],
       ["Birth and litter records", litters.length],
+      ["Customers", customers.length],
+      ["Sales", sales.length],
+      ["Payments", payments.length],
       ["Medical records", health.length],
       ["Actual transactions", transactions.length],
       ["Production records", productionRecords.length],
       ["Annual plan entries", annualBudgetPlans.length],
-      ["Safety note", "This workbook is a readable record export. Production-linked sale income appears on the Production sheet and is recreated on import instead of being duplicated on Budgeting. Keep the JSON safety backup for complete HerdHarbor restoration."]
+      ["Safety note", "This workbook is a readable record export. Production sale income and animal-sale payments appear on their source sheets and are recreated on import instead of being duplicated on Budgeting. Keep the JSON safety backup for complete HerdHarbor restoration."]
     ]);
     overview.mergeCells("A1:B1");
     overview.getRow(1).height = 34;
@@ -2176,8 +2492,8 @@
     overview.getColumn(2).width = 56;
     overview.getColumn(2).alignment = { vertical: "top", wrapText: true };
     overview.getCell("B3").numFmt = "yyyy-mm-dd h:mm AM/PM";
-    overview.getRow(12).height = 56;
-    overview.getRow(12).alignment = { vertical: "top", wrapText: true };
+    overview.getRow(15).height = 56;
+    overview.getRow(15).alignment = { vertical: "top", wrapText: true };
     overview.views = [{ state: "frozen", ySplit: 1 }];
 
     const animalSheet = workbook.addWorksheet("Animals");
@@ -2194,6 +2510,7 @@
       "Color or Variety",
       "Location / Cage / Pen",
       "Status",
+      "Asking Price",
       "Sire ID / Tag / Name",
       "Dam ID / Tag / Name",
       "Source Birth Record ID",
@@ -2213,6 +2530,7 @@
         safeExcelText(animal.color),
         safeExcelText(animal.location),
         safeExcelText(animal.status),
+        numericExcelValue(animal.askingPrice),
         animalExportReference(animalById.get(animal.sireId)),
         animalExportReference(animalById.get(animal.damId)),
         safeExcelText(animal.sourceBirthId),
@@ -2221,9 +2539,37 @@
     });
     styleExportSheet(
       animalSheet,
-      [24, 16, 20, 20, 22, 14, 22, 14, 16, 20, 22, 16, 24, 24, 24, 38],
-      { dateColumns: [9] }
+      [24, 16, 20, 20, 22, 14, 22, 14, 16, 20, 22, 16, 16, 24, 24, 24, 38],
+      { dateColumns: [9], currencyColumns: [13] }
     );
+
+    const customerSheet = workbook.addWorksheet("Customers");
+    customerSheet.addRow(["Customer Record ID", "Customer Name", "Phone", "Email", "Mailing Address", "Notes"]);
+    customers.forEach((customer) => customerSheet.addRow([
+      safeExcelText(customer.id), safeExcelText(customer.name), safeExcelText(customer.phone), safeExcelText(customer.email), safeExcelText(customer.address), safeExcelText(customer.notes)
+    ]));
+    styleExportSheet(customerSheet, [28, 26, 18, 28, 38, 40]);
+
+    const saleSheet = workbook.addWorksheet("Sales");
+    saleSheet.addRow(["Sale Number", "Sale Date", "Payment Due Date", "Sale Status", "Customer ID or Name", "Animal ID / Tag / Name", "Item Price", "Discount", "Tax / Fees", "Transfer Number", "Terms", "Notes"]);
+    sales.forEach((sale) => {
+      const items = Array.isArray(sale.items) ? sale.items : [];
+      (items.length ? items : [{ animalId: "", unitPrice: 0 }]).forEach((item) => saleSheet.addRow([
+        safeExcelText(sale.saleNumber), dateOnlyValue(sale.saleDate), dateOnlyValue(sale.dueDate), safeExcelText(sale.status),
+        safeExcelText(customerById.get(sale.customerId)?.name || customerById.get(sale.customerId)?.id),
+        animalExportReference(animalById.get(item.animalId)), numericExcelValue(item.unitPrice), numericExcelValue(sale.discount), numericExcelValue(sale.tax),
+        safeExcelText(sale.transferNumber), safeExcelText(sale.terms), safeExcelText(sale.notes)
+      ]));
+    });
+    styleExportSheet(saleSheet, [22, 16, 18, 16, 28, 28, 14, 14, 14, 24, 38, 38], { dateColumns: [2, 3], currencyColumns: [7, 8, 9] });
+
+    const paymentSheet = workbook.addWorksheet("Payments");
+    paymentSheet.addRow(["Payment Record ID", "Sale Number", "Payment Date", "Payment Type", "Amount Received", "Payment Method", "Reference", "Notes"]);
+    payments.forEach((payment) => paymentSheet.addRow([
+      safeExcelText(payment.id), safeExcelText(saleById.get(payment.saleId)?.saleNumber), dateOnlyValue(payment.date), safeExcelText(payment.type),
+      numericExcelValue(payment.amount), safeExcelText(payment.method), safeExcelText(payment.reference), safeExcelText(payment.notes)
+    ]));
+    styleExportSheet(paymentSheet, [28, 22, 16, 16, 16, 20, 24, 38], { dateColumns: [3], currencyColumns: [5] });
 
     const breedingSheet = workbook.addWorksheet("Breeding");
     breedingSheet.addRow([
@@ -2504,7 +2850,7 @@
       ["Weaned", Number(report.weaned || 0)],
       ["Born-alive-to-weaned rate", Number(report.survivalRate || 0)],
       ["Exported", new Date()],
-      ["App version", "0.4.0"]
+      ["App version", "0.5.0"]
     ]);
     overview.mergeCells("A1:B1");
     overview.getRow(1).height = 34;
@@ -2619,7 +2965,7 @@
       ["Sale revenue", totalRevenue],
       ["Warnings", warnings.length],
       ["Exported", new Date()],
-      ["App version", "0.4.0"],
+      ["App version", "0.5.0"],
       ["Quantity note", "Quantities stay separated by product and unit so eggs, dozens, gallons, birds, pounds, and custom units are never combined into a misleading total."]
     ]);
     overview.mergeCells("A1:B1");
@@ -2760,11 +3106,12 @@
     const instructions = workbook.addWorksheet("Instructions");
     instructions.addRows([
       ["HerdHarbor Excel Import Template", ""],
-      ["How to use", "Enter records in any or all of the Animals, Breeding, Births, Production, Budgeting, Annual Budget, and Medical sheets. Keep the header row unchanged."],
+      ["How to use", "Enter records in any or all of the Animals, Customers, Sales, Payments, Breeding, Births, Production, Budgeting, Annual Budget, and Medical sheets. Keep the header row unchanged."],
       ["Review first", "HerdHarbor previews valid records and flags duplicate or invalid rows before import."],
       ["Existing data", "Spreadsheet imports add records. They do not replace current farm records."],
       ["Animal matching", "Breeding, births, medical, production, and animal-assigned budget rows can match an animal by ID/tag, tattoo, registration number, or unique name."],
       ["Breeding and births", "Use the Breeding Record ID to link a Births row to a breeding. Source Birth Record ID links an offspring animal back to that birth while sire and dam create its pedigree."],
+      ["Sales and payments", "Add customers first. Use one Sales row per animal and repeat the Sale Number for multi-animal sales. Payments match the Sale Number and become linked Animal Sales income after import."],
       ["Dates", "Use Excel dates or YYYY-MM-DD."],
       ["Production", "Total Produced must be greater than zero and must cover all sold, household, feed, stored, donated, and wasted quantities. Sale Income becomes one linked Budgeting transaction."],
       ["Money", "Transaction amounts must be greater than zero. Annual Budget values remain yearly planned figures and never become actual transactions."],
@@ -2795,12 +3142,13 @@
       "Color or Variety",
       "Location / Cage / Pen",
       "Status",
+      "Asking Price",
       "Sire ID / Tag / Name",
       "Dam ID / Tag / Name",
       "Source Birth Record ID",
       "Notes"
     ]);
-    styleTemplateSheet(animals, [24, 16, 20, 20, 22, 14, 22, 12, 16, 20, 22, 16, 24, 24, 24, 36]);
+    styleTemplateSheet(animals, [24, 16, 20, 20, 22, 14, 22, 12, 16, 20, 22, 16, 16, 24, 24, 24, 36]);
     animals.dataValidations.add("F2:F5000", {
       type: "list",
       allowBlank: false,
@@ -2814,8 +3162,23 @@
     animals.dataValidations.add("L2:L5000", {
       type: "list",
       allowBlank: true,
-      formulae: ['"Active,Breeding,Growing,Retired,For Sale,Sold,Deceased,Ancestor Only"']
+      formulae: ['"Active,Breeding,Growing,Retired,For Sale,Reserved,Sold,Deceased,Ancestor Only"']
     });
+
+    const customers = workbook.addWorksheet("Customers");
+    customers.addRow(["Customer Record ID", "Customer Name", "Phone", "Email", "Mailing Address", "Notes"]);
+    styleTemplateSheet(customers, [28, 26, 18, 28, 38, 40]);
+
+    const sales = workbook.addWorksheet("Sales");
+    sales.addRow(["Sale Number", "Sale Date", "Payment Due Date", "Sale Status", "Customer ID or Name", "Animal ID / Tag / Name", "Item Price", "Discount", "Tax / Fees", "Transfer Number", "Terms", "Notes"]);
+    styleTemplateSheet(sales, [22, 16, 18, 16, 28, 28, 14, 14, 14, 24, 38, 38]);
+    sales.dataValidations.add("D2:D5000", { type: "list", allowBlank: false, formulae: ['"Draft,Reserved,Completed,Cancelled"'] });
+
+    const payments = workbook.addWorksheet("Payments");
+    payments.addRow(["Payment Record ID", "Sale Number", "Payment Date", "Payment Type", "Amount Received", "Payment Method", "Reference", "Notes"]);
+    styleTemplateSheet(payments, [28, 22, 16, 16, 16, 20, 24, 38]);
+    payments.dataValidations.add("D2:D5000", { type: "list", allowBlank: false, formulae: ['"Deposit,Payment"'] });
+    payments.dataValidations.add("F2:F5000", { type: "list", allowBlank: false, formulae: ['"Cash,Check,Card,Bank transfer,PayPal / Venmo,Other"'] });
 
     const breeding = workbook.addWorksheet("Breeding");
     breeding.addRow([

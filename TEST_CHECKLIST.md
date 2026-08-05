@@ -1,11 +1,49 @@
-# HerdHarbor v0.4.0 Release Checklist
+# HerdHarbor v0.5.0 Release Checklist
+
+## Customers and animal sales
+
+- Add, edit, search, and delete an unused customer; confirm a customer referenced by a sale cannot be deleted
+- Create a multi-animal sale and confirm each selected animal appears once with its asking price
+- Confirm the same animal cannot be placed on two active Draft or Reserved sales
+- Move a sale through Draft, Reserved, Completed, and Cancelled and confirm its animals move through For Sale, Reserved, Sold, and back to For Sale as appropriate
+- Confirm discount and tax/fee values cannot be negative and that the total, paid amount, and balance reconcile
+- Edit a customer or sale and confirm linked payment descriptions in Budgeting update without creating extra transactions
+- Delete a sale and confirm its payments and linked Budget income are removed only after confirmation
+
+## Payments, documents, and QR cards
+
+- Record a Deposit and a Payment with date, method, reference, and notes and confirm payment above the remaining balance is rejected
+- Confirm each payment creates exactly one linked Animal Sales income record in Budgeting and editing it opens the source Payment form
+- Edit and delete a payment and confirm the linked Budget record updates or is removed without duplication
+- Print an invoice, receipt, and bill of sale and confirm the farm, customer, animals, totals, payment history, pedigree summary, and signature lines are readable
+- Print one animal QR card, one cage/pen card, and bulk cards for the current animal filter
+- Scan a QR card while signed out, sign in to the owning account, and confirm HerdHarbor opens only the referenced animal
+- Confirm the QR library and cards work from the installed app's cached shell while offline
+
+## Digital animal transfers
+
+- Download a transfer from a completed sale and confirm it contains only the subject animal, transfer identifiers, buyer/seller labels, and up to three pedigree generations
+- Import the transfer into another account and confirm the subject becomes Active while new pedigree-only ancestors become Ancestor Only
+- Confirm imported sire, dam, grandparent, and great-grandparent links point to the correct imported or matched records
+- Import the same file again and confirm the transfer is skipped instead of duplicating the animal
+- Confirm an existing ancestor is matched by registration number, tattoo, or tag rather than duplicated
+- Confirm an invalid or partially failing transfer rolls back without leaving partial animals or transfer history
+
+## Excel customers, sales, and payments
+
+- Export records and confirm Customers, Sales, and Payments sheets contain typed dates and amounts with readable frozen headers
+- Confirm a multi-animal sale uses one row per animal and retains one sale number, customer, status, totals, and payment history after reimport
+- Confirm payment-linked Budget transactions are excluded from the Budgeting sheet and recreated exactly once from Payments during import
+- Confirm spreadsheet import rejects duplicate active animal sales, unknown customers or animals, invalid statuses, negative values, and overpayments
+- Download the template and confirm Customers, Sales, and Payments sheets and their validation lists are present
+- Edit customers, sales, and payments on separate devices and confirm record-level cloud merging preserves non-overlapping changes
 
 ## Animals and pedigree builder hotfix
 
 - Open Animals and confirm the status filter defaults to Active and only exact Active-status records appear initially
-- Select Any status and confirm Active, Breeding, Growing, Retired, For Sale, Sold, Deceased, and Ancestor Only records can still be shown
+- Select Any status and confirm Active, Breeding, Growing, Retired, For Sale, Reserved, Sold, Deceased, and Ancestor Only records can still be shown
 - Select Ancestor Only and confirm ancestor records remain available without appearing in the default Active view
-- Open the Guided Pedigree Builder and confirm its header shows v0.4.0 instead of v0.2.1
+- Open the Guided Pedigree Builder and confirm its header shows v0.5.0 instead of v0.2.1
 
 ## Breeding and pregnancy workflow
 
@@ -146,7 +184,7 @@
 ## Excel record export
 
 - Select **Export records to Excel** from Settings
-- Confirm the workbook opens with Overview, Animals, Breeding, Births, Medical, Production, Budgeting, and Annual Budget sheets
+- Confirm the workbook opens with Overview, Animals, Customers, Sales, Payments, Breeding, Births, Medical, Production, Budgeting, and Annual Budget sheets
 - Confirm headers are readable, frozen, filtered, and date/currency columns retain their types
 - Confirm animal parent references, source-birth references, medical-to-animal links, and animal-assigned transactions use a unique record reference
 - Confirm breeding dam/sire links, pregnancy dates/results, methods, and statuses remain typed and readable
@@ -166,11 +204,11 @@
 
 ## Excel spreadsheet import
 
-- Download the HerdHarbor Excel template from Settings and confirm it opens with Instructions, Animals, Breeding, Births, Production, Budgeting, Annual Budget, and Medical sheets
+- Download the HerdHarbor Excel template from Settings and confirm it opens with Instructions, Animals, Customers, Sales, Payments, Breeding, Births, Production, Budgeting, Annual Budget, and Medical sheets
 - Import a workbook containing valid rows in every supported data sheet
 - Confirm the review screen shows correct ready, skipped, warning, and error counts
 - Confirm no records are added before **Import records** is selected
-- Confirm approved animals, breedings, births, production, transactions, annual plans, and medical records appear in their normal app sections
+- Confirm approved animals, customers, sales, payments, breedings, births, production, transactions, annual plans, and medical records appear in their normal app sections
 - Import the same workbook again and confirm duplicate records are skipped
 - Confirm Medical and animal-assigned Budgeting rows match animals by tag, tattoo, registration number, or unique name
 - Confirm missing or ambiguous animal references are rejected without changing existing records

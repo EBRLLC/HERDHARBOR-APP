@@ -1,4 +1,4 @@
-# HerdHarbor Pre-Alpha v0.4.0
+# HerdHarbor Pre-Alpha v0.5.0
 
 HerdHarbor is an installable farm and livestock recordkeeping app for the current private tester group.
 
@@ -14,6 +14,12 @@ HerdHarbor is an installable farm and livestock recordkeeping app for the curren
 - Installable PWA for Android, iPhone/iPad, Windows, macOS, and supported browsers
 - Portrait-only orientation for the installed mobile app
 - Animals, breeding, births and litters, pedigrees, health, tasks, budgeting, production and sales, photos, farm branding, breed memory, and dark mode
+- Customer and buyer records with phone, email, address, and private farm notes
+- Multi-animal quotes, reservations, and completed sales with discounts, tax/fees, balances, and Available/Reserved/Sold status handling
+- Deposits and payments with receipts and exactly one linked Budget income record per payment
+- Printable invoices, receipts, bills of sale, and animal or cage/pen QR cards
+- Private QR deep links that open the correct animal after the farm owner signs in
+- Downloadable animal-transfer files containing the animal and a three-generation pedigree, with duplicate-safe import into another HerdHarbor account
 - Species-aware breeding schedules with pregnancy checks, expected-birth preparation, due dates, and deterministic task reminders
 - Birth outcomes for born alive, stillborn, fostered, lost, and weaned young, with expected-weaning reminders
 - One-step offspring creation with individual names, tags, sex, sire, dam, birth-record links, and automatic pedigree connections
@@ -29,10 +35,10 @@ HerdHarbor is an installable farm and livestock recordkeeping app for the curren
 - Individual-animal production history plus printable and downloadable Excel Production & Sales reports
 - Optional flock, herd, batch, hay-field, and cutting names preserved through cloud sync and Excel import/export
 - Linked product-sale income that updates Budgeting without duplicate transactions
-- Reviewed `.xlsx`/`.xlsm` imports for Animals, Breeding, Births, Production, actual transactions, annual planned budgets, and Medical records
+- Reviewed `.xlsx`/`.xlsm` imports for Animals, Customers, Sales, Payments, Breeding, Births, Production, actual transactions, annual planned budgets, and Medical records
 - Row-by-row import corrections with a downloadable issue report
 - Downloadable Excel import template with duplicate and validation checks
-- One-click Excel export for Animals, Breeding, Births, Medical, Production, actual Budgeting, and annual planned budgets
+- One-click Excel export for Animals, Customers, Sales, Payments, Breeding, Births, Medical, Production, actual Budgeting, and annual planned budgets
 - JSON backup export and import
 
 ## Data-safety design

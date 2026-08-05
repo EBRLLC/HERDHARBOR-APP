@@ -8,12 +8,12 @@ const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const spreadsheet = fs.readFileSync(path.join(root, "spreadsheet-import.js"), "utf8");
 const serviceWorker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 
-assert.match(html, /HerdHarbor installable tester build v0\.4\.0/);
+assert.match(html, /HerdHarbor installable tester build v0\.5\.0/);
 assert.match(html, /id="settings-sync-now"/);
 assert.match(html, /id="settings-last-synced"/);
 assert.match(html, /id="export-excel"/);
-assert.match(html, /HerdHarbor Pre-Alpha v0\.4\.0/);
-assert.match(html, /const APP_VERSION = "0\.4\.0"/);
+assert.match(html, /HerdHarbor Pre-Alpha v\$\{APP_VERSION\}/);
+assert.match(html, /const APP_VERSION = "0\.5\.0"/);
 assert.match(html, /Guided pedigree builder · v\$\{APP_VERSION\}/);
 assert.doesNotMatch(html, /Guided pedigree builder · v0\.2\.1/);
 assert.match(html, /let animalView = \{[\s\S]*?status: "Active"[\s\S]*?\};/);
@@ -32,6 +32,15 @@ assert.match(html, /id="download-breeding-report"/);
 assert.match(html, /function syncBreedingReminders\(/);
 assert.match(html, /function openOffspringCreator\(/);
 assert.match(html, /sourceBirthId: litter\.id/);
+assert.match(html, /customers: \[\]/);
+assert.match(html, /sales: \[\]/);
+assert.match(html, /payments: \[\]/);
+assert.match(html, /transfers: \[\]/);
+assert.match(html, /function renderSales\(\)/);
+assert.match(html, /function syncSalePaymentIncome\(/);
+assert.match(html, /function printSaleDocument\(/);
+assert.match(html, /function exportAnimalTransfer\(/);
+assert.match(html, /function openAnimalQrCardForm\(/);
 assert.match(html, /protected cloud copy and an offline copy on this device/);
 assert.doesNotMatch(
   html,
@@ -52,6 +61,9 @@ assert.match(spreadsheet, /function buildBreedingReportWorkbook\(/);
 assert.match(spreadsheet, /workbook\.addWorksheet\("Production"\)/);
 assert.match(spreadsheet, /workbook\.addWorksheet\("Breeding"\)/);
 assert.match(spreadsheet, /workbook\.addWorksheet\("Births"\)/);
+assert.match(spreadsheet, /workbook\.addWorksheet\("Customers"\)/);
+assert.match(spreadsheet, /workbook\.addWorksheet\("Sales"\)/);
+assert.match(spreadsheet, /workbook\.addWorksheet\("Payments"\)/);
 assert.match(spreadsheet, /function stageProduction\(/);
 assert.match(spreadsheet, /function stageBreedings\(/);
 assert.match(spreadsheet, /function stageBirths\(/);
@@ -59,10 +71,11 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /v0\.4\.0-/);
-assert.match(serviceWorker, /v0\.4\.0-20260805-2/);
-assert.match(serviceWorker, /spreadsheet-import\.js\?v=8/);
+assert.match(serviceWorker, /v0\.5\.0-/);
+assert.match(serviceWorker, /v0\.5\.0-20260805-1/);
+assert.match(serviceWorker, /spreadsheet-import\.js\?v=9/);
 assert.match(serviceWorker, /herdharbor-cloud\.js\?v=10/);
-assert.match(serviceWorker, /pwa\.js\?v=11/);
+assert.match(serviceWorker, /pwa\.js\?v=12/);
+assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);
 
-console.log("v0.4.0 stability release tests passed");
+console.log("v0.5.0 stability release tests passed");

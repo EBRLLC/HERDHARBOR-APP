@@ -47,6 +47,10 @@ const base = {
   litters: [],
   health: [],
   tasks: [],
+  customers: [],
+  sales: [],
+  payments: [],
+  transfers: [],
   transactions: [],
   productionRecords: [],
   activity: [],
@@ -80,6 +84,11 @@ const base = {
     breedingDate: "2026-08-05",
     status: "Bred"
   });
+  local.customers.push({ id: "customer-local", name: "Local buyer" });
+  local.sales.push({
+    id: "sale-local", saleNumber: "HH-2026-LOCAL1", customerId: "customer-local", status: "Reserved",
+    items: [{ id: "saleitem-local", animalId: "animal-1", unitPrice: "75.00" }]
+  });
   local.settings.theme = "dark";
 
   const remote = structuredClone(base);
@@ -95,6 +104,8 @@ const base = {
     birthDate: "2026-08-05",
     bornAlive: "2"
   });
+  remote.payments.push({ id: "payment-remote", saleId: "sale-local", amount: "25.00", date: "2026-08-05" });
+  remote.transfers.push({ id: "transfer-remote", direction: "Received", sourceTransferId: "TR-REMOTE" });
   remote.activity.push({
     id: "activity-remote",
     text: "Added health record",
@@ -119,10 +130,32 @@ const base = {
   );
   assert.deepEqual(result.value.breedings.map((item) => item.id), ["breeding-local"]);
   assert.deepEqual(result.value.litters.map((item) => item.id), ["birth-remote"]);
+  assert.deepEqual(result.value.customers.map((item) => item.id), ["customer-local"]);
+  assert.deepEqual(result.value.sales.map((item) => item.id), ["sale-local"]);
+  assert.deepEqual(result.value.payments.map((item) => item.id), ["payment-remote"]);
+  assert.deepEqual(result.value.transfers.map((item) => item.id), ["transfer-remote"]);
   assert.deepEqual(
     result.value.activity.map((item) => item.id),
     ["activity-remote", "activity-local"]
   );
+
+  const transferBase = structuredClone(base);
+  const transferLocal = structuredClone(base);
+  const transferRemote = structuredClone(base);
+  transferLocal.transfers.push({
+    id: "transfer_received_same", direction: "Received", sourceTransferId: "TR-SAME",
+    sourceSaleNumber: "HH-SAME", senderName: "Sending farm", senderContact: "owner@example.com",
+    animalIds: ["animal-1"], createdAt: "2026-08-05T12:00:01.000Z"
+  });
+  transferRemote.transfers.push({
+    id: "transfer_received_same", direction: "Received", sourceTransferId: "TR-SAME",
+    sourceSaleNumber: "HH-SAME", senderName: "Sending farm", senderContact: "owner@example.com",
+    animalIds: ["animal-1"], createdAt: "2026-08-05T12:00:02.000Z"
+  });
+  const transferMerge = mergeRawStates(JSON.stringify(transferBase), JSON.stringify(transferLocal), JSON.stringify(transferRemote));
+  assert.equal(transferMerge.ok, true, "the same deterministic transfer import merges once across devices");
+  assert.equal(transferMerge.value.transfers.length, 1);
+  assert.equal(transferMerge.value.transfers[0].createdAt, "2026-08-05T12:00:01.000Z");
   assert.equal(result.value.settings.theme, "dark");
   assert.equal(
     result.value.settings.sidebarCollapsed,
