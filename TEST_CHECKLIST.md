@@ -1,4 +1,29 @@
-# HerdHarbor v0.3.07 Release Checklist
+# HerdHarbor v0.3.08 Release Checklist
+
+## Full-year budgeting
+
+- Switch Budget view between Monthly and Full year and confirm the selected mode remains active while changing species or transaction filters
+- Select 2026 in Full year and confirm only transactions dated January 1 through December 31, 2026 are included
+- Confirm Income, Operating expenses, Capital expenses, Net, and Cost per head match the sum of the twelve monthly views
+- Confirm the monthly breakdown always shows January through December, including zero-activity months
+- Confirm yearly category plans equal the sum of the monthly budgets entered in that year
+- Confirm a monthly head-count override still applies only to that month and Full year averages all available overrides in the selected year
+- Confirm the Full year transaction list includes every matching 2026 record and no 2025 or 2027 records
+- Export CSV in Monthly and Full year modes and confirm the filename and included records match the selected period
+- Switch to Full year and confirm Production & Sales automatically uses January 1 through December 31 of the selected year
+- Change years in Full year mode and confirm the annual planned budget section follows the same selected year
+
+## Hay production and sales
+
+- Confirm Hay appears beside Eggs, Milk, and Broilers in Quick entry and in the Product form
+- Confirm a new Hay entry defaults to Whole operation and bales
+- Record square bales, round bales, pounds, kilograms, and tons without combining incompatible units in reports
+- Add harvested, sold, fed, stored, donated, and spoiled quantities and confirm allocations cannot exceed total hay
+- Add a field or cutting name and confirm comparisons label it as Field / Cutting
+- Add hay sale income and confirm exactly one linked Other Income transaction is created and updated without duplication
+- Import Hay, hay bales, round hay bales, and fodder from Excel and confirm they normalize to Hay
+- Download the Excel template and confirm Hay plus bale units appear in the Production validation lists
+- Export and reimport Hay production and confirm product, unit, quantities, field/cutting name, customer, income, and notes round-trip unchanged
 
 ## Recurring tasks and daily workflow
 
@@ -18,7 +43,7 @@
 
 ## Faster production entry
 
-- Open Budgeting and confirm Eggs, Milk, Broilers, and Custom product quick-entry buttons open the correct form defaults
+- Open Budgeting and confirm Eggs, Milk, Broilers, Hay, and Custom product quick-entry buttons open the correct form defaults
 - Add an entry, select **Repeat last entry**, and confirm quantities, assignments, customer, notes, and group/batch name are copied to a new record dated today
 - Confirm repeating an entry creates a new ID and exactly one new linked income transaction rather than changing or duplicating the source transaction
 - Use the Repeat action on a historical row and confirm the source record remains unchanged

@@ -1,4 +1,4 @@
-# HerdHarbor Pre-Alpha v0.3.07
+# HerdHarbor Pre-Alpha v0.3.08
 
 HerdHarbor is an installable farm and livestock recordkeeping app for the current private tester group.
 
@@ -14,15 +14,16 @@ HerdHarbor is an installable farm and livestock recordkeeping app for the curren
 - Installable PWA for Android, iPhone/iPad, Windows, macOS, and supported browsers
 - Portrait-only orientation for the installed mobile app
 - Animals, breeding, litters, pedigrees, health, tasks, budgeting, production and sales, photos, farm branding, breed memory, and dark mode
+- Monthly and full-year Budget views with 12-month income, operating-expense, capital-expense, net, cost-per-head, budget-versus-actual, transaction, and CSV reporting
 - Daily, weekly, every-two-weeks, monthly, and custom recurring tasks with duplicate-safe next occurrences
 - A Today workflow that keeps overdue work visible until it is completed or rescheduled
 - Task search plus status, category, and animal filters, with one-tap move-to-tomorrow and dashboard completion
-- Quantity-based egg, broiler, dairy, and custom farm-product records with sold, household, feed, stored, donated, and waste allocations
-- One-tap egg, milk, broiler, and custom-product entry plus safe repeat-last-entry cloning
+- Quantity-based egg, broiler, dairy, hay, and custom farm-product records with sold, household, feed, stored, donated, and waste allocations
+- One-tap egg, milk, broiler, hay, and custom-product entry plus safe repeat-last-entry cloning
 - Daily, weekly, monthly, and yearly production totals with product, species, animal, and date filters
 - Revenue, average unit price, on-farm use, donation, waste rate, production-drop warnings, and animal/group comparisons
 - Individual-animal production history plus printable and downloadable Excel Production & Sales reports
-- Optional flock, herd, and batch names preserved through cloud sync and Excel import/export
+- Optional flock, herd, batch, hay-field, and cutting names preserved through cloud sync and Excel import/export
 - Linked product-sale income that updates Budgeting without duplicate transactions
 - Reviewed `.xlsx`/`.xlsm` imports for Animals, Production, actual transactions, annual planned budgets, and Medical records
 - Row-by-row import corrections with a downloadable issue report

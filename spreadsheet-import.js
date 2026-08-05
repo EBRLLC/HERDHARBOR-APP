@@ -141,7 +141,7 @@
         scope: ["scope", "assign to", "assigned to", "allocation"],
         species: ["species", "animal type", "livestock type"],
         animalRef: ["animal", "animal name", "animal id", "animal tag", "id or tag", "animal id tag name", "cow"],
-        groupName: ["group name", "flock", "herd", "batch", "batch name", "flock herd batch", "group flock herd batch name"],
+        groupName: ["group name", "flock", "herd", "batch", "batch name", "field", "field name", "cutting", "cutting name", "flock herd batch", "group flock herd batch name", "group flock herd batch field name"],
         session: ["session", "milking session", "shift"],
         unit: ["unit", "units", "production unit", "quantity unit"],
         quantity: ["total produced", "total collected", "quantity produced", "quantity collected", "production quantity", "total quantity", "quantity"],
@@ -581,7 +581,12 @@
       dairy: "Milk",
       milk: "Milk",
       "cow milk": "Milk",
-      "goat milk": "Milk"
+      "goat milk": "Milk",
+      hay: "Hay",
+      fodder: "Hay",
+      "hay bales": "Hay",
+      "square hay bales": "Hay",
+      "round hay bales": "Hay"
     };
     return aliases[normalized] || text;
   }
@@ -590,6 +595,7 @@
     if (product === "Eggs") return { species: "Chicken", unit: "eggs" };
     if (product === "Broilers") return { species: "Chicken", unit: "birds" };
     if (product === "Milk") return { species: "Cattle", unit: "gallons" };
+    if (product === "Hay") return { species: "", unit: "bales" };
     return { species: "", unit: "units" };
   }
 
@@ -598,6 +604,7 @@
     if (normalizedName.includes("egg")) return "Eggs";
     if (normalizedName.includes("broiler")) return "Broilers";
     if (normalizedName.includes("milk") || normalizedName.includes("dairy")) return "Milk";
+    if (normalizedName.includes("hay") || normalizedName.includes("fodder")) return "Hay";
     return "";
   }
 
@@ -690,7 +697,7 @@
       return "Enter numeric quantities only. Total production must be greater than zero, and sold, used, stored, donated, and wasted quantities cannot exceed that total.";
     }
     if (normalizedMessage.includes("product")) {
-      return "Enter Eggs, Broilers, Milk, or a clear name for another farm product.";
+      return "Enter Eggs, Broilers, Milk, Hay, or a clear name for another farm product.";
     }
     if (normalizedMessage.includes("weight")) {
       return "Enter a numeric weight and use lb, oz, kg, or g for the unit.";
@@ -1807,7 +1814,7 @@
       ["HerdHarbor Farm Records Export", ""],
       ["Operation", safeExcelText(options.operationName || state.profile?.operationName || "HerdHarbor")],
       ["Exported", new Date()],
-      ["App version", "0.3.07"],
+      ["App version", "0.3.08"],
       ["Animals", animals.length],
       ["Medical records", health.length],
       ["Actual transactions", transactions.length],
@@ -1924,7 +1931,7 @@
       "Scope",
       "Species",
       "Animal ID / Tag / Name",
-      "Group / Flock / Herd / Batch Name",
+      "Group / Flock / Herd / Batch / Field Name",
       "Milking Session",
       "Unit",
       "Total Produced",
@@ -2114,7 +2121,7 @@
       ["Sale revenue", totalRevenue],
       ["Warnings", warnings.length],
       ["Exported", new Date()],
-      ["App version", "0.3.07"],
+      ["App version", "0.3.08"],
       ["Quantity note", "Quantities stay separated by product and unit so eggs, dozens, gallons, birds, pounds, and custom units are never combined into a misleading total."]
     ]);
     overview.mergeCells("A1:B1");
@@ -2165,7 +2172,7 @@
 
     const history = workbook.addWorksheet("Production History");
     history.addRow([
-      "Date", "Product", "Scope", "Species", "Animal", "Group / Flock / Herd / Batch", "Milking Session", "Unit",
+      "Date", "Product", "Scope", "Species", "Animal", "Group / Flock / Herd / Batch / Field", "Milking Session", "Unit",
       "Produced", "Sold", "Household Use", "Fed to Livestock / Calves", "Stored / Set Aside", "Donated",
       "Waste", "Waste %", "Average Sale Price", "Sale Revenue", "Customer", "Waste / Discard Reason", "Notes"
     ]);
@@ -2317,7 +2324,7 @@
       "Scope",
       "Species",
       "Animal ID / Tag / Name",
-      "Group / Flock / Herd / Batch Name",
+      "Group / Flock / Herd / Batch / Field Name",
       "Milking Session",
       "Unit",
       "Total Produced",
@@ -2341,7 +2348,7 @@
     production.dataValidations.add("B2:B5000", {
       type: "list",
       allowBlank: false,
-      formulae: ['"Eggs,Broilers,Milk,Other"']
+      formulae: ['"Eggs,Broilers,Milk,Hay,Other"']
     });
     production.dataValidations.add("C2:C5000", {
       type: "list",
@@ -2361,7 +2368,7 @@
     production.dataValidations.add("H2:H5000", {
       type: "list",
       allowBlank: false,
-      formulae: ['"eggs,dozen,cartons,birds,lb,kg,gallons,quarts,liters,pints,other"']
+      formulae: ['"eggs,dozen,cartons,birds,lb,kg,gallons,quarts,liters,pints,bales,square bales,round bales,tons,other"']
     });
     production.dataValidations.add("R2:R5000", {
       type: "list",
@@ -2467,6 +2474,9 @@
       moneyNumber,
       normalize,
       issueAdvice,
+      canonicalProductionProduct,
+      productionDefaults,
+      productFromSheetName,
       buildExportWorkbook,
       buildProductionReportWorkbook
     }

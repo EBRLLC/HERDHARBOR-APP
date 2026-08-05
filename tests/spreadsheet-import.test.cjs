@@ -6,7 +6,11 @@ const ExcelJS = require("../vendor/exceljs-4.4.0.min.js");
 global.window = { ExcelJS, JSZip };
 require("../spreadsheet-import.js");
 
-const { parseWorkbookBuffer, dateToISO, moneyNumber, issueAdvice, buildExportWorkbook, buildProductionReportWorkbook } =
+const {
+  parseWorkbookBuffer, dateToISO, moneyNumber, issueAdvice,
+  canonicalProductionProduct, productionDefaults, productFromSheetName,
+  buildExportWorkbook, buildProductionReportWorkbook
+} =
   global.window.HerdHarborSpreadsheet.__test;
 
 async function buildWorkbook() {
@@ -195,6 +199,10 @@ async function run() {
   assert.equal(result.errorCount, 2);
   assert.equal(dateToISO("7/30/2026"), "2026-07-30");
   assert.equal(moneyNumber("($1,234.50)"), -1234.5);
+  assert.equal(canonicalProductionProduct("round hay bales"), "Hay");
+  assert.deepEqual(productionDefaults("Hay"), { species: "", unit: "bales" });
+  assert.equal(productFromSheetName("Hay Production"), "Hay");
+  assert.match(issueAdvice("Production product is invalid."), /Eggs, Broilers, Milk, Hay/);
 
   let downloadedBlob = null;
   global.document = {
@@ -230,8 +238,13 @@ async function run() {
     ["Instructions", "Animals", "Production", "Budgeting", "Annual Budget", "Medical"]
   );
   assert.equal(templateWorkbook.getWorksheet("Animals").getCell("A1").value, "Name");
-  assert.equal(templateWorkbook.getWorksheet("Production").getCell("F1").value, "Group / Flock / Herd / Batch Name");
+  assert.equal(templateWorkbook.getWorksheet("Production").getCell("F1").value, "Group / Flock / Herd / Batch / Field Name");
   assert.equal(templateWorkbook.getWorksheet("Production").getCell("I1").value, "Total Produced");
+  const productionValidations = JSON.stringify(
+    templateWorkbook.getWorksheet("Production").dataValidations.model
+  );
+  assert.match(productionValidations, /Hay/, "template product choices include Hay");
+  assert.match(productionValidations, /round bales/, "template units include common hay bale choices");
   assert.equal(templateWorkbook.getWorksheet("Budgeting").getCell("H1").value, "Amount");
   assert.equal(templateWorkbook.getWorksheet("Annual Budget").getCell("D1").value, "Feed Budget");
   assert.equal(templateWorkbook.getWorksheet("Medical").getCell("C1").value, "Record Type");
@@ -413,7 +426,7 @@ async function run() {
   const reportBuffer = await reportWorkbook.xlsx.writeBuffer();
   const reportReload = new ExcelJS.Workbook();
   await reportReload.xlsx.load(reportBuffer);
-  assert.equal(reportReload.getWorksheet("Overview").getCell("B12").value, "0.3.07");
+  assert.equal(reportReload.getWorksheet("Overview").getCell("B12").value, "0.3.08");
   if (process.env.HH_PRODUCTION_REPORT_QA_PATH) {
     require("node:fs").writeFileSync(process.env.HH_PRODUCTION_REPORT_QA_PATH, Buffer.from(reportBuffer));
   }

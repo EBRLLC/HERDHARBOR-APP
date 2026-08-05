@@ -80,6 +80,7 @@ const defaults = {
   Eggs: { species: "Chicken", unit: "eggs" },
   Broilers: { species: "Chicken", unit: "birds" },
   Milk: { species: "Cattle", unit: "gallons" },
+  Hay: { species: "", unit: "bales" },
   Other: { species: "", unit: "other" }
 };
 const source = html.slice(start, end);
@@ -137,6 +138,13 @@ assert.equal(comparisons.find((row) => row.product === "Milk").label, "Bessie");
 assert.ok(comparisons.some((row) => row.label === "Jersey herd" && row.kind === "Herd"), "animal records can also roll up to a named herd");
 assert.equal(comparisons.find((row) => row.product === "Eggs").label, "Layer flock A");
 assert.equal(comparisons.find((row) => row.product === "Eggs").kind, "Flock");
+const hayComparison = helpers.productionComparisonRows([{
+  id: "hay-current", date: "2026-08-04", product: "Hay", scope: "Operation",
+  groupName: "North field first cutting", unit: "round bales", quantity: "24",
+  soldQuantity: "8", setAsideQuantity: "16", wasteQuantity: "0", saleAmount: "320"
+}])[0];
+assert.equal(hayComparison.label, "North field first cutting");
+assert.equal(hayComparison.kind, "Field / Cutting");
 
 const warnings = helpers.productionWarnings(currentDay, records);
 assert.ok(warnings.some((warning) => warning.type === "waste"), "high waste is flagged");
@@ -155,11 +163,16 @@ const quickEgg = helpers.productionDraft("Eggs");
 assert.equal(quickEgg.scope, "Species");
 assert.equal(quickEgg.species, "Chicken");
 assert.equal(quickEgg.unit, "eggs");
+const quickHay = helpers.productionDraft("Hay");
+assert.equal(quickHay.scope, "Operation");
+assert.equal(quickHay.species, "");
+assert.equal(quickHay.unit, "bales");
 
 assert.match(html, /data-quick-production="Eggs"/);
 assert.match(html, /data-quick-production="Milk"/);
 assert.match(html, /data-quick-production="Broilers"/);
+assert.match(html, /data-quick-production="Hay"/);
 assert.match(html, /downloadProductionReport/);
-assert.match(html, /Group \/ flock \/ herd \/ batch name/);
+assert.match(html, /Group \/ flock \/ herd \/ batch \/ field name/);
 
 console.log("production reports and faster-entry tests passed");

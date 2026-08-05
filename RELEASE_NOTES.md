@@ -1,8 +1,24 @@
-# HerdHarbor Pre-Alpha v0.3.07
+# HerdHarbor Pre-Alpha v0.3.08
 
-This daily-workflow release adds dependable recurring chores and task filters while preserving the existing farm record, cloud table, storage key, production reporting, and linked-income behavior.
+This release adds a full-year Budget view and first-class hay production and sales while preserving the existing farm record, cloud table, storage key, recurring tasks, and linked-income behavior.
 
 ## Highlights
+
+- Added a Monthly / Full year Budget view switch
+- Added year selection based on the years present in transactions, monthly budgets, and annual plans
+- Full-year mode calculates income, operating expenses, capital expenses, net, cost per head, and all matching transactions for January 1 through December 31
+- Added a January-through-December table showing each month's income, operating expenses, capital expenses, and net
+- Full-year budget comparisons sum the monthly category budgets entered for the selected year
+- Full-year cost per head averages the available monthly head-count overrides and otherwise uses active animals
+- Full-year CSV export includes every matching transaction in the selected year
+- Switching Budget to Full year aligns Production & Sales to that same year's date range
+- Added Hay as a built-in Production & Sales product and one-tap quick entry
+- Added bales, square bales, round bales, and tons as production units
+- Added hay defaults, field/cutting comparisons, linked Other Income transactions, and hay-specific form labels
+- Added Hay and common aliases to Excel import, export, template validation, and production reports
+- Preserved existing monthly views, custom products, farm records, and cloud synchronization without a migration
+
+## Continued daily-workflow capabilities
 
 - Added daily, weekly, every-two-weeks, monthly, and custom-day recurring tasks
 - Completing a recurring task creates exactly one next occurrence while preserving completed history
@@ -19,7 +35,7 @@ This daily-workflow release adds dependable recurring chores and task filters wh
 
 ## Continued production reporting capabilities
 
-- Added one-tap entry buttons for eggs, milk, broilers, and custom farm products
+- Added one-tap entry buttons for eggs, milk, broilers, hay, and custom farm products
 - Added **Repeat last entry** and per-row Repeat actions that copy the source values into a new dated record without copying its ID or linked transaction
 - Added date-range, product, species, and animal filters
 - Added daily, weekly, monthly, and yearly production totals without combining incompatible units
