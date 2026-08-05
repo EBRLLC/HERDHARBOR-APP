@@ -1373,7 +1373,7 @@
 
     const payload = JSON.stringify({
       app: "HerdHarbor",
-      version: "0.3.07",
+      version: "0.3.08",
       backupType: "local-safety-backup",
       exportedAt: new Date().toISOString(),
       data: appState

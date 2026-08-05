@@ -91,14 +91,41 @@ assert.equal(helpers.productionFarmUse(milkRecord), 3);
 assert.equal(state.transactions[1].category, "Milk / Fiber");
 assert.equal(state.transactions[1].animalId, "cow-1");
 
+const hayRecord = {
+  id: "production-hay",
+  date: "2026-08-04",
+  product: "Hay",
+  scope: "Operation",
+  species: "",
+  animalId: "",
+  groupName: "North field first cutting",
+  unit: "round bales",
+  quantity: "30",
+  soldQuantity: "12",
+  householdQuantity: "0",
+  feedQuantity: "8",
+  setAsideQuantity: "9",
+  donatedQuantity: "0",
+  wasteQuantity: "1",
+  saleAmount: "480.00",
+  customer: "Neighboring farm",
+  notes: ""
+};
+state.productionRecords.push(hayRecord);
+helpers.syncProductionIncome(hayRecord);
+assert.equal(state.transactions[2].category, "Other Income");
+assert.equal(state.transactions[2].amount, "480.00");
+assert.match(state.transactions[2].description, /12 round bales sold/);
+
 const summary = helpers.productionSummaryRows(state.productionRecords);
-assert.equal(summary.length, 2);
+assert.equal(summary.length, 3);
 assert.equal(summary.find((row) => row.product === "Eggs").sold, 10);
 assert.equal(summary.find((row) => row.product === "Milk").waste, 1);
+assert.equal(summary.find((row) => row.product === "Hay").farmUse, 17);
 
 milkRecord.saleAmount = "0";
 helpers.syncProductionIncome(milkRecord);
-assert.equal(state.transactions.length, 1, "removing a sale amount removes only its linked income");
+assert.equal(state.transactions.length, 2, "removing a sale amount removes only its linked income");
 assert.equal(milkRecord.transactionId, "");
 
 assert.match(html, /"Fed to livestock \/ calves", "feedQuantity"/, "dairy milk can be assigned to calves or livestock");
