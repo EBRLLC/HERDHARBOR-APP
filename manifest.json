@@ -43,7 +43,16 @@
       "name": "Health records",
       "short_name": "Health",
       "url": "./#health"
+    },
+    {
+      "name": "Breeding and pregnancy",
+      "short_name": "Breeding",
+      "url": "./#breeding"
+    },
+    {
+      "name": "Births and litters",
+      "short_name": "Births",
+      "url": "./#litters"
     }
   ]
 }
-

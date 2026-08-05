@@ -73,7 +73,45 @@
         medicalStatus: ["medical status", "health status"],
         sireRef: ["sire", "sire id", "sire tag", "sire id tag name", "father", "father id", "father tag"],
         damRef: ["dam", "dam id", "dam tag", "dam id tag name", "mother", "mother id", "mother tag"],
+        sourceBirthRef: ["source birth record id", "birth record id", "source litter id", "litter record id"],
         notes: ["notes", "comments", "description"]
+      }
+    },
+    breedings: {
+      sheetNames: ["breeding", "breedings", "breeding records", "pregnancy", "pregnancy records"],
+      fields: {
+        recordId: ["record id", "breeding id", "breeding record id"],
+        femaleRef: ["dam", "female", "female dam", "dam id tag name", "female id tag name"],
+        maleRef: ["sire", "male", "male sire", "sire id tag name", "male id tag name"],
+        breedingDate: ["breeding date", "bred date", "service date", "pairing date", "date bred"],
+        method: ["method", "breeding method", "service method"],
+        pregnancyCheckDate: ["pregnancy check date", "check date", "preg check date"],
+        pregnancyCheckStatus: ["pregnancy check result", "pregnancy result", "check result", "pregnancy status"],
+        confirmedDate: ["confirmation date", "confirmed date", "pregnancy confirmed date"],
+        preparationDate: ["birth nest preparation date", "preparation date", "nest box date", "birth preparation date"],
+        dueDate: ["expected due date", "due date", "expected birth date", "expected kindling date", "expected calving date"],
+        status: ["status", "breeding status"],
+        notes: ["notes", "comments"]
+      }
+    },
+    births: {
+      sheetNames: ["birth", "births", "birth records", "litter", "litters", "litter records", "calving", "kindling"],
+      fields: {
+        recordId: ["record id", "birth id", "litter id", "birth record id"],
+        breedingRef: ["breeding record id", "breeding id", "linked breeding"],
+        damRef: ["dam", "female", "dam id tag name", "female id tag name"],
+        sireRef: ["sire", "male", "sire id tag name", "male id tag name"],
+        birthDate: ["birth date", "date born", "delivery date", "kindling date", "calving date"],
+        birthType: ["birth type", "delivery type"],
+        bornAlive: ["born alive", "live born", "alive"],
+        stillborn: ["stillborn", "born dead"],
+        fosteredIn: ["fostered in", "foster in"],
+        fosteredOut: ["fostered out", "foster out"],
+        lostBeforeWeaning: ["lost before weaning", "preweaning losses", "pre weaning losses", "lost"],
+        weaned: ["weaned", "number weaned"],
+        expectedWeanDate: ["expected weaning date", "weaning date", "expected wean date"],
+        offspringPrefix: ["offspring tag prefix", "tag prefix", "offspring prefix"],
+        notes: ["notes", "comments"]
       }
     },
     annualPlans: {
@@ -670,6 +708,21 @@
     if (normalizedMessage.includes("date") && normalizedMessage.includes("invalid")) {
       return "Use a real Excel date or type the date as YYYY-MM-DD, such as 2026-07-31.";
     }
+    if (normalizedMessage.includes("breeding status")) {
+      return "Use Planned, Bred, Pregnancy check due, Confirmed pregnant, Not pregnant, Due soon, Delivered, or Cancelled.";
+    }
+    if (normalizedMessage.includes("pregnancy check result") || normalizedMessage.includes("pregnancy-check result")) {
+      return "Use Not checked, Positive, Negative, or Inconclusive.";
+    }
+    if (normalizedMessage.includes("linked breeding")) {
+      return "Use an existing Breeding Record ID once, and make sure its dam and sire match the parents on this birth row.";
+    }
+    if (normalizedMessage.includes("whole number") || normalizedMessage.includes("fostered out young")) {
+      return "Use whole numbers of zero or more. Fostered out plus losses cannot exceed born alive plus fostered in, and weaned cannot exceed the remaining live young.";
+    }
+    if (normalizedMessage.includes("sire and dam must be the same species")) {
+      return "Choose a sire and dam of the same species, then confirm both animal references identify the intended parents.";
+    }
     if (
       normalizedMessage.includes("animal") &&
       (
@@ -821,6 +874,8 @@
           status,
           sireId: "",
           damId: "",
+          sourceBirthId: "",
+          pendingSourceBirthRef: cleanText(fieldValue(row, map, "sourceBirthRef")),
           notes: preservedNotes,
           importSource: {
             type: "Excel spreadsheet",
@@ -1393,9 +1448,272 @@
     });
   }
 
+  function importedRecordId(value, prefix) {
+    const text = cleanText(value);
+    return text && /^[a-zA-Z0-9_.:-]{1,180}$/.test(text) ? text : uid(prefix);
+  }
+
+  function addISODateDays(dateString, days) {
+    const date = new Date(`${dateString}T12:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + Number(days));
+    return date.toISOString().slice(0, 10);
+  }
+
+  function canonicalBreedingStatus(value) {
+    return canonicalFromList(value || "Bred", [
+      "Planned", "Bred", "Pregnancy check due", "Confirmed pregnant",
+      "Not pregnant", "Due soon", "Delivered", "Cancelled"
+    ], {
+      confirmed: "Confirmed pregnant",
+      pregnant: "Confirmed pregnant",
+      positive: "Confirmed pregnant",
+      negative: "Not pregnant",
+      open: "Not pregnant",
+      completed: "Delivered",
+      born: "Delivered",
+      due: "Due soon",
+      canceled: "Cancelled"
+    });
+  }
+
+  function canonicalPregnancyResult(value) {
+    return canonicalFromList(value || "Not checked", ["Not checked", "Positive", "Negative", "Inconclusive"], {
+      confirmed: "Positive",
+      pregnant: "Positive",
+      open: "Negative",
+      unknown: "Not checked",
+      pending: "Not checked"
+    });
+  }
+
+  function stageBreedings(sheets, context, result) {
+    const lookup = buildAnimalLookup([...context.animals, ...result.records.animals]);
+    const existingIds = new Set((context.breedings || []).map((record) => record.id).filter(Boolean));
+    const duplicateKeys = new Set((context.breedings || []).map((record) =>
+      [record.femaleId, record.maleId, record.breedingDate].join("|")
+    ));
+    const gestationDays = { Rabbit: 31, Cattle: 283, Goat: 150, Sheep: 147, Pig: 114, Horse: 340, Dog: 63 };
+    const checkDays = { Rabbit: 14, Cattle: 30, Goat: 30, Sheep: 30, Pig: 28, Horse: 45, Dog: 28 };
+    const preparationDays = { Rabbit: 3, Cattle: 14, Goat: 14, Sheep: 14, Pig: 7, Horse: 21, Dog: 7 };
+
+    sheets.forEach(({ worksheet, header, map }) => {
+      worksheetRows(worksheet, header).forEach((row) => {
+        const source = sourceFor(worksheet, row);
+        const femaleRef = cleanText(fieldValue(row, map, "femaleRef"));
+        const maleRef = cleanText(fieldValue(row, map, "maleRef"));
+        const female = resolveAnimal(femaleRef, lookup);
+        const male = resolveAnimal(maleRef, lookup);
+        const breedingDateRaw = fieldValue(row, map, "breedingDate");
+        const breedingDate = dateToISO(breedingDateRaw);
+        if (!female.animal) {
+          issue(result, source, `Breeding dam “${femaleRef || "(blank)"}” ${female.reason === "ambiguous" ? "matches more than one animal" : "was not found"}.`);
+          return;
+        }
+        if (!male.animal) {
+          issue(result, source, `Breeding sire “${maleRef || "(blank)"}” ${male.reason === "ambiguous" ? "matches more than one animal" : "was not found"}.`);
+          return;
+        }
+        if (female.animal.id === male.animal.id) {
+          issue(result, source, "A breeding record requires two different animals.");
+          return;
+        }
+        if (female.animal.species && male.animal.species && female.animal.species !== male.animal.species) {
+          issue(result, source, "The breeding sire and dam must be the same species.");
+          return;
+        }
+        if (!breedingDate) {
+          issue(result, source, `Breeding date “${cleanText(breedingDateRaw) || "(blank)"}” is invalid.`);
+          return;
+        }
+        const pregnancyCheckStatus = canonicalPregnancyResult(fieldValue(row, map, "pregnancyCheckStatus"));
+        let status = canonicalBreedingStatus(fieldValue(row, map, "status"));
+        if (!pregnancyCheckStatus) {
+          issue(result, source, `Pregnancy-check result “${cleanText(fieldValue(row, map, "pregnancyCheckStatus"))}” is not recognized.`);
+          return;
+        }
+        if (!status) {
+          issue(result, source, `Breeding status “${cleanText(fieldValue(row, map, "status"))}” is not recognized.`);
+          return;
+        }
+        if (pregnancyCheckStatus === "Positive" && ["Planned", "Bred", "Pregnancy check due"].includes(status)) status = "Confirmed pregnant";
+        if (pregnancyCheckStatus === "Negative") status = "Not pregnant";
+        const species = female.animal.species || male.animal.species || "";
+        const dueRaw = fieldValue(row, map, "dueDate");
+        const checkRaw = fieldValue(row, map, "pregnancyCheckDate");
+        const prepareRaw = fieldValue(row, map, "preparationDate");
+        const confirmedRaw = fieldValue(row, map, "confirmedDate");
+        const dueDate = cleanText(dueRaw) ? dateToISO(dueRaw) : gestationDays[species] ? addISODateDays(breedingDate, gestationDays[species]) : "";
+        const pregnancyCheckDate = cleanText(checkRaw) ? dateToISO(checkRaw) : checkDays[species] ? addISODateDays(breedingDate, checkDays[species]) : "";
+        const preparationDate = cleanText(prepareRaw) ? dateToISO(prepareRaw) : dueDate && preparationDays[species] ? addISODateDays(dueDate, -preparationDays[species]) : "";
+        const confirmedDate = cleanText(confirmedRaw) ? dateToISO(confirmedRaw) : "";
+        if ((cleanText(dueRaw) && !dueDate) || (cleanText(checkRaw) && !pregnancyCheckDate) ||
+          (cleanText(prepareRaw) && !preparationDate) || (cleanText(confirmedRaw) && !confirmedDate)) {
+          issue(result, source, "One or more breeding schedule dates are invalid.");
+          return;
+        }
+        if (!dueDate) {
+          issue(result, source, `Expected due date is required because ${species || "this species"} has no built-in schedule.`);
+          return;
+        }
+        const duplicateKey = [female.animal.id, male.animal.id, breedingDate].join("|");
+        if (duplicateKeys.has(duplicateKey)) {
+          issue(result, source, `Breeding for ${female.animal.name} and ${male.animal.name} on ${breedingDate} already exists and will be skipped.`, "duplicate");
+          return;
+        }
+        duplicateKeys.add(duplicateKey);
+        const recordId = importedRecordId(fieldValue(row, map, "recordId"), "breeding");
+        if (existingIds.has(recordId)) {
+          issue(result, source, `Breeding record ID “${recordId}” already exists and will be skipped.`, "duplicate");
+          return;
+        }
+        existingIds.add(recordId);
+        result.records.breedings.push({
+          id: recordId,
+          femaleId: female.animal.id,
+          maleId: male.animal.id,
+          breedingDate,
+          method: cleanText(fieldValue(row, map, "method")) || "Natural service",
+          pregnancyCheckDate,
+          pregnancyCheckStatus,
+          confirmedDate,
+          nestBoxDate: preparationDate,
+          dueDate,
+          status,
+          notes: cleanText(fieldValue(row, map, "notes")),
+          importSource: { type: "Excel spreadsheet", fileName: context.fileName || "", sheet: worksheet.name, row: row.rowNumber },
+          createdAt: new Date().toISOString()
+        });
+      });
+    });
+  }
+
+  function stageBirths(sheets, context, result) {
+    const lookup = buildAnimalLookup([...context.animals, ...result.records.animals]);
+    const existingIds = new Set((context.litters || []).map((record) => record.id).filter(Boolean));
+    const allBreedings = [...(context.breedings || []), ...result.records.breedings];
+    const linkedBreedingIds = new Set((context.litters || []).map((record) => record.breedingId).filter(Boolean));
+    const duplicateKeys = new Set((context.litters || []).map((record) =>
+      [record.damId, record.sireId, record.birthDate].join("|")
+    ));
+    const weanDays = { Rabbit: 42, Cattle: 205, Goat: 60, Sheep: 60, Pig: 56, Horse: 180, Dog: 56 };
+
+    sheets.forEach(({ worksheet, header, map }) => {
+      worksheetRows(worksheet, header).forEach((row) => {
+        const source = sourceFor(worksheet, row);
+        const damRef = cleanText(fieldValue(row, map, "damRef"));
+        const sireRef = cleanText(fieldValue(row, map, "sireRef"));
+        const dam = resolveAnimal(damRef, lookup);
+        const sire = resolveAnimal(sireRef, lookup);
+        const birthDateRaw = fieldValue(row, map, "birthDate");
+        const birthDate = dateToISO(birthDateRaw);
+        if (!dam.animal || !sire.animal) {
+          issue(result, source, `${!dam.animal ? `Birth dam “${damRef || "(blank)"}”` : `Birth sire “${sireRef || "(blank)"}”`} could not be matched uniquely.`);
+          return;
+        }
+        if (dam.animal.id === sire.animal.id) {
+          issue(result, source, "A birth record requires two different parent animals.");
+          return;
+        }
+        if (dam.animal.species && sire.animal.species && dam.animal.species !== sire.animal.species) {
+          issue(result, source, "The birth sire and dam must be the same species.");
+          return;
+        }
+        if (!birthDate) {
+          issue(result, source, `Birth date “${cleanText(birthDateRaw) || "(blank)"}” is invalid.`);
+          return;
+        }
+        const counts = {};
+        let invalidCount = "";
+        ["bornAlive", "stillborn", "fosteredIn", "fosteredOut", "lostBeforeWeaning", "weaned"].forEach((fieldName) => {
+          const raw = fieldValue(row, map, fieldName);
+          const number = cleanText(raw) ? moneyNumber(raw) : 0;
+          if (!Number.isInteger(number) || number < 0) invalidCount ||= fieldName;
+          counts[fieldName] = number;
+        });
+        if (invalidCount) {
+          issue(result, source, `${invalidCount} must be a whole number of zero or more.`);
+          return;
+        }
+        const maximumWeaned = counts.bornAlive + counts.fosteredIn - counts.fosteredOut - counts.lostBeforeWeaning;
+        if (maximumWeaned < 0) {
+          issue(result, source, "Fostered-out young and losses cannot exceed the live young available.");
+          return;
+        }
+        if (counts.weaned > Math.max(0, maximumWeaned)) {
+          issue(result, source, "Weaned cannot exceed the live young remaining after foster-outs and losses.");
+          return;
+        }
+        const weanRaw = fieldValue(row, map, "expectedWeanDate");
+        const species = dam.animal.species || sire.animal.species || "";
+        const expectedWeanDate = cleanText(weanRaw) ? dateToISO(weanRaw) : weanDays[species] ? addISODateDays(birthDate, weanDays[species]) : "";
+        if (cleanText(weanRaw) && !expectedWeanDate) {
+          issue(result, source, `Expected weaning date “${cleanText(weanRaw)}” is invalid.`);
+          return;
+        }
+        const breedingRef = cleanText(fieldValue(row, map, "breedingRef"));
+        const breeding = breedingRef ? allBreedings.find((record) => record.id === breedingRef) : null;
+        if (breedingRef && !breeding) issue(result, source, `Linked breeding “${breedingRef}” was not found; the birth will import without that link.`, "warning");
+        if (breeding && (breeding.femaleId !== dam.animal.id || breeding.maleId !== sire.animal.id)) {
+          issue(result, source, `Linked breeding “${breedingRef}” does not use the selected birth parents.`);
+          return;
+        }
+        if (breeding && linkedBreedingIds.has(breeding.id)) {
+          issue(result, source, `Linked breeding “${breedingRef}” already has a birth record.`);
+          return;
+        }
+        const duplicateKey = [dam.animal.id, sire.animal.id, birthDate].join("|");
+        if (duplicateKeys.has(duplicateKey)) {
+          issue(result, source, `Birth for ${dam.animal.name} and ${sire.animal.name} on ${birthDate} already exists and will be skipped.`, "duplicate");
+          return;
+        }
+        duplicateKeys.add(duplicateKey);
+        const recordId = importedRecordId(fieldValue(row, map, "recordId"), "litter");
+        if (existingIds.has(recordId)) {
+          issue(result, source, `Birth record ID “${recordId}” already exists and will be skipped.`, "duplicate");
+          return;
+        }
+        existingIds.add(recordId);
+        result.records.litters.push({
+          id: recordId,
+          breedingId: breeding?.id || "",
+          damId: dam.animal.id,
+          sireId: sire.animal.id,
+          birthDate,
+          birthType: canonicalFromList(fieldValue(row, map, "birthType") || "Unknown", ["Unassisted", "Assisted", "Cesarean", "Induced", "Unknown"], { csection: "Cesarean", "c section": "Cesarean", natural: "Unassisted" }) || "Unknown",
+          bornAlive: String(counts.bornAlive),
+          stillborn: String(counts.stillborn),
+          fosteredIn: String(counts.fosteredIn),
+          fosteredOut: String(counts.fosteredOut),
+          lostBeforeWeaning: String(counts.lostBeforeWeaning),
+          weaned: String(counts.weaned),
+          expectedWeanDate,
+          offspringPrefix: cleanText(fieldValue(row, map, "offspringPrefix")),
+          offspringIds: [],
+          notes: cleanText(fieldValue(row, map, "notes")),
+          importSource: { type: "Excel spreadsheet", fileName: context.fileName || "", sheet: worksheet.name, row: row.rowNumber },
+          createdAt: new Date().toISOString()
+        });
+        if (breeding) linkedBreedingIds.add(breeding.id);
+      });
+    });
+
+    const existingBirthIds = new Set((context.litters || []).map((record) => record.id));
+    const stagedBirthById = new Map(result.records.litters.map((record) => [record.id, record]));
+    result.records.animals.forEach((animal) => {
+      const birthRef = animal.pendingSourceBirthRef || "";
+      delete animal.pendingSourceBirthRef;
+      if (!birthRef || (!existingBirthIds.has(birthRef) && !stagedBirthById.has(birthRef))) return;
+      animal.sourceBirthId = birthRef;
+      const stagedBirth = stagedBirthById.get(birthRef);
+      if (stagedBirth) stagedBirth.offspringIds = [...new Set([...(Array.isArray(stagedBirth.offspringIds) ? stagedBirth.offspringIds : []), animal.id])];
+    });
+  }
+
   function requiredFieldsPresent(type, map, worksheet, context) {
     const required = {
       animals: ["name", "species"],
+      breedings: ["femaleRef", "maleRef", "breedingDate"],
+      births: ["damRef", "sireRef", "birthDate"],
       health: ["animalRef", "date", "type"],
       annualPlans: ["animalRef"],
       transactions: ["date", "type", "amount"],
@@ -1465,7 +1783,7 @@
 
     const workbook = await loadCompatibleWorkbook(buffer);
     const result = {
-      records: { animals: [], transactions: [], productionRecords: [], annualBudgetPlans: [], health: [] },
+      records: { animals: [], breedings: [], litters: [], transactions: [], productionRecords: [], annualBudgetPlans: [], health: [] },
       issues: [],
       parsedSheets: [],
       ignoredSheets: [],
@@ -1474,7 +1792,7 @@
       duplicateCount: 0,
       totalRows: 0
     };
-    const sheetsByType = { animals: [], transactions: [], production: [], annualPlans: [], health: [] };
+    const sheetsByType = { animals: [], breedings: [], births: [], transactions: [], production: [], annualPlans: [], health: [] };
 
     workbook.eachSheet((worksheet) => {
       const header = findHeaderRow(worksheet);
@@ -1505,13 +1823,15 @@
     });
 
     if (!result.parsedSheets.length) {
-      throw new Error("No Animals, Production, Budgeting, Annual Budget, or Medical sheet could be recognized.");
+      throw new Error("No Animals, Breeding, Births, Production, Budgeting, Annual Budget, or Medical sheet could be recognized.");
     }
     if (result.totalRows > MAX_DATA_ROWS) {
       throw new Error(`This workbook has ${result.totalRows.toLocaleString()} data rows. The current limit is ${MAX_DATA_ROWS.toLocaleString()}.`);
     }
 
     stageAnimals(sheetsByType.animals, context, result);
+    stageBreedings(sheetsByType.breedings, context, result);
+    stageBirths(sheetsByType.births, context, result);
     stageHealth(sheetsByType.health, context, result);
     stageTransactions(sheetsByType.transactions, context, result);
     stageProduction(sheetsByType.production, context, result);
@@ -1521,6 +1841,8 @@
 
   function summaryCount(result) {
     return result.records.animals.length +
+      result.records.breedings.length +
+      result.records.litters.length +
       result.records.transactions.length +
       result.records.productionRecords.length +
       result.records.annualBudgetPlans.length +
@@ -1537,6 +1859,18 @@
         date: record.dob || "—",
         subject: record.name,
         details: [record.species, record.breed, record.tag].filter(Boolean).join(" · ") || "Animal record"
+      })),
+      ...result.records.breedings.map((record) => ({
+        area: "Breeding",
+        date: record.breedingDate,
+        subject: `${animalById.get(record.femaleId)?.name || "Dam"} × ${animalById.get(record.maleId)?.name || "Sire"}`,
+        details: `${record.status} · due ${record.dueDate}`
+      })),
+      ...result.records.litters.map((record) => ({
+        area: "Birth",
+        date: record.birthDate,
+        subject: `${animalById.get(record.damId)?.name || "Dam"} × ${animalById.get(record.sireId)?.name || "Sire"}`,
+        details: `${record.bornAlive} born alive · ${record.weaned} weaned`
       })),
       ...result.records.transactions.map((record) => ({
         area: "Budgeting",
@@ -1616,6 +1950,8 @@
       </div>
       <div class="hh-import-summary">
         <div class="hh-import-stat"><strong>${result.records.animals.length}</strong><span>Animals ready</span></div>
+        <div class="hh-import-stat"><strong>${result.records.breedings.length}</strong><span>Breedings ready</span></div>
+        <div class="hh-import-stat"><strong>${result.records.litters.length}</strong><span>Births ready</span></div>
         <div class="hh-import-stat"><strong>${result.records.transactions.length}</strong><span>Transactions ready</span></div>
         <div class="hh-import-stat"><strong>${result.records.productionRecords.length}</strong><span>Production ready</span></div>
         <div class="hh-import-stat"><strong>${result.records.annualBudgetPlans.length}</strong><span>Annual plans ready</span></div>
@@ -1706,6 +2042,8 @@
 
     const result = await parseWorkbookBuffer(await file.arrayBuffer(), {
       animals: Array.isArray(options.state.animals) ? options.state.animals : [],
+      breedings: Array.isArray(options.state.breedings) ? options.state.breedings : [],
+      litters: Array.isArray(options.state.litters) ? options.state.litters : [],
       transactions: Array.isArray(options.state.transactions) ? options.state.transactions : [],
       productionRecords: Array.isArray(options.state.productionRecords) ? options.state.productionRecords : [],
       health: Array.isArray(options.state.health) ? options.state.health : [],
@@ -1797,6 +2135,8 @@
     }
 
     const animals = Array.isArray(state.animals) ? state.animals : [];
+    const breedings = Array.isArray(state.breedings) ? state.breedings : [];
+    const litters = Array.isArray(state.litters) ? state.litters : [];
     const health = Array.isArray(state.health) ? state.health : [];
     const transactions = Array.isArray(state.transactions) ? state.transactions : [];
     const productionRecords = Array.isArray(state.productionRecords) ? state.productionRecords : [];
@@ -1814,8 +2154,10 @@
       ["HerdHarbor Farm Records Export", ""],
       ["Operation", safeExcelText(options.operationName || state.profile?.operationName || "HerdHarbor")],
       ["Exported", new Date()],
-      ["App version", "0.3.08"],
+      ["App version", "0.4.0"],
       ["Animals", animals.length],
+      ["Breeding records", breedings.length],
+      ["Birth and litter records", litters.length],
       ["Medical records", health.length],
       ["Actual transactions", transactions.length],
       ["Production records", productionRecords.length],
@@ -1834,8 +2176,8 @@
     overview.getColumn(2).width = 56;
     overview.getColumn(2).alignment = { vertical: "top", wrapText: true };
     overview.getCell("B3").numFmt = "yyyy-mm-dd h:mm AM/PM";
-    overview.getRow(10).height = 56;
-    overview.getRow(10).alignment = { vertical: "top", wrapText: true };
+    overview.getRow(12).height = 56;
+    overview.getRow(12).alignment = { vertical: "top", wrapText: true };
     overview.views = [{ state: "frozen", ySplit: 1 }];
 
     const animalSheet = workbook.addWorksheet("Animals");
@@ -1854,6 +2196,7 @@
       "Status",
       "Sire ID / Tag / Name",
       "Dam ID / Tag / Name",
+      "Source Birth Record ID",
       "Notes"
     ]);
     animals.forEach((animal) => {
@@ -1872,13 +2215,69 @@
         safeExcelText(animal.status),
         animalExportReference(animalById.get(animal.sireId)),
         animalExportReference(animalById.get(animal.damId)),
+        safeExcelText(animal.sourceBirthId),
         safeExcelText(animal.notes)
       ]);
     });
     styleExportSheet(
       animalSheet,
-      [24, 16, 20, 20, 22, 14, 22, 14, 16, 20, 22, 16, 24, 24, 38],
+      [24, 16, 20, 20, 22, 14, 22, 14, 16, 20, 22, 16, 24, 24, 24, 38],
       { dateColumns: [9] }
+    );
+
+    const breedingSheet = workbook.addWorksheet("Breeding");
+    breedingSheet.addRow([
+      "Breeding Record ID", "Dam ID / Tag / Name", "Sire ID / Tag / Name", "Breeding Date",
+      "Breeding Method", "Pregnancy Check Date", "Pregnancy Check Result", "Confirmation Date",
+      "Birth / Nest Preparation Date", "Expected Due Date", "Status", "Notes"
+    ]);
+    breedings.forEach((record) => breedingSheet.addRow([
+      safeExcelText(record.id),
+      animalExportReference(animalById.get(record.femaleId)),
+      animalExportReference(animalById.get(record.maleId)),
+      dateOnlyValue(record.breedingDate),
+      safeExcelText(record.method || "Natural service"),
+      dateOnlyValue(record.pregnancyCheckDate),
+      safeExcelText(record.pregnancyCheckStatus || "Not checked"),
+      dateOnlyValue(record.confirmedDate),
+      dateOnlyValue(record.nestBoxDate || record.preparationDate),
+      dateOnlyValue(record.dueDate),
+      safeExcelText(record.status),
+      safeExcelText(record.notes)
+    ]));
+    styleExportSheet(
+      breedingSheet,
+      [28, 28, 28, 16, 22, 20, 22, 18, 24, 18, 22, 38],
+      { dateColumns: [4, 6, 8, 9, 10] }
+    );
+
+    const birthSheet = workbook.addWorksheet("Births");
+    birthSheet.addRow([
+      "Birth Record ID", "Breeding Record ID", "Dam ID / Tag / Name", "Sire ID / Tag / Name",
+      "Birth Date", "Birth Type", "Born Alive", "Stillborn", "Fostered In", "Fostered Out",
+      "Lost Before Weaning", "Weaned", "Expected Weaning Date", "Offspring Tag Prefix", "Notes"
+    ]);
+    litters.forEach((record) => birthSheet.addRow([
+      safeExcelText(record.id),
+      safeExcelText(record.breedingId),
+      animalExportReference(animalById.get(record.damId)),
+      animalExportReference(animalById.get(record.sireId)),
+      dateOnlyValue(record.birthDate),
+      safeExcelText(record.birthType || "Unknown"),
+      Number(record.bornAlive || 0),
+      Number(record.stillborn || 0),
+      Number(record.fosteredIn || 0),
+      Number(record.fosteredOut || 0),
+      Number(record.lostBeforeWeaning || 0),
+      Number(record.weaned || 0),
+      dateOnlyValue(record.expectedWeanDate),
+      safeExcelText(record.offspringPrefix),
+      safeExcelText(record.notes)
+    ]));
+    styleExportSheet(
+      birthSheet,
+      [28, 28, 28, 28, 16, 18, 14, 14, 14, 14, 20, 14, 20, 22, 38],
+      { dateColumns: [5, 13], numberColumns: [7, 8, 9, 10, 11, 12] }
     );
 
     const medicalSheet = workbook.addWorksheet("Medical");
@@ -2072,6 +2471,105 @@
     return workbook;
   }
 
+  function buildBreedingReportWorkbook(data = {}, options = {}) {
+    if (!window.ExcelJS?.Workbook) {
+      throw new Error("The Excel report tool did not load. Close and reopen HerdHarbor, then try again.");
+    }
+    const breedings = Array.isArray(data.breedings) ? data.breedings : [];
+    const litters = Array.isArray(data.litters) ? data.litters : [];
+    const animals = Array.isArray(data.animals) ? data.animals : [];
+    const report = data.report || {};
+    const performance = Array.isArray(report.performance) ? report.performance : [];
+    const animalById = new Map(animals.map((animal) => [animal.id, animal]));
+    const workbook = new window.ExcelJS.Workbook();
+    workbook.creator = "HerdHarbor";
+    workbook.created = new Date();
+    workbook.modified = new Date();
+    workbook.title = `${options.operationName || "HerdHarbor"} breeding and birth report`;
+
+    const overview = workbook.addWorksheet("Overview");
+    overview.addRows([
+      ["HerdHarbor Breeding & Birth Report", null],
+      ["Operation", safeExcelText(options.operationName || "HerdHarbor")],
+      ["Report year", safeExcelText(options.year || "All years")],
+      ["Breeding attempts", Number(report.attempts || 0)],
+      ["Confirmed pregnancies", Number(report.positive || 0)],
+      ["Negative pregnancy checks", Number(report.negative || 0)],
+      ["Conception rate", Number(report.conceptionRate || 0)],
+      ["Delivered attempts", Number(report.delivered || 0)],
+      ["Successful completed attempts", Number(report.deliveryRate || 0)],
+      ["Born alive", Number(report.bornAlive || 0)],
+      ["Stillborn", Number(report.stillborn || 0)],
+      ["Lost before weaning", Number(report.lost || 0)],
+      ["Weaned", Number(report.weaned || 0)],
+      ["Born-alive-to-weaned rate", Number(report.survivalRate || 0)],
+      ["Exported", new Date()],
+      ["App version", "0.4.0"]
+    ]);
+    overview.mergeCells("A1:B1");
+    overview.getRow(1).height = 34;
+    overview.getRow(1).font = { bold: true, size: 16, color: { argb: "FFFFFFFF" } };
+    overview.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0D2540" } };
+    overview.getColumn(1).width = 34;
+    overview.getColumn(2).width = 48;
+    overview.getCell("B7").numFmt = "0.0%";
+    overview.getCell("B9").numFmt = "0.0%";
+    overview.getCell("B14").numFmt = "0.0%";
+    overview.getCell("B15").numFmt = "yyyy-mm-dd h:mm AM/PM";
+    overview.views = [{ state: "frozen", ySplit: 1 }];
+
+    const damPerformance = workbook.addWorksheet("Dam Performance");
+    damPerformance.addRow(["Dam", "Attempts", "Confirmed", "Births", "Born Alive", "Weaned", "Survival Rate"]);
+    performance.forEach((row) => damPerformance.addRow([
+      safeExcelText(row.name), Number(row.attempts || 0), Number(row.positive || 0), Number(row.births || 0),
+      Number(row.bornAlive || 0), Number(row.weaned || 0), Number(row.survivalRate || 0)
+    ]));
+    styleExportSheet(damPerformance, [28, 14, 14, 14, 16, 14, 16], { numberColumns: [2, 3, 4, 5, 6] });
+    damPerformance.getColumn(7).numFmt = "0.0%";
+
+    const breedingHistory = workbook.addWorksheet("Breeding History");
+    breedingHistory.addRow([
+      "Breeding Record ID", "Dam", "Sire", "Breeding Date", "Method", "Pregnancy Check Date",
+      "Pregnancy Result", "Confirmation Date", "Preparation Date", "Expected Due Date", "Status", "Notes"
+    ]);
+    breedings.forEach((record) => breedingHistory.addRow([
+      safeExcelText(record.id), safeExcelText(animalById.get(record.femaleId)?.name), safeExcelText(animalById.get(record.maleId)?.name),
+      dateOnlyValue(record.breedingDate), safeExcelText(record.method), dateOnlyValue(record.pregnancyCheckDate),
+      safeExcelText(record.pregnancyCheckStatus), dateOnlyValue(record.confirmedDate), dateOnlyValue(record.nestBoxDate || record.preparationDate),
+      dateOnlyValue(record.dueDate), safeExcelText(record.status), safeExcelText(record.notes)
+    ]));
+    styleExportSheet(breedingHistory, [28, 26, 26, 16, 22, 20, 20, 18, 20, 18, 22, 38], { dateColumns: [4, 6, 8, 9, 10] });
+
+    const birthHistory = workbook.addWorksheet("Birth History");
+    birthHistory.addRow([
+      "Birth Record ID", "Dam", "Sire", "Birth Date", "Birth Type", "Born Alive", "Stillborn",
+      "Fostered In", "Fostered Out", "Lost Before Weaning", "Weaned", "Expected Weaning Date", "Notes"
+    ]);
+    litters.forEach((record) => birthHistory.addRow([
+      safeExcelText(record.id), safeExcelText(animalById.get(record.damId)?.name), safeExcelText(animalById.get(record.sireId)?.name),
+      dateOnlyValue(record.birthDate), safeExcelText(record.birthType), Number(record.bornAlive || 0), Number(record.stillborn || 0),
+      Number(record.fosteredIn || 0), Number(record.fosteredOut || 0), Number(record.lostBeforeWeaning || 0), Number(record.weaned || 0),
+      dateOnlyValue(record.expectedWeanDate), safeExcelText(record.notes)
+    ]));
+    styleExportSheet(birthHistory, [28, 26, 26, 16, 18, 14, 14, 14, 14, 20, 14, 20, 38], { dateColumns: [4, 12], numberColumns: [6, 7, 8, 9, 10, 11] });
+    return workbook;
+  }
+
+  async function downloadBreedingReport(data, options = {}) {
+    const workbook = buildBreedingReportWorkbook(data, options);
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const operationSlug = cleanText(options.operationName || "herdharbor").toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "herdharbor";
+    const yearSlug = cleanText(options.year || "all-years").toLowerCase().replace(/[^a-z0-9-]+/g, "-");
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${operationSlug}-breeding-birth-report-${yearSlug}.xlsx`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   function buildProductionReportWorkbook(data = {}, options = {}) {
     if (!window.ExcelJS?.Workbook) {
       throw new Error("The Excel report tool did not load. Close and reopen HerdHarbor, then try again.");
@@ -2121,7 +2619,7 @@
       ["Sale revenue", totalRevenue],
       ["Warnings", warnings.length],
       ["Exported", new Date()],
-      ["App version", "0.3.08"],
+      ["App version", "0.4.0"],
       ["Quantity note", "Quantities stay separated by product and unit so eggs, dozens, gallons, birds, pounds, and custom units are never combined into a misleading total."]
     ]);
     overview.mergeCells("A1:B1");
@@ -2262,10 +2760,11 @@
     const instructions = workbook.addWorksheet("Instructions");
     instructions.addRows([
       ["HerdHarbor Excel Import Template", ""],
-      ["How to use", "Enter records in any or all of the Animals, Production, Budgeting, Annual Budget, and Medical sheets. Keep the header row unchanged."],
+      ["How to use", "Enter records in any or all of the Animals, Breeding, Births, Production, Budgeting, Annual Budget, and Medical sheets. Keep the header row unchanged."],
       ["Review first", "HerdHarbor previews valid records and flags duplicate or invalid rows before import."],
       ["Existing data", "Spreadsheet imports add records. They do not replace current farm records."],
-      ["Animal matching", "Medical, production, and animal-assigned budget rows can match an animal by ID/tag, tattoo, registration number, or unique name."],
+      ["Animal matching", "Breeding, births, medical, production, and animal-assigned budget rows can match an animal by ID/tag, tattoo, registration number, or unique name."],
+      ["Breeding and births", "Use the Breeding Record ID to link a Births row to a breeding. Source Birth Record ID links an offspring animal back to that birth while sire and dam create its pedigree."],
       ["Dates", "Use Excel dates or YYYY-MM-DD."],
       ["Production", "Total Produced must be greater than zero and must cover all sold, household, feed, stored, donated, and wasted quantities. Sale Income becomes one linked Budgeting transaction."],
       ["Money", "Transaction amounts must be greater than zero. Annual Budget values remain yearly planned figures and never become actual transactions."],
@@ -2298,9 +2797,10 @@
       "Status",
       "Sire ID / Tag / Name",
       "Dam ID / Tag / Name",
+      "Source Birth Record ID",
       "Notes"
     ]);
-    styleTemplateSheet(animals, [24, 16, 20, 20, 22, 14, 22, 12, 16, 20, 22, 16, 24, 24, 36]);
+    styleTemplateSheet(animals, [24, 16, 20, 20, 22, 14, 22, 12, 16, 20, 22, 16, 24, 24, 24, 36]);
     animals.dataValidations.add("F2:F5000", {
       type: "list",
       allowBlank: false,
@@ -2314,7 +2814,39 @@
     animals.dataValidations.add("L2:L5000", {
       type: "list",
       allowBlank: true,
-      formulae: ['"Active,For Sale,Sold,Deceased,Ancestor Only"']
+      formulae: ['"Active,Breeding,Growing,Retired,For Sale,Sold,Deceased,Ancestor Only"']
+    });
+
+    const breeding = workbook.addWorksheet("Breeding");
+    breeding.addRow([
+      "Breeding Record ID", "Dam ID / Tag / Name", "Sire ID / Tag / Name", "Breeding Date",
+      "Breeding Method", "Pregnancy Check Date", "Pregnancy Check Result", "Confirmation Date",
+      "Birth / Nest Preparation Date", "Expected Due Date", "Status", "Notes"
+    ]);
+    styleTemplateSheet(breeding, [28, 28, 28, 16, 22, 20, 22, 18, 24, 18, 22, 38]);
+    breeding.dataValidations.add("E2:E5000", {
+      type: "list", allowBlank: true,
+      formulae: ['"Natural service,Artificial insemination,Embryo transfer,Other"']
+    });
+    breeding.dataValidations.add("G2:G5000", {
+      type: "list", allowBlank: true,
+      formulae: ['"Not checked,Positive,Negative,Inconclusive"']
+    });
+    breeding.dataValidations.add("K2:K5000", {
+      type: "list", allowBlank: true,
+      formulae: ['"Planned,Bred,Pregnancy check due,Confirmed pregnant,Not pregnant,Due soon,Delivered,Cancelled"']
+    });
+
+    const births = workbook.addWorksheet("Births");
+    births.addRow([
+      "Birth Record ID", "Breeding Record ID", "Dam ID / Tag / Name", "Sire ID / Tag / Name",
+      "Birth Date", "Birth Type", "Born Alive", "Stillborn", "Fostered In", "Fostered Out",
+      "Lost Before Weaning", "Weaned", "Expected Weaning Date", "Offspring Tag Prefix", "Notes"
+    ]);
+    styleTemplateSheet(births, [28, 28, 28, 28, 16, 18, 14, 14, 14, 14, 20, 14, 20, 22, 38]);
+    births.dataValidations.add("F2:F5000", {
+      type: "list", allowBlank: true,
+      formulae: ['"Unassisted,Assisted,Cesarean,Induced,Unknown"']
     });
 
     const production = workbook.addWorksheet("Production");
@@ -2467,6 +2999,7 @@
     openImport,
     downloadTemplate,
     downloadExport,
+    downloadBreedingReport,
     downloadProductionReport,
     __test: {
       parseWorkbookBuffer,
@@ -2478,6 +3011,7 @@
       productionDefaults,
       productFromSheetName,
       buildExportWorkbook,
+      buildBreedingReportWorkbook,
       buildProductionReportWorkbook
     }
   };

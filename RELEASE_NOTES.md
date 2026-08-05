@@ -1,8 +1,22 @@
-# HerdHarbor Pre-Alpha v0.3.08
+# HerdHarbor Pre-Alpha v0.4.0
 
-This release adds a full-year Budget view and first-class hay production and sales while preserving the existing farm record, cloud table, storage key, recurring tasks, and linked-income behavior.
+This release adds complete breeding-through-birth workflows while preserving existing animals, basic breeding and litter records, farm data, cloud synchronization, storage keys, recurring tasks, budgets, and production records.
 
 ## Highlights
+
+- Added species-aware breeding schedules for rabbits, cattle, goats, sheep, pigs, horses, and dogs
+- Added breeding method, pregnancy-check date and result, confirmation date, preparation date, expected birth date, status, and notes
+- Added deterministic pregnancy-check, prepare-for-birth, expected-birth, and weaning tasks that do not duplicate across devices
+- Added birth and litter records for live births, stillbirths, fostered in/out, later losses, and weaned young
+- Added expected-weaning dates and reminders based on species or a tester-selected date
+- Added one-step individual offspring creation with name, tag, sex, sire, dam, date of birth, source-birth record, and automatic pedigree links
+- Added breeding history, conception rate, delivery rate, birth survival, and dam-performance reports with all-year or single-year filtering
+- Added a downloadable Breeding & Birth report with Overview, Dam Performance, Breeding History, and Birth History sheets
+- Added Breeding and Births sheets to Excel import, export, and the downloadable template
+- Added source-birth references to Animals so exported offspring round-trip back to the correct birth record
+- Kept imported records in review until explicit confirmation and kept all new data inside the existing farm record and cloud merge system
+
+## Continued v0.3.08 capabilities
 
 - Added a Monthly / Full year Budget view switch
 - Added year selection based on the years present in transactions, monthly budgets, and annual plans
