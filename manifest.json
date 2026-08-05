@@ -2,7 +2,7 @@
   "id": "./",
   "name": "HerdHarbor",
   "short_name": "HerdHarbor",
-  "description": "Secure farm and livestock records with protected cloud sync.",
+  "description": "Secure farm, livestock, customer, sales, and payment records with protected cloud sync.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -53,6 +53,11 @@
       "name": "Births and litters",
       "short_name": "Births",
       "url": "./#litters"
+    },
+    {
+      "name": "Sales and customers",
+      "short_name": "Sales",
+      "url": "./#sales"
     }
   ]
 }
