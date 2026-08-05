@@ -1,5 +1,12 @@
 # HerdHarbor v0.4.0 Release Checklist
 
+## Animals and pedigree builder hotfix
+
+- Open Animals and confirm the status filter defaults to Active and only exact Active-status records appear initially
+- Select Any status and confirm Active, Breeding, Growing, Retired, For Sale, Sold, Deceased, and Ancestor Only records can still be shown
+- Select Ancestor Only and confirm ancestor records remain available without appearing in the default Active view
+- Open the Guided Pedigree Builder and confirm its header shows v0.4.0 instead of v0.2.1
+
 ## Breeding and pregnancy workflow
 
 - Record rabbit, cattle, goat, sheep, pig, horse, and dog breedings and confirm species-appropriate pregnancy-check, preparation, expected-birth, and weaning dates are suggested

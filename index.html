@@ -2076,6 +2076,7 @@ html[data-theme="dark"] .breeding-report-summary b { color: var(--cream); }
 (() => {
   "use strict";
 
+  const APP_VERSION = "0.4.0";
   const STORAGE_KEY = "herdharbor_pre_alpha_v1";
 
   const defaultState = {
@@ -2103,6 +2104,12 @@ html[data-theme="dark"] .breeding-report-summary b { color: var(--cream); }
 
   let state = loadState();
   let currentRoute = "dashboard";
+  let animalView = {
+    search: "",
+    species: "",
+    sex: "",
+    status: "Active"
+  };
   let budgetView = {
     period: "Month",
     month: new Date().toISOString().slice(0, 7),
@@ -2878,18 +2885,24 @@ html[data-theme="dark"] .breeding-report-summary b { color: var(--cream); }
          <button class="button button-primary" id="add-animal">+ Add animal</button>`
       )}
       <div class="toolbar">
-        <input id="animal-search" type="search" placeholder="Search name, tag, registration, breeder, breed, or location">
-        <select id="animal-species"><option value="">All species</option>${state.settings.species.map((s) => `<option>${esc(s)}</option>`).join("")}</select>
-        <select id="animal-sex"><option value="">Any sex</option><option>Female</option><option>Male</option><option>Unknown</option></select>
-        <select id="animal-status"><option value="">Any status</option><option>Active</option><option>Breeding</option><option>Growing</option><option>Retired</option><option>For Sale</option><option>Sold</option><option>Deceased</option><option>Ancestor Only</option></select>
+        <input id="animal-search" type="search" value="${esc(animalView.search)}" placeholder="Search name, tag, registration, breeder, breed, or location">
+        <select id="animal-species"><option value="">All species</option>${state.settings.species.map((species) => `<option ${species === animalView.species ? "selected" : ""}>${esc(species)}</option>`).join("")}</select>
+        <select id="animal-sex"><option value="">Any sex</option>${["Female", "Male", "Unknown"].map((sex) => `<option ${sex === animalView.sex ? "selected" : ""}>${sex}</option>`).join("")}</select>
+        <select id="animal-status"><option value="">Any status</option>${["Active", "Breeding", "Growing", "Retired", "For Sale", "Sold", "Deceased", "Ancestor Only"].map((status) => `<option ${status === animalView.status ? "selected" : ""}>${status}</option>`).join("")}</select>
       </div>
       <div id="animal-results"></div>`;
 
     $("#add-animal").addEventListener("click", () => openAnimalForm());
     $("#import-pedigree-from-animals").addEventListener("click", () => openPedigreeImport());
-    ["animal-search", "animal-species", "animal-sex", "animal-status"].forEach((id) => {
-      $(`#${id}`).addEventListener("input", renderAnimalResults);
-      $(`#${id}`).addEventListener("change", renderAnimalResults);
+    $("#animal-search").addEventListener("input", (event) => {
+      animalView.search = event.currentTarget.value;
+      renderAnimalResults();
+    });
+    [["animal-species", "species"], ["animal-sex", "sex"], ["animal-status", "status"]].forEach(([id, fieldName]) => {
+      $(`#${id}`).addEventListener("change", (event) => {
+        animalView[fieldName] = event.currentTarget.value;
+        renderAnimalResults();
+      });
     });
     renderAnimalResults();
   }
@@ -2897,10 +2910,8 @@ html[data-theme="dark"] .breeding-report-summary b { color: var(--cream); }
   function renderAnimalResults() {
     const root = $("#animal-results");
     if (!root) return;
-    const query = ($("#animal-search")?.value || "").toLowerCase();
-    const species = $("#animal-species")?.value || "";
-    const sex = $("#animal-sex")?.value || "";
-    const status = $("#animal-status")?.value || "";
+    const query = animalView.search.toLowerCase();
+    const { species, sex, status } = animalView;
 
     const animals = state.animals.filter((a) => {
       const haystack = [a.name, a.tag, a.registrationNumber, a.tattoo, a.breeder, a.breed, a.location, a.color].join(" ").toLowerCase();
@@ -4159,7 +4170,7 @@ html[data-theme="dark"] .breeding-report-summary b { color: var(--cream); }
           <button type="button" class="button button-primary" id="pedigree-next">Next</button>
           <button type="submit" class="button button-primary hidden" id="pedigree-confirm">Confirm & save pedigree</button>
         </div>
-      </form>`, "Guided pedigree builder · v0.2.1");
+      </form>`, `Guided pedigree builder · v${APP_VERSION}`);
 
     $(".modal").classList.add("modal-wide");
     const form = $("#pedigree-import-form");
