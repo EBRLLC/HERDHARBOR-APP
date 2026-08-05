@@ -2,6 +2,13 @@
 
 This release adds complete breeding-through-birth workflows while preserving existing animals, basic breeding and litter records, farm data, cloud synchronization, storage keys, recurring tasks, budgets, and production records.
 
+## Tester-requested hotfix
+
+- The Animals tab now defaults its status filter to Active so ancestor-only and other non-active records do not fill the initial animal list
+- Any status and Ancestor Only remain available in the status filter whenever testers need those records
+- The Guided Pedigree Builder now reads the shared current app version instead of displaying the stale v0.2.1 label
+- No animal, ancestry, cloud-sync, account, or storage data format changed
+
 ## Highlights
 
 - Added species-aware breeding schedules for rabbits, cattle, goats, sheep, pigs, horses, and dogs
