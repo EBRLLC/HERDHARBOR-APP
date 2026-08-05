@@ -9,7 +9,7 @@ require("../spreadsheet-import.js");
 const {
   parseWorkbookBuffer, dateToISO, moneyNumber, issueAdvice,
   canonicalProductionProduct, productionDefaults, productFromSheetName,
-  buildExportWorkbook, buildProductionReportWorkbook
+  buildExportWorkbook, buildBreedingReportWorkbook, buildProductionReportWorkbook
 } =
   global.window.HerdHarborSpreadsheet.__test;
 
@@ -203,6 +203,8 @@ async function run() {
   assert.deepEqual(productionDefaults("Hay"), { species: "", unit: "bales" });
   assert.equal(productFromSheetName("Hay Production"), "Hay");
   assert.match(issueAdvice("Production product is invalid."), /Eggs, Broilers, Milk, Hay/);
+  assert.match(issueAdvice("Breeding status is not recognized."), /Confirmed pregnant/);
+  assert.match(issueAdvice("Fostered-out young and losses cannot exceed the live young available."), /whole numbers/);
 
   let downloadedBlob = null;
   global.document = {
@@ -235,11 +237,13 @@ async function run() {
   await templateWorkbook.xlsx.load(await downloadedBlob.arrayBuffer());
   assert.deepEqual(
     templateWorkbook.worksheets.map((worksheet) => worksheet.name),
-    ["Instructions", "Animals", "Production", "Budgeting", "Annual Budget", "Medical"]
+    ["Instructions", "Animals", "Breeding", "Births", "Production", "Budgeting", "Annual Budget", "Medical"]
   );
   assert.equal(templateWorkbook.getWorksheet("Animals").getCell("A1").value, "Name");
   assert.equal(templateWorkbook.getWorksheet("Production").getCell("F1").value, "Group / Flock / Herd / Batch / Field Name");
   assert.equal(templateWorkbook.getWorksheet("Production").getCell("I1").value, "Total Produced");
+  assert.equal(templateWorkbook.getWorksheet("Breeding").getCell("J1").value, "Expected Due Date");
+  assert.equal(templateWorkbook.getWorksheet("Births").getCell("G1").value, "Born Alive");
   const productionValidations = JSON.stringify(
     templateWorkbook.getWorksheet("Production").dataValidations.model
   );
@@ -285,6 +289,62 @@ async function run() {
       sireId: "",
       damId: "",
       notes: "=SUM(A1:A2)"
+    }, {
+      id: "animal_sire",
+      name: "Atlas",
+      tag: "R-10",
+      species: "Rabbit",
+      breed: "Holland Lop",
+      sex: "Male",
+      status: "Active",
+      sireId: "",
+      damId: "",
+      notes: ""
+    }, {
+      id: "animal_offspring",
+      name: "Willow offspring 1",
+      tag: "L-1",
+      species: "Rabbit",
+      breed: "Holland Lop",
+      sex: "Unknown",
+      dob: "2026-08-05",
+      status: "Growing",
+      sireId: "animal_sire",
+      damId: "animal_export",
+      sourceBirthId: "birth_export",
+      notes: ""
+    }],
+    breedings: [{
+      id: "breeding_export",
+      femaleId: "animal_export",
+      maleId: "animal_sire",
+      breedingDate: "2026-07-05",
+      method: "Natural service",
+      pregnancyCheckDate: "2026-07-19",
+      pregnancyCheckStatus: "Positive",
+      confirmedDate: "2026-07-19",
+      nestBoxDate: "2026-08-02",
+      dueDate: "2026-08-05",
+      status: "Delivered",
+      notes: "Successful pairing"
+    }],
+    litters: [{
+      id: "birth_export",
+      breedingId: "breeding_export",
+      damId: "animal_export",
+      sireId: "animal_sire",
+      birthDate: "2026-08-05",
+      birthType: "Unassisted",
+      bornAlive: "6",
+      stillborn: "1",
+      fosteredIn: "0",
+      fosteredOut: "0",
+      lostBeforeWeaning: "0",
+      weaned: "0",
+      expectedWeanDate: "2026-09-16",
+      offspringPrefix: "L",
+      offspringIds: ["animal_offspring"],
+      notes: "Healthy litter"
     }],
     health: [{
       id: "health_export",
@@ -376,15 +436,17 @@ async function run() {
   const exportWorkbook = buildExportWorkbook(exportState, { operationName: "Harbor Test Farm" });
   assert.deepEqual(
     exportWorkbook.worksheets.map((worksheet) => worksheet.name),
-    ["Overview", "Animals", "Medical", "Production", "Budgeting", "Annual Budget"]
+    ["Overview", "Animals", "Breeding", "Births", "Medical", "Production", "Budgeting", "Annual Budget"]
   );
   assert.equal(exportWorkbook.getWorksheet("Animals").getCell("A2").value, "Willow");
-  assert.equal(exportWorkbook.getWorksheet("Animals").getCell("O2").value, "=SUM(A1:A2)");
+  assert.equal(exportWorkbook.getWorksheet("Animals").getCell("P2").value, "=SUM(A1:A2)");
   assert.equal(
-    exportWorkbook.getWorksheet("Animals").getCell("O2").type,
+    exportWorkbook.getWorksheet("Animals").getCell("P2").type,
     ExcelJS.ValueType.String,
     "formula-looking source text remains a non-executable Excel string"
   );
+  assert.equal(exportWorkbook.getWorksheet("Breeding").getCell("A2").value, "breeding_export");
+  assert.equal(exportWorkbook.getWorksheet("Births").getCell("G2").value, 6);
   assert.equal(exportWorkbook.getWorksheet("Medical").getCell("M2").value, 4.2);
   assert.equal(exportWorkbook.getWorksheet("Production").getCell("F2").value, "Layer flock A");
   assert.equal(exportWorkbook.getWorksheet("Production").getCell("I2").value, 12);
@@ -393,6 +455,32 @@ async function run() {
   assert.equal(exportWorkbook.getWorksheet("Budgeting").getCell("H2").value, 12.5);
   assert.equal(exportWorkbook.getWorksheet("Budgeting").rowCount, 2, "linked production income is not duplicated on the Budgeting sheet");
   assert.equal(exportWorkbook.getWorksheet("Annual Budget").getCell("D2").value, 100);
+
+  const breedingReportWorkbook = buildBreedingReportWorkbook({
+    breedings: exportState.breedings,
+    litters: exportState.litters,
+    animals: exportState.animals,
+    report: {
+      attempts: 1, positive: 1, negative: 0, conceptionRate: 1, delivered: 1, deliveryRate: 1,
+      bornAlive: 6, stillborn: 1, lost: 0, weaned: 0, survivalRate: 0,
+      performance: [{ name: "Willow", attempts: 1, positive: 1, births: 1, bornAlive: 6, weaned: 0, survivalRate: 0 }]
+    }
+  }, { operationName: "Harbor Test Farm", year: "2026" });
+  assert.deepEqual(
+    breedingReportWorkbook.worksheets.map((worksheet) => worksheet.name),
+    ["Overview", "Dam Performance", "Breeding History", "Birth History"]
+  );
+  assert.equal(breedingReportWorkbook.getWorksheet("Overview").getCell("B7").value, 1);
+  assert.equal(breedingReportWorkbook.getWorksheet("Dam Performance").getCell("A2").value, "Willow");
+  assert.equal(breedingReportWorkbook.getWorksheet("Breeding History").getCell("K2").value, "Delivered");
+  assert.equal(breedingReportWorkbook.getWorksheet("Birth History").getCell("F2").value, 6);
+  if (process.env.HH_BREEDING_REPORT_QA_PATH) {
+    const breedingReportBuffer = await breedingReportWorkbook.xlsx.writeBuffer();
+    require("node:fs").writeFileSync(
+      process.env.HH_BREEDING_REPORT_QA_PATH,
+      Buffer.from(breedingReportBuffer)
+    );
+  }
 
   const reportWorkbook = buildProductionReportWorkbook({
     records: exportState.productionRecords,
@@ -426,7 +514,7 @@ async function run() {
   const reportBuffer = await reportWorkbook.xlsx.writeBuffer();
   const reportReload = new ExcelJS.Workbook();
   await reportReload.xlsx.load(reportBuffer);
-  assert.equal(reportReload.getWorksheet("Overview").getCell("B12").value, "0.3.08");
+  assert.equal(reportReload.getWorksheet("Overview").getCell("B12").value, "0.4.0");
   if (process.env.HH_PRODUCTION_REPORT_QA_PATH) {
     require("node:fs").writeFileSync(process.env.HH_PRODUCTION_REPORT_QA_PATH, Buffer.from(reportBuffer));
   }
@@ -448,7 +536,11 @@ async function run() {
     fileName: "harbor-test-export.xlsx"
   });
   assert.equal(roundTrip.errorCount, 0, "the Excel export can be reviewed and imported again");
-  assert.equal(roundTrip.records.animals.length, 1);
+  assert.equal(roundTrip.records.animals.length, 3);
+  assert.equal(roundTrip.records.breedings.length, 1);
+  assert.equal(roundTrip.records.litters.length, 1);
+  assert.equal(roundTrip.records.animals.find((animal) => animal.tag === "L-1").sourceBirthId, "birth_export");
+  assert.deepEqual(roundTrip.records.litters[0].offspringIds, [roundTrip.records.animals.find((animal) => animal.tag === "L-1").id]);
   assert.equal(roundTrip.records.health.length, 1);
   assert.equal(roundTrip.records.transactions.length, 1);
   assert.equal(roundTrip.records.productionRecords.length, 1);
@@ -495,6 +587,31 @@ async function run() {
   assert.equal(dairyResult.records.productionRecords[0].feedQuantity, "1.5");
   assert.equal(dairyResult.records.productionRecords[0].wasteQuantity, "1");
   assert.equal(dairyResult.records.productionRecords[0].wasteReason, "Medication withdrawal");
+
+  const invalidBirthWorkbook = new ExcelJS.Workbook();
+  const invalidBirths = invalidBirthWorkbook.addWorksheet("Births");
+  invalidBirths.addRow([
+    "Birth Record ID", "Breeding Record ID", "Dam ID / Tag / Name", "Sire ID / Tag / Name",
+    "Birth Date", "Birth Type", "Born Alive", "Stillborn", "Fostered In", "Fostered Out",
+    "Lost Before Weaning", "Weaned"
+  ]);
+  invalidBirths.addRow(["birth_bad_parents", "breeding_validation", "D-1", "C-1", "2026-08-05", "Unassisted", 2, 0, 0, 0, 0, 0]);
+  invalidBirths.addRow(["birth_bad_counts", "", "D-1", "S-1", "2026-08-06", "Unassisted", 1, 0, 0, 1, 1, 0]);
+  const invalidBirthResult = await parseWorkbookBuffer(
+    await invalidBirthWorkbook.xlsx.writeBuffer(),
+    {
+      ...context,
+      animals: [
+        { id: "dam_validation", name: "Willow", tag: "D-1", species: "Rabbit", sex: "Female" },
+        { id: "sire_validation", name: "Atlas", tag: "S-1", species: "Rabbit", sex: "Male" },
+        { id: "cattle_validation", name: "Bessie", tag: "C-1", species: "Cattle", sex: "Female" }
+      ],
+      breedings: [{ id: "breeding_validation", femaleId: "dam_validation", maleId: "sire_validation", breedingDate: "2026-07-05" }],
+      litters: []
+    }
+  );
+  assert.equal(invalidBirthResult.records.litters.length, 0);
+  assert.equal(invalidBirthResult.errorCount, 2, "mismatched parents and impossible birth counts are rejected");
 
   const realWorkbookPath = require("node:path").resolve(
     __dirname,

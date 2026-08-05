@@ -43,6 +43,8 @@ const base = {
       status: "Active"
     }
   ],
+  breedings: [],
+  litters: [],
   health: [],
   tasks: [],
   transactions: [],
@@ -71,6 +73,13 @@ const base = {
     quantity: "24",
     unit: "eggs"
   });
+  local.breedings.push({
+    id: "breeding-local",
+    femaleId: "animal-1",
+    maleId: "animal-2",
+    breedingDate: "2026-08-05",
+    status: "Bred"
+  });
   local.settings.theme = "dark";
 
   const remote = structuredClone(base);
@@ -78,6 +87,13 @@ const base = {
     id: "health-remote",
     animalId: "animal-1",
     type: "Wellness Exam"
+  });
+  remote.litters.push({
+    id: "birth-remote",
+    damId: "animal-1",
+    sireId: "animal-2",
+    birthDate: "2026-08-05",
+    bornAlive: "2"
   });
   remote.activity.push({
     id: "activity-remote",
@@ -101,6 +117,8 @@ const base = {
     ["production-local"],
     "new production records merge without changing the cloud schema"
   );
+  assert.deepEqual(result.value.breedings.map((item) => item.id), ["breeding-local"]);
+  assert.deepEqual(result.value.litters.map((item) => item.id), ["birth-remote"]);
   assert.deepEqual(
     result.value.activity.map((item) => item.id),
     ["activity-remote", "activity-local"]
@@ -111,6 +129,38 @@ const base = {
     false,
     "device-only settings stay local"
   );
+}
+
+{
+  const offspringBase = structuredClone(base);
+  offspringBase.animals.push(
+    { id: "dam-1", name: "Willow", species: "Rabbit", sex: "Female" },
+    { id: "sire-1", name: "Atlas", species: "Rabbit", sex: "Male" }
+  );
+  offspringBase.litters = [{
+    id: "birth-1", damId: "dam-1", sireId: "sire-1", birthDate: "2026-08-05",
+    bornAlive: "1", offspringIds: []
+  }];
+  const local = structuredClone(offspringBase);
+  const remote = structuredClone(offspringBase);
+  [
+    [local, "2026-08-05T12:00:00.000Z"],
+    [remote, "2026-08-05T12:00:04.000Z"]
+  ].forEach(([copy, timestamp]) => {
+    copy.animals.push({
+      id: "animal_offspring_birth-1_001", name: "Willow offspring 1", tag: "L-1",
+      species: "Rabbit", sex: "Unknown", dob: "2026-08-05", status: "Growing",
+      sireId: "sire-1", damId: "dam-1", sourceBirthId: "birth-1",
+      createdAt: timestamp, updatedAt: timestamp
+    });
+    copy.litters[0].offspringIds = ["animal_offspring_birth-1_001"];
+    copy.litters[0].updatedAt = timestamp;
+  });
+
+  const result = mergeRawStates(raw(offspringBase), raw(local), raw(remote));
+  assert.equal(result.ok, true, "the same offspring created on two devices merges automatically");
+  assert.equal(result.value.animals.filter((animal) => animal.id === "animal_offspring_birth-1_001").length, 1);
+  assert.deepEqual(result.value.litters[0].offspringIds, ["animal_offspring_birth-1_001"]);
 }
 
 {

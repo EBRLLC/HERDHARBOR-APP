@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const PWA_BUILD = "0.3.08-year-budget-hay-1";
+  const PWA_BUILD = "0.4.0-breeding-birth-1";
   let installPrompt = null;
   let registration = null;
   let updateToast = null;

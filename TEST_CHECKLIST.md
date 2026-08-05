@@ -1,4 +1,36 @@
-# HerdHarbor v0.3.08 Release Checklist
+# HerdHarbor v0.4.0 Release Checklist
+
+## Breeding and pregnancy workflow
+
+- Record rabbit, cattle, goat, sheep, pig, horse, and dog breedings and confirm species-appropriate pregnancy-check, preparation, expected-birth, and weaning dates are suggested
+- Confirm testers can override every suggested date without the app changing it back
+- Record natural, artificial insemination, embryo transfer, and other breeding methods
+- Mark pregnancy checks Pending, Positive, Negative, Inconclusive, or Not checked and confirm the breeding status follows the result
+- Confirm a negative pregnancy result closes future preparation and expected-birth reminders without deleting the breeding history
+- Confirm positive or confirmed breedings retain pregnancy-check history and keep the expected-birth reminder
+- Edit a breeding from a second device and confirm non-overlapping field changes merge automatically
+- Change the same breeding field differently on two devices and confirm normal protected conflict handling remains active
+
+## Births, litters, and offspring
+
+- Record Unassisted, Assisted, Cesarean, Induced, and Unknown birth types
+- Record born alive, stillborn, fostered in, fostered out, later lost, and weaned counts and confirm negative, fractional, or impossible totals are rejected
+- Link a birth to a breeding and confirm the breeding becomes Delivered and its pregnancy/birth reminders close
+- Confirm the expected-weaning date follows the linked animal species and can be overridden
+- Confirm one deterministic weaning task is created and saving again or merging from another device does not duplicate it
+- Create kept offspring from a birth and provide an individual name, tag, and sex for each animal
+- Confirm every created offspring receives the birth date, species, breed, location, sire, dam, and source-birth record
+- Open offspring pedigrees and confirm the linked sire and dam appear automatically
+- Run offspring creation from two devices based on the same birth and confirm deterministic IDs prevent duplicate animals
+- Delete a birth record and confirm already-created offspring animals are preserved while their source-birth links are cleared safely
+
+## Breeding reports
+
+- Filter breeding history by All years and a selected year and confirm all totals and detail rows use the same period
+- Confirm conception rate, delivery rate, live-born, stillborn, lost, weaned, and survival rate reconcile to the underlying records
+- Compare dams and confirm breedings, confirmed pregnancies, births, live-born, weaned, and average live-born counts are correct
+- Download the Breeding & Birth report and confirm Overview, Dam Performance, Breeding History, and Birth History sheets open cleanly
+- Confirm report dates are typed dates, counts are typed whole numbers, rates are typed percentages, headers are frozen/readable, and no formulas or values are clipped
 
 ## Full-year budgeting
 
@@ -107,9 +139,11 @@
 ## Excel record export
 
 - Select **Export records to Excel** from Settings
-- Confirm the workbook opens with Overview, Animals, Medical, Production, Budgeting, and Annual Budget sheets
+- Confirm the workbook opens with Overview, Animals, Breeding, Births, Medical, Production, Budgeting, and Annual Budget sheets
 - Confirm headers are readable, frozen, filtered, and date/currency columns retain their types
-- Confirm animal parent references, medical-to-animal links, and animal-assigned transactions use a unique animal reference
+- Confirm animal parent references, source-birth references, medical-to-animal links, and animal-assigned transactions use a unique record reference
+- Confirm breeding dam/sire links, pregnancy dates/results, methods, and statuses remain typed and readable
+- Confirm birth links, parent links, outcome counts, expected-weaning dates, and offspring source-birth links round-trip unchanged
 - Confirm annual planned figures remain annual plans and are not listed as actual transactions
 - Confirm production quantities, allocations, waste reasons, batch weights, and sale income remain typed values on the Production sheet
 - Confirm production-linked income is not duplicated on the Budgeting sheet and is recreated from Production during import
@@ -125,15 +159,17 @@
 
 ## Excel spreadsheet import
 
-- Download the HerdHarbor Excel template from Settings and confirm it opens with Instructions, Animals, Production, Budgeting, Annual Budget, and Medical sheets
-- Import a workbook containing valid rows in all five data sheets
+- Download the HerdHarbor Excel template from Settings and confirm it opens with Instructions, Animals, Breeding, Births, Production, Budgeting, Annual Budget, and Medical sheets
+- Import a workbook containing valid rows in every supported data sheet
 - Confirm the review screen shows correct ready, skipped, warning, and error counts
 - Confirm no records are added before **Import records** is selected
-- Confirm approved animals, production, transactions, annual plans, and medical records appear in their normal app sections
+- Confirm approved animals, breedings, births, production, transactions, annual plans, and medical records appear in their normal app sections
 - Import the same workbook again and confirm duplicate records are skipped
 - Confirm Medical and animal-assigned Budgeting rows match animals by tag, tattoo, registration number, or unique name
 - Confirm missing or ambiguous animal references are rejected without changing existing records
 - Confirm sire and dam references connect when they match an existing or newly imported animal
+- Confirm imported breeding and birth IDs link correctly and imported offspring attach to the matching source-birth record
+- Confirm imported linked births mark the related breeding Delivered and generate no duplicate reminders
 - Confirm invalid dates, amounts, status values, and unsupported species are flagged by sheet and row
 - Confirm annual budget columns create yearly plan records and do not create actual transactions
 - Confirm annual plan expense, projected income, and projected net totals reconcile to the source workbook
@@ -196,6 +232,6 @@
 
 - Test sign in, sign out, account creation, and password reset
 - Confirm no random sign-in flash appears
-- Test animals, breeding, litters, pedigrees, health, tasks, budgeting, production and sales, photos, breed memory, and dark mode
+- Test animals, breeding, births and litters, offspring creation, pedigrees, health, tasks, budgeting, production and sales, photos, breed memory, and dark mode
 - Test JSON export/import
 - Test on phone and desktop sizes
