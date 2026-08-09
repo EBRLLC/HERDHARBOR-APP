@@ -1,4 +1,4 @@
-# HerdHarbor v0.5.0 Release Checklist
+# HerdHarbor v0.5.1 Launch-Hardening Checklist
 
 ## Customers and animal sales
 

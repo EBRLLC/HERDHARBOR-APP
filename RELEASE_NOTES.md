@@ -1,4 +1,12 @@
-# HerdHarbor Pre-Alpha v0.5.0
+# HerdHarbor Pre-Alpha v0.5.1
+
+## Launch hardening
+
+- Added signed-in account-deletion requests from Settings.
+- Added direct links to public privacy, terms, support, and deletion pages.
+- Clarified that clearing local data does not delete a cloud account.
+- Expanded dark-mode text contrast coverage in Settings, dialogs, tables, and detail fields.
+- Bumped the offline app shell so installed testers receive the fixes.
 
 This release adds a complete customer-to-sale workflow while preserving existing animals, pedigrees, breeding and birth records, farm data, cloud synchronization, storage keys, recurring tasks, budgets, and production records.
 

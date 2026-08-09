@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const PWA_BUILD = "0.5.0-sales-customers-qr-1";
+  const PWA_BUILD = "0.5.1-launch-hardening-1";
   let installPrompt = null;
   let registration = null;
   let updateToast = null;

@@ -12,6 +12,7 @@
   const RECOVERY_DB_NAME = "herdharbor_recovery_v1";
   const RECOVERY_STORE_NAME = "snapshots";
   const MAX_RECOVERY_SNAPSHOTS = 6;
+  const ACCOUNT_DELETION_REQUEST_URL = "https://formspree.io/f/xpqvpwwb";
 
   if (!window.supabase?.createClient) {
     console.error("HerdHarbor Cloud: Supabase JavaScript library did not load.");
@@ -863,6 +864,46 @@
     clearTimeout(syncTimer);
     pendingSync = { rawValue: raw, sequence: writeSequence };
     return drainSyncQueue();
+  }
+
+  async function requestAccountDeletion({ reason = "", confirmation = "" } = {}) {
+    if (!session?.user?.id || !session?.user?.email) {
+      throw new Error("Sign in before requesting account deletion.");
+    }
+    if (confirmation !== "DELETE") {
+      throw new Error("Type DELETE exactly to confirm the request.");
+    }
+    if (navigator.onLine === false) {
+      throw new Error("Connect to the internet before submitting a deletion request.");
+    }
+
+    const userId = session.user.id;
+    const dirty = originalGetItem.call(localStorage, dirtyKey(userId)) === "1";
+    if (dirty && !(await syncNow())) {
+      throw new Error("Your latest records have not synced. Download a backup, reconnect, and try again.");
+    }
+
+    const formData = new FormData();
+    formData.set("_subject", "HerdHarbor account deletion request");
+    formData.set("request_type", "Account and associated data deletion");
+    formData.set("request_source", "Signed-in HerdHarbor Settings");
+    formData.set("account_email", session.user.email);
+    formData.set("account_user_id", userId);
+    formData.set("confirmation", confirmation);
+    formData.set("reason", String(reason || "").slice(0, 1000));
+    formData.set("requested_at", new Date().toISOString());
+    formData.set("understand_permanent", "Yes");
+
+    const response = await fetch(ACCOUNT_DELETION_REQUEST_URL, {
+      method: "POST",
+      body: formData,
+      headers: { Accept: "application/json" }
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new Error(payload?.errors?.[0]?.message || "The deletion request could not be submitted.");
+    }
+    return { ok: true, email: session.user.email };
   }
 
   async function checkForCloudChanges() {
@@ -1741,7 +1782,8 @@
         originalGetItem.call(localStorage, dirtyKey(userId)) === "1";
     },
     hasConflict: () => Boolean(syncConflict),
-    downloadSafetyBackup
+    downloadSafetyBackup,
+    requestAccountDeletion
   };
 
   initialize().catch((error) => {
