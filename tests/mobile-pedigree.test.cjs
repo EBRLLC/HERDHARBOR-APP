@@ -9,6 +9,9 @@ const html = fs.readFileSync(path.resolve(__dirname, "..", "index.html"), "utf8"
 assert.match(html, /data-view-pedigree="\$\{p\.id\}"/);
 assert.match(html, /event\.target\.closest\("\[data-view-pedigree\]"\)/);
 assert.match(html, /openPedigreeRecord\(viewButton\.dataset\.viewPedigree\)/);
+assert.match(html, /function pedigreeRecordPreviewHtml\(subject, record = null\)/);
+assert.match(html, /const ids = record\?\.ancestorIds \|\| \{\}/);
+assert.match(html, /Pedigree chart/);
 assert.match(html, /type="button" class="button button-ghost button-small" data-view-pedigree/);
 assert.match(html, /\.pedigree-document-card \.list-item-actions \.button \{[\s\S]*?min-height: 44px/);
 assert.match(html, /max-height: calc\(100dvh - env\(safe-area-inset-top, 0px\)\)/);
@@ -22,5 +25,12 @@ assert.match(html, /touch-action: manipulation/);
 assert.match(html, /content-visibility: auto/);
 assert.match(html, /prefers-reduced-motion: reduce/);
 assert.match(html, /\.modal-backdrop \{[\s\S]*?backdrop-filter: none/);
+assert.match(html, /function openMobilePrintPreview\(printableHtml, animalName\)/);
+assert.match(html, /id="pedigree-print-preview"/);
+assert.match(html, /frame\.contentWindow/);
+assert.match(html, /printWindow\.print\(\)/);
+assert.match(html, /window\.matchMedia\("\(display-mode: standalone\)"\)/);
+assert.match(html, /const ids = savedPedigree\?\.ancestorIds \|\| \{\}/);
+assert.match(html, /byId\(ids\.sire \|\| subject\.sireId\)/);
 
 console.log("mobile pedigree interaction and viewport tests passed");

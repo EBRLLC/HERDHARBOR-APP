@@ -23,6 +23,9 @@ assert.match(html, /indexedDB\.deleteDatabase\(ATTACHMENT_DB\)/);
 assert.doesNotMatch(html, /remove large pedigree documents or animal photos/);
 assert.match(cloud, /async function downloadSafetyBackup\(\)/);
 assert.match(cloud, /HerdHarborAttachments\?\.stateWithPedigreeAttachments/);
-assert.match(cloud, /version: "0\.5\.2"/);
+assert.match(cloud, /version: "0\.5\.3"/);
+assert.match(cloud, /function removeRedundantStateCache\(userId\)/);
+assert.match(cloud, /safeStorageRemove\(cacheKey\(userId\)\)/);
+assert.match(cloud, /removeRedundantStateCache\(session\.user\.id\)/);
 
 console.log("expanded pedigree attachment storage and backup tests passed");

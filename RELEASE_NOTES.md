@@ -1,4 +1,11 @@
-# HerdHarbor Pre-Alpha v0.5.2
+# HerdHarbor Pre-Alpha v0.5.3
+
+## v0.5.3 mobile pedigree and storage correction
+
+- View Pedigree now renders a real in-app ancestry chart from the saved pedigree record on phones.
+- Print Pedigree now uses an in-app mobile preview instead of relying on a blocked popup.
+- Printed ancestry honors the saved pedigree mapping even when the animal record does not yet have direct parent links.
+- Removed the redundant third full farm-state copy that was exhausting mobile `localStorage`; the active state, cloud merge baseline, IndexedDB recovery, and downloadable backups remain protected.
 
 ## Mobile pedigree hotfix
 
