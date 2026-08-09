@@ -1,4 +1,4 @@
-# HerdHarbor v0.5.1 Launch-Hardening Checklist
+# HerdHarbor v0.5.2 Mobile Launch-Hardening Checklist
 
 ## Customers and animal sales
 
