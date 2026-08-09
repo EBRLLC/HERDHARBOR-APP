@@ -1,4 +1,15 @@
-# HerdHarbor Pre-Alpha v0.5.1
+# HerdHarbor Pre-Alpha v0.5.2
+
+## Mobile pedigree hotfix
+
+- Completed pedigree records now use a mobile-safe tap handler in installed-app mode.
+- Pedigree PDFs no longer rely on embedded PDF viewers that fail in iOS/Android standalone apps.
+- Phone-size pedigree actions meet a 44-pixel touch target and remain visible across the card width.
+- Modals use dynamic viewport and safe-area sizing, scroll smoothly, and prevent background scrolling.
+- Dark-mode colors were completed for mobile modal headers and pedigree source controls.
+- Existing pedigree images and PDFs migrate automatically from limited localStorage into expanded IndexedDB attachment storage.
+- New pedigree attachments and draft sources are stored outside the main farm record, preventing them from exhausting record storage.
+- Full JSON and account safety backups reattach stored pedigree documents before download.
 
 ## Launch hardening
 

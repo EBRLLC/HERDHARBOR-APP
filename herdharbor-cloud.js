@@ -1404,17 +1404,20 @@
     if (controls) controls.hidden = !syncConflict;
   }
 
-  function downloadSafetyBackup() {
+  async function downloadSafetyBackup() {
     const rawValue = originalGetItem.call(localStorage, STORAGE_KEY);
-    const appState = safeParse(rawValue);
+    let appState = safeParse(rawValue);
     if (!appState) {
       setSyncState("No readable local records are available to back up.", "error");
       return;
     }
 
+    if (window.HerdHarborAttachments?.stateWithPedigreeAttachments) {
+      appState = await window.HerdHarborAttachments.stateWithPedigreeAttachments();
+    }
     const payload = JSON.stringify({
       app: "HerdHarbor",
-      version: "0.3.08",
+      version: "0.5.2",
       backupType: "local-safety-backup",
       exportedAt: new Date().toISOString(),
       data: appState
