@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const PWA_BUILD = "0.5.2-mobile-pedigree-2";
+  const PWA_BUILD = "0.5.3-mobile-pedigree-storage-1";
   let installPrompt = null;
   let registration = null;
   let updateToast = null;

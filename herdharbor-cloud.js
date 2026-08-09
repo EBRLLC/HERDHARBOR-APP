@@ -401,6 +401,15 @@
     }
   }
 
+  function removeRedundantStateCache(userId) {
+    if (!userId) return;
+    // The active farm state is already retained under STORAGE_KEY and the last
+    // confirmed cloud state is retained separately as the merge baseline.
+    // Keeping a third full JSON copy exhausted mobile localStorage for larger
+    // herds even after pedigree documents moved to IndexedDB.
+    safeStorageRemove(cacheKey(userId));
+  }
+
   function setInternalStorage(key, value) {
     internalStorageWrite = true;
     try {
@@ -494,7 +503,16 @@
   }
 
   function setActiveUserData(userId, rawValue) {
-    setInternalStorage(STORAGE_KEY, rawValue);
+    try {
+      setInternalStorage(STORAGE_KEY, rawValue);
+    } catch (error) {
+      // A previous duplicate cache can consume the final mobile quota needed
+      // to refresh the active copy. The caller still holds rawValue in memory,
+      // so release only that redundant copy and retry once.
+      removeRedundantStateCache(userId);
+      setInternalStorage(STORAGE_KEY, rawValue);
+    }
+    removeRedundantStateCache(userId);
     setInternalStorage(ACTIVE_OWNER_KEY, userId);
   }
 
@@ -528,6 +546,13 @@
         this === localStorage && key === STORAGE_KEY
           ? originalGetItem.call(localStorage, STORAGE_KEY)
           : null;
+      if (
+        this === localStorage &&
+        key === STORAGE_KEY &&
+        session?.user?.id
+      ) {
+        removeRedundantStateCache(session.user.id);
+      }
       const result = originalSetItem.call(this, key, value);
 
       if (
@@ -540,7 +565,7 @@
         writeSequence += 1;
         syncConflict = null;
         safeStorageSet(ACTIVE_OWNER_KEY, userId);
-        safeStorageSet(cacheKey(userId), value);
+        removeRedundantStateCache(userId);
         safeStorageSet(dirtyKey(userId), "1");
         if (previousValue && !sameState(previousValue, value)) {
           recordRecoverySnapshot(userId, previousValue, "Before local change");
@@ -1417,7 +1442,7 @@
     }
     const payload = JSON.stringify({
       app: "HerdHarbor",
-      version: "0.5.2",
+      version: "0.5.3",
       backupType: "local-safety-backup",
       exportedAt: new Date().toISOString(),
       data: appState
@@ -1579,6 +1604,7 @@
         ? storedActiveRaw
         : null;
     const cachedRaw = originalGetItem.call(localStorage, cacheKey(userId));
+    if (activeRaw && safeParse(activeRaw)) removeRedundantStateCache(userId);
     const dirty = originalGetItem.call(localStorage, dirtyKey(userId)) === "1";
 
     if (dirty) {
