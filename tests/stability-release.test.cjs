@@ -8,12 +8,12 @@ const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const spreadsheet = fs.readFileSync(path.join(root, "spreadsheet-import.js"), "utf8");
 const serviceWorker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 
-assert.match(html, /HerdHarbor installable tester build v0\.5\.0/);
+assert.match(html, /HerdHarbor installable tester build v0\.5\.1/);
 assert.match(html, /id="settings-sync-now"/);
 assert.match(html, /id="settings-last-synced"/);
 assert.match(html, /id="export-excel"/);
 assert.match(html, /HerdHarbor Pre-Alpha v\$\{APP_VERSION\}/);
-assert.match(html, /const APP_VERSION = "0\.5\.0"/);
+assert.match(html, /const APP_VERSION = "0\.5\.1"/);
 assert.match(html, /Guided pedigree builder · v\$\{APP_VERSION\}/);
 assert.doesNotMatch(html, /Guided pedigree builder · v0\.2\.1/);
 assert.match(html, /let animalView = \{[\s\S]*?status: "Active"[\s\S]*?\};/);
@@ -71,11 +71,11 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /v0\.5\.0-/);
-assert.match(serviceWorker, /v0\.5\.0-20260805-1/);
-assert.match(serviceWorker, /spreadsheet-import\.js\?v=9/);
-assert.match(serviceWorker, /herdharbor-cloud\.js\?v=10/);
-assert.match(serviceWorker, /pwa\.js\?v=12/);
+assert.match(serviceWorker, /v0\.5\.1-/);
+assert.match(serviceWorker, /v0\.5\.1-20260809-1/);
+assert.match(serviceWorker, /spreadsheet-import\.js\?v=10/);
+assert.match(serviceWorker, /herdharbor-cloud\.js\?v=11/);
+assert.match(serviceWorker, /pwa\.js\?v=13/);
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);
 
-console.log("v0.5.0 stability release tests passed");
+console.log("v0.5.1 stability release tests passed");
