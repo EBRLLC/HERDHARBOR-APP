@@ -91,31 +91,44 @@ android {
         resValue "string", "hostName", twaManifest.hostName
 
         // This attribute sets the status bar color for the TWA. It can be either set here or in
-        // `res/values/colors.xml`. Setting in both places is an error and the status bar color defaults to white.
+        // `res/values/colors.xml`. Setting in both places is an error and the app will not
+        // compile. If not set, the status bar color defaults to #FFFFFF - white.
         resValue "color", "colorPrimary", twaManifest.themeColor
 
-        // This attribute sets the dark status bar color.
+        // This attribute sets the dark status bar color for the TWA. It can be either set here or in
+        // `res/values/colors.xml`. Setting in both places is an error and the app will not
+        // compile. If not set, the status bar color defaults to #000000 - white.
         resValue "color", "colorPrimaryDark", twaManifest.themeColorDark
 
-        // This attribute sets the navigation bar color.
+        // This attribute sets the navigation bar color for the TWA. It can be either set here or
+        // in `res/values/colors.xml`. Setting in both places is an error and the app will not
+        // compile. If not set, the navigation bar color defaults to #FFFFFF - white.
         resValue "color", "navigationColor", twaManifest.navigationColor
 
-        // This attribute sets the dark navigation bar color.
+        // This attribute sets the dark navigation bar color for the TWA. It can be either set here
+        // or in `res/values/colors.xml`. Setting in both places is an error and the app will not
+        // compile. If not set, the navigation bar color defaults to #000000 - black.
         resValue "color", "navigationColorDark", twaManifest.navigationColorDark
 
-        // This attribute sets the navbar divider color.
+        // This attribute sets the navbar divider color for the TWA. It can be either 
+        // set here or in `res/values/colors.xml`. Setting in both places is an error and the app 
+        // will not compile. If not set, the divider color defaults to #00000000 - transparent.
         resValue "color", "navigationDividerColor", twaManifest.navigationDividerColor
 
-        // This attribute sets the dark navbar divider color.
+        // This attribute sets the dark navbar divider color for the TWA. It can be either 
+        // set here or in `res/values/colors.xml`. Setting in both places is an error and the 
+        //app will not compile. If not set, the divider color defaults to #000000 - black.
         resValue "color", "navigationDividerColorDark", twaManifest.navigationDividerColorDark
 
-        // Sets the color for the background used for the splash screen when launching the Trusted Web Activity.
+        // Sets the color for the background used for the splash screen when launching the TWA.
         resValue "color", "backgroundColor", twaManifest.backgroundColor
 
         // Defines a provider authority for the Splash Screen
         resValue "string", "providerAuthority", twaManifest.applicationId + '.fileprovider'
 
-        // The enableNotification resource is used to enable or disable the TrustedWebActivityService.
+        // The enableNotification resource is used to enable or disable the
+        // TrustedWebActivityService, by changing the android:enabled and android:exported
+        // attributes
         resValue "bool", "enableNotification", twaManifest.enableNotifications.toString()
 
         twaManifest.shortcuts.eachWithIndex { shortcut, index ->
