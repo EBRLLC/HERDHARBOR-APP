@@ -1,0 +1,43 @@
+{
+  "packageId": "com.herdharbor.app",
+  "host": "app.herdharbor.com",
+  "name": "HerdHarbor",
+  "launcherName": "HerdHarbor",
+  "display": "standalone",
+  "themeColor": "#0D2540",
+  "themeColorDark": "#0D2540",
+  "navigationColor": "#F7F3EA",
+  "navigationColorDark": "#071827",
+  "navigationDividerColor": "#00000000",
+  "navigationDividerColorDark": "#00000000",
+  "backgroundColor": "#F7F3EA",
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://app.herdharbor.com/icon-512.png",
+  "maskableIconUrl": "https://app.herdharbor.com/icon-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "../secrets/herdharbor-upload.jks",
+    "alias": "herdharbor"
+  },
+  "appVersion": "1.0.0-alpha",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://app.herdharbor.com/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://app.herdharbor.com/",
+  "minSdkVersion": 23,
+  "orientation": "portrait",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "displayOverride": []
+}

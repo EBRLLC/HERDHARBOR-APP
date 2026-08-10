@@ -8,12 +8,12 @@ const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const spreadsheet = fs.readFileSync(path.join(root, "spreadsheet-import.js"), "utf8");
 const serviceWorker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 
-assert.match(html, /HerdHarbor installable tester build v0\.5\.3/);
+assert.match(html, /HerdHarbor Alpha v1\.0\.0 Google Play readiness release/);
 assert.match(html, /id="settings-sync-now"/);
 assert.match(html, /id="settings-last-synced"/);
 assert.match(html, /id="export-excel"/);
-assert.match(html, /HerdHarbor Pre-Alpha v\$\{APP_VERSION\}/);
-assert.match(html, /const APP_VERSION = "0\.5\.3"/);
+assert.match(html, /HerdHarbor Alpha v\$\{APP_VERSION\}/);
+assert.match(html, /const APP_VERSION = "1\.0\.0"/);
 assert.match(html, /Guided pedigree builder · v\$\{APP_VERSION\}/);
 assert.doesNotMatch(html, /Guided pedigree builder · v0\.2\.1/);
 assert.match(html, /let animalView = \{[\s\S]*?status: "Active"[\s\S]*?\};/);
@@ -44,7 +44,7 @@ assert.match(html, /function openAnimalQrCardForm\(/);
 assert.match(html, /protected cloud copy and an offline copy on this device/);
 assert.doesNotMatch(
   html,
-  /This pre-alpha stores data only on this device/,
+  /stores data only on this device/,
   "onboarding no longer contradicts protected cloud sync"
 );
 
@@ -71,11 +71,11 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /v0\.5\.3-/);
-assert.match(serviceWorker, /v0\.5\.3-20260809-1/);
-assert.match(serviceWorker, /spreadsheet-import\.js\?v=12/);
-assert.match(serviceWorker, /herdharbor-cloud\.js\?v=13/);
-assert.match(serviceWorker, /pwa\.js\?v=16/);
+assert.match(serviceWorker, /v1\.0\.0-alpha-/);
+assert.match(serviceWorker, /v1\.0\.0-alpha-20260810-1/);
+assert.match(serviceWorker, /spreadsheet-import\.js\?v=14/);
+assert.match(serviceWorker, /herdharbor-cloud\.js\?v=15/);
+assert.match(serviceWorker, /pwa\.js\?v=18/);
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);
 
-console.log("v0.5.3 stability release tests passed");
+console.log("v1.0.0 alpha stability release tests passed");

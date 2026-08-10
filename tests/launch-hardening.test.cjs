@@ -10,7 +10,7 @@ const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 const pwa = fs.readFileSync(path.join(root, "pwa.js"), "utf8");
 
-assert.match(html, /const APP_VERSION = "0\.5\.3"/);
+assert.match(html, /const APP_VERSION = "1\.0\.0"/);
 assert.match(html, /id="request-account-deletion"/);
 assert.match(html, /Type DELETE to confirm/);
 assert.match(html, /herdharbor\.com\/delete-account\//);
@@ -28,10 +28,10 @@ assert.match(cloud, /navigator\.onLine === false/);
 assert.match(cloud, /dirty && !\(await syncNow\(\)\)/);
 assert.match(cloud, /requestAccountDeletion\n/);
 
-assert.match(worker, /v0\.5\.3-20260809-1/);
-assert.match(worker, /herdharbor-cloud\.js\?v=13/);
-assert.match(worker, /pwa\.js\?v=16/);
-assert.match(worker, /spreadsheet-import\.js\?v=12/);
-assert.match(pwa, /0\.5\.3-mobile-pedigree-storage-1/);
+assert.match(worker, /v1\.0\.0-alpha-20260810-1/);
+assert.match(worker, /herdharbor-cloud\.js\?v=15/);
+assert.match(worker, /pwa\.js\?v=18/);
+assert.match(worker, /spreadsheet-import\.js\?v=14/);
+assert.match(pwa, /1\.0\.0-alpha-google-play-1/);
 
 console.log("launch hardening and account deletion tests passed");

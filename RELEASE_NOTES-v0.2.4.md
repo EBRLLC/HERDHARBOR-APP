@@ -1,4 +1,4 @@
-# HerdHarbor Pre-Alpha v0.2.4
+# HerdHarbor Alpha History v0.2.4
 
 ## Cleaner pedigree redesign
 

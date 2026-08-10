@@ -158,7 +158,7 @@
       email: data.get("email").trim(),
       createdAt: new Date().toISOString()
     };
-    recordActivity("Created the HerdHarbor pre-alpha workspace.", "setup");
+    recordActivity("Created the HerdHarbor alpha workspace.", "setup");
     saveState();
     showApp();
   }
@@ -204,7 +204,7 @@
     return `
       <div class="page-header">
         <div>
-          <p class="eyebrow">HerdHarbor pre-alpha</p>
+          <p class="eyebrow">HerdHarbor alpha</p>
           <h2>${esc(title)}</h2>
           <p>${esc(description)}</p>
         </div>
@@ -797,7 +797,7 @@
 
   function renderSettings() {
     $("#view-settings").innerHTML = `
-      ${headerHtml("Settings", "Manage your local pre-alpha workspace and move data in or out.")}
+      ${headerHtml("Settings", "Manage your local alpha workspace and move data in or out.")}
       <div class="settings-grid">
         <article class="settings-card">
           <h3>Operation profile</h3>
@@ -819,7 +819,7 @@
 
         <article class="settings-card">
           <h3>Export and import</h3>
-          <p>Download a full JSON backup or restore a prior HerdHarbor pre-alpha backup.</p>
+          <p>Download a full JSON backup or restore a prior HerdHarbor alpha backup.</p>
           <div class="action-row">
             <button class="button button-primary" id="export-data">Export backup</button>
             <label class="button button-ghost" for="import-file">Import backup</label>
@@ -834,13 +834,13 @@
         </article>
 
         <article class="settings-card">
-          <h3>Pre-alpha limitations</h3>
+          <h3>Alpha limitations</h3>
           <p>This build has no user accounts, cloud sync, payment system, shared access, or guaranteed data recovery. It is for private workflow testing only.</p>
         </article>
 
         <article class="settings-card">
           <h3>Build information</h3>
-          <p>HerdHarbor pre-alpha v0.1 · Local-first static prototype · ${new Date().toLocaleDateString()}</p>
+          <p>HerdHarbor alpha v1.0.0 · Local-first static prototype · ${new Date().toLocaleDateString()}</p>
         </article>
       </div>`;
 
@@ -977,8 +977,8 @@
 
   function exportData() {
     const payload = JSON.stringify({
-      app: "HerdHarbor Pre-Alpha",
-      version: "0.1",
+      app: "HerdHarbor Alpha",
+      version: "1.0.0",
       exportedAt: new Date().toISOString(),
       data: state
     }, null, 2);

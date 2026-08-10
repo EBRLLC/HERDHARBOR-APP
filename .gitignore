@@ -1,0 +1,17 @@
+# Android and Google Play build output
+.gradle/
+android/.gradle/
+android/build/
+android/app/build/
+*.aab
+*.apk
+
+# Signing keys and local signing configuration must never enter Git
+*.jks
+*.keystore
+keystore.properties
+secrets/
+
+# Local tooling
+node_modules/
+npm-debug.log*

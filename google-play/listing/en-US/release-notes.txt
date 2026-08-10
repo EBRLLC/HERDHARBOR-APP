@@ -1,0 +1,1 @@
+HerdHarbor Alpha v1.0.0 adds tablet-safe layouts, consistent login colors, mobile pedigree viewing and printing, expanded attachment storage, protected cloud sync, offline recovery, backups, and account-deletion controls.
