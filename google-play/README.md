@@ -4,7 +4,7 @@ This folder contains the submission material for **HerdHarbor Alpha v1.0.0**.
 
 ## Android package
 
-- Package ID: `com.herdharbor.app`
+- Package ID: `com.ebrllc.herdharbor`
 - Version name: `1.0.0-alpha`
 - Version code: `1`
 - Minimum SDK: `23`
@@ -19,7 +19,7 @@ The Android source is in `../android/` and is generated from `../twa-manifest.js
 
 ## Before the first Play Console upload
 
-1. Create the app in Play Console using package ID `com.herdharbor.app` and choose the **App** and **Business** options that match HerdHarbor.
+1. Create the app in Play Console using package ID `com.ebrllc.herdharbor` and choose the **App** and **Business** options that match HerdHarbor.
 2. Enroll in Play App Signing.
 3. Create a private upload key outside this repository. Never commit a `.jks`, `.keystore`, password, or `keystore.properties` file.
 4. Open `android/` in the current Android Studio, choose **Build > Generate Signed Bundle / APK > Android App Bundle**, and sign the release with the upload key.
