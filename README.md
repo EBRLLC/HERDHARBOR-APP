@@ -1,6 +1,6 @@
-# HerdHarbor Pre-Alpha v0.5.3
+# HerdHarbor Alpha v1.0.0
 
-HerdHarbor is an installable farm and livestock recordkeeping app for the current private tester group.
+HerdHarbor is an installable farm and livestock recordkeeping app in alpha testing.
 
 ## Current capabilities
 
@@ -13,6 +13,8 @@ HerdHarbor is an installable farm and livestock recordkeeping app for the curren
 - Automatic local recovery snapshots before material changes or conflict resolution
 - Installable PWA for Android, iPhone/iPad, Windows, macOS, and supported browsers
 - Portrait-only orientation for the installed mobile app
+- Tablet-safe responsive cards, internal table scrolling, and document-width containment
+- Theme-matched sign-in, sign-up, recovery, and password-autofill colors in light and dark mode
 - Animals, breeding, births and litters, pedigrees, health, tasks, budgeting, production and sales, photos, farm branding, breed memory, and dark mode
 - Customer and buyer records with phone, email, address, and private farm notes
 - Multi-animal quotes, reservations, and completed sales with discounts, tax/fees, balances, and Available/Reserved/Sold status handling

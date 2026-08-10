@@ -990,51 +990,87 @@
       }
 
       #hh-auth-root {
+        --hh-auth-page-start: #F7F2E8;
+        --hh-auth-page-end: #EDF3F4;
+        --hh-auth-surface: #FFFFFF;
+        --hh-auth-text: #18212A;
+        --hh-auth-heading: #0D2540;
+        --hh-auth-muted: #65727E;
+        --hh-auth-input: #FFFFFF;
+        --hh-auth-border: #D8E0E5;
+        --hh-auth-tabs: #EDF2F3;
+        --hh-auth-active: #0D2540;
+        --hh-auth-link: #2E7D7B;
         position: fixed;
         inset: 0;
         z-index: 100000;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        min-height: 100vh;
+        min-height: 100dvh;
         display: grid;
         place-items: center;
         overflow: auto;
+        overscroll-behavior: contain;
         padding: 24px;
-        color: #18212A;
+        color: var(--hh-auth-text);
         background:
           radial-gradient(circle at top left, rgba(46,125,123,.18), transparent 34%),
-          linear-gradient(160deg, #F7F2E8, #EDF3F4);
+          linear-gradient(160deg, var(--hh-auth-page-start), var(--hh-auth-page-end));
+        color-scheme: light;
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      html[data-theme="dark"] #hh-auth-root {
+        --hh-auth-page-start: #071827;
+        --hh-auth-page-end: #0D2235;
+        --hh-auth-surface: #102A41;
+        --hh-auth-text: #E8EEF2;
+        --hh-auth-heading: #F3F6F8;
+        --hh-auth-muted: #B8C5CE;
+        --hh-auth-input: #0A2033;
+        --hh-auth-border: rgba(208,225,235,.22);
+        --hh-auth-tabs: #193247;
+        --hh-auth-active: #2E7D7B;
+        --hh-auth-link: #82D0CC;
+        color-scheme: dark;
       }
 
       #hh-auth-root[hidden] { display: none !important; }
 
-      .hh-auth-shell { width: min(520px, 100%); }
-      .hh-auth-brand { margin-bottom: 14px; text-align: center; }
-      .hh-auth-brand h1 {
+      #hh-auth-root .hh-auth-shell { width: min(520px, 100%); max-width: 100%; min-width: 0; }
+      #hh-auth-root .hh-auth-brand { margin-bottom: 14px; text-align: center; }
+      #hh-auth-root .hh-auth-brand h1 {
         margin: 0;
-        color: #0D2540;
+        color: var(--hh-auth-heading);
         font-size: clamp(2.2rem, 8vw, 3.5rem);
         letter-spacing: -.045em;
       }
-      .hh-auth-brand p { margin: 7px 0 0; color: #65727E; }
-      .hh-auth-card {
+      #hh-auth-root .hh-auth-brand p { margin: 7px 0 0; color: var(--hh-auth-muted); }
+      #hh-auth-root .hh-auth-card {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
         padding: clamp(22px, 5vw, 36px);
-        background: rgba(255,255,255,.96);
-        border: 1px solid rgba(13,37,64,.12);
+        background: var(--hh-auth-surface);
+        border: 1px solid var(--hh-auth-border);
         border-radius: 24px;
         box-shadow: 0 24px 70px rgba(13,37,64,.16);
       }
-      .hh-auth-card h2 { margin: 0 0 8px; color: #0D2540; }
-      .hh-auth-intro { margin: 0 0 20px; color: #65727E; line-height: 1.5; }
-      .hh-auth-tabs {
+      #hh-auth-root .hh-auth-card h2 { margin: 0 0 8px; color: var(--hh-auth-heading); }
+      #hh-auth-root .hh-auth-intro { margin: 0 0 20px; color: var(--hh-auth-muted); line-height: 1.5; }
+      #hh-auth-root .hh-auth-tabs {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 8px;
         margin-bottom: 20px;
         padding: 5px;
-        background: #EDF2F3;
+        background: var(--hh-auth-tabs);
         border-radius: 14px;
       }
-      .hh-auth-tab,
-      .hh-auth-button,
+      #hh-auth-root .hh-auth-tab,
+      #hh-auth-root .hh-auth-button,
       .hh-account-button,
       .hh-account-dialog button {
         min-height: 44px;
@@ -1045,49 +1081,64 @@
         font-weight: 850;
         cursor: pointer;
       }
-      .hh-auth-tab { color: #0D2540; background: transparent; }
-      .hh-auth-tab.active { color: white; background: #0D2540; }
-      .hh-auth-form { display: grid; gap: 14px; }
-      .hh-auth-form[hidden] { display: none !important; }
-      .hh-auth-form label {
+      #hh-auth-root .hh-auth-tab { color: var(--hh-auth-heading); background: transparent; }
+      #hh-auth-root .hh-auth-tab.active { color: white; background: var(--hh-auth-active); }
+      #hh-auth-root .hh-auth-form { min-width: 0; display: grid; gap: 14px; }
+      #hh-auth-root .hh-auth-form[hidden] { display: none !important; }
+      #hh-auth-root .hh-auth-form label {
         display: grid;
         gap: 7px;
-        color: #0D2540;
+        color: var(--hh-auth-heading);
         font-weight: 750;
       }
-      .hh-auth-form input {
+      #hh-auth-root .hh-auth-form input {
         width: 100%;
+        max-width: 100%;
+        min-width: 0;
         min-height: 48px;
         padding: 11px 13px;
-        color: #18212A;
-        background: white;
-        border: 1px solid #D8E0E5;
+        color: var(--hh-auth-text);
+        -webkit-text-fill-color: var(--hh-auth-text);
+        caret-color: var(--hh-auth-text);
+        background: var(--hh-auth-input);
+        border: 1px solid var(--hh-auth-border);
         border-radius: 12px;
         font: inherit;
       }
-      .hh-auth-form input:focus {
+      #hh-auth-root .hh-auth-form input:focus {
         outline: 3px solid rgba(46,125,123,.18);
         border-color: #2E7D7B;
       }
-      .hh-auth-primary { color: white; background: #2E7D7B; }
-      .hh-auth-link {
+      #hh-auth-root .hh-auth-form input:-webkit-autofill,
+      #hh-auth-root .hh-auth-form input:-webkit-autofill:hover,
+      #hh-auth-root .hh-auth-form input:-webkit-autofill:focus {
+        -webkit-text-fill-color: var(--hh-auth-text);
+        caret-color: var(--hh-auth-text);
+        box-shadow: 0 0 0 1000px var(--hh-auth-input) inset;
+        transition: background-color 9999s ease-out 0s;
+      }
+      #hh-auth-root .hh-auth-primary { color: white; background: #2E7D7B; }
+      #hh-auth-root .hh-auth-link {
         min-height: auto;
         padding: 4px;
-        color: #2E7D7B;
+        color: var(--hh-auth-link);
         background: transparent;
         text-decoration: underline;
       }
-      .hh-auth-message {
+      #hh-auth-root .hh-auth-message {
         display: none;
         margin: 0 0 17px;
         padding: 12px 14px;
         border-radius: 12px;
         line-height: 1.45;
       }
-      .hh-auth-message.show { display: block; }
-      .hh-auth-message.info { color: #0D2540; background: #E9F0F5; }
-      .hh-auth-message.success { color: #2E6A45; background: #E8F4EC; }
-      .hh-auth-message.error { color: #7C2020; background: #F9E8E8; }
+      #hh-auth-root .hh-auth-message.show { display: block; }
+      #hh-auth-root .hh-auth-message.info { color: #0D2540; background: #E9F0F5; }
+      #hh-auth-root .hh-auth-message.success { color: #2E6A45; background: #E8F4EC; }
+      #hh-auth-root .hh-auth-message.error { color: #7C2020; background: #F9E8E8; }
+      html[data-theme="dark"] #hh-auth-root .hh-auth-message.info { color: #D9E8F1; background: #173B5B; }
+      html[data-theme="dark"] #hh-auth-root .hh-auth-message.success { color: #DCEADB; background: #183D2A; }
+      html[data-theme="dark"] #hh-auth-root .hh-auth-message.error { color: #FFD4D1; background: #4A2526; }
 
       .hh-account-button {
         position: fixed;
@@ -1442,7 +1493,7 @@
     }
     const payload = JSON.stringify({
       app: "HerdHarbor",
-      version: "0.5.3",
+      version: "1.0.0",
       backupType: "local-safety-backup",
       exportedAt: new Date().toISOString(),
       data: appState

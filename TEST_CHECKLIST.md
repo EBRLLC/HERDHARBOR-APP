@@ -1,4 +1,31 @@
-# HerdHarbor v0.5.3 Mobile Launch-Hardening Checklist
+# HerdHarbor Alpha v1.0.0 Release Checklist
+
+## Version and Google Play readiness
+
+- Confirm every user-facing app label says Alpha v1.0.0 and no earlier development-stage label remains.
+- Confirm existing testers retain their local records through the preserved legacy storage key.
+- Confirm the web app manifest reports version 1.0.0, standalone display, icons, and the expected app scope.
+- Confirm the Android wrapper uses package `com.herdharbor.app`, version code 1, version name `1.0.0-alpha`, and target SDK 36.
+- Confirm Privacy, Terms, Support, and Delete Account links open from Settings.
+- Confirm the signed Android App Bundle is created with the private upload key outside Git before Play Console upload.
+
+## Tablet containment and card formatting
+
+- Test 768, 810, 834, 1024, and 1180-pixel viewports with the sidebar expanded and collapsed where available.
+- Open Dashboard, Animals, Pedigrees, Breeding, Births, Health, Tasks, Budgeting, Sales, and Settings and confirm the document never scrolls horizontally into a blank blue area.
+- Add a Recent activity message with a long spreadsheet filename and confirm it wraps inside one card without covering the next card or leaving its panel.
+- Confirm dashboard and budget panels use one content column at tablet widths and return to the intended multi-column layout on a wider desktop.
+- Confirm cards, filter controls, detail rows, task rows, sales choices, offspring rows, and modal contents stay within their parent boxes.
+- Confirm wide tables and the pedigree preview scroll only inside their own containers without widening the page.
+- Confirm tablet portrait top-bar actions remain readable, tappable, and do not cover the operation title.
+
+## Login color consistency
+
+- With HerdHarbor set to Light, sign out and confirm the login page, card, labels, inputs, tabs, links, and messages all use the light palette.
+- With HerdHarbor set to Dark, sign out and confirm the complete login and recovery experience uses the dark palette without light fields or low-contrast text.
+- Test saved-email and password-manager autofill in both themes and confirm input text and fill colors remain readable.
+- Switch the device system appearance while HerdHarbor is set to System and confirm login colors follow the new appearance.
+- Confirm sign-in, sign-up, password recovery, and error/success messages all meet readable contrast in each theme.
 
 ## Customers and animal sales
 

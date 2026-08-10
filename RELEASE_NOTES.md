@@ -1,4 +1,22 @@
-# HerdHarbor Pre-Alpha v0.5.3
+# HerdHarbor Alpha v1.0.0
+
+## v1.0.0 alpha and Google Play readiness
+
+- Promoted every current user-facing build label to alpha and standardized the release as HerdHarbor v1.0.0.
+- Preserved the existing internal browser-storage key so current tester records continue loading without migration or duplication.
+- Added Google Play package configuration for version code 1 and Android 16 / API level 36.
+- Added store-listing copy, Data safety guidance, account-deletion links, release notes, and submission checklists.
+- Preserved the v0.5.4 tablet-containment and login-theme corrections as part of the v1.0.0 alpha release.
+
+## v0.5.4 tablet layout and login color correction
+
+- Constrained the document, app shell, workspace, views, grids, cards, rows, and dialogs to the available tablet width so the page cannot slide into an empty blue area.
+- Made long activity messages, spreadsheet filenames, labels, and supporting text wrap inside their cards instead of pushing adjacent panels out of place.
+- Changed tablet dashboard and budget layouts to a single content column before the sidebar makes either column too narrow.
+- Kept wide tables and pedigree charts usable with contained horizontal scrolling instead of widening the entire document.
+- Compacted top-bar actions at tablet portrait widths while retaining their accessible labels and touch targets.
+- Made sign-in, sign-up, password recovery, inputs, messages, and autofill colors explicitly follow HerdHarbor's light or dark theme with AA text contrast.
+- Preserved existing account data, cloud records, local recovery, storage keys, and the installed phone app's portrait preference; no data migration is required.
 
 ## v0.5.3 mobile pedigree and storage correction
 

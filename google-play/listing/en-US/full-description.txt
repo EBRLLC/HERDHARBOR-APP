@@ -1,0 +1,23 @@
+HerdHarbor helps breeders, homesteaders, and small farms keep livestock records connected from breeding and birth through production, budgeting, customers, and sales.
+
+Keep animal profiles, identification, status, photos, weights, health notes, and pedigree information together. Record breeding dates, expected births, litter outcomes, offspring, recurring tasks, production, hay, expenses, income, customers, reservations, payments, and animal transfers.
+
+HerdHarbor includes:
+
+- Animal records for multiple livestock species
+- Guided pedigrees with mobile viewing and printing
+- Breeding, pregnancy, birth, litter, and offspring records
+- Health, weight, task, and recurring-reminder tracking
+- Production and hay records
+- Monthly and full-year budgets
+- Customer, reservation, sale, payment, and transfer records
+- Bills of sale, invoices, receipts, QR cards, and spreadsheet exports
+- Protected account sign-in and cloud synchronization
+- Offline access, recovery snapshots, JSON backups, and restore tools
+- Light and dark themes with phone and tablet layouts
+
+HerdHarbor Alpha v1.0.0 is being tested with working farms. Important records should still be backed up regularly while alpha testing continues.
+
+Privacy: https://herdharbor.com/privacy/
+Support: https://herdharbor.com/support/
+Account deletion: https://herdharbor.com/delete-account/
