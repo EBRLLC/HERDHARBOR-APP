@@ -1,4 +1,4 @@
-package com.herdharbor.app;
+package com.ebrllc.herdharbor;
 
 
 
