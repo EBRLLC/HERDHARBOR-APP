@@ -1,0 +1,167 @@
+/* HerdHarbor four-generation pedigree visual enhancement */
+
+.hh-pedigree-card {
+  position: relative;
+  box-sizing: border-box;
+  border-color: #d2d7dc !important;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.hh-pedigree-card.hh-sex-male {
+  background: #eff6ff !important;
+  border-left: 4px solid #3b82f6 !important;
+}
+
+.hh-pedigree-card.hh-sex-female {
+  background: #fff1f5 !important;
+  border-left: 4px solid #d96c8a !important;
+}
+
+.hh-pedigree-card.hh-sex-unknown {
+  background: #f4f5f6 !important;
+  border-left: 4px solid #7c8793 !important;
+}
+
+.hh-pedigree-card.hh-sex-colors-off {
+  background: #ffffff !important;
+  border-left-color: #7c8793 !important;
+}
+
+.hh-pedigree-card,
+.hh-pedigree-card * {
+  min-width: 0;
+}
+
+.hh-pedigree-card .hh-protected-field,
+.hh-pedigree-card .hh-protected-field * {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
+.hh-pedigree-card .hh-protected-field {
+  clear: both;
+  max-width: 100% !important;
+}
+
+.hh-pedigree-thumb {
+  float: right;
+  display: block;
+  object-fit: cover;
+  object-position: center;
+  margin: 0 0 3px 5px;
+  border: 1px solid #cfd6dc;
+  border-radius: 4px;
+  background: #ffffff;
+}
+
+.hh-pedigree-card[data-hh-generation="1"] .hh-pedigree-thumb {
+  width: 0.52in;
+  height: 0.52in;
+}
+
+.hh-pedigree-card[data-hh-generation="2"] .hh-pedigree-thumb {
+  width: 0.44in;
+  height: 0.44in;
+}
+
+.hh-pedigree-card[data-hh-generation="3"] .hh-pedigree-thumb {
+  width: 0.34in;
+  height: 0.34in;
+  border-radius: 2px;
+}
+
+.hh-pedigree-card[data-hh-generation="0"] .hh-pedigree-thumb {
+  display: none;
+}
+
+[data-hh-photo-mode="visual"] .hh-pedigree-card[data-hh-generation="1"] .hh-pedigree-thumb {
+  width: 58px;
+  height: 58px;
+}
+
+[data-hh-photo-mode="visual"] .hh-pedigree-card[data-hh-generation="2"] .hh-pedigree-thumb {
+  width: 50px;
+  height: 50px;
+}
+
+[data-hh-photo-mode="visual"] .hh-pedigree-card[data-hh-generation="3"] .hh-pedigree-thumb {
+  width: 42px;
+  height: 42px;
+}
+
+.hh-pedigree-card[data-hh-generation="3"] .hh-empty-secondary {
+  display: none !important;
+}
+
+.hh-pedigree-card[data-hh-generation="3"] .hh-protected-field {
+  line-height: 1.12;
+}
+
+.hh-pedigree-settings {
+  margin-top: 16px;
+}
+
+.hh-pedigree-settings .hh-setting-row {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.hh-pedigree-settings .hh-setting-row:first-of-type {
+  margin-top: 0;
+}
+
+.hh-pedigree-settings label {
+  font-weight: 700;
+}
+
+.hh-pedigree-settings .hh-setting-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-weight: 600;
+}
+
+.hh-pedigree-settings .hh-setting-check input {
+  margin-top: 3px;
+}
+
+.hh-pedigree-settings .hh-setting-help {
+  margin: 2px 0 0;
+  font-size: 0.88em;
+  opacity: 0.78;
+}
+
+@media print {
+  .hh-pedigree-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .hh-pedigree-card.hh-sex-male {
+    background: #eff6ff !important;
+  }
+
+  .hh-pedigree-card.hh-sex-female {
+    background: #fff1f5 !important;
+  }
+
+  .hh-pedigree-card.hh-sex-unknown {
+    background: #f4f5f6 !important;
+  }
+
+  .hh-pedigree-card .hh-protected-field,
+  .hh-pedigree-card .hh-protected-field * {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+
+  .hh-pedigree-card[data-hh-generation="3"] .hh-protected-field {
+    font-size: max(5.2pt, 0.92em);
+  }
+}
