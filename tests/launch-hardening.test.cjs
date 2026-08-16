@@ -28,13 +28,13 @@ assert.match(cloud, /navigator\.onLine === false/);
 assert.match(cloud, /dirty && !\(await syncNow\(\)\)/);
 assert.match(cloud, /requestAccountDeletion\n/);
 
-assert.match(worker, /v1\.0\.0-alpha-20260816-1/);
+assert.match(worker, /v1\.0\.0-alpha-20260816-2/);
 assert.match(worker, /herdharbor-cloud\.js\?v=15/);
 assert.match(worker, /pwa\.js\?v=18/);
-assert.match(worker, /pedigree-visual\.css\?v=1/);
-assert.match(worker, /pedigree-visual\.js\?v=1/);
+assert.match(worker, /pedigree-visual\.css\?v=2/);
+assert.match(worker, /pedigree-visual\.js\?v=2/);
 assert.match(worker, /spreadsheet-import\.js\?v=14/);
-assert.match(pwa, /1\.0\.0-alpha-pedigree-1/);
+assert.match(pwa, /1\.0\.0-alpha-pedigree-2/);
 assert.match(pwa, /loadPedigreeVisuals/);
 
 console.log("launch hardening and account deletion tests passed");

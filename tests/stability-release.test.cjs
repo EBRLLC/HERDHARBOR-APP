@@ -73,12 +73,12 @@ assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
 assert.match(serviceWorker, /v1\.0\.0-alpha-/);
-assert.match(serviceWorker, /v1\.0\.0-alpha-20260816-1/);
+assert.match(serviceWorker, /v1\.0\.0-alpha-20260816-2/);
 assert.match(serviceWorker, /spreadsheet-import\.js\?v=14/);
 assert.match(serviceWorker, /herdharbor-cloud\.js\?v=15/);
 assert.match(serviceWorker, /pwa\.js\?v=18/);
-assert.match(serviceWorker, /pedigree-visual\.css\?v=1/);
-assert.match(serviceWorker, /pedigree-visual\.js\?v=1/);
+assert.match(serviceWorker, /pedigree-visual\.css\?v=2/);
+assert.match(serviceWorker, /pedigree-visual\.js\?v=2/);
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);
 assert.match(pwa, /loadPedigreeVisuals/);
 

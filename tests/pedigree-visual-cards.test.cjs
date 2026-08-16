@@ -32,6 +32,7 @@ assert.match(script, /Include stored photos on printed pedigrees/);
 assert.match(script, /MutationObserver/);
 assert.match(script, /window\.open = function/);
 assert.match(script, /enhanceDocument\(child\.document, true\)/);
+assert.match(script, /pedigree-visual\.css\?v=2/);
 
 assert.match(css, /\.hh-pedigree-card\.hh-sex-male/);
 assert.match(css, /#eff6ff/i);
@@ -46,9 +47,9 @@ assert.match(css, /data-hh-generation="0"[\s\S]*?display: none/);
 assert.match(css, /print-color-adjust: exact/);
 assert.doesNotMatch(css, /text-overflow:\s*ellipsis/);
 
-assert.match(pwa, /pedigree-visual\.css\?v=1/);
-assert.match(pwa, /pedigree-visual\.js\?v=1/);
-assert.match(worker, /pedigree-visual\.css\?v=1/);
-assert.match(worker, /pedigree-visual\.js\?v=1/);
+assert.match(pwa, /pedigree-visual\.css\?v=2/);
+assert.match(pwa, /pedigree-visual\.js\?v=2/);
+assert.match(worker, /pedigree-visual\.css\?v=2/);
+assert.match(worker, /pedigree-visual\.js\?v=2/);
 
 console.log("pedigree visual card, photo preference, and print protection tests passed");

@@ -3635,10 +3635,10 @@ html[data-theme="dark"] .breeding-report-summary b { color: var(--cream); }
         <span class="pedigree-preview-sex">${esc(sex)}</span>
       </div>
       <div class="pedigree-preview-details">
-        <span><b>ID:</b> ${esc(animal?.tag || animal?.tattoo || "—")}</span>
-        <span><b>DOB:</b> ${esc(animal?.dob ? formatDate(animal.dob) : "—")}</span>
-        <span><b>COLOR:</b> ${esc(animal?.color || "—")}</span>
-        <span><b>BREED:</b> ${esc(animal?.breed || "—")}</span>
+        <span data-field="id"><b>ID:</b> ${esc(animal?.tag || animal?.tattoo || "—")}</span>
+        <span data-field="dob"><b>DOB:</b> ${esc(animal?.dob ? formatDate(animal.dob) : "—")}</span>
+        <span data-field="color"><b>COLOR:</b> ${esc(animal?.color || "—")}</span>
+        <span data-field="breed"><b>BREED:</b> ${esc(animal?.breed || "—")}</span>
       </div>
     </article>`;
   }
@@ -5568,7 +5568,11 @@ html[data-theme="dark"] .breeding-report-summary b { color: var(--cream); }
           <div class="node-title"><span class="species-mark">${speciesIcon(animal?.species || subject.species)}</span><div><span class="relation">${esc(relation)}</span><strong>${esc(animal?.name || "Unknown")}</strong></div></div>
           <div class="sex-mark"><span>${sexSymbol}</span><small>${sexLabel}</small></div>
         </div>
-        <div class="node-details">${details.map(([label, value]) => `<div><b>${label}:</b><span title="${esc(value)}">${esc(value)}</span></div>`).join("")}</div>
+        <div class="node-details">${details.map(([label, value]) => {
+          const fieldName = label.toLowerCase();
+          const protectedValue = label === "COLOR" || label === "BREEDER" ? " pedigree-protected-value" : "";
+          return `<div data-field="${fieldName}"><b>${label}:</b><span class="${protectedValue.trim()}" title="${esc(value)}">${esc(value)}</span></div>`;
+        }).join("")}</div>
       </article>`;
     };
 
@@ -5577,11 +5581,11 @@ html[data-theme="dark"] .breeding-report-summary b { color: var(--cream); }
     const generatedDate = new Date().toLocaleDateString();
 
     const printableHtml = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject.name)} Pedigree</title><style>
-      @page { size: landscape; margin: .28in; }
+      @page { size: letter landscape; margin: .2in; }
       * { box-sizing: border-box; }
-      html, body { margin: 0; padding: 0; color: #2f3438; background: #fff; font-family: Arial, Helvetica, sans-serif; }
+      html, body { margin: 0; padding: 0; color: #2f3438; background: #fff; font-family: "Segoe UI", Arial, Helvetica, sans-serif; }
       body { padding: 0; }
-      .sheet { width: 100%; min-height: 7.82in; display: flex; flex-direction: column; }
+      .sheet { width: 100%; height: 8.06in; min-height: 0; max-height: 8.06in; display: flex; flex-direction: column; overflow: hidden; }
       .header { min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 0 0 8px; border-bottom: 2px solid #68737b; }
       .brand-print { min-width: 0; display: flex; align-items: center; gap: 11px; }
       .brand-print img { width: 52px; height: 52px; object-fit: contain; padding: 3px; background: #fff; border: 1px solid #d7dce0; border-radius: 6px; }
@@ -5594,8 +5598,8 @@ html[data-theme="dark"] .breeding-report-summary b { color: var(--cream); }
       .print-animal-photo img { width: 100%; height: 100%; object-fit: cover; }
 
       .pedigree-tree {
-        flex: 1;
-        min-height: 4.82in;
+        flex: 1 1 auto;
+        min-height: 0;
         display: grid;
         grid-template-columns: minmax(168px,1.18fr) 34px minmax(164px,1.1fr) 34px minmax(158px,1fr) 34px minmax(152px,.96fr);
         grid-template-rows: repeat(8, minmax(0,1fr));
@@ -5619,6 +5623,7 @@ html[data-theme="dark"] .breeding-report-summary b { color: var(--cream); }
       .node-details div { min-width: 0; display: grid; grid-template-columns: auto minmax(0,1fr); gap: 3px; align-items: baseline; font-size: 6.7px; line-height: 1.2; }
       .node-details b { color: #4e575e; font-size: 6px; letter-spacing: .045em; }
       .node-details span { overflow: hidden; color: #505a61; text-overflow: ellipsis; white-space: nowrap; }
+      .node-details .pedigree-protected-value { overflow: visible; font-family: inherit; font-size: inherit; line-height: 1.08; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
       .great-node .pedigree-node-card { padding: 4px 6px; }
       .great-node .node-header { padding-bottom: 2px; }
       .great-node .node-details { gap: 0 5px; padding-top: 2px; }
@@ -5651,6 +5656,7 @@ html[data-theme="dark"] .breeding-report-summary b { color: var(--cream); }
       }
       @media print {
         html, body { width: 100%; height: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .sheet, .pedigree-tree { break-inside: avoid; page-break-inside: avoid; }
         .no-print { display: none; }
       }
     </style></head><body><div class="sheet">

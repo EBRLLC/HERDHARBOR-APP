@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const PWA_BUILD = "1.0.0-alpha-pedigree-1";
+  const PWA_BUILD = "1.0.0-alpha-pedigree-2";
   let installPrompt = null;
   let registration = null;
   let updateToast = null;
@@ -20,14 +20,14 @@
       const style = document.createElement("link");
       style.id = "hh-pedigree-visual-style";
       style.rel = "stylesheet";
-      style.href = "pedigree-visual.css?v=1";
+      style.href = "pedigree-visual.css?v=2";
       document.head.appendChild(style);
     }
 
     if (!document.getElementById("hh-pedigree-visual-script")) {
       const script = document.createElement("script");
       script.id = "hh-pedigree-visual-script";
-      script.src = "pedigree-visual.js?v=1";
+      script.src = "pedigree-visual.js?v=2";
       script.async = false;
       document.head.appendChild(script);
     }
