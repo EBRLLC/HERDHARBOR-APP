@@ -7,6 +7,7 @@ const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const spreadsheet = fs.readFileSync(path.join(root, "spreadsheet-import.js"), "utf8");
 const serviceWorker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
+const pwa = fs.readFileSync(path.join(root, "pwa.js"), "utf8");
 
 assert.match(html, /HerdHarbor Alpha v1\.0\.0 Google Play readiness release/);
 assert.match(html, /id="settings-sync-now"/);
@@ -72,10 +73,13 @@ assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
 assert.match(serviceWorker, /v1\.0\.0-alpha-/);
-assert.match(serviceWorker, /v1\.0\.0-alpha-20260810-1/);
+assert.match(serviceWorker, /v1\.0\.0-alpha-20260816-1/);
 assert.match(serviceWorker, /spreadsheet-import\.js\?v=14/);
 assert.match(serviceWorker, /herdharbor-cloud\.js\?v=15/);
 assert.match(serviceWorker, /pwa\.js\?v=18/);
+assert.match(serviceWorker, /pedigree-visual\.css\?v=1/);
+assert.match(serviceWorker, /pedigree-visual\.js\?v=1/);
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);
+assert.match(pwa, /loadPedigreeVisuals/);
 
 console.log("v1.0.0 alpha stability release tests passed");
