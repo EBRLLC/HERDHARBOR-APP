@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const PWA_BUILD = "1.0.0-alpha-google-play-1";
+  const PWA_BUILD = "1.0.0-alpha-pedigree-1";
   let installPrompt = null;
   let registration = null;
   let updateToast = null;
@@ -14,6 +14,24 @@
   const isIos = () =>
     /iphone|ipad|ipod/i.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  function loadPedigreeVisuals() {
+    if (!document.getElementById("hh-pedigree-visual-style")) {
+      const style = document.createElement("link");
+      style.id = "hh-pedigree-visual-style";
+      style.rel = "stylesheet";
+      style.href = "pedigree-visual.css?v=1";
+      document.head.appendChild(style);
+    }
+
+    if (!document.getElementById("hh-pedigree-visual-script")) {
+      const script = document.createElement("script");
+      script.id = "hh-pedigree-visual-script";
+      script.src = "pedigree-visual.js?v=1";
+      script.async = false;
+      document.head.appendChild(script);
+    }
+  }
 
   function installLabel() {
     if (isStandalone()) return "HerdHarbor is installed";
@@ -154,10 +172,12 @@
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {
+      loadPedigreeVisuals();
       refreshInstallUI();
       registerServiceWorker();
     }, { once: true });
   } else {
+    loadPedigreeVisuals();
     refreshInstallUI();
     registerServiceWorker();
   }
