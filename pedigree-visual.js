@@ -8,6 +8,11 @@
     photoMode: "off",
     printPhotos: false
   };
+  const PRINT_BOUNDS = {
+    width: 10.56 * 96,
+    height: 8.04 * 96,
+    minimumScale: 0.72
+  };
 
   let pending = false;
   let observer = null;
@@ -110,10 +115,42 @@
   }
 
   function markProtectedFields(card) {
-    ["COLOR", "BREEDER"].forEach((label) => {
-      const field = smallestContaining(card, label);
-      if (field) field.classList.add("hh-protected-field", `hh-protected-${label.toLowerCase()}`);
+    card.querySelectorAll(".hh-protected-field, .hh-protected-row").forEach((field) => {
+      field.classList.remove("hh-protected-field", "hh-protected-row", "hh-protected-color", "hh-protected-breeder");
     });
+
+    ["COLOR", "BREEDER"].forEach((label) => {
+      const fieldName = label.toLowerCase();
+      const row = card.querySelector(`[data-field="${fieldName}"]`) || smallestContaining(card, label);
+      if (!row) return;
+      const value = row.matches("[data-field]")
+        ? row.querySelector(":scope > span[title], :scope > .pedigree-protected-value") || row
+        : row;
+      row.classList.add("hh-protected-row");
+      value.classList.add("hh-protected-field", `hh-protected-${fieldName}`);
+    });
+  }
+
+  function fitPrintSheet(doc) {
+    const sheet = doc?.querySelector?.(".sheet");
+    if (!sheet) return;
+    doc.documentElement.classList.add("hh-pedigree-print-document");
+    sheet.classList.add("hh-pedigree-one-page");
+
+    const fit = () => {
+      sheet.style.removeProperty("zoom");
+      const width = Math.max(sheet.scrollWidth, sheet.getBoundingClientRect?.().width || 0);
+      const height = Math.max(sheet.scrollHeight, sheet.getBoundingClientRect?.().height || 0);
+      const scale = Math.min(1, PRINT_BOUNDS.width / Math.max(width, 1), PRINT_BOUNDS.height / Math.max(height, 1));
+      sheet.style.zoom = String(Math.max(PRINT_BOUNDS.minimumScale, scale));
+    };
+
+    window.requestAnimationFrame(() => window.requestAnimationFrame(fit));
+    const fontsReady = doc.fonts?.ready;
+    if (fontsReady?.then) fontsReady.then(fit).catch(() => {});
+    Promise.all(Array.from(doc.images || []).map((image) => image.decode?.().catch(() => {}) || Promise.resolve()))
+      .then(fit)
+      .catch(() => {});
   }
 
   function markEmptySecondary(card) {
@@ -214,6 +251,7 @@
 
   function enhanceDocument(doc, printContext = false) {
     if (!doc?.documentElement) return;
+    if (printContext) fitPrintSheet(doc);
     const prefs = loadPreferences();
     const cards = findCards(doc);
     if (!cards.length) return;
@@ -231,6 +269,7 @@
       markEmptySecondary(card);
       addThumbnail(card, photos, prefs, printContext);
     });
+    if (printContext) fitPrintSheet(doc);
   }
 
   function ensureStyles(doc) {
@@ -238,7 +277,7 @@
     const link = doc.createElement("link");
     link.id = "hh-pedigree-visual-style";
     link.rel = "stylesheet";
-    link.href = "pedigree-visual.css?v=1";
+    link.href = "pedigree-visual.css?v=2";
     doc.head.appendChild(link);
   }
 

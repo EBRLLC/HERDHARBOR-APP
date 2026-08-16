@@ -1,15 +1,15 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v1.0.0-alpha-20260816-1`;
+const CACHE_NAME = `${CACHE_PREFIX}v1.0.0-alpha-20260816-2`;
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.json?v=11",
   "./herdharbor-cloud.js?v=15",
   "./pwa.js?v=18",
-  "./pedigree-visual.css?v=1",
-  "./pedigree-visual.js?v=1",
+  "./pedigree-visual.css?v=2",
+  "./pedigree-visual.js?v=2",
   "./vendor/supabase-2.111.0.js",
   "./vendor/jszip-3.10.1.min.js",
   "./vendor/exceljs-4.4.0.min.js",
