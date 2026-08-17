@@ -1,11 +1,25 @@
-# HerdHarbor Alpha v1.0.3 Release Checklist
+# HerdHarbor Alpha v1.2.0 Release Checklist
 
 ## Version and Google Play readiness
 
-- Confirm every user-facing app label says Alpha v1.0.3 and no earlier development-stage label remains.
+- Confirm every user-facing app label says Alpha v1.2.0 and no earlier development-stage label remains.
 - Confirm existing testers retain their local records through the preserved legacy storage key.
-- Confirm the web app manifest reports version 1.0.3, standalone display, icons, and the expected app scope.
-- Confirm the Android wrapper uses package `com.ebrllc.herdharbor`, version code 3, version name `1.0.3-alpha`, and target SDK 36.
+- Confirm the web app manifest reports version 1.2.0, standalone display, icons, and the expected app scope.
+- Confirm the Android wrapper uses package `com.ebrllc.herdharbor`, version code 4, version name `1.2.0-alpha`, and target SDK 36.
+
+## Symptom guide and veterinary safety
+
+- Open Health and confirm the symptom lookup, full-guide action, and veterinary disclaimer appear before health records.
+- Search from Health and confirm the same query opens in the Symptom Guide tab.
+- Select each built-in species and confirm general emergency guidance plus relevant species guidance appears.
+- Add a custom species and confirm only general guidance appears with a notice to contact a veterinarian experienced with that species.
+- Select a saved animal and confirm its species is applied automatically; changing to another species clears the animal selection.
+- Search common terms such as not eating, diarrhea, coughing, limping, bloat, seizure, poison, and birth.
+- Confirm every result says possible concerns are not a diagnosis, shows an urgency level, and links to a veterinary or government animal-health source.
+- Confirm emergency warning signs remain visible regardless of search filters.
+- Use Log observation and confirm it opens a new Observation health record for the selected animal without saving a diagnosis.
+- Confirm symptom searches are not included in local farm data, cloud sync, backups, or activity history.
+- Test light/dark mode, phone, tablet, keyboard navigation, and screen-reader labels across the guide.
 - Confirm Privacy, Terms, Support, and Delete Account links open from Settings.
 - Confirm the signed Android App Bundle is created with the private upload key outside Git before Play Console upload.
 
@@ -80,7 +94,7 @@
 - Open Animals and confirm the status filter defaults to Active and only exact Active-status records appear initially
 - Select Any status and confirm Active, Breeding, Growing, Retired, For Sale, Reserved, Sold, Deceased, and Ancestor Only records can still be shown
 - Select Ancestor Only and confirm ancestor records remain available without appearing in the default Active view
-- Open the Guided Pedigree Builder and confirm its header shows v1.0.3 instead of a stale development version
+- Open the Guided Pedigree Builder and confirm its header shows v1.2.0 instead of a stale development version
 
 ## Breeding and pregnancy workflow
 

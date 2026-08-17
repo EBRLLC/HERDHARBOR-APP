@@ -3,7 +3,7 @@
   "name": "HerdHarbor",
   "short_name": "HerdHarbor",
   "description": "Secure farm, livestock, customer, sales, and payment records with protected cloud sync.",
-  "version": "1.0.3",
+  "version": "1.2.0",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

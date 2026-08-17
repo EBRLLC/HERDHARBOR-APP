@@ -2467,7 +2467,7 @@
       ["HerdHarbor Farm Records Export", ""],
       ["Operation", safeExcelText(options.operationName || state.profile?.operationName || "HerdHarbor")],
       ["Exported", new Date()],
-      ["App version", "1.0.3"],
+      ["App version", "1.2.0"],
       ["Animals", animals.length],
       ["Breeding records", breedings.length],
       ["Birth and litter records", litters.length],
@@ -2850,7 +2850,7 @@
       ["Weaned", Number(report.weaned || 0)],
       ["Born-alive-to-weaned rate", Number(report.survivalRate || 0)],
       ["Exported", new Date()],
-      ["App version", "1.0.3"]
+      ["App version", "1.2.0"]
     ]);
     overview.mergeCells("A1:B1");
     overview.getRow(1).height = 34;
@@ -2965,7 +2965,7 @@
       ["Sale revenue", totalRevenue],
       ["Warnings", warnings.length],
       ["Exported", new Date()],
-      ["App version", "1.0.3"],
+      ["App version", "1.2.0"],
       ["Quantity note", "Quantities stay separated by product and unit so eggs, dozens, gallons, birds, pounds, and custom units are never combined into a misleading total."]
     ]);
     overview.mergeCells("A1:B1");

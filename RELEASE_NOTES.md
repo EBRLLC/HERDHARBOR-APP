@@ -1,4 +1,15 @@
-# HerdHarbor Alpha v1.0.3
+# HerdHarbor Alpha v1.2.0
+
+## v1.2.0 educational symptom guide
+
+- Added a dedicated Symptom Guide tab for every built-in animal species plus safe general guidance for custom species.
+- Added animal, species, symptom, and urgency filters with common signs, possible concerns, action guidance, and direct veterinary references.
+- Added a quick symptom lookup card inside Health and one-tap observation logging back into an animal's health record.
+- Added persistent, prominent language that HerdHarbor is not a veterinary provider and the guide cannot diagnose, treat, or replace licensed veterinary care.
+- Added emergency overrides for breathing difficulty, collapse, seizures, severe bleeding, suspected poisoning, severe bloat/colic, difficult birth, and group illness or deaths.
+- Added outbreak and reportable-disease safeguards for poultry and livestock, including instructions to stop movement and contact a veterinarian and animal-health officials.
+- Kept all searches on the device; symptom queries are not stored in farm records or sent to HerdHarbor.
+- Preserved the existing storage key, cloud schema, account data, backup format, and v1.0.3 workflow/storage improvements.
 
 ## v1.0.3 workflow and storage efficiency
 

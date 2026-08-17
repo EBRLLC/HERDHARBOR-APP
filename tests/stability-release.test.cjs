@@ -9,12 +9,12 @@ const spreadsheet = fs.readFileSync(path.join(root, "spreadsheet-import.js"), "u
 const serviceWorker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 const pwa = fs.readFileSync(path.join(root, "pwa.js"), "utf8");
 
-assert.match(html, /HerdHarbor Alpha v1\.0\.3 workflow and storage efficiency release/);
+assert.match(html, /HerdHarbor Alpha v1\.2\.0 symptom guide release/);
 assert.match(html, /id="settings-sync-now"/);
 assert.match(html, /id="settings-last-synced"/);
 assert.match(html, /id="export-excel"/);
 assert.match(html, /HerdHarbor Alpha v\$\{APP_VERSION\}/);
-assert.match(html, /const APP_VERSION = "1\.0\.3"/);
+assert.match(html, /const APP_VERSION = "1\.2\.0"/);
 assert.match(html, /Guided pedigree builder · v\$\{APP_VERSION\}/);
 assert.doesNotMatch(html, /Guided pedigree builder · v0\.2\.1/);
 assert.match(html, /let animalView = \{[\s\S]*?status: "Active"[\s\S]*?\};/);
@@ -72,14 +72,15 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /v1\.0\.3-alpha-/);
-assert.match(serviceWorker, /v1\.0\.3-alpha-20260817-1/);
-assert.match(serviceWorker, /spreadsheet-import\.js\?v=15/);
-assert.match(serviceWorker, /herdharbor-cloud\.js\?v=16/);
-assert.match(serviceWorker, /pwa\.js\?v=19/);
+assert.match(serviceWorker, /v1\.2\.0-alpha-/);
+assert.match(serviceWorker, /v1\.2\.0-alpha-20260817-1/);
+assert.match(serviceWorker, /spreadsheet-import\.js\?v=16/);
+assert.match(serviceWorker, /herdharbor-cloud\.js\?v=17/);
+assert.match(serviceWorker, /symptom-guide\.js\?v=1/);
+assert.match(serviceWorker, /pwa\.js\?v=20/);
 assert.match(serviceWorker, /pedigree-visual\.css\?v=2/);
 assert.match(serviceWorker, /pedigree-visual\.js\?v=2/);
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);
 assert.match(pwa, /loadPedigreeVisuals/);
 
-console.log("v1.0.3 alpha stability release tests passed");
+console.log("v1.2.0 alpha stability release tests passed");

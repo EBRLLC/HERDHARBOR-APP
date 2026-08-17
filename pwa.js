@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const PWA_BUILD = "1.0.3-alpha-efficiency-1";
+  const PWA_BUILD = "1.2.0-alpha-symptom-guide-1";
   let installPrompt = null;
   let registration = null;
   let updateToast = null;
