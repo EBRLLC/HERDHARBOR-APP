@@ -840,7 +840,7 @@
 
         <article class="settings-card">
           <h3>Build information</h3>
-          <p>HerdHarbor alpha v1.0.3 · Local-first static prototype · ${new Date().toLocaleDateString()}</p>
+          <p>HerdHarbor alpha v1.2.0 · Local-first static prototype · ${new Date().toLocaleDateString()}</p>
         </article>
       </div>`;
 
@@ -978,7 +978,7 @@
   function exportData() {
     const payload = JSON.stringify({
       app: "HerdHarbor Alpha",
-      version: "1.0.3",
+      version: "1.2.0",
       exportedAt: new Date().toISOString(),
       data: state
     }, null, 2);

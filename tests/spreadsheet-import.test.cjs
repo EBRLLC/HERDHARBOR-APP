@@ -541,7 +541,7 @@ async function run() {
   const reportBuffer = await reportWorkbook.xlsx.writeBuffer();
   const reportReload = new ExcelJS.Workbook();
   await reportReload.xlsx.load(reportBuffer);
-  assert.equal(reportReload.getWorksheet("Overview").getCell("B12").value, "1.0.3");
+  assert.equal(reportReload.getWorksheet("Overview").getCell("B12").value, "1.2.0");
   if (process.env.HH_PRODUCTION_REPORT_QA_PATH) {
     require("node:fs").writeFileSync(process.env.HH_PRODUCTION_REPORT_QA_PATH, Buffer.from(reportBuffer));
   }
