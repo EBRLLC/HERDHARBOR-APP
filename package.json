@@ -1,0 +1,25 @@
+{
+  "name": "herdharbor-app",
+  "version": "1.2.0",
+  "private": true,
+  "description": "HerdHarbor web, Android, and iOS application",
+  "scripts": {
+    "stage:ios-web": "node scripts/stage-ios-web.mjs",
+    "sync:ios": "npm run stage:ios-web && cap sync ios",
+    "copy:ios": "npm run stage:ios-web && cap copy ios"
+  },
+  "dependencies": {
+    "@capacitor/browser": "8.0.4",
+    "@capacitor/core": "8.5.0",
+    "@capacitor/filesystem": "8.1.2",
+    "@capacitor/ios": "8.5.0",
+    "@capacitor/share": "8.0.1",
+    "@capacitor/status-bar": "8.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
