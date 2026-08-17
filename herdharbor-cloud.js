@@ -12,6 +12,7 @@
   const RECOVERY_DB_NAME = "herdharbor_recovery_v1";
   const RECOVERY_STORE_NAME = "snapshots";
   const MAX_RECOVERY_SNAPSHOTS = 6;
+  const MAX_RECOVERY_BYTES = 8_000_000;
   const ACCOUNT_DELETION_REQUEST_URL = "https://formspree.io/f/xpqvpwwb";
 
   if (!window.supabase?.createClient) {
@@ -168,11 +169,13 @@
   }
 
   function sameState(left, right) {
+    if (left === right) return Boolean(safeParse(left));
     const leftFingerprint = stateFingerprint(left);
     return Boolean(leftFingerprint) && leftFingerprint === stateFingerprint(right);
   }
 
   function exactSameState(left, right) {
+    if (left === right) return Boolean(safeParse(left));
     const leftFingerprint = stateFingerprint(left, true);
     return Boolean(leftFingerprint) &&
       leftFingerprint === stateFingerprint(right, true);
@@ -467,6 +470,10 @@
           const snapshots = request.result
             .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)));
 
+          // Repeated UI saves can describe the same pre-change state. Keep one
+          // recovery point instead of spending IndexedDB space on duplicates.
+          if (snapshots[0]?.rawValue === rawValue) return;
+
           store.add({
             userId,
             createdAt: new Date().toISOString(),
@@ -474,8 +481,16 @@
             rawValue
           });
 
-          snapshots.slice(MAX_RECOVERY_SNAPSHOTS - 1).forEach((snapshot) => {
-            store.delete(snapshot.id);
+          let retainedBytes = rawValue.length * 2;
+          snapshots.forEach((snapshot, index) => {
+            const snapshotBytes = String(snapshot.rawValue || "").length * 2;
+            const exceedsCount = index >= MAX_RECOVERY_SNAPSHOTS - 1;
+            const exceedsBudget = retainedBytes + snapshotBytes > MAX_RECOVERY_BYTES;
+            if (exceedsCount || exceedsBudget) {
+              store.delete(snapshot.id);
+            } else {
+              retainedBytes += snapshotBytes;
+            }
           });
         };
         request.onerror = () => reject(request.error);
@@ -546,6 +561,7 @@
         this === localStorage && key === STORAGE_KEY
           ? originalGetItem.call(localStorage, STORAGE_KEY)
           : null;
+      if (previousValue === value) return undefined;
       if (
         this === localStorage &&
         key === STORAGE_KEY &&
@@ -562,10 +578,15 @@
         session?.user?.id
       ) {
         const userId = session.user.id;
-        writeSequence += 1;
-        syncConflict = null;
         safeStorageSet(ACTIVE_OWNER_KEY, userId);
         removeRedundantStateCache(userId);
+
+        // Theme and sidebar preferences are device-local. Persist them without
+        // creating a recovery snapshot or sending the full farm state to cloud.
+        if (previousValue && sameState(previousValue, value)) return result;
+
+        writeSequence += 1;
+        syncConflict = null;
         safeStorageSet(dirtyKey(userId), "1");
         if (previousValue && !sameState(previousValue, value)) {
           recordRecoverySnapshot(userId, previousValue, "Before local change");
@@ -708,7 +729,7 @@
         safeStorageSet(versionKey(userId), remoteRecord.updated_at);
       }
       if (sequence === writeSequence && !pendingSync) {
-        safeStorageSet(cacheKey(userId), rawValue);
+        removeRedundantStateCache(userId);
         safeStorageRemove(dirtyKey(userId));
       } else {
         safeStorageSet(dirtyKey(userId), "1");
@@ -758,7 +779,6 @@
       ]);
       if (sequence === writeSequence) {
         setActiveUserData(userId, rawValue);
-        safeStorageSet(cacheKey(userId), rawValue);
       }
       safeStorageSet(dirtyKey(userId), "1");
       setSyncState("Combining protected changes from both devices…", "working");
@@ -824,14 +844,13 @@
 
       const rebasedRaw = applyDevicePreferences(rebased.rawValue, currentRaw);
       setActiveUserData(userId, rebasedRaw);
-      safeStorageSet(cacheKey(userId), rebasedRaw);
       safeStorageSet(dirtyKey(userId), "1");
       pendingSync = {
         rawValue: rebasedRaw,
         sequence: writeSequence
       };
     } else if (sequence === writeSequence && !pendingSync) {
-      safeStorageSet(cacheKey(userId), rawValue);
+      removeRedundantStateCache(userId);
       safeStorageRemove(dirtyKey(userId));
     } else {
       safeStorageSet(dirtyKey(userId), "1");
@@ -959,7 +978,6 @@
       await recordRecoverySnapshot(userId, activeRaw, "Local copy before receiving another device's changes");
       const deviceCloudRaw = applyDevicePreferences(remoteRaw, activeRaw);
       setActiveUserData(userId, deviceCloudRaw);
-      safeStorageSet(cacheKey(userId), deviceCloudRaw);
       safeStorageSet(baseKey(userId), remoteRaw);
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       setSyncState("Newer cloud records found; reloading…", "success");
@@ -1493,7 +1511,7 @@
     }
     const payload = JSON.stringify({
       app: "HerdHarbor",
-      version: "1.0.0",
+      version: "1.0.3",
       backupType: "local-safety-backup",
       exportedAt: new Date().toISOString(),
       data: appState
@@ -1528,7 +1546,6 @@
         conflict.localRaw
       );
       setActiveUserData(conflict.userId, deviceCloudRaw);
-      safeStorageSet(cacheKey(conflict.userId), deviceCloudRaw);
       safeStorageSet(baseKey(conflict.userId), conflict.remoteRaw);
       if (conflict.remoteUpdatedAt) {
         safeStorageSet(versionKey(conflict.userId), conflict.remoteUpdatedAt);
@@ -1705,7 +1722,6 @@
         await recordRecoverySnapshot(userId, activeRaw, "Local copy before loading newer cloud records");
       }
       setActiveUserData(userId, deviceCloudRaw);
-      safeStorageSet(cacheKey(userId), deviceCloudRaw);
       safeStorageSet(baseKey(userId), cloudRaw);
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       safeStorageRemove(dirtyKey(userId));

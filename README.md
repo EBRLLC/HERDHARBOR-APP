@@ -1,4 +1,4 @@
-# HerdHarbor Alpha v1.0.0
+# HerdHarbor Alpha v1.0.3
 
 HerdHarbor is an installable farm and livestock recordkeeping app in alpha testing.
 
@@ -42,17 +42,21 @@ HerdHarbor is an installable farm and livestock recordkeeping app in alpha testi
 - Downloadable Excel import template with duplicate and validation checks
 - One-click Excel export for Animals, Customers, Sales, Payments, Breeding, Births, Medical, Production, actual Budgeting, and annual planned budgets
 - JSON backup export and import
+- Coalesced search rendering so fast typing does not rebuild large animal, task, or sales views more than once per animation frame
+- No-op save suppression and device-only preference handling that avoid unnecessary full-state writes and cloud sync work
+- Bounded, duplicate-safe recovery snapshots and a Settings storage summary for active-record and total app usage
+- Smaller future animal photos and operation logos to slow storage growth on long-running accounts
 
 ## Data-safety design
 
 The application state remains in `localStorage` for immediate offline operation. Each signed-in account also has:
 
 - a last-confirmed cloud base used for safe three-way merges and conflict checks;
-- a per-user offline recovery copy;
+- the active offline working copy for the signed-in account;
 - a dirty marker retained until cloud confirmation;
 - serialized writes so older requests cannot finish after newer requests;
 - compare-and-swap updates using the cloud row's `updated_at` value;
-- IndexedDB recovery snapshots retained on the device.
+- duplicate-safe IndexedDB recovery snapshots retained within a fixed device-space budget.
 
 Authentication and Supabase data requests are never handled by the service-worker cache. The service worker caches only the static application shell.
 

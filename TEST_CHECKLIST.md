@@ -1,13 +1,23 @@
-# HerdHarbor Alpha v1.0.0 Release Checklist
+# HerdHarbor Alpha v1.0.3 Release Checklist
 
 ## Version and Google Play readiness
 
-- Confirm every user-facing app label says Alpha v1.0.0 and no earlier development-stage label remains.
+- Confirm every user-facing app label says Alpha v1.0.3 and no earlier development-stage label remains.
 - Confirm existing testers retain their local records through the preserved legacy storage key.
-- Confirm the web app manifest reports version 1.0.0, standalone display, icons, and the expected app scope.
-- Confirm the Android wrapper uses package `com.herdharbor.app`, version code 1, version name `1.0.0-alpha`, and target SDK 36.
+- Confirm the web app manifest reports version 1.0.3, standalone display, icons, and the expected app scope.
+- Confirm the Android wrapper uses package `com.ebrllc.herdharbor`, version code 3, version name `1.0.3-alpha`, and target SDK 36.
 - Confirm Privacy, Terms, Support, and Delete Account links open from Settings.
 - Confirm the signed Android App Bundle is created with the private upload key outside Git before Play Console upload.
+
+## Workflow and storage efficiency
+
+- Save an unchanged form twice and confirm the second save does not mark cloud sync dirty or create a duplicate recovery point.
+- Change only Theme or Sidebar and confirm the preference remains on this device without uploading a full unchanged farm record.
+- Type quickly in Animal, Task, and Sales search and confirm results remain responsive and accurate.
+- Confirm Settings → Device storage reports the active farm record, total app usage, estimated available space, and offline protection state.
+- Upload an animal photo and operation logo and confirm each remains clear while using the reduced storage targets.
+- Sign in, sync, reload, and switch accounts; confirm the active user does not retain a redundant full-state cache and other accounts still retain their signed-out fallback copy.
+- Create repeated pre-change recovery requests and confirm identical snapshots are deduplicated and old snapshots stay within the configured count and byte budget.
 
 ## Tablet containment and card formatting
 
@@ -70,7 +80,7 @@
 - Open Animals and confirm the status filter defaults to Active and only exact Active-status records appear initially
 - Select Any status and confirm Active, Breeding, Growing, Retired, For Sale, Reserved, Sold, Deceased, and Ancestor Only records can still be shown
 - Select Ancestor Only and confirm ancestor records remain available without appearing in the default Active view
-- Open the Guided Pedigree Builder and confirm its header shows v0.5.0 instead of v0.2.1
+- Open the Guided Pedigree Builder and confirm its header shows v1.0.3 instead of a stale development version
 
 ## Breeding and pregnancy workflow
 
