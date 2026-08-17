@@ -48,6 +48,18 @@ assert.match(project, /PRODUCT_BUNDLE_IDENTIFIER = com\.ebrllc\.herdharbor/);
 assert.match(project, /MARKETING_VERSION = 1\.2\.0/);
 assert.match(infoPlist, /<key>NSCameraUsageDescription<\/key>/);
 assert.match(infoPlist, /<key>NSPhotoLibraryUsageDescription<\/key>/);
+const ipadOrientations = infoPlist.match(
+  /<key>UISupportedInterfaceOrientations~ipad<\/key>\s*<array>([\s\S]*?)<\/array>/
+);
+assert.ok(ipadOrientations, "iPad orientations must be declared");
+for (const orientation of [
+  "UIInterfaceOrientationPortrait",
+  "UIInterfaceOrientationPortraitUpsideDown",
+  "UIInterfaceOrientationLandscapeLeft",
+  "UIInterfaceOrientationLandscapeRight"
+]) {
+  assert.match(ipadOrientations[1], new RegExp(`<string>${orientation}<\\/string>`));
+}
 assert.match(nativeBridge, /Share\.share/);
 assert.match(nativeBridge, /Filesystem\.writeFile/);
 assert.match(pwa, /Capacitor\?\.isNativePlatform/);
