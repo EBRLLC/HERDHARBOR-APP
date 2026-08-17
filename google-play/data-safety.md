@@ -1,6 +1,6 @@
 # Data safety form preparation
 
-These answers summarize the current HerdHarbor Alpha v1.0.0 behavior. Confirm them in Play Console against the final production configuration before submission.
+These answers summarize the current HerdHarbor Alpha v1.0.3 behavior. Confirm them in Play Console against the final production configuration before submission.
 
 ## Security and control
 

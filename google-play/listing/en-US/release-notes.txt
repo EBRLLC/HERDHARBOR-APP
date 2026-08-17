@@ -1,1 +1,1 @@
-HerdHarbor Alpha v1.0.0 adds tablet-safe layouts, consistent login colors, mobile pedigree viewing and printing, expanded attachment storage, protected cloud sync, offline recovery, backups, and account-deletion controls.
+HerdHarbor Alpha v1.0.3 improves search responsiveness, avoids redundant full-record saves and cloud work, limits duplicate recovery storage, adds device-storage visibility, reduces new image sizes, and keeps four-generation pedigrees readable on one landscape print page.

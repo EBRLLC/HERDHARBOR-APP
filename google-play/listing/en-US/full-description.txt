@@ -16,7 +16,7 @@ HerdHarbor includes:
 - Offline access, recovery snapshots, JSON backups, and restore tools
 - Light and dark themes with phone and tablet layouts
 
-HerdHarbor Alpha v1.0.0 is being tested with working farms. Important records should still be backed up regularly while alpha testing continues.
+HerdHarbor Alpha v1.0.3 is being tested with working farms. Important records should still be backed up regularly while alpha testing continues.
 
 Privacy: https://herdharbor.com/privacy/
 Support: https://herdharbor.com/support/

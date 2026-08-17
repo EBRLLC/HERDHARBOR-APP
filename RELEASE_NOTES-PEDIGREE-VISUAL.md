@@ -1,4 +1,4 @@
-# HerdHarbor Alpha v1.0.0 Pedigree Visual Update
+# HerdHarbor Alpha v1.0.3 Pedigree Visual Update
 
 - Corrected the print layout so a four-generation pedigree remains on one US Letter landscape page instead of splitting the lower ancestry onto a second page.
 - Replaced the inconsistent print typography with a compact Segoe UI system-font stack and restored the intended small, readable generation hierarchy.

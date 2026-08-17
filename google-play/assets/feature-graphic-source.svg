@@ -21,5 +21,5 @@
   <text x="405" y="259" fill="#DCE9E8" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="600">Livestock records</text>
   <text x="405" y="304" fill="#DCE9E8" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="600">without limits.</text>
   <rect x="405" y="340" width="190" height="48" rx="24" fill="#F7F3EA"/>
-  <text x="500" y="372" text-anchor="middle" fill="#0D2540" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="700" letter-spacing="1">ALPHA v1.0.0</text>
+  <text x="500" y="372" text-anchor="middle" fill="#0D2540" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="700" letter-spacing="1">ALPHA v1.0.3</text>
 </svg>

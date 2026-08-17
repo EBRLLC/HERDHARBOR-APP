@@ -1,4 +1,16 @@
-# HerdHarbor Alpha v1.0.0
+# HerdHarbor Alpha v1.0.3
+
+## v1.0.3 workflow and storage efficiency
+
+- Stopped no-op saves from rewriting the complete farm record or starting unnecessary cloud work.
+- Kept device-only theme and sidebar preferences local without creating recovery snapshots or uploading unchanged farm data.
+- Removed conflicting code paths that recreated the redundant current-user cache after cloud synchronization.
+- Deduplicated recovery points and bounded their IndexedDB footprint while retaining up to six recent safety states.
+- Reduced the target size of newly uploaded animal photos and operation logos.
+- Coalesced rapid search updates for Animals, Tasks, and Sales to reduce repeated layout and rendering work.
+- Added a Device storage card in Settings with active-record size, total origin usage, estimated available space, and persistence status.
+- Retained the existing storage key, cloud schema, account records, and backup format so no farm-data migration is required.
+- Kept four-generation printed pedigrees on one landscape page with the restored readable type scale.
 
 ## v1.0.0 alpha and Google Play readiness
 
