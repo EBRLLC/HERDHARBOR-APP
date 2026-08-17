@@ -59,7 +59,9 @@
       ],
       fields: {
         name: ["name", "animal name", "livestock name"],
-        tag: ["id", "tag", "id or tag", "animal id", "animal tag", "ear tag", "tag microchip"],
+        tag: ["id", "tag", "id or tag", "animal id", "animal tag", "tag microchip"],
+        earTagNumber: ["ear tag number", "ear tag", "cattle ear tag", "cattle ear tag number"],
+        earTagColor: ["ear tag color", "tag color", "cattle ear tag color"],
         tattoo: ["tattoo", "ear number", "tattoo or ear number", "tattoo ear number"],
         registrationNumber: ["registration", "registration number", "registration no", "reg number", "reg no"],
         breeder: ["breeder", "breeder name", "seller", "source breeder"],
@@ -700,6 +702,7 @@
   function animalReferenceKeys(animal) {
     return [
       animal.id ? `id:${normalize(animal.id)}` : "",
+      animal.earTagNumber ? `tag:${normalize(animal.earTagNumber)}` : "",
       animal.tag ? `tag:${normalize(animal.tag)}` : "",
       animal.tattoo ? `tattoo:${normalize(animal.tattoo)}` : "",
       animal.registrationNumber ? `registration:${normalize(animal.registrationNumber)}` : "",
@@ -742,6 +745,7 @@
     const identifiers = [
       animal.registrationNumber ? `registration:${normalize(animal.registrationNumber)}` : "",
       animal.tattoo ? `tattoo:${normalize(animal.tattoo)}` : "",
+      animal.earTagNumber ? `tag:${normalize(animal.earTagNumber)}` : "",
       animal.tag ? `tag:${normalize(animal.tag)}` : ""
     ].filter(Boolean);
     if (identifiers.length) return identifiers;
@@ -931,6 +935,8 @@
           id: uid("animal"),
           name,
           tag: cleanText(fieldValue(row, map, "tag")),
+          earTagNumber: species === "Cattle" ? cleanText(fieldValue(row, map, "earTagNumber")) : "",
+          earTagColor: species === "Cattle" ? cleanText(fieldValue(row, map, "earTagColor")) : "",
           tattoo: cleanText(fieldValue(row, map, "tattoo")),
           registrationNumber: cleanText(fieldValue(row, map, "registrationNumber")),
           breeder: cleanText(fieldValue(row, map, "breeder")),
@@ -2467,7 +2473,7 @@
       ["HerdHarbor Farm Records Export", ""],
       ["Operation", safeExcelText(options.operationName || state.profile?.operationName || "HerdHarbor")],
       ["Exported", new Date()],
-      ["App version", "1.2.0"],
+      ["App version", "1.3.0"],
       ["Animals", animals.length],
       ["Breeding records", breedings.length],
       ["Birth and litter records", litters.length],
@@ -2500,6 +2506,8 @@
     animalSheet.addRow([
       "Name",
       "ID or Tag",
+      "Ear Tag Number",
+      "Ear Tag Color",
       "Tattoo / Ear Number",
       "Registration Number",
       "Breeder Name",
@@ -2520,6 +2528,8 @@
       animalSheet.addRow([
         safeExcelText(animal.name),
         safeExcelText(animal.tag),
+        safeExcelText(animal.earTagNumber),
+        safeExcelText(animal.earTagColor),
         safeExcelText(animal.tattoo),
         safeExcelText(animal.registrationNumber),
         safeExcelText(animal.breeder),
@@ -2539,8 +2549,8 @@
     });
     styleExportSheet(
       animalSheet,
-      [24, 16, 20, 20, 22, 14, 22, 14, 16, 20, 22, 16, 16, 24, 24, 24, 38],
-      { dateColumns: [9], currencyColumns: [13] }
+      [24, 16, 18, 18, 20, 20, 22, 14, 22, 14, 16, 20, 22, 16, 16, 24, 24, 24, 38],
+      { dateColumns: [11], currencyColumns: [15] }
     );
 
     const customerSheet = workbook.addWorksheet("Customers");
@@ -2850,7 +2860,7 @@
       ["Weaned", Number(report.weaned || 0)],
       ["Born-alive-to-weaned rate", Number(report.survivalRate || 0)],
       ["Exported", new Date()],
-      ["App version", "1.2.0"]
+      ["App version", "1.3.0"]
     ]);
     overview.mergeCells("A1:B1");
     overview.getRow(1).height = 34;
@@ -2965,7 +2975,7 @@
       ["Sale revenue", totalRevenue],
       ["Warnings", warnings.length],
       ["Exported", new Date()],
-      ["App version", "1.2.0"],
+      ["App version", "1.3.0"],
       ["Quantity note", "Quantities stay separated by product and unit so eggs, dozens, gallons, birds, pounds, and custom units are never combined into a misleading total."]
     ]);
     overview.mergeCells("A1:B1");
@@ -3132,6 +3142,8 @@
     animals.addRow([
       "Name",
       "ID or Tag",
+      "Ear Tag Number",
+      "Ear Tag Color",
       "Tattoo / Ear Number",
       "Registration Number",
       "Breeder Name",
@@ -3148,18 +3160,18 @@
       "Source Birth Record ID",
       "Notes"
     ]);
-    styleTemplateSheet(animals, [24, 16, 20, 20, 22, 14, 22, 12, 16, 20, 22, 16, 16, 24, 24, 24, 36]);
-    animals.dataValidations.add("F2:F5000", {
+    styleTemplateSheet(animals, [24, 16, 18, 18, 20, 20, 22, 14, 22, 12, 16, 20, 22, 16, 16, 24, 24, 24, 36]);
+    animals.dataValidations.add("H2:H5000", {
       type: "list",
       allowBlank: false,
       formulae: ['"Rabbit,Chicken,Duck,Turkey,Dog,Horse,Goat,Sheep,Cattle,Pig,Other"']
     });
-    animals.dataValidations.add("H2:H5000", {
+    animals.dataValidations.add("J2:J5000", {
       type: "list",
       allowBlank: true,
       formulae: ['"Female,Male,Unknown"']
     });
-    animals.dataValidations.add("L2:L5000", {
+    animals.dataValidations.add("N2:N5000", {
       type: "list",
       allowBlank: true,
       formulae: ['"Active,Breeding,Growing,Retired,For Sale,Reserved,Sold,Deceased,Ancestor Only"']

@@ -10,7 +10,7 @@ const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const manifest = JSON.parse(fs.readFileSync(path.join(root, "manifest.json"), "utf8"));
 const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 
-assert.match(html, /const APP_VERSION = "1\.2\.0"/);
+assert.match(html, /const APP_VERSION = "1\.3\.0"/);
 assert.match(html, /html \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
 assert.match(html, /body \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
 assert.match(
@@ -34,7 +34,7 @@ assert.match(html, /@media \(max-width: 820px\) \{[\s\S]*?#quick-add-button[\s\S
 // Phone installs keep their prior portrait preference while the responsive CSS handles tablet widths.
 assert.equal(manifest.orientation, "portrait");
 
-assert.match(cloud, /version: "1\.2\.0"/);
+assert.match(cloud, /version: "1\.3\.0"/);
 assert.match(cloud, /html\[data-theme="dark"\] #hh-auth-root/);
 assert.match(cloud, /#hh-auth-root \.hh-auth-form label/);
 assert.match(cloud, /#hh-auth-root \.hh-auth-form input/);
@@ -42,7 +42,7 @@ assert.match(cloud, /-webkit-text-fill-color: var\(--hh-auth-text\)/);
 assert.match(cloud, /input:-webkit-autofill/);
 assert.match(cloud, /--hh-auth-surface: #102A41/);
 assert.match(cloud, /--hh-auth-input: #0A2033/);
-assert.match(worker, /v1\.2\.0-alpha-20260817-1/);
+assert.match(worker, /v1\.3\.0-alpha-20260817-1/);
 assert.match(worker, /herdharbor-cloud\.js\?v=17/);
 assert.match(worker, /pedigree-visual\.css\?v=2/);
 assert.match(worker, /pedigree-visual\.js\?v=2/);

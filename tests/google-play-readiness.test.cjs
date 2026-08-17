@@ -16,21 +16,21 @@ const title = read("google-play/listing/en-US/title.txt").trim();
 const shortDescription = read("google-play/listing/en-US/short-description.txt").trim();
 const fullDescription = read("google-play/listing/en-US/full-description.txt").trim();
 
-assert.match(html, /HerdHarbor Alpha v1\.2\.0/);
+assert.match(html, /HerdHarbor Alpha v1\.3\.0/);
 assert.doesNotMatch(html, /pre[ -]?alpha/i);
-assert.equal(manifest.version, "1.2.0");
+assert.equal(manifest.version, "1.3.0");
 assert.equal(manifest.display, "standalone");
 assert.equal(twa.packageId, "com.ebrllc.herdharbor");
-assert.equal(twa.appVersion, "1.2.0-alpha");
-assert.equal(twa.appVersionCode, 4);
+assert.equal(twa.appVersion, "1.3.0-alpha");
+assert.equal(twa.appVersionCode, 5);
 assert.equal(twa.host, "app.herdharbor.com");
 assert.match(appGradle, /applicationId:\s*'com\.ebrllc\.herdharbor'/);
 assert.match(appGradle, /namespace "com\.ebrllc\.herdharbor"/);
 assert.match(appGradle, /applicationId "com\.ebrllc\.herdharbor"/);
 assert.match(appGradle, /compileSdkVersion 36/);
 assert.match(appGradle, /targetSdkVersion 36/);
-assert.match(appGradle, /versionCode 4/);
-assert.match(appGradle, /versionName "1\.2\.0-alpha"/);
+assert.match(appGradle, /versionCode 5/);
+assert.match(appGradle, /versionName "1\.3\.0-alpha"/);
 assert.match(appGradle, /https:\/\/app\.herdharbor\.com\/manifest\.json/);
 assert.match(androidManifest, /package="com\.ebrllc\.herdharbor"/);
 assert.match(androidManifest, /android:allowBackup="false"/);
@@ -48,4 +48,4 @@ assert.ok(fs.statSync(path.join(root, "android/store_icon.png")).size <= 1024 * 
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/app-icon-512.png")));
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/feature-graphic-1024x500.png")));
 
-console.log("Google Play v1.2.0 alpha readiness tests passed");
+console.log("Google Play v1.3.0 alpha readiness tests passed");

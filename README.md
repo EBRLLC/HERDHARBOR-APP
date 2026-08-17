@@ -1,4 +1,4 @@
-# HerdHarbor Alpha v1.2.0
+# HerdHarbor Alpha v1.3.0
 
 HerdHarbor is an installable farm and livestock recordkeeping app in alpha testing.
 
@@ -16,6 +16,7 @@ HerdHarbor is an installable farm and livestock recordkeeping app in alpha testi
 - Tablet-safe responsive cards, internal table scrolling, and document-width containment
 - Theme-matched sign-in, sign-up, recovery, and password-autofill colors in light and dark mode
 - Animals, breeding, births and litters, pedigrees, health, tasks, budgeting, production and sales, photos, farm branding, breed memory, and dark mode
+- Cattle-specific ear-tag number and ear-tag color fields carried through animal search, exports, transfers, sale documents, pedigrees, and QR cards
 - A static educational symptom guide with animal and species filters, common warning signs, urgency levels, veterinary references, emergency red flags, and one-tap observation logging
 - Customer and buyer records with phone, email, address, and private farm notes
 - Multi-animal quotes, reservations, and completed sales with discounts, tax/fees, balances, and Available/Reserved/Sold status handling

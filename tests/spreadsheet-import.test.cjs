@@ -460,9 +460,9 @@ async function run() {
     ["Overview", "Animals", "Customers", "Sales", "Payments", "Breeding", "Births", "Medical", "Production", "Budgeting", "Annual Budget"]
   );
   assert.equal(exportWorkbook.getWorksheet("Animals").getCell("A2").value, "Willow");
-  assert.equal(exportWorkbook.getWorksheet("Animals").getCell("Q2").value, "=SUM(A1:A2)");
+  assert.equal(exportWorkbook.getWorksheet("Animals").getCell("S2").value, "=SUM(A1:A2)");
   assert.equal(
-    exportWorkbook.getWorksheet("Animals").getCell("Q2").type,
+    exportWorkbook.getWorksheet("Animals").getCell("S2").type,
     ExcelJS.ValueType.String,
     "formula-looking source text remains a non-executable Excel string"
   );
@@ -541,7 +541,7 @@ async function run() {
   const reportBuffer = await reportWorkbook.xlsx.writeBuffer();
   const reportReload = new ExcelJS.Workbook();
   await reportReload.xlsx.load(reportBuffer);
-  assert.equal(reportReload.getWorksheet("Overview").getCell("B12").value, "1.2.0");
+  assert.equal(reportReload.getWorksheet("Overview").getCell("B12").value, "1.3.0");
   if (process.env.HH_PRODUCTION_REPORT_QA_PATH) {
     require("node:fs").writeFileSync(process.env.HH_PRODUCTION_REPORT_QA_PATH, Buffer.from(reportBuffer));
   }

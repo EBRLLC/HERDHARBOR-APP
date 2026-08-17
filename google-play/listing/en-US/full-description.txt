@@ -16,7 +16,7 @@ HerdHarbor includes:
 - Offline access, recovery snapshots, JSON backups, and restore tools
 - Light and dark themes with phone and tablet layouts
 
-HerdHarbor Alpha v1.2.0 is being tested with working farms. Important records should still be backed up regularly while alpha testing continues.
+HerdHarbor Alpha v1.3.0 is being tested with working farms. Important records should still be backed up regularly while alpha testing continues.
 
 The educational symptom guide is not veterinary advice and cannot diagnose or treat an animal. Contact a licensed veterinarian for every health concern and seek emergency veterinary help for urgent warning signs.
 
