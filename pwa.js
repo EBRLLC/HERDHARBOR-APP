@@ -7,7 +7,11 @@
   let updateToast = null;
   let reloading = false;
 
+  const isNativeApp = () =>
+    window.Capacitor?.isNativePlatform?.() === true;
+
   const isStandalone = () =>
+    isNativeApp() ||
     window.matchMedia("(display-mode: standalone)").matches ||
     window.navigator.standalone === true;
 
@@ -67,7 +71,7 @@
   }
 
   async function requestInstall() {
-    if (isStandalone()) return;
+    if (isStandalone() || isNativeApp()) return;
 
     if (installPrompt) {
       installPrompt.prompt();
@@ -116,7 +120,7 @@
   }
 
   async function registerServiceWorker() {
-    if (!("serviceWorker" in navigator)) return;
+    if (isNativeApp() || !("serviceWorker" in navigator)) return;
 
     try {
       registration = await navigator.serviceWorker.register(

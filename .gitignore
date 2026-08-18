@@ -15,3 +15,9 @@ secrets/
 # Local tooling
 node_modules/
 npm-debug.log*
+web/
+ios/App/Pods/
+ios/App/build/
+ios/App/DerivedData/
+*.xcarchive
+*.ipa
