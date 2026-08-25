@@ -1,20 +1,20 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v1.4.1-alpha-20260824-1`;
+const CACHE_NAME = `${CACHE_PREFIX}v1.4.2-alpha-20260824-1`;
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.json?v=15",
   "./herdharbor-cloud.js?v=17",
   "./symptom-guide.js?v=1",
-  "./pwa.js?v=23",
+  "./pwa.js?v=21",
   "./pedigree-visual.css?v=2",
   "./pedigree-visual.js?v=2",
   "./breeding-intelligence-core.js?v=1.4.0",
   "./breeding-intelligence.css?v=1.4.0",
   "./breeding-intelligence.js?v=1.4.0",
-  "./breeding-pair-hotfix-v1.4.1.js?v=1",
+  "./breeding-pair-hotfix-v1.4.2.js?v=1",
   "./breeding-intelligence-tools.js?v=1.4.0",
   "./vendor/supabase-2.111.0.js",
   "./vendor/jszip-3.10.1.min.js",
@@ -26,7 +26,11 @@ const APP_SHELL = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(APP_SHELL))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", (event) => {
@@ -61,6 +65,22 @@ self.addEventListener("fetch", (event) => {
           const cache = await caches.open(CACHE_NAME);
           return (await cache.match("./index.html")) || cache.match("./");
         })
+    );
+    return;
+  }
+
+  const forceFresh = url.pathname.endsWith("/pwa.js") || url.pathname.endsWith("/breeding-pair-hotfix-v1.4.2.js");
+  if (forceFresh) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok && response.type === "basic") {
+            const copy = response.clone();
+            event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
     );
     return;
   }
