@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const PWA_BUILD = "1.4.0-alpha-breeding-intelligence-1";
+  const PWA_BUILD = "1.4.0-alpha-breeding-intelligence-2";
   let installPrompt = null;
   let registration = null;
   let updateToast = null;
@@ -37,7 +37,9 @@
   function loadBreedingIntelligence() {
     addStylesheet("hh-breeding-intelligence-style", "breeding-intelligence.css?v=1.4.0");
     addScript("hh-breeding-intelligence-core-script", "breeding-intelligence-core.js?v=1.4.0", () => {
-      addScript("hh-breeding-intelligence-script", "breeding-intelligence.js?v=1.4.0");
+      addScript("hh-breeding-intelligence-script", "breeding-intelligence.js?v=1.4.0", () => {
+        addScript("hh-breeding-intelligence-tools-script", "breeding-intelligence-tools.js?v=1.4.0");
+      });
     });
   }
 
