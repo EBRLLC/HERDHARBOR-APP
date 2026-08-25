@@ -10,6 +10,7 @@ const serviceWorker = fs.readFileSync(path.join(root, "service-worker.js"), "utf
 const pwa = fs.readFileSync(path.join(root, "pwa.js"), "utf8");
 const records = fs.readFileSync(path.join(root, "rabbit-records-v1.4.5.js"), "utf8");
 const genetics = fs.readFileSync(path.join(root, "rabbit-genetics-engine-v1.4.5.js"), "utf8");
+const runtime = fs.readFileSync(path.join(root, "rabbit-genetics-runtime-v1.4.5.js"), "utf8");
 
 // v1.4.5 remains additive: the legacy Member app/data model stays intact while release assets overlay it.
 assert.match(html, /HerdHarbor Alpha v1\.3\.0 Member workflow and cattle record release/);
@@ -83,17 +84,20 @@ assert.match(serviceWorker, /breeding-intelligence\.css\?v=1\.4\.0/);
 assert.match(serviceWorker, /breeding-intelligence\.js\?v=1\.4\.0/);
 assert.match(serviceWorker, /rabbit-records-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(serviceWorker, /rabbit-genetics-engine-v1\.4\.5\.js\?v=1\.4\.5/);
+assert.match(serviceWorker, /rabbit-genetics-runtime-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(serviceWorker, /rabbit-genetics-ui-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(serviceWorker, /herdharbor-release-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(serviceWorker, /breeding-intelligence-tools\.js\?v=1\.4\.0/);
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);
-assert.match(pwa, /1\.4\.5-alpha-rabbit-genetics-1/);
+assert.match(pwa, /1\.4\.5-alpha-rabbit-genetics-2/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
+assert.match(pwa, /rabbit-genetics-runtime-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(pwa, /rabbit-genetics-ui-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(records, /normalized === "female"/);
 assert.doesNotMatch(records, /\/male\|buck\//);
-assert.match(genetics, /Unknown alleles widen the calculated color ranges/);
 assert.match(genetics, /Genetic conflict detected/);
+assert.match(runtime, /Unknown alleles widen named offspring-color ranges/);
+assert.match(runtime, /visible non-white|whiteMask|V\/V/);
 
 console.log("Alpha v1.4.5 genetics release stability tests passed");
