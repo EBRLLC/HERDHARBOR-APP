@@ -18,6 +18,7 @@
   const clone=v=>v==null?v:JSON.parse(JSON.stringify(v));
   const knownCount=p=>(p||[]).filter(a=>a&&a!=='_').length;
   const pairText=p=>(Array.isArray(p)?p:['_','_']).map(a=>a||'_').join('');
+  const knownSource=s=>KNOWN_SOURCES.has(norm(s).replace('genetic test','genetic-test'));
 
   function loadPreferences(storage){
     try{
@@ -81,9 +82,15 @@
     const animals=state?.animals||[],births=state?.births||[];
     const entered=engine.normalizeGenetics(clone(animal.genetics));
     const refinedResult=engine.refineAnimalGenetics({...animal,genetics:clone(animal.genetics)},animals,births);
-    let calculated=engine.normalizeGenetics(clone(refinedResult?.genetics));
-    const pedigreeItems=engine.pedigreeEvidence?engine.pedigreeEvidence({...animal,genetics:calculated},animals,3):[];
+    const refined=engine.normalizeGenetics(clone(refinedResult?.genetics));
+    const pedigreeItems=engine.pedigreeEvidence?engine.pedigreeEvidence({...animal,genetics:refined},animals,3):[];
+    let calculated=engine.normalizeGenetics(clone(refined));
     if(mode==='full'&&engine.applyEvidenceToGenetics)calculated=engine.applyEvidenceToGenetics(calculated,pedigreeItems);
+    if(mode==='known'&&engine.applyEvidenceToGenetics){
+      const provenItems=(refined.evidence||[]).filter(e=>knownSource(e.source));
+      calculated=engine.applyEvidenceToGenetics(engine.normalizeGenetics(clone(entered)),provenItems);
+    }
+
     const rows=LOCI.map(locus=>{
       const direct=entered.loci[locus]?.alleles||['_','_'];
       const calcRecord=calculated.loci[locus]||{alleles:['_','_'],source:'',status:'unknown',note:''};
@@ -91,7 +98,6 @@
       let source=knownCount(direct)>0?(entered.loci[locus]?.source||'breeder'):(calcRecord.source||'unknown');
       let status=knownCount(direct)>0?(entered.loci[locus]?.status||'confirmed'):(calcRecord.status||'unknown');
       let note=knownCount(direct)>0?(entered.loci[locus]?.note||'Entered directly by the breeder.'):(calcRecord.note||'');
-      if(mode==='known'&&!KNOWN_SOURCES.has(norm(source).replace('genetic test','genetic-test'))){pair=['_','_'];source='unknown';status='unknown';note='';}
       if(mode==='full'&&knownCount(pair)<2&&engine.possiblePairsForLocus){
         const options=engine.possiblePairsForLocus({...animal,genetics:calculated},animal.color||animal.variety,locus);
         const common=commonPattern(engine,locus,options);
@@ -104,10 +110,10 @@
       pair=normalizePair(engine,locus,pair);
       const kind=pair.every(a=>a==='_')?'unknown':sourceKind(source,status);
       const evidence=(calculated.evidence||[]).filter(e=>e.locus===locus).map(e=>({source:e.source||'',status:e.status||'',note:e.note||'',label:e.label||sourceLabel(engine,e.source,e.status)}));
-      pedigreeItems.filter(e=>e.locus===locus).forEach(e=>{if(!evidence.some(x=>x.note===e.note))evidence.push({source:e.source||'',status:e.status||'',note:e.note||'',label:sourceLabel(engine,e.source,e.status)});});
+      if(mode==='full')pedigreeItems.filter(e=>e.locus===locus).forEach(e=>{if(!evidence.some(x=>x.note===e.note))evidence.push({source:e.source||'',status:e.status||'',note:e.note||'',label:sourceLabel(engine,e.source,e.status)});});
       return{locus,pair,text:pairText(pair),source,status,kind,label:sourceLabel(engine,source,status),note,evidence};
     });
-    const conflicts=[...(calculated.conflicts||[])];
+    const conflicts=[...(refined.conflicts||[])];
     if(engine.directConflict)conflicts.push(...engine.directConflict({...animal,genetics:calculated}));
     const genotypeText=rows.map(r=>`${r.locus}:${r.text}`).join(' ');
     return{animal,mode,rows,genotypeText,evidence:rows.flatMap(r=>r.evidence.map(e=>({...e,locus:r.locus}))),conflicts,entered,calculated};
