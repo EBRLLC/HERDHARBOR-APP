@@ -35,7 +35,9 @@ assert.match(appGradle, /versionName "1\.4\.0-alpha"/);
 assert.match(appGradle, /https:\/\/app\.herdharbor\.com\/manifest\.json/);
 assert.match(worker, /breeding-intelligence-core\.js\?v=1\.4\.0/);
 assert.match(worker, /breeding-intelligence\.js\?v=1\.4\.0/);
-assert.match(pwa, /1\.4\.0-alpha-breeding-intelligence/);
+assert.match(worker, /breeding-pair-hotfix-v1\.4\.1\.js\?v=1/);
+assert.match(pwa, /1\.4\.1-alpha-rabbit-pair-hotfix-1/);
+assert.match(pwa, /breeding-pair-hotfix-v1\.4\.1\.js\?v=1/);
 assert.match(androidManifest, /package="com\.ebrllc\.herdharbor"/);
 assert.match(androidManifest, /android:allowBackup="false"/);
 assert.match(androidManifest, /android:usesCleartextTraffic="false"/);
@@ -50,4 +52,4 @@ assert.ok(fs.statSync(path.join(root, "android/store_icon.png")).size <= 1024 * 
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/app-icon-512.png")));
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/feature-graphic-1024x500.png")));
 
-console.log("Google Play v1.4.0 alpha readiness tests passed");
+console.log("Google Play v1.4.0 wrapper + v1.4.1 web hotfix readiness tests passed");
