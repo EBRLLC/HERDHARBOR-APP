@@ -1,0 +1,29 @@
+/* HerdHarbor Alpha v1.4.5 — genetics lettering on rabbit pedigrees */
+.hh-pedigree-genetics{margin-top:3px;max-width:100%;min-width:0;font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;font-size:.72em;line-height:1.15;color:#243746;position:relative;z-index:1}
+.hh-pedigree-card.hh-has-photo .hh-pedigree-genetics{clear:both}
+.hh-genotype-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:1px 5px;max-width:100%;min-width:0}
+.hh-genetics-locus{display:inline-block;white-space:nowrap;word-break:keep-all;overflow-wrap:normal;padding:1px 2px;border-radius:3px}
+.hh-genetics-proven{font-weight:800;color:#173d2c;background:rgba(38,128,86,.08)}
+.hh-genetics-inferred{font-weight:700;color:#214b72;background:rgba(59,130,246,.08)}
+.hh-genetics-possible{font-weight:650;color:#6d5215;background:rgba(180,128,20,.09)}
+.hh-genetics-unknown{color:#6e7781;background:transparent}
+.hh-genetics-evidence-summary{margin-top:2px;font-family:"Segoe UI",Arial,Helvetica,sans-serif;font-size:.88em;line-height:1.12;white-space:normal;overflow:visible;text-overflow:clip}
+.hh-pedigree-genetics[role="button"]{cursor:pointer;border-radius:4px;outline:none}
+.hh-pedigree-genetics[role="button"]:focus-visible{box-shadow:0 0 0 2px #2e7d7b}
+.hh-pedigree-card[data-hh-generation="2"] .hh-pedigree-genetics{font-size:.66em;line-height:1.1}
+.hh-pedigree-card[data-hh-generation="3"] .hh-pedigree-genetics{font-size:.61em;line-height:1.08;margin-top:2px}
+.hh-pedigree-card[data-hh-generation="2"] .hh-genetics-evidence-summary,.hh-pedigree-card[data-hh-generation="3"] .hh-genetics-evidence-summary{display:none}
+.hh-pedigree-genetics-settings{display:contents}
+.hh-genetics-dialog{border:0;padding:0;background:transparent;max-width:min(900px,94vw);width:900px}
+.hh-genetics-dialog::backdrop{background:rgba(7,24,39,.6)}
+.hh-genetics-dialog-card{background:var(--surface,#fff);color:var(--text,#17212b);border-radius:14px;padding:20px;box-shadow:0 18px 70px rgba(0,0,0,.28);max-height:86vh;overflow:auto}
+.hh-genetics-dialog-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px}.hh-genetics-dialog-head h3{margin:2px 0 6px}.hh-genetics-dialog-head button{border:0;background:transparent;font-size:28px;line-height:1;cursor:pointer;color:inherit}.hh-genetics-dialog-head code{white-space:normal;overflow-wrap:anywhere}
+.hh-genetics-table-wrap{overflow-x:auto;margin-top:16px}.hh-genetics-table-wrap table{width:100%;border-collapse:collapse}.hh-genetics-table-wrap th,.hh-genetics-table-wrap td{text-align:left;vertical-align:top;padding:8px;border-bottom:1px solid rgba(127,127,127,.22)}
+.hh-genetics-badge{display:inline-block;padding:2px 6px;border-radius:999px;white-space:nowrap}.hh-genetics-conflicts{border:1px solid #b54747;background:rgba(181,71,71,.08);padding:10px 12px;border-radius:9px;margin-top:12px}.hh-genetics-dialog-note{font-size:.9em;opacity:.78;margin-top:16px}
+html[data-theme="dark"] .hh-pedigree-genetics{color:#d5e0e7}html[data-theme="dark"] .hh-genetics-proven{color:#bce8cf}html[data-theme="dark"] .hh-genetics-inferred{color:#b9d9ff}html[data-theme="dark"] .hh-genetics-possible{color:#f0d38a}html[data-theme="dark"] .hh-genetics-unknown{color:#aeb8c1}
+html.hh-pedigree-print-document .hh-pedigree-genetics{font-size:7.3px;line-height:1.05;margin-top:2px;color:#1f2a33!important}
+html.hh-pedigree-print-document .hh-pedigree-card[data-hh-generation="2"] .hh-pedigree-genetics{font-size:6.6px}
+html.hh-pedigree-print-document .hh-pedigree-card[data-hh-generation="3"] .hh-pedigree-genetics{font-size:5.9px}
+html.hh-pedigree-print-document .hh-genetics-locus{padding:0;background:transparent!important;color:#1f2a33!important}
+html.hh-pedigree-print-document .hh-pedigree-card[data-hh-generation="1"] .hh-genetics-evidence-summary,html.hh-pedigree-print-document .hh-pedigree-card[data-hh-generation="2"] .hh-genetics-evidence-summary,html.hh-pedigree-print-document .hh-pedigree-card[data-hh-generation="3"] .hh-genetics-evidence-summary{display:none}
+@media print{.hh-pedigree-genetics{font-size:7.3px!important;line-height:1.05!important;margin-top:2px!important;color:#1f2a33!important;break-inside:avoid}.hh-genetics-locus{white-space:nowrap!important;word-break:keep-all!important;overflow-wrap:normal!important;padding:0!important;background:transparent!important;color:#1f2a33!important}.hh-pedigree-card[data-hh-generation="2"] .hh-pedigree-genetics{font-size:6.6px!important}.hh-pedigree-card[data-hh-generation="3"] .hh-pedigree-genetics{font-size:5.9px!important}.hh-pedigree-card[data-hh-generation="1"] .hh-genetics-evidence-summary,.hh-pedigree-card[data-hh-generation="2"] .hh-genetics-evidence-summary,.hh-pedigree-card[data-hh-generation="3"] .hh-genetics-evidence-summary{display:none!important}.hh-genetics-dialog{display:none!important}}

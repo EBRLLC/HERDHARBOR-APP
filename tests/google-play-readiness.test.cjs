@@ -33,15 +33,18 @@ assert.match(appGradle, /targetSdkVersion 36/);
 assert.match(appGradle, /versionCode 7/);
 assert.match(appGradle, /versionName "1\.4\.5"/);
 assert.match(appGradle, /https:\/\/app\.herdharbor\.com\/manifest\.json/);
-assert.match(worker, /v1\.4\.5-alpha-20260825-1/);
+assert.match(worker, /v1\.4\.5-alpha-20260825-2/);
 assert.match(worker, /rabbit-records-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(worker, /rabbit-genetics-engine-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(worker, /rabbit-genetics-runtime-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(worker, /rabbit-genetics-ui-v1\.4\.5\.js\?v=1\.4\.5/);
+assert.match(worker, /pedigree-genetics-v1\.4\.5\.css\?v=1\.4\.5/);
+assert.match(worker, /pedigree-genetics-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(worker, /herdharbor-release-v1\.4\.5\.js\?v=1\.4\.5/);
-assert.match(pwa, /1\.4\.5-alpha-rabbit-genetics-2/);
+assert.match(pwa, /1\.4\.5-alpha-rabbit-genetics-3/);
 assert.match(pwa, /rabbit-genetics-engine-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(pwa, /rabbit-genetics-runtime-v1\.4\.5\.js\?v=1\.4\.5/);
+assert.match(pwa, /pedigree-genetics-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(androidManifest, /package="com\.ebrllc\.herdharbor"/);
 assert.match(androidManifest, /android:allowBackup="false"/);
 assert.match(androidManifest, /android:usesCleartextTraffic="false"/);
@@ -49,6 +52,8 @@ assert.ok(fs.existsSync(path.join(root, "android/app/src/main/java/com/ebrllc/he
 assert.ok(fs.existsSync(path.join(root, "android/app/src/main/java/com/ebrllc/herdharbor/DelegationService.java")));
 assert.ok(fs.existsSync(path.join(root, "android/app/src/main/java/com/ebrllc/herdharbor/LauncherActivity.java")));
 assert.ok(!fs.existsSync(path.join(root, "android/app/src/main/java/com/herdharbor/app/Application.java")));
+assert.ok(fs.existsSync(path.join(root, "pedigree-genetics-v1.4.5.js")));
+assert.ok(fs.existsSync(path.join(root, "pedigree-genetics-v1.4.5.css")));
 assert.ok(title.length <= 30, "Play title must be 30 characters or fewer");
 assert.ok(shortDescription.length <= 80, "Play short description must be 80 characters or fewer");
 assert.ok(fullDescription.length <= 4000, "Play full description must be 4,000 characters or fewer");
@@ -56,4 +61,4 @@ assert.ok(fs.statSync(path.join(root, "android/store_icon.png")).size <= 1024 * 
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/app-icon-512.png")));
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/feature-graphic-1024x500.png")));
 
-console.log("Google Play Alpha v1.4.5 wrapper + genetics release readiness tests passed");
+console.log("Google Play Alpha v1.4.5 wrapper + pedigree genetics release readiness tests passed");

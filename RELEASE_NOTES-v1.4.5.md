@@ -1,6 +1,6 @@
 # HerdHarbor Alpha v1.4.5
 
-Rabbit Genetics Prediction, Pairing Fixes, Help Center & Website Update
+Rabbit Genetics Prediction, Pairing Fixes, Pedigree Genetics, Help Center & Website Update
 
 ## Rabbit Genetics
 
@@ -16,6 +16,23 @@ Rabbit Genetics Prediction, Pairing Fixes, Help Center & Website Update
 - Retained separate Vienna genotype and visible VM/VC/BEW status. Vv does not receive a fabricated visible-marking percentage.
 - Retained En broken-pattern inheritance separately from base coat color.
 - Retained underlying color genetics for BEW rabbits.
+
+## Genetics on Pedigrees
+
+- Added the current Rabbit Genetics lettering directly to on-screen and printed/exported pedigrees for the subject rabbit, parents, grandparents, and great-grandparents whenever a matching rabbit genetics record is available.
+- Pedigree genetics uses the same `refineAnimalGenetics`, phenotype, pedigree, offspring, Vienna, Broken, evidence, and conflict model used by Pair Analysis. It does not maintain a separate pedigree-only genotype.
+- Added all seven displayed loci to each genetics line: A, B, C, D, E, En, and V.
+- Partial genotypes remain visible with underscores rather than being hidden simply because one or more alleles are unresolved.
+- Added evidence-aware visual states for Proven, Inferred, Possible, and Unknown genetics.
+- Added a compact Known Genetics summary where card space allows and an interactive genetics detail panel with locus evidence, pedigree/offspring reasoning, and conflicts.
+- Added **Show Genetics on Pedigree** settings: Off, Known Only, and Full Inferred. Rabbit pedigrees default to Full Inferred.
+- Added **Include Genetics on Printed Pedigree**, enabled by default for rabbits and respecting the selected pedigree genetics mode.
+- Known Only preserves entered, phenotype-proven, offspring-proven, and other directly proven genetics while excluding unsupported pedigree-only/possible alleles.
+- Full Inferred displays the best current engine-derived sequence, including strong pedigree inference and unresolved underscores.
+- Long alleles such as `cchd` and `cchl` are kept as non-breaking locus tokens so wrapping occurs only between loci.
+- Four-generation print sizing remains generation-aware, preserves the existing male/female color distinction, and leaves breeder, color, identification, registration, DOB, and other protected pedigree fields at their existing readable sizes.
+- Pedigree photos and genetics are laid out without overlap; compact genetics sizing is used in later print generations instead of shrinking the entire pedigree.
+- Pedigree genetics recalculates automatically when the underlying HerdHarbor animal/genetics state changes. Calculated genetics is display-only and does not overwrite breeder-entered genotype data.
 
 ## Pairing & Breeding
 
@@ -37,7 +54,7 @@ Rabbit Genetics Prediction, Pairing Fixes, Help Center & Website Update
 
 ## Data Safety
 
-Alpha v1.4.5 is additive. Existing animals, photos, pedigrees, breeding records, litters, offspring, health, production, finances, customers, sales, tasks, backups, custom colors, cloud data, and local device records remain in the existing data model. New genetics fields remain optional and backward-compatible.
+Alpha v1.4.5 is additive. Existing animals, photos, pedigrees, breeding records, litters, offspring, health, production, finances, customers, sales, tasks, backups, custom colors, cloud data, and local device records remain in the existing data model. New genetics fields remain optional and backward-compatible. Pedigree inference is calculated separately for display and does not overwrite breeder-entered genotype data.
 
 ## Important Genetics Limitation
 
