@@ -79,7 +79,7 @@ const lilacDoe = rabbit("ld", "LD", "Lilac", "Female");
 
 const magpie = H.analyze(blackMagpieBuck, blueMagpieDoe);
 const chocolateLilac = H.analyze(chocolateBuck, lilacDoe);
-const names = (result) => result.out.map((outcome) => outcome.name).sort();
+const names = (result) => Array.from(result.out, (outcome) => String(outcome.name)).sort();
 
 assert.deepEqual(Array.from(magpie.inputs), ["Black Magpie", "Blue Magpie"]);
 assert.ok(names(magpie).some((name) => /Magpie/.test(name)));
