@@ -9,7 +9,9 @@ const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 const pwa = fs.readFileSync(path.join(root, "pwa.js"), "utf8");
+const release = fs.readFileSync(path.join(root, "herdharbor-release-v1.4.5.js"), "utf8");
 
+// Legacy inline Member app remains intact; v1.4.5 is additive.
 assert.match(html, /const APP_VERSION = "1\.3\.0"/);
 assert.match(html, /id="request-account-deletion"/);
 assert.match(html, /Type DELETE to confirm/);
@@ -28,20 +30,24 @@ assert.match(cloud, /navigator\.onLine === false/);
 assert.match(cloud, /dirty && !\(await syncNow\(\)\)/);
 assert.match(cloud, /requestAccountDeletion\n/);
 
-assert.match(worker, /v1\.4\.2-alpha-20260824-1/);
+assert.match(worker, /v1\.4\.5-alpha-20260825-1/);
 assert.match(worker, /herdharbor-cloud\.js\?v=17/);
 assert.match(worker, /symptom-guide\.js\?v=1/);
 assert.match(worker, /pwa\.js\?v=21/);
 assert.match(worker, /pedigree-visual\.css\?v=2/);
 assert.match(worker, /pedigree-visual\.js\?v=2/);
 assert.match(worker, /breeding-intelligence-core\.js\?v=1\.4\.0/);
-assert.match(worker, /breeding-intelligence\.js\?v=1\.4\.0/);
-assert.match(worker, /breeding-pair-hotfix-v1\.4\.2\.js\?v=1/);
+assert.match(worker, /rabbit-records-v1\.4\.5\.js\?v=1\.4\.5/);
+assert.match(worker, /rabbit-genetics-engine-v1\.4\.5\.js\?v=1\.4\.5/);
+assert.match(worker, /rabbit-genetics-ui-v1\.4\.5\.js\?v=1\.4\.5/);
+assert.match(worker, /herdharbor-release-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(worker, /breeding-intelligence-tools\.js\?v=1\.4\.0/);
 assert.match(worker, /spreadsheet-import\.js\?v=17/);
-assert.match(pwa, /1\.4\.2-alpha-rabbit-pair-hotfix-1/);
+assert.match(pwa, /1\.4\.5-alpha-rabbit-genetics-1/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
-assert.match(pwa, /breeding-pair-hotfix-v1\.4\.2\.js\?v=1/);
+assert.match(pwa, /rabbit-genetics-engine-v1\.4\.5\.js\?v=1\.4\.5/);
+assert.match(release, /Open HerdHarbor How-To Center/);
+assert.match(release, /https:\/\/herdharbor\.com\/how-to\//);
 
-console.log("launch hardening and account deletion tests passed");
+console.log("Alpha v1.4.5 launch hardening, Help, and account deletion tests passed");
