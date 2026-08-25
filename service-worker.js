@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v1.4.0-alpha-20260824-2`;
+const CACHE_NAME = `${CACHE_PREFIX}v1.4.1-alpha-20260824-1`;
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -14,6 +14,7 @@ const APP_SHELL = [
   "./breeding-intelligence-core.js?v=1.4.0",
   "./breeding-intelligence.css?v=1.4.0",
   "./breeding-intelligence.js?v=1.4.0",
+  "./breeding-pair-hotfix-v1.4.1.js?v=1",
   "./breeding-intelligence-tools.js?v=1.4.0",
   "./vendor/supabase-2.111.0.js",
   "./vendor/jszip-3.10.1.min.js",
