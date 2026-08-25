@@ -39,14 +39,16 @@ assert.match(worker, /pedigree-visual\.js\?v=2/);
 assert.match(worker, /breeding-intelligence-core\.js\?v=1\.4\.0/);
 assert.match(worker, /rabbit-records-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(worker, /rabbit-genetics-engine-v1\.4\.5\.js\?v=1\.4\.5/);
+assert.match(worker, /rabbit-genetics-runtime-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(worker, /rabbit-genetics-ui-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(worker, /herdharbor-release-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(worker, /breeding-intelligence-tools\.js\?v=1\.4\.0/);
 assert.match(worker, /spreadsheet-import\.js\?v=17/);
-assert.match(pwa, /1\.4\.5-alpha-rabbit-genetics-1/);
+assert.match(pwa, /1\.4\.5-alpha-rabbit-genetics-2/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
 assert.match(pwa, /rabbit-genetics-engine-v1\.4\.5\.js\?v=1\.4\.5/);
+assert.match(pwa, /rabbit-genetics-runtime-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(release, /Open HerdHarbor How-To Center/);
 assert.match(release, /https:\/\/herdharbor\.com\/how-to\//);
 
