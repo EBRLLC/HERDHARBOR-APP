@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const PWA_BUILD = "1.4.1-alpha-rabbit-pair-hotfix-1";
+  const PWA_BUILD = "1.4.2-alpha-rabbit-pair-hotfix-1";
   let installPrompt = null;
   let registration = null;
   let updateToast = null;
@@ -38,7 +38,7 @@
     addStylesheet("hh-breeding-intelligence-style", "breeding-intelligence.css?v=1.4.0");
     addScript("hh-breeding-intelligence-core-script", "breeding-intelligence-core.js?v=1.4.0", () => {
       addScript("hh-breeding-intelligence-script", "breeding-intelligence.js?v=1.4.0", () => {
-        addScript("hh-breeding-pair-hotfix-script", "breeding-pair-hotfix-v1.4.1.js?v=1", () => {
+        addScript("hh-breeding-pair-hotfix-script", "breeding-pair-hotfix-v1.4.2.js?v=1", () => {
           addScript("hh-breeding-intelligence-tools-script", "breeding-intelligence-tools.js?v=1.4.0");
         });
       });
