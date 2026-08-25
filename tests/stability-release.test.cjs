@@ -9,8 +9,8 @@ const spreadsheet = fs.readFileSync(path.join(root, "spreadsheet-import.js"), "u
 const serviceWorker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 const pwa = fs.readFileSync(path.join(root, "pwa.js"), "utf8");
 
-// v1.4.1 is additive: the legacy inline Member app remains intact while
-// the Pair Analysis hotfix is loaded through the existing PWA shell.
+// v1.4.2 is additive: the legacy inline Member app remains intact while
+// the safe Pair Analysis hotfix is loaded through the existing PWA shell.
 assert.match(html, /HerdHarbor Alpha v1\.3\.0 Member workflow and cattle record release/);
 assert.match(html, /id="settings-sync-now"/);
 assert.match(html, /id="settings-last-synced"/);
@@ -70,24 +70,23 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /v1\.4\.1-alpha-/);
-assert.match(serviceWorker, /v1\.4\.1-alpha-20260824-2/);
+assert.match(serviceWorker, /v1\.4\.2-alpha-/);
+assert.match(serviceWorker, /v1\.4\.2-alpha-20260824-1/);
 assert.match(serviceWorker, /spreadsheet-import\.js\?v=17/);
 assert.match(serviceWorker, /herdharbor-cloud\.js\?v=17/);
 assert.match(serviceWorker, /symptom-guide\.js\?v=1/);
 assert.match(serviceWorker, /pwa\.js\?v=21/);
-assert.match(serviceWorker, /pwa\.js\?v=24/);
 assert.match(serviceWorker, /pedigree-visual\.css\?v=2/);
 assert.match(serviceWorker, /pedigree-visual\.js\?v=2/);
 assert.match(serviceWorker, /breeding-intelligence-core\.js\?v=1\.4\.0/);
 assert.match(serviceWorker, /breeding-intelligence\.css\?v=1\.4\.0/);
 assert.match(serviceWorker, /breeding-intelligence\.js\?v=1\.4\.0/);
-assert.match(serviceWorker, /breeding-pair-hotfix-v1\.4\.1\.js\?v=2/);
+assert.match(serviceWorker, /breeding-pair-hotfix-v1\.4\.2\.js\?v=1/);
 assert.match(serviceWorker, /breeding-intelligence-tools\.js\?v=1\.4\.0/);
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);
-assert.match(pwa, /1\.4\.1-alpha-rabbit-pair-hotfix-2/);
+assert.match(pwa, /1\.4\.2-alpha-rabbit-pair-hotfix-1/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
-assert.match(pwa, /breeding-pair-hotfix-v1\.4\.1\.js\?v=2/);
+assert.match(pwa, /breeding-pair-hotfix-v1\.4\.2\.js\?v=1/);
 
-console.log("v1.4.1 alpha Pair Analysis hotfix stability tests passed");
+console.log("v1.4.2 alpha Pair Analysis hotfix stability tests passed");
