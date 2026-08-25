@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v1.4.5-alpha-20260825-1`;
+const CACHE_NAME = `${CACHE_PREFIX}v1.4.5-alpha-20260825-2`;
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -11,6 +11,8 @@ const APP_SHELL = [
   "./pwa.js?v=21",
   "./pedigree-visual.css?v=2",
   "./pedigree-visual.js?v=2",
+  "./pedigree-genetics-v1.4.5.css?v=1.4.5",
+  "./pedigree-genetics-v1.4.5.js?v=1.4.5",
   "./breeding-intelligence-core.js?v=1.4.0",
   "./rabbit-records-v1.4.5.js?v=1.4.5",
   "./rabbit-genetics-engine-v2.js?v=2.0.0",
@@ -71,6 +73,8 @@ self.addEventListener("fetch", (event) => {
     url.pathname.endsWith("/rabbit-genetics-runtime-v1.4.5.js") ||
     url.pathname.endsWith("/rabbit-genetics-ui-v1.4.5.js") ||
     url.pathname.endsWith("/rabbit-genetics-ui-v2.js") ||
+    url.pathname.endsWith("/pedigree-genetics-v1.4.5.js") ||
+    url.pathname.endsWith("/pedigree-genetics-v1.4.5.css") ||
     url.pathname.endsWith("/herdharbor-release-v1.4.5.js") ||
     url.pathname.endsWith("/breeding-genetics-v2.css");
   if (forceFresh) {
