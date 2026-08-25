@@ -19,25 +19,29 @@ const fullDescription = read("google-play/listing/en-US/full-description.txt").t
 const androidManifest = read("android/app/src/main/AndroidManifest.xml");
 
 assert.doesNotMatch(html, /pre[ -]?alpha/i);
-assert.equal(manifest.version, "1.4.0");
+assert.equal(manifest.version, "1.4.5");
 assert.equal(manifest.display, "standalone");
 assert.equal(twa.packageId, "com.ebrllc.herdharbor");
-assert.equal(twa.appVersion, "1.4.0-alpha");
-assert.equal(twa.appVersionCode, 6);
+assert.equal(twa.appVersion, "1.4.5");
+assert.equal(twa.appVersionCode, 7);
 assert.equal(twa.host, "app.herdharbor.com");
 assert.match(appGradle, /applicationId:\s*'com\.ebrllc\.herdharbor'/);
 assert.match(appGradle, /namespace "com\.ebrllc\.herdharbor"/);
 assert.match(appGradle, /applicationId "com\.ebrllc\.herdharbor"/);
 assert.match(appGradle, /compileSdkVersion 36/);
 assert.match(appGradle, /targetSdkVersion 36/);
-assert.match(appGradle, /versionCode 6/);
-assert.match(appGradle, /versionName "1\.4\.0-alpha"/);
+assert.match(appGradle, /versionCode 7/);
+assert.match(appGradle, /versionName "1\.4\.5"/);
 assert.match(appGradle, /https:\/\/app\.herdharbor\.com\/manifest\.json/);
-assert.match(worker, /breeding-intelligence-core\.js\?v=1\.4\.0/);
-assert.match(worker, /breeding-intelligence\.js\?v=1\.4\.0/);
-assert.match(worker, /breeding-pair-hotfix-v1\.4\.2\.js\?v=1/);
-assert.match(pwa, /1\.4\.2-alpha-rabbit-pair-hotfix-1/);
-assert.match(pwa, /breeding-pair-hotfix-v1\.4\.2\.js\?v=1/);
+assert.match(worker, /v1\.4\.5-alpha-20260825-1/);
+assert.match(worker, /rabbit-records-v1\.4\.5\.js\?v=1\.4\.5/);
+assert.match(worker, /rabbit-genetics-engine-v1\.4\.5\.js\?v=1\.4\.5/);
+assert.match(worker, /rabbit-genetics-runtime-v1\.4\.5\.js\?v=1\.4\.5/);
+assert.match(worker, /rabbit-genetics-ui-v1\.4\.5\.js\?v=1\.4\.5/);
+assert.match(worker, /herdharbor-release-v1\.4\.5\.js\?v=1\.4\.5/);
+assert.match(pwa, /1\.4\.5-alpha-rabbit-genetics-2/);
+assert.match(pwa, /rabbit-genetics-engine-v1\.4\.5\.js\?v=1\.4\.5/);
+assert.match(pwa, /rabbit-genetics-runtime-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(androidManifest, /package="com\.ebrllc\.herdharbor"/);
 assert.match(androidManifest, /android:allowBackup="false"/);
 assert.match(androidManifest, /android:usesCleartextTraffic="false"/);
@@ -52,4 +56,4 @@ assert.ok(fs.statSync(path.join(root, "android/store_icon.png")).size <= 1024 * 
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/app-icon-512.png")));
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/feature-graphic-1024x500.png")));
 
-console.log("Google Play v1.4.0 wrapper + v1.4.2 web hotfix readiness tests passed");
+console.log("Google Play Alpha v1.4.5 wrapper + genetics release readiness tests passed");
