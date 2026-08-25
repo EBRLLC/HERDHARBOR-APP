@@ -5,6 +5,7 @@ assert.equal(Core.VERSION, '1.4.0');
 assert.equal(Core.speciesTerms('Rabbit').birth, 'Kindling');
 assert.equal(Core.speciesTerms('Cattle').birth, 'Calving');
 assert.ok(Core.getSpeciesModule('Rabbit'), 'rabbit module registered');
+assert.deepEqual(Core.RABBIT_LOCI.E.dominance, ['Ed','Es','E','ej','e']);
 
 function rabbit(id, name, color, sex, loci = {}) {
   const genetics = Core.normalizeGenetics({ loci: Object.fromEntries(Object.entries(loci).map(([k, alleles]) => [k, { alleles, status: 'confirmed' }])) });
@@ -34,6 +35,8 @@ assert.ok(uncertain.possibleOutcomes.some((o)=>o.name==='Black'));
 assert.ok(uncertain.possibleOutcomes.some((o)=>o.name==='Blue'));
 
 assert.equal(Core.phenotypeFromGenotype({A:['A','a'],B:['B','b'],C:['c','c'],D:['D','d'],E:['E','e']}).name,'REW');
+assert.equal(Core.phenotypeFromGenotype({A:['A','A'],B:['B','B'],C:['C','C'],D:['D','D'],E:['Ed','e']}).name,'Black');
+assert.equal(Core.phenotypeFromGenotype({A:['A','A'],B:['B','B'],C:['C','C'],D:['D','D'],E:['Ed','e']}).family,'Full-extension');
 
 const target={id:'target',name:'Target',species:'Rabbit',color:'Black',sireId:'blue-sire',damId:'dam'};
 const blueSire={id:'blue-sire',name:'Blue Sire',species:'Rabbit',color:'Blue',sireId:'blue-grand'};
