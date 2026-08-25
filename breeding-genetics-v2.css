@@ -1,0 +1,15 @@
+/* HerdHarbor Rabbit Genetics v2 additions. Extends the existing Breeding Intelligence theme. */
+.hh-bi-carrier-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0 16px}
+.hh-bi-carrier-option{display:flex!important;grid-template-columns:auto 1fr!important;align-items:center;gap:8px!important;min-height:42px;padding:9px 11px;border:1px solid rgba(13,37,64,.12);border-radius:10px;background:#fff;font-weight:700!important}
+.hh-bi-carrier-option input{width:auto!important;min-height:auto!important;margin:0}
+.hh-bi-advanced{margin:16px 0;border:1px solid rgba(13,37,64,.12);border-radius:12px;background:#fff;overflow:hidden}
+.hh-bi-advanced>summary{padding:14px 16px;cursor:pointer;font-weight:800;color:#0d2540}
+.hh-bi-advanced[open]>summary{border-bottom:1px solid rgba(13,37,64,.12)}
+.hh-bi-advanced>.hh-bi-loci,.hh-bi-advanced>.hh-bi-two-col,.hh-bi-advanced>.hh-bi-note{margin-left:14px;margin-right:14px}
+.hh-bi-result-row small{color:#65727e;font-size:.76rem;line-height:1.4}
+.hh-bi-evidence-panel li{margin:7px 0;line-height:1.45}
+.hh-bi-profile-summary em{color:#65727e;font-size:.83rem;font-style:normal}
+.hh-bi-animal-genetics-panel{margin-top:16px;padding-top:16px;border-top:1px solid var(--border,rgba(13,37,64,.12))}
+.hh-bi-animal-genetics-panel .action-row{margin-top:10px}
+@media(max-width:760px){.hh-bi-carrier-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:470px){.hh-bi-carrier-grid{grid-template-columns:1fr}}
