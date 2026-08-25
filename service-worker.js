@@ -15,6 +15,7 @@ const APP_SHELL = [
   "./rabbit-records-v1.4.5.js?v=1.4.5",
   "./rabbit-genetics-engine-v2.js?v=2.0.0",
   "./rabbit-genetics-engine-v1.4.5.js?v=1.4.5",
+  "./rabbit-genetics-runtime-v1.4.5.js?v=1.4.5",
   "./breeding-intelligence.css?v=1.4.0",
   "./breeding-genetics-v2.css?v=2.0.0",
   "./breeding-intelligence.js?v=1.4.0",
@@ -67,6 +68,7 @@ self.addEventListener("fetch", (event) => {
     url.pathname.endsWith("/rabbit-records-v1.4.5.js") ||
     url.pathname.endsWith("/rabbit-genetics-engine-v2.js") ||
     url.pathname.endsWith("/rabbit-genetics-engine-v1.4.5.js") ||
+    url.pathname.endsWith("/rabbit-genetics-runtime-v1.4.5.js") ||
     url.pathname.endsWith("/rabbit-genetics-ui-v1.4.5.js") ||
     url.pathname.endsWith("/rabbit-genetics-ui-v2.js") ||
     url.pathname.endsWith("/herdharbor-release-v1.4.5.js") ||
