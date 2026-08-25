@@ -12,9 +12,12 @@ const APP_SHELL = [
   "./pedigree-visual.css?v=2",
   "./pedigree-visual.js?v=2",
   "./breeding-intelligence-core.js?v=1.4.0",
+  "./rabbit-genetics-engine-v2.js?v=2.0.0",
   "./breeding-intelligence.css?v=1.4.0",
+  "./breeding-genetics-v2.css?v=2.0.0",
   "./breeding-intelligence.js?v=1.4.0",
   "./breeding-pair-hotfix-v1.4.2.js?v=1",
+  "./rabbit-genetics-ui-v2.js?v=2.0.0",
   "./breeding-intelligence-tools.js?v=1.4.0",
   "./vendor/supabase-2.111.0.js",
   "./vendor/jszip-3.10.1.min.js",
@@ -69,7 +72,11 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  const forceFresh = url.pathname.endsWith("/pwa.js") || url.pathname.endsWith("/breeding-pair-hotfix-v1.4.2.js");
+  const forceFresh = url.pathname.endsWith("/pwa.js") ||
+    url.pathname.endsWith("/breeding-pair-hotfix-v1.4.2.js") ||
+    url.pathname.endsWith("/rabbit-genetics-engine-v2.js") ||
+    url.pathname.endsWith("/rabbit-genetics-ui-v2.js") ||
+    url.pathname.endsWith("/breeding-genetics-v2.css");
   if (forceFresh) {
     event.respondWith(
       fetch(request)
