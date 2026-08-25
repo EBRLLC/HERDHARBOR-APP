@@ -42,10 +42,12 @@ assert.match(cloud, /-webkit-text-fill-color: var\(--hh-auth-text\)/);
 assert.match(cloud, /input:-webkit-autofill/);
 assert.match(cloud, /--hh-auth-surface: #102A41/);
 assert.match(cloud, /--hh-auth-input: #0A2033/);
-assert.match(worker, /v1\.3\.0-alpha-20260817-1/);
+assert.match(worker, /v1\.4\.0-alpha-20260824-2/);
 assert.match(worker, /herdharbor-cloud\.js\?v=17/);
 assert.match(worker, /pedigree-visual\.css\?v=2/);
 assert.match(worker, /pedigree-visual\.js\?v=2/);
+assert.match(worker, /breeding-intelligence-core\.js\?v=1\.4\.0/);
+assert.match(worker, /breeding-intelligence\.js\?v=1\.4\.0/);
 
 function luminance(hex) {
   const channels = hex.slice(1).match(/../g).map((part) => parseInt(part, 16) / 255);
