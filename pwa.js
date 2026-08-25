@@ -36,10 +36,15 @@
 
   function loadBreedingIntelligence() {
     addStylesheet("hh-breeding-intelligence-style", "breeding-intelligence.css?v=1.4.0");
+    addStylesheet("hh-rabbit-genetics-v2-style", "breeding-genetics-v2.css?v=2.0.0");
     addScript("hh-breeding-intelligence-core-script", "breeding-intelligence-core.js?v=1.4.0", () => {
-      addScript("hh-breeding-intelligence-script", "breeding-intelligence.js?v=1.4.0", () => {
-        addScript("hh-breeding-pair-hotfix-script", "breeding-pair-hotfix-v1.4.2.js?v=1", () => {
-          addScript("hh-breeding-intelligence-tools-script", "breeding-intelligence-tools.js?v=1.4.0");
+      addScript("hh-rabbit-genetics-v2-engine", "rabbit-genetics-engine-v2.js?v=2.0.0", () => {
+        addScript("hh-breeding-intelligence-script", "breeding-intelligence.js?v=1.4.0", () => {
+          addScript("hh-breeding-pair-hotfix-script", "breeding-pair-hotfix-v1.4.2.js?v=1", () => {
+            addScript("hh-rabbit-genetics-v2-ui", "rabbit-genetics-ui-v2.js?v=2.0.0", () => {
+              addScript("hh-breeding-intelligence-tools-script", "breeding-intelligence-tools.js?v=1.4.0");
+            });
+          });
         });
       });
     });
