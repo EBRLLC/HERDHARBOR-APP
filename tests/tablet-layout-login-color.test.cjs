@@ -35,13 +35,13 @@ assert.match(cloud, /-webkit-text-fill-color: var\(--hh-auth-text\)/);
 assert.match(cloud, /input:-webkit-autofill/);
 assert.match(cloud, /--hh-auth-surface: #102A41/);
 assert.match(cloud, /--hh-auth-input: #0A2033/);
-assert.match(worker, /v1\.4\.1-alpha-20260824-2/);
+assert.match(worker, /v1\.4\.2-alpha-20260824-1/);
 assert.match(worker, /herdharbor-cloud\.js\?v=17/);
 assert.match(worker, /pedigree-visual\.css\?v=2/);
 assert.match(worker, /pedigree-visual\.js\?v=2/);
 assert.match(worker, /breeding-intelligence-core\.js\?v=1\.4\.0/);
 assert.match(worker, /breeding-intelligence\.js\?v=1\.4\.0/);
-assert.match(worker, /breeding-pair-hotfix-v1\.4\.1\.js\?v=2/);
+assert.match(worker, /breeding-pair-hotfix-v1\.4\.2\.js\?v=1/);
 
 function luminance(hex) {
   const channels = hex.slice(1).match(/../g).map((part) => parseInt(part, 16) / 255);
