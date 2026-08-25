@@ -1,16 +1,20 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v1.3.0-alpha-20260817-1`;
+const CACHE_NAME = `${CACHE_PREFIX}v1.4.0-alpha-20260824-2`;
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./manifest.json?v=14",
+  "./manifest.json?v=15",
   "./herdharbor-cloud.js?v=17",
   "./symptom-guide.js?v=1",
-  "./pwa.js?v=21",
+  "./pwa.js?v=23",
   "./pedigree-visual.css?v=2",
   "./pedigree-visual.js?v=2",
+  "./breeding-intelligence-core.js?v=1.4.0",
+  "./breeding-intelligence.css?v=1.4.0",
+  "./breeding-intelligence.js?v=1.4.0",
+  "./breeding-intelligence-tools.js?v=1.4.0",
   "./vendor/supabase-2.111.0.js",
   "./vendor/jszip-3.10.1.min.js",
   "./vendor/exceljs-4.4.0.min.js",
@@ -21,19 +25,13 @@ const APP_SHELL = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(
-        keys
-          .filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
-      ))
+      .then((keys) => Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME).map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });
@@ -45,11 +43,7 @@ self.addEventListener("message", (event) => {
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
-
   const url = new URL(request.url);
-
-  // Authentication, database, storage, and all other cross-origin traffic always
-  // goes straight to the network. User records and session responses are never cached.
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === "navigate") {
@@ -58,9 +52,7 @@ self.addEventListener("fetch", (event) => {
         .then((response) => {
           if (response.ok && url.pathname.endsWith("/")) {
             const copy = response.clone();
-            event.waitUntil(
-              caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", copy))
-            );
+            event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", copy)));
           }
           return response;
         })
@@ -78,9 +70,7 @@ self.addEventListener("fetch", (event) => {
       return fetch(request).then((response) => {
         if (response.ok && response.type === "basic") {
           const copy = response.clone();
-          event.waitUntil(
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy))
-          );
+          event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)));
         }
         return response;
       });

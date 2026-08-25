@@ -9,6 +9,8 @@ const spreadsheet = fs.readFileSync(path.join(root, "spreadsheet-import.js"), "u
 const serviceWorker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 const pwa = fs.readFileSync(path.join(root, "pwa.js"), "utf8");
 
+// v1.4.0 is additive: the legacy inline Member app remains intact while
+// Breeding Intelligence is loaded as versioned modules through the PWA shell.
 assert.match(html, /HerdHarbor Alpha v1\.3\.0 Member workflow and cattle record release/);
 assert.match(html, /id="settings-sync-now"/);
 assert.match(html, /id="settings-last-synced"/);
@@ -72,15 +74,21 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /v1\.3\.0-alpha-/);
-assert.match(serviceWorker, /v1\.3\.0-alpha-20260817-1/);
+assert.match(serviceWorker, /v1\.4\.0-alpha-/);
+assert.match(serviceWorker, /v1\.4\.0-alpha-20260824-2/);
 assert.match(serviceWorker, /spreadsheet-import\.js\?v=17/);
 assert.match(serviceWorker, /herdharbor-cloud\.js\?v=17/);
 assert.match(serviceWorker, /symptom-guide\.js\?v=1/);
-assert.match(serviceWorker, /pwa\.js\?v=21/);
+assert.match(serviceWorker, /pwa\.js\?v=23/);
 assert.match(serviceWorker, /pedigree-visual\.css\?v=2/);
 assert.match(serviceWorker, /pedigree-visual\.js\?v=2/);
+assert.match(serviceWorker, /breeding-intelligence-core\.js\?v=1\.4\.0/);
+assert.match(serviceWorker, /breeding-intelligence\.css\?v=1\.4\.0/);
+assert.match(serviceWorker, /breeding-intelligence\.js\?v=1\.4\.0/);
+assert.match(serviceWorker, /breeding-intelligence-tools\.js\?v=1\.4\.0/);
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);
+assert.match(pwa, /1\.4\.0-alpha-breeding-intelligence-2/);
 assert.match(pwa, /loadPedigreeVisuals/);
+assert.match(pwa, /loadBreedingIntelligence/);
 
-console.log("v1.3.0 alpha stability release tests passed");
+console.log("v1.4.0 alpha stability release tests passed");
