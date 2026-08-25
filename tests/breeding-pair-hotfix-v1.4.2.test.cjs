@@ -62,7 +62,8 @@ assert.equal(H.isPairingRabbit({ species: "Rabbit", status: "Deceased" }), false
 for (const color of [
   "Black", "Blue", "Chocolate", "Lilac",
   "Black Magpie", "Blue Magpie", "Chocolate Magpie", "Lilac Magpie",
-  "Black Harlequin", "Chinchilla", "Red Eyed White (REW)", "Broken Black Magpie"
+  "Black Harlequin", "Chinchilla", "Red Eyed White (REW)",
+  "Blue Eyed White (BEW)", "Broken Black Magpie"
 ]) {
   assert.ok(H.standardColors.includes(color), color);
 }
@@ -84,6 +85,24 @@ assert.deepEqual(Array.from(magpie.inputs), ["Black Magpie", "Blue Magpie"]);
 assert.ok(names(magpie).some((name) => /Magpie/.test(name)));
 assert.notDeepEqual(names(magpie), names(chocolateLilac));
 
+// BEW is a Vienna-locus phenotype. A true BEW is vv, therefore vv x vv
+// must return 100% vv rather than falling into the A/B/C/D/E color mapper.
+const bewBuck = rabbit("bewb", "Frost", "Blue Eyed White (BEW)", "Male");
+const bewDoe = rabbit("bewd", "Snow", "Blue Eyed White (BEW)", "Female");
+const bewPair = H.analyze(bewBuck, bewDoe);
+assert.equal(bewPair.bad.length, 0);
+assert.equal(bewPair.warning, "");
+assert.deepEqual(names(bewPair), ["Blue Eyed White (BEW)"]);
+assert.equal(bewPair.out[0].badge, "100% vv");
+assert.match(bewPair.out[0].family, /vv × vv → 100% vv/);
+assert.match(bewPair.note, /Every kit receives one recessive Vienna allele from each parent/);
+
+// A BEW crossed to a rabbit whose Vienna status is unknown must not produce
+// a fake all-colors prediction from the unrelated A/B/C/D/E loci.
+const bewUnknownMate = H.analyze(bewBuck, chocolateBuck);
+assert.equal(bewUnknownMate.out.length, 0);
+assert.match(bewUnknownMate.warning, /Vienna status/);
+
 // Ancestor records/colors are deliberately not prediction inputs.
 blackMagpieBuck.sireId = "ancestor1";
 blueMagpieDoe.damId = "ancestor2";
@@ -100,5 +119,6 @@ assert.match(source, /input\[name="color"\]/);
 assert.match(source, /Ancestor colors: NOT used/);
 assert.match(source, /stopImmediatePropagation/);
 assert.match(source, /focusin/);
+assert.doesNotMatch(source, /MutationObserver/);
 
-console.log("HerdHarbor v1.4.2 Pair Analysis freeze-regression tests passed");
+console.log("HerdHarbor v1.4.2 Pair Analysis freeze + BEW Vienna tests passed");
