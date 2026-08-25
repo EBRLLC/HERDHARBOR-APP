@@ -28,20 +28,21 @@ assert.match(cloud, /navigator\.onLine === false/);
 assert.match(cloud, /dirty && !\(await syncNow\(\)\)/);
 assert.match(cloud, /requestAccountDeletion\n/);
 
-assert.match(worker, /v1\.4\.1-alpha-20260824-1/);
+assert.match(worker, /v1\.4\.1-alpha-20260824-2/);
 assert.match(worker, /herdharbor-cloud\.js\?v=17/);
 assert.match(worker, /symptom-guide\.js\?v=1/);
-assert.match(worker, /pwa\.js\?v=23/);
+assert.match(worker, /pwa\.js\?v=21/);
+assert.match(worker, /pwa\.js\?v=24/);
 assert.match(worker, /pedigree-visual\.css\?v=2/);
 assert.match(worker, /pedigree-visual\.js\?v=2/);
 assert.match(worker, /breeding-intelligence-core\.js\?v=1\.4\.0/);
 assert.match(worker, /breeding-intelligence\.js\?v=1\.4\.0/);
-assert.match(worker, /breeding-pair-hotfix-v1\.4\.1\.js\?v=1/);
+assert.match(worker, /breeding-pair-hotfix-v1\.4\.1\.js\?v=2/);
 assert.match(worker, /breeding-intelligence-tools\.js\?v=1\.4\.0/);
 assert.match(worker, /spreadsheet-import\.js\?v=17/);
-assert.match(pwa, /1\.4\.1-alpha-rabbit-pair-hotfix-1/);
+assert.match(pwa, /1\.4\.1-alpha-rabbit-pair-hotfix-2/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
-assert.match(pwa, /breeding-pair-hotfix-v1\.4\.1\.js\?v=1/);
+assert.match(pwa, /breeding-pair-hotfix-v1\.4\.1\.js\?v=2/);
 
 console.log("launch hardening and account deletion tests passed");
