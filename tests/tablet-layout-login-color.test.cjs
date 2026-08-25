@@ -9,6 +9,7 @@ const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const manifest = JSON.parse(fs.readFileSync(path.join(root, "manifest.json"), "utf8"));
 const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
+const release = fs.readFileSync(path.join(root, "herdharbor-release-v1.4.5.js"), "utf8");
 
 assert.match(html, /const APP_VERSION = "1\.3\.0"/);
 assert.match(html, /html \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
@@ -24,8 +25,8 @@ assert.match(html, /\.list-item-main strong \{[\s\S]*?overflow-wrap: anywhere;[\
 assert.match(html, /\.list-item \{[\s\S]*?max-width: 100%;[\s\S]*?min-width: 0;[\s\S]*?overflow: hidden;/);
 assert.match(html, /\.data-table-wrap \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: auto;[\s\S]*?overscroll-behavior-inline: contain;/);
 assert.match(html, /@media \(max-width: 820px\) \{[\s\S]*?#quick-add-button[\s\S]*?width: 42px;/);
-
 assert.equal(manifest.orientation, "portrait");
+assert.equal(manifest.version, "1.4.5");
 
 assert.match(cloud, /version: "1\.3\.0"/);
 assert.match(cloud, /html\[data-theme="dark"\] #hh-auth-root/);
@@ -35,13 +36,13 @@ assert.match(cloud, /-webkit-text-fill-color: var\(--hh-auth-text\)/);
 assert.match(cloud, /input:-webkit-autofill/);
 assert.match(cloud, /--hh-auth-surface: #102A41/);
 assert.match(cloud, /--hh-auth-input: #0A2033/);
-assert.match(worker, /v1\.4\.2-alpha-20260824-1/);
+assert.match(worker, /v1\.4\.5-alpha-20260825-1/);
 assert.match(worker, /herdharbor-cloud\.js\?v=17/);
 assert.match(worker, /pedigree-visual\.css\?v=2/);
 assert.match(worker, /pedigree-visual\.js\?v=2/);
-assert.match(worker, /breeding-intelligence-core\.js\?v=1\.4\.0/);
-assert.match(worker, /breeding-intelligence\.js\?v=1\.4\.0/);
-assert.match(worker, /breeding-pair-hotfix-v1\.4\.2\.js\?v=1/);
+assert.match(worker, /rabbit-genetics-ui-v1\.4\.5\.js\?v=1\.4\.5/);
+assert.match(release, /@media\(max-width:620px\)/);
+assert.match(release, /help-toggle/);
 
 function luminance(hex) {
   const channels = hex.slice(1).match(/../g).map((part) => parseInt(part, 16) / 255);
@@ -67,4 +68,4 @@ function contrast(foreground, background) {
   assert.ok(contrast(foreground, background) >= 4.5, `${label} meets WCAG AA contrast`);
 });
 
-console.log("tablet containment and login color tests passed");
+console.log("Alpha v1.4.5 tablet containment, Help, and login color tests passed");
