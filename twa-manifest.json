@@ -20,8 +20,8 @@
     "path": "../secrets/herdharbor-upload.jks",
     "alias": "herdharbor"
   },
-  "appVersion": "1.4.0-alpha",
-  "appVersionCode": 6,
+  "appVersion": "1.4.5",
+  "appVersionCode": 7,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://app.herdharbor.com/manifest.json",
