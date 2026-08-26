@@ -67,7 +67,9 @@
   function loadShows() {
     addStylesheet("hh-shows-v150-style", "shows-v1.5.0.css?v=1.5.0");
     addScript("hh-shows-v150-script", "shows-v1.5.0.js?v=1.5.0", () => {
-      addScript("hh-shows-v150-hardening", "shows-v1.5.0-hardening.js?v=1.5.0");
+      addScript("hh-shows-v150-hardening", "shows-v1.5.0-hardening.js?v=1.5.0", () => {
+        addScript("hh-shows-v150-performance", "shows-v1.5.0-performance.js?v=1.5.0");
+      });
     });
   }
 
