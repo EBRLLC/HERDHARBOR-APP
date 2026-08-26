@@ -13,8 +13,11 @@ const genetics = fs.readFileSync(path.join(root, "rabbit-genetics-engine-v1.4.5.
 const runtime = fs.readFileSync(path.join(root, "rabbit-genetics-runtime-v1.4.5.js"), "utf8");
 const pedigreeGenetics = fs.readFileSync(path.join(root, "pedigree-genetics-v1.4.5.js"), "utf8");
 const pedigreeGeneticsCss = fs.readFileSync(path.join(root, "pedigree-genetics-v1.4.5.css"), "utf8");
+const shows = fs.readFileSync(path.join(root, "shows-v1.5.0.js"), "utf8");
+const showsCss = fs.readFileSync(path.join(root, "shows-v1.5.0.css"), "utf8");
+const showsHardening = fs.readFileSync(path.join(root, "shows-v1.5.0-hardening.js"), "utf8");
 
-// v1.4.5 remains additive: the legacy Member app/data model stays intact while release assets overlay it.
+// v1.5.0 remains additive: the legacy Member app/data model stays intact while release assets overlay it.
 assert.match(html, /HerdHarbor Alpha v1\.3\.0 Member workflow and cattle record release/);
 assert.match(html, /id="settings-sync-now"/);
 assert.match(html, /id="settings-last-synced"/);
@@ -74,11 +77,11 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /v1\.4\.5-alpha-20260825-2/);
+assert.match(serviceWorker, /v1\.5\.0-alpha-shows-review-2/);
 assert.match(serviceWorker, /spreadsheet-import\.js\?v=17/);
 assert.match(serviceWorker, /herdharbor-cloud\.js\?v=17/);
 assert.match(serviceWorker, /symptom-guide\.js\?v=1/);
-assert.match(serviceWorker, /pwa\.js\?v=21/);
+assert.match(serviceWorker, /pwa\.js\?v=22/);
 assert.match(serviceWorker, /pedigree-visual\.css\?v=2/);
 assert.match(serviceWorker, /pedigree-visual\.js\?v=2/);
 assert.match(serviceWorker, /pedigree-genetics-v1\.4\.5\.css\?v=1\.4\.5/);
@@ -91,14 +94,15 @@ assert.match(serviceWorker, /rabbit-genetics-engine-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(serviceWorker, /rabbit-genetics-runtime-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(serviceWorker, /rabbit-genetics-ui-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(serviceWorker, /herdharbor-release-v1\.4\.5\.js\?v=1\.4\.5/);
-assert.match(serviceWorker, /breeding-intelligence-tools\.js\?v=1\.4\.0/);
+assert.match(serviceWorker, /shows-v1\.5\.0\.css\?v=1\.5\.0/);
+assert.match(serviceWorker, /shows-v1\.5\.0\.js\?v=1\.5\.0/);
+assert.match(serviceWorker, /shows-v1\.5\.0-hardening\.js\?v=1\.5\.0/);
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);
-assert.match(pwa, /1\.4\.5-alpha-rabbit-genetics-3/);
+assert.match(pwa, /1\.5\.0-alpha-shows-review-2/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
-assert.match(pwa, /rabbit-genetics-runtime-v1\.4\.5\.js\?v=1\.4\.5/);
-assert.match(pwa, /pedigree-genetics-v1\.4\.5\.js\?v=1\.4\.5/);
-assert.match(pwa, /rabbit-genetics-ui-v1\.4\.5\.js\?v=1\.4\.5/);
+assert.match(pwa, /loadShows/);
+assert.match(pwa, /shows-v1\.5\.0-hardening\.js\?v=1\.5\.0/);
 assert.match(records, /normalized === "female"/);
 assert.doesNotMatch(records, /\/male\|buck\//);
 assert.match(genetics, /Genetic conflict detected/);
@@ -111,4 +115,25 @@ assert.match(pedigreeGenetics, /Entered Genetics remains separate from Inferred 
 assert.match(pedigreeGeneticsCss, /white-space:nowrap/);
 assert.doesNotMatch(pedigreeGeneticsCss, /hh-protected-field[^}]*font-size:/);
 
-console.log("Alpha v1.4.5 genetics and pedigree-genetics release stability tests passed");
+// Shows must be additive and use existing canonical HerdHarbor data stores.
+assert.match(shows, /COLLECTIONS=\['shows','showEntries','showResults','showAwards','exhibitors','showProjects','projectGoals','projectNotes','projectPhotos'\]/);
+assert.match(shows, /state\.transactions\.push\(/);
+assert.match(shows, /state\.health\.push\(/);
+assert.match(shows, /showId:defaults\.showId/);
+assert.match(shows, /projectId:defaults\.projectId/);
+assert.doesNotMatch(shows, /showExpenses\s*:/);
+assert.doesNotMatch(shows, /showIncome\s*:/);
+assert.doesNotMatch(shows, /4-H Records/);
+assert.match(shows, /litters\.insertAdjacentElement\('afterend'/);
+assert.match(shows, /Print \/ Save PDF/);
+assert.match(shows, /not automatically an official state or county 4-H record book/i);
+assert.match(showsHardening, /Animal Show History/);
+assert.match(showsHardening, /Remove this attachment from the record\?/);
+assert.match(showsHardening, /Archive this show\?/);
+assert.match(showsHardening, /data-hh-filter="placement"/);
+assert.match(showsHardening, /data-hh-filter="award"/);
+assert.match(showsHardening, /PAGE_SIZE = 24/);
+assert.match(showsCss, /overflow-x:auto/);
+assert.match(showsCss, /@media \(max-width:520px\)/);
+
+console.log("Alpha v1.5.0 Shows + existing HerdHarbor release stability tests passed");
