@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const PWA_BUILD = "1.4.5-alpha-rabbit-genetics-3";
+  const PWA_BUILD = "1.5.0-alpha-shows-review-1";
   let installPrompt = null;
   let registration = null;
   let updateToast = null;
@@ -62,6 +62,11 @@
         });
       });
     });
+  }
+
+  function loadShows() {
+    addStylesheet("hh-shows-v150-style", "shows-v1.5.0.css?v=1.5.0");
+    addScript("hh-shows-v150-script", "shows-v1.5.0.js?v=1.5.0");
   }
 
   function installLabel() {
@@ -133,6 +138,7 @@
   function boot() {
     loadPedigreeVisuals();
     loadBreedingIntelligence();
+    loadShows();
     refreshInstallUI();
     registerServiceWorker();
   }
