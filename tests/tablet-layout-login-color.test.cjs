@@ -11,6 +11,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, "manifest.json"), "u
 const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 const release = fs.readFileSync(path.join(root, "herdharbor-release-v1.4.5.js"), "utf8");
 const pedigreeGeneticsCss = fs.readFileSync(path.join(root, "pedigree-genetics-v1.4.5.css"), "utf8");
+const showsCss = fs.readFileSync(path.join(root, "shows-v1.5.0.css"), "utf8");
 
 assert.match(html, /const APP_VERSION = "1\.3\.0"/);
 assert.match(html, /html \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
@@ -27,7 +28,7 @@ assert.match(html, /\.list-item \{[\s\S]*?max-width: 100%;[\s\S]*?min-width: 0;[
 assert.match(html, /\.data-table-wrap \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: auto;[\s\S]*?overscroll-behavior-inline: contain;/);
 assert.match(html, /@media \(max-width: 820px\) \{[\s\S]*?#quick-add-button[\s\S]*?width: 42px;/);
 assert.equal(manifest.orientation, "portrait");
-assert.equal(manifest.version, "1.4.5");
+assert.equal(manifest.version, "1.5.0");
 
 assert.match(cloud, /version: "1\.3\.0"/);
 assert.match(cloud, /html\[data-theme="dark"\] #hh-auth-root/);
@@ -37,17 +38,22 @@ assert.match(cloud, /-webkit-text-fill-color: var\(--hh-auth-text\)/);
 assert.match(cloud, /input:-webkit-autofill/);
 assert.match(cloud, /--hh-auth-surface: #102A41/);
 assert.match(cloud, /--hh-auth-input: #0A2033/);
-assert.match(worker, /v1\.4\.5-alpha-20260825-2/);
+assert.match(worker, /v1\.5\.0-alpha-shows-review-2/);
 assert.match(worker, /herdharbor-cloud\.js\?v=17/);
 assert.match(worker, /pedigree-visual\.css\?v=2/);
-assert.match(worker, /pedigree-visual\.js\?v=2/);
-assert.match(worker, /pedigree-genetics-v1\.4\.5\.css\?v=1\.4\.5/);
 assert.match(worker, /pedigree-genetics-v1\.4\.5\.js\?v=1\.4\.5/);
-assert.match(worker, /rabbit-genetics-ui-v1\.4\.5\.js\?v=1\.4\.5/);
+assert.match(worker, /shows-v1\.5\.0\.css\?v=1\.5\.0/);
+assert.match(worker, /shows-v1\.5\.0\.js\?v=1\.5\.0/);
+assert.match(worker, /shows-v1\.5\.0-hardening\.js\?v=1\.5\.0/);
 assert.match(release, /@media\(max-width:620px\)/);
 assert.match(release, /help-toggle/);
 assert.match(pedigreeGeneticsCss, /max-width:100%/);
 assert.match(pedigreeGeneticsCss, /flex-wrap:wrap/);
+assert.match(showsCss, /#view-shows \{ min-width: 0; max-width: 100%; \}/);
+assert.match(showsCss, /overflow-x:auto/);
+assert.match(showsCss, /@media \(max-width:820px\)/);
+assert.match(showsCss, /@media \(max-width:520px\)/);
+assert.match(showsCss, /grid-template-columns:1fr/);
 
 function luminance(hex) {
   const channels = hex.slice(1).match(/../g).map((part) => parseInt(part, 16) / 255);
@@ -73,4 +79,4 @@ function contrast(foreground, background) {
   assert.ok(contrast(foreground, background) >= 4.5, `${label} meets WCAG AA contrast`);
 });
 
-console.log("Alpha v1.4.5 tablet containment, pedigree genetics, Help, and login color tests passed");
+console.log("Alpha v1.5.0 Shows tablet containment, existing pedigree genetics, Help, and login color tests passed");
