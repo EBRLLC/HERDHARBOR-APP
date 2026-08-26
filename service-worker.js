@@ -29,6 +29,7 @@ const APP_SHELL = [
   "./shows-v1.5.0.css?v=1.5.0",
   "./shows-v1.5.0.js?v=1.5.0",
   "./shows-v1.5.0-hardening.js?v=1.5.0",
+  "./shows-v1.5.0-performance.js?v=1.5.0",
   "./vendor/supabase-2.111.0.js",
   "./vendor/jszip-3.10.1.min.js",
   "./vendor/exceljs-4.4.0.min.js",
@@ -81,6 +82,7 @@ self.addEventListener("fetch", (event) => {
     url.pathname.endsWith("/herdharbor-release-v1.4.5.js") ||
     url.pathname.endsWith("/shows-v1.5.0.js") ||
     url.pathname.endsWith("/shows-v1.5.0-hardening.js") ||
+    url.pathname.endsWith("/shows-v1.5.0-performance.js") ||
     url.pathname.endsWith("/shows-v1.5.0.css") ||
     url.pathname.endsWith("/breeding-genetics-v2.css");
   if (forceFresh) {
