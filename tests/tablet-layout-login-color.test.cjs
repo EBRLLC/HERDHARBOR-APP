@@ -38,13 +38,15 @@ assert.match(cloud, /-webkit-text-fill-color: var\(--hh-auth-text\)/);
 assert.match(cloud, /input:-webkit-autofill/);
 assert.match(cloud, /--hh-auth-surface: #102A41/);
 assert.match(cloud, /--hh-auth-input: #0A2033/);
-assert.match(worker, /v1\.5\.0-alpha-shows-review-2/);
+assert.match(worker, /v1\.5\.0-alpha-shows-updatefix-1/);
 assert.match(worker, /herdharbor-cloud\.js\?v=17/);
 assert.match(worker, /pedigree-visual\.css\?v=2/);
 assert.match(worker, /pedigree-genetics-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(worker, /shows-v1\.5\.0\.css\?v=1\.5\.0/);
 assert.match(worker, /shows-v1\.5\.0\.js\?v=1\.5\.0/);
 assert.match(worker, /shows-v1\.5\.0-hardening\.js\?v=1\.5\.0/);
+assert.match(worker, /NETWORK_FIRST_PATHS/);
+assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
 assert.match(release, /@media\(max-width:620px\)/);
 assert.match(release, /help-toggle/);
 assert.match(pedigreeGeneticsCss, /max-width:100%/);
@@ -79,4 +81,4 @@ function contrast(foreground, background) {
   assert.ok(contrast(foreground, background) >= 4.5, `${label} meets WCAG AA contrast`);
 });
 
-console.log("Alpha v1.5.0 Shows tablet containment, existing pedigree genetics, Help, and login color tests passed");
+console.log("Alpha v1.5.0 Shows tablet containment, PWA cache freshness, existing pedigree genetics, Help, and login color tests passed");
