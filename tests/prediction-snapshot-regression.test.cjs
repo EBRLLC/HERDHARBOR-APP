@@ -9,6 +9,7 @@ const currentUi = fs.readFileSync(path.join(root, "rabbit-genetics-ui-v1.4.5.js"
 const v2Ui = fs.readFileSync(path.join(root, "rabbit-genetics-ui-v2.js"), "utf8");
 const intelligence = fs.readFileSync(path.join(root, "breeding-intelligence.js"), "utf8");
 const tools = fs.readFileSync(path.join(root, "breeding-intelligence-tools.js"), "utf8");
+const styles = fs.readFileSync(path.join(root, "breeding-intelligence.css"), "utf8");
 
 for (const source of [currentUi, v2Ui, intelligence, tools]) {
   assert.doesNotThrow(() => new Function(source), "snapshot workflow browser script compiles");
@@ -20,6 +21,9 @@ assert.match(currentUi, /if\(a\?\.supported\)draft=makePredictionDraft/, "unsupp
 assert.match(currentUi, /saveInFlight\|\|button\.disabled\|\|!lastPrediction/, "rapid duplicate saves are guarded");
 assert.match(currentUi, /Prediction saved to history\./, "successful saves provide confirmation");
 assert.match(v2Ui, /Save Prediction Snapshot/, "the direct Genetics v2 UI also exposes the restored action");
+assert.match(styles, /\.hh-bi-modal\{[^}]*display:flex;flex-direction:column/, "the modal sizes its body from the actual header height");
+assert.match(styles, /\.hh-bi-modal-body\{[^}]*flex:1 1 auto;min-height:0/, "the prediction body remains fully scrollable to its final action");
+assert.doesNotMatch(styles, /\.hh-bi-modal-body\{max-height:calc\(/, "a guessed header height cannot clip the save action");
 
 assert.match(intelligence, /fresh\[ROOT_KEY\]\.predictions\.push\(snapshot\)/, "snapshots continue to use breedingIntelligence.predictions");
 assert.match(intelligence, /buckGenetics:deepClone\(buck\.genetics\|\|\{\}\)/, "buck genetics are copied into snapshot metadata");
