@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 
@@ -46,9 +47,62 @@ const { pathToFileURL } = require("node:url");
   assert.equal(failures[1].metadata.operation, "local_storage_remove");
   assert.ok(!JSON.stringify(failures[1].metadata).includes("private-record-key"));
 
+  // IndexedDB is used for local recovery snapshots. Instrument only open and
+  // transaction failures; never inspect database names, store names, keys, or values.
+  class FakeRequest {
+    constructor() {
+      this.error = new Error("IndexedDB request failed for private recovery data");
+      this.listeners = new Map();
+    }
+    addEventListener(type, listener) { this.listeners.set(type, listener); }
+    emit(type) { this.listeners.get(type)?.(); }
+  }
+  class FakeIDBFactory {
+    open(databaseName) {
+      this.lastDatabaseName = databaseName;
+      this.request = new FakeRequest();
+      return this.request;
+    }
+  }
+  class FakeTransaction {
+    constructor() {
+      this.error = new Error("IndexedDB transaction failed with private animal data");
+      this.listeners = new Map();
+    }
+    addEventListener(type, listener) { this.listeners.set(type, listener); }
+    emit(type) { this.listeners.get(type)?.(); }
+  }
+  class FakeIDBDatabase {
+    transaction(storeName) {
+      this.lastStoreName = storeName;
+      this.lastTransaction = new FakeTransaction();
+      return this.lastTransaction;
+    }
+  }
+
+  const indexedRuntime = { IDBFactory: FakeIDBFactory, IDBDatabase: FakeIDBDatabase };
+  assert.equal(instrumentation.installIndexedDbFailureMonitoring(monitoringStub, indexedRuntime), true);
+  const factory = new FakeIDBFactory();
+  const request = factory.open("private-recovery-database-name");
+  request.emit("error");
+  assert.equal(failures.at(-1).category, "storage_failure");
+  assert.deepEqual(failures.at(-1).metadata, {
+    module: "backup",
+    operation: "indexeddb_open",
+    result: "failure",
+    storage_type: "indexedDB"
+  });
+  assert.ok(!JSON.stringify(failures.at(-1).metadata).includes("private-recovery-database-name"));
+
+  const database = new FakeIDBDatabase();
+  const transaction = database.transaction("private-snapshot-store");
+  transaction.emit("error");
+  transaction.emit("abort");
+  assert.equal(failures.at(-1).metadata.operation, "indexeddb_transaction_error");
+  assert.ok(!JSON.stringify(failures.at(-1).metadata).includes("private-snapshot-store"));
+
   // Spreadsheet wrappers receive the original arguments but monitoring gets
   // only the controlled operation/category, never workbook rows or file data.
-  const captured = [];
   const spreadsheetRuntime = {
     navigator: { onLine: true, userAgent: "", platform: "" },
     location: { hostname: "localhost", hash: "#dashboard" },
@@ -65,13 +119,6 @@ const { pathToFileURL } = require("node:url");
   };
   const monitor = core.createHerdHarborMonitoring(null, spreadsheetRuntime);
   monitor.init({ dsn: "", environment: "test" });
-  const originalCapture = monitor.captureOperationalFailure;
-  monitor.captureOperationalFailure = (category, metadata, error) => {
-    captured.push({ category, metadata, errorName: error?.name });
-    return originalCapture(category, metadata, error);
-  };
-  // instrumentSpreadsheet closes over the core method, so verify wrapper
-  // behavior through the thrown operation and its safe public breadcrumb API.
   assert.equal(monitor.instrumentSpreadsheet(), true);
   assert.throws(() => spreadsheetRuntime.HerdHarborSpreadsheet.downloadExport({
     customerEmail: "customer@example.com",
@@ -80,13 +127,17 @@ const { pathToFileURL } = require("node:url");
   }));
   await assert.rejects(() => spreadsheetRuntime.HerdHarborSpreadsheet.openImport([{ notes: "private medical notes" }]));
 
-  // The adapter never serializes operation arguments. Static source is checked
-  // as an additional regression because this is the privacy invariant.
-  const source = require("node:fs").readFileSync(path.resolve(__dirname, "../monitoring/herdharbor-monitoring-core.mjs"), "utf8");
-  assert.match(source, /original\.apply\(spreadsheet, args\)/);
-  assert.doesNotMatch(source, /metadata:\s*args|record_count:\s*args|JSON\.stringify\(args\)/);
+  // Adapters must never serialize operation arguments. Static checks make the
+  // privacy invariant explicit for both spreadsheets and storage wrappers.
+  const coreSource = fs.readFileSync(path.resolve(__dirname, "../monitoring/herdharbor-monitoring-core.mjs"), "utf8");
+  const instrumentationSource = fs.readFileSync(path.resolve(__dirname, "../monitoring/herdharbor-monitoring-instrumentation.mjs"), "utf8");
+  assert.match(coreSource, /original\.apply\(spreadsheet, args\)/);
+  assert.doesNotMatch(coreSource, /metadata:\s*args|record_count:\s*args|JSON\.stringify\(args\)/);
+  assert.match(instrumentationSource, /indexeddb_open/);
+  assert.match(instrumentationSource, /indexeddb_transaction_error/);
+  assert.doesNotMatch(instrumentationSource, /databaseName|storeName|JSON\.stringify\(args\)|metadata:\s*args/);
 
-  console.log("Alpha v1.5.1 storage and import-export monitoring adapter tests passed");
+  console.log("Alpha v1.5.1 localStorage, IndexedDB, and import-export monitoring adapter tests passed");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;
