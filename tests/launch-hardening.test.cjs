@@ -29,19 +29,24 @@ assert.match(cloud, /async function requestAccountDeletion/);
 assert.match(cloud, /confirmation !== "DELETE"/);
 assert.match(cloud, /navigator\.onLine === false/);
 assert.match(cloud, /dirty && !\(await syncNow\(\)\)/);
+assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
-assert.match(worker, /v1\.5\.0-alpha-shows-review-2/);
+assert.match(worker, /v1\.5\.0-alpha-shows-updatefix-1/);
 assert.match(worker, /herdharbor-cloud\.js\?v=17/);
 assert.match(worker, /pwa\.js\?v=22/);
 assert.match(worker, /pedigree-genetics-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(worker, /rabbit-genetics-runtime-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(worker, /shows-v1\.5\.0\.js\?v=1\.5\.0/);
 assert.match(worker, /shows-v1\.5\.0-hardening\.js\?v=1\.5\.0/);
-assert.match(pwa, /1\.5\.0-alpha-shows-review-2/);
+assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
+assert.match(pwa, /const BUILD_ID = "updatefix-1"/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
 assert.match(pwa, /loadShows/);
 assert.match(pwa, /shows-v1\.5\.0-hardening\.js\?v=1\.5\.0/);
+assert.match(pwa, /registration\.update\(\)/);
+assert.match(pwa, /updateViaCache: "none"/);
+assert.doesNotMatch(pwa, /HerdHarborCloud/);
 assert.match(release, /Open HerdHarbor How-To Center/);
 assert.match(release, /https:\/\/herdharbor\.com\/how-to\//);
 
@@ -56,4 +61,4 @@ assert.match(hardening, /Remove this attachment from the record\?/);
 assert.match(hardening, /Animal Show History/);
 assert.match(hardening, /PAGE_SIZE = 24/);
 
-console.log("Alpha v1.5.0 Shows launch hardening and account-safety tests passed");
+console.log("Alpha v1.5.0 Shows launch hardening, PWA update independence, and account-safety tests passed");
