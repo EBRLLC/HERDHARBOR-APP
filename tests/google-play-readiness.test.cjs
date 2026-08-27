@@ -42,7 +42,7 @@ assert.match(worker, /pedigree-genetics-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(worker, /shows-v1\.5\.0\.css\?v=1\.5\.0/);
 assert.match(worker, /shows-v1\.5\.0\.js\?v=1\.5\.0/);
 assert.match(worker, /shows-v1\.5\.0-hardening\.js\?v=1\.5\.0/);
-assert.match(pwa, /1\.5\.0-alpha-shows-\$\{BUILD_ID\}/);
+assert.match(pwa, /\$\{APP_VERSION\}-alpha-shows-\$\{BUILD_ID\}/);
 assert.match(pwa, /const BUILD_ID = "updatefix-1"/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
