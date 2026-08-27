@@ -58,7 +58,7 @@ function safeMetadata(value) {
   const result = {};
   for (const [key, raw] of Object.entries(value)) {
     const normalized = String(key).toLowerCase().replace(/[^a-z0-9_]/g, "");
-    if (!SAFE_META.has(normalized) || SENSITIVE_KEY.test(key)) continue;
+    if (!SAFE_META.has(normalized)) continue;
     if (typeof raw === "number" && Number.isFinite(raw)) result[normalized] = raw;
     else if (typeof raw === "boolean") result[normalized] = raw;
     else if (typeof raw === "string") result[normalized] = safeText(raw, 100);
