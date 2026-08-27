@@ -35,6 +35,49 @@
     document.head.appendChild(script);
   }
 
+  function addOptionalScript(id, src, done) {
+    const existing = document.getElementById(id);
+    if (existing) { done?.(true); return; }
+    const script = document.createElement("script");
+    script.id = id;
+    script.src = src;
+    script.async = false;
+    let finished = false;
+    const finish = (loaded) => {
+      if (finished) return;
+      finished = true;
+      done?.(loaded);
+    };
+    script.addEventListener("load", () => finish(true), { once: true });
+    script.addEventListener("error", () => finish(false), { once: true });
+    document.head.appendChild(script);
+  }
+
+  function monitoring() {
+    return window.HerdHarborMonitoring || null;
+  }
+
+  function monitorFailure(error, errorCategory, moduleName = "dashboard", metadata = {}) {
+    try {
+      monitoring()?.captureError?.(error, {
+        module: moduleName,
+        errorCategory,
+        metadata: {
+          module: moduleName,
+          result: "failure",
+          ...metadata
+        }
+      });
+    } catch {}
+  }
+
+  function loadMonitoring(done) {
+    addOptionalScript("hh-monitoring-config", "herdharbor-monitoring-config.js?v=1.5.1", (configLoaded) => {
+      if (!configLoaded) { done?.(); return; }
+      addOptionalScript("hh-monitoring-v151", "vendor/herdharbor-monitoring-v1.5.1.min.js?v=1.5.1", () => done?.());
+    });
+  }
+
   function loadPedigreeVisuals() {
     addStylesheet("hh-pedigree-visual-style", "pedigree-visual.css?v=2");
     addScript("hh-pedigree-visual-script", "pedigree-visual.js?v=2");
@@ -170,7 +213,10 @@
         }
         return false;
       } catch (error) {
-        if (navigator.onLine !== false) console.warn("HerdHarbor could not check for an app update:", error);
+        if (navigator.onLine !== false) {
+          console.warn("HerdHarbor could not check for an app update:", error);
+          monitorFailure(error, "update_check_failure", "dashboard", { operation: "pwa_update_check" });
+        }
         return false;
       }
     })();
@@ -192,7 +238,10 @@
       if (registration.installing) watchInstallingWorker(registration.installing);
       registration.addEventListener("updatefound", () => watchInstallingWorker(registration.installing));
       await checkForAppUpdate({ force: true });
-    } catch (error) { console.error("HerdHarbor could not register its offline app shell:", error); }
+    } catch (error) {
+      console.error("HerdHarbor could not register its offline app shell:", error);
+      monitorFailure(error, "service_worker_failure", "dashboard", { operation: "service_worker_registration" });
+    }
   }
 
   function requestForegroundUpdateCheck() {
@@ -223,14 +272,28 @@
     build: PWA_BUILD
   };
 
-  function boot() {
-    loadPedigreeVisuals();
-    loadBreedingIntelligence();
-    loadShows();
-    refreshManifestLink();
-    refreshInstallUI();
-    registerServiceWorker();
+  function bootApplication() {
+    try {
+      monitoring()?.setModule?.("dashboard");
+      monitoring()?.addBreadcrumb?.({ module: "dashboard", action: "load_application_modules" });
+      loadPedigreeVisuals();
+      loadBreedingIntelligence();
+      loadShows();
+      refreshManifestLink();
+      refreshInstallUI();
+      registerServiceWorker();
+    } catch (error) {
+      monitorFailure(error, "startup_failure", "dashboard", { operation: "application_startup" });
+      console.error("HerdHarbor application startup failed:", error);
+    }
   }
+
+  function boot() {
+    // Monitoring is optional and fail-open. If either configuration or the
+    // bundled SDK cannot load, the application starts normally.
+    loadMonitoring(bootApplication);
+  }
+
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
   else boot();
 })();
