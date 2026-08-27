@@ -165,6 +165,32 @@ const base = {
 }
 
 {
+  const predictionBase = structuredClone(base);
+  predictionBase.breedingIntelligence = { version: 1, predictions: [], conflicts: [], updatedAt: null };
+  const local = structuredClone(predictionBase);
+  const remote = structuredClone(predictionBase);
+  local.breedingIntelligence.predictions.push({
+    id: "genetics_prediction_local",
+    createdAt: "2026-08-27T12:00:00.000Z",
+    metadata: { buckId: "buck-1", doeId: "doe-1" },
+    analysis: { exact: true, exactOutcomes: [{ name: "Black", probability: 1 }] }
+  });
+  remote.breedingIntelligence.predictions.push({
+    id: "genetics_prediction_remote",
+    createdAt: "2026-08-27T12:01:00.000Z",
+    metadata: { buckId: "buck-1", doeId: "doe-1" },
+    analysis: { exact: false, possibleOutcomes: [{ name: "Blue" }] }
+  });
+  const merged = mergeRawStates(raw(predictionBase), raw(local), raw(remote));
+  assert.equal(merged.ok, true, "prediction history remains compatible with protected cloud merge");
+  assert.deepEqual(
+    merged.value.breedingIntelligence.predictions.map((snapshot) => snapshot.id),
+    ["genetics_prediction_local", "genetics_prediction_remote"],
+    "separately saved prediction snapshots survive a cross-device merge"
+  );
+}
+
+{
   const offspringBase = structuredClone(base);
   offspringBase.animals.push(
     { id: "dam-1", name: "Willow", species: "Rabbit", sex: "Female" },

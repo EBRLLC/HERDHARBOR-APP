@@ -186,7 +186,21 @@
     const buck = byId.get(String(snapshot.metadata?.buckId || ""));
     const doe = byId.get(String(snapshot.metadata?.doeId || ""));
     const when = snapshot.createdAt ? new Date(snapshot.createdAt).toLocaleDateString() : "Saved analysis";
-    return `${buck?.name || snapshot.analysis?.parent1?.name || "Buck"} × ${doe?.name || snapshot.analysis?.parent2?.name || "Doe"} — ${when}`;
+    return `${snapshot.metadata?.buckName || snapshot.analysis?.parent1?.name || buck?.name || "Buck"} × ${snapshot.metadata?.doeName || snapshot.analysis?.parent2?.name || doe?.name || "Doe"} — ${when}`;
+  }
+
+  function savedProbabilityDetail(outcome) {
+    if (outcome?.probability != null) {
+      const value = Number(outcome.probability) * 100;
+      return `${value.toFixed(value % 1 ? 1 : 0)}%`;
+    }
+    if (outcome?.minProbability != null && outcome?.maxProbability != null) {
+      const min = Number(outcome.minProbability) * 100;
+      const max = Number(outcome.maxProbability) * 100;
+      const format = (value) => `${value.toFixed(value % 1 ? 1 : 0)}%`;
+      return Math.abs(min - max) < 1e-9 ? format(min) : `${format(min)}–${format(max)}`;
+    }
+    return "Possible";
   }
 
   function renderOutcomeReview(snapshotId) {
@@ -208,9 +222,13 @@
       const color = String(child.color || child.variety || "Unrecorded").trim() || "Unrecorded";
       actual.set(color, (actual.get(color) || 0) + 1);
     });
-    const predicted = snapshot.analysis?.exact
-      ? (snapshot.analysis.exactOutcomes || []).map((o) => ({ name: o.name, detail: `${(o.probability * 100).toFixed((o.probability * 100) % 1 ? 1 : 0)}%` }))
-      : (snapshot.analysis?.possibleOutcomes || []).map((o) => ({ name: o.name, detail: "Possible" }));
+    const analysis = snapshot.analysis || {};
+    const savedOutcomes = Array.isArray(analysis.possibleOffspringColors) && analysis.possibleOffspringColors.length
+      ? analysis.possibleOffspringColors
+      : analysis.exact
+        ? (analysis.exactOutcomes || [])
+        : (analysis.possibleOutcomes || []);
+    const predicted = savedOutcomes.map((o) => ({ name: o.name, detail: savedProbabilityDetail(o) }));
     const predictedNames = new Set(predicted.map((p) => p.name.toLowerCase()));
     const predictedHtml = predicted.length ? predicted.map((p) => `<div class="hh-bi-result-row"><div><strong>${esc(p.name)}</strong><span>Saved prediction</span></div><b>${esc(p.detail)}</b></div>`).join("") : "<p>No supported predicted color was saved.</p>";
     const actualHtml = actual.size ? Array.from(actual.entries()).map(([color, count]) => {
