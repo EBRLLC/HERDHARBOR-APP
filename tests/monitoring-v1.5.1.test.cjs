@@ -102,6 +102,7 @@ function makeFakeSentry() {
 
 (async () => {
   const core = await import(pathToFileURL(path.resolve(__dirname, "../monitoring/herdharbor-monitoring-core.mjs")).href);
+  const privacy = await import(pathToFileURL(path.resolve(__dirname, "../monitoring/herdharbor-monitoring-privacy.mjs")).href);
 
   // Missing SDK and missing DSN both fail open.
   const noSdk = core.createHerdHarborMonitoring(null, makeRuntime());
@@ -110,13 +111,13 @@ function makeFakeSentry() {
   assert.doesNotThrow(() => noSdk.captureError(new Error("test")));
 
   const missingDsnFake = makeFakeSentry();
-  const missingDsn = core.createHerdHarborMonitoring(missingDsnFake.sdk, makeRuntime());
+  const missingDsn = core.createHerdHarborMonitoring(privacy.createPrivacySentryAdapter(missingDsnFake.sdk), makeRuntime());
   assert.equal(missingDsn.init({ dsn: "", environment: "test" }), false);
   assert.equal(missingDsnFake.calls.initOptions, null, "Sentry.init is not called without a DSN");
 
   const { sdk, calls } = makeFakeSentry();
   const runtime = makeRuntime();
-  const monitoring = core.createHerdHarborMonitoring(sdk, runtime);
+  const monitoring = core.createHerdHarborMonitoring(privacy.createPrivacySentryAdapter(sdk), runtime);
   assert.equal(monitoring.init({
     dsn: "https://public@example.invalid/1",
     environment: "test",
@@ -171,6 +172,7 @@ function makeFakeSentry() {
   assert.equal(calls.exceptionEvents[0].event.tags.hh_build, "behavior-test");
   assert.equal(calls.exceptionEvents[0].event.tags.hh_platform, "web");
   assert.ok(!JSON.stringify(calls.exceptionEvents[0].event).includes("Judy"));
+  assert.equal(calls.exceptionEvents[0].event.exception.values[0].value, "Local persistence operation failed");
   assert.ok(!calls.exceptionEvents[0].event.exception.values[0].stacktrace.frames[0].filename.includes("?"));
 
   const duplicate = monitoring.captureError(new Error("private Judy notes should never transmit"), {
@@ -191,9 +193,13 @@ function makeFakeSentry() {
   const controlled = monitoring.testCrash();
   assert.match(controlled.referenceId, /^HH-[A-F0-9]{8}$/);
   assert.equal(calls.exceptionEvents.at(-1).event.tags.hh_error_category, "controlled_test");
+  assert.equal(calls.exceptionEvents.at(-1).event.exception.values[0].value, "HerdHarbor controlled monitoring test");
 
   const prodFake = makeFakeSentry();
-  const prodMonitoring = core.createHerdHarborMonitoring(prodFake.sdk, makeRuntime({ location: { hostname: "app.herdharbor.com", hash: "#dashboard" } }));
+  const prodMonitoring = core.createHerdHarborMonitoring(
+    privacy.createPrivacySentryAdapter(prodFake.sdk),
+    makeRuntime({ location: { hostname: "app.herdharbor.com", hash: "#dashboard" } })
+  );
   prodMonitoring.init({ dsn: "https://public@example.invalid/1", environment: "production", enableTestCrash: true });
   assert.equal(prodMonitoring.testCrash, undefined, "controlled crash cannot be invoked in production");
 
@@ -209,9 +215,7 @@ function makeFakeSentry() {
   assert.equal(core.detectPlatform(makeRuntime({
     Capacitor: { isNativePlatform: () => true, getPlatform: () => "ios" }
   })), "ios-capacitor");
-  assert.equal(core.detectPlatform(makeRuntime({
-    matchMedia: () => ({ matches: true })
-  })), "pwa");
+  assert.equal(core.detectPlatform(makeRuntime({ matchMedia: () => ({ matches: true }) })), "pwa");
   assert.equal(core.detectEnvironment({}, makeRuntime({ location: { hostname: "app.herdharbor.com", hash: "" } })), "production");
   assert.equal(core.detectEnvironment({ environment: "test" }, makeRuntime()), "test");
 
@@ -224,7 +228,7 @@ function makeFakeSentry() {
     getSession() { return { user: { id: "internal-cloud-user", email: "private@example.com" } }; },
     async downloadSafetyBackup() { return true; }
   };
-  const cloudMonitoring = core.createHerdHarborMonitoring(cloudFake.sdk, cloudRuntime);
+  const cloudMonitoring = core.createHerdHarborMonitoring(privacy.createPrivacySentryAdapter(cloudFake.sdk), cloudRuntime);
   cloudMonitoring.init({ dsn: "https://public@example.invalid/1", environment: "test" });
   assert.equal(cloudMonitoring.instrumentCloud(), true);
   await cloudRuntime.HerdHarborCloud.syncNow();
