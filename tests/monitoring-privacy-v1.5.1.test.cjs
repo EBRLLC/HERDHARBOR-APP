@@ -6,6 +6,7 @@ const { pathToFileURL } = require("node:url");
 
 (async () => {
   const core = await import(pathToFileURL(path.resolve(__dirname, "../monitoring/herdharbor-monitoring-core.mjs")).href);
+  const privacy = await import(pathToFileURL(path.resolve(__dirname, "../monitoring/herdharbor-monitoring-privacy.mjs")).href);
 
   const sensitiveValues = [
     "hunter2-password",
@@ -110,7 +111,7 @@ const { pathToFileURL } = require("node:url");
     ]
   };
 
-  const sanitized = core.sanitizeSentryEvent(rawEvent, {
+  const firstPass = core.sanitizeSentryEvent(rawEvent, {
     module: "animals",
     environment: "test",
     release: "HerdHarbor@1.5.1",
@@ -123,6 +124,7 @@ const { pathToFileURL } = require("node:url");
     referenceId: "HH-7F2A91C4",
     errorCategory: "storage_failure"
   });
+  const sanitized = privacy.hardenSentryEvent(firstPass);
 
   const serialized = JSON.stringify(sanitized);
   for (const value of sensitiveValues) {
@@ -136,7 +138,8 @@ const { pathToFileURL } = require("node:url");
     "request body contents",
     "checking balance 1234",
     "generic free-text private notes",
-    "Opened Judy"
+    "Opened Judy",
+    "Judy"
   ]) {
     assert.ok(!serialized.includes(forbidden), `sensitive diagnostic content must be absent: ${forbidden}`);
   }
@@ -158,7 +161,7 @@ const { pathToFileURL } = require("node:url");
   assert.ok(!sanitized.exception.values[0].stacktrace.frames[0].filename.includes("?"));
   assert.equal(sanitized.exception.values[0].stacktrace.frames[0].vars, undefined);
 
-  const safeBreadcrumb = core.sanitizeBreadcrumb({
+  const safeBreadcrumb = privacy.hardenBreadcrumb({
     category: "herdharbor.action",
     message: "upload_changes",
     data: {
@@ -174,8 +177,8 @@ const { pathToFileURL } = require("node:url");
   assert.equal(safeBreadcrumb.data.notes, undefined);
   assert.equal(safeBreadcrumb.data.access_token, undefined);
 
-  assert.equal(core.sanitizeBreadcrumb({ category: "ui.click", message: "Judy" }), null);
-  assert.equal(core.sanitizeBreadcrumb({ category: "fetch", data: { url: "https://private" } }), null);
+  assert.equal(privacy.hardenBreadcrumb({ category: "ui.click", message: "Judy" }), null);
+  assert.equal(privacy.hardenBreadcrumb({ category: "fetch", data: { url: "https://private" } }), null);
 
   console.log("Alpha v1.5.1 monitoring privacy scrubbing tests passed");
 })().catch((error) => {
