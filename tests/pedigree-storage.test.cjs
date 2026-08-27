@@ -23,7 +23,7 @@ assert.match(html, /indexedDB\.deleteDatabase\(ATTACHMENT_DB\)/);
 assert.doesNotMatch(html, /remove large pedigree documents or animal photos/);
 assert.match(cloud, /async function downloadSafetyBackup\(\)/);
 assert.match(cloud, /HerdHarborAttachments\?\.stateWithPedigreeAttachments/);
-assert.match(cloud, /version: "1\.2\.0"/);
+assert.match(cloud, /version: "1\.3\.0"/);
 assert.match(cloud, /function removeRedundantStateCache\(userId\)/);
 assert.match(cloud, /safeStorageRemove\(cacheKey\(userId\)\)/);
 assert.match(cloud, /removeRedundantStateCache\(session\.user\.id\)/);

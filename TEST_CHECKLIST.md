@@ -1,11 +1,11 @@
-# HerdHarbor Alpha v1.2.0 Release Checklist
+# HerdHarbor Alpha v1.3.0 Release Checklist
 
 ## Version and Google Play readiness
 
-- Confirm every user-facing app label says Alpha v1.2.0 and no earlier development-stage label remains.
+- Confirm every user-facing app label says Alpha v1.3.0 and no earlier development-stage label remains.
 - Confirm existing testers retain their local records through the preserved legacy storage key.
-- Confirm the web app manifest reports version 1.2.0, standalone display, icons, and the expected app scope.
-- Confirm the Android wrapper uses package `com.ebrllc.herdharbor`, version code 4, version name `1.2.0-alpha`, and target SDK 36.
+- Confirm the web app manifest reports version 1.3.0, standalone display, icons, and the expected app scope.
+- Confirm the Android wrapper uses package `com.ebrllc.herdharbor`, version code 5, version name `1.3.0-alpha`, and target SDK 36.
 
 ## Symptom guide and veterinary safety
 
@@ -94,7 +94,14 @@
 - Open Animals and confirm the status filter defaults to Active and only exact Active-status records appear initially
 - Select Any status and confirm Active, Breeding, Growing, Retired, For Sale, Reserved, Sold, Deceased, and Ancestor Only records can still be shown
 - Select Ancestor Only and confirm ancestor records remain available without appearing in the default Active view
-- Open the Guided Pedigree Builder and confirm its header shows v1.2.0 instead of a stale development version
+- Open the Guided Pedigree Builder and confirm its header shows v1.3.0 instead of a stale development version
+
+## Cattle ear tags
+
+- Add a cattle record and confirm Ear tag number and Ear tag color appear and save.
+- Change the species to a non-cattle species and confirm cattle ear-tag fields are hidden and excluded.
+- Search Animals using the ear-tag number and color.
+- Confirm the ear-tag number and color appear on the cattle record, QR card, pedigree, sale document, spreadsheet export, and transfer export.
 
 ## Breeding and pregnancy workflow
 

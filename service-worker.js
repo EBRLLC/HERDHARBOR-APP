@@ -1,28 +1,99 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v1.2.0-alpha-20260817-1`;
+const CACHE_NAME = `${CACHE_PREFIX}v1.5.0-alpha-shows-updatefix-1`;
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./manifest.json?v=13",
+  "./manifest.json?v=16",
   "./herdharbor-cloud.js?v=17",
   "./symptom-guide.js?v=1",
-  "./pwa.js?v=20",
+  "./pwa.js?v=22",
   "./pedigree-visual.css?v=2",
   "./pedigree-visual.js?v=2",
+  "./pedigree-genetics-v1.4.5.css?v=1.4.5",
+  "./pedigree-genetics-v1.4.5.js?v=1.4.5",
+  "./breeding-intelligence-core.js?v=1.4.0",
+  "./rabbit-records-v1.4.5.js?v=1.4.5",
+  "./rabbit-genetics-engine-v2.js?v=2.0.0",
+  "./rabbit-genetics-engine-v1.4.5.js?v=1.4.5",
+  "./rabbit-genetics-runtime-v1.4.5.js?v=1.4.5",
+  "./breeding-intelligence.css?v=1.4.0",
+  "./breeding-genetics-v2.css?v=2.0.0",
+  "./breeding-intelligence.js?v=1.4.0",
+  "./breeding-pair-hotfix-v1.4.2.js?v=1",
+  "./rabbit-genetics-ui-v1.4.5.js?v=1.4.5",
+  "./rabbit-genetics-ui-v2.js?v=2.0.0",
+  "./breeding-intelligence-tools.js?v=1.4.0",
+  "./herdharbor-release-v1.4.5.js?v=1.4.5",
+  "./shows-v1.5.0.css?v=1.5.0",
+  "./shows-v1.5.0.js?v=1.5.0",
+  "./shows-v1.5.0-hardening.js?v=1.5.0",
+  "./shows-v1.5.0-performance.js?v=1.5.0",
   "./vendor/supabase-2.111.0.js",
   "./vendor/jszip-3.10.1.min.js",
   "./vendor/exceljs-4.4.0.min.js",
   "./vendor/qrcode-generator-1.4.4.js",
-  "./spreadsheet-import.js?v=16",
+  "./spreadsheet-import.js?v=17",
   "./icon-192.png",
   "./icon-512.png"
 ];
 
+const NETWORK_FIRST_PATHS = [
+  "/manifest.json",
+  "/pwa.js",
+  "/herdharbor-cloud.js",
+  "/symptom-guide.js",
+  "/spreadsheet-import.js",
+  "/pedigree-visual.css",
+  "/pedigree-visual.js",
+  "/pedigree-genetics-v1.4.5.css",
+  "/pedigree-genetics-v1.4.5.js",
+  "/breeding-intelligence-core.js",
+  "/breeding-intelligence.css",
+  "/breeding-intelligence.js",
+  "/breeding-genetics-v2.css",
+  "/breeding-pair-hotfix-v1.4.2.js",
+  "/rabbit-records-v1.4.5.js",
+  "/rabbit-genetics-engine-v2.js",
+  "/rabbit-genetics-engine-v1.4.5.js",
+  "/rabbit-genetics-runtime-v1.4.5.js",
+  "/rabbit-genetics-ui-v1.4.5.js",
+  "/rabbit-genetics-ui-v2.js",
+  "/breeding-intelligence-tools.js",
+  "/herdharbor-release-v1.4.5.js",
+  "/shows-v1.5.0.js",
+  "/shows-v1.5.0-hardening.js",
+  "/shows-v1.5.0-performance.js",
+  "/shows-v1.5.0.css"
+];
+
+function isNetworkFirstPath(pathname) {
+  return NETWORK_FIRST_PATHS.some((path) => pathname.endsWith(path));
+}
+
+async function cacheFreshResponse(request, response) {
+  if (!response?.ok || response.type !== "basic") return response;
+  const cache = await caches.open(CACHE_NAME);
+  await cache.put(request, response.clone());
+  return response;
+}
+
+async function networkFirst(request) {
+  try {
+    const response = await fetch(request, { cache: "no-store" });
+    return cacheFreshResponse(request, response);
+  } catch {
+    return caches.match(request);
+  }
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
+    caches.open(CACHE_NAME).then((cache) => {
+      const requests = APP_SHELL.map((path) => new Request(new URL(path, self.location.href), { cache: "reload" }));
+      return cache.addAll(requests);
+    })
   );
 });
 
@@ -45,18 +116,14 @@ self.addEventListener("message", (event) => {
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
-
   const url = new URL(request.url);
-
-  // Authentication, database, storage, and all other cross-origin traffic always
-  // goes straight to the network. User records and session responses are never cached.
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request)
+      fetch(request, { cache: "no-store" })
         .then((response) => {
-          if (response.ok && url.pathname.endsWith("/")) {
+          if (response.ok) {
             const copy = response.clone();
             event.waitUntil(
               caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", copy))
@@ -72,18 +139,18 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (isNetworkFirstPath(url.pathname)) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
   event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request).then((response) => {
-        if (response.ok && response.type === "basic") {
-          const copy = response.clone();
-          event.waitUntil(
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy))
-          );
-        }
-        return response;
-      });
-    })
+    caches.match(request).then((cached) => cached || fetch(request).then((response) => {
+      if (response.ok && response.type === "basic") {
+        const copy = response.clone();
+        event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)));
+      }
+      return response;
+    }))
   );
 });

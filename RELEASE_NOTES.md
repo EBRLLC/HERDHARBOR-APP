@@ -1,4 +1,13 @@
-# HerdHarbor Alpha v1.2.0
+# HerdHarbor Alpha v1.3.0
+
+## v1.3.0 Member workflow and cattle records
+
+- Preserved the complete Alpha v1.2.0 Member experience, including animal records, pedigrees, breeding, health tools, symptom lookup, financial tracking, sales, customers, production, personal tasks, reports, backups, and cloud synchronization.
+- Added dedicated ear-tag number and ear-tag color fields that appear when adding or editing cattle.
+- Made cattle ear tags searchable and visible in animal cards, record details, QR cards, pedigree views, sale documents, and animal selectors.
+- Added cattle ear-tag columns to spreadsheet import, export, and the downloadable import template.
+- Included cattle ear-tag information in reviewed animal-transfer files without changing or migrating existing Member records.
+- Kept the commercial Business workspace and employee-management system out of this release so it can be developed and released separately as Alpha v1.4.0.
 
 ## v1.2.0 educational symptom guide
 

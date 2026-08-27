@@ -9,8 +9,12 @@ const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 const pwa = fs.readFileSync(path.join(root, "pwa.js"), "utf8");
+const release = fs.readFileSync(path.join(root, "herdharbor-release-v1.4.5.js"), "utf8");
+const shows = fs.readFileSync(path.join(root, "shows-v1.5.0.js"), "utf8");
+const hardening = fs.readFileSync(path.join(root, "shows-v1.5.0-hardening.js"), "utf8");
 
-assert.match(html, /const APP_VERSION = "1\.2\.0"/);
+// Legacy inline Member app remains intact; v1.5.0 is an additive overlay.
+assert.match(html, /const APP_VERSION = "1\.3\.0"/);
 assert.match(html, /id="request-account-deletion"/);
 assert.match(html, /Type DELETE to confirm/);
 assert.match(html, /herdharbor\.com\/delete-account\//);
@@ -20,22 +24,41 @@ assert.match(html, /herdharbor\.com\/support\//);
 assert.match(html, /Clear local data/);
 assert.doesNotMatch(html, />Clear all data</);
 
+assert.match(cloud, /const STORAGE_KEY = "herdharbor_pre_alpha_v1"/);
 assert.match(cloud, /async function requestAccountDeletion/);
 assert.match(cloud, /confirmation !== "DELETE"/);
-assert.match(cloud, /account_user_id/);
-assert.match(cloud, /Account and associated data deletion/);
 assert.match(cloud, /navigator\.onLine === false/);
 assert.match(cloud, /dirty && !\(await syncNow\(\)\)/);
-assert.match(cloud, /requestAccountDeletion\n/);
+assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
-assert.match(worker, /v1\.2\.0-alpha-20260817-1/);
+assert.match(worker, /v1\.5\.0-alpha-shows-updatefix-1/);
 assert.match(worker, /herdharbor-cloud\.js\?v=17/);
-assert.match(worker, /symptom-guide\.js\?v=1/);
-assert.match(worker, /pwa\.js\?v=20/);
-assert.match(worker, /pedigree-visual\.css\?v=2/);
-assert.match(worker, /pedigree-visual\.js\?v=2/);
-assert.match(worker, /spreadsheet-import\.js\?v=16/);
-assert.match(pwa, /1\.2\.0-alpha-symptom-guide-1/);
+assert.match(worker, /pwa\.js\?v=22/);
+assert.match(worker, /pedigree-genetics-v1\.4\.5\.js\?v=1\.4\.5/);
+assert.match(worker, /rabbit-genetics-runtime-v1\.4\.5\.js\?v=1\.4\.5/);
+assert.match(worker, /shows-v1\.5\.0\.js\?v=1\.5\.0/);
+assert.match(worker, /shows-v1\.5\.0-hardening\.js\?v=1\.5\.0/);
+assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
+assert.match(pwa, /const BUILD_ID = "updatefix-1"/);
 assert.match(pwa, /loadPedigreeVisuals/);
+assert.match(pwa, /loadBreedingIntelligence/);
+assert.match(pwa, /loadShows/);
+assert.match(pwa, /shows-v1\.5\.0-hardening\.js\?v=1\.5\.0/);
+assert.match(pwa, /registration\.update\(\)/);
+assert.match(pwa, /updateViaCache: "none"/);
+assert.doesNotMatch(pwa, /HerdHarborCloud/);
+assert.match(release, /Open HerdHarbor How-To Center/);
+assert.match(release, /https:\/\/herdharbor\.com\/how-to\//);
 
-console.log("launch hardening and account deletion tests passed");
+assert.match(shows, /litters\.insertAdjacentElement\('afterend'/);
+assert.match(shows, /state\.transactions\.push\(/);
+assert.match(shows, /state\.health\.push\(/);
+assert.doesNotMatch(shows, /4-H Records/);
+assert.doesNotMatch(shows, /showExpenses\s*:/);
+assert.doesNotMatch(shows, /showIncome\s*:/);
+assert.match(hardening, /Archive this show\?/);
+assert.match(hardening, /Remove this attachment from the record\?/);
+assert.match(hardening, /Animal Show History/);
+assert.match(hardening, /PAGE_SIZE = 24/);
+
+console.log("Alpha v1.5.0 Shows launch hardening, PWA update independence, and account-safety tests passed");

@@ -1,0 +1,16 @@
+"use strict";
+const assert=require("node:assert/strict");
+const fs=require("node:fs");
+const path=require("node:path");
+const root=path.join(__dirname,"..");
+const perf=fs.readFileSync(path.join(root,"shows-v1.5.0-performance.js"),"utf8");
+const pwa=fs.readFileSync(path.join(root,"pwa.js"),"utf8");
+const worker=fs.readFileSync(path.join(root,"service-worker.js"),"utf8");
+assert.match(perf,/const PAGE_SIZE = 24/);
+assert.match(perf,/\.hh-show-entry-row/);
+assert.match(perf,/row\.hidden = index/);
+assert.match(perf,/img\.loading = "lazy"/);
+assert.match(perf,/img\.decoding = "async"/);
+assert.match(pwa,/shows-v1\.5\.0-performance\.js\?v=1\.5\.0/);
+assert.match(worker,/shows-v1\.5\.0-performance\.js\?v=1\.5\.0/);
+console.log("HerdHarbor Alpha v1.5.0 Shows performance tests passed");

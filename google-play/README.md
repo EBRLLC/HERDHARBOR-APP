@@ -1,12 +1,12 @@
 # HerdHarbor Google Play submission
 
-This folder contains the submission material for **HerdHarbor Alpha v1.2.0**.
+This folder contains the submission material for **HerdHarbor Alpha v1.3.0**.
 
 ## Android package
 
 - Package ID: `com.ebrllc.herdharbor`
-- Version name: `1.2.0-alpha`
-- Version code: `3`
+- Version name: `1.3.0-alpha`
+- Version code: `5`
 - Minimum SDK: `23`
 - Compile and target SDK: `36`
 - Delivery format: signed Android App Bundle (`.aab`)
