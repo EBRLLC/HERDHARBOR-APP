@@ -3,7 +3,6 @@
   "version": "1.5.1",
   "private": true,
   "description": "HerdHarbor Alpha v1.5.1 privacy-safe crash and error monitoring build",
-  "type": "module",
   "scripts": {
     "build:monitoring": "node scripts/build-monitoring.mjs",
     "build:monitoring-config": "node scripts/build-monitoring-config.mjs",
