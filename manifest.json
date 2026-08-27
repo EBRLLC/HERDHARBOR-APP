@@ -2,8 +2,8 @@
   "id": "./",
   "name": "HerdHarbor",
   "short_name": "HerdHarbor",
-  "description": "HerdHarbor Alpha v1.4.5 farm and livestock management with rabbit Pair Analysis, phenotype-constrained genetics, pedigrees, breeding, production, sales, and protected cloud sync.",
-  "version": "1.4.5",
+  "description": "HerdHarbor Alpha v1.5.0 farm and livestock management with Shows, exhibitors, placements, awards, 4-H and FFA projects, rabbit genetics, pedigrees, breeding, production, finance, health, and protected cloud sync.",
+  "version": "1.5.0",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -17,6 +17,7 @@
   ],
   "shortcuts": [
     { "name": "Animals", "short_name": "Animals", "url": "./#animals" },
+    { "name": "Shows", "short_name": "Shows", "url": "./#shows" },
     { "name": "Tasks", "short_name": "Tasks", "url": "./#tasks" },
     { "name": "Health records", "short_name": "Health", "url": "./#health" },
     { "name": "Breeding Intelligence", "short_name": "Breeding", "url": "./#breeding" },
