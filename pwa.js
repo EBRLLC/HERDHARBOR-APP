@@ -1,10 +1,16 @@
 (() => {
   "use strict";
 
-  const PWA_BUILD = "1.5.0-alpha-shows-review-2";
+  const APP_VERSION = "1.5.0";
+  const BUILD_ID = "updatefix-1";
+  const PWA_BUILD = `${APP_VERSION}-alpha-shows-${BUILD_ID}`;
+  const UPDATE_CHECK_MIN_INTERVAL_MS = 60_000;
   let installPrompt = null;
   let registration = null;
   let updateToast = null;
+  let pendingUpdateWorker = null;
+  let updateCheckInFlight = null;
+  let lastUpdateCheckAt = 0;
   let reloading = false;
 
   const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
@@ -73,6 +79,12 @@
     });
   }
 
+  function refreshManifestLink() {
+    const manifest = document.querySelector('link[rel="manifest"]');
+    if (!manifest) return;
+    manifest.href = `manifest.json?build=${encodeURIComponent(PWA_BUILD)}`;
+  }
+
   function installLabel() {
     if (isStandalone()) return "HerdHarbor is installed";
     if (installPrompt) return "Install HerdHarbor";
@@ -90,7 +102,15 @@
     const topButton = document.querySelector("#install-app-button");
     if (topButton) { topButton.hidden = installed || (!installPrompt && !isIos()); topButton.disabled = installed; }
     const note = document.querySelector("#pwa-install-note");
-    if (note) note.textContent = installed ? "This device is running the installed HerdHarbor app." : isIos() ? "On iPhone or iPad, tap Share, then Add to Home Screen." : "The installed app uses the same account and protected cloud records as the website.";
+    const versionText = `Version ${APP_VERSION} · Build ${BUILD_ID}`;
+    if (note) note.textContent = installed
+      ? `This device is running the installed HerdHarbor app. ${versionText}.`
+      : isIos()
+        ? `On iPhone or iPad, tap Share, then Add to Home Screen. ${versionText}.`
+        : `The installed app uses the same account and protected cloud records as the website. ${versionText}.`;
+    document.querySelectorAll("[data-herdharbor-version]").forEach((element) => {
+      element.textContent = versionText;
+    });
   }
 
   async function requestInstall() {
@@ -101,48 +121,113 @@
   }
 
   function showUpdateReady(worker) {
-    if (updateToast || !worker) return;
+    if (!worker) return;
+    pendingUpdateWorker = worker;
+    if (updateToast) return;
     updateToast = document.createElement("aside");
     updateToast.className = "hh-pwa-update";
     updateToast.setAttribute("role", "status");
-    updateToast.innerHTML = `<strong>HerdHarbor update ready</strong><span>Your records will be protected before the app reloads.</span><button type="button">Update now</button>`;
-    updateToast.querySelector("button").addEventListener("click", async () => {
-      const cloud = window.HerdHarborCloud;
-      if (cloud?.hasUnsyncedChanges?.()) {
-        const saved = await cloud.syncNow();
-        if (!saved) { window.alert("The update is paused because local changes are not safely synced yet. Your current app and records remain available."); return; }
+    updateToast.innerHTML = `<strong>HerdHarbor update ready</strong><span>Local records stay on this device while the app reloads. Cloud Sync is not required.</span><button type="button">Update now</button>`;
+    updateToast.querySelector("button").addEventListener("click", () => {
+      const workerToActivate = registration?.waiting || pendingUpdateWorker;
+      if (!workerToActivate) {
+        updateToast.querySelector("button").textContent = "Checking…";
+        checkForAppUpdate({ force: true });
+        return;
       }
       updateToast.querySelector("button").disabled = true;
       updateToast.querySelector("button").textContent = "Updating…";
-      worker.postMessage({ type: "SKIP_WAITING" });
+      workerToActivate.postMessage({ type: "SKIP_WAITING" });
     });
     document.body.appendChild(updateToast);
+  }
+
+  function watchInstallingWorker(worker) {
+    if (!worker) return;
+    worker.addEventListener("statechange", () => {
+      if (worker.state === "installed" && navigator.serviceWorker.controller) {
+        showUpdateReady(registration?.waiting || worker);
+      }
+    });
+  }
+
+  async function checkForAppUpdate({ force = false } = {}) {
+    if (!registration || navigator.onLine === false) return false;
+    if (registration.waiting && navigator.serviceWorker.controller) {
+      showUpdateReady(registration.waiting);
+      return true;
+    }
+    const now = Date.now();
+    if (!force && now - lastUpdateCheckAt < UPDATE_CHECK_MIN_INTERVAL_MS) return false;
+    if (updateCheckInFlight) return updateCheckInFlight;
+    lastUpdateCheckAt = now;
+    updateCheckInFlight = (async () => {
+      try {
+        await registration.update();
+        if (registration.waiting && navigator.serviceWorker.controller) {
+          showUpdateReady(registration.waiting);
+          return true;
+        }
+        return false;
+      } catch (error) {
+        if (navigator.onLine !== false) console.warn("HerdHarbor could not check for an app update:", error);
+        return false;
+      }
+    })();
+    try {
+      return await updateCheckInFlight;
+    } finally {
+      updateCheckInFlight = null;
+    }
   }
 
   async function registerServiceWorker() {
     if (!("serviceWorker" in navigator)) return;
     try {
-      registration = await navigator.serviceWorker.register(`service-worker.js?build=${encodeURIComponent(PWA_BUILD)}`, { scope: "./" });
-      if (registration.waiting && navigator.serviceWorker.controller) showUpdateReady(registration.waiting);
-      registration.addEventListener("updatefound", () => {
-        const worker = registration.installing;
-        if (!worker) return;
-        worker.addEventListener("statechange", () => { if (worker.state === "installed" && navigator.serviceWorker.controller) showUpdateReady(worker); });
+      registration = await navigator.serviceWorker.register("service-worker.js", {
+        scope: "./",
+        updateViaCache: "none"
       });
+      if (registration.waiting && navigator.serviceWorker.controller) showUpdateReady(registration.waiting);
+      if (registration.installing) watchInstallingWorker(registration.installing);
+      registration.addEventListener("updatefound", () => watchInstallingWorker(registration.installing));
+      await checkForAppUpdate({ force: true });
     } catch (error) { console.error("HerdHarbor could not register its offline app shell:", error); }
+  }
+
+  function requestForegroundUpdateCheck() {
+    if (document.visibilityState === "visible") checkForAppUpdate();
   }
 
   window.addEventListener("beforeinstallprompt", (event) => { event.preventDefault(); installPrompt = event; refreshInstallUI(); });
   window.addEventListener("appinstalled", () => { installPrompt = null; refreshInstallUI(); });
-  navigator.serviceWorker?.addEventListener("controllerchange", () => { if (reloading) return; reloading = true; window.location.reload(); });
+  window.addEventListener("focus", requestForegroundUpdateCheck);
+  window.addEventListener("online", () => checkForAppUpdate({ force: true }));
+  window.addEventListener("pageshow", (event) => { if (event.persisted || document.visibilityState === "visible") checkForAppUpdate(); });
+  document.addEventListener("visibilitychange", requestForegroundUpdateCheck);
+  navigator.serviceWorker?.addEventListener("controllerchange", () => {
+    if (reloading) return;
+    reloading = true;
+    updateToast?.remove();
+    updateToast = null;
+    window.location.reload();
+  });
   document.addEventListener("click", (event) => { const trigger = event.target.closest("[data-pwa-install]"); if (trigger) requestInstall(); });
 
-  window.HerdHarborPWA = { install: requestInstall, refreshInstallUI, isInstalled: isStandalone, build: PWA_BUILD };
+  window.HerdHarborPWA = {
+    install: requestInstall,
+    refreshInstallUI,
+    checkForUpdates: () => checkForAppUpdate({ force: true }),
+    isInstalled: isStandalone,
+    version: APP_VERSION,
+    build: PWA_BUILD
+  };
 
   function boot() {
     loadPedigreeVisuals();
     loadBreedingIntelligence();
     loadShows();
+    refreshManifestLink();
     refreshInstallUI();
     registerServiceWorker();
   }
