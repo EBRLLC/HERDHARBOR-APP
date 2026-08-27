@@ -1221,6 +1221,19 @@
       .hh-account-backup { color: #0D2540; background: #E9F0F5; }
       .hh-account-close { color: #0D2540; background: #EDF2F3; }
       .hh-account-signout { color: white; background: #AA3E3E; }
+      html[data-theme="dark"] .hh-account-dialog {
+        color: #18212A;
+        background: #FFFFFF;
+        color-scheme: light;
+      }
+      html[data-theme="dark"] .hh-account-dialog h2 { color: #0D2540; }
+      html[data-theme="dark"] .hh-account-dialog .hh-account-email { color: #526474; }
+      html[data-theme="dark"] .hh-account-dialog #hh-account-sync-status { color: #0D2540; background: #F0F4F5; }
+      html[data-theme="dark"] .hh-account-dialog #hh-account-sync-status[data-type="success"] { color: #2E6A45; background: #E8F4EC; }
+      html[data-theme="dark"] .hh-account-dialog #hh-account-sync-status[data-type="error"] { color: #7C2020; background: #F9E8E8; }
+      html[data-theme="dark"] .hh-account-dialog .hh-account-backup,
+      html[data-theme="dark"] .hh-account-dialog .hh-account-close { color: #0D2540; }
+      html[data-theme="dark"] .hh-account-dialog .hh-conflict-actions p { color: #694713; }
       .hh-conflict-actions {
         display: grid;
         gap: 10px;
