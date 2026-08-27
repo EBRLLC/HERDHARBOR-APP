@@ -3,11 +3,13 @@
 import * as Sentry from "@sentry/browser";
 import { createHerdHarborMonitoring } from "./herdharbor-monitoring-core.mjs";
 import { installMonitoringAdapters } from "./herdharbor-monitoring-instrumentation.mjs";
+import { createPrivacySentryAdapter } from "./herdharbor-monitoring-privacy.mjs";
 
 (() => {
   const runtime = window;
   const config = runtime.HerdHarborMonitoringConfig || {};
-  const monitoring = createHerdHarborMonitoring(Sentry, runtime);
+  const privacySentry = createPrivacySentryAdapter(Sentry);
+  const monitoring = createHerdHarborMonitoring(privacySentry, runtime);
 
   runtime.HerdHarborMonitoring = monitoring;
 
