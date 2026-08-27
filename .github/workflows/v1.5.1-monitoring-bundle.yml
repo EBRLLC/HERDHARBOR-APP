@@ -23,13 +23,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: agent/v1.5.1-crash-monitoring
+      - name: Synchronize latest review branch
+        run: |
+          git fetch origin agent/v1.5.1-crash-monitoring
+          git reset --hard origin/agent/v1.5.1-crash-monitoring
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Install pinned monitoring dependencies
         run: npm install --no-audit --no-fund
       - name: Build reusable browser monitoring bundle
-        run: npm run build:monitoring
+        run: NODE_ENV=production npm run build:monitoring
       - name: Commit generated bundle and lockfile to review branch
         run: |
           git config user.name "github-actions[bot]"
@@ -39,5 +45,6 @@ jobs:
             echo "Monitoring bundle is already current."
           else
             git commit -m "Build Alpha v1.5.1 Sentry browser bundle"
+            git pull --rebase origin agent/v1.5.1-crash-monitoring
             git push origin HEAD:agent/v1.5.1-crash-monitoring
           fi
