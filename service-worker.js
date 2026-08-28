@@ -1,12 +1,14 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v1.5.0-alpha-shows-updatefix-1`;
+const CACHE_NAME = `${CACHE_PREFIX}v1.5.0-alpha-shows-updatefix-1-monitoring-v1.5.1-review-1`;
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.json?v=16",
   "./herdharbor-cloud.js?v=17",
+  "./herdharbor-monitoring-config.js?v=1.5.1",
+  "./vendor/herdharbor-monitoring-v1.5.1.min.js?v=1.5.1",
   "./symptom-guide.js?v=1",
   "./pwa.js?v=22",
   "./pedigree-visual.css?v=2",
@@ -43,6 +45,8 @@ const NETWORK_FIRST_PATHS = [
   "/manifest.json",
   "/pwa.js",
   "/herdharbor-cloud.js",
+  "/herdharbor-monitoring-config.js",
+  "/vendor/herdharbor-monitoring-v1.5.1.min.js",
   "/symptom-guide.js",
   "/spreadsheet-import.js",
   "/pedigree-visual.css",
