@@ -13,32 +13,48 @@
   let lastUpdateCheckAt = 0;
   let reloading = false;
 
-  const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-  const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const isNativeApp = () =>
+  window.Capacitor?.isNativePlatform?.() === true;
 
-  function addStylesheet(id, href) {
-    if (document.getElementById(id)) return;
-    const style = document.createElement("link");
-    style.id = id;
-    style.rel = "stylesheet";
-    style.href = href;
-    document.head.appendChild(style);
-  }
+const isStandalone = () =>
+  isNativeApp() ||
+  window.matchMedia("(display-mode: standalone)").matches ||
+  window.navigator.standalone === true;
 
-  function addScript(id, src, onload) {
-    if (document.getElementById(id)) { if (onload) onload(); return; }
-    const script = document.createElement("script");
-    script.id = id;
-    script.src = src;
-    script.async = false;
-    if (onload) script.addEventListener("load", onload, { once: true });
-    document.head.appendChild(script);
-  }
+const isIos = () =>
+  /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
+function addStylesheet(id, href) {
+  if (document.getElementById(id)) return;
+  const style = document.createElement("link");
+  style.id = id;
+  style.rel = "stylesheet";
+  style.href = href;
+  document.head.appendChild(style);
+}
   function loadPedigreeVisuals() {
     addStylesheet("hh-pedigree-visual-style", "pedigree-visual.css?v=2");
     addScript("hh-pedigree-visual-script", "pedigree-visual.js?v=2");
   }
+
+function addScript(id, src, onload) {
+  if (document.getElementById(id)) {
+    if (onload) onload();
+    return;
+  }
+
+  const script = document.createElement("script");
+  script.id = id;
+  script.src = src;
+  script.async = false;
+
+  if (onload) {
+    script.addEventListener("load", onload, { once: true });
+  }
+
+  document.head.appendChild(script);
+}
 
   function loadBreedingIntelligence() {
     addStylesheet("hh-breeding-intelligence-style", "breeding-intelligence.css?v=1.4.0");
@@ -182,7 +198,7 @@
   }
 
   async function registerServiceWorker() {
-    if (!("serviceWorker" in navigator)) return;
+  if (isNativeApp() || !("serviceWorker" in navigator)) return;
     try {
       registration = await navigator.serviceWorker.register("service-worker.js", {
         scope: "./",

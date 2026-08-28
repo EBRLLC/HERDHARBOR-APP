@@ -1,0 +1,26 @@
+{
+  "appId": "com.ebrllc.herdharbor",
+  "appName": "HerdHarbor",
+  "webDir": "web",
+  "backgroundColor": "#F7F3EA",
+  "server": {
+    "iosScheme": "https",
+    "androidScheme": "https",
+    "cleartext": false
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "allowsLinkPreview": true,
+    "backgroundColor": "#F7F3EA",
+    "preferredContentMode": "mobile",
+    "scrollEnabled": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "LIGHT",
+      "backgroundColor": "#F7F3EA",
+      "overlaysWebView": false
+    }
+  }
+}
