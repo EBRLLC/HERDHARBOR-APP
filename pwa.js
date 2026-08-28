@@ -1,9 +1,9 @@
 (() => {
   "use strict";
 
-  const APP_VERSION = "1.5.0";
-  const BUILD_ID = "updatefix-1";
-  const PWA_BUILD = `${APP_VERSION}-alpha-shows-${BUILD_ID}`;
+  const APP_VERSION = "1.5.1";
+  const BUILD_ID = "membership-review-1";
+  const PWA_BUILD = `${APP_VERSION}-alpha-stability-${BUILD_ID}`;
   const UPDATE_CHECK_MIN_INTERVAL_MS = 60_000;
   let installPrompt = null;
   let registration = null;
@@ -12,6 +12,7 @@
   let updateCheckInFlight = null;
   let lastUpdateCheckAt = 0;
   let reloading = false;
+  let updateDeferredUntil = 0;
 
   const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
   const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -33,6 +34,49 @@
     script.async = false;
     if (onload) script.addEventListener("load", onload, { once: true });
     document.head.appendChild(script);
+  }
+
+  function addOptionalScript(id, src, done) {
+    const existing = document.getElementById(id);
+    if (existing) { done?.(true); return; }
+    const script = document.createElement("script");
+    script.id = id;
+    script.src = src;
+    script.async = false;
+    let finished = false;
+    const finish = (loaded) => {
+      if (finished) return;
+      finished = true;
+      done?.(loaded);
+    };
+    script.addEventListener("load", () => finish(true), { once: true });
+    script.addEventListener("error", () => finish(false), { once: true });
+    document.head.appendChild(script);
+  }
+
+  function monitoring() {
+    return window.HerdHarborMonitoring || null;
+  }
+
+  function monitorFailure(error, errorCategory, moduleName = "dashboard", metadata = {}) {
+    try {
+      monitoring()?.captureError?.(error, {
+        module: moduleName,
+        errorCategory,
+        metadata: {
+          module: moduleName,
+          result: "failure",
+          ...metadata
+        }
+      });
+    } catch {}
+  }
+
+  function loadMonitoring(done) {
+    addOptionalScript("hh-monitoring-config", "herdharbor-monitoring-config.js?v=1.5.1", (configLoaded) => {
+      if (!configLoaded) { done?.(); return; }
+      addOptionalScript("hh-monitoring-v151", "vendor/herdharbor-monitoring-v1.5.1.min.js?v=1.5.1", () => done?.());
+    });
   }
 
   function loadPedigreeVisuals() {
@@ -123,21 +167,27 @@
   function showUpdateReady(worker) {
     if (!worker) return;
     pendingUpdateWorker = worker;
+    if (Date.now() < updateDeferredUntil) return;
     if (updateToast) return;
     updateToast = document.createElement("aside");
     updateToast.className = "hh-pwa-update";
     updateToast.setAttribute("role", "status");
-    updateToast.innerHTML = `<strong>HerdHarbor update ready</strong><span>Local records stay on this device while the app reloads. Cloud Sync is not required.</span><button type="button">Update now</button>`;
-    updateToast.querySelector("button").addEventListener("click", () => {
+    updateToast.innerHTML = `<strong>HerdHarbor Update Available</strong><span>A new version of HerdHarbor is ready. Finish any unsaved entry before updating. Cloud Sync is not required.</span><div><button type="button" data-hh-update-now>Update Now</button><button type="button" data-hh-update-later>Later</button></div>`;
+    updateToast.querySelector("[data-hh-update-now]").addEventListener("click", () => {
       const workerToActivate = registration?.waiting || pendingUpdateWorker;
       if (!workerToActivate) {
-        updateToast.querySelector("button").textContent = "Checking…";
+        updateToast.querySelector("[data-hh-update-now]").textContent = "Checking…";
         checkForAppUpdate({ force: true });
         return;
       }
-      updateToast.querySelector("button").disabled = true;
-      updateToast.querySelector("button").textContent = "Updating…";
+      updateToast.querySelector("[data-hh-update-now]").disabled = true;
+      updateToast.querySelector("[data-hh-update-now]").textContent = "Updating…";
       workerToActivate.postMessage({ type: "SKIP_WAITING" });
+    });
+    updateToast.querySelector("[data-hh-update-later]").addEventListener("click", () => {
+      updateDeferredUntil = Date.now() + (4 * 60 * 60 * 1000);
+      updateToast.remove();
+      updateToast = null;
     });
     document.body.appendChild(updateToast);
   }
@@ -170,7 +220,10 @@
         }
         return false;
       } catch (error) {
-        if (navigator.onLine !== false) console.warn("HerdHarbor could not check for an app update:", error);
+        if (navigator.onLine !== false) {
+          console.warn("HerdHarbor could not check for an app update:", error);
+          monitorFailure(error, "update_check_failure", "dashboard", { operation: "pwa_update_check" });
+        }
         return false;
       }
     })();
@@ -192,7 +245,10 @@
       if (registration.installing) watchInstallingWorker(registration.installing);
       registration.addEventListener("updatefound", () => watchInstallingWorker(registration.installing));
       await checkForAppUpdate({ force: true });
-    } catch (error) { console.error("HerdHarbor could not register its offline app shell:", error); }
+    } catch (error) {
+      console.error("HerdHarbor could not register its offline app shell:", error);
+      monitorFailure(error, "service_worker_failure", "dashboard", { operation: "service_worker_registration" });
+    }
   }
 
   function requestForegroundUpdateCheck() {
@@ -223,14 +279,28 @@
     build: PWA_BUILD
   };
 
-  function boot() {
-    loadPedigreeVisuals();
-    loadBreedingIntelligence();
-    loadShows();
-    refreshManifestLink();
-    refreshInstallUI();
-    registerServiceWorker();
+  function bootApplication() {
+    try {
+      monitoring()?.setModule?.("dashboard");
+      monitoring()?.addBreadcrumb?.({ module: "dashboard", action: "load_application_modules" });
+      loadPedigreeVisuals();
+      loadBreedingIntelligence();
+      loadShows();
+      refreshManifestLink();
+      refreshInstallUI();
+      registerServiceWorker();
+    } catch (error) {
+      monitorFailure(error, "startup_failure", "dashboard", { operation: "application_startup" });
+      console.error("HerdHarbor application startup failed:", error);
+    }
   }
+
+  function boot() {
+    // Monitoring is optional and fail-open. If either configuration or the
+    // bundled SDK cannot load, the application starts normally.
+    loadMonitoring(bootApplication);
+  }
+
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
   else boot();
 })();

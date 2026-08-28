@@ -1,0 +1,20 @@
+{
+  "name": "herdharbor-monitoring",
+  "version": "1.5.1",
+  "private": true,
+  "description": "HerdHarbor Alpha v1.5.1 privacy-safe crash and error monitoring build",
+  "scripts": {
+    "build:monitoring": "node scripts/build-monitoring.mjs",
+    "build:monitoring-config": "node scripts/build-monitoring-config.mjs",
+    "test:monitoring": "node --test tests/monitoring-*.test.cjs"
+  },
+  "dependencies": {
+    "@sentry/browser": "10.71.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

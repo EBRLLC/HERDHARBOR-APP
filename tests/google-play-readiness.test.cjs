@@ -21,29 +21,29 @@ const fullDescription = read("google-play/listing/en-US/full-description.txt").t
 const androidManifest = read("android/app/src/main/AndroidManifest.xml");
 
 assert.doesNotMatch(html, /pre[ -]?alpha/i);
-assert.equal(manifest.version, "1.5.0");
+assert.equal(manifest.version, "1.5.1");
 assert.equal(manifest.display, "standalone");
 assert.ok(manifest.shortcuts.some((shortcut) => shortcut.url === "./#shows"));
 assert.equal(twa.packageId, "com.ebrllc.herdharbor");
-assert.equal(twa.appVersion, "1.5.0");
-assert.equal(twa.appVersionCode, 8);
+assert.equal(twa.appVersion, "1.5.1");
+assert.equal(twa.appVersionCode, 9);
 assert.equal(twa.host, "app.herdharbor.com");
 assert.match(appGradle, /applicationId:\s*'com\.ebrllc\.herdharbor'/);
 assert.match(appGradle, /namespace "com\.ebrllc\.herdharbor"/);
 assert.match(appGradle, /applicationId "com\.ebrllc\.herdharbor"/);
 assert.match(appGradle, /compileSdkVersion 36/);
 assert.match(appGradle, /targetSdkVersion 36/);
-assert.match(appGradle, /versionCode 8/);
-assert.match(appGradle, /versionName "1\.5\.0"/);
+assert.match(appGradle, /versionCode 9/);
+assert.match(appGradle, /versionName "1\.5\.1"/);
 assert.match(appGradle, /https:\/\/app\.herdharbor\.com\/manifest\.json/);
-assert.match(worker, /v1\.5\.0-alpha-shows-updatefix-1/);
+assert.match(worker, /v1\.5\.1-alpha-stability-membership-review-1/);
 assert.match(worker, /rabbit-records-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(worker, /pedigree-genetics-v1\.4\.5\.js\?v=1\.4\.5/);
 assert.match(worker, /shows-v1\.5\.0\.css\?v=1\.5\.0/);
 assert.match(worker, /shows-v1\.5\.0\.js\?v=1\.5\.0/);
 assert.match(worker, /shows-v1\.5\.0-hardening\.js\?v=1\.5\.0/);
-assert.match(pwa, /\$\{APP_VERSION\}-alpha-shows-\$\{BUILD_ID\}/);
-assert.match(pwa, /const BUILD_ID = "updatefix-1"/);
+assert.match(pwa, /\$\{APP_VERSION\}-alpha-stability-\$\{BUILD_ID\}/);
+assert.match(pwa, /const BUILD_ID = "membership-review-1"/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
 assert.match(pwa, /loadShows/);
@@ -73,4 +73,4 @@ assert.ok(fs.statSync(path.join(root, "android/store_icon.png")).size <= 1024 * 
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/app-icon-512.png")));
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/feature-graphic-1024x500.png")));
 
-console.log("Google Play Alpha v1.5.0 Shows + PWA update-fix readiness tests passed");
+console.log("Google Play Alpha v1.5.1 membership and stability readiness tests passed");

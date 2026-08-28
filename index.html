@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="HerdHarbor">
   <title>HerdHarbor</title>
-  <link rel="manifest" href="manifest.json?v=14">
+  <link rel="manifest" href="manifest.json?v=17">
   <link rel="apple-touch-icon" href="icon-192.png">
   <script>
     (() => {
@@ -2062,9 +2062,13 @@ html[data-theme="dark"] textarea::placeholder {
 .hh-pwa-update strong,
 .hh-pwa-update span { grid-column: 1; }
 .hh-pwa-update span { color: #D9E4EA; font-size: .88rem; }
-.hh-pwa-update button {
+.hh-pwa-update > div {
   grid-column: 2;
   grid-row: 1 / 3;
+  display: flex;
+  gap: 8px;
+}
+.hh-pwa-update button {
   min-height: 42px;
   padding: 9px 14px;
   color: #0D2540;
@@ -2073,14 +2077,16 @@ html[data-theme="dark"] textarea::placeholder {
   border-radius: 10px;
   font-weight: 850;
 }
+.hh-pwa-update [data-hh-update-later] { color: #FFFFFF; background: transparent; border: 1px solid rgba(255,255,255,.45); }
 
 @media (max-width: 520px) {
   .hh-pwa-update { grid-template-columns: 1fr; }
-  .hh-pwa-update button {
+  .hh-pwa-update > div {
     grid-column: 1;
     grid-row: auto;
     margin-top: 7px;
   }
+  .hh-pwa-update button { flex: 1; }
 }
 
 /* v0.4.0 breeding and birth management */
@@ -2429,6 +2435,7 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
 }
 
   </style>
+  <link rel="stylesheet" href="herdharbor-v1.5.1.css?v=1.5.1">
 </head>
 <body>
   <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
@@ -2510,6 +2517,9 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
           <button class="nav-item" data-route="settings" title="Settings">
             <span class="nav-icon">⚙</span><span>Settings</span>
           </button>
+          <button class="nav-item" data-route="admin" title="Admin members" hidden aria-hidden="true">
+            <span class="nav-icon">◆</span><span>Admin · Members</span>
+          </button>
         </nav>
       </div>
 
@@ -2563,6 +2573,7 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
         <section id="view-budget" class="view"></section>
         <section id="view-sales" class="view"></section>
         <section id="view-settings" class="view"></section>
+        <section id="view-admin" class="view"></section>
       </main>
     </div>
   </div>
@@ -2584,10 +2595,14 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
   <script src="vendor/jszip-3.10.1.min.js"></script>
   <script src="vendor/exceljs-4.4.0.min.js"></script>
   <script src="vendor/qrcode-generator-1.4.4.js"></script>
+  <script src="herdharbor-release-v1.5.1.js?v=1.5.1"></script>
+  <script src="herdharbor-membership-v1.5.1.js?v=1.5.1"></script>
+  <script src="herdharbor-billing-v1.5.1.js?v=1.5.1"></script>
   <script src="spreadsheet-import.js?v=17"></script>
-  <script src="herdharbor-cloud.js?v=17"></script>
+  <script src="herdharbor-cloud.js?v=18"></script>
+  <script src="herdharbor-admin-v1.5.1.js?v=1.5.1"></script>
   <script src="symptom-guide.js?v=1"></script>
-  <script src="pwa.js?v=21"></script>
+  <script src="pwa.js?v=23"></script>
   <script>
 (() => {
   "use strict";
@@ -2627,7 +2642,7 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
   let state = loadState();
   let lastSavedRaw = localStorage.getItem(STORAGE_KEY) || "";
   const requestedRoute = String(window.location.hash || "").replace(/^#/, "");
-  let currentRoute = ["dashboard", "animals", "pedigrees", "breeding", "litters", "health", "symptoms", "tasks", "budget", "sales", "settings"].includes(requestedRoute)
+  let currentRoute = ["dashboard", "animals", "pedigrees", "breeding", "litters", "health", "symptoms", "tasks", "budget", "sales", "settings", "admin"].includes(requestedRoute)
     ? requestedRoute
     : "dashboard";
   let animalView = {
@@ -2946,9 +2961,14 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
   }
 
   function activeAnimals() {
-    return state.animals.filter((animal) =>
-      !["Sold", "Deceased", "Ancestor Only"].includes(animal.status)
-    );
+    const membership = typeof window !== "undefined" ? window.HerdHarborMembership : null;
+    return state.animals.filter((animal) => membership?.isActiveAnimal?.(animal)
+      ?? !["Sold", "Deceased", "Archived", "Ancestor Only"].includes(animal.status));
+  }
+
+  function allowsAnimalTransition(beforeAnimals, afterAnimals) {
+    const policy = typeof window !== "undefined" ? window.HerdHarborMembership?.enforceAnimalTransition : null;
+    return typeof policy === "function" ? policy(beforeAnimals, afterAnimals) : true;
   }
 
   function transactionSpecies(transaction) {
@@ -3288,6 +3308,17 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
     document.addEventListener("herdharbor:sync-status", (event) => {
       refreshSyncStatus(event.detail);
     });
+    document.addEventListener("herdharbor:membership-change", () => {
+      if (currentRoute === "settings") renderSettings();
+      if (currentRoute === "admin") window.HerdHarborAdmin?.render?.();
+    });
+    document.addEventListener("herdharbor:request-upgrade", () => {
+      if (window.HerdHarborBilling?.enabled?.()) {
+        toast("Member upgrade options are loading. Your current records remain unchanged.", "info");
+      } else {
+        toast("Member upgrades are not open yet. Your current records remain safe and available.", "info");
+      }
+    });
 
     $$(".nav-item, .brand").forEach((item) => {
       item.addEventListener("click", (event) => {
@@ -3365,6 +3396,11 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
   }
 
   function navigate(route) {
+    if (route === "admin" && window.HerdHarborMembership?.canAccessAdmin?.() !== true) {
+      currentRoute = "dashboard";
+      toast("Admin Members is available only to authorized Owner and Admin accounts.", "error");
+      route = "dashboard";
+    }
     currentRoute = route || "dashboard";
     $$(".view").forEach((view) => view.classList.remove("active"));
     $$(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.route === currentRoute));
@@ -3388,7 +3424,8 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
       tasks: "Tasks and reminders",
       budget: "Budget and cost per head",
       sales: "Sales, customers, and transfers",
-      settings: "Workspace settings"
+      settings: "Workspace settings",
+      admin: "Admin · Members"
     })[route] || "Overview";
   }
 
@@ -3404,7 +3441,8 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
       tasks: renderTasks,
       budget: renderBudget,
       sales: renderSales,
-      settings: renderSettings
+      settings: renderSettings,
+      admin: () => window.HerdHarborAdmin?.render?.()
     };
     renderers[currentRoute]?.();
   }
@@ -3422,7 +3460,7 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
   }
 
   function renderDashboard() {
-    const activeAnimals = state.animals.filter((a) => !["Sold", "Deceased", "Ancestor Only"].includes(a.status)).length;
+    const activeAnimalCount = activeAnimals().length;
     const openBreedings = state.breedings.filter((record) =>
       !["Not pregnant", "Delivered", "Cancelled"].includes(normalizeBreedingStatus(record.status))
     ).length;
@@ -3472,7 +3510,7 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
          <button class="button button-primary" data-action="add-animal">+ Add animal</button>`
       )}
       <div class="stats-grid">
-        ${statCard("Animals", activeAnimals, `${state.animals.length} total records`)}
+        ${statCard("Animals", activeAnimalCount, `${state.animals.length} total records`)}
         ${statCard("Active breedings", openBreedings, `${dueSoon} due within 14 days`)}
         ${statCard("Open tasks", openTasks, `${dueTodayTasks} today · ${overdueTasks} overdue`)}
         ${statCard("Births & litters", state.litters.length, `${state.litters.reduce((sum, l) => sum + Number(l.bornAlive || 0), 0)} live births recorded`)}
@@ -3581,7 +3619,7 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
         <input id="animal-search" type="search" value="${esc(animalView.search)}" placeholder="Search name, tag, registration, breeder, breed, or location">
         <select id="animal-species"><option value="">All species</option>${state.settings.species.map((species) => `<option ${species === animalView.species ? "selected" : ""}>${esc(species)}</option>`).join("")}</select>
         <select id="animal-sex"><option value="">Any sex</option>${["Female", "Male", "Unknown"].map((sex) => `<option ${sex === animalView.sex ? "selected" : ""}>${sex}</option>`).join("")}</select>
-        <select id="animal-status"><option value="">Any status</option>${["Active", "Breeding", "Growing", "Retired", "For Sale", "Reserved", "Sold", "Deceased", "Ancestor Only"].map((status) => `<option ${status === animalView.status ? "selected" : ""}>${status}</option>`).join("")}</select>
+        <select id="animal-status"><option value="">Any status</option>${["Active", "Breeding", "Growing", "Retired", "For Sale", "Reserved", "Sold", "Deceased", "Archived", "Ancestor Only"].map((status) => `<option ${status === animalView.status ? "selected" : ""}>${status}</option>`).join("")}</select>
       </div>
       <div id="animal-results"></div>`;
 
@@ -3677,7 +3715,7 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
           ${field("Date of birth", "dob", animal.dob, false, "date")}
           ${field("Color or variety", "color", animal.color)}
           ${field("Location / cage / pen", "location", animal.location)}
-          ${selectField("Status", "status", ["Active", "Breeding", "Growing", "Retired", "For Sale", "Reserved", "Sold", "Deceased", "Ancestor Only"], animal.status || "Active", true)}
+          ${selectField("Status", "status", ["Active", "Breeding", "Growing", "Retired", "For Sale", "Reserved", "Sold", "Deceased", "Archived", "Ancestor Only"], animal.status || "Active", true)}
           ${field("Asking price (optional)", "askingPrice", animal.askingPrice, false, "number")}
           ${selectAnimalField("Sire", "sireId", animal.sireId, "Male")}
           ${selectAnimalField("Dam", "damId", animal.damId, "Female")}
@@ -3782,10 +3820,13 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
       data.askingPrice = Number.isFinite(askingPrice) ? askingPrice.toFixed(2) : "";
       data.photoData = pendingPhotoData;
       data.photoFileName = pendingPhotoFileName;
-      rememberBreed(data.species, data.breed);
       if (id) {
+        const nextAnimal = { ...animal, ...data, updatedAt: new Date().toISOString() };
+        const nextAnimals = state.animals.map((item) => item.id === id ? nextAnimal : item);
+        if (!allowsAnimalTransition(state.animals, nextAnimals)) return;
         const original = { ...animal };
-        Object.assign(animal, data, { updatedAt: new Date().toISOString() });
+        Object.assign(animal, nextAnimal);
+        rememberBreed(data.species, data.breed);
         recordActivity(`Updated ${data.name}.`, "animal");
         if (!saveState("Animal updated.")) {
           Object.keys(animal).forEach((key) => delete animal[key]);
@@ -3795,7 +3836,9 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
         }
       } else {
         const newAnimal = { id: uid("animal"), ...data, createdAt: new Date().toISOString() };
+        if (!allowsAnimalTransition(state.animals, [...state.animals, newAnimal])) return;
         state.animals.push(newAnimal);
+        rememberBreed(data.species, data.breed);
         recordActivity(`Added ${data.name} to animal records.`, "animal");
         if (!saveState("Animal added.")) {
           state.animals = state.animals.filter((item) => item.id !== newAnimal.id);
@@ -4768,9 +4811,10 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
           createdAt: now,
           updatedAt: now
         };
-        state.animals.push(animal);
         created.push(animal);
       }
+      if (!allowsAnimalTransition(state.animals, [...state.animals, ...created])) return;
+      state.animals.push(...created);
       litter.offspringIds = [...new Set([...(Array.isArray(litter.offspringIds) ? litter.offspringIds : []), ...created.map((animal) => animal.id)])];
       litter.updatedAt = now;
       rememberBreed(dam?.species || sire?.species || "", breed);
@@ -7374,7 +7418,7 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
     };
     const selectedItems = new Map(saleItems(draft).map((item) => [item.animalId, item]));
     const candidates = state.animals.filter((animal) =>
-      selectedItems.has(animal.id) || !["Sold", "Deceased", "Ancestor Only"].includes(animal.status)
+      selectedItems.has(animal.id) || !["Sold", "Deceased", "Archived", "Ancestor Only"].includes(animal.status)
     );
     if (!candidates.length) {
       toast("Add an eligible animal before creating a sale.", "error");
@@ -7782,10 +7826,15 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
           createdAt: now,
           updatedAt: now
         };
-        state.animals.push(animal);
-        rememberBreed(animal.species, animal.breed);
         added.push(animal);
       });
+      if (!allowsAnimalTransition(state.animals, [...state.animals, ...added])) {
+        state = previousState;
+        previousState = null;
+        return;
+      }
+      state.animals.push(...added);
+      added.forEach((animal) => rememberBreed(animal.species, animal.breed));
       const subjectAnimalIds = subjectIds.map((id) => idMap.get(id)).filter(Boolean);
       state.transfers.push({
         id: `transfer_received_${transferKey}`,
@@ -9078,6 +9127,13 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
 
   function renderSettings() {
     const sync = currentSyncDetails();
+    const membership = window.HerdHarborMembership?.getAccount?.() || {
+      effectiveMembershipTier: "member",
+      accountRole: "user",
+      membershipSource: "default",
+      accountStatus: "active",
+      subscriptionStatus: "not_configured"
+    };
     $("#view-settings").innerHTML = `
       ${headerHtml("Settings", "Manage your secure tester workspace, installed app, and safety backups.")}
       <div class="settings-grid">
@@ -9093,6 +9149,20 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
             ${detailField("Storage", "Protected cloud sync with durable offline recovery")}
           </div>
           <div class="action-row"><button class="button button-primary" id="edit-profile">Edit profile</button></div>
+        </article>
+
+        <article class="settings-card">
+          <h3>Membership</h3>
+          <p>Your account role controls administration. Your membership tier controls product access and animal limits.</p>
+          <div class="detail-grid">
+            ${detailField("Plan", String(membership.effectiveMembershipTier || "member").replace(/^./, (letter) => letter.toUpperCase()))}
+            ${detailField("Account role", String(membership.accountRole || "user").replace(/^./, (letter) => letter.toUpperCase()))}
+            ${detailField("Membership source", String(membership.membershipSource || "default").replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase()))}
+            ${detailField("Account status", String(membership.accountStatus || "active").replace(/^./, (letter) => letter.toUpperCase()))}
+            ${detailField("Subscription", String(membership.subscriptionStatus || "not_configured").replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase()))}
+            ${detailField("Active-animal allowance", membership.maxActiveAnimals === 5 ? `${activeAnimals().length} / 5` : "Unlimited")}
+          </div>
+          ${membership.overrideExpired ? `<p class="brand-file-note">The prior manual override expired. Current automatic access resolves to Member until billing launches.</p>` : ""}
         </article>
 
         <article class="settings-card">
@@ -9216,7 +9286,7 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
 
         <article class="settings-card">
           <h3>Build information</h3>
-          <p>HerdHarbor Alpha v${APP_VERSION} · Sales, customers, QR cards, transfers, breeding, production, budgeting, and protected cloud sync · ${new Date().toLocaleDateString()}</p>
+          <p>HerdHarbor Alpha v${window.HerdHarborRelease?.version || APP_VERSION} · Stability, memberships, Junior policy, sales, breeding, production, budgeting, and protected cloud sync · ${new Date().toLocaleDateString()}</p>
         </article>
       </div>`;
 
@@ -9725,6 +9795,9 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
           const healthCount = records.health.length;
           const total = animalCount + breedingCount + birthCount + customerCount + saleCount + paymentCount + transactionCount + productionCount + annualPlanCount + healthCount;
 
+          if (!allowsAnimalTransition(state.animals, [...state.animals, ...records.animals])) {
+            throw new Error("The spreadsheet would exceed the HerdHarbor Junior limit of 5 active animals. No spreadsheet records were imported.");
+          }
           state.animals.push(...records.animals);
           state.breedings.push(...breedingRecords);
           state.litters.push(...birthRecords);
@@ -9803,11 +9876,13 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
     const doe2Id = uid("animal");
     const now = new Date().toISOString();
 
-    state.animals.push(
+    const demoAnimals = [
       { id: buckId, name: "Harbor's Atlas", tag: "HH-B01", species: "Rabbit", breed: "Holland Lop", sex: "Male", dob: addDays(todayISO(), -420), color: "Broken black", location: "Barn A · Cage 1", status: "Active", sireId: "", damId: "", notes: "Demo breeding buck.", createdAt: now },
       { id: doeId, name: "Harbor's Willow", tag: "HH-D04", species: "Rabbit", breed: "Holland Lop", sex: "Female", dob: addDays(todayISO(), -360), color: "Tort", location: "Barn A · Cage 4", status: "Active", sireId: "", damId: "", notes: "Demo breeding doe.", createdAt: now },
       { id: doe2Id, name: "Harbor's Clover", tag: "HH-D06", species: "Rabbit", breed: "Holland Lop", sex: "Female", dob: addDays(todayISO(), -300), color: "Blue", location: "Barn A · Cage 6", status: "Active", sireId: "", damId: "", notes: "Demo replacement doe.", createdAt: now }
-    );
+    ];
+    if (!allowsAnimalTransition(state.animals, [...state.animals, ...demoAnimals])) return;
+    state.animals.push(...demoAnimals);
 
     const breedingId = uid("breeding");
     state.breedings.push({

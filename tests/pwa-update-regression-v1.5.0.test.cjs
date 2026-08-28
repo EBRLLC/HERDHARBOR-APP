@@ -11,12 +11,14 @@ const pwa = read("pwa.js");
 const worker = read("service-worker.js");
 const cloud = read("herdharbor-cloud.js");
 const manifest = JSON.parse(read("manifest.json"));
+const html = read("index.html");
 
-// App version stays Alpha v1.5.0; this is an update-path hotfix only.
-assert.equal(manifest.version, "1.5.0");
-assert.match(pwa, /const APP_VERSION = "1\.5\.0"/);
-assert.match(pwa, /const BUILD_ID = "updatefix-1"/);
+// v1.5.1 keeps the independently verified update path.
+assert.equal(manifest.version, "1.5.1");
+assert.match(pwa, /const APP_VERSION = "1\.5\.1"/);
+assert.match(pwa, /const BUILD_ID = "membership-review-1"/);
 assert.match(pwa, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
+assert.match(html, /manifest\.json\?v=17/);
 
 // Service-worker discovery is explicit and independent from Cloud Sync.
 assert.match(pwa, /navigator\.serviceWorker\.register\("service-worker\.js"/);
@@ -30,6 +32,10 @@ assert.match(pwa, /window\.addEventListener\("pageshow"/);
 assert.doesNotMatch(pwa, /HerdHarborCloud/);
 assert.doesNotMatch(pwa, /syncNow\(/);
 assert.match(pwa, /Cloud Sync is not required/);
+assert.match(pwa, /HerdHarbor Update Available/);
+assert.match(pwa, />Update Now</);
+assert.match(pwa, />Later</);
+assert.match(pwa, /4 \* 60 \* 60 \* 1000/);
 
 // New workers wait for the existing-style Update now action instead of
 // automatically activating while a user is still in the old app instance.
@@ -52,7 +58,7 @@ assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
 // Browser/app shell requests favor production over stale frontend caches while
 // still falling back to the current shell when offline.
-assert.match(worker, /v1\.5\.0-alpha-shows-updatefix-1/);
+assert.match(worker, /v1\.5\.1-alpha-stability-membership-review-1/);
 assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
 assert.match(worker, /NETWORK_FIRST_PATHS/);
 assert.match(worker, /\/manifest\.json/);
@@ -64,4 +70,4 @@ assert.match(worker, /caches\.delete\(key\)/);
 assert.match(worker, /self\.clients\.claim\(\)/);
 assert.match(pwa, /manifest\.json\?build=\$\{encodeURIComponent\(PWA_BUILD\)\}/);
 
-console.log("Alpha v1.5.0 PWA update-regression tests passed");
+console.log("Alpha v1.5.1 PWA update-regression tests passed");
