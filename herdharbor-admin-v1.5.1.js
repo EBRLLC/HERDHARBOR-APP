@@ -190,6 +190,14 @@
     const usage = member.activeAnimalCount === null
       ? "Not exposed by the current secure account directory"
       : `${member.activeAnimalCount} active animal${member.activeAnimalCount === 1 ? "" : "s"}${member.membershipTier === "junior" ? " of 5" : ""}`;
+    const roleControls = owner
+      ? `<div class="hh-admin-protected-control"><h3>Account role</h3><p>The Owner role is protected by Supabase and cannot be assigned, removed, demoted, or disabled here.</p></div>`
+      : `<form id="hh-admin-role-form">
+          <h3>Account role</h3>
+          <label>Role<select id="hh-admin-next-role"><option value="user" ${member.accountRole === "user" ? "selected" : ""}>User</option><option value="admin" ${member.accountRole === "admin" ? "selected" : ""}>Admin</option></select></label>
+          <label>Reason (optional)<textarea id="hh-admin-role-reason" maxlength="500" placeholder="Why is this role changing?"></textarea></label>
+          <button class="button button-secondary" type="submit">Save account role</button>
+        </form>`;
     return `
       <div class="page-header">
         <div><p class="eyebrow">Admin · Members</p><h1>${esc(memberLabel(member))}</h1><p>${esc(member.email || member.userId)}</p></div>
@@ -217,23 +225,17 @@
           </dl></article>
         </div>
         <article class="hh-admin-detail-card hh-admin-controls"><h2>Administration</h2>
-          ${owner ? `<p>The Owner role is protected by Supabase and cannot be assigned, removed, demoted, or disabled here.</p>` : `
-            <div class="hh-admin-control-grid">
-              <form id="hh-admin-role-form">
-                <h3>Account role</h3>
-                <label>Role<select id="hh-admin-next-role"><option value="user" ${member.accountRole === "user" ? "selected" : ""}>User</option><option value="admin" ${member.accountRole === "admin" ? "selected" : ""}>Admin</option></select></label>
-                <label>Reason (optional)<textarea id="hh-admin-role-reason" maxlength="500" placeholder="Why is this role changing?"></textarea></label>
-                <button class="button button-secondary" type="submit">Save account role</button>
-              </form>
-              <form id="hh-admin-membership-form">
-                <h3>Membership override</h3>
-                <label>Tier<select id="hh-admin-next-tier">${["junior", "founder", "member", "business"].map((tier) => `<option value="${tier}" ${member.membershipTier === tier ? "selected" : ""}>${titleCase(tier)}</option>`).join("")}</select></label>
-                <label>Override<select id="hh-admin-override-mode"><option value="permanent">Permanent</option><option value="until_date">Until date</option><option value="manual">Until manually removed</option></select></label>
-                <label id="hh-admin-expiration-label" hidden>Expiration<input id="hh-admin-override-expires" type="datetime-local"></label>
-                <label>Reason (optional)<textarea id="hh-admin-membership-reason" maxlength="500" placeholder="Founding tester, complimentary access, or support correction"></textarea></label>
-                <div class="action-row"><button class="button button-primary" type="submit">Save membership</button><button class="button button-ghost" id="hh-admin-automatic" type="button">Return to Automatic</button></div>
-              </form>
-            </div>`}
+          <div class="hh-admin-control-grid">
+            ${roleControls}
+            <form id="hh-admin-membership-form">
+              <h3>Membership override</h3>
+              <label>Tier<select id="hh-admin-next-tier">${["junior", "founder", "member", "business"].map((tier) => `<option value="${tier}" ${member.membershipTier === tier ? "selected" : ""}>${titleCase(tier)}</option>`).join("")}</select></label>
+              <label>Override<select id="hh-admin-override-mode"><option value="permanent">Permanent</option><option value="until_date">Until date</option><option value="manual">Until manually removed</option></select></label>
+              <label id="hh-admin-expiration-label" hidden>Expiration<input id="hh-admin-override-expires" type="datetime-local"></label>
+              <label>Reason (optional)<textarea id="hh-admin-membership-reason" maxlength="500" placeholder="Founding tester, complimentary access, or support correction"></textarea></label>
+              <div class="action-row"><button class="button button-primary" type="submit">Save membership</button><button class="button button-ghost" id="hh-admin-automatic" type="button">Return to Automatic</button></div>
+            </form>
+          </div>
           <p id="hh-admin-status" class="hh-admin-status" role="status" aria-live="polite"></p>
         </article>
         <article class="hh-admin-detail-card"><h2>Administrative history</h2>${auditMarkup(audit)}</article>
