@@ -11,6 +11,7 @@ const admin = read("herdharbor-admin-v1.5.1.js");
 const membership = read("herdharbor-membership-v1.5.1.js");
 const html = read("index.html");
 const directorySql = read("supabase/v1.5.1-admin-member-directory.sql");
+const activeAdminSql = read("supabase/v1.5.1-active-admin-authorization.sql");
 
 const functionBody = (name, nextName) => cloud.slice(
   cloud.indexOf(`async function ${name}`),
@@ -49,6 +50,10 @@ assert.match(directorySql, /revoke all on function public\.admin_member_director
 assert.match(directorySql, /grant execute on function public\.admin_member_directory\(\) to authenticated/i);
 assert.doesNotMatch(directorySql, /herdharbor_user_data|app_state|encrypted_password|confirmation_token|recovery_token|raw_app_meta_data/i);
 assert.doesNotMatch(directorySql, /active_animal_count/i, "directory does not inspect private farm state for usage");
+assert.match(activeAdminSql, /create or replace function public\.herdharbor_account_role\(\)/i);
+assert.match(activeAdminSql, /aa\.account_status = 'active'/i, "disabled accounts cannot authorize Admin RPCs");
+assert.match(activeAdminSql, /security definer/i);
+assert.match(activeAdminSql, /set search_path = ''/i);
 const returnedColumns = directorySql.match(/returns table \(([\s\S]*?)\)\s*language/i)[1]
   .split(",")
   .map((column) => column.trim().split(/\s+/)[0]);
