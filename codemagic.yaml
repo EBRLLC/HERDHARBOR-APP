@@ -39,10 +39,9 @@ workflows:
         script: |
           cd "$CM_BUILD_DIR/ios/App"
           agvtool new-marketing-version 1.5.1
-          if ! [[ "$BUILD_NUMBER" =~ ^[0-9]+$ ]]; then
-            echo "Codemagic BUILD_NUMBER must be numeric." >&2
-            exit 1
-          fi
+          case "${BUILD_NUMBER:-}" in
+            ''|*[!0-9]*) echo "Codemagic BUILD_NUMBER must be numeric." >&2; exit 1 ;;
+          esac
           APPLE_BUILD_NUMBER="$BUILD_NUMBER"
           if [ "$APPLE_BUILD_NUMBER" -lt 10 ]; then APPLE_BUILD_NUMBER=10; fi
           agvtool new-version -all "$APPLE_BUILD_NUMBER"
