@@ -35,6 +35,8 @@ assert.match(core, /beforeBreadcrumb:/);
 assert.match(core, /sendDefaultPii: false/);
 assert.match(core, /enableLogs: false/);
 assert.match(core, /tracesSampleRate: 0/);
+assert.match(core, /integrations:\s*\(integrations\)/, "default integrations are filtered through the supported Sentry SDK option");
+assert.doesNotMatch(core, /defaultIntegrations:\s*\(integrations\)/, "the SDK's array-only defaultIntegrations option is not given a callback");
 assert.match(privacy, /hardenSentryEvent/);
 assert.match(privacy, /createPrivacySentryAdapter/);
 assert.match(privacy, /sendDefaultPii: false/);

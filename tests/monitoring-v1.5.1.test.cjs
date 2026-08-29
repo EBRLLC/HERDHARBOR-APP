@@ -45,7 +45,12 @@ function makeFakeSentry() {
   let activeScope = null;
 
   const sdk = {
-    init(options) { calls.initOptions = options; },
+    init(options) {
+      if (typeof options.defaultIntegrations === "function") {
+        throw new TypeError("defaultIntegrations must be false or an integration array");
+      }
+      calls.initOptions = options;
+    },
     setTag(key, value) { calls.tags[key] = value; },
     setContext(name, value) { calls.contexts[name] = value; },
     setUser(user) { calls.users.push(user); },
@@ -132,7 +137,8 @@ function makeFakeSentry() {
   assert.equal(calls.initOptions.sampleRate, 1);
   assert.equal(calls.initOptions.release, "HerdHarbor@1.5.1");
   assert.equal(calls.initOptions.environment, "test");
-  const integrations = calls.initOptions.defaultIntegrations([
+  assert.equal(calls.initOptions.defaultIntegrations, undefined);
+  const integrations = calls.initOptions.integrations([
     { name: "Breadcrumbs" },
     { name: "GlobalHandlers" },
     { name: "TryCatch" },

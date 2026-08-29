@@ -449,7 +449,7 @@ export function createHerdHarborMonitoring(sentrySdk, runtime = globalThis) {
         maxBreadcrumbs: 30,
         attachStacktrace: true,
         normalizeDepth: 3,
-        defaultIntegrations: (integrations) => integrations.filter((integration) => {
+        integrations: (integrations) => integrations.filter((integration) => {
           const name = String(integration?.name || "");
           return !["Breadcrumbs", "GlobalHandlers", "TryCatch", "Replay", "BrowserTracing"].some((blocked) => name.includes(blocked));
         }),
