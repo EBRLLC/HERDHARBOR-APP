@@ -55,11 +55,14 @@ policy.applyAccessProfile({ account_role: "owner", membership_tier: "member", me
 assert.equal(policy.isOwner(), true);
 assert.equal(policy.canAccessAdmin(), true);
 
-policy.applyAccessProfile({ account_role: "admin", membership_tier: "junior", membership_source: "manual_override" });
+policy.applyAccessProfile({ account_role: "admin", membership_tier: "junior", membership_source: "manual_override", backend_ready: true });
 assert.equal(policy.isAdmin(), true);
 assert.equal(policy.canAccessAdmin(), true, "Admin access is based on account role, not billing tier");
 
-policy.applyAccessProfile({ account_role: "admin", account_status: "disabled", membership_tier: "member", membership_source: "default" });
+policy.applyAccessProfile({ account_role: "admin", membership_tier: "member", membership_source: "default", backend_ready: false, offline_cached: true });
+assert.equal(policy.canAccessAdmin(), false, "an offline cached Admin role cannot expose Admin controls without fresh server verification");
+
+policy.applyAccessProfile({ account_role: "admin", account_status: "disabled", membership_tier: "member", membership_source: "default", backend_ready: true });
 assert.equal(policy.canAccessAdmin(), false, "disabled accounts cannot enter Admin");
 
 policy.applyAccessProfile({ account_role: "user", membership_tier: "founder", membership_source: "founder" });
@@ -103,6 +106,18 @@ assert.equal(policy.activeAnimalCount([
   { status: "Ancestor Only" }
 ]), 5, "historical and pedigree-only records do not consume Junior slots");
 assert.equal(policy.validateAnimalTransition(five, [...five, { status: "Archived" }]).allowed, true);
+const fourPlusArchived = [...five.slice(0, 4), { id: "returning", status: "Archived" }];
+assert.equal(
+  policy.validateAnimalTransition(fourPlusArchived, [...five.slice(0, 4), active("returning")]).allowed,
+  true,
+  "returning an inactive animal to Active is allowed when it fills the fifth slot"
+);
+const fivePlusArchived = [...five, { id: "returning", status: "Archived" }];
+assert.equal(
+  policy.validateAnimalTransition(fivePlusArchived, [...five, active("returning")]).allowed,
+  false,
+  "returning an inactive animal to Active is blocked when it would create a sixth active animal"
+);
 
 const overLimit = Array.from({ length: 17 }, (_, index) => active(`over${index}`));
 assert.equal(policy.validateAnimalTransition(overLimit, overLimit).allowed, true, "downgraded herds remain editable");
@@ -111,5 +126,21 @@ assert.equal(policy.validateAnimalTransition(overLimit, [...overLimit, active("o
 
 policy.applyAccessProfile({ account_role: "user", membership_tier: "member", membership_source: "default" });
 assert.equal(policy.validateAnimalTransition(five, [...five, active("unlimited")]).allowed, true, "Member remains unlimited");
+
+const flagOffContext = browserContext();
+flagOffContext.HerdHarborRelease = {
+  featureFlags: { juniorPlanEnabled: false, adminMemberManagementEnabled: true, billingEnabled: false }
+};
+vm.runInContext(read("herdharbor-membership-v1.5.1.js"), flagOffContext, { filename: "herdharbor-membership-v1.5.1.js" });
+flagOffContext.HerdHarborMembership.applyAccessProfile({
+  account_role: "user",
+  membership_tier: "junior",
+  membership_source: "manual_override"
+});
+assert.equal(
+  flagOffContext.HerdHarborMembership.validateAnimalTransition(five, [...five, active("flag-off")]).allowed,
+  true,
+  "the Junior limit is inactive when the release feature flag is disabled"
+);
 
 console.log("Alpha v1.5.1 centralized membership and Junior policy tests passed");

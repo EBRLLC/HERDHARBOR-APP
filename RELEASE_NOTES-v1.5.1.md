@@ -51,4 +51,4 @@ The v1.5.1 build contains plan metadata and a provider-neutral entitlement adapt
 
 Review branch only. Do not merge, deploy, enable billing, or publish store builds without explicit release approval. A real monitoring delivery test is not PASS until its controlled event appears in the configured Sentry project.
 
-Before live Admin acceptance testing, manually run `supabase/v1.5.1-admin-member-directory.sql` in the existing Supabase project. This adds only the protected allowlisted directory function; it does not replace the installed account tables, signup trigger, mutation RPCs, RLS policies, or single-Owner protection.
+Before live Admin acceptance testing, confirm both `supabase/v1.5.1-admin-member-directory.sql` and `supabase/v1.5.1-active-admin-authorization.sql` are recorded in the existing Supabase project's migration history. The first adds only the protected allowlisted directory function; the second requires an active account for the authorization helper already used by the installed Admin mutation RPCs. Neither replaces the installed account tables, signup trigger, mutation RPCs, RLS policies, or single-Owner protection.

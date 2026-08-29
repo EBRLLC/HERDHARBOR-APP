@@ -13,6 +13,7 @@ const reviewWorkflow = read(".github/workflows/v1.5.1-monitoring-review.yml");
 const instrumentation = read("monitoring/herdharbor-monitoring-instrumentation.mjs");
 const cloud = read("herdharbor-cloud.js");
 const readme = read("README.md");
+const monitoringSetup = read("V1.5.1-CRASH-MONITORING-SETUP.md");
 
 assert.match(readme, /deployed from the `main` branch through GitHub Pages/);
 assert.match(config, /dsn: ""/);
@@ -36,5 +37,8 @@ assert.match(instrumentation, /installIndexedDbFailureMonitoring/);
 assert.match(instrumentation, /indexeddb_open/);
 assert.match(instrumentation, /indexeddb_transaction_error/);
 assert.doesNotMatch(instrumentation, /localStorage\.getItem|indexedDB\.get|objectStore\([^)]*\)\.get/, "monitoring adapters do not read stored record contents");
+assert.match(monitoringSetup, /Prevent Storing of IP Addresses/);
+assert.match(monitoringSetup, /scrubIPAddresses=true/);
+assert.match(monitoringSetup, /IP-derived user or geo context/);
 
 console.log("Alpha v1.5.1 deployment, Android review, and IndexedDB coverage guardrails passed");

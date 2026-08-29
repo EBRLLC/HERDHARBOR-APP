@@ -33,6 +33,8 @@ assert.doesNotMatch(cloud, /isRpcSignatureError|PGRST202|PGRST203/, "known produ
 assert.match(cloud, /const ADMIN_DIRECTORY_RPC = "admin_member_directory"/);
 assert.match(cloud, /client\.rpc\(ADMIN_DIRECTORY_RPC\)/);
 assert.doesNotMatch(functionBody("listMembers", "listMemberAudit"), /from\(ACCESS_TABLE\)/, "Admin listing comes from the protected directory RPC");
+assert.match(cloud, /from\(ADMIN_AUDIT_TABLE\)[\s\S]*?\.eq\("target_user_id", userId\)[\s\S]*?\.limit\(250\)/, "audit history is filtered per member before the row limit");
+assert.match(cloud, /listMembers\(\{ search: userId, limit: 250 \}\)/, "member detail can resolve accounts beyond the unfiltered directory page");
 assert.doesNotMatch(cloud, /service[_-]?role/i, "browser source contains no Supabase service-role credential");
 assert.doesNotMatch(cloud, /from\(ACCESS_TABLE\)\.update\(/, "account_access cannot be changed directly by the browser");
 assert.doesNotMatch(cloud, /from\(ADMIN_AUDIT_TABLE\)\.(?:insert|update|delete)\(/, "audit history is written only by secure RPCs");

@@ -24,4 +24,3 @@ $$;
 
 comment on function public.herdharbor_account_role() is
   'Returns the active HerdHarbor account role; disabled accounts resolve to user.';
-

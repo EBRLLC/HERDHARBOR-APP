@@ -219,18 +219,24 @@
   }
 
   async function listMemberAudit(userId) {
-    const { data, error } = await client.from(ADMIN_AUDIT_TABLE).select("*").order("created_at", { ascending: false }).limit(250);
+    const { data, error } = await client
+      .from(ADMIN_AUDIT_TABLE)
+      .select("*")
+      .eq("target_user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(250);
     if (error) {
       reportAccountOperationFailure("admin_list_audit");
       throw new Error(error.message || "The administrative audit history could not be loaded.");
     }
-    return (Array.isArray(data) ? data : []).filter((row) =>
-      [row.target_user_id, row.target_account_id, row.account_id, row.target_id].some((value) => value === userId)
-    );
+    return Array.isArray(data) ? data : [];
   }
 
   async function getMemberDetail(userId) {
-    const [directory, audit] = await Promise.all([listMembers({ limit: 250 }), listMemberAudit(userId)]);
+    const [directory, audit] = await Promise.all([
+      listMembers({ search: userId, limit: 250 }),
+      listMemberAudit(userId)
+    ]);
     const member = directory.find((row) => row.user_id === userId);
     if (!member) throw new Error("That member account is not available to this administrator.");
     return { member, audit };

@@ -145,6 +145,7 @@
   function canAccessAdmin() {
     const current = getAccount();
     return release.featureFlags?.adminMemberManagementEnabled === true
+      && current.backendReady === true
       && current.accountStatus === "active"
       && (current.accountRole === "owner" || current.accountRole === "admin");
   }

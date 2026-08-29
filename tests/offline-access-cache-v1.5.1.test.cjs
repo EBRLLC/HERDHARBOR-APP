@@ -88,6 +88,20 @@ assert.equal(
   "cached Junior access still blocks the sixth active animal"
 );
 
+cache.write("offline-admin", {
+  account_role: "admin",
+  membership_tier: "member",
+  membership_source: "default",
+  account_status: "active"
+});
+const cachedAdmin = offlineRestart.HerdHarborAccessCache.read("offline-admin");
+offlineRestart.HerdHarborMembership.applyAccessProfile({ ...cachedAdmin, backend_ready: false, offline_cached: true });
+assert.equal(
+  offlineRestart.HerdHarborMembership.canAccessAdmin(),
+  false,
+  "a cached Admin role cannot expose Admin controls until Supabase re-verifies it"
+);
+
 cache.write("member-user", {
   account_role: "user",
   membership_tier: "member",

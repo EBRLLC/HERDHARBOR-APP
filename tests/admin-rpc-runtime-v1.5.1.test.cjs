@@ -25,12 +25,38 @@ const directoryRows = [
     last_sign_in_at: "2026-08-29T12:00:00.000Z"
   }
 ];
+let auditRows = [];
 const client = {
   async rpc(name, parameters) {
     calls.push({ name, parameters });
     if (forcedError) return { data: null, error: forcedError };
     if (name === "admin_member_directory") return { data: directoryRows, error: null };
     return { data: { ok: true }, error: null };
+  },
+  from(table) {
+    assert.equal(table, "admin_audit_log");
+    return {
+      select(columns) {
+        assert.equal(columns, "*");
+        return {
+          eq(column, value) {
+            calls.push({ name: "admin_audit_query", parameters: { column, value } });
+            return {
+              order(orderColumn, options) {
+                assert.equal(orderColumn, "created_at");
+                assert.deepEqual(options, { ascending: false });
+                return {
+                  async limit(limit) {
+                    assert.equal(limit, 250);
+                    return { data: auditRows.filter((row) => row.target_user_id === value), error: null };
+                  }
+                };
+              }
+            };
+          }
+        };
+      }
+    };
   }
 };
 const session = { user: { id: "00000000-0000-4000-8000-000000000099" } };
@@ -44,6 +70,9 @@ const reportAccountOperationFailure = (operation) => failures.push(operation);
 const loadAccessProfile = async () => undefined;
 const originalGetItem = { call() { return null; } };
 const localStorage = {};
+const safeParse = (value) => {
+  try { return value ? JSON.parse(value) : null; } catch { return null; }
+};
 const STORAGE_KEY = "herdharbor_pre_alpha_v1";
 const ADMIN_DIRECTORY_RPC = "admin_member_directory";
 
@@ -55,10 +84,12 @@ const build = new Function(
   "loadAccessProfile",
   "originalGetItem",
   "localStorage",
+  "safeParse",
   "STORAGE_KEY",
   "ADMIN_DIRECTORY_RPC",
+  "ADMIN_AUDIT_TABLE",
   `${source}
-  return { listMembers, setMemberRole, setMemberMembership, returnMemberToAutomatic };`
+  return { listMembers, getMemberDetail, setMemberRole, setMemberMembership, returnMemberToAutomatic };`
 );
 const api = build(
   client,
@@ -68,8 +99,10 @@ const api = build(
   loadAccessProfile,
   originalGetItem,
   localStorage,
+  safeParse,
   STORAGE_KEY,
-  ADMIN_DIRECTORY_RPC
+  ADMIN_DIRECTORY_RPC,
+  "admin_audit_log"
 );
 
 async function main() {
@@ -104,6 +137,34 @@ async function main() {
   assert.equal(directory[0].display_name, "Junior Tester");
   assert.equal(directory[0].last_sign_in_at, "2026-08-29T12:00:00.000Z");
   assert.equal(directory[0].active_animal_count, null, "cross-account farm usage is not opened by the directory");
+
+  const olderTarget = "00000000-0000-4000-8000-000000000999";
+  directoryRows.splice(0, directoryRows.length,
+    ...Array.from({ length: 251 }, (_, index) => ({
+      user_id: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+      account_role: "user",
+      membership_tier: "member",
+      membership_source: "default",
+      account_status: "active"
+    })),
+    {
+      user_id: olderTarget,
+      email: "older@example.com",
+      display_name: "Older Account",
+      account_role: "user",
+      membership_tier: "member",
+      membership_source: "default",
+      account_status: "active"
+    }
+  );
+  auditRows = [{ id: "audit-1", target_user_id: olderTarget, action: "membership_override_created" }];
+  const detail = await api.getMemberDetail(olderTarget);
+  assert.equal(detail.member.user_id, olderTarget, "member detail resolves an account beyond the first 250 unfiltered rows");
+  assert.equal(detail.audit.length, 1, "member audit history is filtered before applying the 250-row limit");
+  assert.deepEqual(calls.at(-1), {
+    name: "admin_audit_query",
+    parameters: { column: "target_user_id", value: olderTarget }
+  });
 
   forcedError = { message: "denied", code: "42501" };
   const beforeFailure = calls.length;
