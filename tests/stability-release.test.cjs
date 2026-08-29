@@ -18,12 +18,12 @@ const showsCss = fs.readFileSync(path.join(root, "shows-v1.5.0.css"), "utf8");
 const showsHardening = fs.readFileSync(path.join(root, "shows-v1.5.0-hardening.js"), "utf8");
 
 // v1.5.1 remains additive: the legacy app/data model stays intact while release assets overlay it.
-assert.match(html, /HerdHarbor Alpha v1\.3\.0 Member workflow and cattle record release/);
+assert.match(html, /HerdHarbor Alpha v1\.5\.1 membership and release workflow/);
 assert.match(html, /id="settings-sync-now"/);
 assert.match(html, /id="settings-last-synced"/);
 assert.match(html, /id="export-excel"/);
 assert.match(html, /HerdHarbor Alpha v\$\{APP_VERSION\}/);
-assert.match(html, /const APP_VERSION = "1\.3\.0"/);
+assert.match(html, /const APP_VERSION = "1\.5\.1"/);
 assert.match(html, /Guided pedigree builder · v\$\{APP_VERSION\}/);
 assert.doesNotMatch(html, /Guided pedigree builder · v0\.2\.1/);
 assert.match(html, /let animalView = \{[\s\S]*?status: "Active"[\s\S]*?\};/);
