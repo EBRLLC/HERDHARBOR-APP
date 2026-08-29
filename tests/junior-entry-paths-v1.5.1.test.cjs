@@ -23,6 +23,8 @@ assert.match(cloud, /syncValueToCloud[\s\S]*?allowAnimalStateTransition\(/, "clo
 assert.match(cloud, /checkForCloudChanges[\s\S]*?allowAnimalStateTransition\(/, "multi-device cloud updates are gated");
 assert.match(cloud, /resolveConflict[\s\S]*?allowAnimalStateTransition\(/, "manual cloud conflict resolution is gated");
 assert.match(cloud, /await loadAccessProfile\(\);[\s\S]*?const \{ data, error \} = await fetchCloudRecord/, "cloud hydration verifies entitlement before applying records");
+assert.match(html, /const APP_VERSION = "1\.5\.1";/, "embedded app metadata is Alpha v1.5.1");
+assert.match(cloud, /backupType: "local-safety-backup"[\s\S]*?version: "1\.5\.1"/, "safety backups identify Alpha v1.5.1");
 assert.match(html, /\["Sold", "Deceased", "Archived", "Ancestor Only"\]/);
 assert.match(html, /<option[^>]*>Archived<\/option>|"Archived", "Ancestor Only"/);
 assert.match(spreadsheet, /"Archived"/);
