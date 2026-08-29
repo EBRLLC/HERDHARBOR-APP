@@ -316,6 +316,32 @@
     }
   }
 
+  function animalStateTransitionResult(beforeRaw, afterRaw) {
+    const beforeState = safeParse(beforeRaw);
+    const afterState = safeParse(afterRaw);
+    if (!beforeState || !afterState) return { allowed: true };
+
+    const validator = window.HerdHarborMembership?.validateAnimalTransition;
+    if (typeof validator !== "function") return { allowed: true };
+
+    return validator(
+      Array.isArray(beforeState.animals) ? beforeState.animals : [],
+      Array.isArray(afterState.animals) ? afterState.animals : []
+    );
+  }
+
+  function allowAnimalStateTransition(beforeRaw, afterRaw, message) {
+    const result = animalStateTransitionResult(beforeRaw, afterRaw);
+    if (result.allowed) return true;
+
+    window.HerdHarborMembership?.showJuniorLimit?.(result);
+    setSyncState(
+      message || "Cloud sync paused: the change would exceed HerdHarbor Junior's limit of 5 active animals.",
+      "error"
+    );
+    return false;
+  }
+
   function canonicalize(value, path = [], includeDeviceSettings = false) {
     if (Array.isArray(value)) {
       return value.map((item, index) =>
@@ -905,7 +931,21 @@
     const remoteRaw = remoteRecord?.app_state
       ? JSON.stringify(remoteRecord.app_state)
       : null;
+    const activeRaw = originalGetItem.call(localStorage, STORAGE_KEY);
     const confirmedBase = originalGetItem.call(localStorage, baseKey(userId));
+    const localBaselineRaw = confirmedBase || activeRaw;
+
+    if (
+      localBaselineRaw &&
+      !sameState(localBaselineRaw, rawValue) &&
+      !allowAnimalStateTransition(
+        localBaselineRaw,
+        rawValue,
+        "Cloud save paused: this change would exceed HerdHarbor Junior's limit of 5 active animals."
+      )
+    ) {
+      return false;
+    }
 
     if (remoteRaw && sameState(remoteRaw, rawValue)) {
       safeStorageSet(baseKey(userId), remoteRaw);
@@ -947,6 +987,20 @@
       localRawBeforeMerge = rawValue;
       rawValue = applyDevicePreferences(merged.rawValue, rawValue);
       appState = safeParse(rawValue);
+      if (
+        !allowAnimalStateTransition(
+          localRawBeforeMerge,
+          rawValue,
+          "Cloud merge paused: the incoming change would exceed HerdHarbor Junior's limit of 5 active animals."
+        )
+      ) {
+        return markConflict(
+          userId,
+          localRawBeforeMerge,
+          remoteRecord,
+          "Cloud merge paused because the combined records would exceed HerdHarbor Junior's limit of 5 active animals."
+        );
+      }
       autoMerged = true;
       reloadAfterSync = true;
       await Promise.all([
@@ -1161,6 +1215,20 @@
     if (confirmedBase && sameState(activeRaw, confirmedBase)) {
       await recordRecoverySnapshot(userId, activeRaw, "Local copy before receiving another device's changes");
       const deviceCloudRaw = applyDevicePreferences(remoteRaw, activeRaw);
+      if (
+        !allowAnimalStateTransition(
+          activeRaw,
+          deviceCloudRaw,
+          "Cloud update paused: the incoming records would exceed HerdHarbor Junior's limit of 5 active animals."
+        )
+      ) {
+        return markConflict(
+          userId,
+          activeRaw,
+          data,
+          "Cloud update paused because the incoming records would exceed HerdHarbor Junior's limit of 5 active animals."
+        );
+      }
       setActiveUserData(userId, deviceCloudRaw);
       safeStorageSet(baseKey(userId), remoteRaw);
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
@@ -1742,6 +1810,15 @@
         conflict.remoteRaw,
         conflict.localRaw
       );
+      if (
+        !allowAnimalStateTransition(
+          conflict.localRaw,
+          deviceCloudRaw,
+          "Cloud copy was not selected: it would exceed HerdHarbor Junior's limit of 5 active animals."
+        )
+      ) {
+        return false;
+      }
       setActiveUserData(conflict.userId, deviceCloudRaw);
       safeStorageSet(baseKey(conflict.userId), conflict.remoteRaw);
       if (conflict.remoteUpdatedAt) {
@@ -1862,7 +1939,7 @@
   async function hydrateUserData(activeSession) {
     session = activeSession;
     dispatchAuthSession();
-    void loadAccessProfile();
+    await loadAccessProfile();
     void window.HerdHarborBilling?.refresh?.();
 
     if (recoveryMode) {
@@ -1926,6 +2003,22 @@
       );
 
       if (activeRaw && stateChanged) {
+        if (
+          !allowAnimalStateTransition(
+            activeRaw,
+            deviceCloudRaw,
+            "Cloud load paused: the incoming records would exceed HerdHarbor Junior's limit of 5 active animals."
+          )
+        ) {
+          await markConflict(
+            userId,
+            activeRaw,
+            data,
+            "Cloud load paused because the incoming records would exceed HerdHarbor Junior's limit of 5 active animals."
+          );
+          unlockApp();
+          return;
+        }
         await recordRecoverySnapshot(userId, activeRaw, "Local copy before loading newer cloud records");
       }
       setActiveUserData(userId, deviceCloudRaw);
