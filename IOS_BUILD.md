@@ -8,7 +8,7 @@ This branch reconciles the app shell for Alpha v1.5.1. It does not submit or pub
 
 1. Create the HerdHarbor iOS app record in App Store Connect using bundle identifier `com.ebrllc.herdharbor`.
 2. In App Store Connect, create an App Store Connect API key with App Manager access.
-3. In Codemagic team settings, connect that key under **Developer Portal** and name the integration `herdharbor-app-store`.
+3. In Codemagic team settings, connect that key under **Developer Portal** using the existing `HerdHarbor` App Store Connect integration named in `codemagic.yaml`.
 4. In Codemagic code-signing settings, generate or fetch an Apple Distribution certificate and an App Store provisioning profile for `com.ebrllc.herdharbor`.
 5. In the HerdHarbor Codemagic application, select `agent/ios-codemagic-build`, check for `codemagic.yaml`, and run **HerdHarbor iOS TestFlight** only after release approval.
 
