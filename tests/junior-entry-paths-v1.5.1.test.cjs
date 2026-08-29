@@ -7,6 +7,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const spreadsheet = fs.readFileSync(path.join(root, "spreadsheet-import.js"), "utf8");
+const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 
 const gates = html.match(/allowsAnimalTransition\(/g) || [];
 assert.ok(gates.length >= 7, "all active-animal creation/import/reactivation paths use the centralized Junior gate");
@@ -15,7 +16,13 @@ assert.match(html, /if \(!allowsAnimalTransition\(state\.animals, nextAnimals\)\
 assert.match(html, /openOffspringCreator[\s\S]*?allowsAnimalTransition\(state\.animals, \[\.\.\.state\.animals, \.\.\.created\]\)/, "offspring creation is gated");
 assert.match(html, /handleTransferImport[\s\S]*?allowsAnimalTransition\(state\.animals, \[\.\.\.state\.animals, \.\.\.added\]\)/, "transfer import is gated");
 assert.match(html, /handleSpreadsheetImport[\s\S]*?allowsAnimalTransition\(state\.animals, \[\.\.\.state\.animals, \.\.\.records\.animals\]\)/, "spreadsheet import is gated");
+assert.match(html, /async function importData[\s\S]*?allowsAnimalTransition\(state\.animals, imported\.animals\)/, "backup restore is gated");
 assert.match(html, /loadDemoData[\s\S]*?allowsAnimalTransition\(state\.animals, \[\.\.\.state\.animals, \.\.\.demoAnimals\]\)/, "demo records cannot bypass the limit");
+assert.match(cloud, /function allowAnimalStateTransition/, "cloud state transitions use the centralized Junior gate");
+assert.match(cloud, /syncValueToCloud[\s\S]*?allowAnimalStateTransition\(/, "cloud uploads and merges are gated");
+assert.match(cloud, /checkForCloudChanges[\s\S]*?allowAnimalStateTransition\(/, "multi-device cloud updates are gated");
+assert.match(cloud, /resolveConflict[\s\S]*?allowAnimalStateTransition\(/, "manual cloud conflict resolution is gated");
+assert.match(cloud, /await loadAccessProfile\(\);[\s\S]*?const \{ data, error \} = await fetchCloudRecord/, "cloud hydration verifies entitlement before applying records");
 assert.match(html, /\["Sold", "Deceased", "Archived", "Ancestor Only"\]/);
 assert.match(html, /<option[^>]*>Archived<\/option>|"Archived", "Ancestor Only"/);
 assert.match(spreadsheet, /"Archived"/);
