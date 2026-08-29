@@ -2,7 +2,7 @@
   "use strict";
 
   const APP_VERSION = "1.5.1";
-  const BUILD_ID = "membership-review-1";
+  const BUILD_ID = "membership-review-2";
   const PWA_BUILD = `${APP_VERSION}-alpha-stability-${BUILD_ID}`;
   const UPDATE_CHECK_MIN_INTERVAL_MS = 60_000;
   let installPrompt = null;

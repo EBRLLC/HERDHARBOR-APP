@@ -27,7 +27,7 @@ assert.doesNotMatch(browser, /loader\.js|browser\.sentry-cdn\.com|sentry\.io\/ap
 assert.match(config, /dsn: ""/);
 assert.doesNotMatch(config, /https:\/\/[^"']+@[^"']*sentry/i, "DSN is not hard-coded in source");
 assert.match(config, /HerdHarbor@1\.5\.1/);
-assert.match(config, /build: "membership-review-1"/);
+assert.match(config, /build: "membership-review-2"/);
 assert.match(config, /enableTestCrash: false/);
 
 assert.match(core, /beforeSend:/);
@@ -89,7 +89,7 @@ assert.match(pwa, /Monitoring is optional and fail-open/);
 assert.match(pwa, /registration\.update\(\)/, "application update regression fix remains intact");
 assert.doesNotMatch(pwa, /HerdHarborCloud.*syncNow[\s\S]*SKIP_WAITING/, "app updates remain independent of Cloud Sync");
 
-assert.match(worker, /v1\.5\.1-alpha-stability-membership-review-1/);
+assert.match(worker, /v1\.5\.1-alpha-stability-membership-review-2/);
 assert.match(worker, /herdharbor-monitoring-config\.js\?v=1\.5\.1/);
 assert.match(worker, /herdharbor-monitoring-v1\.5\.1\.min\.js\?v=1\.5\.1/);
 assert.match(worker, /cache: "no-store"/);

@@ -7,11 +7,12 @@ Alpha v1.5.1 completes the stability and access-management foundation without re
 - Privacy-safe browser crash and operational-error monitoring for web, installed PWA, Android TWA, and the JavaScript layer used by iOS Capacitor.
 - Independent PWA update discovery with a clear **HerdHarbor Update Available** prompt, **Update Now**, and a four-hour **Later** deferral.
 - Central account policy that separates the Owner/Admin/User account role from the Junior/Founder/Member/Business membership tier.
-- Supabase-backed **Admin → Members** directory for authorized Owner/Admin accounts.
-- Secure role and membership changes through the installed Supabase RPCs, with the existing `admin_audit_log` history shown in member details.
+- Supabase-backed **Admin → Members** directory with real name, email, UUID, role, tier, status, creation-date, and last-login search/display for authorized Owner/Admin accounts.
+- Secure role and membership changes through the exact installed Supabase RPC contracts, with the existing `admin_audit_log` history shown in member details.
 - Permanent, expiring, and manually removable membership overrides plus **Return to Automatic**.
 - HerdHarbor Junior with full current core access and a maximum of five active animals.
 - Junior enforcement for new records, reactivation, offspring, transfers, spreadsheets, and demo-data creation.
+- Per-account offline entitlement retention, so a last-verified Junior remains five-animal limited after an offline restart.
 - Billing-provider adapter and centralized subscription-state resolver for later activation. Billing remains disabled and makes no charges in this review build.
 - Alpha v1.5.1 version metadata for web/PWA and Android review build 9.
 
@@ -31,8 +32,9 @@ Alpha v1.5.1 completes the stability and access-management foundation without re
 - Normal users do not see Admin navigation and are also denied by Supabase RLS.
 - Browser code never receives a service-role key and never directly updates `account_access`.
 - Owner cannot be assigned or removed through the client UI.
-- Admin member access does not expose animal records, health records, customers, finances, notes, backups, or sync payloads.
-- Email, display name, last-login time, and cross-account active-animal usage are shown only if a secure backend result provides them; unavailable data is labeled rather than derived from private farm state.
+- Admin member access does not expose animal records, health records, customers, finances, notes, backups, sync payloads, passwords, tokens, or provider secrets.
+- Email, display name, and last-login time come only from the Owner/Admin-guarded allowlisted directory RPC. Cross-account active-animal usage remains unavailable and is never derived from private farm state.
+- The offline access cache is scoped to the authenticated Supabase UUID and contains no identity, farm, financial, health, or session data.
 - Monitoring strips secrets and record contents and remains fail-open when no Sentry DSN is configured.
 
 ## Billing state
@@ -48,3 +50,5 @@ The v1.5.1 build contains plan metadata and a provider-neutral entitlement adapt
 ## Deployment status
 
 Review branch only. Do not merge, deploy, enable billing, or publish store builds without explicit release approval. A real monitoring delivery test is not PASS until its controlled event appears in the configured Sentry project.
+
+Before live Admin acceptance testing, manually run `supabase/v1.5.1-admin-member-directory.sql` in the existing Supabase project. This adds only the protected allowlisted directory function; it does not replace the installed account tables, signup trigger, mutation RPCs, RLS policies, or single-Owner protection.

@@ -3,8 +3,8 @@
 
   const release = Object.freeze({
     version: "1.5.1",
-    buildId: "membership-review-1",
-    build: "1.5.1-alpha-membership-review-1",
+    buildId: "membership-review-2",
+    build: "1.5.1-alpha-membership-review-2",
     featureFlags: Object.freeze({
       adminMemberManagementEnabled: true,
       juniorPlanEnabled: true,

@@ -92,6 +92,7 @@
   const DEVICE_LOCAL_SETTINGS = new Set(["theme", "sidebarCollapsed"]);
   const ACCESS_TABLE = "account_access";
   const ADMIN_AUDIT_TABLE = "admin_audit_log";
+  const ADMIN_DIRECTORY_RPC = "admin_member_directory";
 
   function fallbackAccessProfile() {
     return {
@@ -118,10 +119,6 @@
     }));
   }
 
-  function isRpcSignatureError(error) {
-    return ["42883", "PGRST202", "PGRST203"].includes(String(error?.code || ""));
-  }
-
   function reportAccountOperationFailure(operation) {
     document.dispatchEvent(new CustomEvent("herdharbor:account-operation-failure", {
       detail: { operation, result: "failure" }
@@ -130,35 +127,64 @@
 
   async function loadAccessProfile() {
     if (!session?.user?.id) return publishAccessProfile(fallbackAccessProfile());
-    const [recordResult, roleResult] = await Promise.all([
-      client.from(ACCESS_TABLE).select("*").eq("user_id", session.user.id).maybeSingle(),
-      client.rpc("herdharbor_account_role")
-    ]);
-    if (recordResult.error) {
+    const userId = session.user.id;
+    const cached = () => window.HerdHarborAccessCache?.read?.(userId);
+    const initialCachedSnapshot = cached();
+    if (initialCachedSnapshot) {
+      publishAccessProfile({
+        ...initialCachedSnapshot,
+        backend_ready: false,
+        offline_cached: true
+      });
+    }
+    const publishCachedOrFallback = () => {
+      const snapshot = cached();
+      return publishAccessProfile(snapshot
+        ? { ...snapshot, backend_ready: false, offline_cached: true }
+        : fallbackAccessProfile());
+    };
+
+    let recordResult;
+    let roleResult;
+    try {
+      [recordResult, roleResult] = await Promise.all([
+        client.from(ACCESS_TABLE).select("*").eq("user_id", userId).maybeSingle(),
+        client.rpc("herdharbor_account_role")
+      ]);
+    } catch {
       reportAccountOperationFailure("load_access");
-      return publishAccessProfile(fallbackAccessProfile());
+      return publishCachedOrFallback();
+    }
+    if (recordResult.error || !recordResult.data) {
+      reportAccountOperationFailure("load_access");
+      return publishCachedOrFallback();
     }
     const role = !roleResult.error && ["owner", "admin", "user"].includes(String(roleResult.data || "").toLowerCase())
       ? String(roleResult.data).toLowerCase()
-      : "user";
-    return publishAccessProfile({
-      ...(recordResult.data || fallbackAccessProfile()),
+      : ["owner", "admin", "user"].includes(String(recordResult.data.account_role || "").toLowerCase())
+        ? String(recordResult.data.account_role).toLowerCase()
+        : "user";
+    const authoritative = {
+      ...recordResult.data,
+      user_id: userId,
       account_role: role,
-      backend_ready: true
+      last_verified_at: new Date().toISOString()
+    };
+    const stored = window.HerdHarborAccessCache?.write?.(userId, authoritative);
+    return publishAccessProfile({
+      ...authoritative,
+      ...(stored || {}),
+      backend_ready: true,
+      offline_cached: false
     });
   }
 
-  async function callAdminRpc(name, parameterVariants) {
+  async function callAdminRpc(name, parameters) {
     if (!session?.user?.id) throw new Error("Sign in before managing members.");
-    let lastError = null;
-    for (const parameters of parameterVariants) {
-      const { data, error } = await client.rpc(name, parameters);
-      if (!error) return data;
-      lastError = error;
-      if (!isRpcSignatureError(error)) break;
-    }
+    const { data, error } = await client.rpc(name, parameters);
+    if (!error) return data;
     reportAccountOperationFailure(name);
-    throw new Error(lastError?.message || "The secure member-management request could not be completed.");
+    throw new Error(error.message || "The secure member-management request could not be completed.");
   }
 
   function currentActiveAnimalCount(userId) {
@@ -169,10 +195,8 @@
   }
 
   async function listMembers(filters = {}) {
-    let query = client.from(ACCESS_TABLE).select("*").limit(Math.min(250, Math.max(1, Number(filters.limit || 100))));
-    if (filters.role) query = query.eq("account_role", String(filters.role).toLowerCase());
-    if (filters.status) query = query.eq("account_status", String(filters.status).toLowerCase());
-    const { data, error } = await query.order("created_at", { ascending: false });
+    if (!session?.user?.id) throw new Error("Sign in before opening the member directory.");
+    const { data, error } = await client.rpc(ADMIN_DIRECTORY_RPC);
     if (error) {
       reportAccountOperationFailure("admin_list_members");
       throw new Error(error.message || "The secure member directory could not be loaded.");
@@ -181,14 +205,17 @@
     return (Array.isArray(data) ? data : [])
       .map((row) => ({
         ...row,
-        email: row.user_id === session?.user?.id ? session.user.email || "" : row.email || "",
+        email: row.email || "",
         active_animal_count: currentActiveAnimalCount(row.user_id),
         effective_membership_tier: window.HerdHarborMembership?.resolveProfile?.(row, {})?.tier
           || String(row.membership_tier || "member").toLowerCase()
       }))
+      .filter((row) => !filters.role || row.account_role === String(filters.role).toLowerCase())
+      .filter((row) => !filters.status || row.account_status === String(filters.status).toLowerCase())
       .filter((row) => !filters.tier || row.effective_membership_tier === String(filters.tier).toLowerCase())
       .filter((row) => !search || [row.user_id, row.email, row.name, row.display_name]
-        .some((value) => String(value || "").toLowerCase().includes(search)));
+        .some((value) => String(value || "").toLowerCase().includes(search)))
+      .slice(0, Math.min(250, Math.max(1, Number(filters.limit || 100))));
   }
 
   async function listMemberAudit(userId) {
@@ -213,13 +240,11 @@
     const role = String(accountRole || "").toLowerCase();
     if (!userId || !["user", "admin"].includes(role)) throw new Error("Choose User or Admin for this account.");
     const safeReason = String(reason || "").slice(0, 500);
-    const result = await callAdminRpc("admin_set_account_role", [
-      { target_user_id: userId, new_role: role, reason: safeReason || null },
-      { p_target_user_id: userId, p_new_role: role, p_reason: safeReason || null },
-      { target_user_id: userId, new_account_role: role, reason: safeReason || null },
-      { p_target_user_id: userId, p_new_account_role: role, p_reason: safeReason || null },
-      { target_account_id: userId, new_account_role: role, change_reason: safeReason || null }
-    ]);
+    const result = await callAdminRpc("admin_set_account_role", {
+      target_user: userId,
+      new_role: role,
+      change_reason: safeReason || null
+    });
     if (userId === session?.user?.id) await loadAccessProfile();
     return result;
   }
@@ -228,14 +253,12 @@
     const tier = String(membershipTier || "").toLowerCase();
     if (!userId || !["junior", "founder", "member", "business"].includes(tier)) throw new Error("Choose a valid HerdHarbor membership tier.");
     const safeReason = String(reason || "").slice(0, 500);
-    const result = await callAdminRpc("admin_set_membership", [
-      { target_user_id: userId, new_membership: tier, expires_at: expiresAt, reason: safeReason || null },
-      { target_user_id: userId, new_membership_tier: tier, override_expires_at: expiresAt, reason: safeReason || null },
-      { target_user_id: userId, new_tier: tier, expires_at: expiresAt, reason: safeReason || null },
-      { p_target_user_id: userId, p_membership_tier: tier, p_override_expires_at: expiresAt, p_reason: safeReason || null },
-      { p_target_user_id: userId, p_membership_tier: tier, p_expires_at: expiresAt, p_reason: safeReason || null },
-      { target_account_id: userId, new_membership_tier: tier, override_expires_at: expiresAt, change_reason: safeReason || null }
-    ]);
+    const result = await callAdminRpc("admin_set_membership", {
+      target_user: userId,
+      new_tier: tier,
+      change_reason: safeReason || null,
+      expires_at: expiresAt
+    });
     if (userId === session?.user?.id) await loadAccessProfile();
     return result;
   }
@@ -243,11 +266,10 @@
   async function returnMemberToAutomatic(userId, reason = "") {
     if (!userId) throw new Error("Choose a member account first.");
     const safeReason = String(reason || "").slice(0, 500);
-    const result = await callAdminRpc("admin_return_to_automatic_membership", [
-      { target_user_id: userId, reason: safeReason || null },
-      { p_target_user_id: userId, p_reason: safeReason || null },
-      { target_account_id: userId, change_reason: safeReason || null }
-    ]);
+    const result = await callAdminRpc("admin_return_to_automatic_membership", {
+      target_user: userId,
+      change_reason: safeReason || null
+    });
     if (userId === session?.user?.id) await loadAccessProfile();
     return result;
   }
@@ -2025,6 +2047,7 @@
   });
 
   window.addEventListener("online", () => {
+    void loadAccessProfile();
     const userId = session?.user?.id;
     if (
       userId &&

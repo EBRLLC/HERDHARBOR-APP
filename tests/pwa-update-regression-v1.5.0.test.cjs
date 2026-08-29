@@ -16,7 +16,7 @@ const html = read("index.html");
 // v1.5.1 keeps the independently verified update path.
 assert.equal(manifest.version, "1.5.1");
 assert.match(pwa, /const APP_VERSION = "1\.5\.1"/);
-assert.match(pwa, /const BUILD_ID = "membership-review-1"/);
+assert.match(pwa, /const BUILD_ID = "membership-review-2"/);
 assert.match(pwa, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
 assert.match(html, /manifest\.json\?v=17/);
 
@@ -58,7 +58,7 @@ assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
 // Browser/app shell requests favor production over stale frontend caches while
 // still falling back to the current shell when offline.
-assert.match(worker, /v1\.5\.1-alpha-stability-membership-review-1/);
+assert.match(worker, /v1\.5\.1-alpha-stability-membership-review-2/);
 assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
 assert.match(worker, /NETWORK_FIRST_PATHS/);
 assert.match(worker, /\/manifest\.json/);

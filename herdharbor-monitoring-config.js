@@ -8,7 +8,7 @@
     dsn: "",
     environment: "",
     release: "HerdHarbor@1.5.1",
-    build: "membership-review-1",
+    build: "membership-review-2",
     enableTestCrash: false
   });
 })();
