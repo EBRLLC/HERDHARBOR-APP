@@ -14,7 +14,7 @@ const shows = fs.readFileSync(path.join(root, "shows-v1.5.0.js"), "utf8");
 const hardening = fs.readFileSync(path.join(root, "shows-v1.5.0-hardening.js"), "utf8");
 
 // Legacy inline Member app remains intact; v1.5.1 is an additive overlay.
-assert.match(html, /const APP_VERSION = "1\.3\.0"/);
+assert.match(html, /const APP_VERSION = "1\.5\.1"/);
 assert.match(html, /id="request-account-deletion"/);
 assert.match(html, /Type DELETE to confirm/);
 assert.match(html, /herdharbor\.com\/delete-account\//);
