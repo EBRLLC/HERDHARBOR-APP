@@ -9960,6 +9960,9 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
       const imported = parsed.data || parsed;
       if (!imported.profile || !Array.isArray(imported.animals)) throw new Error("Invalid backup structure.");
       if (!confirm("Replace current local data with this backup?")) return;
+      if (!allowsAnimalTransition(state.animals, imported.animals)) {
+        throw new Error("This backup would exceed the HerdHarbor Junior limit of 5 active animals. No backup records were imported.");
+      }
       state = {
         ...structuredClone(defaultState),
         ...imported,
