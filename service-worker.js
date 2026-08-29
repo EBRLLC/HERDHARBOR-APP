@@ -1,14 +1,22 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v1.5.0-alpha-shows-updatefix-1`;
+const CACHE_NAME = `${CACHE_PREFIX}v1.5.1-alpha-stability-membership-review-2`;
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./manifest.json?v=16",
-  "./herdharbor-cloud.js?v=17",
+  "./manifest.json?v=17",
+  "./herdharbor-release-v1.5.1.js?v=1.5.1",
+  "./herdharbor-membership-v1.5.1.js?v=1.5.1",
+  "./herdharbor-billing-v1.5.1.js?v=1.5.1",
+  "./herdharbor-access-cache-v1.5.1.js?v=1.5.1",
+  "./herdharbor-cloud.js?v=19",
+  "./herdharbor-admin-v1.5.1.js?v=1.5.1",
+  "./herdharbor-v1.5.1.css?v=1.5.1",
+  "./herdharbor-monitoring-config.js?v=1.5.1",
+  "./vendor/herdharbor-monitoring-v1.5.1.min.js?v=1.5.1",
   "./symptom-guide.js?v=1",
-  "./pwa.js?v=22",
+  "./pwa.js?v=24",
   "./pedigree-visual.css?v=2",
   "./pedigree-visual.js?v=2",
   "./pedigree-genetics-v1.4.5.css?v=1.4.5",
@@ -41,8 +49,16 @@ const APP_SHELL = [
 
 const NETWORK_FIRST_PATHS = [
   "/manifest.json",
+  "/herdharbor-release-v1.5.1.js",
+  "/herdharbor-membership-v1.5.1.js",
+  "/herdharbor-billing-v1.5.1.js",
+  "/herdharbor-access-cache-v1.5.1.js",
   "/pwa.js",
   "/herdharbor-cloud.js",
+  "/herdharbor-admin-v1.5.1.js",
+  "/herdharbor-v1.5.1.css",
+  "/herdharbor-monitoring-config.js",
+  "/vendor/herdharbor-monitoring-v1.5.1.min.js",
   "/symptom-guide.js",
   "/spreadsheet-import.js",
   "/pedigree-visual.css",

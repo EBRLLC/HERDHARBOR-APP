@@ -17,7 +17,7 @@ const shows = fs.readFileSync(path.join(root, "shows-v1.5.0.js"), "utf8");
 const showsCss = fs.readFileSync(path.join(root, "shows-v1.5.0.css"), "utf8");
 const showsHardening = fs.readFileSync(path.join(root, "shows-v1.5.0-hardening.js"), "utf8");
 
-// v1.5.0 remains additive: the legacy Member app/data model stays intact while release assets overlay it.
+// v1.5.1 remains additive: the legacy app/data model stays intact while release assets overlay it.
 assert.match(html, /HerdHarbor Alpha v1\.3\.0 Member workflow and cattle record release/);
 assert.match(html, /id="settings-sync-now"/);
 assert.match(html, /id="settings-last-synced"/);
@@ -78,11 +78,12 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /v1\.5\.0-alpha-shows-updatefix-1/);
+assert.match(serviceWorker, /v1\.5\.1-alpha-stability-membership-review-2/);
 assert.match(serviceWorker, /spreadsheet-import\.js\?v=17/);
-assert.match(serviceWorker, /herdharbor-cloud\.js\?v=17/);
+assert.match(serviceWorker, /herdharbor-access-cache-v1\.5\.1\.js\?v=1\.5\.1/);
+assert.match(serviceWorker, /herdharbor-cloud\.js\?v=19/);
 assert.match(serviceWorker, /symptom-guide\.js\?v=1/);
-assert.match(serviceWorker, /pwa\.js\?v=22/);
+assert.match(serviceWorker, /pwa\.js\?v=24/);
 assert.match(serviceWorker, /pedigree-visual\.css\?v=2/);
 assert.match(serviceWorker, /pedigree-visual\.js\?v=2/);
 assert.match(serviceWorker, /pedigree-genetics-v1\.4\.5\.css\?v=1\.4\.5/);
@@ -101,7 +102,7 @@ assert.match(serviceWorker, /shows-v1\.5\.0-hardening\.js\?v=1\.5\.0/);
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);
 assert.match(serviceWorker, /NETWORK_FIRST_PATHS/);
 assert.match(serviceWorker, /fetch\(request, \{ cache: "no-store" \}\)/);
-assert.match(pwa, /const BUILD_ID = "updatefix-1"/);
+assert.match(pwa, /const BUILD_ID = "membership-review-2"/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
 assert.match(pwa, /loadShows/);
@@ -142,4 +143,4 @@ assert.match(showsHardening, /PAGE_SIZE = 24/);
 assert.match(showsCss, /overflow-x:auto/);
 assert.match(showsCss, /@media \(max-width:520px\)/);
 
-console.log("Alpha v1.5.0 Shows + independent PWA update release stability tests passed");
+console.log("Alpha v1.5.1 membership + independent PWA update release stability tests passed");

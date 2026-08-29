@@ -22,6 +22,7 @@
     "Reserved",
     "Sold",
     "Deceased",
+    "Archived",
     "Ancestor Only"
   ];
   const SALE_STATUSES = ["Draft", "Reserved", "Completed", "Cancelled"];
@@ -3174,7 +3175,7 @@
     animals.dataValidations.add("N2:N5000", {
       type: "list",
       allowBlank: true,
-      formulae: ['"Active,Breeding,Growing,Retired,For Sale,Reserved,Sold,Deceased,Ancestor Only"']
+      formulae: ['"Active,Breeding,Growing,Retired,For Sale,Reserved,Sold,Deceased,Archived,Ancestor Only"']
     });
 
     const customers = workbook.addWorksheet("Customers");

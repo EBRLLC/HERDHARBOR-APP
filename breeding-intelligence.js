@@ -52,11 +52,13 @@
   }
 
   const esc = (value) => String(value == null ? "" : value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+  const deepClone = (value) => Core.deepClone ? Core.deepClone(value) : JSON.parse(JSON.stringify(value));
   const rabbitAnimals = (state) => (state.animals || []).filter((animal) => Core.canonicalSpecies(animal.species) === "Rabbit");
   const sexIs = (animal, wanted) => wanted === "male" ? /male|buck/i.test(String(animal?.sex || "")) : /female|doe/i.test(String(animal?.sex || ""));
   function animalLabel(animal) { const identity = animal.name || animal.tag || animal.earTagNumber || animal.id || "Unnamed rabbit", color = animal.color || animal.variety; return color ? `${identity} — ${color}` : identity; }
   function selectOptions(animals, selectedId) { return ['<option value="">Select a rabbit…</option>'].concat(animals.map((animal) => `<option value="${esc(animal.id)}" ${String(animal.id) === String(selectedId || "") ? "selected" : ""}>${esc(animalLabel(animal))}</option>`)).join(""); }
   function performanceSummary(state, animal) { const p = Core.performanceForAnimal(animal, state.breedings, state.births), survival = p.survivalRate == null ? "—" : `${Math.round(p.survivalRate * 100)}%`, avg = p.averageLitterSize == null ? "—" : p.averageLitterSize.toFixed(1); return `${p.breedings} breedings · ${p.births} litters · ${p.bornAlive} live born · ${p.weaned} weaned · ${survival} survival · ${avg} avg litter`; }
+  function geneticsSnapshotForAnimal(animal,state){try{return deepClone(Core.refineAnimalGenetics(animal,state.animals||[],state.births||state.litters||[]).genetics);}catch(_){return deepClone(Core.normalizeGenetics(animal.genetics));}}
 
   function ensureStylesheet() { if (document.getElementById("hh-breeding-intelligence-style")) return; const link = document.createElement("link"); link.id = "hh-breeding-intelligence-style"; link.rel = "stylesheet"; link.href = "breeding-intelligence.css?v=1.4.0"; document.head.appendChild(link); }
   function updateVisibleVersion() { document.querySelectorAll("[data-app-version], .app-version, .version-label").forEach((el) => { const text = String(el.textContent || ""); if (/1\.3\.0|alpha/i.test(text)) el.textContent = text.replace(/1\.3\.0/g, RELEASE_VERSION); }); document.documentElement.dataset.herdharborRelease = RELEASE_VERSION; }
@@ -87,16 +89,19 @@
 
   function resultRows(analysis) { if (analysis.exact) return analysis.exactOutcomes.map((o) => `<div class="hh-bi-result-row"><div><strong>${esc(o.name)}</strong><span>${esc(o.family)} · ${esc(o.scope)}</span></div><b>${(o.probability*100).toFixed((o.probability*100)%1?1:0)}%</b></div>`).join(""); return analysis.possibleOutcomes.map((o) => `<div class="hh-bi-result-row"><div><strong>${esc(o.name)}</strong><span>${esc(o.family)} · ${esc(o.scope)}</span></div><b>Possible</b></div>`).join(""); }
   function renderPairModal(buckId, doeId) {
+    lastAnalysis=null; lastPair=null;
     const state=readState(), rabbits=rabbitAnimals(state), bucks=rabbits.filter((a)=>sexIs(a,"male")), does=rabbits.filter((a)=>sexIs(a,"female")), buck=bucks.find((a)=>String(a.id)===String(buckId))||bucks[0], doe=does.find((a)=>String(a.id)===String(doeId))||does[0];
     let analysisHtml='<div class="hh-bi-empty">Choose a buck and doe, then run Pair Analysis.</div>';
     if (buck && doe && buckId && doeId) {
       lastAnalysis=Core.analyzePairing(buck,doe,state); lastPair={buckId:buck.id,doeId:doe.id};
       const shared=lastAnalysis.sharedAncestors.length?`<ul>${lastAnalysis.sharedAncestors.map((a)=>`<li>${esc(a.name)} — generation ${a.parent1Depth} from ${esc(buck.name||"buck")} / generation ${a.parent2Depth} from ${esc(doe.name||"doe")}</li>`).join("")}</ul>`:"<p>No shared ancestors found within three recorded generations.</p>", previous=lastAnalysis.previousOffspring.length?lastAnalysis.previousOffspring.map((r)=>`${esc(r.color)} × ${r.count}`).join(" · "):"No recorded offspring colors for this pairing yet.";
-      analysisHtml=`<div class="hh-bi-analysis-header"><div><span class="hh-bi-kicker">Possible offspring colors</span><h3>${lastAnalysis.exact?"Exact core-locus probabilities":"Possible outcomes with current evidence"}</h3></div><span class="hh-bi-confidence ${lastAnalysis.exact?"exact":"conditional"}">${lastAnalysis.exact?"Complete A/B/C/D/E":`${lastAnalysis.incompleteLoci.length} unknown locus entries`}</span></div><div class="hh-bi-results">${resultRows(lastAnalysis)||'<p>No supported core-color outcome could be resolved from the current records.</p>'}</div><div class="hh-bi-explain"><h3>Why these results?</h3><p>${esc(lastAnalysis.explanation)}</p><p>${esc(lastAnalysis.disclaimer)}</p></div><div class="hh-bi-two-col"><div><h3>Pedigree comparison</h3>${shared}</div><div><h3>Previous offspring</h3><p>${previous}</p></div></div><div class="hh-bi-two-col"><div><h3>${esc(buck.name||"Buck")} performance</h3><p>${esc(performanceSummary(state,buck))}</p></div><div><h3>${esc(doe.name||"Doe")} performance</h3><p>${esc(performanceSummary(state,doe))}</p></div></div><div class="hh-bi-modal-actions"><button type="button" class="primary" id="bi-save-analysis">Save prediction snapshot</button></div>`;
+      analysisHtml=`<div class="hh-bi-analysis-header"><div><span class="hh-bi-kicker">Possible offspring colors</span><h3>${lastAnalysis.exact?"Exact core-locus probabilities":"Possible outcomes with current evidence"}</h3></div><span class="hh-bi-confidence ${lastAnalysis.exact?"exact":"conditional"}">${lastAnalysis.exact?"Complete A/B/C/D/E":`${lastAnalysis.incompleteLoci.length} unknown locus entries`}</span></div><div class="hh-bi-results">${resultRows(lastAnalysis)||'<p>No supported core-color outcome could be resolved from the current records.</p>'}</div><div class="hh-bi-explain"><h3>Why these results?</h3><p>${esc(lastAnalysis.explanation)}</p><p>${esc(lastAnalysis.disclaimer)}</p></div><div class="hh-bi-two-col"><div><h3>Pedigree comparison</h3>${shared}</div><div><h3>Previous offspring</h3><p>${previous}</p></div></div><div class="hh-bi-two-col"><div><h3>${esc(buck.name||"Buck")} performance</h3><p>${esc(performanceSummary(state,buck))}</p></div><div><h3>${esc(doe.name||"Doe")} performance</h3><p>${esc(performanceSummary(state,doe))}</p></div></div><div class="hh-bi-modal-actions"><button type="button" class="primary" id="bi-save-analysis">Save Prediction Snapshot</button></div><p class="hh-bi-save-confirmation" id="bi-save-confirmation" role="status" aria-live="polite" hidden></p>`;
     }
+    const generatedAnalysis=lastAnalysis, generatedPair=lastPair;
     openModal("Breeding Pair Analysis", `<div class="hh-bi-pair-selectors"><label>Buck<select id="bi-pair-buck">${selectOptions(bucks,buck?.id)}</select></label><label>Doe<select id="bi-pair-doe">${selectOptions(does,doe?.id)}</select></label><button type="button" class="primary" id="bi-run-analysis">Analyze pairing</button></div>${analysisHtml}`);
+    lastAnalysis=generatedAnalysis; lastPair=generatedPair;
     modal.querySelector("#bi-run-analysis")?.addEventListener("click",()=>renderPairModal(modal.querySelector("#bi-pair-buck").value,modal.querySelector("#bi-pair-doe").value));
-    modal.querySelector("#bi-save-analysis")?.addEventListener("click", async()=>{ if(!lastAnalysis||!lastPair)return; const fresh=readState(), snapshot=Core.createPredictionSnapshot(lastAnalysis,{buckId:lastPair.buckId,doeId:lastPair.doeId}); fresh[ROOT_KEY].predictions.push(snapshot); const active=fresh.breedings.find((b)=>{const ids=[String(b.maleId||b.sireId||""),String(b.femaleId||b.damId||"")];return ids.includes(String(lastPair.buckId))&&ids.includes(String(lastPair.doeId))&&!/delivered|cancelled/i.test(String(b.status||""));}); if(active&&!active.geneticsPredictionSnapshot)active.geneticsPredictionSnapshot=snapshot; await writeState(fresh); renderCard(); renderPairModal(lastPair.buckId,lastPair.doeId); });
+    modal.querySelector("#bi-save-analysis")?.addEventListener("click", async(event)=>{const button=event.currentTarget,confirmation=modal.querySelector("#bi-save-confirmation");if(button.disabled||!lastAnalysis||!lastPair)return;const prediction={analysis:deepClone(lastAnalysis),generatedAt:new Date().toISOString(),buck:{id:buck.id,name:buck.name||"Buck",color:buck.color||buck.variety||"",genetics:geneticsSnapshotForAnimal(buck,state)},doe:{id:doe.id,name:doe.name||"Doe",color:doe.color||doe.variety||"",genetics:geneticsSnapshotForAnimal(doe,state)}};button.disabled=true;button.textContent="Saving…";try{await savePredictionSnapshot(prediction);button.textContent="Prediction Saved";confirmation.hidden=false;confirmation.textContent="Prediction saved to history.";lastAnalysis=null;lastPair=null;}catch(error){console.error("Prediction snapshot could not be saved:",error);button.disabled=false;button.textContent="Save Prediction Snapshot";confirmation.hidden=false;confirmation.textContent="Prediction could not be saved. Try again.";confirmation.classList.add("error");}});
   }
 
   async function learnFromOffspring() {
@@ -105,10 +110,90 @@
     await writeState(state); renderCard(); openModal("Offspring Evidence Updated",`<p>HerdHarbor reviewed recorded rabbit offspring and updated <strong>${changed}</strong> parental genetic profile${changed===1?"":"s"} with inheritance evidence.</p><p class="hh-bi-note">Lower-confidence evidence never silently replaces conflicting confirmed genetics. Any conflict remains flagged for breeder review.</p>`);
   }
 
-  function renderHistory(){const state=readState(),predictions=(state[ROOT_KEY]?.predictions||[]).slice().reverse(),byId=new Map(state.animals.map((a)=>[String(a.id),a]));const rows=predictions.length?predictions.map((snapshot)=>{const buck=byId.get(String(snapshot.metadata?.buckId)),doe=byId.get(String(snapshot.metadata?.doeId)),outcomes=snapshot.analysis?.exact?(snapshot.analysis.exactOutcomes||[]).map((o)=>`${o.name} ${(o.probability*100).toFixed(0)}%`).join(" · "):(snapshot.analysis?.possibleOutcomes||[]).map((o)=>o.name).slice(0,8).join(" · ");return `<article class="hh-bi-history-item"><strong>${esc(buck?.name||snapshot.analysis?.parent1?.name||"Buck")} × ${esc(doe?.name||snapshot.analysis?.parent2?.name||"Doe")}</strong><span>${esc(new Date(snapshot.createdAt).toLocaleString())}</span><p>${esc(outcomes||"No supported outcome recorded")}</p><small>Snapshot preserved with engine v${esc(snapshot.engineVersion||"1")}; later evidence does not rewrite this result.</small></article>`;}).join(""):'<p>No prediction snapshots have been saved yet.</p>';openModal("Prediction History",`<div class="hh-bi-history">${rows}</div>`);}
+  function snapshotParents(snapshot) {
+    const metadata=snapshot?.metadata||{}, analysis=snapshot?.analysis||{};
+    return {
+      buckName:metadata.buckName||analysis.parent1?.name||"Buck",
+      doeName:metadata.doeName||analysis.parent2?.name||"Doe"
+    };
+  }
+
+  function probabilityText(outcome) {
+    if (outcome?.probability!=null&&Number.isFinite(Number(outcome.probability))) {
+      const value=Number(outcome.probability)*100;
+      return `${value.toFixed(value%1?1:0)}%`;
+    }
+    if (outcome?.minProbability!=null&&outcome?.maxProbability!=null&&Number.isFinite(Number(outcome.minProbability))&&Number.isFinite(Number(outcome.maxProbability))) {
+      const min=Number(outcome.minProbability)*100, max=Number(outcome.maxProbability)*100;
+      const format=(value)=>`${value.toFixed(value%1?1:0)}%`;
+      return Math.abs(min-max)<1e-9?format(min):`${format(min)}–${format(max)}`;
+    }
+    return "Possible";
+  }
+
+  function savedColorOutcomes(analysis) {
+    if (Array.isArray(analysis?.possibleOffspringColors)&&analysis.possibleOffspringColors.length) return analysis.possibleOffspringColors;
+    if (analysis?.exact&&Array.isArray(analysis.exactOutcomes)&&analysis.exactOutcomes.length) return analysis.exactOutcomes;
+    if (analysis?.exactBase&&Array.isArray(analysis.baseOutcomes)&&analysis.baseOutcomes.length) return analysis.baseOutcomes;
+    return Array.isArray(analysis?.possibleOutcomes)?analysis.possibleOutcomes:[];
+  }
+
+  function savedOutcomeRows(outcomes, emptyText="No supported outcome was saved.") {
+    return outcomes?.length?outcomes.map((outcome)=>`<div class="hh-bi-result-row"><div><strong>${esc(outcome.name||"Recorded outcome")}</strong><span>${esc(outcome.family||outcome.requires||outcome.reason||"Saved prediction")}</span>${outcome.reason&&outcome.family?`<small>${esc(outcome.reason)}</small>`:""}</div><b>${esc(probabilityText(outcome))}</b></div>`).join(""):`<p>${esc(emptyText)}</p>`;
+  }
+
+  async function savePredictionSnapshot(input) {
+    const analysis=deepClone(input?.analysis||{}), buck=deepClone(input?.buck||{}), doe=deepClone(input?.doe||{});
+    if (!buck.id||!doe.id||!analysis.supported||typeof Core.createPredictionSnapshot!=="function") throw new Error("A completed rabbit genetics prediction is required before saving.");
+    const appVersion=window.HerdHarborPWA?.version||document.documentElement.dataset.herdharborRelease||window.HerdHarborRelease?.version||RELEASE_VERSION;
+    const appBuild=window.HerdHarborPWA?.build||null;
+    const metadata={
+      schemaVersion:2,
+      buckId:buck.id,
+      buckName:buck.name||analysis.parent1?.name||"Buck",
+      buckColor:buck.color||"",
+      buckGenetics:deepClone(buck.genetics||{}),
+      doeId:doe.id,
+      doeName:doe.name||analysis.parent2?.name||"Doe",
+      doeColor:doe.color||"",
+      doeGenetics:deepClone(doe.genetics||{}),
+      generatedAt:input.generatedAt||new Date().toISOString(),
+      predictionType:analysis.exact?"exact":(analysis.scenarioTruncated?"unresolved":"conditional"),
+      predictionConfidence:analysis.exact?"deterministic":(analysis.scenarioTruncated?"insufficient-evidence":"probability-range"),
+      appVersion,
+      appBuild,
+      geneticsEngineVersion:analysis.engineVersion||Core.VERSION||"unknown"
+    };
+    const created=Core.createPredictionSnapshot(analysis,metadata);
+    const snapshot=Object.freeze({...deepClone(created),schemaVersion:2,engineVersion:analysis.engineVersion||created.engineVersion||Core.VERSION||"unknown",appVersion,appBuild});
+    const fresh=readState();
+    fresh[ROOT_KEY].predictions.push(snapshot);
+    const active=(fresh.breedings||[]).find((breeding)=>{
+      const ids=[String(breeding.maleId||breeding.sireId||""),String(breeding.femaleId||breeding.damId||"")];
+      return ids.includes(String(buck.id))&&ids.includes(String(doe.id))&&!/delivered|cancelled/i.test(String(breeding.status||""));
+    });
+    if (active&&!active.geneticsPredictionSnapshot) active.geneticsPredictionSnapshot=deepClone(snapshot);
+    await writeState(fresh);
+    renderCard();
+    return snapshot;
+  }
+
+  function renderSavedSnapshot(snapshotId) {
+    const state=readState(), snapshot=(state[ROOT_KEY]?.predictions||[]).find((item)=>String(item.id)===String(snapshotId));
+    if (!snapshot) { renderHistory(); return; }
+    const analysis=snapshot.analysis||{}, parents=snapshotParents(snapshot), colors=savedColorOutcomes(analysis);
+    const conditional=(analysis.conditionalColors||analysis.conditionalOutcomes||[]).filter((outcome)=>Number(outcome.maxProbability??1)>0);
+    const excluded=analysis.currentlyExcluded||analysis.excludedOutcomes||[];
+    const unknown=analysis.incompleteLoci||[];
+    const vienna=analysis.viennaRange||analysis.viennaInheritance;
+    const viennaHtml=vienna?`<div class="hh-bi-evidence-panel"><h3>Vienna Inheritance</h3><div class="hh-bi-results">${[["Vienna clean (VV)",vienna.clean],["Vienna carrier (Vv)",vienna.carrier],["Blue-Eyed White (vv)",vienna.bew]].map(([name,result])=>`<div class="hh-bi-result-row"><strong>${esc(name)}</strong><b>${esc(probabilityText(result||{}))}</b></div>`).join("")}</div>${vienna.note?`<p>${esc(vienna.note)}</p>`:""}</div>`:"";
+    openModal("Saved Prediction Snapshot",`<div class="hh-bi-profile-summary"><strong>${esc(parents.buckName)} × ${esc(parents.doeName)}</strong><span>Saved ${esc(new Date(snapshot.createdAt).toLocaleString())}</span><span>HerdHarbor v${esc(snapshot.appVersion||snapshot.metadata?.appVersion||"unknown")} · Genetics engine v${esc(snapshot.engineVersion||analysis.engineVersion||"unknown")}</span><span>This view uses only the saved snapshot. It does not recalculate from current animal records.</span></div><div class="hh-bi-analysis-header"><div><span class="hh-bi-kicker">Predicted Offspring</span><h3>${analysis.exact?"Exact saved probabilities":"Saved probability ranges"}</h3></div><span class="hh-bi-confidence ${analysis.exact?"exact":"conditional"}">${analysis.exact?"Deterministic":"Unknown alleles preserved"}</span></div><div class="hh-bi-results">${savedOutcomeRows(colors)}</div>${viennaHtml}<div class="hh-bi-evidence-panel"><h3>Known Genetics</h3><p><strong>${esc(parents.doeName)}:</strong> ${esc(analysis.parent2?.genotype||"Saved in snapshot metadata")}</p><p><strong>${esc(parents.buckName)}:</strong> ${esc(analysis.parent1?.genotype||"Saved in snapshot metadata")}</p></div><div class="hh-bi-two-col"><div><h3>Possible if carrier / unresolved</h3><div class="hh-bi-results">${savedOutcomeRows(conditional,"No tracked conditional result was saved.")}</div></div><div><h3>Currently excluded</h3>${excluded.length?`<ul>${excluded.map((item)=>`<li><strong>${esc(item.name||"Outcome")} — Excluded.</strong>${item.reason?` ${esc(item.reason)}`:""}</li>`).join("")}</ul>`:"<p>None.</p>"}</div></div><div class="hh-bi-evidence-panel"><h3>Unknown Variables</h3>${unknown.length?`<ul>${unknown.map((item)=>`<li><strong>${esc(item.animalName||item.parent||"Parent")} · ${esc(item.locus||"Unknown locus")}</strong> — ${esc((item.options||item.alleles||[]).join(", ")||"Unresolved")}</li>`).join("")}</ul>`:"<p>All tracked loci were resolved.</p>"}</div><div class="hh-bi-explain"><h3>How HerdHarbor calculated this</h3><p>${esc(analysis.explanation||"No explanation was saved.")}</p><p>${esc(analysis.disclaimer||"No disclaimer was saved.")}</p></div><div class="hh-bi-modal-actions"><button type="button" data-bi-history-back>Back to Prediction History</button></div>`);
+  }
+
+  function renderHistory(){const state=readState(),predictions=(state[ROOT_KEY]?.predictions||[]).slice().reverse();const rows=predictions.length?predictions.map((snapshot)=>{const parents=snapshotParents(snapshot),outcomes=savedColorOutcomes(snapshot.analysis||{}).slice(0,8).map((outcome)=>`${outcome.name||"Outcome"} ${probabilityText(outcome)}`).join(" · ");return `<article class="hh-bi-history-item"><strong>${esc(parents.buckName)} × ${esc(parents.doeName)}</strong><span>${esc(new Date(snapshot.createdAt).toLocaleString())}</span><p>${esc(outcomes||"No supported outcome recorded")}</p><small>Snapshot preserved with engine v${esc(snapshot.engineVersion||snapshot.analysis?.engineVersion||"1")}; later evidence does not rewrite this result.</small><button type="button" class="primary" data-bi-open-snapshot="${esc(snapshot.id)}">Open saved prediction</button></article>`;}).join(""):'<p>No prediction snapshots have been saved yet.</p>';openModal("Prediction History",`<div class="hh-bi-history">${rows}</div>`);}
   function handleAction(action){if(action==="pair")return renderPairModal("","");if(action==="profile")return renderProfileModal("");if(action==="learn")return learnFromOffspring();if(action==="history")return renderHistory();}
-  function installEvents(){document.addEventListener("click",(event)=>{const action=event.target.closest("[data-bi-action]")?.dataset.biAction;if(action)handleAction(action);if(event.target.closest("[data-bi-close]")||event.target===modal)closeModal();});document.addEventListener("keydown",(event)=>{if(event.key==="Escape"&&modal)closeModal();});}
+  function installEvents(){document.addEventListener("click",(event)=>{const action=event.target.closest("[data-bi-action]")?.dataset.biAction;if(action)handleAction(action);const snapshotId=event.target.closest("[data-bi-open-snapshot]")?.dataset.biOpenSnapshot;if(snapshotId)renderSavedSnapshot(snapshotId);if(event.target.closest("[data-bi-history-back]"))renderHistory();if(event.target.closest("[data-bi-close]")||event.target===modal)closeModal();});document.addEventListener("keydown",(event)=>{if(event.key==="Escape"&&modal)closeModal();});}
   function monitorBreedingView(){if(observer)return;observer=new MutationObserver(()=>{if(!document.querySelector("#hh-breeding-intelligence"))renderCard();updateVisibleVersion();});observer.observe(document.body,{childList:true,subtree:true});}
-  function boot(){installStorageProtection();ensureStylesheet();installEvents();renderCard();updateVisibleVersion();monitorBreedingView();window.HerdHarborBreedingIntelligence=Object.freeze({version:RELEASE_VERSION,analyzePairing:Core.analyzePairing,readState,openPairAnalysis:()=>renderPairModal("",""),openGeneticProfile:(animalId)=>renderProfileModal(animalId||""),refresh:renderCard});}
+  function boot(){installStorageProtection();ensureStylesheet();installEvents();renderCard();updateVisibleVersion();monitorBreedingView();window.HerdHarborBreedingIntelligence=Object.freeze({version:RELEASE_VERSION,analyzePairing:Core.analyzePairing,readState,savePredictionSnapshot,openPairAnalysis:()=>renderPairModal("",""),openGeneticProfile:(animalId)=>renderProfileModal(animalId||""),openPredictionHistory:renderHistory,openSavedPrediction:renderSavedSnapshot,refresh:renderCard});}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
 })();

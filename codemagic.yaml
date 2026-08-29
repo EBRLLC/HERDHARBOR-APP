@@ -21,6 +21,16 @@ workflows:
     scripts:
       - name: Install JavaScript and Capacitor dependencies
         script: npm ci
+      - name: Build privacy-safe JavaScript monitoring assets
+        script: |
+          if [ -z "${HERDHARBOR_SENTRY_DSN:-}" ]; then
+            echo "Set HERDHARBOR_SENTRY_DSN as a Codemagic secure environment variable." >&2
+            exit 1
+          fi
+          export HERDHARBOR_MONITORING_ENVIRONMENT=production
+          export HERDHARBOR_BUILD_ID="ios-${BUILD_NUMBER:-unknown}"
+          npm run build:monitoring
+          npm run build:monitoring-config
       - name: Stage HerdHarbor web assets and synchronize iOS
         script: npm run sync:ios
       - name: Apply Apple signing profiles
@@ -28,8 +38,14 @@ workflows:
       - name: Set version and build number
         script: |
           cd "$CM_BUILD_DIR/ios/App"
-          agvtool new-marketing-version 1.5.0
-          agvtool new-version -all "$BUILD_NUMBER"
+          agvtool new-marketing-version 1.5.1
+          if ! [[ "$BUILD_NUMBER" =~ ^[0-9]+$ ]]; then
+            echo "Codemagic BUILD_NUMBER must be numeric." >&2
+            exit 1
+          fi
+          APPLE_BUILD_NUMBER="$BUILD_NUMBER"
+          if [ "$APPLE_BUILD_NUMBER" -lt 10 ]; then APPLE_BUILD_NUMBER=10; fi
+          agvtool new-version -all "$APPLE_BUILD_NUMBER"
       - name: Build signed IPA
         script: |
           xcode-project build-ipa \

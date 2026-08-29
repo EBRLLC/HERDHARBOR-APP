@@ -1,12 +1,15 @@
 {
   "name": "herdharbor-app",
-  "version": "1.2.0",
+  "version": "1.5.1",
   "private": true,
-  "description": "HerdHarbor web, Android, and iOS application",
+  "description": "HerdHarbor Alpha v1.5.1 web, Android, and iOS application",
   "scripts": {
+    "build:monitoring": "node scripts/build-monitoring.mjs",
+    "build:monitoring-config": "node scripts/build-monitoring-config.mjs",
     "stage:ios-web": "node scripts/stage-ios-web.mjs",
     "sync:ios": "npm run stage:ios-web && cap sync ios",
-    "copy:ios": "npm run stage:ios-web && cap copy ios"
+    "copy:ios": "npm run stage:ios-web && cap copy ios",
+    "test:monitoring": "node --test tests/monitoring-*.test.cjs"
   },
   "dependencies": {
     "@capacitor/browser": "8.0.4",
@@ -14,10 +17,12 @@
     "@capacitor/filesystem": "8.1.2",
     "@capacitor/ios": "8.5.0",
     "@capacitor/share": "8.0.1",
-    "@capacitor/status-bar": "8.0.3"
+    "@capacitor/status-bar": "8.0.3",
+    "@sentry/browser": "10.71.0"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.5.0"
+    "@capacitor/cli": "8.5.0",
+    "esbuild": "0.28.2"
   },
   "engines": {
     "node": ">=22"
