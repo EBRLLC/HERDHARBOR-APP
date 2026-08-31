@@ -215,7 +215,8 @@
       updateToast.remove();
       updateToast = null;
     });
-    const updateToastTarget = document.body || document.documentElement;\n    if (updateToastTarget) updateToastTarget.appendChild(updateToast);
+    const updateToastTarget = document.body || document.documentElement;
+    if (updateToastTarget) updateToastTarget.appendChild(updateToast);
   }
 
   function watchInstallingWorker(worker) {
