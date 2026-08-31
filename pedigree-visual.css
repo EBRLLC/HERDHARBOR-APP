@@ -78,7 +78,8 @@
 }
 
 .hh-pedigree-card[data-hh-generation="0"] .hh-pedigree-thumb {
-  display: none;
+  width: 0.52in;
+  height: 0.52in;
 }
 
 [data-hh-photo-mode="visual"] .hh-pedigree-card[data-hh-generation="1"] .hh-pedigree-thumb {
