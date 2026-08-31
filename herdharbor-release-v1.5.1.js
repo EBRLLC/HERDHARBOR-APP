@@ -5,6 +5,7 @@
     version: "1.5.1",
     buildId: "membership-review-2",
     build: "1.5.1-alpha-membership-review-2",
+    howToUrl: "https://herdharbor.com/how-to/",
     featureFlags: Object.freeze({
       adminMemberManagementEnabled: true,
       juniorPlanEnabled: true,
@@ -18,7 +19,50 @@
     })
   });
 
+  function addHelpButton() {
+    const theme = document.querySelector("#theme-toggle");
+    if (!theme || document.querySelector("#herdharbor-help-button")) return;
+    const button = document.createElement("button");
+    button.id = "herdharbor-help-button";
+    button.type = "button";
+    button.className = "icon-button help-toggle";
+    button.textContent = "?";
+    button.title = "Open HerdHarbor How-To Center";
+    button.setAttribute("aria-label", "Open HerdHarbor How-To Center");
+    button.addEventListener("click", () => {
+      const opened = window.open(release.howToUrl, "_blank", "noopener,noreferrer");
+      if (!opened) window.location.href = release.howToUrl;
+    });
+    theme.insertAdjacentElement("afterend", button);
+  }
+
+  function addStyles() {
+    if (document.querySelector("#herdharbor-v151-release-style")) return;
+    const style = document.createElement("style");
+    style.id = "herdharbor-v151-release-style";
+    style.textContent = ".help-toggle{font-size:1rem;font-weight:900}.topbar-actions .help-toggle{flex:0 0 auto}@media(max-width:620px){.help-toggle{width:40px;min-width:40px}}";
+    const target = document.head || document.body || document.documentElement;
+    if (target) target.appendChild(style);
+  }
+
+  function updateVersionLabels() {
+    document.documentElement.dataset.herdharborRelease = release.version;
+    document.querySelectorAll("[data-app-version], .app-version, .version-label").forEach((element) => {
+      const current = String(element.textContent || "");
+      if (/alpha|version|v\\d/i.test(current)) element.textContent = current.replace(/(?:v)?1\\.\\d+\\.\\d+/gi, "v" + release.version);
+    });
+    document.querySelectorAll(".hh-bi-kicker").forEach((element) => {
+      if (/Alpha v/i.test(element.textContent || "")) element.textContent = String(element.textContent).replace(/Alpha v\\d+\\.\\d+\\.\\d+/i, "Alpha v" + release.version);
+    });
+  }
+
+  function boot() {
+    addStyles();
+    addHelpButton();
+    updateVersionLabels();
+  }
+
   window.HerdHarborRelease = release;
-  document.documentElement.dataset.herdharborVersion = release.version;
-  document.documentElement.dataset.herdharborBuild = release.buildId;
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
+  else boot();
 })();
