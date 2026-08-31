@@ -27,6 +27,6 @@ assert.match(spreadsheet, /earTagColor: species === "Cattle"/);
 assert.doesNotMatch(html, /team-management\.js|business-workspace\.js|business-tasks\.js|business-operations\.js|business-animals\.js/);
 assert.doesNotMatch(worker, /team-management\.js|business-workspace\.js|business-tasks\.js|business-operations\.js|business-animals\.js/);
 assert.match(releaseNotes, /Business[\s\S]*Alpha v1\.5\.1/);
-assert.match(worker, /breeding-intelligence-core\.js/);
+assert.match(worker, /breeding-intelligence-core-v1\.5\.1\.js/);
 
 console.log("v1.3.0 Member regression remains intact under Alpha v1.5.1");
