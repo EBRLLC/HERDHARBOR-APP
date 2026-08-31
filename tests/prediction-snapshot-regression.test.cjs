@@ -7,9 +7,9 @@ const Core = require("../rabbit-genetics-runtime-v1.5.1.js");
 const root = path.join(__dirname, "..");
 const currentUi = fs.readFileSync(path.join(root, "rabbit-genetics-ui-v1.5.1.js"), "utf8");
 const v2Ui = fs.readFileSync(path.join(root, "rabbit-genetics-ui-v2.js"), "utf8");
-const intelligence = fs.readFileSync(path.join(root, "breeding-intelligence.js"), "utf8");
+const intelligence = fs.readFileSync(path.join(root, "breeding-intelligence-v1.5.1.js"), "utf8");
 const tools = fs.readFileSync(path.join(root, "breeding-intelligence-tools-v1.5.1.js"), "utf8");
-const styles = fs.readFileSync(path.join(root, "breeding-intelligence.css"), "utf8");
+const styles = fs.readFileSync(path.join(root, "breeding-intelligence-v1.5.1.css"), "utf8");
 
 for (const source of [currentUi, v2Ui, intelligence, tools]) {
   assert.doesNotThrow(() => new Function(source), "snapshot workflow browser script compiles");
