@@ -192,8 +192,10 @@
     }
     ensureStyles(rootWindow.document);patchPrintWindows(rootWindow);run(rootWindow);
     if(!observer){
+      const target=rootWindow.document?.body;
+      if(!target || target.nodeType!==1 || typeof rootWindow.MutationObserver!=='function')return;
       observer=new rootWindow.MutationObserver(()=>schedule(rootWindow));
-      observer.observe(rootWindow.document.body,{childList:true,subtree:true});
+      observer.observe(target,{childList:true,subtree:true});
     }
     rootWindow.addEventListener('storage',e=>{if(e.key===STATE_KEY||e.key===PREF_KEY)schedule(rootWindow);});
     rootWindow.addEventListener('herdharbor:genetics-ready',()=>schedule(rootWindow));
