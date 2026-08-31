@@ -164,7 +164,9 @@
     if(typeof panel.showModal==='function')panel.showModal();else panel.setAttribute('open','');
   }
   function enhanceDocument(doc,printContext=false,rootWindow=globalThis){
-    if(!doc?.querySelectorAll)return;ensureStyles(doc);
+    if(!doc?.querySelectorAll)return;
+    if(printContext&&doc.documentElement?.classList)doc.documentElement.classList.add('hh-pedigree-print-document');
+    ensureStyles(doc);
     const prefs=loadPreferences(rootWindow.localStorage),state=readState(rootWindow.localStorage),engine=rootWindow.HerdHarborBreedingIntelligenceCore,cards=findCards(doc);
     for(const card of cards){card.querySelectorAll('.hh-pedigree-genetics').forEach(el=>el.remove());const animal=animalForCard(card,state);if(!animal)continue;if(prefs.mode==='off'||(printContext&&!prefs.printGenetics))continue;renderBlock(doc,card,profileForAnimal(animal,state,engine,prefs.mode),printContext);}
   }
