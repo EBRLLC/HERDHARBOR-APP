@@ -36,7 +36,7 @@ assert.match(appGradle, /targetSdkVersion 36/);
 assert.match(appGradle, /versionCode 9/);
 assert.match(appGradle, /versionName "1\.5\.1"/);
 assert.match(appGradle, /https:\/\/app\.herdharbor\.com\/manifest\.json/);
-assert.match(worker, /v1\.5\.1-alpha-stability-membership-review-2/);
+assert.match(worker, /v1\.5\.1-alpha-stability-membership-review-3/);
 assert.match(worker, /rabbit-records-v1\.5\.1\.js\?v=1\.5\.1/);
 assert.match(worker, /pedigree-genetics-v1\.5\.1\.js\?v=1\.5\.1/);
 assert.match(worker, /shows-v1\.5\.1\.css\?v=1\.5\.1/);
