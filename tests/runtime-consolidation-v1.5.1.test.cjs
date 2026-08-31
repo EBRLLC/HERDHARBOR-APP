@@ -65,9 +65,9 @@ for (const legacy of legacyRuntimeNames) {
 assert.match(pwa, /const APP_VERSION = "1\\.5\\.1"/);
 assert.match(worker, /v1\\.5\\.1-alpha-stability-membership-review-3/);
 assert.match(worker, /pwa\\.js\\?v=25/);
-assert.doesNotMatch(pwa, /;\\\\n\\s+if/, "pwa.js contains no literal newline escape in executable source");
-assert.doesNotMatch(read("herdharbor-membership-v1.5.1.js"), /;\\\\n\\s+if/, "membership source contains no literal newline escape in executable source");
-assert.doesNotMatch(read("pedigree-visual.js"), /;\\\\n\\s+if/, "pedigree source contains no literal newline escape in executable source");
-assert.doesNotMatch(read("spreadsheet-import.js"), /;\\\\n\\s+if/, "spreadsheet source contains no literal newline escape in executable source");
+assert.ok(!pwa.includes(";" + String.fromCharCode(92) + "n    if"), "pwa.js contains no literal newline escape in executable source");
+assert.ok(!read("herdharbor-membership-v1.5.1.js").includes(";" + String.fromCharCode(92) + "n    if"), "membership source contains no literal newline escape in executable source");
+assert.ok(!read("pedigree-visual.js").includes(";" + String.fromCharCode(92) + "n    if"), "pedigree source contains no literal newline escape in executable source");
+assert.ok(!read("spreadsheet-import.js").includes(";" + String.fromCharCode(92) + "n    if"), "spreadsheet source contains no literal newline escape in executable source");
 
 console.log("v1.5.1 runtime consolidation tests passed");
