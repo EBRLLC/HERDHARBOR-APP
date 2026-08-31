@@ -10,6 +10,7 @@ const pwa = read("pwa.js");
 const worker = read("service-worker.js");
 const geneticsV2 = read("rabbit-genetics-engine-v2.js");
 const pedigreeGenetics = read("pedigree-genetics-v1.5.1.js");
+const pedigreeGeneticsCss = read("pedigree-genetics-v1.5.1.css");
 const html = read("index.html");
 
 const activeV151 = [
@@ -64,6 +65,8 @@ assert.ok(html.includes("HerdHarborPedigreeGenetics?.enhanceDocument?.(popup.doc
 assert.match(pedigreeGenetics, /const target=rootWindow\.document\?\.body;/, "pedigree observer uses a resolved body target");
 assert.match(pedigreeGenetics, /target\.nodeType!==1/, "pedigree observer rejects non-Node targets");
 assert.doesNotMatch(pedigreeGenetics, /observe\(rootWindow\.document\.body/, "pedigree observer never observes a raw body lookup");
+assert.match(pedigreeGenetics, /printContext&&doc\.documentElement\?\.classList\)doc\.documentElement\.classList\.add\(\x27hh-pedigree-print-document\x27\)/, "sale pedigree enhancement activates compact print styling");
+assert.match(pedigreeGeneticsCss, /html\.hh-pedigree-print-document \.hh-pedigree-genetics\{font-size:7\.3px;/, "compact print genetics sizing is defined");
 assert.doesNotMatch(geneticsV2, /breeding-intelligence-core\.js['"]/,"v2 genetics engine does not require the legacy unversioned core");
   assert.doesNotMatch(pwa + "\n" + html, new RegExp(legacy.replaceAll(".", "\\.")), "startup loader still requests legacy runtime asset " + legacy);
   assert.doesNotMatch(worker, new RegExp(legacy.replaceAll(".", "\\.")), "service-worker.js still routes legacy runtime asset " + legacy);
