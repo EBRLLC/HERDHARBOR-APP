@@ -17,34 +17,54 @@
 
   if (!window.supabase?.createClient) {
     console.error("HerdHarbor Cloud: Supabase JavaScript library did not load.");
-    const failureStyle = document.createElement("style");
-    failureStyle.textContent = `
-      html.hh-auth-locked body > *:not(#hh-cloud-startup-error) { visibility: hidden !important; }
-      #hh-cloud-startup-error {
-        position: fixed;
-        inset: 0;
-        z-index: 100000;
-        display: grid;
-        place-items: center;
-        padding: 24px;
-        color: #18212A;
-        background: #F7F2E8;
-        font: 700 1rem/1.5 system-ui, sans-serif;
-        text-align: center;
+    const renderStartupFailure = () => {
+      if (!document.body) {
+        const retry = () => {
+          if (document.body) {
+            renderStartupFailure();
+            return;
+          }
+          setTimeout(retry, 0);
+        };
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", retry, { once: true });
+        } else {
+          setTimeout(retry, 0);
+        }
+        return;
       }
-      #hh-cloud-startup-error strong { display: block; margin-bottom: 8px; color: #0D2540; font-size: 1.5rem; }
-    `;
-    const styleTarget = document.head || document.documentElement || document.body;
-    if (styleTarget && !document.getElementById("hh-cloud-startup-style")) {
-      failureStyle.id = "hh-cloud-startup-style";
-      styleTarget.appendChild(failureStyle);
-    }
-    document.documentElement.classList.add("hh-auth-locked");
-    const failure = document.createElement("div");
-    failure.id = "hh-cloud-startup-error";
-    failure.innerHTML = "<div><strong>HerdHarbor could not start securely.</strong>Your local records were not removed. Check your connection and reload the app.</div>";
-    const failureTarget = document.body || document.documentElement || document.head;
-    if (failureTarget && !document.getElementById(failure.id)) failureTarget.appendChild(failure);
+
+      const failureStyle = document.createElement("style");
+      failureStyle.textContent = `
+        html.hh-auth-locked body > *:not(#hh-cloud-startup-error) { visibility: hidden !important; }
+        #hh-cloud-startup-error {
+          position: fixed;
+          inset: 0;
+          z-index: 100000;
+          display: grid;
+          place-items: center;
+          padding: 24px;
+          color: #18212A;
+          background: #F7F2E8;
+          font: 700 1rem/1.5 system-ui, sans-serif;
+          text-align: center;
+        }
+        #hh-cloud-startup-error strong { display: block; margin-bottom: 8px; color: #0D2540; font-size: 1.5rem; }
+      `;
+      const styleTarget = document.head || document.documentElement || document.body;
+      if (styleTarget && !document.getElementById("hh-cloud-startup-style")) {
+        failureStyle.id = "hh-cloud-startup-style";
+        styleTarget.appendChild(failureStyle);
+      }
+      if (document.documentElement) document.documentElement.classList.add("hh-auth-locked");
+      if (!document.getElementById("hh-cloud-startup-error")) {
+        const failure = document.createElement("div");
+        failure.id = "hh-cloud-startup-error";
+        failure.innerHTML = "<div><strong>HerdHarbor could not start securely.</strong>Your local records were not removed. Check your connection and reload the app.</div>";
+        document.body.appendChild(failure);
+      }
+    };
+    renderStartupFailure();
     return;
   }
 
