@@ -1537,7 +1537,8 @@
         .hh-account-button { right: 12px; bottom: 12px; }
       }
     `;
-    document.head.appendChild(style);
+    const styleTarget = document.head || document.documentElement || document.body;
+    if (styleTarget) styleTarget.appendChild(style);
   }
 
   function buildAuthRoot() {
@@ -1612,7 +1613,9 @@
       </main>
     `;
 
-    document.body.appendChild(root);
+    const rootTarget = document.body || document.documentElement;
+    if (!rootTarget) return root;
+    rootTarget.appendChild(root);
     bindAuthEvents(root);
     return root;
   }
@@ -1894,7 +1897,8 @@
         const status = accountDialog.querySelector("#hh-account-sync-status");
         status.textContent = syncState;
       });
-      document.body.appendChild(accountButton);
+      const accountButtonTarget = document.body || document.documentElement;
+      if (accountButtonTarget) accountButtonTarget.appendChild(accountButton);
     }
 
     if (!accountDialog) {
@@ -1962,7 +1966,8 @@
         await client.auth.signOut();
       });
 
-      document.body.appendChild(accountDialog);
+      const accountDialogTarget = document.body || document.documentElement;
+      if (accountDialogTarget) accountDialogTarget.appendChild(accountDialog);
     }
 
     setSyncState(syncState, syncConflict ? "error" : "success");
