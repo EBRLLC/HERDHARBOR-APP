@@ -13,9 +13,9 @@ const checks = {
   "pedigree-genetics-v1.5.1.js": [/if\(!rootWindow\?\.document\?\.body\)/, /__hhPedigreeGeneticsDomWait/, /if\(!observer\)/],
   "breeding-intelligence-v1.5.1.js": [/document\.head \|\| document\.body \|\| document\.documentElement/, /const target=document\.body;/, /__hhBreedingDomWait/],
   "breeding-pair-v1.5.1.js": [/const target=document\.body\|\|document\.documentElement\|\|document\.head/],
-  "breeding-intelligence-tools-v1.5.1.js": [/const target = document\\.body \\|\\| document\\.documentElement \\|\\| document\\.head;/, /__hhBreedingToolsDomWait/, /const target = document\\.body;/],
-  "rabbit-genetics-ui-v1.5.1.js": [/const target=document\\.body\\|\\|document\\.documentElement\\|\\|document\\.head/, /v151-save-confirmation/],
-  "rabbit-genetics-ui-v2.js": [/const target=document\\.body\\|\\|document\\.documentElement\\|\\|document\\.head/, /__hhRabbitGeneticsV2DomWait/, /let observing=false/],
+  "breeding-intelligence-tools-v1.5.1.js": [/const target = document\.body \|\| document\.documentElement \|\| document\.head;/, /__hhBreedingToolsDomWait/, /const target = document\.body;/],
+  "rabbit-genetics-ui-v1.5.1.js": [/const target=document\.body\|\|document\.documentElement\|\|document\.head/, /v151-save-confirmation/],
+  "rabbit-genetics-ui-v2.js": [/const target=document\.body\|\|document\.documentElement\|\|document\.head/, /__hhRabbitGeneticsV2DomWait/, /let observing=false/],
   "herdharbor-release-v1.5.1.js": [/const target = document\.head \|\| document\.body \|\| document\.documentElement;/]
 };
 for (const [file, patterns] of Object.entries(checks)) {
