@@ -13,6 +13,8 @@ assert.match(cloud, /document\.addEventListener\("DOMContentLoaded", retry/);
 assert.match(cloud, /const failureTarget = document\.body/);
 assert.match(cloud, /failureTarget\.appendChild\(failure\)/);
 assert.doesNotMatch(cloud, /const failureTarget = document\.body \|\|/);
+assert.match(cloud, /const rootTarget = document\.body \|\| document\.documentElement/);
+assert.doesNotMatch(cloud, /document\.body\.appendChild\(/, "cloud auth startup does not append directly through a possibly missing body");
 
 {
   const listeners = {};
