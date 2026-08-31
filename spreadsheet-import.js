@@ -22,6 +22,7 @@
     "Reserved",
     "Sold",
     "Deceased",
+    "Archived",
     "Ancestor Only"
   ];
   const SALE_STATUSES = ["Draft", "Reserved", "Completed", "Cancelled"];
@@ -368,7 +369,8 @@
         .hh-import-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
       }
     `;
-    document.head.appendChild(style);
+    const styleTarget = document.head || document.documentElement || document.body;
+    if (styleTarget) styleTarget.appendChild(style);
   }
 
   function rawCellValue(cell) {
@@ -3174,7 +3176,7 @@
     animals.dataValidations.add("N2:N5000", {
       type: "list",
       allowBlank: true,
-      formulae: ['"Active,Breeding,Growing,Retired,For Sale,Reserved,Sold,Deceased,Ancestor Only"']
+      formulae: ['"Active,Breeding,Growing,Retired,For Sale,Reserved,Sold,Deceased,Archived,Ancestor Only"']
     });
 
     const customers = workbook.addWorksheet("Customers");

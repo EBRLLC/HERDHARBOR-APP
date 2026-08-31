@@ -33,7 +33,8 @@
     const style = document.createElement("style");
     style.id = "herdharbor-v145-release-style";
     style.textContent = `.help-toggle{font-size:1rem;font-weight:900}.topbar-actions .help-toggle{flex:0 0 auto}@media(max-width:620px){.help-toggle{width:40px;min-width:40px}}`;
-    document.head.appendChild(style);
+    const target = document.head || document.body || document.documentElement;
+    if (target) target.appendChild(style);
   }
   function boot(){ addStyles(); addHelpButton(); updateVersionLabels(); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true }); else boot();

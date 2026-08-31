@@ -17,29 +17,55 @@
 
   if (!window.supabase?.createClient) {
     console.error("HerdHarbor Cloud: Supabase JavaScript library did not load.");
-    const failureStyle = document.createElement("style");
-    failureStyle.textContent = `
-      html.hh-auth-locked body > *:not(#hh-cloud-startup-error) { visibility: hidden !important; }
-      #hh-cloud-startup-error {
-        position: fixed;
-        inset: 0;
-        z-index: 100000;
-        display: grid;
-        place-items: center;
-        padding: 24px;
-        color: #18212A;
-        background: #F7F2E8;
-        font: 700 1rem/1.5 system-ui, sans-serif;
-        text-align: center;
+    const renderStartupFailure = () => {
+      if (!document.body) {
+        const retry = () => {
+          if (document.body) {
+            renderStartupFailure();
+            return;
+          }
+          setTimeout(retry, 0);
+        };
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", retry, { once: true });
+        } else {
+          setTimeout(retry, 0);
+        }
+        return;
       }
-      #hh-cloud-startup-error strong { display: block; margin-bottom: 8px; color: #0D2540; font-size: 1.5rem; }
-    `;
-    document.head.appendChild(failureStyle);
-    document.documentElement.classList.add("hh-auth-locked");
-    const failure = document.createElement("div");
-    failure.id = "hh-cloud-startup-error";
-    failure.innerHTML = "<div><strong>HerdHarbor could not start securely.</strong>Your local records were not removed. Check your connection and reload the app.</div>";
-    document.body.appendChild(failure);
+
+      const failureStyle = document.createElement("style");
+      failureStyle.textContent = `
+        html.hh-auth-locked body > *:not(#hh-cloud-startup-error) { visibility: hidden !important; }
+        #hh-cloud-startup-error {
+          position: fixed;
+          inset: 0;
+          z-index: 100000;
+          display: grid;
+          place-items: center;
+          padding: 24px;
+          color: #18212A;
+          background: #F7F2E8;
+          font: 700 1rem/1.5 system-ui, sans-serif;
+          text-align: center;
+        }
+        #hh-cloud-startup-error strong { display: block; margin-bottom: 8px; color: #0D2540; font-size: 1.5rem; }
+      `;
+      const styleTarget = document.head || document.documentElement || document.body;
+      if (styleTarget && !document.getElementById("hh-cloud-startup-style")) {
+        failureStyle.id = "hh-cloud-startup-style";
+        styleTarget.appendChild(failureStyle);
+      }
+      if (document.documentElement) document.documentElement.classList.add("hh-auth-locked");
+      const failureTarget = document.body;
+      if (failureTarget && !document.getElementById("hh-cloud-startup-error")) {
+        const failure = document.createElement("div");
+        failure.id = "hh-cloud-startup-error";
+        failure.innerHTML = "<div><strong>HerdHarbor could not start securely.</strong>Your local records were not removed. Check your connection and reload the app.</div>";
+        failureTarget.appendChild(failure);
+      }
+    };
+    renderStartupFailure();
     return;
   }
 
@@ -60,6 +86,7 @@
   let syncState = "Checking account…";
   let syncStateType = "info";
   let reloadAfterSync = false;
+  let accessProfile = null;
   let recoveryMode = (() => {
     try {
       const url = new URL(window.location.href);
@@ -89,6 +116,195 @@
   const baseKey = (userId) => `herdharbor_user_cloud_base_${userId}`;
   const versionKey = (userId) => `herdharbor_user_cloud_version_${userId}`;
   const DEVICE_LOCAL_SETTINGS = new Set(["theme", "sidebarCollapsed"]);
+  const ACCESS_TABLE = "account_access";
+  const ADMIN_AUDIT_TABLE = "admin_audit_log";
+  const ADMIN_DIRECTORY_RPC = "admin_member_directory";
+
+  function fallbackAccessProfile() {
+    return {
+      account_role: "user",
+      membership_tier: "member",
+      membership_source: "default",
+      account_status: "active",
+      override_expires_at: null,
+      subscription_status: "not_configured",
+      feature_flags: { ...(window.HerdHarborRelease?.featureFlags || {}) },
+      backend_ready: false
+    };
+  }
+
+  function publishAccessProfile(profile) {
+    accessProfile = { ...fallbackAccessProfile(), ...(profile || {}) };
+    document.dispatchEvent(new CustomEvent("herdharbor:access-profile", { detail: { ...accessProfile } }));
+    return { ...accessProfile };
+  }
+
+  function dispatchAuthSession() {
+    document.dispatchEvent(new CustomEvent("herdharbor:auth-session", {
+      detail: { signedIn: Boolean(session?.user?.id) }
+    }));
+  }
+
+  function reportAccountOperationFailure(operation) {
+    document.dispatchEvent(new CustomEvent("herdharbor:account-operation-failure", {
+      detail: { operation, result: "failure" }
+    }));
+  }
+
+  async function loadAccessProfile() {
+    if (!session?.user?.id) return publishAccessProfile(fallbackAccessProfile());
+    const userId = session.user.id;
+    const cached = () => window.HerdHarborAccessCache?.read?.(userId);
+    const initialCachedSnapshot = cached();
+    if (initialCachedSnapshot) {
+      publishAccessProfile({
+        ...initialCachedSnapshot,
+        backend_ready: false,
+        offline_cached: true
+      });
+    }
+    const publishCachedOrFallback = () => {
+      const snapshot = cached();
+      return publishAccessProfile(snapshot
+        ? { ...snapshot, backend_ready: false, offline_cached: true }
+        : fallbackAccessProfile());
+    };
+
+    let recordResult;
+    let roleResult;
+    try {
+      [recordResult, roleResult] = await Promise.all([
+        client.from(ACCESS_TABLE).select("*").eq("user_id", userId).maybeSingle(),
+        client.rpc("herdharbor_account_role")
+      ]);
+    } catch {
+      reportAccountOperationFailure("load_access");
+      return publishCachedOrFallback();
+    }
+    if (recordResult.error || !recordResult.data) {
+      reportAccountOperationFailure("load_access");
+      return publishCachedOrFallback();
+    }
+    const role = !roleResult.error && ["owner", "admin", "user"].includes(String(roleResult.data || "").toLowerCase())
+      ? String(roleResult.data).toLowerCase()
+      : ["owner", "admin", "user"].includes(String(recordResult.data.account_role || "").toLowerCase())
+        ? String(recordResult.data.account_role).toLowerCase()
+        : "user";
+    const authoritative = {
+      ...recordResult.data,
+      user_id: userId,
+      account_role: role,
+      last_verified_at: new Date().toISOString()
+    };
+    const stored = window.HerdHarborAccessCache?.write?.(userId, authoritative);
+    return publishAccessProfile({
+      ...authoritative,
+      ...(stored || {}),
+      backend_ready: true,
+      offline_cached: false
+    });
+  }
+
+  async function callAdminRpc(name, parameters) {
+    if (!session?.user?.id) throw new Error("Sign in before managing members.");
+    const { data, error } = await client.rpc(name, parameters);
+    if (!error) return data;
+    reportAccountOperationFailure(name);
+    throw new Error(error.message || "The secure member-management request could not be completed.");
+  }
+
+  function currentActiveAnimalCount(userId) {
+    if (!userId || userId !== session?.user?.id) return null;
+    const localState = safeParse(originalGetItem.call(localStorage, STORAGE_KEY));
+    const animals = Array.isArray(localState?.animals) ? localState.animals : [];
+    return window.HerdHarborMembership?.activeAnimalCount?.(animals) ?? null;
+  }
+
+  async function listMembers(filters = {}) {
+    if (!session?.user?.id) throw new Error("Sign in before opening the member directory.");
+    const { data, error } = await client.rpc(ADMIN_DIRECTORY_RPC);
+    if (error) {
+      reportAccountOperationFailure("admin_list_members");
+      throw new Error(error.message || "The secure member directory could not be loaded.");
+    }
+    const search = String(filters.search || "").trim().toLowerCase();
+    return (Array.isArray(data) ? data : [])
+      .map((row) => ({
+        ...row,
+        email: row.email || "",
+        active_animal_count: currentActiveAnimalCount(row.user_id),
+        effective_membership_tier: window.HerdHarborMembership?.resolveProfile?.(row, {})?.tier
+          || String(row.membership_tier || "member").toLowerCase()
+      }))
+      .filter((row) => !filters.role || row.account_role === String(filters.role).toLowerCase())
+      .filter((row) => !filters.status || row.account_status === String(filters.status).toLowerCase())
+      .filter((row) => !filters.tier || row.effective_membership_tier === String(filters.tier).toLowerCase())
+      .filter((row) => !search || [row.user_id, row.email, row.name, row.display_name]
+        .some((value) => String(value || "").toLowerCase().includes(search)))
+      .slice(0, Math.min(250, Math.max(1, Number(filters.limit || 100))));
+  }
+
+  async function listMemberAudit(userId) {
+    const { data, error } = await client
+      .from(ADMIN_AUDIT_TABLE)
+      .select("*")
+      .eq("target_user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(250);
+    if (error) {
+      reportAccountOperationFailure("admin_list_audit");
+      throw new Error(error.message || "The administrative audit history could not be loaded.");
+    }
+    return Array.isArray(data) ? data : [];
+  }
+
+  async function getMemberDetail(userId) {
+    const [directory, audit] = await Promise.all([
+      listMembers({ search: userId, limit: 250 }),
+      listMemberAudit(userId)
+    ]);
+    const member = directory.find((row) => row.user_id === userId);
+    if (!member) throw new Error("That member account is not available to this administrator.");
+    return { member, audit };
+  }
+
+  async function setMemberRole({ userId, accountRole, reason = "" } = {}) {
+    const role = String(accountRole || "").toLowerCase();
+    if (!userId || !["user", "admin"].includes(role)) throw new Error("Choose User or Admin for this account.");
+    const safeReason = String(reason || "").slice(0, 500);
+    const result = await callAdminRpc("admin_set_account_role", {
+      target_user: userId,
+      new_role: role,
+      change_reason: safeReason || null
+    });
+    if (userId === session?.user?.id) await loadAccessProfile();
+    return result;
+  }
+
+  async function setMemberMembership({ userId, membershipTier, expiresAt = null, reason = "" } = {}) {
+    const tier = String(membershipTier || "").toLowerCase();
+    if (!userId || !["junior", "founder", "member", "business"].includes(tier)) throw new Error("Choose a valid HerdHarbor membership tier.");
+    const safeReason = String(reason || "").slice(0, 500);
+    const result = await callAdminRpc("admin_set_membership", {
+      target_user: userId,
+      new_tier: tier,
+      change_reason: safeReason || null,
+      expires_at: expiresAt
+    });
+    if (userId === session?.user?.id) await loadAccessProfile();
+    return result;
+  }
+
+  async function returnMemberToAutomatic(userId, reason = "") {
+    if (!userId) throw new Error("Choose a member account first.");
+    const safeReason = String(reason || "").slice(0, 500);
+    const result = await callAdminRpc("admin_return_to_automatic_membership", {
+      target_user: userId,
+      change_reason: safeReason || null
+    });
+    if (userId === session?.user?.id) await loadAccessProfile();
+    return result;
+  }
 
   function getSyncDetails() {
     const userId = session?.user?.id || "";
@@ -130,6 +346,32 @@
     } catch {
       return null;
     }
+  }
+
+  function animalStateTransitionResult(beforeRaw, afterRaw) {
+    const beforeState = safeParse(beforeRaw);
+    const afterState = safeParse(afterRaw);
+    if (!beforeState || !afterState) return { allowed: true };
+
+    const validator = window.HerdHarborMembership?.validateAnimalTransition;
+    if (typeof validator !== "function") return { allowed: true };
+
+    return validator(
+      Array.isArray(beforeState.animals) ? beforeState.animals : [],
+      Array.isArray(afterState.animals) ? afterState.animals : []
+    );
+  }
+
+  function allowAnimalStateTransition(beforeRaw, afterRaw, message) {
+    const result = animalStateTransitionResult(beforeRaw, afterRaw);
+    if (result.allowed) return true;
+
+    window.HerdHarborMembership?.showJuniorLimit?.(result);
+    setSyncState(
+      message || "Cloud sync paused: the change would exceed HerdHarbor Junior's limit of 5 active animals.",
+      "error"
+    );
+    return false;
   }
 
   function canonicalize(value, path = [], includeDeviceSettings = false) {
@@ -721,7 +963,21 @@
     const remoteRaw = remoteRecord?.app_state
       ? JSON.stringify(remoteRecord.app_state)
       : null;
+    const activeRaw = originalGetItem.call(localStorage, STORAGE_KEY);
     const confirmedBase = originalGetItem.call(localStorage, baseKey(userId));
+    const localBaselineRaw = confirmedBase || activeRaw;
+
+    if (
+      localBaselineRaw &&
+      !sameState(localBaselineRaw, rawValue) &&
+      !allowAnimalStateTransition(
+        localBaselineRaw,
+        rawValue,
+        "Cloud save paused: this change would exceed HerdHarbor Junior's limit of 5 active animals."
+      )
+    ) {
+      return false;
+    }
 
     if (remoteRaw && sameState(remoteRaw, rawValue)) {
       safeStorageSet(baseKey(userId), remoteRaw);
@@ -763,6 +1019,20 @@
       localRawBeforeMerge = rawValue;
       rawValue = applyDevicePreferences(merged.rawValue, rawValue);
       appState = safeParse(rawValue);
+      if (
+        !allowAnimalStateTransition(
+          localRawBeforeMerge,
+          rawValue,
+          "Cloud merge paused: the incoming change would exceed HerdHarbor Junior's limit of 5 active animals."
+        )
+      ) {
+        return markConflict(
+          userId,
+          localRawBeforeMerge,
+          remoteRecord,
+          "Cloud merge paused because the combined records would exceed HerdHarbor Junior's limit of 5 active animals."
+        );
+      }
       autoMerged = true;
       reloadAfterSync = true;
       await Promise.all([
@@ -977,6 +1247,20 @@
     if (confirmedBase && sameState(activeRaw, confirmedBase)) {
       await recordRecoverySnapshot(userId, activeRaw, "Local copy before receiving another device's changes");
       const deviceCloudRaw = applyDevicePreferences(remoteRaw, activeRaw);
+      if (
+        !allowAnimalStateTransition(
+          activeRaw,
+          deviceCloudRaw,
+          "Cloud update paused: the incoming records would exceed HerdHarbor Junior's limit of 5 active animals."
+        )
+      ) {
+        return markConflict(
+          userId,
+          activeRaw,
+          data,
+          "Cloud update paused because the incoming records would exceed HerdHarbor Junior's limit of 5 active animals."
+        );
+      }
       setActiveUserData(userId, deviceCloudRaw);
       safeStorageSet(baseKey(userId), remoteRaw);
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
@@ -1253,7 +1537,8 @@
         .hh-account-button { right: 12px; bottom: 12px; }
       }
     `;
-    document.head.appendChild(style);
+    const styleTarget = document.head || document.documentElement || document.body;
+    if (styleTarget) styleTarget.appendChild(style);
   }
 
   function buildAuthRoot() {
@@ -1328,7 +1613,9 @@
       </main>
     `;
 
-    document.body.appendChild(root);
+    const rootTarget = document.body || document.documentElement;
+    if (!rootTarget) return root;
+    rootTarget.appendChild(root);
     bindAuthEvents(root);
     return root;
   }
@@ -1524,7 +1811,7 @@
     }
     const payload = JSON.stringify({
       app: "HerdHarbor",
-      version: "1.3.0",
+      version: "1.5.1",
       backupType: "local-safety-backup",
       exportedAt: new Date().toISOString(),
       data: appState
@@ -1558,6 +1845,15 @@
         conflict.remoteRaw,
         conflict.localRaw
       );
+      if (
+        !allowAnimalStateTransition(
+          conflict.localRaw,
+          deviceCloudRaw,
+          "Cloud copy was not selected: it would exceed HerdHarbor Junior's limit of 5 active animals."
+        )
+      ) {
+        return false;
+      }
       setActiveUserData(conflict.userId, deviceCloudRaw);
       safeStorageSet(baseKey(conflict.userId), conflict.remoteRaw);
       if (conflict.remoteUpdatedAt) {
@@ -1592,10 +1888,17 @@
         accountDialog.hidden = false;
         const email = accountDialog.querySelector("#hh-account-email");
         email.textContent = session?.user?.email || "Signed-in user";
+        const membership = accountDialog.querySelector("#hh-account-membership");
+        const current = window.HerdHarborMembership?.getAccount?.() || accessProfile || fallbackAccessProfile();
+        const tier = current.effectiveMembershipTier || current.membership_tier || "member";
+        const role = current.accountRole || current.account_role || "user";
+        const accountStatus = current.accountStatus || current.account_status || "active";
+        membership.innerHTML = `${String(tier).replace(/^./, (letter) => letter.toUpperCase())} membership · ${String(role).replace(/^./, (letter) => letter.toUpperCase())} account<small>${String(accountStatus).replace(/^./, (letter) => letter.toUpperCase())}</small>`;
         const status = accountDialog.querySelector("#hh-account-sync-status");
         status.textContent = syncState;
       });
-      document.body.appendChild(accountButton);
+      const accountButtonTarget = document.body || document.documentElement;
+      if (accountButtonTarget) accountButtonTarget.appendChild(accountButton);
     }
 
     if (!accountDialog) {
@@ -1606,6 +1909,7 @@
         <section class="hh-account-dialog" role="dialog" aria-modal="true" aria-labelledby="hh-account-title">
           <h2 id="hh-account-title">HerdHarbor account</h2>
           <p id="hh-account-email" class="hh-account-email"></p>
+          <p id="hh-account-membership" class="hh-account-membership">Member membership · User account<small>Active</small></p>
           <p id="hh-account-sync-status">Checking sync status…</p>
           <div id="hh-conflict-actions" class="hh-conflict-actions" hidden>
             <p>Both copies are protected. Choose which version should become the current record set.</p>
@@ -1662,7 +1966,8 @@
         await client.auth.signOut();
       });
 
-      document.body.appendChild(accountDialog);
+      const accountDialogTarget = document.body || document.documentElement;
+      if (accountDialogTarget) accountDialogTarget.appendChild(accountDialog);
     }
 
     setSyncState(syncState, syncConflict ? "error" : "success");
@@ -1670,6 +1975,9 @@
 
   async function hydrateUserData(activeSession) {
     session = activeSession;
+    dispatchAuthSession();
+    await loadAccessProfile();
+    void window.HerdHarborBilling?.refresh?.();
 
     if (recoveryMode) {
       showRecovery();
@@ -1732,6 +2040,22 @@
       );
 
       if (activeRaw && stateChanged) {
+        if (
+          !allowAnimalStateTransition(
+            activeRaw,
+            deviceCloudRaw,
+            "Cloud load paused: the incoming records would exceed HerdHarbor Junior's limit of 5 active animals."
+          )
+        ) {
+          await markConflict(
+            userId,
+            activeRaw,
+            data,
+            "Cloud load paused because the incoming records would exceed HerdHarbor Junior's limit of 5 active animals."
+          );
+          unlockApp();
+          return;
+        }
         await recordRecoverySnapshot(userId, activeRaw, "Local copy before loading newer cloud records");
       }
       setActiveUserData(userId, deviceCloudRaw);
@@ -1829,10 +2153,20 @@
       return;
     }
 
+    if (["TOKEN_REFRESHED", "USER_UPDATED"].includes(event) && activeSession) {
+      session = activeSession;
+      dispatchAuthSession();
+      void loadAccessProfile();
+      void window.HerdHarborBilling?.refresh?.();
+      return;
+    }
+
     if (event === "SIGNED_OUT") {
       const previousUserId = session?.user?.id;
       preserveActiveForUser(previousUserId, "Local copy retained after session ended");
       session = null;
+      dispatchAuthSession();
+      publishAccessProfile(fallbackAccessProfile());
       if (accountButton) accountButton.remove();
       if (accountDialog) accountDialog.remove();
       accountButton = null;
@@ -1843,6 +2177,7 @@
   });
 
   window.addEventListener("online", () => {
+    void loadAccessProfile();
     const userId = session?.user?.id;
     if (
       userId &&
@@ -1892,7 +2227,14 @@
     },
     hasConflict: () => Boolean(syncConflict),
     downloadSafetyBackup,
-    requestAccountDeletion
+    requestAccountDeletion,
+    getAccessProfile: () => ({ ...(accessProfile || fallbackAccessProfile()) }),
+    refreshAccess: loadAccessProfile,
+    listMembers,
+    getMemberDetail,
+    setMemberRole,
+    setMemberMembership,
+    returnMemberToAutomatic
   };
 
   initialize().catch((error) => {

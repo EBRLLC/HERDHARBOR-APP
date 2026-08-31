@@ -2,14 +2,14 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { test } = require("node:test");
-const Core = require("../rabbit-genetics-runtime-v1.4.5.js");
+const Core = require("../rabbit-genetics-runtime-v1.5.1.js");
 
 const root = path.join(__dirname, "..");
-const currentUi = fs.readFileSync(path.join(root, "rabbit-genetics-ui-v1.4.5.js"), "utf8");
+const currentUi = fs.readFileSync(path.join(root, "rabbit-genetics-ui-v1.5.1.js"), "utf8");
 const v2Ui = fs.readFileSync(path.join(root, "rabbit-genetics-ui-v2.js"), "utf8");
-const intelligence = fs.readFileSync(path.join(root, "breeding-intelligence.js"), "utf8");
-const tools = fs.readFileSync(path.join(root, "breeding-intelligence-tools.js"), "utf8");
-const styles = fs.readFileSync(path.join(root, "breeding-intelligence.css"), "utf8");
+const intelligence = fs.readFileSync(path.join(root, "breeding-intelligence-v1.5.1.js"), "utf8");
+const tools = fs.readFileSync(path.join(root, "breeding-intelligence-tools-v1.5.1.js"), "utf8");
+const styles = fs.readFileSync(path.join(root, "breeding-intelligence-v1.5.1.css"), "utf8");
 
 for (const source of [currentUi, v2Ui, intelligence, tools]) {
   assert.doesNotThrow(() => new Function(source), "snapshot workflow browser script compiles");
@@ -67,7 +67,7 @@ const metadata = {
   doeGenetics: structuredClone(doe.genetics),
   predictionType: analysis.exact ? "exact" : "conditional",
   predictionConfidence: analysis.exact ? "deterministic" : "probability-range",
-  appVersion: "1.5.0",
+  appVersion: "1.5.1",
   appBuild: "snapshot-regression-test"
 };
 const first = Core.createPredictionSnapshot(analysis, metadata);
@@ -80,7 +80,7 @@ assert.equal(first.metadata.buckId, "buck-1");
 assert.equal(first.metadata.doeId, "doe-1");
 assert.equal(first.metadata.buckName, "Atlas");
 assert.equal(first.metadata.doeName, "Willow");
-assert.equal(first.appVersion, "1.5.0");
+assert.equal(first.appVersion, "1.5.1");
 assert.equal(first.engineVersion, analysis.engineVersion, "snapshot records the engine that generated this analysis");
 assert.ok(Array.isArray(first.analysis.possibleOffspringColors));
 assert.ok(first.analysis.viennaRange);
@@ -121,9 +121,9 @@ test("the live Breeding Intelligence save path appends immutable snapshots to pr
     `${source}\nreturn savePredictionSnapshot;`
   )(
     Core,
-    { HerdHarborPWA: { version: "1.5.0", build: "qa-build" } },
+    { HerdHarborPWA: { version: "1.5.1", build: "qa-build" } },
     { documentElement: { dataset: {} } },
-    "1.4.0",
+    "1.5.1",
     "breedingIntelligence",
     (value) => structuredClone(value),
     () => structuredClone(farmState),
@@ -134,7 +134,7 @@ test("the live Breeding Intelligence save path appends immutable snapshots to pr
   const firstStored = await liveSave({ analysis: originalAnalysis, buck: liveBuck, doe, generatedAt: "2026-08-27T12:00:00.000Z" });
   assert.equal(farmState.breedingIntelligence.predictions.length, 1);
   assert.equal(farmState.breedingIntelligence.predictions[0].id, firstStored.id);
-  assert.equal(farmState.breedingIntelligence.predictions[0].metadata.appVersion, "1.5.0");
+  assert.equal(farmState.breedingIntelligence.predictions[0].metadata.appVersion, "1.5.1");
   assert.deepEqual(farmState.breedings[0].geneticsPredictionSnapshot, farmState.breedingIntelligence.predictions[0], "existing Predicted vs Actual breeding link remains populated");
 
   farmState.animals[0].genetics.loci.D.alleles = ["d", "d"];

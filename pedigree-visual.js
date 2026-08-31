@@ -16,6 +16,7 @@
 
   let pending = false;
   let observer = null;
+  let startQueued = false;
 
   function loadPreferences() {
     try {
@@ -278,7 +279,8 @@
     link.id = "hh-pedigree-visual-style";
     link.rel = "stylesheet";
     link.href = "pedigree-visual.css?v=2";
-    doc.head.appendChild(link);
+    const styleTarget = doc.head || doc.documentElement || doc.body;
+    if (styleTarget) styleTarget.appendChild(link);
   }
 
   function enhanceFrame(frame) {
@@ -384,12 +386,34 @@
     window.requestAnimationFrame(run);
   }
 
+  function deferStart() {
+    if (startQueued) return;
+    startQueued = true;
+    const retry = () => {
+      startQueued = false;
+      start();
+    };
+    if (document.readyState === "loading" && document.addEventListener) {
+      document.addEventListener("DOMContentLoaded", retry, { once: true });
+      return;
+    }
+    const defer = typeof window.setTimeout === "function" ? window.setTimeout : setTimeout;
+    defer(retry, 0);
+  }
+
   function start() {
+    if (observer) return;
+    const target = document.body;
+    if (!target) {
+      deferStart();
+      return;
+    }
     ensureStyles(document);
     patchPrintWindows();
     run();
+    if (observer) return;
     observer = new MutationObserver(schedule);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(target, { childList: true, subtree: true });
   }
 
   window.HerdHarborPedigreeVisuals = {

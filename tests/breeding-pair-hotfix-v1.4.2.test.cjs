@@ -6,10 +6,10 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const root = path.join(__dirname, "..");
-const Base = require("../breeding-intelligence-core.js");
-const source = fs.readFileSync(path.join(root, "breeding-pair-hotfix-v1.4.2.js"), "utf8");
+const Base = require("../breeding-intelligence-core-v1.5.1.js");
+const source = fs.readFileSync(path.join(root, "breeding-pair-v1.5.1.js"), "utf8");
 
-// Regression for the v1.4.1 sign-in freeze: the hotfix must never install a
+// Regression for the v1.5.1 sign-in freeze: the hotfix must never install a
 // body-wide MutationObserver that rewrites its own datalist and retriggers itself.
 assert.doesNotMatch(source, /MutationObserver/);
 assert.doesNotMatch(source, /observe\(document\.body/);
@@ -47,7 +47,7 @@ vm.runInNewContext(source, {
 
 const H = window.HerdHarborBreedingPairHotfix;
 assert.ok(H);
-assert.equal(H.version, "1.4.2");
+assert.equal(H.version, "1.5.1");
 
 assert.equal(H.canonicalSex("Male"), "male");
 assert.equal(H.canonicalSex("Female"), "female");
@@ -121,4 +121,4 @@ assert.match(source, /stopImmediatePropagation/);
 assert.match(source, /focusin/);
 assert.doesNotMatch(source, /MutationObserver/);
 
-console.log("HerdHarbor v1.4.2 Pair Analysis freeze + BEW Vienna tests passed");
+console.log("HerdHarbor v1.5.1 Pair Analysis freeze + BEW Vienna tests passed");

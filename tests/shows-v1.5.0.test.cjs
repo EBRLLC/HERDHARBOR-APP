@@ -2,7 +2,7 @@
 const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const path=require("node:path");
-const Shows=require("../shows-v1.5.0.js");
+const Shows=require("../shows-v1.5.1.js");
 
 const state=Shows.normalizeState({
   animals:[
@@ -39,7 +39,7 @@ const state=Shows.normalizeState({
   projectPhotos:[]
 });
 
-assert.equal(Shows.VERSION,"1.5.0");
+assert.equal(Shows.VERSION,"1.5.1");
 for(const key of Shows.COLLECTIONS) assert.ok(Array.isArray(state[key]),`${key} is additive collection`);
 assert.equal(Shows.validateShow({name:"Fair",startDate:"2026-06-02",endDate:"2026-06-01"}),"End date cannot be before the start date.");
 assert.equal(Shows.validateShow({name:"Fair",startDate:"2026-06-01",endDate:"2026-06-02"}),"");
@@ -84,8 +84,8 @@ assert.ok(Math.abs(growth.adg-0.03)<1e-9);
 const timeline=Shows.projectTimeline(state,"p1");
 for(const type of ["Health","Finance","Show","Goal","Note"]) assert.ok(timeline.some(x=>x.type===type),`${type} is a timeline view over canonical data`);
 
-const source=fs.readFileSync(path.join(__dirname,"..","shows-v1.5.0.js"),"utf8");
-const hardening=fs.readFileSync(path.join(__dirname,"..","shows-v1.5.0-hardening.js"),"utf8");
+const source=fs.readFileSync(path.join(__dirname,"..","shows-v1.5.1.js"),"utf8");
+const hardening=fs.readFileSync(path.join(__dirname,"..","shows-v1.5.1-hardening.js"),"utf8");
 const cloud=fs.readFileSync(path.join(__dirname,"..","herdharbor-cloud.js"),"utf8");
 assert.match(source,/dataset\.route='shows'/);
 assert.match(source,/litters\.insertAdjacentElement\('afterend'/);
@@ -129,4 +129,4 @@ assert.match(cloud,/function isIdRecordArray/);
 assert.match(cloud,/function mergeIdRecordArray/);
 assert.match(cloud,/Object\.keys\(local\)/);
 assert.match(cloud,/Object\.keys\(remote\)/);
-console.log("HerdHarbor Alpha v1.5.0 Shows tests passed");
+console.log("HerdHarbor Alpha v1.5.1 Shows tests passed");
