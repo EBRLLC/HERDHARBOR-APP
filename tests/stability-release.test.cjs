@@ -8,14 +8,14 @@ const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const spreadsheet = fs.readFileSync(path.join(root, "spreadsheet-import.js"), "utf8");
 const serviceWorker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 const pwa = fs.readFileSync(path.join(root, "pwa.js"), "utf8");
-const records = fs.readFileSync(path.join(root, "rabbit-records-v1.4.5.js"), "utf8");
-const genetics = fs.readFileSync(path.join(root, "rabbit-genetics-engine-v1.4.5.js"), "utf8");
-const runtime = fs.readFileSync(path.join(root, "rabbit-genetics-runtime-v1.4.5.js"), "utf8");
-const pedigreeGenetics = fs.readFileSync(path.join(root, "pedigree-genetics-v1.4.5.js"), "utf8");
-const pedigreeGeneticsCss = fs.readFileSync(path.join(root, "pedigree-genetics-v1.4.5.css"), "utf8");
-const shows = fs.readFileSync(path.join(root, "shows-v1.5.0.js"), "utf8");
-const showsCss = fs.readFileSync(path.join(root, "shows-v1.5.0.css"), "utf8");
-const showsHardening = fs.readFileSync(path.join(root, "shows-v1.5.0-hardening.js"), "utf8");
+const records = fs.readFileSync(path.join(root, "rabbit-records-v1.5.1.js"), "utf8");
+const genetics = fs.readFileSync(path.join(root, "rabbit-genetics-engine-v1.5.1.js"), "utf8");
+const runtime = fs.readFileSync(path.join(root, "rabbit-genetics-runtime-v1.5.1.js"), "utf8");
+const pedigreeGenetics = fs.readFileSync(path.join(root, "pedigree-genetics-v1.5.1.js"), "utf8");
+const pedigreeGeneticsCss = fs.readFileSync(path.join(root, "pedigree-genetics-v1.5.1.css"), "utf8");
+const shows = fs.readFileSync(path.join(root, "shows-v1.5.1.js"), "utf8");
+const showsCss = fs.readFileSync(path.join(root, "shows-v1.5.1.css"), "utf8");
+const showsHardening = fs.readFileSync(path.join(root, "shows-v1.5.1-hardening.js"), "utf8");
 
 // v1.5.1 remains additive: the legacy app/data model stays intact while release assets overlay it.
 assert.match(html, /HerdHarbor Alpha v1\.5\.1 membership and release workflow/);
