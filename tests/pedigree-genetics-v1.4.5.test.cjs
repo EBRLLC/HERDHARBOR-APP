@@ -3,14 +3,14 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const Engine = require("../rabbit-genetics-runtime-v1.4.5.js");
-const PedigreeGenetics = require("../pedigree-genetics-v1.4.5.js");
+const Engine = require("../rabbit-genetics-runtime-v1.5.1.js");
+const PedigreeGenetics = require("../pedigree-genetics-v1.5.1.js");
 
 const root = path.resolve(__dirname, "..");
-const uiSource = fs.readFileSync(path.join(root, "pedigree-genetics-v1.4.5.js"), "utf8");
-const css = fs.readFileSync(path.join(root, "pedigree-genetics-v1.4.5.css"), "utf8");
+const uiSource = fs.readFileSync(path.join(root, "pedigree-genetics-v1.5.1.js"), "utf8");
+const css = fs.readFileSync(path.join(root, "pedigree-genetics-v1.5.1.css"), "utf8");
 const visualCss = fs.readFileSync(path.join(root, "pedigree-visual.css"), "utf8");
-const notes = fs.readFileSync(path.join(root, "RELEASE_NOTES-v1.4.5.md"), "utf8");
+const notes = fs.readFileSync(path.join(root, "RELEASE_NOTES-v1.5.1.md"), "utf8");
 
 function locus(alleles, source = "breeder", status = "confirmed") {
   return { alleles, source, status };
@@ -105,4 +105,4 @@ assert.match(notes, /Genetics on Pedigrees/);
 assert.match(notes, /Full Inferred/);
 assert.match(notes, /Known Only/);
 
-console.log("Alpha v1.4.5 pedigree genetics display and inference tests passed");
+console.log("Alpha v1.5.1 pedigree genetics display and inference tests passed");
