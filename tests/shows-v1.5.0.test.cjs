@@ -39,7 +39,7 @@ const state=Shows.normalizeState({
   projectPhotos:[]
 });
 
-assert.equal(Shows.VERSION,"1.5.0");
+assert.equal(Shows.VERSION,"1.5.1");
 for(const key of Shows.COLLECTIONS) assert.ok(Array.isArray(state[key]),`${key} is additive collection`);
 assert.equal(Shows.validateShow({name:"Fair",startDate:"2026-06-02",endDate:"2026-06-01"}),"End date cannot be before the start date.");
 assert.equal(Shows.validateShow({name:"Fair",startDate:"2026-06-01",endDate:"2026-06-02"}),"");
@@ -129,4 +129,4 @@ assert.match(cloud,/function isIdRecordArray/);
 assert.match(cloud,/function mergeIdRecordArray/);
 assert.match(cloud,/Object\.keys\(local\)/);
 assert.match(cloud,/Object\.keys\(remote\)/);
-console.log("HerdHarbor Alpha v1.5.0 Shows tests passed");
+console.log("HerdHarbor Alpha v1.5.1 Shows tests passed");
