@@ -67,7 +67,7 @@ const metadata = {
   doeGenetics: structuredClone(doe.genetics),
   predictionType: analysis.exact ? "exact" : "conditional",
   predictionConfidence: analysis.exact ? "deterministic" : "probability-range",
-  appVersion: "1.5.0",
+  appVersion: "1.5.1",
   appBuild: "snapshot-regression-test"
 };
 const first = Core.createPredictionSnapshot(analysis, metadata);
@@ -80,7 +80,7 @@ assert.equal(first.metadata.buckId, "buck-1");
 assert.equal(first.metadata.doeId, "doe-1");
 assert.equal(first.metadata.buckName, "Atlas");
 assert.equal(first.metadata.doeName, "Willow");
-assert.equal(first.appVersion, "1.5.0");
+assert.equal(first.appVersion, "1.5.1");
 assert.equal(first.engineVersion, analysis.engineVersion, "snapshot records the engine that generated this analysis");
 assert.ok(Array.isArray(first.analysis.possibleOffspringColors));
 assert.ok(first.analysis.viennaRange);
@@ -121,7 +121,7 @@ test("the live Breeding Intelligence save path appends immutable snapshots to pr
     `${source}\nreturn savePredictionSnapshot;`
   )(
     Core,
-    { HerdHarborPWA: { version: "1.5.0", build: "qa-build" } },
+    { HerdHarborPWA: { version: "1.5.1", build: "qa-build" } },
     { documentElement: { dataset: {} } },
     "1.5.1",
     "breedingIntelligence",
@@ -134,7 +134,7 @@ test("the live Breeding Intelligence save path appends immutable snapshots to pr
   const firstStored = await liveSave({ analysis: originalAnalysis, buck: liveBuck, doe, generatedAt: "2026-08-27T12:00:00.000Z" });
   assert.equal(farmState.breedingIntelligence.predictions.length, 1);
   assert.equal(farmState.breedingIntelligence.predictions[0].id, firstStored.id);
-  assert.equal(farmState.breedingIntelligence.predictions[0].metadata.appVersion, "1.5.0");
+  assert.equal(farmState.breedingIntelligence.predictions[0].metadata.appVersion, "1.5.1");
   assert.deepEqual(farmState.breedings[0].geneticsPredictionSnapshot, farmState.breedingIntelligence.predictions[0], "existing Predicted vs Actual breeding link remains populated");
 
   farmState.animals[0].genetics.loci.D.alleles = ["d", "d"];
