@@ -15,7 +15,7 @@ const privacy = read("monitoring/herdharbor-monitoring-privacy.mjs");
 const browser = read("monitoring/herdharbor-monitoring-browser.mjs");
 const instrumentation = read("monitoring/herdharbor-monitoring-instrumentation.mjs");
 const cloud = read("herdharbor-cloud.js");
-const shows = read("shows-v1.5.0.js");
+const shows = read("shows-v1.5.1.js");
 
 assert.equal(pkg.version, "1.5.1");
 assert.equal(pkg.dependencies["@sentry/browser"], "10.71.0");
