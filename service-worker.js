@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v1.5.1-alpha-stability-membership-review-2`;
+const CACHE_NAME = `${CACHE_PREFIX}v1.5.1-alpha-stability-membership-review-3`;
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -16,7 +16,7 @@ const APP_SHELL = [
   "./herdharbor-monitoring-config.js?v=1.5.1",
   "./vendor/herdharbor-monitoring-v1.5.1.min.js?v=1.5.1",
   "./symptom-guide.js?v=1",
-  "./pwa.js?v=24",
+  "./pwa.js?v=25",
   "./pedigree-visual.css?v=2",
   "./pedigree-visual.js?v=2",
   "./pedigree-genetics-v1.5.1.css?v=1.5.1",
@@ -65,9 +65,9 @@ const NETWORK_FIRST_PATHS = [
   "/pedigree-visual.js",
   "/pedigree-genetics-v1.5.1.css",
   "/pedigree-genetics-v1.5.1.js",
-  "/breeding-intelligence-core.js",
-  "/breeding-intelligence.css",
-  "/breeding-intelligence.js",
+  "/breeding-intelligence-core-v1.5.1.js",
+  "/breeding-intelligence-v1.5.1.css",
+  "/breeding-intelligence-v1.5.1.js",
   "/breeding-genetics-v2.css",
   "/breeding-pair-v1.5.1.js",
   "/rabbit-records-v1.5.1.js",
@@ -76,7 +76,7 @@ const NETWORK_FIRST_PATHS = [
   "/rabbit-genetics-runtime-v1.5.1.js",
   "/rabbit-genetics-ui-v1.5.1.js",
   "/rabbit-genetics-ui-v2.js",
-  "/breeding-intelligence-tools.js",
+  "/breeding-intelligence-tools-v1.5.1.js",
   "/herdharbor-release-v1.5.1.js",
   "/shows-v1.5.1.js",
   "/shows-v1.5.1-hardening.js",
