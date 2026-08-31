@@ -369,7 +369,8 @@
         .hh-import-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
       }
     `;
-    const styleTarget = document.head || document.documentElement || document.body;\n    if (styleTarget) styleTarget.appendChild(style);
+    const styleTarget = document.head || document.documentElement || document.body;
+    if (styleTarget) styleTarget.appendChild(style);
   }
 
   function rawCellValue(cell) {
