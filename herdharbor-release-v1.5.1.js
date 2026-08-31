@@ -22,7 +22,8 @@
   function addHelpButton() {
     const theme = document.querySelector?.("#theme-toggle");
     if (!theme || document.querySelector?.("#herdharbor-help-button")) return;
-    const button = document.createElement("button");
+    const button = document.createElement?.("button");
+    if (!button) return;
     button.id = "herdharbor-help-button";
     button.type = "button";
     button.className = "icon-button help-toggle";
@@ -38,7 +39,8 @@
 
   function addStyles() {
     if (document.querySelector?.("#herdharbor-v151-release-style")) return;
-    const style = document.createElement("style");
+    const style = document.createElement?.("style");
+    if (!style) return;
     style.id = "herdharbor-v151-release-style";
     style.textContent = ".help-toggle{font-size:1rem;font-weight:900}.topbar-actions .help-toggle{flex:0 0 auto}@media(max-width:620px){.help-toggle{width:40px;min-width:40px}}";
     const target = document.head || document.body || document.documentElement;
@@ -46,7 +48,7 @@
   }
 
   function updateVersionLabels() {
-    document.documentElement.dataset.herdharborRelease = release.version;
+    if (document.documentElement?.dataset) document.documentElement.dataset.herdharborRelease = release.version;
     document.querySelectorAll?.("[data-app-version], .app-version, .version-label").forEach((element) => {
       const current = String(element.textContent || "");
       if (/alpha|version|v\\d/i.test(current)) element.textContent = current.replace(/(?:v)?1\\.\\d+\\.\\d+/gi, "v" + release.version);
