@@ -67,7 +67,7 @@
     const link = document.createElement("link");
     link.id = "hh-breeding-intelligence-style";
     link.rel = "stylesheet";
-    link.href = "breeding-intelligence.css?v=1.5.1";
+    link.href = "breeding-intelligence-v1.5.1.css?v=1.5.1";
     target.appendChild(link);
   }
   function updateVisibleVersion() { document.querySelectorAll("[data-app-version], .app-version, .version-label").forEach((el) => { const text = String(el.textContent || ""); if (/1\.3\.0|alpha/i.test(text)) el.textContent = text.replace(/1\.3\.0/g, RELEASE_VERSION); }); document.documentElement.dataset.herdharborRelease = RELEASE_VERSION; }
