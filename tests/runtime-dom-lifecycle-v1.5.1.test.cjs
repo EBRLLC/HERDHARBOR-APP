@@ -7,6 +7,9 @@ const vm = require("node:vm");
 
 const root = path.resolve(__dirname, "..");
 const read = (name) => fs.readFileSync(path.join(root, name), "utf8");
+const cloud = read("herdharbor-cloud.js");
+assert.match(cloud, /document\.body \|\| document\.documentElement \|\| document\.head/);
+assert.doesNotMatch(cloud, /document\.body\.appendChild\(failure\)/, "cloud startup failure does not append to a missing body");
 
 function element(tagName, documentRef) {
   const listeners = {};

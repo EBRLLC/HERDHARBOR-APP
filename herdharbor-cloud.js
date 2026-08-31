@@ -34,12 +34,17 @@
       }
       #hh-cloud-startup-error strong { display: block; margin-bottom: 8px; color: #0D2540; font-size: 1.5rem; }
     `;
-    document.head.appendChild(failureStyle);
+    const styleTarget = document.head || document.documentElement || document.body;
+    if (styleTarget && !document.getElementById("hh-cloud-startup-style")) {
+      failureStyle.id = "hh-cloud-startup-style";
+      styleTarget.appendChild(failureStyle);
+    }
     document.documentElement.classList.add("hh-auth-locked");
     const failure = document.createElement("div");
     failure.id = "hh-cloud-startup-error";
     failure.innerHTML = "<div><strong>HerdHarbor could not start securely.</strong>Your local records were not removed. Check your connection and reload the app.</div>";
-    document.body.appendChild(failure);
+    const failureTarget = document.body || document.documentElement || document.head;
+    if (failureTarget && !document.getElementById(failure.id)) failureTarget.appendChild(failure);
     return;
   }
 
