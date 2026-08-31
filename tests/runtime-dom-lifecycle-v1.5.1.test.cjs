@@ -11,7 +11,7 @@ const cloud = read("herdharbor-cloud.js");
 assert.match(cloud, /const renderStartupFailure = \(\) =>/);
 assert.match(cloud, /document\.addEventListener\("DOMContentLoaded", retry/);
 assert.match(cloud, /const failureTarget = document\.body/);
-assert.match(cloud, /document\.body\.appendChild\(failure\)/);
+assert.match(cloud, /failureTarget\.appendChild\(failure\)/);
 assert.doesNotMatch(cloud, /const failureTarget = document\.body \|\|/);
 
 {
