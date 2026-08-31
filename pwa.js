@@ -17,13 +17,39 @@
   const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
   const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
+  const pendingDynamicNodes = new Map();
+
+  function dynamicInsertionTarget() {
+    return document.head || document.body || document.documentElement || null;
+  }
+
+  function appendDynamicNode(id, node) {
+    if (document.getElementById(id) || pendingDynamicNodes.has(id)) return;
+    const pending = { node };
+    pendingDynamicNodes.set(id, pending);
+
+    const insert = () => {
+      if (pendingDynamicNodes.get(id) !== pending) return;
+      const target = dynamicInsertionTarget();
+      if (!target) {
+        const retry = typeof window.setTimeout === "function" ? window.setTimeout : setTimeout;
+        retry(insert, 0);
+        return;
+      }
+      if (!document.getElementById(id)) target.appendChild(node);
+      pendingDynamicNodes.delete(id);
+    };
+
+    insert();
+  }
+
   function addStylesheet(id, href) {
     if (document.getElementById(id)) return;
     const style = document.createElement("link");
     style.id = id;
     style.rel = "stylesheet";
     style.href = href;
-    document.head.appendChild(style);
+    appendDynamicNode(id, style);
   }
 
   function addScript(id, src, onload) {
@@ -33,7 +59,7 @@
     script.src = src;
     script.async = false;
     if (onload) script.addEventListener("load", onload, { once: true });
-    document.head.appendChild(script);
+    appendDynamicNode(id, script);
   }
 
   function addOptionalScript(id, src, done) {
@@ -51,7 +77,7 @@
     };
     script.addEventListener("load", () => finish(true), { once: true });
     script.addEventListener("error", () => finish(false), { once: true });
-    document.head.appendChild(script);
+    appendDynamicNode(id, script);
   }
 
   function monitoring() {
