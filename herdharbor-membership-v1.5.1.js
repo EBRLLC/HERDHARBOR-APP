@@ -207,7 +207,8 @@
         document.dispatchEvent(new CustomEvent("herdharbor:request-upgrade", { detail: { tier: "member" } }));
       }
     });
-    const limitDialogTarget = document.body || document.documentElement;\n    if (limitDialogTarget) limitDialogTarget.appendChild(limitDialog);
+    const limitDialogTarget = document.body || document.documentElement;
+    if (limitDialogTarget) limitDialogTarget.appendChild(limitDialog);
     limitDialog.querySelector("[data-hh-limit-close]")?.focus();
   }
 
