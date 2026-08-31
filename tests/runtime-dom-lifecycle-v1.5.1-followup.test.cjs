@@ -25,7 +25,7 @@ for (const [file, patterns] of Object.entries(checks)) {
 assert.doesNotMatch(read("shows-v1.5.1-hardening.js"), /observe\(document\.body\b/);
 assert.doesNotMatch(read("shows-v1.5.1-performance.js"), /observe\(document\.body\b/);
 const pedigreeSource = read("pedigree-genetics-v1.5.1.js");
-assert.ok(pedigreeSource.includes("if(!rootWindow?.document?.body)") && pedigreeSource.includes("observe(rootWindow.document.body"), "pedigree observes only after the body guard");
+assert.ok(pedigreeSource.includes("const target=rootWindow.document?.body;") && pedigreeSource.includes("target.nodeType!==1") && pedigreeSource.includes("observe(target"), "pedigree observes only a validated body target");
 assert.doesNotMatch(read("breeding-intelligence-v1.5.1.js"), /observe\(document\.body\b/);
 assert.doesNotMatch(read("breeding-intelligence-tools-v1.5.1.js"), /observe\(document\.body\b/);
 console.log("follow-up DOM lifecycle regression tests passed");
