@@ -19,10 +19,10 @@
     })
   });
 
-  function addHelpButton() {
+  function createElement(tagName) {\n    try { return document.createElement?.(tagName) || null; } catch { return null; }\n  }\n\n  function addHelpButton() {
     const theme = document.querySelector?.("#theme-toggle");
     if (!theme || document.querySelector?.("#herdharbor-help-button")) return;
-    const button = document.createElement?.("button");
+    const button = createElement("button");
     if (!button) return;
     button.id = "herdharbor-help-button";
     button.type = "button";
@@ -39,7 +39,7 @@
 
   function addStyles() {
     if (document.querySelector?.("#herdharbor-v151-release-style")) return;
-    const style = document.createElement?.("style");
+    const style = createElement("style");
     if (!style) return;
     style.id = "herdharbor-v151-release-style";
     style.textContent = ".help-toggle{font-size:1rem;font-weight:900}.topbar-actions .help-toggle{flex:0 0 auto}@media(max-width:620px){.help-toggle{width:40px;min-width:40px}}";
