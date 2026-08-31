@@ -101,8 +101,8 @@ assert.match(visualCss, /width: 10\.6in !important/);
 assert.match(visualCss, /height: 8\.04in !important/, "existing single-page four-generation print bounds remain intact");
 assert.doesNotMatch(css, /hh-protected-field[^}]*font-size:/, "new genetics styling does not shrink breeder/color protected fields");
 
-assert.match(notes, /Show Genetics on Pedigree/, "1.5.1 pedigree settings retain genetics controls");
-assert.match(notes, /Full Inferred/);
-assert.match(notes, /Known Only/);
+assert.match(uiSource, /Show Genetics on Pedigree/, "1.5.1 pedigree settings retain genetics controls");
+assert.match(uiSource, /Full Inferred/);
+assert.match(uiSource, /Known Only/);
 
 console.log("Alpha v1.5.1 pedigree genetics display and inference tests passed");
