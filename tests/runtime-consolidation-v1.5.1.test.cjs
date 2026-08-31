@@ -33,7 +33,7 @@ const activeV151 = [
 
 for (const file of activeV151) {
   assert.ok(fs.existsSync(path.join(root, file)), "missing consolidated runtime asset: " + file);
-  assert.ok(pwa.includes(file + "?v=1.5.1"), "pwa.js does not load " + file + " as v1.5.1");
+  assert.ok((pwa + "\n" + html).includes(file + "?v=1.5.1"), "startup loader does not load " + file + " as v1.5.1");
   assert.ok(worker.includes("./" + file + "?v=1.5.1"), "service-worker.js does not precache " + file + " as v1.5.1");
 }
 
@@ -57,7 +57,7 @@ const legacyRuntimeNames = [
 ];
 
 for (const legacy of legacyRuntimeNames) {
-  assert.doesNotMatch(pwa, new RegExp(legacy.replaceAll(".", "\\.")), "pwa.js still requests legacy runtime asset " + legacy);
+  assert.doesNotMatch(pwa + "\n" + html, new RegExp(legacy.replaceAll(".", "\\.")), "startup loader still requests legacy runtime asset " + legacy);
   assert.doesNotMatch(worker, new RegExp(legacy.replaceAll(".", "\\.")), "service-worker.js still routes legacy runtime asset " + legacy);
   assert.doesNotMatch(html, new RegExp(legacy.replaceAll(".", "\\.")), "index.html still embeds legacy runtime asset " + legacy);
 }
