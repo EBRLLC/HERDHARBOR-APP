@@ -24,7 +24,7 @@ assert.match(script, /hh-empty-secondary/);
 assert.match(script, /photoDataUrl/);
 assert.match(script, /profilePhotoDataUrl/);
 assert.match(script, /Missing photos|Missing photo|!src/);
-assert.match(script, /generation === 0/);
+assert.doesNotMatch(script, /if\s*\(\s*generation\s*===\s*0\s*\)\s*return/);
 assert.match(script, /prefs\.printPhotos/);
 assert.match(script, /#view-settings/);
 assert.match(script, /Pedigree appearance/);
