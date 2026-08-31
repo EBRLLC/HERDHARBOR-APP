@@ -78,12 +78,12 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /v1\.5\.1-alpha-stability-membership-review-2/);
+assert.match(serviceWorker, /v1\.5\.1-alpha-stability-membership-review-3/);
 assert.match(serviceWorker, /spreadsheet-import\.js\?v=17/);
 assert.match(serviceWorker, /herdharbor-access-cache-v1\.5\.1\.js\?v=1\.5\.1/);
 assert.match(serviceWorker, /herdharbor-cloud\.js\?v=19/);
 assert.match(serviceWorker, /symptom-guide\.js\?v=1/);
-assert.match(serviceWorker, /pwa\.js\?v=24/);
+assert.match(serviceWorker, /pwa\.js\?v=25/);
 assert.match(serviceWorker, /pedigree-visual\.css\?v=2/);
 assert.match(serviceWorker, /pedigree-visual\.js\?v=2/);
 assert.match(serviceWorker, /pedigree-genetics-v1\.5\.1\.css\?v=1\.5\.1/);
