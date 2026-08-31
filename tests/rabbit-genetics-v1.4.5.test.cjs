@@ -3,9 +3,9 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const path=require("node:path");
 const vm=require("node:vm");
-const Core=require("../rabbit-genetics-engine-v1.4.5.js");
+const Core=require("../rabbit-genetics-engine-v1.5.1.js");
 
-assert.equal(Core.RELEASE_VERSION,"1.4.5");
+assert.equal(Core.RELEASE_VERSION,"1.5.1");
 assert.equal(Core.VERSION,"2.1.0");
 
 function genetics(loci={}){return{loci:Object.fromEntries(Object.entries(loci).map(([l,alleles])=>[l,{alleles,status:"confirmed",source:"user"}]))}}
@@ -13,7 +13,7 @@ function rabbit(id,name,color,sex,loci={},extra={}){return{id,name,color,sex,spe
 const knownBase={A:["a","a"],B:["B","B"],C:["C","C"],D:["D","D"],E:["E","E"],En:["en","en"],V:["V","V"]};
 
 // Shared sex helper: exact normalization, never substring matching.
-const recordsSource=fs.readFileSync(path.join(__dirname,"..","rabbit-records-v1.4.5.js"),"utf8");
+const recordsSource=fs.readFileSync(path.join(__dirname,"..","rabbit-records-v1.5.1.js"),"utf8");
 const fakeDocument={addEventListener(){},querySelector(){return null;}};
 const sandbox={window:{HerdHarborBreedingIntelligenceCore:{canonicalSpecies:v=>String(v).toLowerCase()==="rabbit"?"Rabbit":v}},document:fakeDocument,localStorage:{getItem(){return "{}"}},console};
 vm.runInNewContext(recordsSource,sandbox);
@@ -110,8 +110,8 @@ const off=Core.offspringEvidenceMateAware(pa,[pa,pb,chocolateKit]);
 assert.ok(off.some(e=>e.locus==="B"&&e.allele==="b"&&e.status==="Proven by Offspring"));
 
 // Help and release shell.
-const releaseSource=fs.readFileSync(path.join(__dirname,"..","herdharbor-release-v1.4.5.js"),"utf8");
+const releaseSource=fs.readFileSync(path.join(__dirname,"..","herdharbor-release-v1.5.1.js"),"utf8");
 assert.match(releaseSource,/https:\/\/herdharbor\.com\/how-to\//);
 assert.match(releaseSource,/Open HerdHarbor How-To Center/);
 
-console.log("HerdHarbor Alpha v1.4.5 rabbit genetics + selector tests passed");
+console.log("HerdHarbor Alpha v1.5.1 rabbit genetics + selector tests passed");
