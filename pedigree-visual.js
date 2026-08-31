@@ -279,7 +279,7 @@
     link.id = "hh-pedigree-visual-style";
     link.rel = "stylesheet";
     link.href = "pedigree-visual.css?v=2";
-    doc.head.appendChild(link);
+    const styleTarget = doc.head || doc.documentElement || doc.body;\n    if (styleTarget) styleTarget.appendChild(link);
   }
 
   function enhanceFrame(frame) {
