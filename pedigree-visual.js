@@ -231,7 +231,7 @@
   function addThumbnail(card, photos, prefs, printContext) {
     removeThumbnail(card);
     const generation = Number(card.dataset.hhGeneration || 0);
-    if (generation === 0) return;
+    
 
     const enabled = printContext ? prefs.printPhotos : prefs.photoMode !== "off";
     if (!enabled) return;
