@@ -46,7 +46,7 @@ assert.match(worker, /herdharbor-access-cache-v1\.5\.1\.js\?v=1\.5\.1/);
 assert.match(worker, /herdharbor-cloud\.js\?v=19/);
 assert.match(worker, /pedigree-visual\.css\?v=2/);
 assert.match(worker, /pedigree-genetics-v1\.5\.1\.js\?v=1\.5\.1/);
-assert.match(worker, /shows-v1\\.5\\.1.css\?v=1\.5\.1/);
+assert.ok(worker.includes("shows-v1.5.1.css?v=1.5.1"));
 assert.match(worker, /shows-v1\.5\.1\.js\?v=1\.5\.1/);
 assert.match(worker, /shows-v1\.5\.1-hardening\.js\?v=1\.5\.1/);
 assert.match(worker, /NETWORK_FIRST_PATHS/);
