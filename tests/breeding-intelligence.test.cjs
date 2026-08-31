@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
-const Core = require('../breeding-intelligence-core.js');
+const Core = require('../breeding-intelligence-core-v1.5.1.js');
 
-assert.equal(Core.VERSION, '1.4.0');
+assert.equal(Core.VERSION, '1.5.1');
 assert.equal(Core.speciesTerms('Rabbit').birth, 'Kindling');
 assert.equal(Core.speciesTerms('Cattle').birth, 'Calving');
 assert.ok(Core.getSpeciesModule('Rabbit'), 'rabbit module registered');
@@ -77,4 +77,4 @@ assert.equal(perf.bornAlive,6);
 assert.equal(perf.weaned,5);
 assert.equal(perf.survivalRate,5/6);
 
-console.log('HerdHarbor v1.4.0 breeding intelligence genetics tests passed');
+console.log('HerdHarbor v1.5.1 breeding intelligence genetics tests passed');
