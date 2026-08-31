@@ -9,6 +9,7 @@ const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const pwa = read("pwa.js");
 const worker = read("service-worker.js");
 const geneticsV2 = read("rabbit-genetics-engine-v2.js");
+const pedigreeGenetics = read("pedigree-genetics-v1.5.1.js");
 const html = read("index.html");
 
 const activeV151 = [
@@ -58,6 +59,10 @@ const legacyRuntimeNames = [
 ];
 
 for (const legacy of legacyRuntimeNames) {
+assert.match(pwa, /HerdHarborPedigreeGenetics\?\.start\?\.\(window\)/, "the 1.5.1 pedigree renderer is started after loading");
+assert.match(pedigreeGenetics, /const target=rootWindow\.document\?\.body;/, "pedigree observer uses a resolved body target");
+assert.match(pedigreeGenetics, /target\.nodeType!==1/, "pedigree observer rejects non-Node targets");
+assert.doesNotMatch(pedigreeGenetics, /observe\(rootWindow\.document\.body/, "pedigree observer never observes a raw body lookup");
 assert.doesNotMatch(geneticsV2, /breeding-intelligence-core\.js['"]/,"v2 genetics engine does not require the legacy unversioned core");
   assert.doesNotMatch(pwa + "\n" + html, new RegExp(legacy.replaceAll(".", "\\.")), "startup loader still requests legacy runtime asset " + legacy);
   assert.doesNotMatch(worker, new RegExp(legacy.replaceAll(".", "\\.")), "service-worker.js still routes legacy runtime asset " + legacy);
