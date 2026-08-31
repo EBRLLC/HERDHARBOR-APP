@@ -13,4 +13,4 @@ assert.match(perf,/img\.loading = "lazy"/);
 assert.match(perf,/img\.decoding = "async"/);
 assert.match(pwa,/shows-v1\.5\.1-performance\.js\?v=1\.5\.1/);
 assert.match(worker,/shows-v1\.5\.1-performance\.js\?v=1\.5\.1/);
-console.log("HerdHarbor Alpha v1.5.0 Shows performance tests passed");
+console.log("HerdHarbor Alpha v1.5.1 Shows performance tests passed");
