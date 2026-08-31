@@ -8,9 +8,44 @@ const vm = require("node:vm");
 const root = path.resolve(__dirname, "..");
 const read = (name) => fs.readFileSync(path.join(root, name), "utf8");
 const cloud = read("herdharbor-cloud.js");
-assert.match(cloud, /document\.body \|\| document\.documentElement \|\| document\.head/);
-assert.doesNotMatch(cloud, /document\.body\.appendChild\(failure\)/, "cloud startup failure does not append to a missing body");
+assert.match(cloud, /const renderStartupFailure = \(\) =>/);
+assert.match(cloud, /document\.addEventListener\("DOMContentLoaded", retry/);
+assert.match(cloud, /const failureTarget = document\.body/);
+assert.match(cloud, /document\.body\.appendChild\(failure\)/);
+assert.doesNotMatch(cloud, /const failureTarget = document\.body \|\|/);
 
+{
+  const listeners = {};
+  const head = element("head");
+  const documentElement = element("html");
+  const classes = [];
+  documentElement.classList = { add(name) { classes.push(name); } };
+  let body = null;
+  const documentRef = {
+    readyState: "loading",
+    head,
+    body,
+    documentElement,
+    addEventListener(type, callback) {
+      (listeners[type] ||= []).push(callback);
+    },
+    createElement(tagName) { return element(tagName, documentRef); },
+    getElementById(id) {
+      return [...head.children, ...(body?.children || [])].find((node) => node.id === id) || null;
+    }
+  };
+  const windowRef = { supabase: null };
+  const context = vm.createContext({ window: windowRef, document: documentRef, console, setTimeout });
+  vm.runInContext(read("herdharbor-cloud.js"), context, { filename: "herdharbor-cloud.js" });
+  assert.equal(head.children.length, 0, "cloud fallback does not append into head while body is unavailable");
+  assert.equal(body, null, "cloud lifecycle fixture starts without a body");
+  body = element("body", documentRef);
+  documentRef.body = body;
+  for (const callback of listeners.DOMContentLoaded || []) callback();
+  assert.ok(head.children.some((node) => node.id === "hh-cloud-startup-style"), "cloud fallback adds its style after body exists");
+  assert.ok(body.children.some((node) => node.id === "hh-cloud-startup-error"), "cloud fallback renders a visible error after body exists");
+  assert.deepEqual(classes, ["hh-auth-locked"], "cloud fallback locks only after the body is available");
+}
 function element(tagName, documentRef) {
   const listeners = {};
   return {
