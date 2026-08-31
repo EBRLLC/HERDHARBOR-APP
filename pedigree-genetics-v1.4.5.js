@@ -183,8 +183,18 @@
   function run(rootWindow){pending=false;ensureSettingsUI(rootWindow);enhanceDocument(rootWindow.document,false,rootWindow);watchFrames(rootWindow);}
   function schedule(rootWindow){if(pending)return;pending=true;rootWindow.requestAnimationFrame(()=>run(rootWindow));}
   function start(rootWindow){
+    if(!rootWindow?.document?.body){
+      if(!rootWindow.__hhPedigreeGeneticsDomWait){
+        rootWindow.__hhPedigreeGeneticsDomWait=true;
+        rootWindow.document?.addEventListener?.('DOMContentLoaded',()=>{rootWindow.__hhPedigreeGeneticsDomWait=false;start(rootWindow);},{once:true});
+      }
+      return;
+    }
     ensureStyles(rootWindow.document);patchPrintWindows(rootWindow);run(rootWindow);
-    observer=new rootWindow.MutationObserver(()=>schedule(rootWindow));observer.observe(rootWindow.document.body,{childList:true,subtree:true});
+    if(!observer){
+      observer=new rootWindow.MutationObserver(()=>schedule(rootWindow));
+      observer.observe(rootWindow.document.body,{childList:true,subtree:true});
+    }
     rootWindow.addEventListener('storage',e=>{if(e.key===STATE_KEY||e.key===PREF_KEY)schedule(rootWindow);});
     rootWindow.addEventListener('herdharbor:genetics-ready',()=>schedule(rootWindow));
     lastStateSignature=rootWindow.localStorage?.getItem(STATE_KEY)||'';

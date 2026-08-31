@@ -60,7 +60,16 @@
   function performanceSummary(state, animal) { const p = Core.performanceForAnimal(animal, state.breedings, state.births), survival = p.survivalRate == null ? "—" : `${Math.round(p.survivalRate * 100)}%`, avg = p.averageLitterSize == null ? "—" : p.averageLitterSize.toFixed(1); return `${p.breedings} breedings · ${p.births} litters · ${p.bornAlive} live born · ${p.weaned} weaned · ${survival} survival · ${avg} avg litter`; }
   function geneticsSnapshotForAnimal(animal,state){try{return deepClone(Core.refineAnimalGenetics(animal,state.animals||[],state.births||state.litters||[]).genetics);}catch(_){return deepClone(Core.normalizeGenetics(animal.genetics));}}
 
-  function ensureStylesheet() { if (document.getElementById("hh-breeding-intelligence-style")) return; const link = document.createElement("link"); link.id = "hh-breeding-intelligence-style"; link.rel = "stylesheet"; link.href = "breeding-intelligence.css?v=1.4.0"; document.head.appendChild(link); }
+  function ensureStylesheet() {
+    if (document.getElementById("hh-breeding-intelligence-style")) return;
+    const target = document.head || document.body || document.documentElement;
+    if (!target) return;
+    const link = document.createElement("link");
+    link.id = "hh-breeding-intelligence-style";
+    link.rel = "stylesheet";
+    link.href = "breeding-intelligence.css?v=1.4.0";
+    target.appendChild(link);
+  }
   function updateVisibleVersion() { document.querySelectorAll("[data-app-version], .app-version, .version-label").forEach((el) => { const text = String(el.textContent || ""); if (/1\.3\.0|alpha/i.test(text)) el.textContent = text.replace(/1\.3\.0/g, RELEASE_VERSION); }); document.documentElement.dataset.herdharborRelease = RELEASE_VERSION; }
 
   function renderCard() {
@@ -70,7 +79,16 @@
     card.innerHTML = `<div class="hh-bi-heading"><div><span class="hh-bi-kicker">Alpha v${RELEASE_VERSION}</span><h2>Breeding Intelligence</h2><p>Plan rabbit pairings with pedigree evidence, recorded genetics, previous offspring and honest uncertainty handling.</p></div><span class="hh-bi-badge">Rabbit genetics v1</span></div><div class="hh-bi-metrics"><div><strong>${rabbits.length}</strong><span>Rabbits</span></div><div><strong>${profiles}</strong><span>Genetic profiles</span></div><div><strong>${predictions}</strong><span>Saved analyses</span></div></div><div class="hh-bi-actions"><button type="button" class="primary" data-bi-action="pair">Analyze pairing</button><button type="button" data-bi-action="profile">Rabbit genetic profile</button><button type="button" data-bi-action="learn">Learn from recorded offspring</button><button type="button" data-bi-action="history">Prediction history</button></div>${(!bucks.length || !does.length) ? '<p class="hh-bi-note">Add at least one male and one female rabbit to run Pair Analysis.</p>' : ''}<p class="hh-bi-footnote">Predictions use the supported A/B/C/D/E model. Additional modifier genes, breed-specific expression and incomplete records can change visible color.</p>`;
   }
 
-  function openModal(title, bodyHtml) { closeModal(); modal = document.createElement("div"); modal.className = "hh-bi-modal-backdrop"; modal.innerHTML = `<section class="hh-bi-modal" role="dialog" aria-modal="true" aria-label="${esc(title)}"><header><div><span class="hh-bi-kicker">HerdHarbor Breeding Intelligence</span><h2>${esc(title)}</h2></div><button type="button" class="hh-bi-close" data-bi-close aria-label="Close">×</button></header><div class="hh-bi-modal-body">${bodyHtml}</div></section>`; document.body.appendChild(modal); modal.querySelector("[data-bi-close]").focus(); }
+  function openModal(title, bodyHtml) {
+    closeModal();
+    const target = document.body || document.documentElement || document.head;
+    if (!target) return;
+    modal = document.createElement("div");
+    modal.className = "hh-bi-modal-backdrop";
+    modal.innerHTML = `<section class="hh-bi-modal" role="dialog" aria-modal="true" aria-label="${esc(title)}"><header><div><span class="hh-bi-kicker">HerdHarbor Breeding Intelligence</span><h2>${esc(title)}</h2></div><button type="button" class="hh-bi-close" data-bi-close aria-label="Close">×</button></header><div class="hh-bi-modal-body">${bodyHtml}</div></section>`;
+    target.appendChild(modal);
+    modal.querySelector("[data-bi-close]")?.focus();
+  }
   function closeModal() { if (modal) modal.remove(); modal = null; lastAnalysis = null; lastPair = null; }
 
   function renderProfileModal(selectedId) {
@@ -193,7 +211,19 @@
   function renderHistory(){const state=readState(),predictions=(state[ROOT_KEY]?.predictions||[]).slice().reverse();const rows=predictions.length?predictions.map((snapshot)=>{const parents=snapshotParents(snapshot),outcomes=savedColorOutcomes(snapshot.analysis||{}).slice(0,8).map((outcome)=>`${outcome.name||"Outcome"} ${probabilityText(outcome)}`).join(" · ");return `<article class="hh-bi-history-item"><strong>${esc(parents.buckName)} × ${esc(parents.doeName)}</strong><span>${esc(new Date(snapshot.createdAt).toLocaleString())}</span><p>${esc(outcomes||"No supported outcome recorded")}</p><small>Snapshot preserved with engine v${esc(snapshot.engineVersion||snapshot.analysis?.engineVersion||"1")}; later evidence does not rewrite this result.</small><button type="button" class="primary" data-bi-open-snapshot="${esc(snapshot.id)}">Open saved prediction</button></article>`;}).join(""):'<p>No prediction snapshots have been saved yet.</p>';openModal("Prediction History",`<div class="hh-bi-history">${rows}</div>`);}
   function handleAction(action){if(action==="pair")return renderPairModal("","");if(action==="profile")return renderProfileModal("");if(action==="learn")return learnFromOffspring();if(action==="history")return renderHistory();}
   function installEvents(){document.addEventListener("click",(event)=>{const action=event.target.closest("[data-bi-action]")?.dataset.biAction;if(action)handleAction(action);const snapshotId=event.target.closest("[data-bi-open-snapshot]")?.dataset.biOpenSnapshot;if(snapshotId)renderSavedSnapshot(snapshotId);if(event.target.closest("[data-bi-history-back]"))renderHistory();if(event.target.closest("[data-bi-close]")||event.target===modal)closeModal();});document.addEventListener("keydown",(event)=>{if(event.key==="Escape"&&modal)closeModal();});}
-  function monitorBreedingView(){if(observer)return;observer=new MutationObserver(()=>{if(!document.querySelector("#hh-breeding-intelligence"))renderCard();updateVisibleVersion();});observer.observe(document.body,{childList:true,subtree:true});}
+  function monitorBreedingView(){
+    if(observer)return;
+    const target=document.body;
+    if(!target){
+      if(!window.__hhBreedingDomWait){
+        window.__hhBreedingDomWait=true;
+        document.addEventListener("DOMContentLoaded",()=>{window.__hhBreedingDomWait=false;monitorBreedingView();},{once:true});
+      }
+      return;
+    }
+    observer=new MutationObserver(()=>{if(!document.querySelector("#hh-breeding-intelligence"))renderCard();updateVisibleVersion();});
+    observer.observe(target,{childList:true,subtree:true});
+  }
   function boot(){installStorageProtection();ensureStylesheet();installEvents();renderCard();updateVisibleVersion();monitorBreedingView();window.HerdHarborBreedingIntelligence=Object.freeze({version:RELEASE_VERSION,analyzePairing:Core.analyzePairing,readState,savePredictionSnapshot,openPairAnalysis:()=>renderPairModal("",""),openGeneticProfile:(animalId)=>renderProfileModal(animalId||""),openPredictionHistory:renderHistory,openSavedPrediction:renderSavedSnapshot,refresh:renderCard});}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
 })();

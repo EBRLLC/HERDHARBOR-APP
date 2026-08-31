@@ -168,7 +168,19 @@
   function start() {
     installArchiveConfirmation();
     document.addEventListener("click", (e) => { if (e.target.closest("[data-shows-tab],[data-view-show],[data-view-exhibitor],[data-view-project],[data-back-shows],[data-back-exhibitors],[data-back-projects]")) setTimeout(schedule, 0); });
-    new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
+    if (!window.__hhShowsHardeningObserver) {
+      const attachObserver = () => {
+        const target = document.body;
+        if (!target) return false;
+        if (!window.__hhShowsHardeningObserver) {
+          const observer = new MutationObserver(schedule);
+          observer.observe(target, { childList: true, subtree: true });
+          window.__hhShowsHardeningObserver = observer;
+        }
+        return true;
+      };
+      if (!attachObserver()) document.addEventListener("DOMContentLoaded", attachObserver, { once: true });
+    }
     window.addEventListener("hashchange", schedule); schedule();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true }); else start();

@@ -79,7 +79,9 @@
       <header><div><span class="hh-bi-kicker">HerdHarbor Breeding Intelligence</span><h2>${esc(title)}</h2></div><button type="button" class="hh-bi-close" data-bi-tools-close aria-label="Close">×</button></header>
       <div class="hh-bi-modal-body">${html}</div>
     </section>`;
-    document.body.appendChild(modal);
+    const target = document.body || document.documentElement || document.head;
+    if (!target) { modal = null; return; }
+    target.appendChild(modal);
     modal.querySelector("[data-bi-tools-close]")?.focus();
   }
 
@@ -402,7 +404,15 @@
   const observer = new MutationObserver(addButtons);
   function boot() {
     addButtons();
-    observer.observe(document.body, { childList: true, subtree: true });
+    const target = document.body;
+    if (!target) {
+      if (!window.__hhBreedingToolsDomWait) {
+        window.__hhBreedingToolsDomWait = true;
+        document.addEventListener("DOMContentLoaded", () => { window.__hhBreedingToolsDomWait = false; boot(); }, { once: true });
+      }
+      return;
+    }
+    observer.observe(target, { childList: true, subtree: true });
     window.HerdHarborBreedingIntelligenceTools = Object.freeze({
       version: "1.4.0",
       openGeneticTests: () => renderTests(""),
