@@ -62,9 +62,9 @@ for (const legacy of legacyRuntimeNames) {
   assert.doesNotMatch(html, new RegExp(legacy.replaceAll(".", "\\.")), "index.html still embeds legacy runtime asset " + legacy);
 }
 
-assert.match(pwa, /const APP_VERSION = "1\\.5\\.1"/);
-assert.match(worker, /v1\\.5\\.1-alpha-stability-membership-review-3/);
-assert.match(worker, /pwa\\.js\\?v=25/);
+assert.ok(pwa.includes('const APP_VERSION = "1.5.1"'));
+assert.ok(worker.includes("v1.5.1-alpha-stability-membership-review-3"));
+assert.ok(worker.includes("pwa.js?v=25"));
 assert.ok(!pwa.includes(";" + String.fromCharCode(92) + "n    if"), "pwa.js contains no literal newline escape in executable source");
 assert.ok(!read("herdharbor-membership-v1.5.1.js").includes(";" + String.fromCharCode(92) + "n    if"), "membership source contains no literal newline escape in executable source");
 assert.ok(!read("pedigree-visual.js").includes(";" + String.fromCharCode(92) + "n    if"), "pedigree source contains no literal newline escape in executable source");
