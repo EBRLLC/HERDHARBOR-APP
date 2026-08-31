@@ -57,11 +57,12 @@
         styleTarget.appendChild(failureStyle);
       }
       if (document.documentElement) document.documentElement.classList.add("hh-auth-locked");
-      if (!document.getElementById("hh-cloud-startup-error")) {
+      const failureTarget = document.body;
+      if (failureTarget && !document.getElementById("hh-cloud-startup-error")) {
         const failure = document.createElement("div");
         failure.id = "hh-cloud-startup-error";
         failure.innerHTML = "<div><strong>HerdHarbor could not start securely.</strong>Your local records were not removed. Check your connection and reload the app.</div>";
-        document.body.appendChild(failure);
+        failureTarget.appendChild(failure);
       }
     };
     renderStartupFailure();
