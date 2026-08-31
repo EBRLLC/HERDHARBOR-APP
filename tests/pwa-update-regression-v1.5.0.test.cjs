@@ -58,7 +58,7 @@ assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
 // Browser/app shell requests favor production over stale frontend caches while
 // still falling back to the current shell when offline.
-assert.match(worker, /v1\.5\.1-alpha-stability-membership-review-2/);
+assert.match(worker, /v1\.5\.1-alpha-stability-membership-review-3/);
 assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
 assert.match(worker, /NETWORK_FIRST_PATHS/);
 assert.match(worker, /\/manifest\.json/);
