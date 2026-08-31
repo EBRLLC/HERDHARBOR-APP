@@ -7,7 +7,10 @@
     "build:monitoring": "node scripts/build-monitoring.mjs",
     "build:monitoring-config": "node scripts/build-monitoring-config.mjs",
     "test:monitoring": "node --test tests/monitoring-*.test.cjs",
-    "test:analytics": "node --test tests/analytics-v1.6.0.test.cjs"
+    "test:analytics": "node --test tests/analytics-v1.6.0.test.cjs",
+    "test:genetics": "node --test tests/rabbit-genetics-v1.6.1.test.cjs",
+    "test:phase2": "node --test tests/rabbit-genetics-v1.6.1.test.cjs tests/phase2-release-v1.6.1.test.cjs",
+    "test:phase3": "node --test tests/standards-phase3.test.cjs tests/multispecies-genetics-phase3.test.cjs tests/phase3-integration.test.cjs"
   },
   "dependencies": {
     "@sentry/browser": "10.71.0"

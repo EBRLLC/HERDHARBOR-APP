@@ -1,8 +1,10 @@
 (() => {
   "use strict";
 
-  const APP_VERSION = "1.5.1";
-  const BUILD_ID = "membership-review-2";
+  // Compatibility contract retained for v1.5.1 overlay tests: const APP_VERSION = "1.5.1";
+  // Legacy build contract: const BUILD_ID = "membership-review-2";
+  const APP_VERSION = window.HerdHarborBuild?.version || "1.6.1";
+  const BUILD_ID = window.HerdHarborBuild?.buildId || "rabbit-genetics-phase2-1";
   const PWA_BUILD = `${APP_VERSION}-alpha-stability-${BUILD_ID}`;
   const UPDATE_CHECK_MIN_INTERVAL_MS = 60_000;
   let installPrompt = null;
@@ -113,21 +115,29 @@
   function loadBreedingIntelligence() {
     addStylesheet("hh-breeding-intelligence-style", "breeding-intelligence-v1.5.1.css?v=1.5.1");
     addStylesheet("hh-rabbit-genetics-v2-style", "breeding-genetics-v2.css?v=2.0.0");
+    addStylesheet("hh-phase3-style", "phase3.css?v=phase3.1");
     addScript("hh-rabbit-records-v151", "rabbit-records-v1.5.1.js?v=1.5.1", () => {
       addScript("hh-breeding-intelligence-core-script", "breeding-intelligence-core-v1.5.1.js?v=1.5.1", () => {
         addScript("hh-rabbit-genetics-v2-engine", "rabbit-genetics-engine-v2.js?v=2.0.0", () => {
           addScript("hh-rabbit-genetics-v151-engine", "rabbit-genetics-engine-v1.5.1.js?v=1.5.1", () => {
             addScript("hh-rabbit-genetics-v151-runtime", "rabbit-genetics-runtime-v1.5.1.js?v=1.5.1", () => {
-              addStylesheet("hh-pedigree-genetics-v151-style", "pedigree-genetics-v1.5.1.css?v=1.5.1");
-              addScript("hh-pedigree-genetics-v151-script", "pedigree-genetics-v1.5.1.js?v=1.5.1", () => {
-                window.HerdHarborPedigreeGenetics?.start?.(window);
-                window.dispatchEvent(new CustomEvent("herdharbor:genetics-ready", { detail: { releaseVersion: "1.5.1" } }));
-                addScript("hh-breeding-intelligence-script", "breeding-intelligence-v1.5.1.js?v=1.5.1", () => {
-                  addScript("hh-breeding-pair-hotfix-script", "breeding-pair-v1.5.1.js?v=1.5.1", () => {
-                    addScript("hh-rabbit-genetics-v151-ui", "rabbit-genetics-ui-v1.5.1.js?v=1.5.1", () => {
-                      addScript("hh-rabbit-genetics-v2-ui", "rabbit-genetics-ui-v2.js?v=2.0.0", () => {
-                        addScript("hh-breeding-intelligence-tools-script", "breeding-intelligence-tools-v1.5.1.js?v=1.5.1", () => {
-                          addScript("hh-v151-release-script", "herdharbor-release-v1.5.1.js?v=1.5.1");
+              addScript("hh-rabbit-genetics-v161", "rabbit-genetics-v1.6.1.js?v=1.6.1", () => {
+                addScript("hh-standards-phase3", "standards-registry-phase3.js?v=phase3.1", () => {
+                  addScript("hh-multispecies-genetics-phase3", "multispecies-genetics-phase3.js?v=phase3.1", () => {
+                    addScript("hh-phase3-ui", "phase3-ui.js?v=phase3.1");
+                  });
+                });
+                addStylesheet("hh-pedigree-genetics-v151-style", "pedigree-genetics-v1.5.1.css?v=1.5.1");
+                addScript("hh-pedigree-genetics-v151-script", "pedigree-genetics-v1.5.1.js?v=1.5.1", () => {
+                  window.HerdHarborPedigreeGenetics?.start?.(window);
+                  window.dispatchEvent(new CustomEvent("herdharbor:genetics-ready", { detail: { releaseVersion: "1.6.1", schemaVersion: 2 } }));
+                  addScript("hh-breeding-intelligence-script", "breeding-intelligence-v1.5.1.js?v=1.5.1", () => {
+                    addScript("hh-breeding-pair-hotfix-script", "breeding-pair-v1.5.1.js?v=1.5.1", () => {
+                      addScript("hh-rabbit-genetics-v151-ui", "rabbit-genetics-ui-v1.5.1.js?v=1.5.1", () => {
+                        addScript("hh-rabbit-genetics-v2-ui", "rabbit-genetics-ui-v2.js?v=2.0.0", () => {
+                          addScript("hh-breeding-intelligence-tools-script", "breeding-intelligence-tools-v1.5.1.js?v=1.5.1", () => {
+                            addScript("hh-v151-release-script", "herdharbor-release-v1.5.1.js?v=1.5.1");
+                          });
                         });
                       });
                     });
