@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 
-assert.match(html, /const APP_VERSION = "1\.5\.1"/);
+assert.match(html, /const APP_VERSION = "1\.6\.1"/);
 assert.match(html, /let lastSavedRaw = localStorage\.getItem\(STORAGE_KEY\) \|\| ""/);
 assert.match(html, /if \(rawValue !== lastSavedRaw\) \{[\s\S]*?localStorage\.setItem\(STORAGE_KEY, rawValue\)[\s\S]*?lastSavedRaw = rawValue/);
 assert.match(html, /function scheduleUiWork\(key, callback\)/);

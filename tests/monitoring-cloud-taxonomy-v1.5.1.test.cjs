@@ -80,7 +80,7 @@ const { pathToFileURL } = require("node:url");
     assert.doesNotMatch(JSON.stringify(operationContext), /PRIVATE CLOUD SYNC RECORDS|customer@example\.com|secret-token/);
   }
 
-  console.log("Alpha v1.5.1 Cloud Sync monitoring taxonomy and sanitization tests passed");
+  console.log("Alpha v1.6.1 Cloud Sync monitoring taxonomy and sanitization tests passed");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

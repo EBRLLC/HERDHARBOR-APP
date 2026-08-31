@@ -114,7 +114,7 @@ const { pathToFileURL } = require("node:url");
   const firstPass = core.sanitizeSentryEvent(rawEvent, {
     module: "animals",
     environment: "test",
-    release: "HerdHarbor@1.5.1",
+    release: "HerdHarbor@1.6.1",
     build: "privacy-test",
     platform: "web",
     os: "Windows",
@@ -180,7 +180,7 @@ const { pathToFileURL } = require("node:url");
   assert.equal(privacy.hardenBreadcrumb({ category: "ui.click", message: "Judy" }), null);
   assert.equal(privacy.hardenBreadcrumb({ category: "fetch", data: { url: "https://private" } }), null);
 
-  console.log("Alpha v1.5.1 monitoring privacy scrubbing tests passed");
+  console.log("Alpha v1.6.1 monitoring privacy scrubbing tests passed");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

@@ -175,7 +175,7 @@ async function main() {
   assert.equal(calls.length, beforeFailure + 1, "a failed mutation is not retried with guessed signatures");
   assert.equal(failures.at(-1), "admin_set_account_role");
 
-  console.log("Alpha v1.5.1 runtime Admin RPC contract tests passed");
+  console.log("Alpha v1.6.1 runtime Admin RPC contract tests passed");
 }
 
 main().catch((error) => {

@@ -34,8 +34,8 @@ function browserContext() {
 }
 
 const context = browserContext();
-vm.runInContext(read("herdharbor-release-v1.5.1.js"), context, { filename: "herdharbor-release-v1.5.1.js" });
-vm.runInContext(read("herdharbor-membership-v1.5.1.js"), context, { filename: "herdharbor-membership-v1.5.1.js" });
+vm.runInContext(read("herdharbor-release-v1.6.1.js"), context, { filename: "herdharbor-release-v1.6.1.js" });
+vm.runInContext(read("herdharbor-membership-v1.6.1.js"), context, { filename: "herdharbor-membership-v1.6.1.js" });
 
 const policy = context.HerdHarborMembership;
 assert.ok(policy, "central membership policy is published");
@@ -131,7 +131,7 @@ const flagOffContext = browserContext();
 flagOffContext.HerdHarborRelease = {
   featureFlags: { juniorPlanEnabled: false, adminMemberManagementEnabled: true, billingEnabled: false }
 };
-vm.runInContext(read("herdharbor-membership-v1.5.1.js"), flagOffContext, { filename: "herdharbor-membership-v1.5.1.js" });
+vm.runInContext(read("herdharbor-membership-v1.6.1.js"), flagOffContext, { filename: "herdharbor-membership-v1.6.1.js" });
 flagOffContext.HerdHarborMembership.applyAccessProfile({
   account_role: "user",
   membership_tier: "junior",
@@ -143,4 +143,4 @@ assert.equal(
   "the Junior limit is inactive when the release feature flag is disabled"
 );
 
-console.log("Alpha v1.5.1 centralized membership and Junior policy tests passed");
+console.log("Alpha v1.6.1 centralized membership and Junior policy tests passed");

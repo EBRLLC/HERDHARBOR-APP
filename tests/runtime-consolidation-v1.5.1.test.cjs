@@ -8,36 +8,36 @@ const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const pwa = read("pwa.js");
 const worker = read("service-worker.js");
-const geneticsV2 = read("rabbit-genetics-engine-v2.js");
-const pedigreeGenetics = read("pedigree-genetics-v1.5.1.js");
-const pedigreeGeneticsCss = read("pedigree-genetics-v1.5.1.css");
+const geneticsV2 = read("rabbit-genetics-engine-advanced-v1.6.1.js");
+const pedigreeGenetics = read("pedigree-genetics-v1.6.1.js");
+const pedigreeGeneticsCss = read("pedigree-genetics-v1.6.1.css");
 const html = read("index.html");
 
 const activeV151 = [
-  "herdharbor-release-v1.5.1.js",
-  "herdharbor-membership-v1.5.1.js",
-  "herdharbor-billing-v1.5.1.js",
-  "herdharbor-access-cache-v1.5.1.js",
-  "herdharbor-admin-v1.5.1.js",
+  "herdharbor-release-v1.6.1.js",
+  "herdharbor-membership-v1.6.1.js",
+  "herdharbor-billing-v1.6.1.js",
+  "herdharbor-access-cache-v1.6.1.js",
+  "herdharbor-admin-v1.6.1.js",
   "herdharbor-monitoring-config.js",
-  "pedigree-genetics-v1.5.1.js",
-  "breeding-intelligence-core-v1.5.1.js",
-  "rabbit-records-v1.5.1.js",
-  "rabbit-genetics-engine-v1.5.1.js",
-  "rabbit-genetics-runtime-v1.5.1.js",
-  "breeding-intelligence-v1.5.1.js",
-  "breeding-pair-v1.5.1.js",
-  "rabbit-genetics-ui-v1.5.1.js",
-  "breeding-intelligence-tools-v1.5.1.js",
-  "shows-v1.5.1.js",
-  "shows-v1.5.1-hardening.js",
-  "shows-v1.5.1-performance.js"
+  "pedigree-genetics-v1.6.1.js",
+  "breeding-intelligence-core-v1.6.1.js",
+  "rabbit-records-v1.6.1.js",
+  "rabbit-genetics-engine-compat-v1.6.1.js",
+  "rabbit-genetics-runtime-v1.6.1.js",
+  "breeding-intelligence-v1.6.1.js",
+  "breeding-pair-v1.6.1.js",
+  "rabbit-genetics-ui-compat-v1.6.1.js",
+  "breeding-intelligence-tools-v1.6.1.js",
+  "shows-v1.6.1.js",
+  "shows-v1.6.1-hardening.js",
+  "shows-v1.6.1-performance.js"
 ];
 
 for (const file of activeV151) {
   assert.ok(fs.existsSync(path.join(root, file)), "missing consolidated runtime asset: " + file);
-  assert.ok((pwa + "\n" + html).includes(file + "?v=1.5.1"), "startup loader does not load " + file + " as v1.5.1");
-  assert.ok(worker.includes("./" + file + "?v=1.5.1"), "service-worker.js does not precache " + file + " as v1.5.1");
+  assert.ok((pwa + "\n" + html).includes(file + "?v=1.6.1"), "startup loader does not load " + file + " as v1.6.1");
+  assert.ok(worker.includes("./" + file + "?v=1.6.1"), "service-worker.js does not precache " + file + " as v1.6.1");
 }
 
 const legacyRuntimeNames = [
@@ -60,25 +60,26 @@ const legacyRuntimeNames = [
 ];
 
 for (const legacy of legacyRuntimeNames) {
-assert.match(pwa, /HerdHarborPedigreeGenetics\?\.start\?\.\(window\)/, "the 1.5.1 pedigree renderer is started after loading");
+  assert.doesNotMatch(pwa + "\n" + html, new RegExp(legacy.replaceAll(".", "\\.")), "startup loader still requests legacy runtime asset " + legacy);
+  assert.doesNotMatch(worker, new RegExp(legacy.replaceAll(".", "\\.")), "service-worker.js still routes legacy runtime asset " + legacy);
+  assert.doesNotMatch(html, new RegExp(legacy.replaceAll(".", "\\.")), "index.html still embeds legacy runtime asset " + legacy);
+}
+
+assert.match(pwa, /HerdHarborPedigreeGenetics\?\.start\?\.\(window\)/, "the 1.6.1 pedigree renderer is started after loading");
 assert.ok(html.includes("HerdHarborPedigreeGenetics?.enhanceDocument?.(popup.document, true, window)"), "sale pedigree popup renders genetics before viewing/printing");
 assert.match(pedigreeGenetics, /const target=rootWindow\.document\?\.body;/, "pedigree observer uses a resolved body target");
 assert.match(pedigreeGenetics, /target\.nodeType!==1/, "pedigree observer rejects non-Node targets");
 assert.doesNotMatch(pedigreeGenetics, /observe\(rootWindow\.document\.body/, "pedigree observer never observes a raw body lookup");
 assert.match(pedigreeGenetics, /printContext&&doc\.documentElement\?\.classList\)doc\.documentElement\.classList\.add\(\x27hh-pedigree-print-document\x27\)/, "sale pedigree enhancement activates compact print styling");
 assert.match(pedigreeGeneticsCss, /html\.hh-pedigree-print-document \.hh-pedigree-genetics\{font-size:7\.3px;/, "compact print genetics sizing is defined");
-assert.doesNotMatch(geneticsV2, /breeding-intelligence-core\.js['"]/,"v2 genetics engine does not require the legacy unversioned core");
-  assert.doesNotMatch(pwa + "\n" + html, new RegExp(legacy.replaceAll(".", "\\.")), "startup loader still requests legacy runtime asset " + legacy);
-  assert.doesNotMatch(worker, new RegExp(legacy.replaceAll(".", "\\.")), "service-worker.js still routes legacy runtime asset " + legacy);
-  assert.doesNotMatch(html, new RegExp(legacy.replaceAll(".", "\\.")), "index.html still embeds legacy runtime asset " + legacy);
-}
+assert.doesNotMatch(geneticsV2, /breeding-intelligence-core\.js['"]/, "advanced genetics engine does not require the legacy unversioned core");
 
-assert.ok(pwa.includes('const APP_VERSION = "1.5.1"'));
-assert.ok(worker.includes("v1.5.1-alpha-stability-membership-review-3"));
+assert.ok(pwa.includes('const APP_VERSION = "1.6.1"'));
+assert.ok(worker.includes("v1.6.1-alpha-current-state-1"));
 assert.ok(worker.includes("pwa.js?v=25"));
 assert.ok(!pwa.includes(";" + String.fromCharCode(92) + "n    if"), "pwa.js contains no literal newline escape in executable source");
-assert.ok(!read("herdharbor-membership-v1.5.1.js").includes(";" + String.fromCharCode(92) + "n    if"), "membership source contains no literal newline escape in executable source");
+assert.ok(!read("herdharbor-membership-v1.6.1.js").includes(";" + String.fromCharCode(92) + "n    if"), "membership source contains no literal newline escape in executable source");
 assert.ok(!read("pedigree-visual.js").includes(";" + String.fromCharCode(92) + "n    if"), "pedigree source contains no literal newline escape in executable source");
 assert.ok(!read("spreadsheet-import.js").includes(";" + String.fromCharCode(92) + "n    if"), "spreadsheet source contains no literal newline escape in executable source");
 
-console.log("v1.5.1 runtime consolidation tests passed");
+console.log("v1.6.1 runtime consolidation tests passed");

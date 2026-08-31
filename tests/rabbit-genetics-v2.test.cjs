@@ -1,7 +1,7 @@
 "use strict";
 const assert=require("node:assert/strict");
-const Core=require("../rabbit-genetics-engine-v2.js");
-assert.equal(Core.VERSION,"2.0.0");
+const Core=require("../rabbit-genetics-engine-advanced-v1.6.1.js");
+assert.equal(Core.VERSION,"1.6.1");
 assert.deepEqual(Core.RABBIT_LOCI.En.dominance,["En","en"]);
 assert.deepEqual(Core.RABBIT_LOCI.V.dominance,["V","v"]);
 function rabbit(id,color,loci={},extra={}){const full={A:['a','a'],B:['B','B'],C:['C','C'],D:['D','D'],E:['E','E'],En:['en','en'],V:['V','V'],...loci};return{id,name:id,species:'Rabbit',breed:'Holland Lop',color,genetics:{loci:Object.fromEntries(Object.entries(full).map(([k,alleles])=>[k,{alleles,source:'user',status:'confirmed'}]))},...extra}}

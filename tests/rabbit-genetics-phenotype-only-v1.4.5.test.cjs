@@ -1,6 +1,6 @@
 "use strict";
 const assert=require("node:assert/strict");
-const Core=require("../rabbit-genetics-runtime-v1.5.1.js");
+const Core=require("../rabbit-genetics-runtime-v1.6.1.js");
 const rabbit=(id,name,color,sex)=>({id,name,color,sex,species:"Rabbit",breed:"Holland Lop",status:"Active"});
 
 // Real-world tester case: phenotype exists but the breeder has not filled a full genotype.
@@ -19,4 +19,4 @@ const pattern=Core.analyzePairing(harl,mag,{animals:[harl,mag]});
 assert.equal(pattern.scenarioTruncated,false,"Harlequin × Magpie phenotype-only pairing should be enumerable");
 assert.ok(pattern.possibleOffspringColors.some(o=>/Harlequin|Magpie|Tricolor/.test(o.name)));
 
-console.log("Alpha v1.5.1 phenotype-only Pair Analysis tests passed");
+console.log("Alpha v1.6.1 phenotype-only Pair Analysis tests passed");

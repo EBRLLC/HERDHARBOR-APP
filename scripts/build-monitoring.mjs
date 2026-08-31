@@ -6,7 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const output = path.join(root, "vendor", "herdharbor-monitoring-v1.5.1.min.js");
+const output = path.join(root, "vendor", "herdharbor-monitoring-v1.6.1.min.js");
 const sourceMap = process.env.HERDHARBOR_MONITORING_SOURCEMAP === "1";
 
 await mkdir(path.dirname(output), { recursive: true });
