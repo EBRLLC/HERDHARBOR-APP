@@ -13,6 +13,7 @@
   <title>HerdHarbor</title>
   <link rel="manifest" href="manifest.json?v=17">
   <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="analytics-v1.6.0.css?v=1.6.0">
   <script>
     (() => {
       try {
@@ -2483,6 +2484,9 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
           <button class="nav-item active" data-route="dashboard" title="Dashboard">
             <span class="nav-icon">⌂</span><span>Dashboard</span>
           </button>
+          <button class="nav-item" data-route="analytics" title="Analytics">
+            <span class="nav-icon">↗</span><span>Analytics</span>
+          </button>
           <button class="nav-item" data-route="animals" title="Animals">
             <span class="nav-icon">♞</span><span>Animals</span>
           </button>
@@ -2563,6 +2567,7 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
 
       <main class="main-content">
         <section id="view-dashboard" class="view active"></section>
+        <section id="view-analytics" class="view"></section>
         <section id="view-animals" class="view"></section>
         <section id="view-breeding" class="view"></section>
         <section id="view-litters" class="view"></section>
@@ -2604,6 +2609,7 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
   <script src="herdharbor-admin-v1.5.1.js?v=1.5.1"></script>
   <script src="symptom-guide.js?v=1"></script>
   <script src="pwa.js?v=24"></script>
+  <script src="analytics-v1.6.0.js?v=1.6.0"></script>
   <script>
 (() => {
   "use strict";
@@ -2635,6 +2641,7 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
     settings: {
       species: ["Rabbit", "Chicken", "Duck", "Turkey", "Dog", "Horse", "Goat", "Sheep", "Cattle", "Pig", "Other"],
       breedsBySpecies: {},
+      analyticsColors: {},
       theme: "system",
       sidebarCollapsed: false
     }
@@ -2643,7 +2650,7 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
   let state = loadState();
   let lastSavedRaw = localStorage.getItem(STORAGE_KEY) || "";
   const requestedRoute = String(window.location.hash || "").replace(/^#/, "");
-  let currentRoute = ["dashboard", "animals", "pedigrees", "breeding", "litters", "health", "symptoms", "tasks", "budget", "sales", "settings", "admin"].includes(requestedRoute)
+  let currentRoute = ["dashboard", "analytics", "animals", "pedigrees", "breeding", "litters", "health", "symptoms", "tasks", "budget", "sales", "settings", "admin"].includes(requestedRoute)
     ? requestedRoute
     : "dashboard";
   let animalView = {
@@ -3416,6 +3423,7 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
   function routeTitle(route) {
     return ({
       dashboard: "Overview",
+      analytics: "Analytics",
       animals: "Animal records",
       breeding: "Breeding and pregnancy",
       litters: "Birth and litter records",
@@ -3433,6 +3441,7 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
   function renderCurrentView() {
     const renderers = {
       dashboard: renderDashboard,
+      analytics: () => window.HerdHarborAnalytics?.render?.({ state, saveState, navigate, toast }),
       animals: renderAnimals,
       breeding: renderBreedings,
       litters: renderLitters,
@@ -3978,6 +3987,7 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
       <p class="muted">${health.length} health record${health.length === 1 ? "" : "s"} · ${breedings.length} breeding record${breedings.length === 1 ? "" : "s"} · ${pedigreeImports.length} pedigree import${pedigreeImports.length === 1 ? "" : "s"}</p>
       <div class="modal-actions">
         <button class="button button-ghost" id="detail-close">Close</button>
+        <button class="button button-ghost" id="detail-analytics">View analytics</button>
         <button class="button button-ghost" id="detail-print-pedigree">Print sale pedigree</button>
         <button class="button button-ghost" id="detail-print-qr">Print QR card</button>
         <button class="button button-ghost" id="detail-import-pedigree">Build / import pedigree</button>
@@ -3986,6 +3996,11 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
     `, `${a.species || "Animal"} record`);
 
     $("#detail-close").addEventListener("click", closeModal);
+    $("#detail-analytics").addEventListener("click", () => {
+      closeModal();
+      window.HerdHarborAnalytics?.openAnimal?.(id);
+      navigate("analytics");
+    });
     $("#detail-print-pedigree").addEventListener("click", () => openPrintPedigreeForm(id));
     $("#detail-print-qr").addEventListener("click", () => openAnimalQrCardForm(id));
     $("#detail-import-pedigree").addEventListener("click", () => openPedigreeImport(id));
