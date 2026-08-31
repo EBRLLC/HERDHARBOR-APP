@@ -156,7 +156,7 @@
   }
   function escapeHtml(v){return clean(v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
   function openEvidencePanel(doc,profile){
-    let panel=doc.getElementById('hh-pedigree-genetics-dialog');if(!panel){panel=doc.createElement('dialog');panel.id='hh-pedigree-genetics-dialog';panel.className='hh-genetics-dialog';doc.body.appendChild(panel);}
+    let panel=doc.getElementById('hh-pedigree-genetics-dialog');if(!panel){panel=doc.createElement('dialog');panel.id='hh-pedigree-genetics-dialog';panel.className='hh-genetics-dialog';(doc.body || doc.documentElement)?.appendChild(panel);}
     const rows=profile.rows.map(r=>`<tr><th>${escapeHtml(r.locus)}</th><td><code>${escapeHtml(r.text)}</code></td><td><span class="hh-genetics-badge hh-genetics-${escapeHtml(r.kind)}">${escapeHtml(r.label)}</span></td><td>${escapeHtml(r.note||'No additional note recorded.')}</td></tr>`).join('');
     const evidence=profile.evidence.length?`<ul>${profile.evidence.map(e=>`<li><strong>${escapeHtml(e.locus)}:</strong> ${escapeHtml(e.note||e.label||'Recorded genetics evidence')}</li>`).join('')}</ul>`:'<p>No additional pedigree or offspring evidence is currently recorded.</p>';
     const conflicts=profile.conflicts.length?`<div class="hh-genetics-conflicts"><h4>Genetic conflicts</h4><ul>${profile.conflicts.map(c=>`<li>${escapeHtml(c.message||c.note||`${c.locus||''} genetics conflict`)}</li>`).join('')}</ul></div>`:'';
