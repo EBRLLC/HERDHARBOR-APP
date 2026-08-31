@@ -60,6 +60,7 @@ const legacyRuntimeNames = [
 
 for (const legacy of legacyRuntimeNames) {
 assert.match(pwa, /HerdHarborPedigreeGenetics\?\.start\?\.\(window\)/, "the 1.5.1 pedigree renderer is started after loading");
+assert.ok(html.includes("HerdHarborPedigreeGenetics?.enhanceDocument?.(popup.document, true, window)"), "sale pedigree popup renders genetics before viewing/printing");
 assert.match(pedigreeGenetics, /const target=rootWindow\.document\?\.body;/, "pedigree observer uses a resolved body target");
 assert.match(pedigreeGenetics, /target\.nodeType!==1/, "pedigree observer rejects non-Node targets");
 assert.doesNotMatch(pedigreeGenetics, /observe\(rootWindow\.document\.body/, "pedigree observer never observes a raw body lookup");
