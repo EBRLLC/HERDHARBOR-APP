@@ -19,7 +19,11 @@
     })
   });
 
-  function createElement(tagName) {\n    try { return document.createElement?.(tagName) || null; } catch { return null; }\n  }\n\n  function addHelpButton() {
+  function createElement(tagName) {
+    try { return document.createElement?.(tagName) || null; } catch { return null; }
+  }
+
+  function addHelpButton() {
     const theme = document.querySelector?.("#theme-toggle");
     if (!theme || document.querySelector?.("#herdharbor-help-button")) return;
     const button = createElement("button");
