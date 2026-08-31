@@ -31,10 +31,10 @@ assert.match(cloud, /navigator\.onLine === false/);
 assert.match(cloud, /dirty && !\(await syncNow\(\)\)/);
 assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
-assert.match(worker, /v1\.5\.1-alpha-stability-membership-review-2/);
+assert.match(worker, /v1\.5\.1-alpha-stability-membership-review-3/);
 assert.match(worker, /herdharbor-access-cache-v1\.5\.1\.js\?v=1\.5\.1/);
 assert.match(worker, /herdharbor-cloud\.js\?v=19/);
-assert.match(worker, /pwa\.js\?v=24/);
+assert.match(worker, /pwa\.js\?v=25/);
 assert.match(worker, /pedigree-genetics-v1\.5\.1\.js\?v=1\.5\.1/);
 assert.match(worker, /rabbit-genetics-runtime-v1\.5\.1\.js\?v=1\.5\.1/);
 assert.match(worker, /shows-v1\.5\.1\.js\?v=1\.5\.1/);
