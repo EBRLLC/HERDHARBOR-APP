@@ -6007,6 +6007,9 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
         popup.document.write(printableHtml);
         popup.document.close();
         closeModal();
+        try {
+          window.HerdHarborPedigreeGenetics?.enhanceDocument?.(popup.document, true, window);
+        } catch {}
         setTimeout(() => popup.focus(), 150);
       }
     }
