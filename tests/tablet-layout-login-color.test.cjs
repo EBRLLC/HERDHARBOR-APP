@@ -41,7 +41,7 @@ assert.match(cloud, /--hh-auth-input: #0A2033/);
 assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog \{[\s\S]*?color: #18212A;[\s\S]*?background: #FFFFFF;[\s\S]*?color-scheme: light;/);
 assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog h2 \{ color: #0D2540; \}/);
 assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog \.hh-account-email \{ color: #526474; \}/);
-assert.match(worker, /v1\.5\.1-alpha-stability-membership-review-2/);
+assert.match(worker, /v1\.5\.1-alpha-stability-membership-review-3/);
 assert.match(worker, /herdharbor-access-cache-v1\.5\.1\.js\?v=1\.5\.1/);
 assert.match(worker, /herdharbor-cloud\.js\?v=19/);
 assert.match(worker, /pedigree-visual\.css\?v=2/);
