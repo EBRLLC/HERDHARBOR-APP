@@ -100,7 +100,7 @@ assert.match(worker, /event\.data\?\.type === "SKIP_WAITING"/);
 
 assert.doesNotMatch(cloud, /Sentry|HerdHarborMonitoring/, "Cloud Sync behavior is not rewritten around Sentry");
 assert.match(cloud, /const STORAGE_KEY = "herdharbor_pre_alpha_v1"/, "farm state storage key is unchanged");
-assert.match(shows, /const VERSION='1\\.5\\.1'/, "Shows runs from the v1.5.1 runtime");
+assert.ok(shows.includes("const VERSION='1.5.1'"), "Shows runs from the v1.5.1 runtime");
 
 for (const billingTerm of ["RevenueCat", "StoreKit", "Google Play Billing", "Founder membership", "30-day trial", "paywall"]) {
   assert.ok(!core.includes(billingTerm), `Phase 1 monitoring core must not implement ${billingTerm}`);
