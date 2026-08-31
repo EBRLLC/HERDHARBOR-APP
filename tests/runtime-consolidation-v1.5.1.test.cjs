@@ -8,6 +8,7 @@ const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const pwa = read("pwa.js");
 const worker = read("service-worker.js");
+const geneticsV2 = read("rabbit-genetics-engine-v2.js");
 const html = read("index.html");
 
 const activeV151 = [
@@ -57,6 +58,7 @@ const legacyRuntimeNames = [
 ];
 
 for (const legacy of legacyRuntimeNames) {
+assert.doesNotMatch(geneticsV2, /breeding-intelligence-core\.js['"]/,"v2 genetics engine does not require the legacy unversioned core");
   assert.doesNotMatch(pwa + "\n" + html, new RegExp(legacy.replaceAll(".", "\\.")), "startup loader still requests legacy runtime asset " + legacy);
   assert.doesNotMatch(worker, new RegExp(legacy.replaceAll(".", "\\.")), "service-worker.js still routes legacy runtime asset " + legacy);
   assert.doesNotMatch(html, new RegExp(legacy.replaceAll(".", "\\.")), "index.html still embeds legacy runtime asset " + legacy);
