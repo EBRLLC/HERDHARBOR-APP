@@ -1,0 +1,56 @@
+.analytics-shell { min-width: 0; }
+.analytics-toolbar,
+.analytics-tabs,
+.analytics-growth-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 16px; }
+.analytics-toolbar { padding: 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--white); }
+.analytics-toolbar label,
+.analytics-growth-controls > label { min-width: 145px; color: var(--muted); font-size: .78rem; font-weight: 800; }
+.analytics-toolbar select,
+.analytics-toolbar input,
+.analytics-growth-controls select { display: block; width: 100%; margin-top: 5px; }
+.analytics-tabs { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; scrollbar-width: thin; }
+.analytics-tabs .button { flex: 0 0 auto; }
+.analytics-panel { min-width: 0; margin-top: 16px; }
+.analytics-chart { min-width: 0; overflow: hidden; }
+.analytics-chart svg { display: block; width: 100%; height: auto; min-height: 240px; overflow: visible; }
+.analytics-grid line { stroke: var(--border); stroke-width: 1; }
+.analytics-grid text,
+.analytics-chart svg > text { fill: var(--muted); font: 12px system-ui, sans-serif; }
+.analytics-line { fill: none; stroke: var(--series); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.analytics-chart circle { fill: var(--series); stroke: var(--white); stroke-width: 2; cursor: pointer; }
+.analytics-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 16px; margin-top: 8px; color: var(--muted); font-size: .78rem; font-weight: 800; }
+.analytics-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.analytics-legend i { width: 10px; height: 10px; border-radius: 50%; }
+.analytics-growth-controls { align-items: start; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--white); }
+.analytics-growth-controls fieldset { display: flex; flex: 1 1 460px; flex-wrap: wrap; gap: 8px; min-width: 0; margin: 0; padding: 8px 10px 10px; border: 1px solid var(--border); border-radius: 12px; }
+.analytics-growth-controls legend { padding: 0 5px; color: var(--muted); font-size: .78rem; font-weight: 800; }
+.analytics-growth-controls fieldset label { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--cream); font-size: .82rem; font-weight: 750; }
+.analytics-growth-controls input[type="color"] { width: 26px; height: 26px; padding: 1px; border: 0; border-radius: 50%; background: transparent; }
+.analytics-empty { padding: 30px 18px; border: 1px dashed var(--border); border-radius: var(--radius); text-align: center; background: var(--white); }
+.analytics-empty strong { display: block; color: var(--navy); font-size: 1.05rem; }
+.analytics-empty p { margin: 7px 0 0; color: var(--muted); }
+.analytics-availability { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.analytics-availability > div { padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--cream); }
+.analytics-availability strong,
+.analytics-availability span { display: block; }
+.analytics-availability span { margin-top: 4px; color: var(--muted); font-size: .76rem; text-transform: capitalize; }
+html[data-theme="dark"] .analytics-toolbar,
+html[data-theme="dark"] .analytics-growth-controls,
+html[data-theme="dark"] .analytics-empty { background: #172738; }
+html[data-theme="dark"] .analytics-growth-controls fieldset label,
+html[data-theme="dark"] .analytics-availability > div { background: #203245; }
+html[data-theme="dark"] .analytics-empty strong { color: #f3efe5; }
+@media (max-width: 700px) {
+  .analytics-toolbar label { flex: 1 1 42%; min-width: 125px; }
+  .analytics-chart svg { width: 760px; max-width: none; }
+  .analytics-chart { overflow-x: auto; padding-bottom: 5px; }
+  .analytics-chart svg > text,
+  .analytics-grid text { font-size: 14px; }
+  .analytics-growth-controls > label { flex: 1 1 100%; }
+  .analytics-growth-controls fieldset { flex-basis: 100%; max-height: 250px; overflow-y: auto; }
+}
+@media (max-width: 430px) {
+  .analytics-toolbar label { flex-basis: 100%; }
+  .analytics-tabs .button { min-height: 44px; }
+  .analytics-chart svg { width: 660px; }
+}
