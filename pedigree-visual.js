@@ -237,8 +237,14 @@
     if (!enabled) return;
 
     const name = nameFromCard(card);
-    const src = photos.get(normalize(name));
-    if (!src) return;
+let src = photos.get(normalize(name));
+
+if (!src && generation === 0) {
+  const headerPhoto = card.ownerDocument.querySelector(".print-animal-photo img");
+  src = headerPhoto?.src || "";
+}
+
+if (!src) return;
 
     const image = card.ownerDocument.createElement("img");
     image.className = "hh-pedigree-thumb";
