@@ -120,6 +120,7 @@
             addScript("hh-rabbit-genetics-v151-runtime", "rabbit-genetics-runtime-v1.5.1.js?v=1.5.1", () => {
               addStylesheet("hh-pedigree-genetics-v151-style", "pedigree-genetics-v1.5.1.css?v=1.5.1");
               addScript("hh-pedigree-genetics-v151-script", "pedigree-genetics-v1.5.1.js?v=1.5.1", () => {
+                window.HerdHarborPedigreeGenetics?.start?.(window);
                 window.dispatchEvent(new CustomEvent("herdharbor:genetics-ready", { detail: { releaseVersion: "1.5.1" } }));
                 addScript("hh-breeding-intelligence-script", "breeding-intelligence-v1.5.1.js?v=1.5.1", () => {
                   addScript("hh-breeding-pair-hotfix-script", "breeding-pair-v1.5.1.js?v=1.5.1", () => {
