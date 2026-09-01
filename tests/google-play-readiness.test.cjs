@@ -43,7 +43,7 @@ assert.match(worker, /shows-v1\.6\.1\.css\?v=1\.6\.1/);
 assert.match(worker, /shows-v1\.6\.1\.js\?v=1\.6\.1/);
 assert.match(worker, /shows-v1\.6\.1-hardening\.js\?v=1\.6\.1/);
 assert.match(pwa, /\$\{APP_VERSION\}-alpha-stability-\$\{BUILD_ID\}/);
-assert.match(pwa, /const BUILD_ID = "current-state-1"/);
+assert.match(pwa, /const BUILD_ID = "current-state-2"/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
 assert.match(pwa, /loadShows/);
