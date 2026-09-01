@@ -146,6 +146,7 @@
 
   function bindGeneticsRouting() {
     if (window.__hhV161GeneticsRouterBound) return;
+    if (typeof document.addEventListener !== "function") return;
     window.__hhV161GeneticsRouterBound = true;
     document.addEventListener("click", (event) => {
       const trigger = isGeneticsTrigger(event.target);
@@ -171,6 +172,6 @@
     open: openAnimalGenetics,
     resolveAnimalId: animalIdFromTrigger
   });
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
+  if (document.readyState === "loading" && typeof document.addEventListener === "function") document.addEventListener("DOMContentLoaded", boot, { once: true });
   else boot();
 })();
