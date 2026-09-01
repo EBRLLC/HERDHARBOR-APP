@@ -3,3 +3,15 @@
 @media(max-width:760px){#hh-breeding-intelligence.hh-bi-card{padding:18px}.hh-bi-heading{display:grid}.hh-bi-badge{justify-self:start}.hh-bi-metrics{grid-template-columns:1fr 1fr 1fr}.hh-bi-pair-selectors,.hh-bi-form-row,.hh-bi-two-col{grid-template-columns:1fr}.hh-bi-pair-selectors button{width:100%}.hh-bi-locus{grid-template-columns:1fr}.hh-bi-modal-backdrop{padding:0}.hh-bi-modal{max-height:100dvh;height:100dvh;border-radius:0}.hh-bi-actions button{flex:1 1 45%}}
 @media(max-width:470px){.hh-bi-metrics{grid-template-columns:1fr}.hh-bi-actions button{flex-basis:100%}}
 .hh-bi-history-item>button{margin-top:12px;min-height:38px;padding:8px 12px;border:1px solid #82d0cc;border-radius:9px;cursor:pointer}.hh-bi-save-confirmation{margin:10px 0 0;color:#17645f;font-size:.88rem;font-weight:800;text-align:right}.hh-bi-save-confirmation.error{color:#9b2c2c}.hh-bi-modal button:disabled{cursor:not-allowed;opacity:.65}
+
+/* The genetics dialog is intentionally a light work surface in both themes. */
+html[data-theme="dark"] .hh-bi-modal{color:#0d2540;color-scheme:light}
+html[data-theme="dark"] .hh-bi-modal h2,
+html[data-theme="dark"] .hh-bi-modal h3,
+html[data-theme="dark"] .hh-bi-modal h4,
+html[data-theme="dark"] .hh-bi-modal label,
+html[data-theme="dark"] .hh-bi-modal summary,
+html[data-theme="dark"] .hh-bi-modal strong{color:#0d2540}
+html[data-theme="dark"] .hh-bi-modal .hh-bi-kicker{color:#17645f}
+html[data-theme="dark"] .hh-bi-modal p,
+html[data-theme="dark"] .hh-bi-modal li{color:#334b60}
