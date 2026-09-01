@@ -19,6 +19,8 @@
     })
   });
 
+  const STORAGE_KEY = "herdharbor_pre_alpha_v1";
+
   function createElement(tagName) {
     try { return document.createElement?.(tagName) || null; } catch { return null; }
   }
@@ -55,20 +57,120 @@
     if (document.documentElement?.dataset) document.documentElement.dataset.herdharborRelease = release.version;
     document.querySelectorAll?.("[data-app-version], .app-version, .version-label").forEach((element) => {
       const current = String(element.textContent || "");
-      if (/alpha|version|v\\d/i.test(current)) element.textContent = current.replace(/(?:v)?1\\.\\d+\\.\\d+/gi, "v" + release.version);
+      if (/alpha|version|v\d/i.test(current)) element.textContent = current.replace(/(?:v)?1\.\d+\.\d+/gi, "v" + release.version);
     });
     document.querySelectorAll?.(".hh-bi-kicker").forEach((element) => {
-      if (/Alpha v/i.test(element.textContent || "")) element.textContent = String(element.textContent).replace(/Alpha v\\d+\\.\\d+\\.\\d+/i, "Alpha v" + release.version);
+      if (/Alpha v/i.test(element.textContent || "")) element.textContent = String(element.textContent).replace(/Alpha v\d+\.\d+\.\d+/i, "Alpha v" + release.version);
     });
+  }
+
+  function readState() {
+    try {
+      const state = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      state.animals = Array.isArray(state.animals) ? state.animals : [];
+      return state;
+    } catch {
+      return { animals: [] };
+    }
+  }
+
+  function canonicalSpecies(value) {
+    try {
+      return window.HerdHarborBreedingIntelligenceCore?.canonicalSpecies?.(value) || String(value || "");
+    } catch {
+      return String(value || "");
+    }
+  }
+
+  function animalIdFromTrigger(trigger) {
+    if (!trigger) return "";
+    const candidates = [
+      trigger.dataset?.gv2Profile,
+      trigger.dataset?.animalGenetics,
+      trigger.dataset?.geneticsAnimalId,
+      trigger.dataset?.animalId,
+      trigger.closest?.("[data-animal-id]")?.dataset?.animalId,
+      trigger.closest?.("[data-view-animal]")?.dataset?.viewAnimal,
+      trigger.closest?.(".animal-card")?.querySelector?.("[data-view-animal]")?.dataset?.viewAnimal
+    ];
+    const direct = candidates.find((value) => value != null && String(value).trim());
+    if (direct != null) return String(direct);
+
+    const modalTitle = document.querySelector?.("#modal-content h2, #modal-content h3, #modal .modal-header h2")?.textContent?.trim();
+    if (!modalTitle) return "";
+    const animal = readState().animals.find((row) => String(row.name || row.tag || "").trim() === modalTitle);
+    return animal ? String(animal.id) : "";
+  }
+
+  function openAnimalGenetics(animalId) {
+    const state = readState();
+    const animal = state.animals.find((row) => String(row.id) === String(animalId));
+    if (!animal) return false;
+
+    if (canonicalSpecies(animal.species) !== "Rabbit") {
+      try {
+        window.HerdHarborPhase3?.openGenetics?.(animal.id);
+        return Boolean(window.HerdHarborPhase3?.openGenetics);
+      } catch {
+        return false;
+      }
+    }
+
+    const openers = [
+      () => window.HerdHarborRabbitGeneticsV2?.openProfile?.(animal.id),
+      () => window.HerdHarborBreedingIntelligence?.openGeneticProfile?.(animal.id),
+      () => window.HerdHarborPhase3?.openGenetics?.(animal.id)
+    ];
+
+    for (const open of openers) {
+      try {
+        const apiReady = window.HerdHarborRabbitGeneticsV2?.openProfile || window.HerdHarborBreedingIntelligence?.openGeneticProfile || window.HerdHarborPhase3?.openGenetics;
+        if (!apiReady) break;
+        const result = open();
+        if (result !== undefined || document.querySelector?.(".hh-bi-modal-backdrop, #hh-phase3-dialog")) return true;
+      } catch {}
+    }
+    return false;
+  }
+
+  function isGeneticsTrigger(target) {
+    const trigger = target?.closest?.("[data-gv2-profile], [data-animal-genetics], [data-genetics-animal-id], [data-bi-action=\"genetics\"], [data-bi-action=\"profile\"]");
+    if (trigger) return trigger;
+    const button = target?.closest?.("button, a");
+    if (!button) return null;
+    const text = String(button.textContent || "").trim().toLowerCase();
+    if (text !== "genetics" && text !== "open genetics" && text !== "view genetics") return null;
+    if (!button.closest?.(".animal-card, #modal-content, #modal, [data-animal-id]")) return null;
+    return button;
+  }
+
+  function bindGeneticsRouting() {
+    if (window.__hhV161GeneticsRouterBound) return;
+    window.__hhV161GeneticsRouterBound = true;
+    document.addEventListener("click", (event) => {
+      const trigger = isGeneticsTrigger(event.target);
+      if (!trigger) return;
+      const animalId = animalIdFromTrigger(trigger);
+      if (!animalId) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openAnimalGenetics(animalId);
+    }, true);
   }
 
   function boot() {
     addStyles();
     addHelpButton();
     updateVersionLabels();
+    bindGeneticsRouting();
   }
 
   window.HerdHarborRelease = release;
+  window.HerdHarborAnimalGenetics = Object.freeze({
+    version: release.version,
+    open: openAnimalGenetics,
+    resolveAnimalId: animalIdFromTrigger
+  });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
   else boot();
 })();
