@@ -78,7 +78,7 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /v1\.6\.1-alpha-current-state-1/);
+assert.match(serviceWorker, /v1\.6\.1-alpha-current-state-2/);
 assert.match(serviceWorker, /spreadsheet-import\.js\?v=17/);
 assert.match(serviceWorker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.6\.1/);
 assert.match(serviceWorker, /herdharbor-cloud\.js\?v=19/);
@@ -103,7 +103,7 @@ assert.match(serviceWorker, /shows-v1\.6\.1-hardening\.js\?v=1\.6\.1/);
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);
 assert.match(serviceWorker, /NETWORK_FIRST_PATHS/);
 assert.match(serviceWorker, /fetch\(request, \{ cache: "no-store" \}\)/);
-assert.match(pwa, /const BUILD_ID = "current-state-1"/);
+assert.match(pwa, /const BUILD_ID = "current-state-2"/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
 assert.match(pwa, /loadShows/);
