@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v1.6.1-alpha-current-state-1`;
+const CACHE_NAME = `${CACHE_PREFIX}v1.6.1-alpha-current-state-2`;
 const APP_SHELL = [
   "./",
   "./index.html",
