@@ -2,9 +2,9 @@
   "use strict";
 
   // Current release contract: const APP_VERSION = "1.6.1";
-  // Current build contract: const BUILD_ID = "current-state-1";
+  // Current build contract: const BUILD_ID = "current-state-2";
   const APP_VERSION = window.HerdHarborBuild?.version || "1.6.1";
-  const BUILD_ID = window.HerdHarborBuild?.buildId || "current-state-1";
+  const BUILD_ID = window.HerdHarborBuild?.buildId || "current-state-2";
   const PWA_BUILD = `${APP_VERSION}-alpha-stability-${BUILD_ID}`;
   const UPDATE_CHECK_MIN_INTERVAL_MS = 60_000;
   let installPrompt = null;
