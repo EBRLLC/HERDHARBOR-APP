@@ -16,7 +16,7 @@ const html = read("index.html");
 // v1.6.1 keeps the independently verified update path.
 assert.equal(manifest.version, "1.6.1");
 assert.match(pwa, /const APP_VERSION = "1\.6\.1"/);
-assert.match(pwa, /const BUILD_ID = "current-state-1"/);
+assert.match(pwa, /const BUILD_ID = "current-state-2"/);
 assert.match(pwa, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
 assert.match(html, /manifest\.json\?v=17/);
 
