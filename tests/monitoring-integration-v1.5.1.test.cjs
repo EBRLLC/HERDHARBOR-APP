@@ -91,7 +91,7 @@ assert.match(pwa, /Monitoring is optional and fail-open/);
 assert.match(pwa, /registration\.update\(\)/, "application update regression fix remains intact");
 assert.doesNotMatch(pwa, /HerdHarborCloud.*syncNow[\s\S]*SKIP_WAITING/, "app updates remain independent of Cloud Sync");
 
-assert.match(worker, /v1\.6\.1-alpha-current-state-1/);
+assert.match(worker, /v1\.6\.1-alpha-current-state-2/);
 assert.match(worker, /herdharbor-monitoring-config\.js\?v=1\.6\.1/);
 assert.match(worker, /herdharbor-monitoring-v1\.6\.1\.min\.js\?v=1\.6\.1/);
 assert.match(worker, /cache: "no-store"/);
