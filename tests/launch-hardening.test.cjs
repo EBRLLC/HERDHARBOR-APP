@@ -40,7 +40,7 @@ assert.match(worker, /rabbit-genetics-runtime-v1\.6\.1\.js\?v=1\.6\.1/);
 assert.match(worker, /shows-v1\.6\.1\.js\?v=1\.6\.1/);
 assert.match(worker, /shows-v1\.6\.1-hardening\.js\?v=1\.6\.1/);
 assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
-assert.match(pwa, /const BUILD_ID = "current-state-1"/);
+assert.match(pwa, /const BUILD_ID = "current-state-2"/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
 assert.match(pwa, /loadShows/);
