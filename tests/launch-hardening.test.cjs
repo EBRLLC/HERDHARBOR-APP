@@ -31,7 +31,7 @@ assert.match(cloud, /navigator\.onLine === false/);
 assert.match(cloud, /dirty && !\(await syncNow\(\)\)/);
 assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
-assert.match(worker, /v1\.6\.1-alpha-current-state-1/);
+assert.match(worker, /v1\.6\.1-alpha-current-state-2/);
 assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.6\.1/);
 assert.match(worker, /herdharbor-cloud\.js\?v=19/);
 assert.match(worker, /pwa\.js\?v=25/);
