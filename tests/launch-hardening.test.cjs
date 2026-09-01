@@ -31,7 +31,7 @@ assert.match(cloud, /navigator\.onLine === false/);
 assert.match(cloud, /dirty && !\(await syncNow\(\)\)/);
 assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
-assert.match(worker, /v1\.6\.1-alpha-current-state-1/);
+assert.match(worker, /v1\.6\.1-alpha-current-state-2/);
 assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.6\.1/);
 assert.match(worker, /herdharbor-cloud\.js\?v=19/);
 assert.match(worker, /pwa\.js\?v=25/);
@@ -40,7 +40,7 @@ assert.match(worker, /rabbit-genetics-runtime-v1\.6\.1\.js\?v=1\.6\.1/);
 assert.match(worker, /shows-v1\.6\.1\.js\?v=1\.6\.1/);
 assert.match(worker, /shows-v1\.6\.1-hardening\.js\?v=1\.6\.1/);
 assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
-assert.match(pwa, /const BUILD_ID = "current-state-1"/);
+assert.match(pwa, /const BUILD_ID = "current-state-2"/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
 assert.match(pwa, /loadShows/);
