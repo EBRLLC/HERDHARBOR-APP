@@ -461,6 +461,7 @@ input:focus, select:focus, textarea:focus {
 .animal-avatar {
   width: 52px;
   height: 52px;
+  flex: 0 0 52px;
   display: grid;
   place-items: center;
   color: white;
@@ -474,12 +475,14 @@ input:focus, select:focus, textarea:focus {
 .animal-card-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 16px;
   padding-top: 14px;
   border-top: 1px solid rgba(13,37,64,.08);
 }
+.animal-card-footer .button { flex: 0 0 auto; }
 
 .badge {
   display: inline-flex;
