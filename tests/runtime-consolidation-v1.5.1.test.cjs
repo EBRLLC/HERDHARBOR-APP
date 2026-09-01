@@ -75,7 +75,7 @@ assert.match(pedigreeGeneticsCss, /html\.hh-pedigree-print-document \.hh-pedigre
 assert.doesNotMatch(geneticsV2, /breeding-intelligence-core\.js['"]/, "advanced genetics engine does not require the legacy unversioned core");
 
 assert.ok(pwa.includes('const APP_VERSION = "1.6.1"'));
-assert.ok(worker.includes("v1.6.1-alpha-current-state-1"));
+assert.ok(worker.includes("v1.6.1-alpha-current-state-2"));
 assert.ok(worker.includes("pwa.js?v=25"));
 assert.ok(!pwa.includes(";" + String.fromCharCode(92) + "n    if"), "pwa.js contains no literal newline escape in executable source");
 assert.ok(!read("herdharbor-membership-v1.6.1.js").includes(";" + String.fromCharCode(92) + "n    if"), "membership source contains no literal newline escape in executable source");
