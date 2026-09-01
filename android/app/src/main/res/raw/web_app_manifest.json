@@ -3,7 +3,7 @@
   "name": "HerdHarbor",
   "short_name": "HerdHarbor",
   "description": "Secure farm and livestock records with stability monitoring, centralized memberships, Junior access, and protected cloud sync.",
-  "version": "1.5.1",
+  "version": "1.6.1",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

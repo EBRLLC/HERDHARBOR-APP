@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.join(__dirname, '..');
-const tools = fs.readFileSync(path.join(root, 'breeding-intelligence-tools-v1.5.1.js'), 'utf8');
+const tools = fs.readFileSync(path.join(root, 'breeding-intelligence-tools-v1.6.1.js'), 'utf8');
 const pwa = fs.readFileSync(path.join(root, 'pwa.js'), 'utf8');
 const worker = fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8');
 
@@ -19,7 +19,7 @@ assert.match(tools, /Genetics Data Exchange/);
 assert.match(tools, /addWorksheet\("Genetics"\)/);
 assert.match(tools, /addWorksheet\("Genetic Tests"\)/);
 assert.match(tools, /lower-confidence information never silently replaces/i);
-assert.match(pwa, /breeding-intelligence-tools-v1\.5\.1\.js\?v=1\.5\.1/);
-assert.match(worker, /breeding-intelligence-tools-v1\.5\.1\.js\?v=1\.5\.1/);
+assert.match(pwa, /breeding-intelligence-tools-v1\.6\.1\.js\?v=1\.6\.1/);
+assert.match(worker, /breeding-intelligence-tools-v1\.6\.1\.js\?v=1\.6\.1/);
 
-console.log('HerdHarbor v1.5.1 genetics tools tests passed');
+console.log('HerdHarbor v1.6.1 genetics tools tests passed');

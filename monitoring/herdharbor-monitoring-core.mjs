@@ -1,6 +1,6 @@
 "use strict";
 
-export const HERDHARBOR_MONITORING_RELEASE = "HerdHarbor@1.5.1";
+export const HERDHARBOR_MONITORING_RELEASE = "HerdHarbor@1.6.1";
 export const HERDHARBOR_MONITORING_BUILD = "phase1-monitoring-review-1";
 
 export const MODULES = Object.freeze([

@@ -1,0 +1,12 @@
+.hh-phase3-modal { width: min(820px, calc(100vw - 24px)); max-height: min(88vh, 900px); overflow: auto; }
+.hh-phase3-search { display: grid; gap: 10px; margin-bottom: 16px; }
+.hh-phase3-search input:not([type="checkbox"]) { width: 100%; }
+.hh-phase3-sections details,.hh-phase3-traits details { border-top: 1px solid var(--border); padding: 10px 0; }
+.hh-phase3-sections summary,.hh-phase3-traits summary { cursor: pointer; }
+.hh-phase3-traits summary { display: flex; justify-content: space-between; gap: 12px; }
+.hh-phase3-result { display: grid; width: 100%; gap: 5px; padding: 12px; border: 0; border-bottom: 1px solid var(--border); background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.hh-phase3-result:hover { background: var(--surface-muted, #f5f7fa); }
+.hh-phase3-result span,.hh-phase3-result small { color: var(--muted); }
+.hh-phase3-unavailable,.hh-phase3-warning { padding: 14px; border: 1px solid #d7a43b; border-radius: 10px; background: #fff8e5; color: #563c00; }
+.hh-phase3-resources { margin-top: 16px; }
+@media (max-width: 600px) { .hh-phase3-resources .panel-header { align-items: stretch; flex-direction: column; } .hh-phase3-resources button { width: 100%; } }

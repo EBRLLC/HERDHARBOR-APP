@@ -8,19 +8,19 @@ const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
 const config = read("herdharbor-monitoring-config.js");
-const pagesWorkflow = read(".github/workflows/v1.5.1-pages-deploy.yml");
-const reviewWorkflow = read(".github/workflows/v1.5.1-monitoring-review.yml");
+const pagesWorkflow = read(".github/workflows/v1.6.1-pages-deploy.yml");
+const reviewWorkflow = read(".github/workflows/v1.6.1-monitoring-review.yml");
 const instrumentation = read("monitoring/herdharbor-monitoring-instrumentation.mjs");
 const cloud = read("herdharbor-cloud.js");
 const readme = read("README.md");
-const monitoringSetup = read("V1.5.1-CRASH-MONITORING-SETUP.md");
+const monitoringSetup = read("V1.6.1-CRASH-MONITORING-SETUP.md");
 
 assert.match(readme, /deployed from the `main` branch through GitHub Pages/);
 assert.match(config, /dsn: ""/);
 assert.doesNotMatch(config, /https:\/\/[^"']+@[^"']*sentry/i);
 
 assert.match(pagesWorkflow, /workflow_dispatch:/);
-assert.doesNotMatch(pagesWorkflow, /push:\s*\n\s*branches:/, "v1.5.1 Pages deployment requires an explicit manual dispatch");
+assert.doesNotMatch(pagesWorkflow, /push:\s*\n\s*branches:/, "v1.6.1 Pages deployment requires an explicit manual dispatch");
 assert.match(pagesWorkflow, /github\.ref == 'refs\/heads\/main'/);
 assert.match(pagesWorkflow, /secrets\.HERDHARBOR_SENTRY_DSN/);
 assert.match(pagesWorkflow, /HERDHARBOR_MONITORING_ENVIRONMENT: production/);
@@ -41,4 +41,4 @@ assert.match(monitoringSetup, /Prevent Storing of IP Addresses/);
 assert.match(monitoringSetup, /scrubIPAddresses=true/);
 assert.match(monitoringSetup, /IP-derived user or geo context/);
 
-console.log("Alpha v1.5.1 deployment, Android review, and IndexedDB coverage guardrails passed");
+console.log("Alpha v1.6.1 deployment, Android review, and IndexedDB coverage guardrails passed");

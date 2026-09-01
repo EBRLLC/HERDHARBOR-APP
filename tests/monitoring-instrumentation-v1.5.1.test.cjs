@@ -137,7 +137,7 @@ const { pathToFileURL } = require("node:url");
   assert.match(instrumentationSource, /indexeddb_transaction_error/);
   assert.doesNotMatch(instrumentationSource, /databaseName|storeName|JSON\.stringify\(args\)|metadata:\s*args/);
 
-  console.log("Alpha v1.5.1 localStorage, IndexedDB, and import-export monitoring adapter tests passed");
+  console.log("Alpha v1.6.1 localStorage, IndexedDB, and import-export monitoring adapter tests passed");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

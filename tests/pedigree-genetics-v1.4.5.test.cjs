@@ -3,14 +3,14 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const Engine = require("../rabbit-genetics-runtime-v1.5.1.js");
-const PedigreeGenetics = require("../pedigree-genetics-v1.5.1.js");
+const Engine = require("../rabbit-genetics-runtime-v1.6.1.js");
+const PedigreeGenetics = require("../pedigree-genetics-v1.6.1.js");
 
 const root = path.resolve(__dirname, "..");
-const uiSource = fs.readFileSync(path.join(root, "pedigree-genetics-v1.5.1.js"), "utf8");
-const css = fs.readFileSync(path.join(root, "pedigree-genetics-v1.5.1.css"), "utf8");
+const uiSource = fs.readFileSync(path.join(root, "pedigree-genetics-v1.6.1.js"), "utf8");
+const css = fs.readFileSync(path.join(root, "pedigree-genetics-v1.6.1.css"), "utf8");
 const visualCss = fs.readFileSync(path.join(root, "pedigree-visual.css"), "utf8");
-const notes = fs.readFileSync(path.join(root, "RELEASE_NOTES-v1.5.1.md"), "utf8");
+const notes = fs.readFileSync(path.join(root, "RELEASE_NOTES-v1.6.1.md"), "utf8");
 
 function locus(alleles, source = "breeder", status = "confirmed") {
   return { alleles, source, status };
@@ -101,8 +101,8 @@ assert.match(visualCss, /width: 10\.6in !important/);
 assert.match(visualCss, /height: 8\.04in !important/, "existing single-page four-generation print bounds remain intact");
 assert.doesNotMatch(css, /hh-protected-field[^}]*font-size:/, "new genetics styling does not shrink breeder/color protected fields");
 
-assert.match(uiSource, /Show Genetics on Pedigree/, "1.5.1 pedigree settings retain genetics controls");
+assert.match(uiSource, /Show Genetics on Pedigree/, "1.6.1 pedigree settings retain genetics controls");
 assert.match(uiSource, /Full Inferred/);
 assert.match(uiSource, /Known Only/);
 
-console.log("Alpha v1.5.1 pedigree genetics display and inference tests passed");
+console.log("Alpha v1.6.1 pedigree genetics display and inference tests passed");

@@ -6,8 +6,8 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const root = path.resolve(__dirname, "..");
-const billingSource = fs.readFileSync(path.join(root, "herdharbor-billing-v1.5.1.js"), "utf8");
-const releaseSource = fs.readFileSync(path.join(root, "herdharbor-release-v1.5.1.js"), "utf8");
+const billingSource = fs.readFileSync(path.join(root, "herdharbor-billing-v1.6.1.js"), "utf8");
+const releaseSource = fs.readFileSync(path.join(root, "herdharbor-release-v1.6.1.js"), "utf8");
 
 function makeContext(release = null) {
   class CustomEvent { constructor(type, options = {}) { this.type = type; this.detail = options.detail; } }
@@ -24,8 +24,8 @@ function makeContext(release = null) {
 
 (async () => {
   const disabledContext = makeContext();
-  vm.runInContext(releaseSource, disabledContext, { filename: "herdharbor-release-v1.5.1.js" });
-  vm.runInContext(billingSource, disabledContext, { filename: "herdharbor-billing-v1.5.1.js" });
+  vm.runInContext(releaseSource, disabledContext, { filename: "herdharbor-release-v1.6.1.js" });
+  vm.runInContext(billingSource, disabledContext, { filename: "herdharbor-billing-v1.6.1.js" });
   const disabled = disabledContext.HerdHarborBilling;
   assert.equal(disabled.enabled(), false);
   assert.equal(disabled.plans.junior.priceMonthly, 0);
@@ -40,11 +40,11 @@ function makeContext(release = null) {
   assert.equal(disabledState.active, false);
 
   const enabledContext = makeContext({
-    version: "1.5.1",
+    version: "1.6.1",
     featureFlags: { billingEnabled: true },
     plans: disabledContext.HerdHarborRelease.plans
   });
-  vm.runInContext(billingSource, enabledContext, { filename: "herdharbor-billing-v1.5.1.js" });
+  vm.runInContext(billingSource, enabledContext, { filename: "herdharbor-billing-v1.6.1.js" });
   const enabled = enabledContext.HerdHarborBilling;
   assert.equal(enabled.__test.tierFromCustomerInfo({ entitlements: { active: { herdharbor_founder: {} } } }), "founder");
   assert.equal(enabled.__test.tierFromCustomerInfo({ entitlements: { active: { herdharbor_member: {} } } }), "member");
@@ -66,7 +66,7 @@ function makeContext(release = null) {
   assert.equal(pastDueState.status, "past_due");
   assert.equal(pastDueState.active, false);
 
-  console.log("Alpha v1.5.1 billing-ready centralized entitlement tests passed");
+  console.log("Alpha v1.6.1 billing-ready centralized entitlement tests passed");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

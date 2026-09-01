@@ -126,7 +126,7 @@ function makeFakeSentry() {
   assert.equal(monitoring.init({
     dsn: "https://public@example.invalid/1",
     environment: "test",
-    release: "HerdHarbor@1.5.1",
+    release: "HerdHarbor@1.6.1",
     build: "behavior-test",
     enableTestCrash: true
   }), true);
@@ -135,7 +135,7 @@ function makeFakeSentry() {
   assert.equal(calls.initOptions.enableLogs, false);
   assert.equal(calls.initOptions.tracesSampleRate, 0);
   assert.equal(calls.initOptions.sampleRate, 1);
-  assert.equal(calls.initOptions.release, "HerdHarbor@1.5.1");
+  assert.equal(calls.initOptions.release, "HerdHarbor@1.6.1");
   assert.equal(calls.initOptions.environment, "test");
   assert.equal(calls.initOptions.defaultIntegrations, undefined);
   const integrations = calls.initOptions.integrations([
@@ -151,7 +151,7 @@ function makeFakeSentry() {
   assert.equal(monitoring.setModule("shows"), "shows");
   assert.equal(monitoring.getStatus().module, "shows");
   assert.equal(monitoring.getStatus().platform, "web");
-  assert.equal(monitoring.getStatus().release, "HerdHarbor@1.5.1");
+  assert.equal(monitoring.getStatus().release, "HerdHarbor@1.6.1");
   assert.equal(monitoring.getStatus().build, "behavior-test");
 
   monitoring.addBreadcrumb({
@@ -244,7 +244,7 @@ function makeFakeSentry() {
   assert.ok(!cloudSerialized.includes("internal-cloud-user"));
   assert.equal(cloudFake.calls.messageEvents[0].event.tags.hh_error_category, "upload_failure");
 
-  console.log("Alpha v1.5.1 monitoring behavior, tagging, dedupe, and platform tests passed");
+  console.log("Alpha v1.6.1 monitoring behavior, tagging, dedupe, and platform tests passed");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

@@ -7,8 +7,8 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const cloud = read("herdharbor-cloud.js");
-const admin = read("herdharbor-admin-v1.5.1.js");
-const membership = read("herdharbor-membership-v1.5.1.js");
+const admin = read("herdharbor-admin-v1.6.1.js");
+const membership = read("herdharbor-membership-v1.6.1.js");
 const html = read("index.html");
 const directorySql = read("supabase/v1.5.1-admin-member-directory.sql");
 const activeAdminSql = read("supabase/v1.5.1-active-admin-authorization.sql");
@@ -81,7 +81,7 @@ assert.match(membership, /isOwner/);
 assert.match(membership, /isAdmin/);
 
 assert.match(html, /data-route="admin"[^>]*hidden[^>]*aria-hidden="true"/);
-assert.match(html, /herdharbor-access-cache-v1\.5\.1\.js/);
+assert.match(html, /herdharbor-access-cache-v1\.6\.1\.js/);
 assert.match(html, /if \(route === "admin" && window\.HerdHarborMembership\?\.canAccessAdmin\?\.\(\) !== true\)/);
 assert.match(html, /HerdHarborAdmin\?\.render\?\.\(\)/);
 assert.match(admin, /Supabase also enforces this permission through Row Level Security/);
@@ -110,4 +110,4 @@ assert.match(cloud, /const STORAGE_KEY = "herdharbor_pre_alpha_v1"/, "protected 
 assert.match(html, /const defaultState = \{/);
 assert.doesNotMatch(html, /juniorAnimals|juniorPedigrees|juniorSync/, "Junior reuses current farm records and sync");
 
-console.log("Alpha v1.5.1 Owner/Admin membership security and UI contract tests passed");
+console.log("Alpha v1.6.1 Owner/Admin membership security and UI contract tests passed");
