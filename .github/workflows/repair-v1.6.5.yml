@@ -27,8 +27,9 @@ jobs:
         run: |
           set -euo pipefail
           git checkout 6cb7db57e359c47a5a87430a0abcbf54d49232cd -- index.html
-          git apply --check repair/index-e62a71b.patch
-          git apply repair/index-e62a71b.patch
+          test "$(git hash-object index.html)" = "c5f1a0872ce220c312686e3b77747fd507f1c51e"
+          git apply --ignore-space-change --ignore-whitespace --check repair/index-e62a71b.patch
+          git apply --ignore-space-change --ignore-whitespace repair/index-e62a71b.patch
           actual_blob="$(git hash-object index.html)"
           test "$actual_blob" = "ed1994703df927c4d00994c94747d6f3ef2b8d21" || {
             echo "Recovered index blob mismatch: $actual_blob" >&2
