@@ -142,10 +142,21 @@ html.hh-pedigree-print-document .node-details b {
 
 .hh-pedigree-settings {
   margin-top: 16px;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.hh-pedigree-settings,
+.hh-pedigree-settings * {
+  box-sizing: border-box;
 }
 
 .hh-pedigree-settings .hh-setting-row {
   display: grid;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   gap: 6px;
   margin-top: 12px;
 }
@@ -155,24 +166,72 @@ html.hh-pedigree-print-document .node-details b {
 }
 
 .hh-pedigree-settings label {
+  max-width: 100%;
+  min-width: 0;
   font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.hh-pedigree-settings select {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .hh-pedigree-settings .hh-setting-check {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  gap: 10px;
   font-weight: 600;
 }
 
-.hh-pedigree-settings .hh-setting-check input {
-  margin-top: 3px;
+.hh-pedigree-settings .hh-setting-check input[type="checkbox"] {
+  box-sizing: border-box;
+  flex: none;
+  width: 22px !important;
+  min-width: 22px !important;
+  max-width: 22px !important;
+  height: 22px !important;
+  min-height: 22px !important;
+  max-height: 22px !important;
+  margin: 2px 0 0 !important;
+  padding: 0 !important;
+}
+
+.hh-pedigree-settings .hh-setting-check span {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .hh-pedigree-settings .hh-setting-help {
+  max-width: 100%;
+  min-width: 0;
   margin: 2px 0 0;
   font-size: 0.88em;
   opacity: 0.78;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 620px) {
+  .hh-pedigree-settings {
+    width: 100%;
+  }
+
+  .hh-pedigree-settings .hh-setting-row,
+  .hh-pedigree-settings .hh-setting-check,
+  .hh-pedigree-settings select,
+  .hh-pedigree-settings .hh-setting-help {
+    max-width: 100%;
+    min-width: 0;
+  }
 }
 
 @media print {
