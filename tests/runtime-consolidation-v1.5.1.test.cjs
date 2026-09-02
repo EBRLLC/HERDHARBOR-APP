@@ -8,6 +8,7 @@ const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const pwa = read("pwa.js");
 const worker = read("service-worker.js");
+const build = read("herdharbor-build.js");
 const geneticsV2 = read("rabbit-genetics-engine-advanced-v1.6.1.js");
 const pedigreeGenetics = read("pedigree-genetics-v1.6.1.js");
 const pedigreeGeneticsCss = read("pedigree-genetics-v1.6.1.css");
@@ -36,8 +37,8 @@ const activeV151 = [
 
 for (const file of activeV151) {
   assert.ok(fs.existsSync(path.join(root, file)), "missing consolidated runtime asset: " + file);
-  assert.ok((pwa + "\n" + html).includes(file + "?v=1.6.5"), "startup loader does not load " + file + " as v1.6.1");
-  assert.ok(worker.includes("./" + file + "?v=1.6.5"), "service-worker.js does not precache " + file + " as v1.6.1");
+  assert.ok((pwa + "\n" + html).includes(file + "?v=1.6.5"), "startup loader does not load " + file + " using the stable runtime query identity");
+  assert.ok(worker.includes("./" + file + "?v=1.6.5"), "service-worker.js does not precache " + file + " using the stable runtime query identity");
 }
 
 const legacyRuntimeNames = [
@@ -74,12 +75,13 @@ assert.match(pedigreeGenetics, /printContext&&doc\.documentElement\?\.classList\
 assert.match(pedigreeGeneticsCss, /html\.hh-pedigree-print-document \.hh-pedigree-genetics\{font-size:7\.3px;/, "compact print genetics sizing is defined");
 assert.doesNotMatch(geneticsV2, /breeding-intelligence-core\.js['"]/, "advanced genetics engine does not require the legacy unversioned core");
 
-assert.ok(pwa.includes('const APP_VERSION = "1.6.5"'));
-assert.ok(worker.includes("v1.6.5-alpha-analytics-market-foundation-1"));
+assert.match(build, /version:\s*"1\.6\.6"/);
+assert.match(build, /buildId:\s*"mobile-analytics-hotfix-1"/);
+assert.ok(worker.includes("v1.6.6-alpha-mobile-analytics-hotfix-1"));
 assert.ok(worker.includes("pwa.js?v=26"));
 assert.ok(!pwa.includes(";" + String.fromCharCode(92) + "n    if"), "pwa.js contains no literal newline escape in executable source");
 assert.ok(!read("herdharbor-membership-v1.6.1.js").includes(";" + String.fromCharCode(92) + "n    if"), "membership source contains no literal newline escape in executable source");
 assert.ok(!read("pedigree-visual.js").includes(";" + String.fromCharCode(92) + "n    if"), "pedigree source contains no literal newline escape in executable source");
 assert.ok(!read("spreadsheet-import.js").includes(";" + String.fromCharCode(92) + "n    if"), "spreadsheet source contains no literal newline escape in executable source");
 
-console.log("v1.6.1 runtime consolidation tests passed");
+console.log("v1.6.1 runtime consolidation tests passed under Alpha v1.6.6 web hotfix");
