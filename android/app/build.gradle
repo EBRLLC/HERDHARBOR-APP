@@ -117,10 +117,10 @@ task generateShorcutsFile {
                         'android:shortcutShortLabel': '@string/shortcut_short_name_' + i,
                         'android:shortcutLongLabel': '@string/shortcut_name_' + i) {
                     'intent'(
-                            'android:action': 'android.intent.action.MAIN,
-                        'android:targetPackage': twaManifest.applicationId,
-                        'android:targetClass': twaManifest.applicationId + '.LauncherActivity',
-                        'android:data': s.url)
+                            'android:action': 'android.intent.action.MAIN',
+                            'android:targetPackage': twaManifest.applicationId,
+                            'android:targetClass': twaManifest.applicationId + '.LauncherActivity',
+                            'android:data': s.url)
                     'categories'('android:name': 'android.intent.category.LAUNCHER')
                 }
             }
