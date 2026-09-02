@@ -7,7 +7,7 @@
   window.HerdHarborMonitoringConfig = Object.freeze({
     dsn: "",
     environment: "",
-    release: "HerdHarbor@1.6.6",
+    release: "HerdHarbor@1.6.7",
     build: "completion-debt-1",
     enableTestCrash: false
   });
