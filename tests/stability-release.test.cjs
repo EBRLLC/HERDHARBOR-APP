@@ -17,16 +17,17 @@ const pedigreeGeneticsCss = fs.readFileSync(path.join(root, "pedigree-genetics-v
 const shows = fs.readFileSync(path.join(root, "shows-v1.6.1.js"), "utf8");
 const showsCss = fs.readFileSync(path.join(root, "shows-v1.6.1.css"), "utf8");
 const showsHardening = fs.readFileSync(path.join(root, "shows-v1.6.1-hardening.js"), "utf8");
+const mobileGrowth = fs.readFileSync(path.join(root, "tests/mobile-growth-layout-v1.6.6.test.cjs"), "utf8");
 
-// v1.6.6 remains additive: the established app/data model stays intact while current release assets overlay it.
-assert.match(build, /version:\s*"1\.6\.6"/);
+// v1.6.7 remains additive: the established app/data model and live v1.6.6 mobile hotfix stay intact.
+assert.match(build, /version:\s*"1\.6\.7"/);
 assert.match(build, /buildId:\s*"completion-debt-1"/);
-assert.match(html, /HerdHarbor Alpha v1\.6\.5 consolidated application shell/, "the recovered v1.6.5 shell is preserved byte-safely; HerdHarborBuild is authoritative for v1.6.6");
+assert.match(html, /HerdHarbor Alpha v1\.6\.5 consolidated application shell/, "the recovered shell stays intact while HerdHarborBuild is authoritative for v1.6.7");
 assert.match(html, /id="settings-sync-now"/);
 assert.match(html, /id="settings-last-synced"/);
 assert.match(html, /id="export-excel"/);
 assert.match(html, /HerdHarbor Alpha v\$\{APP_VERSION\}/);
-assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.6\.5"/, "legacy inline fallback remains only as a fallback after HerdHarborBuild loads");
+assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.6\.5"/, "legacy inline fallback remains only a fallback after HerdHarborBuild loads");
 assert.match(html, /Guided pedigree builder · v\$\{APP_VERSION\}/);
 assert.doesNotMatch(html, /Guided pedigree builder · v0\.2\.1/);
 assert.match(html, /let animalView = \{[\s\S]*?status: "Active"[\s\S]*?\};/);
@@ -81,9 +82,9 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /v1\.6\.6-alpha-completion-debt-1/);
+assert.match(serviceWorker, /v1\.6\.7-alpha-completion-debt-1/);
 assert.match(serviceWorker, /spreadsheet-import\.js\?v=17/);
-assert.match(serviceWorker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.6\.6/);
+assert.match(serviceWorker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.6\.7/);
 assert.match(serviceWorker, /herdharbor-cloud\.js\?v=19/);
 assert.match(serviceWorker, /symptom-guide\.js\?v=1/);
 assert.match(serviceWorker, /pwa\.js\?v=27/);
@@ -95,19 +96,21 @@ for (const asset of [
   "rabbit-genetics-engine-advanced-v1.6.1.js", "rabbit-genetics-runtime-v1.6.1.js",
   "rabbit-genetics-ui-compat-v1.6.1.js", "rabbit-genetics-ui-advanced-v1.6.1.js",
   "herdharbor-release-v1.6.1.js", "shows-v1.6.1.css", "shows-v1.6.1.js", "shows-v1.6.1-hardening.js"
-]) assert.ok(serviceWorker.includes(`${asset}?v=1.6.6`), `${asset} is not cached with v1.6.6 identity`);
+]) assert.ok(serviceWorker.includes(`${asset}?v=1.6.7`), `${asset} is not cached with v1.6.7 identity`);
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);
 assert.match(serviceWorker, /NETWORK_FIRST_PATHS/);
 assert.match(serviceWorker, /fetch\(request, \{ cache: "no-store" \}\)/);
-assert.match(pwa, /const BUILD_ID = "completion-debt-1"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "completion-debt-1"/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
 assert.match(pwa, /loadShows/);
-assert.match(pwa, /shows-v1\.6\.1-hardening\.js\?v=1\.6\.6/);
+assert.match(pwa, /shows-v1\.6\.1-hardening\.js\?v=1\.6\.7/);
 assert.match(pwa, /schemaVersion: 3/);
 assert.match(pwa, /registration\.update\(\)/);
 assert.match(pwa, /updateViaCache: "none"/);
 assert.doesNotMatch(pwa, /HerdHarborCloud/);
+assert.match(mobileGrowth, /Alpha v1\.6\.6 mobile Growth layout guard passed/);
+
 assert.match(records, /normalized === "female"/);
 assert.doesNotMatch(records, /\/male\|buck\//);
 assert.match(genetics, /Genetic conflict detected/);
@@ -120,7 +123,7 @@ assert.match(pedigreeGenetics, /Entered Genetics remains separate from Inferred 
 assert.match(pedigreeGeneticsCss, /white-space:nowrap/);
 assert.doesNotMatch(pedigreeGeneticsCss, /hh-protected-field[^}]*font-size:/);
 
-// Shows must remain additive and use existing canonical HerdHarbor data stores.
+// Shows remains additive and uses existing canonical HerdHarbor data stores.
 assert.match(shows, /COLLECTIONS=\['shows','showEntries','showResults','showAwards','exhibitors','showProjects','projectGoals','projectNotes','projectPhotos'\]/);
 assert.match(shows, /state\.transactions\.push\(/);
 assert.match(shows, /state\.health\.push\(/);
@@ -141,4 +144,4 @@ assert.match(showsHardening, /PAGE_SIZE = 24/);
 assert.match(showsCss, /overflow-x:auto/);
 assert.match(showsCss, /@media \(max-width:520px\)/);
 
-console.log("Alpha v1.6.6 completion release stability tests passed");
+console.log("Alpha v1.6.7 completion release stability tests passed");
