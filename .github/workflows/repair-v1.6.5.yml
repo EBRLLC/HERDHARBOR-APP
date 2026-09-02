@@ -27,14 +27,8 @@ jobs:
         run: |
           set -euo pipefail
           git checkout 6cb7db57e359c47a5a87430a0abcbf54d49232cd -- index.html
-          test "$(git hash-object index.html)" = "c5f1a0872ce220c312686e3b77747fd507f1c51e"
-          git apply --ignore-space-change --ignore-whitespace --check repair/index-e62a71b.patch
-          git apply --ignore-space-change --ignore-whitespace repair/index-e62a71b.patch
-          actual_blob="$(git hash-object index.html)"
-          test "$actual_blob" = "ed1994703df927c4d00994c94747d6f3ef2b8d21" || {
-            echo "Recovered index blob mismatch: $actual_blob" >&2
-            exit 1
-          }
+          python repair/recover-index.py
+          test "$(git hash-object index.html)" = "ed1994703df927c4d00994c94747d6f3ef2b8d21"
           python repair/v165-review-fixes.py
 
       - name: Run complete regression suite in UTC and America/New_York
@@ -55,7 +49,7 @@ jobs:
         run: |
           set -euo pipefail
           git restore vendor/herdharbor-monitoring-v1.6.1.min.js 2>/dev/null || true
-          rm -f repair/index-e62a71b.patch repair/v165-review-fixes.py .github/workflows/repair-v1.6.5.yml
+          rm -f repair/index-e62a71b.patch repair/recover-index.py repair/v165-review-fixes.py .github/workflows/repair-v1.6.5.yml
           rmdir repair 2>/dev/null || true
           git add -A
           git diff --cached --check
