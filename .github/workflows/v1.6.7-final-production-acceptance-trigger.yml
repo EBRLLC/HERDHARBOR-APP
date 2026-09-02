@@ -1,0 +1,46 @@
+name: Alpha v1.6.7 final protected production acceptance
+
+on:
+  push:
+    branches: [v1.6.7-final-production-acceptance]
+
+permissions:
+  contents: read
+
+jobs:
+  production-acceptance:
+    environment: production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout approved v1.6.7 release
+        uses: actions/checkout@v4
+        with:
+          ref: 65fa177645897de272784ac60a059d58af0f4707
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify approved completion contract
+        run: |
+          npm ci --no-audit --no-fund
+          npm run test:completion
+      - name: Run membership/RLS production acceptance
+        env:
+          HERDHARBOR_SUPABASE_URL: ${{ secrets.HERDHARBOR_SUPABASE_URL }}
+          HERDHARBOR_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.HERDHARBOR_SUPABASE_PUBLISHABLE_KEY }}
+          HH_ACCEPTANCE_OWNER_EMAIL: ${{ secrets.HH_ACCEPTANCE_OWNER_EMAIL }}
+          HH_ACCEPTANCE_OWNER_PASSWORD: ${{ secrets.HH_ACCEPTANCE_OWNER_PASSWORD }}
+          HH_ACCEPTANCE_USER_EMAIL: ${{ secrets.HH_ACCEPTANCE_USER_EMAIL }}
+          HH_ACCEPTANCE_USER_PASSWORD: ${{ secrets.HH_ACCEPTANCE_USER_PASSWORD }}
+          HH_ACCEPTANCE_NEW_USER_EMAIL: ${{ secrets.HH_ACCEPTANCE_NEW_USER_EMAIL }}
+          HH_ACCEPTANCE_NEW_USER_PASSWORD: ${{ secrets.HH_ACCEPTANCE_NEW_USER_PASSWORD }}
+          HH_ACCEPTANCE_JUNIOR_EMAIL: ${{ secrets.HH_ACCEPTANCE_JUNIOR_EMAIL }}
+          HH_ACCEPTANCE_JUNIOR_PASSWORD: ${{ secrets.HH_ACCEPTANCE_JUNIOR_PASSWORD }}
+        run: node scripts/membership-production-acceptance.mjs
+      - name: Run synthetic-only Sentry production acceptance
+        env:
+          HERDHARBOR_SENTRY_DSN: ${{ secrets.HERDHARBOR_SENTRY_DSN }}
+        run: node scripts/sentry-production-acceptance.mjs
+      - name: Final acceptance summary
+        run: |
+          echo "Alpha v1.6.7 final protected acceptance passed on reviewed release 65fa177645897de272784ac60a059d58af0f4707."
+          echo "Market production hardening and Edge Function redeployment were already completed and validated separately."
