@@ -1,0 +1,93 @@
+name: Alpha v1.6.7 production acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_market:
+        description: Apply Market SQL hardening and redeploy the Market Edge Function
+        required: true
+        default: false
+        type: boolean
+      run_membership:
+        description: Run read-only membership/RLS acceptance with dedicated test accounts
+        required: true
+        default: false
+        type: boolean
+      run_sentry:
+        description: Send one synthetic-only Sentry acceptance event
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+env:
+  HERDHARBOR_MONITORING_ENVIRONMENT: production
+  HERDHARBOR_BUILD_ID: completion-debt-1
+
+jobs:
+  production-acceptance:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify reviewed Alpha v1.6.7 completion contract before touching production
+        run: |
+          npm ci --no-audit --no-fund
+          npm run test:completion
+
+      - name: Set up Supabase CLI
+        if: ${{ inputs.deploy_market }}
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Apply Market Analytics privacy hardening
+        if: ${{ inputs.deploy_market }}
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          test -n "$SUPABASE_DB_URL"
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/v1.6.7-market-privacy-hardening.sql
+
+      - name: Redeploy Market contribution Edge Function
+        if: ${{ inputs.deploy_market }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          test -n "$SUPABASE_PROJECT_REF"
+          supabase functions deploy market-contribution --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+
+      - name: Run membership/RLS production acceptance
+        if: ${{ inputs.run_membership }}
+        env:
+          HERDHARBOR_SUPABASE_URL: ${{ secrets.HERDHARBOR_SUPABASE_URL }}
+          HERDHARBOR_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.HERDHARBOR_SUPABASE_PUBLISHABLE_KEY }}
+          HH_ACCEPTANCE_OWNER_EMAIL: ${{ secrets.HH_ACCEPTANCE_OWNER_EMAIL }}
+          HH_ACCEPTANCE_OWNER_PASSWORD: ${{ secrets.HH_ACCEPTANCE_OWNER_PASSWORD }}
+          HH_ACCEPTANCE_USER_EMAIL: ${{ secrets.HH_ACCEPTANCE_USER_EMAIL }}
+          HH_ACCEPTANCE_USER_PASSWORD: ${{ secrets.HH_ACCEPTANCE_USER_PASSWORD }}
+          HH_ACCEPTANCE_NEW_USER_EMAIL: ${{ secrets.HH_ACCEPTANCE_NEW_USER_EMAIL }}
+          HH_ACCEPTANCE_NEW_USER_PASSWORD: ${{ secrets.HH_ACCEPTANCE_NEW_USER_PASSWORD }}
+          HH_ACCEPTANCE_JUNIOR_EMAIL: ${{ secrets.HH_ACCEPTANCE_JUNIOR_EMAIL }}
+          HH_ACCEPTANCE_JUNIOR_PASSWORD: ${{ secrets.HH_ACCEPTANCE_JUNIOR_PASSWORD }}
+        run: node scripts/membership-production-acceptance.mjs
+
+      - name: Run synthetic-only Sentry production acceptance
+        if: ${{ inputs.run_sentry }}
+        env:
+          HERDHARBOR_SENTRY_DSN: ${{ secrets.HERDHARBOR_SENTRY_DSN }}
+        run: node scripts/sentry-production-acceptance.mjs
+
+      - name: Production acceptance summary
+        run: |
+          echo "Alpha v1.6.7 protected production acceptance finished."
+          echo "Market deployment requested: ${{ inputs.deploy_market }}"
+          echo "Membership acceptance requested: ${{ inputs.run_membership }}"
+          echo "Sentry acceptance requested: ${{ inputs.run_sentry }}"
