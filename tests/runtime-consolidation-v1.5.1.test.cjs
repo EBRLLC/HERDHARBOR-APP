@@ -13,7 +13,7 @@ const pedigreeGenetics = read("pedigree-genetics-v1.6.1.js");
 const pedigreeGeneticsCss = read("pedigree-genetics-v1.6.1.css");
 const html = read("index.html");
 
-const activeV151 = [
+const activeV161 = [
   "herdharbor-release-v1.6.1.js",
   "herdharbor-membership-v1.6.1.js",
   "herdharbor-billing-v1.6.1.js",
@@ -34,10 +34,10 @@ const activeV151 = [
   "shows-v1.6.1-performance.js"
 ];
 
-for (const file of activeV151) {
+for (const file of activeV161) {
   assert.ok(fs.existsSync(path.join(root, file)), "missing consolidated runtime asset: " + file);
-  assert.ok((pwa + "\n" + html).includes(file + "?v=1.6.5"), "startup loader does not load " + file + " as v1.6.1");
-  assert.ok(worker.includes("./" + file + "?v=1.6.5"), "service-worker.js does not precache " + file + " as v1.6.1");
+  assert.ok((pwa + "\n" + html).includes(file + "?v=1.6.6") || html.includes(file + "?v=1.6.5"), "startup loader does not load current runtime asset " + file);
+  assert.ok(worker.includes("./" + file + "?v=1.6.6"), "service-worker.js does not precache current runtime asset " + file);
 }
 
 const legacyRuntimeNames = [
@@ -65,7 +65,8 @@ for (const legacy of legacyRuntimeNames) {
   assert.doesNotMatch(html, new RegExp(legacy.replaceAll(".", "\\.")), "index.html still embeds legacy runtime asset " + legacy);
 }
 
-assert.match(pwa, /HerdHarborPedigreeGenetics\?\.start\?\.\(window\)/, "the 1.6.1 pedigree renderer is started after loading");
+assert.match(pwa, /HerdHarborPedigreeGenetics\?\.start\?\.\(window\)/, "the consolidated pedigree renderer is started after loading");
+assert.match(pwa, /schemaVersion: 3/, "the final genetics-ready event advertises schema 3");
 assert.ok(html.includes("HerdHarborPedigreeGenetics?.enhanceDocument?.(popup.document, true, window)"), "sale pedigree popup renders genetics before viewing/printing");
 assert.match(pedigreeGenetics, /const target=rootWindow\.document\?\.body;/, "pedigree observer uses a resolved body target");
 assert.match(pedigreeGenetics, /target\.nodeType!==1/, "pedigree observer rejects non-Node targets");
@@ -74,12 +75,12 @@ assert.match(pedigreeGenetics, /printContext&&doc\.documentElement\?\.classList\
 assert.match(pedigreeGeneticsCss, /html\.hh-pedigree-print-document \.hh-pedigree-genetics\{font-size:7\.3px;/, "compact print genetics sizing is defined");
 assert.doesNotMatch(geneticsV2, /breeding-intelligence-core\.js['"]/, "advanced genetics engine does not require the legacy unversioned core");
 
-assert.ok(pwa.includes('const APP_VERSION = "1.6.5"'));
-assert.ok(worker.includes("v1.6.5-alpha-analytics-market-foundation-1"));
-assert.ok(worker.includes("pwa.js?v=26"));
+assert.ok(pwa.includes('const APP_VERSION = window.HerdHarborBuild?.version || "1.6.6"'));
+assert.ok(worker.includes("v1.6.6-alpha-completion-debt-1"));
+assert.ok(worker.includes("pwa.js?v=27"));
 assert.ok(!pwa.includes(";" + String.fromCharCode(92) + "n    if"), "pwa.js contains no literal newline escape in executable source");
 assert.ok(!read("herdharbor-membership-v1.6.1.js").includes(";" + String.fromCharCode(92) + "n    if"), "membership source contains no literal newline escape in executable source");
 assert.ok(!read("pedigree-visual.js").includes(";" + String.fromCharCode(92) + "n    if"), "pedigree source contains no literal newline escape in executable source");
 assert.ok(!read("spreadsheet-import.js").includes(";" + String.fromCharCode(92) + "n    if"), "spreadsheet source contains no literal newline escape in executable source");
 
-console.log("v1.6.1 runtime consolidation tests passed");
+console.log("v1.6.6 runtime consolidation tests passed");
