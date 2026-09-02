@@ -8,6 +8,7 @@ const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const spreadsheet = fs.readFileSync(path.join(root, "spreadsheet-import.js"), "utf8");
 const serviceWorker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 const pwa = fs.readFileSync(path.join(root, "pwa.js"), "utf8");
+const build = fs.readFileSync(path.join(root, "herdharbor-build.js"), "utf8");
 const records = fs.readFileSync(path.join(root, "rabbit-records-v1.6.1.js"), "utf8");
 const genetics = fs.readFileSync(path.join(root, "rabbit-genetics-engine-compat-v1.6.1.js"), "utf8");
 const runtime = fs.readFileSync(path.join(root, "rabbit-genetics-runtime-v1.6.1.js"), "utf8");
@@ -17,7 +18,9 @@ const shows = fs.readFileSync(path.join(root, "shows-v1.6.1.js"), "utf8");
 const showsCss = fs.readFileSync(path.join(root, "shows-v1.6.1.css"), "utf8");
 const showsHardening = fs.readFileSync(path.join(root, "shows-v1.6.1-hardening.js"), "utf8");
 
-// v1.6.5 remains additive: the established app/data model stays intact while release assets overlay it.
+// v1.6.6 is additive: the established app/data model stays intact while the live web/PWA shell receives the mobile hotfix.
+assert.match(build, /version:\s*"1\.6\.6"/);
+assert.match(build, /buildId:\s*"mobile-analytics-hotfix-1"/);
 assert.match(html, /HerdHarbor Alpha v1\.6\.5 consolidated application shell/);
 assert.match(html, /id="settings-sync-now"/);
 assert.match(html, /id="settings-last-synced"/);
@@ -78,7 +81,7 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /v1\.6\.5-alpha-analytics-market-foundation-1/);
+assert.match(serviceWorker, /v1\.6\.6-alpha-mobile-analytics-hotfix-1/);
 assert.match(serviceWorker, /spreadsheet-import\.js\?v=17/);
 assert.match(serviceWorker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.6\.5/);
 assert.match(serviceWorker, /herdharbor-cloud\.js\?v=19/);
@@ -123,7 +126,6 @@ assert.match(pedigreeGenetics, /Entered Genetics remains separate from Inferred 
 assert.match(pedigreeGeneticsCss, /white-space:nowrap/);
 assert.doesNotMatch(pedigreeGeneticsCss, /hh-protected-field[^}]*font-size:/);
 
-// Shows must be additive and use existing canonical HerdHarbor data stores.
 assert.match(shows, /COLLECTIONS=\['shows','showEntries','showResults','showAwards','exhibitors','showProjects','projectGoals','projectNotes','projectPhotos'\]/);
 assert.match(shows, /state\.transactions\.push\(/);
 assert.match(shows, /state\.health\.push\(/);
@@ -144,4 +146,4 @@ assert.match(showsHardening, /PAGE_SIZE = 24/);
 assert.match(showsCss, /overflow-x:auto/);
 assert.match(showsCss, /@media \(max-width:520px\)/);
 
-console.log("Alpha v1.6.5 membership + independent PWA update release stability tests passed");
+console.log("Alpha v1.6.6 membership + independent PWA update release stability tests passed");

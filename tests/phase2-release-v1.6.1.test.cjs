@@ -5,9 +5,10 @@ const path=require('node:path');
 const root=path.join(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 
-test('v1.6.5 build identity has one authoritative source',()=>{
+test('v1.6.6 web hotfix build identity has one authoritative source',()=>{
   const build=read('herdharbor-build.js'),html=read('index.html'),pwa=read('pwa.js');
-  assert.match(build,/version:\s*"1\.6\.5"/);
+  assert.match(build,/version:\s*"1\.6\.6"/);
+  assert.match(build,/buildId:\s*"mobile-analytics-hotfix-1"/);
   assert.match(html,/HerdHarborBuild\?\.version/);
   assert.match(pwa,/HerdHarborBuild\?\.version/);
 });
