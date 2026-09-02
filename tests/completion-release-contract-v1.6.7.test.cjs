@@ -26,12 +26,17 @@ test("v1.6.7 completion ledger closes inherited debt without overstating future 
   assert.match(acceptance, /production acceptance/i);
 });
 
-test("Market Analytics hardening is privacy-suppressed, consent-destructive, and retryable", () => {
+test("Market Analytics hardening is privacy-suppressed, consent-destructive, retryable, and contract-aligned", () => {
   const market = read("market-analytics-v1.6.5.js");
+  const edge = read("supabase/functions/market-contribution/index.ts");
   const sql = read("supabase/v1.6.7-market-privacy-hardening.sql");
 
   assert.match(market, /const VERSION = "1\.6\.6"/);
   assert.match(market, /const CONSENT_VERSION = "2026-09-v2"/);
+  assert.match(edge, /const CONSENT_VERSION = "2026-09-v2"/);
+  const clientConsent = market.match(/const CONSENT_VERSION = "([^"]+)"/)?.[1];
+  const edgeConsent = edge.match(/const CONSENT_VERSION = "([^"]+)"/)?.[1];
+  assert.equal(edgeConsent, clientConsent, "Market client and Edge Function must accept the same consent contract");
   assert.match(market, /const MINIMUM_SAMPLE_SIZE = 5/);
   assert.match(market, /RETRY_DELAYS_MS = Object\.freeze\(\[1800, 5000, 15000, 60000, 300000\]\)/);
   assert.match(market, /herdharbor:sync-status/);
@@ -93,8 +98,9 @@ test("completed Analytics, genetics, membership, Shows, and mobile protections r
   assert.match(historicalAudit, /historical shipped hotfix/);
 });
 
-test("v1.6.7 release review runs completion, full dual-timezone regression, and Android review build", () => {
+test("v1.6.7 release review runs completion and dual-timezone regression without duplicating the Android PR build", () => {
   const workflow = read(".github/workflows/v1.6.7-release-review.yml");
+  const androidAlpha = read(".github/workflows/android-alpha.yml");
   const pkg = JSON.parse(read("package.json"));
 
   assert.match(workflow, /branches: \[v1\.6\.7-completion-debt\]/);
@@ -102,8 +108,11 @@ test("v1.6.7 release review runs completion, full dual-timezone regression, and 
   assert.match(workflow, /TZ=UTC node "\$test_file"/);
   assert.match(workflow, /TZ=America\/New_York node "\$test_file"/);
   assert.match(workflow, /Android TWA review build only/);
+  assert.match(workflow, /if: github\.event_name != 'pull_request'/);
   assert.match(workflow, /\.\/gradlew --no-daemon bundleRelease/);
   assert.match(workflow, /herdharbor-v1\.6\.7-release-review-unsigned-aab/);
+  assert.match(androidAlpha, /^\s*pull_request:/m);
+  assert.match(androidAlpha, /\.\/gradlew --no-daemon bundleRelease/);
   assert.equal(pkg.scripts["test:completion"], "node --test tests/completion-release-contract-v1.6.7.test.cjs tests/current-release-reference-audit-v1.6.7.test.cjs");
 });
 
