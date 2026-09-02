@@ -98,8 +98,9 @@ test("completed Analytics, genetics, membership, Shows, and mobile protections r
   assert.match(historicalAudit, /historical shipped hotfix/);
 });
 
-test("v1.6.7 release review runs completion, full dual-timezone regression, and Android review build", () => {
+test("v1.6.7 release review runs completion and dual-timezone regression without duplicating the Android PR build", () => {
   const workflow = read(".github/workflows/v1.6.7-release-review.yml");
+  const androidAlpha = read(".github/workflows/android-alpha.yml");
   const pkg = JSON.parse(read("package.json"));
 
   assert.match(workflow, /branches: \[v1\.6\.7-completion-debt\]/);
@@ -107,8 +108,11 @@ test("v1.6.7 release review runs completion, full dual-timezone regression, and 
   assert.match(workflow, /TZ=UTC node "\$test_file"/);
   assert.match(workflow, /TZ=America\/New_York node "\$test_file"/);
   assert.match(workflow, /Android TWA review build only/);
+  assert.match(workflow, /if: github\.event_name != 'pull_request'/);
   assert.match(workflow, /\.\/gradlew --no-daemon bundleRelease/);
   assert.match(workflow, /herdharbor-v1\.6\.7-release-review-unsigned-aab/);
+  assert.match(androidAlpha, /^\s*pull_request:/m);
+  assert.match(androidAlpha, /\.\/gradlew --no-daemon bundleRelease/);
   assert.equal(pkg.scripts["test:completion"], "node --test tests/completion-release-contract-v1.6.7.test.cjs tests/current-release-reference-audit-v1.6.7.test.cjs");
 });
 
