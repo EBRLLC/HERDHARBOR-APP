@@ -45,16 +45,16 @@ new_decl = "  v_difference numeric;\n  v_currency text;\n  v_currency_filter tex
 if sql.count(old_decl) != 1:
     raise SystemExit("SQL aggregate declaration anchor mismatch")
 sql = sql.replace(old_decl, new_decl, 1)
-base_tail = "    and (coalesce(p_filters ->> 'sale_month', '') = '' or f.sale_month = (p_filters ->> 'sale_month')::smallint)\n    and (coalesce(p_filters ->> 'sale_year', '') = '' or f.sale_year = (p_filters ->> 'sale_year')::smallint)"
-extra_filters = "\n    and f.currency = v_currency_filter\n    and (v_start is null or make_date(f.sale_year, f.sale_month, 1) >= date_trunc('month', v_start::timestamp)::date)\n    and (v_end is null or make_date(f.sale_year, f.sale_month, 1) <= date_trunc('month', v_end::timestamp)::date)"
-first_tail = base_tail + ";"
-second_tail = base_tail + "\n    group by f.sale_year, f.sale_month"
-if sql.count(first_tail) != 1:
-    raise SystemExit(f"SQL primary aggregate filter anchor mismatch: {sql.count(first_tail)}")
-if sql.count(second_tail) != 1:
-    raise SystemExit(f"SQL trend aggregate filter anchor mismatch: {sql.count(second_tail)}")
-sql = sql.replace(first_tail, base_tail + extra_filters + ";", 1)
-sql = sql.replace(second_tail, base_tail + extra_filters + "\n    group by f.sale_year, f.sale_month", 1)
+primary_tail = "    and (coalesce(p_filters ->> 'sale_month', '') = '' or f.sale_month = (p_filters ->> 'sale_month')::smallint)\n    and (coalesce(p_filters ->> 'sale_year', '') = '' or f.sale_year = (p_filters ->> 'sale_year')::smallint);"
+primary_new = primary_tail[:-1] + "\n    and f.currency = v_currency_filter\n    and (v_start is null or make_date(f.sale_year, f.sale_month, 1) >= date_trunc('month', v_start::timestamp)::date)\n    and (v_end is null or make_date(f.sale_year, f.sale_month, 1) <= date_trunc('month', v_end::timestamp)::date);"
+trend_tail = "      and (coalesce(p_filters ->> 'sale_month', '') = '' or f.sale_month = (p_filters ->> 'sale_month')::smallint)\n      and (coalesce(p_filters ->> 'sale_year', '') = '' or f.sale_year = (p_filters ->> 'sale_year')::smallint)\n    group by f.sale_year, f.sale_month"
+trend_new = "      and (coalesce(p_filters ->> 'sale_month', '') = '' or f.sale_month = (p_filters ->> 'sale_month')::smallint)\n      and (coalesce(p_filters ->> 'sale_year', '') = '' or f.sale_year = (p_filters ->> 'sale_year')::smallint)\n      and f.currency = v_currency_filter\n      and (v_start is null or make_date(f.sale_year, f.sale_month, 1) >= date_trunc('month', v_start::timestamp)::date)\n      and (v_end is null or make_date(f.sale_year, f.sale_month, 1) <= date_trunc('month', v_end::timestamp)::date)\n    group by f.sale_year, f.sale_month"
+if sql.count(primary_tail) != 1:
+    raise SystemExit(f"SQL primary aggregate filter anchor mismatch: {sql.count(primary_tail)}")
+if sql.count(trend_tail) != 1:
+    raise SystemExit(f"SQL trend aggregate filter anchor mismatch: {sql.count(trend_tail)}")
+sql = sql.replace(primary_tail, primary_new, 1)
+sql = sql.replace(trend_tail, trend_new, 1)
 Path(sql_path).write_text(sql)
 
 analytics_test = Path("tests/analytics-release-contract-v1.6.5.test.cjs")
