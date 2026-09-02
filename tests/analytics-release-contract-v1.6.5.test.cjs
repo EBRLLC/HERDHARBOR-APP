@@ -209,7 +209,7 @@ test("v1.6.5 UI assets cover charts, colors, mobile, dark mode, and offline star
   assert.match(css, /overflow-x: auto/);
   assert.match(html, /preferredWeightDisplay/);
   assert.match(worker, /market-analytics-v1\.6\.5\.js/);
-  assert.match(worker, /analytics-v1\.6\.1\.js\?v=1\.6\.5/);
+  assert.match(worker, /analytics-v1\.6\.1\.js\?v=1\.6\.7/);
 });
 
 
