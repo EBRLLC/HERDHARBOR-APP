@@ -21,6 +21,46 @@
 
   const STORAGE_KEY = "herdharbor_pre_alpha_v1";
 
+  // Supabase documents a supabase-js deadlock when additional Supabase API calls
+  // are made synchronously from onAuthStateChange. HerdHarbor's cloud runtime
+  // hydrates account access and farm records after SIGNED_IN, so defer every
+  // registered auth callback until the auth notification has fully returned.
+  // This guard is installed before herdharbor-cloud.js creates its client.
+  function installSupabaseAuthDeadlockGuard() {
+    const supabase = window.supabase;
+    const originalCreateClient = supabase?.createClient;
+    if (typeof originalCreateClient !== "function" || window.__HH_SUPABASE_AUTH_DEADLOCK_GUARD__) return;
+
+    window.__HH_SUPABASE_AUTH_DEADLOCK_GUARD__ = true;
+    supabase.createClient = function guardedCreateClient(...args) {
+      const client = originalCreateClient.apply(this, args);
+      const auth = client?.auth;
+      const originalOnAuthStateChange = auth?.onAuthStateChange;
+      if (typeof originalOnAuthStateChange !== "function" || auth.__hhDeferredAuthCallbacks) return client;
+
+      auth.__hhDeferredAuthCallbacks = true;
+      auth.onAuthStateChange = function guardedOnAuthStateChange(callback) {
+        if (typeof callback !== "function") return originalOnAuthStateChange.call(auth, callback);
+        return originalOnAuthStateChange.call(auth, (event, session) => {
+          const defer = typeof window.setTimeout === "function" ? window.setTimeout.bind(window) : setTimeout;
+          defer(() => {
+            try {
+              const result = callback(event, session);
+              if (result && typeof result.catch === "function") {
+                result.catch((error) => console.error("HerdHarbor auth-state callback failed:", error));
+              }
+            } catch (error) {
+              console.error("HerdHarbor auth-state callback failed:", error);
+            }
+          }, 0);
+        });
+      };
+      return client;
+    };
+  }
+
+  installSupabaseAuthDeadlockGuard();
+
   function createElement(tagName) {
     try { return document.createElement?.(tagName) || null; } catch { return null; }
   }
