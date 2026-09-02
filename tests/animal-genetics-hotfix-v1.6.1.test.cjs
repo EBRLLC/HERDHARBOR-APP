@@ -15,8 +15,10 @@ test("animal card photos cannot shrink when genetics adds a third action", () =>
 });
 
 test("injected Genetics action opens the selected rabbit profile directly", () => {
-  assert.match(genetics, /b\.type="button"/);
-  assert.match(genetics, /b\.addEventListener\("click",event=>\{event\.preventDefault\(\);event\.stopPropagation\(\);profile\(a\.id\)\}\)/);
+  assert.match(genetics, /const button=document\.createElement\("button"\);button\.type="button"/);
+  assert.match(genetics, /button\.dataset\.gv2Profile=animal\.id/);
+  assert.match(genetics, /button\.addEventListener\?\.\("click",event=>\{event\.preventDefault\?\.\(\);event\.stopPropagation\?\.\(\);profile\(animal\.id\);\}\)/);
+  assert.match(genetics, /openGeneticProfile:animalId=>profile\(animalId\|\|""\)/, "Breeding Intelligence profile entry is bridged to the authoritative v1.6.5 profile");
 });
 
 test("dark theme preserves contrast inside the light genetics dialog", () => {
