@@ -2,9 +2,9 @@
   "use strict";
 
   const release = Object.freeze({
-    version: window.HerdHarborBuild?.version || "1.6.7",
-    buildId: window.HerdHarborBuild?.buildId || "completion-debt-1",
-    build: window.HerdHarborBuild?.build || "1.6.7-alpha-completion-debt-1",
+    version: window.HerdHarborBuild?.version || "1.7.0",
+    buildId: window.HerdHarborBuild?.buildId || "arba-standards-1",
+    build: window.HerdHarborBuild?.build || "1.7.0-alpha-arba-standards-1",
     howToUrl: "https://herdharbor.com/how-to/",
     featureFlags: Object.freeze({
       adminMemberManagementEnabled: true,
