@@ -1,0 +1,78 @@
+name: Alpha v1.6.7 final production Pages closeout
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/v1.6.7-final-production-pages-closeout.yml
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: herdharbor-pages-production
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout approved v1.6.7 release
+        uses: actions/checkout@v4
+        with:
+          ref: 65fa177645897de272784ac60a059d58af0f4707
+      - name: One-time sequencing gate
+        if: ${{ github.run_attempt == 1 }}
+        run: |
+          echo "Initial closeout attempt intentionally stops before deployment."
+          echo "Rerun after GitHub's branch-source Pages build finishes so monitored Pages is the final publisher."
+          exit 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install pinned monitoring dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify approved release contract
+        run: npm run test:completion
+      - name: Require production Sentry DSN
+        env:
+          HERDHARBOR_SENTRY_DSN: ${{ secrets.HERDHARBOR_SENTRY_DSN }}
+        run: test -n "$HERDHARBOR_SENTRY_DSN"
+      - name: Build production monitoring assets
+        env:
+          HERDHARBOR_SENTRY_DSN: ${{ secrets.HERDHARBOR_SENTRY_DSN }}
+          HERDHARBOR_MONITORING_ENVIRONMENT: production
+        run: |
+          MAIN_SHA="$(git rev-parse HEAD)"
+          test "$MAIN_SHA" = "65fa177645897de272784ac60a059d58af0f4707"
+          HERDHARBOR_BUILD_ID="$MAIN_SHA" NODE_ENV=production npm run build:monitoring
+          HERDHARBOR_BUILD_ID="$MAIN_SHA" npm run build:monitoring-config
+      - name: Stage and verify static Pages artifact
+        run: |
+          mkdir -p _site
+          rsync -a \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='node_modules/' \
+            --exclude='_site/' \
+            --exclude='monitoring/' \
+            --exclude='scripts/' \
+            --exclude='tests/' \
+            --exclude='package.json' \
+            --exclude='package-lock.json' \
+            ./ _site/
+          test -s _site/herdharbor-monitoring-config.js
+          test -s _site/vendor/herdharbor-monitoring-v1.6.1.min.js
+          ! grep -q '"dsn": ""' _site/herdharbor-monitoring-config.js
+          grep -q '"environment": "production"' _site/herdharbor-monitoring-config.js
+          grep -q '"release": "HerdHarbor@1.6.7"' _site/herdharbor-monitoring-config.js
+          grep -q '"build": "65fa177645897de272784ac60a059d58af0f4707"' _site/herdharbor-monitoring-config.js
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - uses: actions/deploy-pages@v4
