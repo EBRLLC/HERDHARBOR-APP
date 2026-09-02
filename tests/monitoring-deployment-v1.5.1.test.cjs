@@ -41,4 +41,4 @@ assert.match(monitoringSetup, /Prevent Storing of IP Addresses/);
 assert.match(monitoringSetup, /scrubIPAddresses=true/);
 assert.match(monitoringSetup, /IP-derived user or geo context/);
 
-console.log("Alpha v1.6.1 deployment, Android review, and IndexedDB coverage guardrails passed");
+console.log("Alpha v1.6.5 deployment, Android review, and IndexedDB coverage guardrails passed");

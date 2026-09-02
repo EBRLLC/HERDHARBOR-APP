@@ -17,7 +17,7 @@ const instrumentation = read("monitoring/herdharbor-monitoring-instrumentation.m
 const cloud = read("herdharbor-cloud.js");
 const shows = read("shows-v1.6.1.js");
 
-assert.equal(pkg.version, "1.6.1");
+assert.equal(pkg.version, "1.6.5");
 assert.equal(pkg.dependencies["@sentry/browser"], "10.71.0");
 assert.ok(pkg.devDependencies.esbuild);
 assert.match(browser, /import \* as Sentry from "@sentry\/browser"/);
@@ -83,17 +83,17 @@ assert.match(instrumentation, /local_storage_remove/);
 assert.doesNotMatch(instrumentation, /localStorage\.getItem/);
 assert.doesNotMatch(instrumentation, /JSON\.parse\(value\)|String\(value\)|JSON\.stringify\(value\)/, "storage instrumentation never inspects stored values");
 
-assert.match(pwa, /herdharbor-monitoring-config\.js\?v=1\.6\.1/);
-assert.match(pwa, /vendor\/herdharbor-monitoring-v1\.6\.1\.min\.js\?v=1\.6\.1/);
+assert.match(pwa, /herdharbor-monitoring-config\.js\?v=1\.6\.5/);
+assert.match(pwa, /vendor\/herdharbor-monitoring-v1\.6\.1\.min\.js\?v=1\.6\.5/);
 assert.match(pwa, /addOptionalScript/);
 assert.match(pwa, /loadMonitoring\(bootApplication\)/);
 assert.match(pwa, /Monitoring is optional and fail-open/);
 assert.match(pwa, /registration\.update\(\)/, "application update regression fix remains intact");
 assert.doesNotMatch(pwa, /HerdHarborCloud.*syncNow[\s\S]*SKIP_WAITING/, "app updates remain independent of Cloud Sync");
 
-assert.match(worker, /v1\.6\.1-alpha-current-state-2/);
-assert.match(worker, /herdharbor-monitoring-config\.js\?v=1\.6\.1/);
-assert.match(worker, /herdharbor-monitoring-v1\.6\.1\.min\.js\?v=1\.6\.1/);
+assert.match(worker, /v1\.6\.5-alpha-analytics-market-foundation-1/);
+assert.match(worker, /herdharbor-monitoring-config\.js\?v=1\.6\.5/);
+assert.match(worker, /herdharbor-monitoring-v1\.6\.1\.min\.js\?v=1\.6\.5/);
 assert.match(worker, /cache: "no-store"/);
 assert.doesNotMatch(worker, /install[\s\S]{0,500}skipWaiting\(\)/, "waiting-worker update UX remains intact");
 assert.match(worker, /event\.data\?\.type === "SKIP_WAITING"/);
@@ -106,4 +106,4 @@ for (const billingTerm of ["RevenueCat", "StoreKit", "Google Play Billing", "Fou
   assert.ok(!core.includes(billingTerm), `Phase 1 monitoring core must not implement ${billingTerm}`);
 }
 
-console.log("Alpha v1.6.1 monitoring integration and Phase 1 scope guardrails passed");
+console.log("Alpha v1.6.5 monitoring integration and Phase 1 scope guardrails passed");

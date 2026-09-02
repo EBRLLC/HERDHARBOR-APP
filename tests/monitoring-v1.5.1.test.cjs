@@ -244,7 +244,7 @@ function makeFakeSentry() {
   assert.ok(!cloudSerialized.includes("internal-cloud-user"));
   assert.equal(cloudFake.calls.messageEvents[0].event.tags.hh_error_category, "upload_failure");
 
-  console.log("Alpha v1.6.1 monitoring behavior, tagging, dedupe, and platform tests passed");
+  console.log("Alpha v1.6.5 monitoring behavior, tagging, dedupe, and platform tests passed");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

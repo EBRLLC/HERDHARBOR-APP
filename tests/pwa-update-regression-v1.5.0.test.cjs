@@ -13,12 +13,12 @@ const cloud = read("herdharbor-cloud.js");
 const manifest = JSON.parse(read("manifest.json"));
 const html = read("index.html");
 
-// v1.6.1 keeps the independently verified update path.
-assert.equal(manifest.version, "1.6.1");
-assert.match(pwa, /const APP_VERSION = "1\.6\.1"/);
-assert.match(pwa, /const BUILD_ID = "current-state-2"/);
+// v1.6.5 keeps the independently verified update path.
+assert.equal(manifest.version, "1.6.5");
+assert.match(pwa, /const APP_VERSION = "1\.6\.5"/);
+assert.match(pwa, /const BUILD_ID = "analytics-market-foundation-1"/);
 assert.match(pwa, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
-assert.match(html, /manifest\.json\?v=17/);
+assert.match(html, /manifest\.json\?v=1\.6\.5/);
 
 // Service-worker discovery is explicit and independent from Cloud Sync.
 assert.match(pwa, /navigator\.serviceWorker\.register\("service-worker\.js"/);
@@ -58,7 +58,7 @@ assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
 // Browser/app shell requests favor production over stale frontend caches while
 // still falling back to the current shell when offline.
-assert.match(worker, /v1\.6\.1-alpha-current-state-2/);
+assert.match(worker, /v1\.6\.5-alpha-analytics-market-foundation-1/);
 assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
 assert.match(worker, /NETWORK_FIRST_PATHS/);
 assert.match(worker, /\/manifest\.json/);
@@ -70,4 +70,4 @@ assert.match(worker, /caches\.delete\(key\)/);
 assert.match(worker, /self\.clients\.claim\(\)/);
 assert.match(pwa, /manifest\.json\?build=\$\{encodeURIComponent\(PWA_BUILD\)\}/);
 
-console.log("Alpha v1.6.1 PWA update-regression tests passed");
+console.log("Alpha v1.6.5 PWA update-regression tests passed");

@@ -1,0 +1,6 @@
+project_id = "okynebbksifqppwicghj"
+
+[functions.market-contribution]
+# This function validates the Bearer token with Supabase Auth in code before
+# calling service-role-only RPCs. This supports current asymmetric signing keys.
+verify_jwt = false

@@ -114,4 +114,4 @@ const releaseSource=fs.readFileSync(path.join(__dirname,"..","herdharbor-release
 assert.match(releaseSource,/https:\/\/herdharbor\.com\/how-to\//);
 assert.match(releaseSource,/Open HerdHarbor How-To Center/);
 
-console.log("HerdHarbor Alpha v1.6.1 rabbit genetics + selector tests passed");
+console.log("HerdHarbor Alpha v1.6.5 rabbit genetics + selector tests passed");

@@ -8,7 +8,7 @@ test('Phase 3 modules load additively after rabbit genetics and are cached offli
   const pwa=read('pwa.js'),worker=read('service-worker.js');
   for(const file of ['standards-registry-v1.6.1.js','multispecies-genetics-v1.6.1.js','standards-genetics-ui-v1.6.1.js','standards-genetics-v1.6.1.css']){assert.match(pwa+worker,new RegExp(file.replaceAll('.','\\.')));}
   assert.ok(pwa.indexOf('multispecies-genetics-v1.6.1.js')>pwa.indexOf('rabbit-genetics-v1.6.1.js'));
-  assert.match(worker,/current-state/);
+  assert.match(worker,/analytics-market-foundation/);
 });
 
 test('species-aware UI provides optional Shows, animal, entry, genetics and failure states',()=>{

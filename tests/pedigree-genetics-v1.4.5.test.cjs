@@ -105,4 +105,4 @@ assert.match(uiSource, /Show Genetics on Pedigree/, "1.6.1 pedigree settings ret
 assert.match(uiSource, /Full Inferred/);
 assert.match(uiSource, /Known Only/);
 
-console.log("Alpha v1.6.1 pedigree genetics display and inference tests passed");
+console.log("Alpha v1.6.5 pedigree genetics display and inference tests passed");

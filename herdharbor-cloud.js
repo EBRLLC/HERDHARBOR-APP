@@ -1180,6 +1180,13 @@
     return drainSyncQueue();
   }
 
+  async function invokeFunction(name, body = {}) {
+    if (!session?.user?.id) throw new Error("Sign in before using this secure service.");
+    const { data, error } = await client.functions.invoke(name, { body });
+    if (error) throw new Error(error.message || `The ${name} service could not complete the request.`);
+    return data;
+  }
+
   async function requestAccountDeletion({ reason = "", confirmation = "" } = {}) {
     if (!session?.user?.id || !session?.user?.email) {
       throw new Error("Sign in before requesting account deletion.");
@@ -1197,6 +1204,9 @@
       throw new Error("Your latest records have not synced. Download a backup, reconnect, and try again.");
     }
 
+    const marketCleanup = await window.HerdHarborMarket?.prepareAccountDeletion?.()
+      .catch(() => ({ backendConfirmed: false, localQueueCleared: true }));
+
     const formData = new FormData();
     formData.set("_subject", "HerdHarbor account deletion request");
     formData.set("request_type", "Account and associated data deletion");
@@ -1207,6 +1217,8 @@
     formData.set("reason", String(reason || "").slice(0, 1000));
     formData.set("requested_at", new Date().toISOString());
     formData.set("understand_permanent", "Yes");
+    formData.set("market_queue_cleared", marketCleanup?.localQueueCleared ? "Yes" : "Unavailable");
+    formData.set("market_backend_cleanup", marketCleanup?.backendConfirmed ? "Confirmed" : "Pending with account deletion");
 
     const response = await fetch(ACCOUNT_DELETION_REQUEST_URL, {
       method: "POST",
@@ -1811,7 +1823,7 @@
     }
     const payload = JSON.stringify({
       app: "HerdHarbor",
-      version: "1.6.1",
+      version: "1.6.5",
       backupType: "local-safety-backup",
       exportedAt: new Date().toISOString(),
       data: appState
@@ -2217,6 +2229,7 @@
 
   window.HerdHarborCloud = {
     syncNow,
+    invokeFunction,
     getSession: () => session,
     getSyncState: () => syncState,
     getSyncDetails,

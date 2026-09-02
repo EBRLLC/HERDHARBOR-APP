@@ -158,4 +158,4 @@ assert.match(cloud, /window\.addEventListener\("online", \(\) => \{\s*void loadA
 assert.match(cloud, /event === "SIGNED_OUT"[\s\S]*publishAccessProfile\(fallbackAccessProfile\(\)\)/, "sign-out clears the in-memory entitlement before another account signs in");
 assert.match(cloud, /const STORAGE_KEY = "herdharbor_pre_alpha_v1"/, "farm-state storage remains unchanged");
 
-console.log("Alpha v1.6.1 per-account offline entitlement cache tests passed");
+console.log("Alpha v1.6.5 per-account offline entitlement cache tests passed");

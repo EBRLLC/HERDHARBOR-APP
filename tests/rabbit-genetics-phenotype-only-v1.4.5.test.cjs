@@ -19,4 +19,4 @@ const pattern=Core.analyzePairing(harl,mag,{animals:[harl,mag]});
 assert.equal(pattern.scenarioTruncated,false,"Harlequin × Magpie phenotype-only pairing should be enumerable");
 assert.ok(pattern.possibleOffspringColors.some(o=>/Harlequin|Magpie|Tricolor/.test(o.name)));
 
-console.log("Alpha v1.6.1 phenotype-only Pair Analysis tests passed");
+console.log("Alpha v1.6.5 phenotype-only Pair Analysis tests passed");
