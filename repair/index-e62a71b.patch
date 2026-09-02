@@ -1,0 +1,258 @@
+diff --git a/index.html b/index.html
+index c5f1a08..ed19947 100644
+--- a/index.html
++++ b/index.html
+@@ -14 +14 @@
+-  <link rel="manifest" href="manifest.json?v=17">
++  <link rel="manifest" href="manifest.json?v=1.6.5">
+@@ -16,2 +16,2 @@
+-  <link rel="stylesheet" href="analytics-v1.6.1.css?v=1.6.1">
+-  <link rel="stylesheet" href="herdharbor-v1.6.1.css?v=1.6.1">
++  <link rel="stylesheet" href="analytics-v1.6.1.css?v=1.6.5">
++  <link rel="stylesheet" href="herdharbor-v1.6.1.css?v=1.6.5">
+@@ -29 +29 @@
+-  <!-- HerdHarbor Alpha v1.6.1 consolidated application shell. -->
++  <!-- HerdHarbor Alpha v1.6.5 consolidated application shell. -->
+@@ -2443 +2443 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
+-  <link rel="stylesheet" href="herdharbor-core-v1.6.1.css?v=1.6.1">
++  <link rel="stylesheet" href="herdharbor-core-v1.6.1.css?v=1.6.5">
+@@ -2611,5 +2611,5 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
+-  <script src="herdharbor-build.js?v=1.6.1"></script>
+-  <script src="herdharbor-release-v1.6.1.js?v=1.6.1"></script>
+-  <script src="herdharbor-membership-v1.6.1.js?v=1.6.1"></script>
+-  <script src="herdharbor-billing-v1.6.1.js?v=1.6.1"></script>
+-  <script src="herdharbor-access-cache-v1.6.1.js?v=1.6.1"></script>
++  <script src="herdharbor-build.js?v=1.6.5"></script>
++  <script src="herdharbor-release-v1.6.1.js?v=1.6.5"></script>
++  <script src="herdharbor-membership-v1.6.1.js?v=1.6.5"></script>
++  <script src="herdharbor-billing-v1.6.1.js?v=1.6.5"></script>
++  <script src="herdharbor-access-cache-v1.6.1.js?v=1.6.5"></script>
+@@ -2618 +2618 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
+-  <script src="herdharbor-admin-v1.6.1.js?v=1.6.1"></script>
++  <script src="herdharbor-admin-v1.6.1.js?v=1.6.5"></script>
+@@ -2620,2 +2620,3 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
+-  <script src="pwa.js?v=24"></script>
+-  <script src="analytics-v1.6.1.js?v=1.6.1"></script>
++  <script src="pwa.js?v=26"></script>
++  <script src="market-analytics-v1.6.5.js?v=1.6.5"></script>
++  <script src="analytics-v1.6.1.js?v=1.6.5"></script>
+@@ -2626,2 +2627,2 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
+-  // Current release contract: const APP_VERSION = "1.6.1";
+-  const APP_VERSION = window.HerdHarborBuild?.version || "1.6.1";
++  // Current release contract: const APP_VERSION = "1.6.5";
++  const APP_VERSION = window.HerdHarborBuild?.version || "1.6.5";
+@@ -2654,0 +2656,11 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
++      preferredWeightDisplay: "lb",
++      marketAnalyticsConsent: {
++        enabled: false,
++        consentVersion: "",
++        enabledAt: "",
++        disabledAt: "",
++        includeHistorical: false,
++        regionCountry: "US",
++        regionCode: "",
++        broadRegion: ""
++      },
+@@ -2718 +2730 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
+-  const SALE_STATUS_OPTIONS = ["Draft", "Reserved", "Completed", "Cancelled"];
++  const SALE_STATUS_OPTIONS = ["Draft", "Reserved", "Pending", "Completed", "Cancelled"];
+@@ -2817 +2829,8 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
+-        settings: { ...defaultState.settings, ...(parsed.settings || {}) }
++        settings: {
++          ...defaultState.settings,
++          ...(parsed.settings || {}),
++          marketAnalyticsConsent: {
++            ...defaultState.settings.marketAnalyticsConsent,
++            ...(parsed.settings?.marketAnalyticsConsent || {})
++          }
++        }
+@@ -3285,0 +3305,7 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
++    state.settings.marketAnalyticsConsent = {
++      ...defaultState.settings.marketAnalyticsConsent,
++      ...(state.settings.marketAnalyticsConsent || {})
++    };
++    if (!["lb", "lb+oz", "oz", "kg", "g"].includes(state.settings.preferredWeightDisplay)) {
++      state.settings.preferredWeightDisplay = "lb";
++    }
+@@ -3316,0 +3343,14 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
++    let salePricingMigrated = false;
++    state.sales.forEach((sale) => {
++      if (!Array.isArray(sale.items)) return;
++      sale.items.forEach((item) => {
++        if (item.salePrice === undefined && item.unitPrice !== undefined) {
++          item.salePrice = item.unitPrice;
++          salePricingMigrated = true;
++        }
++        if (item.listedPriceAtSale === undefined) {
++          item.listedPriceAtSale = null;
++          salePricingMigrated = true;
++        }
++      });
++    });
+@@ -3331 +3371 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
+-    if (settingsMigrated || workflowMigrated) saveState();
++    if (settingsMigrated || salePricingMigrated || workflowMigrated) saveState();
+@@ -3756,0 +3797,3 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
++          ${field("Birth weight (optional)", "birthWeight", animal.birthWeight, false, "number")}
++          ${selectField("Birth weight unit", "birthWeightUnit", ["lb", "lb+oz", "oz", "kg", "g"], animal.birthWeightUnit || "lb")}
++          <label class="birth-weight-ounces ${animal.birthWeightUnit === "lb+oz" ? "" : "hidden"}">Birth weight ounces<input name="birthWeightOunces" type="number" min="0" max="15.9" step="0.1" value="${esc(animal.birthWeightOunces || "")}" ${animal.birthWeightUnit === "lb+oz" ? "" : "disabled"}></label>
+@@ -3777,0 +3821,2 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
++    const birthWeightUnit = $('[name="birthWeightUnit"]', $("#animal-form"));
++    const birthWeightOunces = $(".birth-weight-ounces", $("#animal-form"));
+@@ -3806,0 +3852,7 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
++    const refreshBirthWeightFields = () => {
++      const usesOunces = birthWeightUnit?.value === "lb+oz";
++      birthWeightOunces?.classList.toggle("hidden", !usesOunces);
++      const input = birthWeightOunces ? $("input", birthWeightOunces) : null;
++      if (input) input.disabled = !usesOunces;
++    };
++
+@@ -3813,0 +3866,2 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
++    birthWeightUnit?.addEventListener("change", refreshBirthWeightFields);
++    refreshBirthWeightFields();
+@@ -3861,0 +3916,13 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
++      const birthWeight = data.birthWeight === "" ? NaN : Number(data.birthWeight);
++      const birthWeightOuncesValue = data.birthWeightOunces === "" ? 0 : Number(data.birthWeightOunces);
++      if (data.birthWeight !== "" && (!Number.isFinite(birthWeight) || birthWeight < 0)) {
++        toast("Birth weight must be a valid amount of zero or more.", "error");
++        return;
++      }
++      if (data.birthWeightUnit === "lb+oz" && (!Number.isFinite(birthWeightOuncesValue) || birthWeightOuncesValue < 0 || birthWeightOuncesValue >= 16)) {
++        toast("Birth weight ounces must be between 0 and less than 16.", "error");
++        return;
++      }
++      data.birthWeight = Number.isFinite(birthWeight) ? String(birthWeight) : "";
++      data.birthWeightUnit = ["lb", "lb+oz", "oz", "kg", "g"].includes(data.birthWeightUnit) ? data.birthWeightUnit : "lb";
++      data.birthWeightOunces = data.birthWeight && data.birthWeightUnit === "lb+oz" ? String(birthWeightOuncesValue) : "";
+@@ -6312 +6379,2 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
+-          ${selectField("Weight unit", "weightUnit", ["lb", "oz", "kg", "g"], health.weightUnit || "lb")}
++          ${selectField("Weight unit", "weightUnit", ["lb", "lb+oz", "oz", "kg", "g"], health.weightUnit || "lb")}
++          <label id="health-weight-ounces-field" class="${health.weightUnit === "lb+oz" ? "" : "hidden"}">Weight ounces<input name="weightOunces" type="number" min="0" max="15.9" step="0.1" value="${esc(health.weightOunces || "")}" ${health.weightUnit === "lb+oz" ? "" : "disabled"}></label>
+@@ -6323,0 +6392,10 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
++    const healthWeightUnit = $('[name="weightUnit"]', $("#health-form"));
++    const healthWeightOuncesField = $("#health-weight-ounces-field");
++    const refreshHealthWeightOunces = () => {
++      const enabled = healthWeightUnit?.value === "lb+oz";
++      healthWeightOuncesField?.classList.toggle("hidden", !enabled);
++      const input = healthWeightOuncesField ? $("input", healthWeightOuncesField) : null;
++      if (input) input.disabled = !enabled;
++    };
++    healthWeightUnit?.addEventListener("change", refreshHealthWeightOunces);
++    refreshHealthWeightOunces();
+@@ -6326,0 +6405,11 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
++      const weight = data.weight === "" ? NaN : Number(data.weight);
++      const ounces = data.weightOunces === "" ? 0 : Number(data.weightOunces);
++      if (data.weight !== "" && (!Number.isFinite(weight) || weight < 0)) {
++        toast("Weight must be a valid amount of zero or more.", "error");
++        return;
++      }
++      if (data.weightUnit === "lb+oz" && (!Number.isFinite(ounces) || ounces < 0 || ounces >= 16)) {
++        toast("Weight ounces must be between 0 and less than 16.", "error");
++        return;
++      }
++      data.weightOunces = data.weight !== "" && data.weightUnit === "lb+oz" ? String(ounces) : "";
+@@ -7315 +7403,0 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
+-      animal.askingPrice = Number(item.unitPrice || 0).toFixed(2);
+@@ -7325 +7413 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
+-          (salesView.status === "Open" ? ["Draft", "Reserved"].includes(sale.status) : sale.status === salesView.status);
++          (salesView.status === "Open" ? ["Draft", "Reserved", "Pending"].includes(sale.status) : sale.status === salesView.status);
+@@ -7523,0 +7612 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
++      const previousSale = existing ? structuredClone(existing) : null;
+@@ -7526,0 +7616 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
++        const animal = state.animals.find((record) => record.id === animalId);
+@@ -7528 +7618,13 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
+-        return { id: prior?.id || `saleitem_${saleId}_${animalId.replace(/[^a-z0-9_-]/gi, "")}`, animalId, quantity: "1", unitPrice: price.toFixed(2) };
++        const firstCompletion = data.status === "Completed" && (previousSale?.status !== "Completed" || !prior);
++        const askingPriceAtCompletion = Number(animal?.askingPrice);
++        const listedPriceAtSale = firstCompletion
++          ? (animal?.askingPrice === "" || animal?.askingPrice === null || animal?.askingPrice === undefined || !Number.isFinite(askingPriceAtCompletion) ? null : askingPriceAtCompletion.toFixed(2))
++          : (prior?.listedPriceAtSale ?? null);
++        return {
++          id: prior?.id || `saleitem_${saleId}_${animalId.replace(/[^a-z0-9_-]/gi, "")}`,
++          animalId,
++          quantity: "1",
++          unitPrice: price.toFixed(2),
++          salePrice: price.toFixed(2),
++          listedPriceAtSale
++        };
+@@ -7551 +7652,0 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
+-      const previousSale = existing ? structuredClone(existing) : null;
+@@ -7565,0 +7667,3 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
++        completedAt: data.status === "Completed"
++          ? (previousSale?.status === "Completed" ? (previousSale.completedAt || "") : now)
++          : (existing?.completedAt || ""),
+@@ -7577,0 +7682 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
++      window.HerdHarborMarket?.recordSaleChange?.(saved, previousSale, state);
+@@ -7702,0 +7808 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
++    window.HerdHarborMarket?.recordSaleChange?.(cancelled, sale, state);
+@@ -9179,0 +9286 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
++    const marketConsent = window.HerdHarborMarket?.getConsent?.(state) || defaultState.settings.marketAnalyticsConsent;
+@@ -9271,0 +9379,29 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
++          <label style="display:block;margin-top:16px">Preferred Weight Display
++            <select id="preferred-weight-display">
++              ${["lb", "lb+oz", "oz", "kg", "g"].map((unit) => `<option value="${unit}" ${unit === state.settings.preferredWeightDisplay ? "selected" : ""}>${unit}</option>`).join("")}
++            </select>
++          </label>
++          <p class="brand-file-note">This changes Analytics display only. Original recorded values and units remain unchanged.</p>
++        </article>
++
++        <article class="settings-card">
++          <h3>Market Analytics <span class="badge ${marketConsent.enabled ? "green" : "gray"}">${marketConsent.enabled ? "Opted in" : "Off"}</span></h3>
++          <p>Optionally contribute de-identified facts from qualifying completed sales so HerdHarbor can return privacy-safe market aggregates. Cloud Sync, normal account storage, membership, billing, backups, and crash monitoring are separate.</p>
++          <form id="market-analytics-consent-form">
++            <label class="checkbox-row">
++              <input type="checkbox" name="enabled" ${marketConsent.enabled ? "checked" : ""}>
++              <span>Contribute future completed sales and view aggregate Market Analytics.</span>
++            </label>
++            <label class="checkbox-row">
++              <input type="checkbox" name="includeHistorical" ${marketConsent.includeHistorical ? "checked" : ""}>
++              <span>Also include existing completed sales. Historical listing prices remain unknown where they were not captured.</span>
++            </label>
++            <div class="form-grid two" style="margin-top:12px">
++              <label>Country code<input name="regionCountry" maxlength="2" value="${esc(marketConsent.regionCountry || "US")}" placeholder="US"></label>
++              <label>State / large region (optional)<input name="regionCode" maxlength="32" value="${esc(marketConsent.regionCode || "")}" placeholder="KY"></label>
++              <label>Broad region (optional)<input name="broadRegion" maxlength="64" value="${esc(marketConsent.broadRegion || "")}" placeholder="Southeast"></label>
++            </div>
++            <p class="brand-file-note">Only allowlisted market facts are produced server-side after verifying your account, consent, ownership, and Completed status. Customer and animal names, contact details, exact addresses, notes, photos, documents, payment references, and raw sale records are prohibited. Groups below 5 observations are suppressed.</p>
++            <p class="brand-file-note"><strong>Opt-out behavior:</strong> disabling stops new contributions immediately and clears this device's pending contribution queue. Already processed facts remain de-identified in the market dataset; verified account deletion removes consent, processing links, and associated facts.</p>
++            <div class="action-row"><button class="button button-primary" type="submit">Save Market Analytics choice</button></div>
++          </form>
+@@ -9303 +9439 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
+-          <p class="brand-file-note">Version 1.6.1 includes farm analytics, complete domestic rabbit genetics, pedigree and breeding tools, Shows, production and health workflows, and optional standards and multi-species guidance.</p>
++          <p class="brand-file-note">Version 1.6.5 completes farm analytics and adds the privacy-safe Market Analytics foundation while preserving complete domestic rabbit genetics, pedigrees, breeding, Shows, production, health, standards, and multi-species guidance.</p>
+@@ -9365,0 +9502,29 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
++    $("#preferred-weight-display").addEventListener("change", (event) => {
++      state.settings.preferredWeightDisplay = event.currentTarget.value;
++      saveState("Preferred weight display saved.");
++    });
++    $("#market-analytics-consent-form").addEventListener("submit", async (event) => {
++      event.preventDefault();
++      const form = event.currentTarget;
++      const data = Object.fromEntries(new FormData(form));
++      const enabled = $("[name=enabled]", form).checked;
++      const includeHistorical = $("[name=includeHistorical]", form).checked;
++      const previousSettings = structuredClone(state.settings);
++      try {
++        await window.HerdHarborMarket?.setConsent?.(state, {
++          enabled,
++          includeHistorical,
++          regionCountry: String(data.regionCountry || "US").toUpperCase(),
++          regionCode: String(data.regionCode || "").trim(),
++          broadRegion: String(data.broadRegion || "").trim()
++        });
++        if (!saveState(enabled ? "Market Analytics participation enabled." : "Market Analytics participation disabled.")) {
++          state.settings = previousSettings;
++          return;
++        }
++        renderSettings();
++      } catch (error) {
++        state.settings = previousSettings;
++        toast(error.message || "The Market Analytics choice could not be saved.", "error");
++      }
++    });
+@@ -9429 +9594 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
+-        <p>This permanently deletes your HerdHarbor account and associated cloud farm data after verification. It is not the same as clearing this device.</p>
++        <p>This permanently deletes your HerdHarbor account, associated cloud farm data, Market Analytics consent/linkage records, and linked de-identified market facts after verification. It is not the same as clearing this device.</p>
+@@ -9443 +9608 @@ html[data-theme="dark"] .symptom-card .symptom-action { color: #EEF3F6; }
+-          <span>I understand this requests permanent deletion of my account and associated cloud data.</span>
++          <span>I understand this requests permanent deletion of my account, associated cloud data, and linked Market Analytics data.</span>
