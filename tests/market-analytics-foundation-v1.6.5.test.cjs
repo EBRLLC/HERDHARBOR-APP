@@ -155,7 +155,9 @@ test("backend constructs facts from canonical state and exposes aggregates only 
 test("privacy threshold contract suppresses four and permits five while retaining median-first metrics", () => {
   const sql = fs.readFileSync(path.join(root, "supabase/v1.6.5-market-analytics-foundation.sql"), "utf8");
   assert.match(sql, /values \('minimum_sample_size', '5'::jsonb\)/);
-  assert.match(sql, /'available', false,[\s\S]*'sampleSize', v_count/);
+  const suppressed = sql.slice(sql.indexOf("if v_count < v_threshold then"), sql.indexOf("end if;", sql.indexOf("if v_count < v_threshold then")));
+  assert.match(suppressed, /'available', false/);
+  assert.doesNotMatch(suppressed, /sampleSize/);
   assert.match(sql, /'available', true,[\s\S]*'medianSalePrice'/);
   const prices = [75, 90, 100, 125, 900].sort((a, b) => a - b);
   assert.equal(prices.length - 1 < market.MINIMUM_SAMPLE_SIZE, true);
@@ -186,5 +188,22 @@ test("market aggregates are currency-isolated and honor the Analytics date range
   assert.match(sql, /v_currency_filter := upper\(coalesce\(nullif\(btrim\(p_filters ->> 'currency'\), ''\), 'USD'\)\)/);
   assert.equal((sql.match(/f\.currency = v_currency_filter/g) || []).length, 2);
   assert.equal((sql.match(/make_date\(f\.sale_year, f\.sale_month, 1\)/g) || []).length, 4);
-  assert.match(analyticsSource, /queryAggregate\(\{ species: ui\.species \|\| undefined, currency: "USD", start:/);
+  assert.match(analyticsSource, /queryAggregate\(\{ species: ui\.species \|\| undefined, \.\.\.marketFilterPayload\(\), currency: "USD", start:/);
+});
+
+
+test("aggregate filter serialization keeps date and advanced filters without widening market fact fields", () => {
+  const filters = market.sanitizeAggregateFilters({
+    species: "Rabbit", breed: "Holland Lop", sex: "Female", age_bucket: "3–6 months",
+    color_variety: "Broken", pedigree_status: "Pedigreed", registration_status: "Registered",
+    region_country: "US", region_code: "KY", broad_region: "Southeast", sale_month: "6", sale_year: "2026",
+    currency: "USD", start: "2026-01-01", end: "2026-06-30", customer_name: "never", notes: "never"
+  });
+  assert.equal(filters.start, "2026-01-01");
+  assert.equal(filters.end, "2026-06-30");
+  assert.equal(filters.breed, "Holland Lop");
+  assert.equal(filters.sale_year, "2026");
+  assert.equal(filters.currency, "USD");
+  assert.equal(filters.customer_name, undefined);
+  assert.equal(filters.notes, undefined);
 });

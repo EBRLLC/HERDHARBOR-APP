@@ -23,6 +23,11 @@
     "medical_notes", "pedigree_names", "customer_notes", "transaction_notes", "photos",
     "documents", "payment_reference", "cloud_storage_path", "profile"
   ]);
+  const AGGREGATE_FILTER_FIELDS = Object.freeze([
+    "species", "breed", "sex", "age_bucket", "color_variety", "pedigree_status",
+    "registration_status", "region_country", "region_code", "broad_region",
+    "sale_month", "sale_year", "currency", "start", "end"
+  ]);
   const QUALIFYING_STATUS = "Completed";
   let flushPromise = null;
   let retryTimer = null;
@@ -73,6 +78,16 @@
     const output = {};
     for (const field of ALLOWED_FACT_FIELDS) {
       if (input[field] !== undefined && input[field] !== null && input[field] !== "") output[field] = input[field];
+    }
+    return output;
+  }
+
+  function sanitizeAggregateFilters(input = {}) {
+    const output = {};
+    for (const field of AGGREGATE_FILTER_FIELDS) {
+      const value = input[field];
+      if (typeof value === "string" && value.trim()) output[field] = value.trim();
+      else if (typeof value === "number" && Number.isFinite(value)) output[field] = String(value);
     }
     return output;
   }
@@ -236,7 +251,7 @@
   }
 
   async function queryAggregate(filters = {}) {
-    const result = await invoke({ action: "aggregate", filters: sanitizeMarketFact(filters) });
+    const result = await invoke({ action: "aggregate", filters: sanitizeAggregateFilters(filters) });
     return result || { available: false, minimumSampleSize: MINIMUM_SAMPLE_SIZE };
   }
 
@@ -265,8 +280,8 @@
 
   return {
     VERSION, CONSENT_VERSION, MINIMUM_SAMPLE_SIZE, QUEUE_KEY, RECEIPT_KEY,
-    ALLOWED_FACT_FIELDS, PROHIBITED_FIELDS, QUALIFYING_STATUS, stableStringify,
-    fingerprint, sanitizeMarketFact, getConsent, contributionFingerprint, readQueue,
+    ALLOWED_FACT_FIELDS, PROHIBITED_FIELDS, AGGREGATE_FILTER_FIELDS, QUALIFYING_STATUS, stableStringify,
+    fingerprint, sanitizeMarketFact, sanitizeAggregateFilters, getConsent, contributionFingerprint, readQueue,
     readReceipts, enqueue, clearContributionQueue, isFutureEligible, reconcileSale,
     queueHistoricalCompletedSales, recordSaleChange, setConsent, flush, queryAggregate,
     prepareAccountDeletion, resetForTests

@@ -443,7 +443,6 @@ begin
   if v_count < v_threshold then
     return jsonb_build_object(
       'available', false,
-      'sampleSize', v_count,
       'minimumSampleSize', v_threshold
     );
   end if;

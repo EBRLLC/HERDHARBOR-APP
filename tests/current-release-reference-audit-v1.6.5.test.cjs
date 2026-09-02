@@ -79,3 +79,9 @@ assert.match(worker, /analytics-v1\.6\.1\.js\?v=1\.6\.5/);
 assert.match(html, /HerdHarbor Alpha v1\.6\.5 consolidated application shell/);
 
 console.log(`Alpha v${version} release-reference audit passed for ${buildId}`);
+
+
+const releaseWorkflow = read(".github/workflows/v1.6.5-release-review.yml");
+assert.match(releaseWorkflow, /name: Alpha v1\.6\.5 release review/);
+assert.ok(!fs.existsSync(path.join(root, ".github/workflows/v1.6.1-monitoring-review.yml")));
+assert.doesNotMatch(releaseWorkflow, /herdharbor-v1\.6\.1-release-review-(?:bundle|unsigned-aab)/);

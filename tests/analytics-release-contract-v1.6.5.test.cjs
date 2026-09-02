@@ -222,3 +222,17 @@ test("review fixes keep missing weights missing and bind Growth summary/history 
   assert.match(js, /visibleRowsByAnimal\.set\(record\.id, rows\)/);
   assert.match(js, /const selectedRows = animals\.length === 1 \? \(visibleRowsByAnimal\.get\(animals\[0\]\.id\) \|\| \[\]\) : \[\]/);
 });
+
+
+test("final Market filters refresh correctly and species colors are real persisted series keys", () => {
+  const js = fs.readFileSync(path.join(root, "analytics-v1.6.1.js"), "utf8");
+  for (const field of ["breed", "sex", "age_bucket", "color_variety", "pedigree_status", "registration_status", "region_country", "region_code", "broad_region", "sale_month", "sale_year"]) {
+    assert.ok(js.includes(`data-market-filter="${field}"`), `missing Market UI filter ${field}`);
+  }
+  assert.match(js, /queryAggregate\(\{ species: ui\.species \|\| undefined, \.\.\.marketFilterPayload\(\), currency: "USD", start:/);
+  const startHandler = js.slice(js.indexOf('container.querySelector("[data-analytics-start]")'), js.indexOf('container.querySelector("[data-analytics-end]")'));
+  assert.match(startHandler, /loadMarketAggregate\(\)/);
+  assert.match(js, /colorFor\(`species:\$\{row\.x\}`/);
+  assert.match(js, /key: `species:\$\{row\.x\}`/);
+  assert.match(js, /Exact sub-threshold sample counts are suppressed/);
+});

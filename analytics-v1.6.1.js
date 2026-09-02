@@ -31,7 +31,8 @@
   const ui = {
     tab: "overview", range: "all", start: "", end: "", species: "", product: "",
     growthMode: "date", agePreset: "all", ageStart: "", ageEnd: "", animalIds: [],
-    market: null, marketLoading: false, marketError: ""
+    market: null, marketLoading: false, marketError: "",
+    marketFilters: { breed: "", sex: "", age_bucket: "", color_variety: "", pedigree_status: "", registration_status: "", region_country: "", region_code: "", broad_region: "", sale_month: "", sale_year: "" }
   };
   let host = null;
 
@@ -499,6 +500,29 @@
 
   const seriesColorControls = (items) => `<div class="analytics-color-row">${items.map((item, index) => seriesColorControl(item.key, item.label, item.index ?? index)).join("")}</div>`;
 
+  function marketFilterPayload() {
+    return Object.fromEntries(Object.entries(ui.marketFilters || {}).filter(([, value]) => String(value || "").trim()).map(([key, value]) => [key, String(value).trim()]));
+  }
+
+  function marketFilterControls() {
+    const value = (key) => esc(ui.marketFilters?.[key] || "");
+    const selected = (key, option) => ui.marketFilters?.[key] === option ? "selected" : "";
+    return `<div class="analytics-module-controls analytics-market-filters">
+      <label>Breed<input data-market-filter="breed" value="${value("breed")}" placeholder="Holland Lop"></label>
+      <label>Sex<select data-market-filter="sex"><option value="">All</option><option value="Female" ${selected("sex", "Female")}>Female</option><option value="Male" ${selected("sex", "Male")}>Male</option><option value="Unknown" ${selected("sex", "Unknown")}>Unknown</option></select></label>
+      <label>Age at sale<select data-market-filter="age_bucket"><option value="">All ages</option><option value="Birth–8 weeks" ${selected("age_bucket", "Birth–8 weeks")}>Birth–8 weeks</option><option value="9–12 weeks" ${selected("age_bucket", "9–12 weeks")}>9–12 weeks</option><option value="3–6 months" ${selected("age_bucket", "3–6 months")}>3–6 months</option><option value="7–12 months" ${selected("age_bucket", "7–12 months")}>7–12 months</option><option value="1–2 years" ${selected("age_bucket", "1–2 years")}>1–2 years</option><option value="Over 2 years" ${selected("age_bucket", "Over 2 years")}>Over 2 years</option></select></label>
+      <label>Color / variety<input data-market-filter="color_variety" value="${value("color_variety")}" placeholder="Recorded value"></label>
+      <label>Pedigree status<input data-market-filter="pedigree_status" value="${value("pedigree_status")}" placeholder="Recorded value"></label>
+      <label>Registration status<input data-market-filter="registration_status" value="${value("registration_status")}" placeholder="Recorded value"></label>
+      <label>Country<input data-market-filter="region_country" maxlength="2" value="${value("region_country")}" placeholder="US"></label>
+      <label>State / large region<input data-market-filter="region_code" maxlength="32" value="${value("region_code")}" placeholder="KY"></label>
+      <label>Broad region<input data-market-filter="broad_region" maxlength="64" value="${value("broad_region")}" placeholder="Southeast"></label>
+      <label>Sale month<select data-market-filter="sale_month"><option value="">All months</option>${Array.from({ length: 12 }, (_, index) => `<option value="${index + 1}" ${selected("sale_month", String(index + 1))}>${new Date(2000, index, 1).toLocaleString(undefined, { month: "long" })}</option>`).join("")}</select></label>
+      <label>Sale year<input data-market-filter="sale_year" type="number" min="1900" max="2200" value="${value("sale_year")}" placeholder="2026"></label>
+      <button type="button" class="button button-ghost" data-market-clear>Clear Market filters</button>
+    </div><p class="brand-file-note">Market filters are exact-match, privacy-safe aggregate filters. The five-observation minimum is applied after every filter.</p>`;
+  }
+
   function overviewView() {
     const active = array("animals").filter((record) => !["Sold", "Deceased", "Archived", "Ancestor Only"].includes(record.status) && (!ui.species || record.species === ui.species));
     const weights = weightRows().filter((record) => !record.isBirth);
@@ -512,7 +536,10 @@
     if (sales.count) cards.push(stat("Animals sold", sales.count, `Median ${money(sales.median)}`));
     if (revenue.payments.length) cards.push(stat("Recorded revenue", money(revenue.revenue), `${revenue.payments.length} payments`));
     if (feed.rows.length) cards.push(stat("Feed costs", money(feed.total), `${feed.rows.length} expense records`));
-    return `<div class="stats-grid">${cards.join("")}</div>${section("Available personal analytics", `<div class="analytics-availability">${METRICS.map((metric) => `<div><strong>${esc(metric.name)}</strong><span>${esc(metric.category)} · ${esc(metric.visualizations.join(", "))} · ${esc(metric.source)}</span></div>`).join("")}</div>`, "Missing records are shown as no data, never as fabricated zero observations.")}`;
+    const speciesCounts = groupBy(active, (record) => record.species || "Unknown", () => 1);
+    const speciesColors = speciesCounts.length ? seriesColorControls(speciesCounts.map((row, index) => ({ key: `species:${row.x}`, label: row.x, index }))) : "";
+    const speciesChart = speciesCounts.length ? section("Current animals by species", barChart(speciesCounts.map((row, index) => ({ ...row, colorKey: `species:${row.x}`, color: colorFor(`species:${row.x}`, index) })), { label: "Current animals by species" }), "Species colors persist in Analytics settings and are reused whenever species series are charted.") : "";
+    return `<div class="stats-grid">${cards.join("")}</div>${speciesColors}${speciesChart}${section("Available personal analytics", `<div class="analytics-availability">${METRICS.map((metric) => `<div><strong>${esc(metric.name)}</strong><span>${esc(metric.category)} · ${esc(metric.visualizations.join(", "))} · ${esc(metric.source)}</span></div>`).join("")}</div>`, "Missing records are shown as no data, never as fabricated zero observations.")}`;
   }
 
   function selectedAnimals() {
@@ -641,11 +668,12 @@
     const consent = currentState()?.settings?.marketAnalyticsConsent;
     if (!consent?.enabled) return empty("Market Analytics participation is off", "Enable the separate, optional Market Analytics setting to contribute future completed sales and view privacy-safe aggregate results.");
     if (!root?.HerdHarborMarket) return empty("Market Analytics is unavailable", "Your private records are unchanged. Reopen HerdHarbor after the v1.6.5 update finishes.");
-    if (ui.marketLoading) return empty("Loading privacy-safe market results…", "Only groups meeting the minimum sample threshold can be returned.");
-    if (ui.marketError) return empty("Market results could not load", ui.marketError);
-    if (!ui.market?.available) return empty("Not enough market data yet", `At least ${ui.market?.minimumSampleSize || 5} matching opted-in observations are required. Current qualifying sample: ${ui.market?.sampleSize ?? "suppressed"}.`);
+    const controls = marketFilterControls();
+    if (ui.marketLoading) return `${controls}${empty("Loading privacy-safe market results…", "Only groups meeting the minimum sample threshold can be returned.")}`;
+    if (ui.marketError) return `${controls}${empty("Market results could not load", ui.marketError)}`;
+    if (!ui.market?.available) return `${controls}${empty("Not enough market data yet", `At least ${ui.market?.minimumSampleSize || 5} matching opted-in observations are required. Exact sub-threshold sample counts are suppressed.`)}`;
     const result = ui.market;
-    return `<div class="stats-grid">${stat("Sample size", result.sampleSize)}${stat("Median sale price", money(result.medianSalePrice, result.currency || "USD"))}${stat("Average sale price", money(result.averageSalePrice, result.currency || "USD"))}${stat("Median listed price", money(result.medianListedPrice, result.currency || "USD"))}${stat("Average listed price", money(result.averageListedPrice, result.currency || "USD"))}${stat("Average asking vs. sale", money(result.averageAskingDifference, result.currency || "USD"))}${result.minimumSalePrice !== undefined ? stat("Minimum", money(result.minimumSalePrice, result.currency || "USD")) : ""}${result.maximumSalePrice !== undefined ? stat("Maximum", money(result.maximumSalePrice, result.currency || "USD")) : ""}</div>${section("Market trend", lineChart([{ name: "Market median", color: colorFor("metric:market-median", 1), points: sourceArray(result, "trend").map((point, index) => ({ xValue: index, y: point.medianSalePrice, label: point.period, detail: money(point.medianSalePrice, result.currency || "USD") })) }], { yLabel: (value) => money(value, result.currency || "USD"), label: "Privacy-safe market median over time" }), "Aggregated opted-in observations only. Raw breeder transactions are never returned.")}`;
+    return `${controls}<div class="stats-grid">${stat("Sample size", result.sampleSize)}${stat("Median sale price", money(result.medianSalePrice, result.currency || "USD"))}${stat("Average sale price", money(result.averageSalePrice, result.currency || "USD"))}${stat("Median listed price", money(result.medianListedPrice, result.currency || "USD"))}${stat("Average listed price", money(result.averageListedPrice, result.currency || "USD"))}${stat("Average asking vs. sale", money(result.averageAskingDifference, result.currency || "USD"))}${result.minimumSalePrice !== undefined ? stat("Minimum", money(result.minimumSalePrice, result.currency || "USD")) : ""}${result.maximumSalePrice !== undefined ? stat("Maximum", money(result.maximumSalePrice, result.currency || "USD")) : ""}</div>${section("Market trend", lineChart([{ name: "Market median", color: colorFor("metric:market-median", 1), points: sourceArray(result, "trend").map((point, index) => ({ xValue: index, y: point.medianSalePrice, label: point.period, detail: money(point.medianSalePrice, result.currency || "USD") })) }], { yLabel: (value) => money(value, result.currency || "USD"), label: "Privacy-safe market median over time" }), "Aggregated opted-in observations only. Raw breeder transactions are never returned.")}`;
   }
 
   function content() {
@@ -658,7 +686,7 @@
     ui.marketError = "";
     render(host);
     try {
-      ui.market = await root.HerdHarborMarket.queryAggregate({ species: ui.species || undefined, currency: "USD", start: context().start || undefined, end: context().end || undefined });
+      ui.market = await root.HerdHarborMarket.queryAggregate({ species: ui.species || undefined, ...marketFilterPayload(), currency: "USD", start: context().start || undefined, end: context().end || undefined });
     } catch (error) {
       ui.marketError = error?.message || "The aggregate service is temporarily unavailable.";
     } finally {
@@ -674,7 +702,7 @@
     if (age) age.value = ui.agePreset;
     container.querySelector("[data-analytics-species]")?.addEventListener("change", (event) => { ui.species = event.target.value; ui.animalIds = []; ui.market = null; render(host); if (ui.tab === "market") loadMarketAggregate(); });
     range?.addEventListener("change", (event) => { ui.range = event.target.value; ui.market = null; render(host); if (ui.tab === "market") loadMarketAggregate(); });
-    container.querySelector("[data-analytics-start]")?.addEventListener("change", (event) => { ui.start = event.target.value; ui.market = null; render(host); });
+    container.querySelector("[data-analytics-start]")?.addEventListener("change", (event) => { ui.start = event.target.value; ui.market = null; render(host); if (ui.tab === "market") loadMarketAggregate(); });
     container.querySelector("[data-analytics-end]")?.addEventListener("change", (event) => { ui.end = event.target.value; ui.market = null; render(host); if (ui.tab === "market") loadMarketAggregate(); });
     container.querySelectorAll("[data-analytics-tab]").forEach((button) => button.addEventListener("click", () => { ui.tab = button.dataset.analyticsTab; render(host); if (ui.tab === "market" && !ui.market) loadMarketAggregate(); }));
     container.querySelector("[data-growth-mode]")?.addEventListener("change", (event) => { ui.growthMode = event.target.value; render(host); });
@@ -683,6 +711,18 @@
     container.querySelector("[data-growth-age-end]")?.addEventListener("change", (event) => { ui.ageEnd = event.target.value; render(host); });
     container.querySelectorAll("[data-growth-animal]").forEach((input) => input.addEventListener("change", () => { ui.animalIds = [...container.querySelectorAll("[data-growth-animal]:checked")].map((item) => item.value); render(host); }));
     container.querySelector("[data-production-product]")?.addEventListener("change", (event) => { ui.product = event.target.value; render(host); });
+    container.querySelectorAll("[data-market-filter]").forEach((input) => input.addEventListener("change", (event) => {
+      ui.marketFilters[event.target.dataset.marketFilter] = event.target.value;
+      ui.market = null;
+      render(host);
+      loadMarketAggregate();
+    }));
+    container.querySelector("[data-market-clear]")?.addEventListener("click", () => {
+      Object.keys(ui.marketFilters).forEach((key) => { ui.marketFilters[key] = ""; });
+      ui.market = null;
+      render(host);
+      loadMarketAggregate();
+    });
     container.querySelectorAll("[data-series-color]").forEach((input) => input.addEventListener("input", () => {
       currentState().settings = currentState().settings || {};
       currentState().settings.analyticsColors = currentState().settings.analyticsColors || {};
