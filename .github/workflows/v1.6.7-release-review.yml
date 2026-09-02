@@ -63,6 +63,10 @@ jobs:
 
   android-twa-review-build:
     name: Android TWA review build only
+    # Pull requests already run the repository-wide Android alpha bundle workflow.
+    # Avoid launching the same Gradle dependency graph twice in parallel, which can
+    # trigger Maven Central 429 rate limits and produce a false-negative release gate.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
