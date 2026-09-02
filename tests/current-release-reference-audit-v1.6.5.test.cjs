@@ -1,5 +1,6 @@
 "use strict";
 
+// Final review CI checkpoint after deterministic index recovery.
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
