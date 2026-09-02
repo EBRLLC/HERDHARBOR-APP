@@ -129,4 +129,4 @@ assert.match(cloud,/function isIdRecordArray/);
 assert.match(cloud,/function mergeIdRecordArray/);
 assert.match(cloud,/Object\.keys\(local\)/);
 assert.match(cloud,/Object\.keys\(remote\)/);
-console.log("HerdHarbor Alpha v1.6.1 Shows tests passed");
+console.log("HerdHarbor Alpha v1.6.5 Shows tests passed");

@@ -66,7 +66,7 @@ function makeContext(release = null) {
   assert.equal(pastDueState.status, "past_due");
   assert.equal(pastDueState.active, false);
 
-  console.log("Alpha v1.6.1 billing-ready centralized entitlement tests passed");
+  console.log("Alpha v1.6.5 billing-ready centralized entitlement tests passed");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

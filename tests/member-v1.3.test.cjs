@@ -29,4 +29,4 @@ assert.doesNotMatch(worker, /team-management\.js|business-workspace\.js|business
 assert.match(releaseNotes, /Business[\s\S]*Alpha v1\.6\.1/);
 assert.match(worker, /breeding-intelligence-core-v1\.6\.1\.js/);
 
-console.log("v1.3.0 Member regression remains intact under Alpha v1.6.1");
+console.log("v1.3.0 Member regression remains intact under Alpha v1.6.5");

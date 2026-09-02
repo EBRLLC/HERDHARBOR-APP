@@ -26,8 +26,8 @@ test("visible genetics actions are captured and routed by selected animal id", (
 });
 
 test("hotfix build and PWA cache move together", () => {
-  assert.match(build, /buildId:\s*"current-state-2"/);
-  assert.match(build, /build:\s*"1\.6\.1-alpha-current-state-2"/);
-  assert.match(worker, /herdharbor-shell-v1\.6\.1-alpha-current-state-2/);
-  assert.match(worker, /herdharbor-release-v1\.6\.1\.js\?v=1\.6\.1/);
+  assert.match(build, /buildId:\s*"analytics-market-foundation-1"/);
+  assert.match(build, /build:\s*"1\.6\.5-alpha-analytics-market-foundation-1"/);
+  assert.match(worker, /herdharbor-shell-v1\.6\.5-alpha-analytics-market-foundation-1/);
+  assert.match(worker, /herdharbor-release-v1\.6\.1\.js\?v=1\.6\.5/);
 });

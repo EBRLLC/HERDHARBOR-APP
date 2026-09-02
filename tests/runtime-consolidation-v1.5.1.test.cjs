@@ -36,8 +36,8 @@ const activeV151 = [
 
 for (const file of activeV151) {
   assert.ok(fs.existsSync(path.join(root, file)), "missing consolidated runtime asset: " + file);
-  assert.ok((pwa + "\n" + html).includes(file + "?v=1.6.1"), "startup loader does not load " + file + " as v1.6.1");
-  assert.ok(worker.includes("./" + file + "?v=1.6.1"), "service-worker.js does not precache " + file + " as v1.6.1");
+  assert.ok((pwa + "\n" + html).includes(file + "?v=1.6.5"), "startup loader does not load " + file + " as v1.6.1");
+  assert.ok(worker.includes("./" + file + "?v=1.6.5"), "service-worker.js does not precache " + file + " as v1.6.1");
 }
 
 const legacyRuntimeNames = [
@@ -74,9 +74,9 @@ assert.match(pedigreeGenetics, /printContext&&doc\.documentElement\?\.classList\
 assert.match(pedigreeGeneticsCss, /html\.hh-pedigree-print-document \.hh-pedigree-genetics\{font-size:7\.3px;/, "compact print genetics sizing is defined");
 assert.doesNotMatch(geneticsV2, /breeding-intelligence-core\.js['"]/, "advanced genetics engine does not require the legacy unversioned core");
 
-assert.ok(pwa.includes('const APP_VERSION = "1.6.1"'));
-assert.ok(worker.includes("v1.6.1-alpha-current-state-2"));
-assert.ok(worker.includes("pwa.js?v=25"));
+assert.ok(pwa.includes('const APP_VERSION = "1.6.5"'));
+assert.ok(worker.includes("v1.6.5-alpha-analytics-market-foundation-1"));
+assert.ok(worker.includes("pwa.js?v=26"));
 assert.ok(!pwa.includes(";" + String.fromCharCode(92) + "n    if"), "pwa.js contains no literal newline escape in executable source");
 assert.ok(!read("herdharbor-membership-v1.6.1.js").includes(";" + String.fromCharCode(92) + "n    if"), "membership source contains no literal newline escape in executable source");
 assert.ok(!read("pedigree-visual.js").includes(";" + String.fromCharCode(92) + "n    if"), "pedigree source contains no literal newline escape in executable source");

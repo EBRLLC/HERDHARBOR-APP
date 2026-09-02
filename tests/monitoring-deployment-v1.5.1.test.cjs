@@ -9,7 +9,7 @@ const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
 const config = read("herdharbor-monitoring-config.js");
 const pagesWorkflow = read(".github/workflows/v1.6.1-pages-deploy.yml");
-const reviewWorkflow = read(".github/workflows/v1.6.1-monitoring-review.yml");
+const reviewWorkflow = read(".github/workflows/v1.6.5-release-review.yml");
 const instrumentation = read("monitoring/herdharbor-monitoring-instrumentation.mjs");
 const cloud = read("herdharbor-cloud.js");
 const readme = read("README.md");
@@ -41,4 +41,4 @@ assert.match(monitoringSetup, /Prevent Storing of IP Addresses/);
 assert.match(monitoringSetup, /scrubIPAddresses=true/);
 assert.match(monitoringSetup, /IP-derived user or geo context/);
 
-console.log("Alpha v1.6.1 deployment, Android review, and IndexedDB coverage guardrails passed");
+console.log("Alpha v1.6.5 deployment, Android review, and IndexedDB coverage guardrails passed");

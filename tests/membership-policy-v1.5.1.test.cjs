@@ -143,4 +143,4 @@ assert.equal(
   "the Junior limit is inactive when the release feature flag is disabled"
 );
 
-console.log("Alpha v1.6.1 centralized membership and Junior policy tests passed");
+console.log("Alpha v1.6.5 centralized membership and Junior policy tests passed");

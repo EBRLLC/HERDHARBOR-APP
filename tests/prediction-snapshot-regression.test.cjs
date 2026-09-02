@@ -15,12 +15,14 @@ for (const source of [currentUi, v2Ui, intelligence, tools]) {
   assert.doesNotThrow(() => new Function(source), "snapshot workflow browser script compiles");
 }
 
-assert.match(currentUi, /How HerdHarbor calculated this[\s\S]*Save Prediction Snapshot/, "save action follows the completed current prediction");
-assert.match(currentUi, /if\(run&&buck&&doe\)/, "current save action requires a valid buck and doe prediction run");
-assert.match(currentUi, /if\(a\?\.supported\)draft=makePredictionDraft/, "unsupported analyses do not get a save action");
-assert.match(currentUi, /saveInFlight\|\|button\.disabled\|\|!lastPrediction/, "rapid duplicate saves are guarded");
-assert.match(currentUi, /Prediction saved to history\./, "successful saves provide confirmation");
-assert.match(v2Ui, /Save Prediction Snapshot/, "the direct Genetics v2 UI also exposes the restored action");
+assert.match(currentUi, /How HerdHarbor calculated this[\s\S]*Save Prediction Snapshot/, "compatibility prediction path still exposes snapshot saving");
+assert.match(currentUi, /if\(run&&buck&&doe\)/, "compatibility save action requires a valid buck and doe prediction run");
+assert.match(currentUi, /if\(a\?\.supported\)draft=makePredictionDraft/, "unsupported compatibility analyses do not get a save action");
+assert.match(currentUi, /saveInFlight\|\|button\.disabled\|\|!lastPrediction/, "rapid duplicate compatibility saves are guarded");
+assert.match(currentUi, /Prediction saved to history\./, "compatibility path confirms successful saves");
+assert.match(v2Ui, /Save Prediction Snapshot/, "the authoritative v1.6.5 Pair Analysis exposes snapshot saving");
+assert.match(v2Ui, /openPairAnalysis:\(\)=>pair\(\)/, "Breeding Intelligence Pair Analysis is bridged to the authoritative v1.6.5 UI");
+assert.match(v2Ui, /No Mendelian percentage/, "snapshot-capable authoritative Pair Analysis also surfaces non-Mendelian protection");
 assert.match(styles, /\.hh-bi-modal\{[^}]*display:flex;flex-direction:column/, "the modal sizes its body from the actual header height");
 assert.match(styles, /\.hh-bi-modal-body\{[^}]*flex:1 1 auto;min-height:0/, "the prediction body remains fully scrollable to its final action");
 assert.doesNotMatch(styles, /\.hh-bi-modal-body\{max-height:calc\(/, "a guessed header height cannot clip the save action");

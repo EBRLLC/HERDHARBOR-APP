@@ -180,7 +180,7 @@ const { pathToFileURL } = require("node:url");
   assert.equal(privacy.hardenBreadcrumb({ category: "ui.click", message: "Judy" }), null);
   assert.equal(privacy.hardenBreadcrumb({ category: "fetch", data: { url: "https://private" } }), null);
 
-  console.log("Alpha v1.6.1 monitoring privacy scrubbing tests passed");
+  console.log("Alpha v1.6.5 monitoring privacy scrubbing tests passed");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

@@ -1,8 +1,8 @@
-name: Alpha v1.6.1 release review
+name: Alpha v1.6.5 release review
 
 on:
   push:
-    branches: [agent/v1.6.1-crash-monitoring, agent/v1.6.1-admin-members]
+    branches: [v1.6.5-analytics-market-foundation]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -53,7 +53,7 @@ jobs:
         run: git diff --exit-code -- . ':!vendor/herdharbor-monitoring-v1.6.1.min.js'
       - uses: actions/upload-artifact@v4
         with:
-          name: herdharbor-v1.6.1-release-review-bundle
+          name: herdharbor-v1.6.5-release-review-bundle
           path: vendor/herdharbor-monitoring-v1.6.1.min.js
           if-no-files-found: error
           retention-days: 14
@@ -77,7 +77,7 @@ jobs:
         run: test -s android/app/build/outputs/bundle/release/app-release.aab
       - uses: actions/upload-artifact@v4
         with:
-          name: herdharbor-v1.6.1-release-review-unsigned-aab
+          name: herdharbor-v1.6.5-release-review-unsigned-aab
           path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 14

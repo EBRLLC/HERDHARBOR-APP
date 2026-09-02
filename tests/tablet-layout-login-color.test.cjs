@@ -13,7 +13,7 @@ const release = fs.readFileSync(path.join(root, "herdharbor-release-v1.6.1.js"),
 const pedigreeGeneticsCss = fs.readFileSync(path.join(root, "pedigree-genetics-v1.6.1.css"), "utf8");
 const showsCss = fs.readFileSync(path.join(root, "shows-v1.6.1.css"), "utf8");
 
-assert.match(html, /const APP_VERSION = "1\.6\.1"/);
+assert.match(html, /const APP_VERSION = "1\.6\.5"/);
 assert.match(html, /html \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
 assert.match(html, /body \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
 assert.match(html, /\.app-shell \{[\s\S]*?grid-template-columns: minmax\(0, var\(--sidebar-width\)\) minmax\(0, 1fr\);[\s\S]*?overflow-x: clip;/);
@@ -28,9 +28,9 @@ assert.match(html, /\.list-item \{[\s\S]*?max-width: 100%;[\s\S]*?min-width: 0;[
 assert.match(html, /\.data-table-wrap \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: auto;[\s\S]*?overscroll-behavior-inline: contain;/);
 assert.match(html, /@media \(max-width: 820px\) \{[\s\S]*?#quick-add-button[\s\S]*?width: 42px;/);
 assert.equal(manifest.orientation, "portrait");
-assert.equal(manifest.version, "1.6.1");
+assert.equal(manifest.version, "1.6.5");
 
-assert.match(cloud, /version: "1\.6\.1"/);
+assert.match(cloud, /version: "1\.6\.5"/);
 assert.match(cloud, /html\[data-theme="dark"\] #hh-auth-root/);
 assert.match(cloud, /#hh-auth-root \.hh-auth-form label/);
 assert.match(cloud, /#hh-auth-root \.hh-auth-form input/);
@@ -41,14 +41,14 @@ assert.match(cloud, /--hh-auth-input: #0A2033/);
 assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog \{[\s\S]*?color: #18212A;[\s\S]*?background: #FFFFFF;[\s\S]*?color-scheme: light;/);
 assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog h2 \{ color: #0D2540; \}/);
 assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog \.hh-account-email \{ color: #526474; \}/);
-assert.match(worker, /v1\.6\.1-alpha-current-state-2/);
-assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.6\.1/);
+assert.match(worker, /v1\.6\.5-alpha-analytics-market-foundation-1/);
+assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.6\.5/);
 assert.match(worker, /herdharbor-cloud\.js\?v=19/);
 assert.match(worker, /pedigree-visual\.css\?v=2/);
-assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=1\.6\.1/);
-assert.ok(worker.includes("shows-v1.6.1.css?v=1.6.1"));
-assert.match(worker, /shows-v1\.6\.1\.js\?v=1\.6\.1/);
-assert.match(worker, /shows-v1\.6\.1-hardening\.js\?v=1\.6\.1/);
+assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=1\.6\.5/);
+assert.ok(worker.includes("shows-v1.6.1.css?v=1.6.5"));
+assert.match(worker, /shows-v1\.6\.1\.js\?v=1\.6\.5/);
+assert.match(worker, /shows-v1\.6\.1-hardening\.js\?v=1\.6\.5/);
 assert.match(worker, /NETWORK_FIRST_PATHS/);
 assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
 assert.match(release, /@media\(max-width:620px\)/);
@@ -87,4 +87,4 @@ function contrast(foreground, background) {
   assert.ok(contrast(foreground, background) >= 4.5, `${label} meets WCAG AA contrast`);
 });
 
-console.log("Alpha v1.6.1 tablet containment, PWA cache freshness, existing pedigree genetics, Help, and login color tests passed");
+console.log("Alpha v1.6.5 tablet containment, PWA cache freshness, existing pedigree genetics, Help, and login color tests passed");

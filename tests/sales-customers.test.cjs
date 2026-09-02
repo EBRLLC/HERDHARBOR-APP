@@ -10,7 +10,7 @@ assert.ok(start >= 0 && end > start, "sales and payment helpers are present");
 let nextId = 1;
 const state = {
   customers: [{ id: "customer-1", name: "Bluegrass Buyer" }],
-  animals: [{ id: "animal-1", name: "Willow", species: "Rabbit", status: "For Sale", askingPrice: "100.00" }],
+  animals: [{ id: "animal-1", name: "Willow", species: "Rabbit", status: "For Sale", askingPrice: "125.00" }],
   sales: [],
   payments: [],
   transactions: []
@@ -46,6 +46,7 @@ assert.equal(state.animals[0].saleRecordId, sale.id);
 sale.status = "Completed";
 helpers.applySaleAnimalStatuses(sale);
 assert.equal(state.animals[0].status, "Sold");
+assert.equal(state.animals[0].askingPrice, "125.00", "actual sale price never overwrites the asking price");
 
 const payment = {
   id: "payment-1", saleId: sale.id, type: "Deposit", date: "2026-08-05",

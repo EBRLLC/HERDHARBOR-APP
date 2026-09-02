@@ -110,4 +110,4 @@ assert.match(cloud, /const STORAGE_KEY = "herdharbor_pre_alpha_v1"/, "protected 
 assert.match(html, /const defaultState = \{/);
 assert.doesNotMatch(html, /juniorAnimals|juniorPedigrees|juniorSync/, "Junior reuses current farm records and sync");
 
-console.log("Alpha v1.6.1 Owner/Admin membership security and UI contract tests passed");
+console.log("Alpha v1.6.5 Owner/Admin membership security and UI contract tests passed");
