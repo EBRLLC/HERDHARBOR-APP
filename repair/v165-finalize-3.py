@@ -4,6 +4,8 @@ old = '.github/workflows/v1.6.1-monitoring-review.yml'
 new = '.github/workflows/v1.6.5-release-review.yml'
 changed = []
 for path in Path('tests').glob('*.test.cjs'):
+    if path.name == 'current-release-reference-audit-v1.6.5.test.cjs':
+        continue
     text = path.read_text()
     if old in text:
         path.write_text(text.replace(old, new))
