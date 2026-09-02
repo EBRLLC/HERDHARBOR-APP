@@ -4,11 +4,11 @@ const fs=require('node:fs');
 const path=require('node:path');
 const root=path.join(__dirname,'..'),read=f=>fs.readFileSync(path.join(root,f),'utf8');
 
-test('Phase 3 modules load additively after rabbit genetics and are cached offline',()=>{
+test('Phase 3 foundation modules load additively after rabbit genetics and are cached offline',()=>{
   const pwa=read('pwa.js'),worker=read('service-worker.js');
   for(const file of ['standards-registry-v1.6.1.js','multispecies-genetics-v1.6.1.js','standards-genetics-ui-v1.6.1.js','standards-genetics-v1.6.1.css']){assert.match(pwa+worker,new RegExp(file.replaceAll('.','\\.')));}
   assert.ok(pwa.indexOf('multispecies-genetics-v1.6.1.js')>pwa.indexOf('rabbit-genetics-v1.6.1.js'));
-  assert.match(worker,/herdharbor-shell-v1\.6\.6-alpha-mobile-analytics-hotfix-1/);
+  assert.match(worker,/herdharbor-shell-v1\.6\.7-alpha-completion-debt-1/);
 });
 
 test('species-aware UI provides optional Shows, animal, entry, genetics and failure states',()=>{
