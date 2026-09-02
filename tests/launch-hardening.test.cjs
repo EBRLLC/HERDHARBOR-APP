@@ -13,7 +13,7 @@ const release = fs.readFileSync(path.join(root, "herdharbor-release-v1.6.1.js"),
 const shows = fs.readFileSync(path.join(root, "shows-v1.6.1.js"), "utf8");
 const hardening = fs.readFileSync(path.join(root, "shows-v1.6.1-hardening.js"), "utf8");
 
-// Legacy inline Member app remains intact; v1.6.1 is an additive overlay.
+// The established application shell remains intact; v1.6.6 is a focused web/PWA overlay.
 assert.match(html, /const APP_VERSION = "1\.6\.5"/);
 assert.match(html, /id="request-account-deletion"/);
 assert.match(html, /Type DELETE to confirm/);
@@ -31,7 +31,7 @@ assert.match(cloud, /navigator\.onLine === false/);
 assert.match(cloud, /dirty && !\(await syncNow\(\)\)/);
 assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
-assert.match(worker, /v1\.6\.5-alpha-analytics-market-foundation-1/);
+assert.match(worker, /v1\.6\.6-alpha-mobile-analytics-hotfix-1/);
 assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.6\.5/);
 assert.match(worker, /herdharbor-cloud\.js\?v=19/);
 assert.match(worker, /pwa\.js\?v=26/);
@@ -62,4 +62,4 @@ assert.match(hardening, /Remove this attachment from the record\?/);
 assert.match(hardening, /Animal Show History/);
 assert.match(hardening, /PAGE_SIZE = 24/);
 
-console.log("Alpha v1.6.5 launch hardening, PWA update independence, and account-safety tests passed");
+console.log("Alpha v1.6.6 launch hardening, PWA update independence, and account-safety tests passed");
