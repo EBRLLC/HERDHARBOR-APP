@@ -12,11 +12,14 @@ const worker = read("service-worker.js");
 const cloud = read("herdharbor-cloud.js");
 const manifest = JSON.parse(read("manifest.json"));
 const html = read("index.html");
+const build = read("herdharbor-build.js");
 
-// v1.6.5 keeps the independently verified update path.
-assert.equal(manifest.version, "1.6.5");
-assert.match(pwa, /const APP_VERSION = "1\.6\.5"/);
-assert.match(pwa, /const BUILD_ID = "analytics-market-foundation-1"/);
+// v1.6.6 keeps the independently verified update path and advances the web runtime identity.
+assert.equal(manifest.version, "1.6.6");
+assert.match(build, /version:\s*"1\.6\.6"/);
+assert.match(build, /buildId:\s*"mobile-analytics-hotfix-1"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "1\.6\.5"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "analytics-market-foundation-1"/);
 assert.match(pwa, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
 assert.match(html, /manifest\.json\?v=1\.6\.5/);
 
@@ -37,8 +40,6 @@ assert.match(pwa, />Update Now</);
 assert.match(pwa, />Later</);
 assert.match(pwa, /4 \* 60 \* 60 \* 1000/);
 
-// New workers wait for the existing-style Update now action instead of
-// automatically activating while a user is still in the old app instance.
 const installHandler = worker.match(/self\.addEventListener\("install",[\s\S]*?\n\}\);/);
 assert.ok(installHandler, "service worker install handler exists");
 assert.doesNotMatch(installHandler[0], /skipWaiting/);
@@ -47,8 +48,6 @@ assert.match(pwa, /workerToActivate\.postMessage\(\{ type: "SKIP_WAITING" \}\)/)
 assert.match(pwa, /controllerchange/);
 assert.match(pwa, /window\.location\.reload\(\)/);
 
-// Updating app code never clears, overwrites, or requires synchronization of
-// herdharbor_pre_alpha_v1. A reload preserves localStorage and dirty markers.
 assert.doesNotMatch(pwa, /localStorage\.(?:clear|removeItem)\(/);
 assert.doesNotMatch(pwa, /herdharbor_pre_alpha_v1/);
 assert.doesNotMatch(pwa, /dirtyKey|ACTIVE_OWNER_KEY|baseKey/);
@@ -56,9 +55,7 @@ assert.match(cloud, /const STORAGE_KEY = "herdharbor_pre_alpha_v1"/);
 assert.match(cloud, /hasUnsyncedChanges/);
 assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
-// Browser/app shell requests favor production over stale frontend caches while
-// still falling back to the current shell when offline.
-assert.match(worker, /v1\.6\.5-alpha-analytics-market-foundation-1/);
+assert.match(worker, /v1\.6\.6-alpha-mobile-analytics-hotfix-1/);
 assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
 assert.match(worker, /NETWORK_FIRST_PATHS/);
 assert.match(worker, /\/manifest\.json/);
@@ -70,4 +67,4 @@ assert.match(worker, /caches\.delete\(key\)/);
 assert.match(worker, /self\.clients\.claim\(\)/);
 assert.match(pwa, /manifest\.json\?build=\$\{encodeURIComponent\(PWA_BUILD\)\}/);
 
-console.log("Alpha v1.6.5 PWA update-regression tests passed");
+console.log("Alpha v1.6.6 PWA update-regression tests passed");
