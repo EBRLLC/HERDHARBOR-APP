@@ -67,10 +67,10 @@ jobs:
             ./ _site/
           test -s _site/herdharbor-monitoring-config.js
           test -s _site/vendor/herdharbor-monitoring-v1.6.1.min.js
-          ! grep -q 'dsn: ""' _site/herdharbor-monitoring-config.js
-          grep -q 'environment: "production"' _site/herdharbor-monitoring-config.js
-          grep -q 'release: "HerdHarbor@1.6.7"' _site/herdharbor-monitoring-config.js
-          grep -q 'build: "65fa177645897de272784ac60a059d58af0f4707"' _site/herdharbor-monitoring-config.js
+          ! grep -q '"dsn": ""' _site/herdharbor-monitoring-config.js
+          grep -q '"environment": "production"' _site/herdharbor-monitoring-config.js
+          grep -q '"release": "HerdHarbor@1.6.7"' _site/herdharbor-monitoring-config.js
+          grep -q '"build": "65fa177645897de272784ac60a059d58af0f4707"' _site/herdharbor-monitoring-config.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
