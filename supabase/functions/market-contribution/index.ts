@@ -11,7 +11,7 @@ const ACTIONS = new Set(["consent", "upsert", "withdraw", "aggregate", "account-
 const FILTER_FIELDS = new Set([
   "species", "breed", "sex", "age_bucket", "color_variety", "pedigree_status",
   "registration_status", "region_country", "region_code", "broad_region",
-  "sale_month", "sale_year"
+  "sale_month", "sale_year", "currency", "start", "end"
 ]);
 
 const response = (body: unknown, status = 200) => new Response(JSON.stringify(body), {

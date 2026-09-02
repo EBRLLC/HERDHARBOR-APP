@@ -396,8 +396,16 @@ declare
   v_asking_median numeric;
   v_difference numeric;
   v_currency text;
+  v_currency_filter text;
+  v_start date;
+  v_end date;
   v_trend jsonb := '[]'::jsonb;
 begin
+  -- v1.6.5 personal and market currency display is USD. Keep aggregation currency-isolated
+  -- so future non-USD facts can never be averaged into a USD result.
+  v_currency_filter := upper(coalesce(nullif(btrim(p_filters ->> 'currency'), ''), 'USD'));
+  v_start := market_private.safe_date(p_filters ->> 'start');
+  v_end := market_private.safe_date(p_filters ->> 'end');
   if not exists (
     select 1 from market_private.market_consent
     where user_id = p_user_id and enabled
@@ -427,7 +435,10 @@ begin
     and (coalesce(p_filters ->> 'region_code', '') = '' or f.region_code = p_filters ->> 'region_code')
     and (coalesce(p_filters ->> 'broad_region', '') = '' or f.broad_region = p_filters ->> 'broad_region')
     and (coalesce(p_filters ->> 'sale_month', '') = '' or f.sale_month = (p_filters ->> 'sale_month')::smallint)
-    and (coalesce(p_filters ->> 'sale_year', '') = '' or f.sale_year = (p_filters ->> 'sale_year')::smallint);
+    and (coalesce(p_filters ->> 'sale_year', '') = '' or f.sale_year = (p_filters ->> 'sale_year')::smallint)
+    and f.currency = v_currency_filter
+    and (v_start is null or make_date(f.sale_year, f.sale_month, 1) >= date_trunc('month', v_start::timestamp)::date)
+    and (v_end is null or make_date(f.sale_year, f.sale_month, 1) <= date_trunc('month', v_end::timestamp)::date);
 
   if v_count < v_threshold then
     return jsonb_build_object(
@@ -462,6 +473,9 @@ begin
       and (coalesce(p_filters ->> 'broad_region', '') = '' or f.broad_region = p_filters ->> 'broad_region')
       and (coalesce(p_filters ->> 'sale_month', '') = '' or f.sale_month = (p_filters ->> 'sale_month')::smallint)
       and (coalesce(p_filters ->> 'sale_year', '') = '' or f.sale_year = (p_filters ->> 'sale_year')::smallint)
+      and f.currency = v_currency_filter
+      and (v_start is null or make_date(f.sale_year, f.sale_month, 1) >= date_trunc('month', v_start::timestamp)::date)
+      and (v_end is null or make_date(f.sale_year, f.sale_month, 1) <= date_trunc('month', v_end::timestamp)::date)
     group by f.sale_year, f.sale_month
     having count(*) >= v_threshold
   ) as grouped;

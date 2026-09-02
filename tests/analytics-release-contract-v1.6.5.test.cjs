@@ -211,3 +211,14 @@ test("v1.6.5 UI assets cover charts, colors, mobile, dark mode, and offline star
   assert.match(worker, /market-analytics-v1\.6\.5\.js/);
   assert.match(worker, /analytics-v1\.6\.1\.js\?v=1\.6\.5/);
 });
+
+
+test("review fixes keep missing weights missing and bind Growth summary/history to filtered chart rows", () => {
+  assert.equal(analytics.displayWeight(null, "lb"), "—");
+  assert.equal(analytics.displayWeight(undefined, "lb"), "—");
+  assert.equal(analytics.displayWeight("", "lb"), "—");
+  const js = fs.readFileSync(path.join(root, "analytics-v1.6.1.js"), "utf8");
+  assert.match(js, /const visibleRowsByAnimal = new Map\(\)/);
+  assert.match(js, /visibleRowsByAnimal\.set\(record\.id, rows\)/);
+  assert.match(js, /const selectedRows = animals\.length === 1 \? \(visibleRowsByAnimal\.get\(animals\[0\]\.id\) \|\| \[\]\) : \[\]/);
+});

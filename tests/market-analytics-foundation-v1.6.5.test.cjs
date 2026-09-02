@@ -176,3 +176,15 @@ test("account deletion clears device queue and backend linkage/facts cascade", (
   assert.match(sql, /factsRemovedByCascade/);
 });
 
+
+
+test("market aggregates are currency-isolated and honor the Analytics date range", () => {
+  const sql = fs.readFileSync(path.join(root, "supabase/v1.6.5-market-analytics-foundation.sql"), "utf8");
+  const edge = fs.readFileSync(path.join(root, "supabase/functions/market-contribution/index.ts"), "utf8");
+  const analyticsSource = fs.readFileSync(path.join(root, "analytics-v1.6.1.js"), "utf8");
+  assert.match(edge, /"sale_month", "sale_year", "currency", "start", "end"/);
+  assert.match(sql, /v_currency_filter := upper\(coalesce\(nullif\(btrim\(p_filters ->> 'currency'\), ''\), 'USD'\)\)/);
+  assert.equal((sql.match(/f\.currency = v_currency_filter/g) || []).length, 2);
+  assert.equal((sql.match(/make_date\(f\.sale_year, f\.sale_month, 1\)/g) || []).length, 4);
+  assert.match(analyticsSource, /queryAggregate\(\{ species: ui\.species \|\| undefined, currency: "USD", start:/);
+});

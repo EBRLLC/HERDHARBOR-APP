@@ -101,7 +101,7 @@
   }
 
   function displayWeight(grams, unit = "lb", digits = 2) {
-    if (!Number.isFinite(Number(grams))) return "—";
+    if (grams === null || grams === undefined || grams === "" || !Number.isFinite(Number(grams))) return "—";
     const value = Number(grams);
     const canonical = String(unit || "lb").trim().toLowerCase().replace(/\s+/g, "");
     if (canonical === "lb+oz" || canonical === "lboz") {
@@ -525,6 +525,7 @@
   function growthView() {
     const animals = selectedAnimals(), unit = preferredWeightUnit(), allRows = weightRows(currentState(), { range: "all" });
     const ageErrors = [];
+    const visibleRowsByAnimal = new Map();
     const series = animals.map((record, index) => {
       let rows = allRows.filter((row) => row.animalId === record.id && dateInRange(row.date));
       if (ui.growthMode === "age") {
@@ -532,9 +533,10 @@
         rows = filtered.rows;
         if (filtered.error) ageErrors.push(`${record.name || "Unnamed animal"}: ${filtered.error}`);
       }
+      visibleRowsByAnimal.set(record.id, rows);
       return { name: record.name || "Unnamed animal", color: colorFor(`animal:${record.id}`, index), points: rows.map((row) => ({ xValue: ui.growthMode === "age" ? row.ageDays : day(row.date)?.getTime(), y: row.grams, label: ui.growthMode === "age" ? `${row.ageDays} days` : dateLabel(row.date), detail: displayWeight(row.grams, unit) })).filter((point) => point.xValue !== null && point.xValue !== undefined) };
     });
-    const selectedRows = allRows.filter((row) => ui.animalIds.includes(row.animalId));
+    const selectedRows = animals.length === 1 ? (visibleRowsByAnimal.get(animals[0].id) || []) : [];
     const primary = animals.length === 1 ? growthSummary(selectedRows) : null;
     const cards = primary ? `<div class="stats-grid">${stat("Birth weight", primary.birth ? displayWeight(primary.birth.grams, unit) : "Not recorded")}${stat("First recorded weight", primary.firstRecorded ? displayWeight(primary.firstRecorded.grams, unit) : "Not recorded")}${stat("Latest weight", displayWeight(primary.latest?.grams, unit))}${stat("Highest recorded", displayWeight(primary.highest?.grams, unit))}${stat("Lowest recorded", displayWeight(primary.lowest?.grams, unit))}${stat("Total gain", displayWeight(primary.gainGrams, unit), `${primary.days ?? 0} days tracked`)}${stat("Average daily gain", displayWeight(primary.dailyGainGrams, unit))}${stat("Average weekly gain", displayWeight(primary.weeklyGainGrams, unit))}${stat("Since previous", primary.previousGainGrams === null ? "Insufficient measurements" : primary.previousGainGrams === 0 ? "No change" : `${primary.previousGainGrams > 0 ? "+" : ""}${displayWeight(primary.previousGainGrams, unit)}`)}${stat("Measurements", primary.measurementCount, primary.birth ? "plus birth weight" : "birth weight not recorded")}</div>` : "";
     const historyRows = animals.length === 1 ? weightHistory(selectedRows, unit).map((row) => [esc(dateLabel(row.date)), esc(row.age), esc(row.isBirth ? `${row.recordedValue} ${row.recordedUnit}${row.recordedOunces !== null ? ` ${row.recordedOunces} oz` : ""}` : `${row.recordedValue} ${row.recordedUnit}${row.recordedOunces !== null ? ` ${row.recordedOunces} oz` : ""}`), esc(row.preferredWeight), esc(row.changeGrams === null ? "—" : row.changeGrams === 0 ? "No change" : `${row.changeGrams > 0 ? "+" : ""}${displayWeight(row.changeGrams, unit)}`)]) : [];
@@ -656,7 +658,7 @@
     ui.marketError = "";
     render(host);
     try {
-      ui.market = await root.HerdHarborMarket.queryAggregate({ species: ui.species || undefined, start: context().start || undefined, end: context().end || undefined });
+      ui.market = await root.HerdHarborMarket.queryAggregate({ species: ui.species || undefined, currency: "USD", start: context().start || undefined, end: context().end || undefined });
     } catch (error) {
       ui.marketError = error?.message || "The aggregate service is temporarily unavailable.";
     } finally {
