@@ -5,11 +5,12 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (root) {
   "use strict";
 
-  const VERSION = "1.6.5";
-  const CONSENT_VERSION = "2026-09-v1";
+  const VERSION = "1.6.6";
+  const CONSENT_VERSION = "2026-09-v2";
   const MINIMUM_SAMPLE_SIZE = 5;
   const QUEUE_KEY = "herdharbor_market_queue_v1";
   const RECEIPT_KEY = "herdharbor_market_receipts_v1";
+  const RETRY_DELAYS_MS = Object.freeze([1800, 5000, 15000, 60000, 300000]);
   const ALLOWED_FACT_FIELDS = Object.freeze([
     "species", "breed", "sex", "age_at_sale_days", "age_bucket", "color_variety",
     "pedigree_status", "registration_status", "listed_price_at_sale", "sale_price",
@@ -31,6 +32,7 @@
   const QUALIFYING_STATUS = "Completed";
   let flushPromise = null;
   let retryTimer = null;
+  let retryAttempt = 0;
 
   const memory = { queue: [], receipts: {} };
   const storage = () => root?.localStorage || null;
@@ -138,6 +140,22 @@
     return writeQueue(readQueue().filter((entry) => !["upsert", "withdraw"].includes(entry.action)));
   }
 
+  function cancelRetry() {
+    if (retryTimer) root?.clearTimeout?.(retryTimer);
+    retryTimer = null;
+  }
+
+  function resetRetry() {
+    retryAttempt = 0;
+    cancelRetry();
+  }
+
+  function nextRetryDelay() {
+    const delay = RETRY_DELAYS_MS[Math.min(retryAttempt, RETRY_DELAYS_MS.length - 1)];
+    retryAttempt += 1;
+    return delay;
+  }
+
   function isFutureEligible(sale, consent) {
     if (consent.includeHistorical) return true;
     if (!sale?.completedAt || !consent.enabledAt) return false;
@@ -190,11 +208,24 @@
     return cloud.invokeFunction("market-contribution", body);
   }
 
+  function scheduleFlush(delay = null) {
+    cancelRetry();
+    const wait = delay === null ? nextRetryDelay() : Math.max(0, Number(delay) || 0);
+    retryTimer = root?.setTimeout?.(() => {
+      retryTimer = null;
+      flush();
+    }, wait);
+  }
+
   async function flush() {
     if (flushPromise) return flushPromise;
-    if (root?.navigator?.onLine === false || !root?.HerdHarborCloud?.getSession?.()?.user?.id) return { submitted: 0, pending: readQueue().length };
+    if (root?.navigator?.onLine === false || !root?.HerdHarborCloud?.getSession?.()?.user?.id) {
+      if (readQueue().length) scheduleFlush();
+      return { submitted: 0, pending: readQueue().length };
+    }
     flushPromise = (async () => {
       let submitted = 0;
+      let failed = false;
       for (const entry of [...readQueue()]) {
         try {
           const result = await invoke(entry);
@@ -209,22 +240,25 @@
           }
           submitted += 1;
         } catch {
+          failed = true;
           break;
         }
       }
-      return { submitted, pending: readQueue().length };
+      const pending = readQueue().length;
+      if (!pending) resetRetry();
+      else if (failed) scheduleFlush();
+      else scheduleFlush(250);
+      return { submitted, pending };
     })().finally(() => { flushPromise = null; });
     return flushPromise;
   }
 
-  function scheduleFlush(delay = 1800) {
-    if (retryTimer) root?.clearTimeout?.(retryTimer);
-    retryTimer = root?.setTimeout?.(() => flush(), delay);
-  }
-
   function recordSaleChange(sale, previousSale, state) {
     const queued = reconcileSale(sale, previousSale, state);
-    if (queued.length) scheduleFlush();
+    if (queued.length) {
+      retryAttempt = 0;
+      scheduleFlush(250);
+    }
     return queued;
   }
 
@@ -243,9 +277,14 @@
       regionCode: String(options.regionCode || previous.regionCode || "").slice(0, 32),
       broadRegion: String(options.broadRegion || previous.broadRegion || "").slice(0, 64)
     };
-    if (!enabled) clearContributionQueue();
+    if (!enabled) {
+      clearContributionQueue();
+      writeReceipts({});
+      resetRetry();
+    }
     enqueue({ action: "consent", consent: { ...state.settings.marketAnalyticsConsent } });
     if (enabled && state.settings.marketAnalyticsConsent.includeHistorical) queueHistoricalCompletedSales(state);
+    retryAttempt = 0;
     scheduleFlush(50);
     return state.settings.marketAnalyticsConsent;
   }
@@ -258,6 +297,7 @@
   async function prepareAccountDeletion() {
     clearContributionQueue();
     writeReceipts({});
+    resetRetry();
     let backendConfirmed = false;
     try {
       await invoke({ action: "account-deletion" });
@@ -271,19 +311,29 @@
   function resetForTests() {
     memory.queue = [];
     memory.receipts = {};
+    resetRetry();
     storage()?.removeItem?.(QUEUE_KEY);
     storage()?.removeItem?.(RECEIPT_KEY);
   }
 
-  root?.addEventListener?.("online", () => flush());
-  root?.addEventListener?.("focus", () => flush());
+  function retryNow() {
+    retryAttempt = 0;
+    cancelRetry();
+    return flush();
+  }
+
+  root?.addEventListener?.("online", retryNow);
+  root?.addEventListener?.("focus", retryNow);
+  root?.document?.addEventListener?.("herdharbor:sync-status", (event) => {
+    if (event?.detail?.signedIn && event?.detail?.online !== false && event?.detail?.unsynced === false && readQueue().length) retryNow();
+  });
 
   return {
-    VERSION, CONSENT_VERSION, MINIMUM_SAMPLE_SIZE, QUEUE_KEY, RECEIPT_KEY,
+    VERSION, CONSENT_VERSION, MINIMUM_SAMPLE_SIZE, QUEUE_KEY, RECEIPT_KEY, RETRY_DELAYS_MS,
     ALLOWED_FACT_FIELDS, PROHIBITED_FIELDS, AGGREGATE_FILTER_FIELDS, QUALIFYING_STATUS, stableStringify,
     fingerprint, sanitizeMarketFact, sanitizeAggregateFilters, getConsent, contributionFingerprint, readQueue,
     readReceipts, enqueue, clearContributionQueue, isFutureEligible, reconcileSale,
     queueHistoricalCompletedSales, recordSaleChange, setConsent, flush, queryAggregate,
-    prepareAccountDeletion, resetForTests
+    prepareAccountDeletion, resetForTests, retryNow
   };
 });
