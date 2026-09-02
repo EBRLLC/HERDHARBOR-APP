@@ -28,7 +28,7 @@ assert.match(html, /\.list-item \{[\s\S]*?max-width: 100%;[\s\S]*?min-width: 0;[
 assert.match(html, /\.data-table-wrap \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: auto;[\s\S]*?overscroll-behavior-inline: contain;/);
 assert.match(html, /@media \(max-width: 820px\) \{[\s\S]*?#quick-add-button[\s\S]*?width: 42px;/);
 assert.equal(manifest.orientation, "portrait");
-assert.equal(manifest.version, "1.6.5");
+assert.equal(manifest.version, "1.6.6");
 
 assert.match(cloud, /version: "1\.6\.5"/);
 assert.match(cloud, /html\[data-theme="dark"\] #hh-auth-root/);
@@ -41,7 +41,7 @@ assert.match(cloud, /--hh-auth-input: #0A2033/);
 assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog \{[\s\S]*?color: #18212A;[\s\S]*?background: #FFFFFF;[\s\S]*?color-scheme: light;/);
 assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog h2 \{ color: #0D2540; \}/);
 assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog \.hh-account-email \{ color: #526474; \}/);
-assert.match(worker, /v1\.6\.5-alpha-analytics-market-foundation-1/);
+assert.match(worker, /v1\.6\.6-alpha-mobile-analytics-hotfix-1/);
 assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.6\.5/);
 assert.match(worker, /herdharbor-cloud\.js\?v=19/);
 assert.match(worker, /pedigree-visual\.css\?v=2/);
@@ -87,4 +87,4 @@ function contrast(foreground, background) {
   assert.ok(contrast(foreground, background) >= 4.5, `${label} meets WCAG AA contrast`);
 });
 
-console.log("Alpha v1.6.5 tablet containment, PWA cache freshness, existing pedigree genetics, Help, and login color tests passed");
+console.log("Alpha v1.6.6 tablet containment, PWA cache freshness, existing pedigree genetics, Help, and login color tests passed");
