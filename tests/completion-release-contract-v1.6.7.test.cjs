@@ -26,12 +26,17 @@ test("v1.6.7 completion ledger closes inherited debt without overstating future 
   assert.match(acceptance, /production acceptance/i);
 });
 
-test("Market Analytics hardening is privacy-suppressed, consent-destructive, and retryable", () => {
+test("Market Analytics hardening is privacy-suppressed, consent-destructive, retryable, and contract-aligned", () => {
   const market = read("market-analytics-v1.6.5.js");
+  const edge = read("supabase/functions/market-contribution/index.ts");
   const sql = read("supabase/v1.6.7-market-privacy-hardening.sql");
 
   assert.match(market, /const VERSION = "1\.6\.6"/);
   assert.match(market, /const CONSENT_VERSION = "2026-09-v2"/);
+  assert.match(edge, /const CONSENT_VERSION = "2026-09-v2"/);
+  const clientConsent = market.match(/const CONSENT_VERSION = "([^"]+)"/)?.[1];
+  const edgeConsent = edge.match(/const CONSENT_VERSION = "([^"]+)"/)?.[1];
+  assert.equal(edgeConsent, clientConsent, "Market client and Edge Function must accept the same consent contract");
   assert.match(market, /const MINIMUM_SAMPLE_SIZE = 5/);
   assert.match(market, /RETRY_DELAYS_MS = Object\.freeze\(\[1800, 5000, 15000, 60000, 300000\]\)/);
   assert.match(market, /herdharbor:sync-status/);
