@@ -1,0 +1,44 @@
+name: Alpha v1.6.5 final contract fixes
+
+on:
+  push:
+    branches: [v1.6.5-analytics-market-foundation]
+    paths:
+      - 'repair/v165-finalize.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v1.6.5-analytics-market-foundation
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply final v1.6.5 contract fixes
+        run: python repair/v165-finalize.py
+      - name: Install pinned dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Run complete regression suite in UTC
+        run: |
+          for test_file in tests/*.test.cjs; do
+            TZ=UTC node "$test_file"
+          done
+      - name: Run complete regression suite in America/New_York
+        run: |
+          for test_file in tests/*.test.cjs; do
+            TZ=America/New_York node "$test_file"
+          done
+      - name: Commit final v1.6.5 fixes
+        run: |
+          git config user.name "EBRLLC"
+          git config user.email "mdamrell@yahoo.com"
+          git add -A
+          git commit -m "Complete Alpha v1.6.5 release contract" || exit 0
+          git push origin HEAD:v1.6.5-analytics-market-foundation
