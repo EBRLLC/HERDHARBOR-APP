@@ -17,6 +17,7 @@ const instrumentation = read("monitoring/herdharbor-monitoring-instrumentation.m
 const cloud = read("herdharbor-cloud.js");
 const shows = read("shows-v1.6.1.js");
 
+// Monitoring package stays at the reviewed 1.6.5 payload; v1.6.6 only changes the live web/PWA shell.
 assert.equal(pkg.version, "1.6.5");
 assert.equal(pkg.dependencies["@sentry/browser"], "10.71.0");
 assert.ok(pkg.devDependencies.esbuild);
@@ -91,7 +92,7 @@ assert.match(pwa, /Monitoring is optional and fail-open/);
 assert.match(pwa, /registration\.update\(\)/, "application update regression fix remains intact");
 assert.doesNotMatch(pwa, /HerdHarborCloud.*syncNow[\s\S]*SKIP_WAITING/, "app updates remain independent of Cloud Sync");
 
-assert.match(worker, /v1\.6\.5-alpha-analytics-market-foundation-1/);
+assert.match(worker, /v1\.6\.6-alpha-mobile-analytics-hotfix-1/);
 assert.match(worker, /herdharbor-monitoring-config\.js\?v=1\.6\.5/);
 assert.match(worker, /herdharbor-monitoring-v1\.6\.1\.min\.js\?v=1\.6\.5/);
 assert.match(worker, /cache: "no-store"/);
@@ -106,4 +107,4 @@ for (const billingTerm of ["RevenueCat", "StoreKit", "Google Play Billing", "Fou
   assert.ok(!core.includes(billingTerm), `Phase 1 monitoring core must not implement ${billingTerm}`);
 }
 
-console.log("Alpha v1.6.5 monitoring integration and Phase 1 scope guardrails passed");
+console.log("Alpha v1.6.6 monitoring integration and Phase 1 scope guardrails passed");
