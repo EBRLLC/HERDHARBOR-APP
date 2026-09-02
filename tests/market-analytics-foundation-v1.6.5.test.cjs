@@ -38,7 +38,7 @@ const completedSale = (overrides = {}) => ({
 test.beforeEach(() => market.resetForTests());
 
 test("Market Analytics is versioned, explicitly opt-in, and independent from Cloud Sync", () => {
-  assert.equal(market.VERSION, "1.6.5");
+  assert.equal(market.VERSION, "1.6.6");
   assert.equal(market.MINIMUM_SAMPLE_SIZE, 5);
   assert.equal(market.getConsent({ settings: {} }).enabled, false);
   assert.equal(market.reconcileSale(completedSale(), null, state({ settings: { marketAnalyticsConsent: consent({ enabled: false }) } })).length, 0);
@@ -177,7 +177,6 @@ test("account deletion clears device queue and backend linkage/facts cascade", (
   assert.match(sql, /delete from market_private\.market_consent where user_id = p_user_id/);
   assert.match(sql, /factsRemovedByCascade/);
 });
-
 
 
 test("market aggregates are currency-isolated and honor the Analytics date range", () => {

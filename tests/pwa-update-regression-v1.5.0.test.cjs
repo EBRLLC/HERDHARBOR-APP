@@ -14,14 +14,14 @@ const manifest = JSON.parse(read("manifest.json"));
 const html = read("index.html");
 const build = read("herdharbor-build.js");
 
-// v1.6.6 keeps the independently verified update path and advances the web runtime identity.
-assert.equal(manifest.version, "1.6.6");
-assert.match(build, /version:\s*"1\.6\.6"/);
-assert.match(build, /buildId:\s*"mobile-analytics-hotfix-1"/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "1\.6\.5"/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "analytics-market-foundation-1"/);
+// v1.6.7 keeps the independently verified update path and uses HerdHarborBuild as authoritative identity.
+assert.equal(manifest.version, "1.6.7");
+assert.match(build, /version:\s*"1\.6\.7"/);
+assert.match(build, /buildId:\s*"completion-debt-1"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "1\.6\.7"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "completion-debt-1"/);
 assert.match(pwa, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
-assert.match(html, /manifest\.json\?v=1\.6\.5/);
+assert.match(html, /herdharbor-build\.js\?v=1\.6\.5/, "the inherited shell bootstrap can retain its stable query because build metadata is network-first and authoritative");
 
 // Service-worker discovery is explicit and independent from Cloud Sync.
 assert.match(pwa, /navigator\.serviceWorker\.register\("service-worker\.js"/);
@@ -40,6 +40,7 @@ assert.match(pwa, />Update Now</);
 assert.match(pwa, />Later</);
 assert.match(pwa, /4 \* 60 \* 60 \* 1000/);
 
+// New workers wait for the existing-style Update Now action instead of auto-activating.
 const installHandler = worker.match(/self\.addEventListener\("install",[\s\S]*?\n\}\);/);
 assert.ok(installHandler, "service worker install handler exists");
 assert.doesNotMatch(installHandler[0], /skipWaiting/);
@@ -48,6 +49,7 @@ assert.match(pwa, /workerToActivate\.postMessage\(\{ type: "SKIP_WAITING" \}\)/)
 assert.match(pwa, /controllerchange/);
 assert.match(pwa, /window\.location\.reload\(\)/);
 
+// Updating app code never clears, overwrites, or requires synchronization of farm state.
 assert.doesNotMatch(pwa, /localStorage\.(?:clear|removeItem)\(/);
 assert.doesNotMatch(pwa, /herdharbor_pre_alpha_v1/);
 assert.doesNotMatch(pwa, /dirtyKey|ACTIVE_OWNER_KEY|baseKey/);
@@ -55,11 +57,13 @@ assert.match(cloud, /const STORAGE_KEY = "herdharbor_pre_alpha_v1"/);
 assert.match(cloud, /hasUnsyncedChanges/);
 assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
-assert.match(worker, /v1\.6\.6-alpha-mobile-analytics-hotfix-1/);
+// Browser/app shell requests favor production over stale frontend caches while retaining offline fallback.
+assert.match(worker, /v1\.6\.7-alpha-completion-debt-1/);
 assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
 assert.match(worker, /NETWORK_FIRST_PATHS/);
 assert.match(worker, /\/manifest\.json/);
 assert.match(worker, /\/pwa\.js/);
+assert.match(worker, /\/herdharbor-build\.js/);
 assert.match(worker, /\/herdharbor-cloud\.js/);
 assert.match(worker, /cache\.match\("\.\/index\.html"\)/);
 assert.match(worker, /CACHE_PREFIX/);
@@ -67,4 +71,4 @@ assert.match(worker, /caches\.delete\(key\)/);
 assert.match(worker, /self\.clients\.claim\(\)/);
 assert.match(pwa, /manifest\.json\?build=\$\{encodeURIComponent\(PWA_BUILD\)\}/);
 
-console.log("Alpha v1.6.6 PWA update-regression tests passed");
+console.log("Alpha v1.6.7 PWA update-regression tests passed");
