@@ -13,12 +13,12 @@ const cloud = read("herdharbor-cloud.js");
 const manifest = JSON.parse(read("manifest.json"));
 const html = read("index.html");
 
-// v1.6.5 keeps the independently verified update path.
-assert.equal(manifest.version, "1.6.5");
-assert.match(pwa, /const APP_VERSION = "1\.6\.5"/);
-assert.match(pwa, /const BUILD_ID = "analytics-market-foundation-1"/);
+// v1.6.6 keeps the independently verified update path.
+assert.equal(manifest.version, "1.6.6");
+assert.match(pwa, /const APP_VERSION = "1\.6\.6"/);
+assert.match(pwa, /const BUILD_ID = "completion-debt-1"/);
 assert.match(pwa, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
-assert.match(html, /manifest\.json\?v=1\.6\.5/);
+assert.match(html, /herdharbor-build\.js\?v=1\.6\.5/, "the inherited shell bootstrap remains safe because current release assets are network-first and build metadata is authoritative");
 
 // Service-worker discovery is explicit and independent from Cloud Sync.
 assert.match(pwa, /navigator\.serviceWorker\.register\("service-worker\.js"/);
@@ -58,11 +58,12 @@ assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
 // Browser/app shell requests favor production over stale frontend caches while
 // still falling back to the current shell when offline.
-assert.match(worker, /v1\.6\.5-alpha-analytics-market-foundation-1/);
+assert.match(worker, /v1\.6\.6-alpha-completion-debt-1/);
 assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
 assert.match(worker, /NETWORK_FIRST_PATHS/);
 assert.match(worker, /\/manifest\.json/);
 assert.match(worker, /\/pwa\.js/);
+assert.match(worker, /\/herdharbor-build\.js/);
 assert.match(worker, /\/herdharbor-cloud\.js/);
 assert.match(worker, /cache\.match\("\.\/index\.html"\)/);
 assert.match(worker, /CACHE_PREFIX/);
@@ -70,4 +71,4 @@ assert.match(worker, /caches\.delete\(key\)/);
 assert.match(worker, /self\.clients\.claim\(\)/);
 assert.match(pwa, /manifest\.json\?build=\$\{encodeURIComponent\(PWA_BUILD\)\}/);
 
-console.log("Alpha v1.6.5 PWA update-regression tests passed");
+console.log("Alpha v1.6.6 PWA update-regression tests passed");
