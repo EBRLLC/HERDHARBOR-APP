@@ -57,3 +57,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Repair v1.6.5 index and review findings"
           git push origin HEAD:v1.6.5-analytics-market-foundation
+
+# Deterministic parser recovery trigger.
