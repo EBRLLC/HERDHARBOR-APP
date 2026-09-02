@@ -21,10 +21,11 @@ const fullDescription = read("google-play/listing/en-US/full-description.txt").t
 const androidManifest = read("android/app/src/main/AndroidManifest.xml");
 
 assert.doesNotMatch(html, /pre[ -]?alpha/i);
-assert.equal(manifest.version, "1.6.5");
+assert.equal(manifest.version, "1.6.6");
 assert.equal(manifest.display, "standalone");
 assert.ok(manifest.shortcuts.some((shortcut) => shortcut.url === "./#shows"));
 assert.equal(twa.packageId, "com.ebrllc.herdharbor");
+// v1.6.6 is a web/PWA hotfix; no new Play binary is required because the TWA consumes the live web app.
 assert.equal(twa.appVersion, "1.6.5");
 assert.equal(twa.appVersionCode, 11);
 assert.equal(twa.host, "app.herdharbor.com");
@@ -36,7 +37,7 @@ assert.match(appGradle, /targetSdkVersion 36/);
 assert.match(appGradle, /versionCode 11/);
 assert.match(appGradle, /versionName "1\.6\.5"/);
 assert.match(appGradle, /https:\/\/app\.herdharbor\.com\/manifest\.json/);
-assert.match(worker, /v1\.6\.5-alpha-analytics-market-foundation-1/);
+assert.match(worker, /v1\.6\.6-alpha-mobile-analytics-hotfix-1/);
 assert.match(worker, /rabbit-records-v1\.6\.1\.js\?v=1\.6\.5/);
 assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=1\.6\.5/);
 assert.match(worker, /shows-v1\.6\.1\.css\?v=1\.6\.5/);
@@ -73,4 +74,4 @@ assert.ok(fs.statSync(path.join(root, "android/store_icon.png")).size <= 1024 * 
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/app-icon-512.png")));
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/feature-graphic-1024x500.png")));
 
-console.log("Google Play Alpha v1.6.5 membership and stability readiness tests passed");
+console.log("Google Play wrapper compatibility tests passed under Alpha v1.6.6 web hotfix");
