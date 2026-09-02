@@ -1,5 +1,6 @@
 from pathlib import Path
 
+# Final pass: update stale test references without weakening the release audit.
 old = '.github/workflows/v1.6.1-monitoring-review.yml'
 new = '.github/workflows/v1.6.5-release-review.yml'
 changed = []
