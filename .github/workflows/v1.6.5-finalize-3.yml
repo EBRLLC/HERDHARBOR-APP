@@ -38,10 +38,11 @@ jobs:
           for test_file in tests/*.test.cjs; do
             TZ=America/New_York node "$test_file"
           done
-      - name: Commit final v1.6.5 fixes
+      - name: Commit tested product and test changes
         run: |
           git config user.name "EBRLLC"
           git config user.email "mdamrell@yahoo.com"
-          git add -A
+          git add analytics-v1.6.1.js analytics-v1.6.1.css market-analytics-v1.6.5.js supabase/v1.6.5-market-analytics-foundation.sql
+          git add -A tests repair
           git commit -m "Complete Alpha v1.6.5 release contract" || exit 0
           git push origin HEAD:v1.6.5-analytics-market-foundation
