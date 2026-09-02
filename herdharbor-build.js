@@ -3,13 +3,12 @@
   root.HerdHarborBuild = Object.freeze({
     product: "HerdHarbor",
     channel: "Alpha",
-    version: "1.6.7",
-    buildId: "completion-debt-1",
-    build: "1.6.7-alpha-completion-debt-1"
+    version: "1.7.0",
+    buildId: "arba-standards-1",
+    build: "1.7.0-alpha-arba-standards-1"
   });
 
-  // Alpha v1.7.0 development feature layer. The application-wide release
-  // identity remains pinned until this review branch is approved and cut.
+  // Alpha v1.7.0 optional ARBA Standards & Judging feature layer.
   if (!root.document) return;
   const target = document.head || document.documentElement;
   function addStyle(id, href) {
