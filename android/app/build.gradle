@@ -49,8 +49,8 @@ android {
         applicationId "com.ebrllc.herdharbor"
         minSdkVersion 23
         targetSdkVersion 36
-        versionCode 12
-        versionName "1.6.7"
+        versionCode 13
+        versionName "1.7.0"
 
         resValue "string", "appName", twaManifest.name
         resValue "string", "launcherName", twaManifest.launcherName
@@ -117,10 +117,10 @@ task generateShorcutsFile {
                         'android:shortcutShortLabel': '@string/shortcut_short_name_' + i,
                         'android:shortcutLongLabel': '@string/shortcut_name_' + i) {
                     'intent'(
-                            'android:action': 'android.intent.action.MAIN',
-                            'android:targetPackage': twaManifest.applicationId,
-                            'android:targetClass': twaManifest.applicationId + '.LauncherActivity',
-                            'android:data': s.url)
+                            'android:action': 'android.intent.action.MAIN,
+                        'android:targetPackage': twaManifest.applicationId,
+                        'android:targetClass': twaManifest.applicationId + '.LauncherActivity',
+                        'android:data': s.url)
                     'categories'('android:name': 'android.intent.category.LAUNCHER')
                 }
             }
