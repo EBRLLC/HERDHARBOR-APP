@@ -70,15 +70,17 @@ test("canonical phenotype IDs are stable and missing named families are recogniz
   const p=Engine.canonicalPhenotype(Engine.normalizeGenetics({}),"Sable Pearl","Custom");assert.equal(p.registryRecognition.status,"not-evaluated");
 });
 
-test("final v1.6.5 load order installs the authoritative engine before the structured profile UI",()=>{
+test("final v1.6.5 load order installs the authoritative engine before the structured profile and Pair Analysis UI",()=>{
   const runtime=pwaSource.indexOf('rabbit-genetics-runtime-v1.6.1.js'),engine=pwaSource.indexOf('rabbit-genetics-v1.6.1.js'),ui=pwaSource.indexOf('rabbit-genetics-ui-advanced-v1.6.1.js');
   assert.ok(runtime>=0&&engine>runtime&&ui>engine);
   assert.doesNotMatch(uiSource,/\bg\.vienna\b|\bg\.modifiers\b|\bnext\.vienna\b|\bnext\.modifiers\b/);
   assert.match(uiSource,/Core\.EDITABLE_LOCI/);
+  assert.match(uiSource,/openPairAnalysis:\(\)=>pair\(\)/);
+  assert.match(uiSource,/openGeneticProfile:animalId=>profile\(animalId\|\|""\)/);
   assert.match(pedigreeSource,/engine\.normalizeGenetics/);
 });
 
-test("browser/runtime contract opens, edits, saves, reopens, pairs, and keeps pedigree/offspring evidence",async()=>{
+test("browser/runtime contract opens, edits, saves, reopens, renders Pair Analysis, and keeps pedigree/offspring evidence",async()=>{
   class FakeElement{constructor(tag="div"){this.tagName=tag.toUpperCase();this.dataset={};this.children=[];this.classList={contains(){return false;}};this.innerHTML="";this.textContent="";this.parentNode=null;}appendChild(child){child.parentNode=this;this.children.push(child);return child;}remove(){if(this.parentNode)this.parentNode.children=this.parentNode.children.filter(x=>x!==this);}querySelector(){return null;}querySelectorAll(){return[];}setAttribute(){}addEventListener(){}}
   const body=new FakeElement("body"),head=new FakeElement("head"),documentElement=new FakeElement("html");
   const document={readyState:"complete",body,head,documentElement,createElement:t=>new FakeElement(t),querySelector(){return null;},querySelectorAll(){return[];},addEventListener(){}};
@@ -91,13 +93,14 @@ test("browser/runtime contract opens, edits, saves, reopens, pairs, and keeps pe
   const localStorage={getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,String(v))};
   const sandbox={window:{HerdHarborBreedingIntelligenceCore:Engine,HerdHarborBuild:{version:"1.6.5"}},document,localStorage,MutationObserver:class{observe(){}},console,setTimeout,clearTimeout};sandbox.window.window=sandbox.window;
   vm.runInNewContext(uiSource,sandbox,{filename:"rabbit-genetics-ui-advanced-v1.6.1.js"});
-  const api=sandbox.window.HerdHarborRabbitGeneticsV2;assert.ok(api?.openProfile);
+  const api=sandbox.window.HerdHarborRabbitGeneticsV2;assert.ok(api?.openProfile);assert.ok(api?.openPrediction);
   let opened=api.openProfile("buck");assert.ok(opened);for(const locus of Engine.EDITABLE_LOCI)assert.match(opened.innerHTML,new RegExp(`data-locus="${locus}"`),locus+" editor is rendered");
   const edits={loci:{}};for(const locus of Engine.EDITABLE_LOCI){const alleles=Engine.LOCI[locus].dominance;edits.loci[locus]={alleles:[alleles[0],alleles[Math.min(1,alleles.length-1)]],status:"confirmed",source:"breeder",note:`${locus} contract edit`};}
   await api.saveProfileEdits("buck",edits);
   const saved=JSON.parse(localStorage.getItem("herdharbor_pre_alpha_v1")),savedBuck=saved.animals.find(a=>a.id==="buck");
   assert.equal(savedBuck.genetics.schemaVersion,3);assert.equal(Object.hasOwn(savedBuck.genetics,"vienna"),false);assert.equal(Object.hasOwn(savedBuck.genetics,"modifiers"),false);for(const locus of Engine.EDITABLE_LOCI)assert.equal(savedBuck.genetics.loci[locus].note,`${locus} contract edit`);
   opened=api.openProfile("buck");assert.match(opened.innerHTML,/Lutino carrier/);
+  const pairView=api.openPrediction("buck","doe",true);assert.ok(pairView);assert.match(pairView.innerHTML,/Save Prediction Snapshot/);assert.match(pairView.innerHTML,/Rf · Rufus intensity/);assert.match(pairView.innerHTML,/Si · Silvering/);assert.match(pairView.innerHTML,/Lop · Lop ear \/ ear carriage/);assert.match(pairView.innerHTML,/No Mendelian percentage/);
   const savedDoe=saved.animals.find(a=>a.id==="doe"),pair=Engine.analyzePairing(savedBuck,savedDoe,{animals:saved.animals});
   assert.equal(pair.supported,true);assert.equal(pair.locusAnalyses.Rf.probabilities,false);assert.equal(pair.locusAnalyses.Si.probabilities,false);assert.equal(pair.locusAnalyses.Lop.probabilities,false);
   const pedigree=Engine.ancestorCarrierEstimate(savedBuck,saved.animals,"B","b");assert.ok(pedigree.estimate>0,"pedigree carrier evidence remains available");
