@@ -6,7 +6,7 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Content-Type": "application/json; charset=utf-8"
 };
-const CONSENT_VERSION = "2026-09-v1";
+const CONSENT_VERSION = "2026-09-v2";
 const ACTIONS = new Set(["consent", "upsert", "withdraw", "aggregate", "account-deletion"]);
 const FILTER_FIELDS = new Set([
   "species", "breed", "sex", "age_bucket", "color_variety", "pedigree_status",
