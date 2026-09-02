@@ -2,9 +2,6 @@ name: HerdHarbor Pages deploy with v1.6.1 monitoring
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 permissions:
   contents: read
