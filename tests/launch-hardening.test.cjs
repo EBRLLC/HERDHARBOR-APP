@@ -37,7 +37,7 @@ assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 assert.match(worker, /v1\.7\.0-alpha-arba-standards-1/);
 assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.0/);
 assert.match(worker, /herdharbor-cloud\.js\?v=19/);
-assert.match(worker, /pwa\.js\?v=27/);
+assert.match(worker, /pwa\.js\?v=28/);
 assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=1\.7\.0/);
 assert.match(worker, /rabbit-genetics-runtime-v1\.6\.1\.js\?v=1\.7\.0/);
 assert.match(worker, /shows-v1\.6\.1\.js\?v=1\.7\.0/);
