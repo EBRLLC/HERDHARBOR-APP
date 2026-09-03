@@ -23,19 +23,32 @@ jobs:
         with:
           node-version: 22
 
-      - name: Update stale current-release contracts
+      - name: Repair current-release test contracts without rewriting historical contracts
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
 
-          current_release_tests = [
+          CURRENT_VERSION = "1.7.0"
+          CURRENT_BUILD = "arba-standards-1"
+
+          def replace(pathname, old, new):
+              path = Path(pathname)
+              text = path.read_text()
+              if old not in text:
+                  print(f"Already current or not applicable: {pathname}: {old}")
+                  return
+              path.write_text(text.replace(old, new))
+              print(f"Updated {pathname}: {old} -> {new}")
+
+          # These regression files use every v1.6.7 reference as the *current runtime identity*.
+          # Their historical module filenames (v1.5.x/v1.6.1/etc.) are intentionally preserved.
+          current_identity_files = [
               "tests/analytics-release-contract-v1.6.5.test.cjs",
               "tests/breeding-intelligence-tools.test.cjs",
               "tests/genetics-routing-completion-v1.6.1.test.cjs",
               "tests/google-play-readiness.test.cjs",
               "tests/launch-hardening.test.cjs",
-              "tests/monitoring-deployment-v1.5.1.test.cjs",
               "tests/monitoring-integration-v1.5.1.test.cjs",
               "tests/phase2-release-v1.6.1.test.cjs",
               "tests/phase3-integration.test.cjs",
@@ -45,28 +58,42 @@ jobs:
               "tests/stability-release.test.cjs",
               "tests/tablet-layout-login-color.test.cjs",
           ]
+          for pathname in current_identity_files:
+              replace(pathname, "1.6.7", CURRENT_VERSION)
+              replace(pathname, "completion-debt-1", CURRENT_BUILD)
 
-          for filename in current_release_tests:
-              path = Path(filename)
-              text = path.read_text()
-              updated = text.replace("1.6.7", "1.7.0").replace("completion-debt-1", "arba-standards-1")
-              if updated == text:
-                  print(f"No stale current-release token found in {filename}")
-              else:
-                  path.write_text(updated)
-                  print(f"Updated {filename}")
+          # v1.7.0 bumped the Android package version code and PWA loader revision.
+          replace("tests/google-play-readiness.test.cjs", 'assert.equal(twa.appVersionCode, 12);', 'assert.equal(twa.appVersionCode, 13);')
+          replace("tests/google-play-readiness.test.cjs", '/versionCode 12/', '/versionCode 13/')
+          replace("tests/google-play-readiness.test.cjs", r'/\$\{APP_VERSION\}-alpha-stability-\$\{BUILD_ID\}/', r'/\$\{APP_VERSION\}-alpha-\$\{BUILD_ID\}/')
+          for pathname in [
+              "tests/google-play-readiness.test.cjs",
+              "tests/launch-hardening.test.cjs",
+              "tests/runtime-consolidation-v1.5.1.test.cjs",
+              "tests/stability-release.test.cjs",
+          ]:
+              replace(pathname, "pwa.js?v=27", "pwa.js?v=28")
+              replace(pathname, r'pwa\.js\?v=27', r'pwa\.js\?v=28')
 
-          completion = Path("tests/completion-release-contract-v1.6.7.test.cjs")
-          text = completion.read_text()
-          updated = text.replace(
+          # This file deliberately verifies historical v1.6.7 review/deployment workflows.
+          # Only its live monitoring-config assertions should follow the current release.
+          replace("tests/monitoring-deployment-v1.5.1.test.cjs", r'assert.match(config, /HerdHarbor@1\.6\.7/);', r'assert.match(config, /HerdHarbor@1\.7\.0/);')
+          replace("tests/monitoring-deployment-v1.5.1.test.cjs", r'assert.match(config, /completion-debt-1/);', r'assert.match(config, /arba-standards-1/);')
+
+          # The v1.6.7 completion ledger remains historical; only the active release-audit target moves.
+          replace(
+              "tests/completion-release-contract-v1.6.7.test.cjs",
               "tests/current-release-reference-audit-v1.6.7.test.cjs",
               "tests/current-release-reference-audit-v1.7.0.test.cjs",
           )
-          if updated == text:
-              print("Completion contract already points to the v1.7.0 current-release audit")
-          else:
-              completion.write_text(updated)
-              print("Updated completion regression to use the v1.7.0 current-release audit")
+
+          # Retired release-review workflows must not run on every new PR to main.
+          # Keep their old-branch push/manual paths for historical verification.
+          for pathname in [
+              ".github/workflows/v1.6.5-release-review.yml",
+              ".github/workflows/v1.6.7-release-review.yml",
+          ]:
+              replace(pathname, "  pull_request:\n    branches: [main]\n", "")
           PY
 
       - name: Install dependencies
@@ -94,6 +121,6 @@ jobs:
           git rm .github/workflows/v1.7.0-release-repair.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tests
+          git add tests .github/workflows
           git commit -m "Fix stale release contracts for Alpha v1.7.0"
           git push origin HEAD:release/v1.7.0-live
