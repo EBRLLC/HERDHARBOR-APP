@@ -28,7 +28,6 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
 
           current_release_tests = [
               "tests/analytics-release-contract-v1.6.5.test.cjs",
@@ -52,40 +51,22 @@ jobs:
               text = path.read_text()
               updated = text.replace("1.6.7", "1.7.0").replace("completion-debt-1", "arba-standards-1")
               if updated == text:
-                  print(f"No stale release token found in {filename}")
+                  print(f"No stale current-release token found in {filename}")
               else:
                   path.write_text(updated)
                   print(f"Updated {filename}")
 
           completion = Path("tests/completion-release-contract-v1.6.7.test.cjs")
           text = completion.read_text()
-          text = text.replace(
+          updated = text.replace(
               "tests/current-release-reference-audit-v1.6.7.test.cjs",
               "tests/current-release-reference-audit-v1.7.0.test.cjs",
           )
-          text = text.replace(
-              "Alpha v1.6.7 release review",
-              "Alpha v1.7.0 release review - completion regression",
-          )
-          text = text.replace(
-              "v1.6.7 release review runs completion and dual-timezone regression without duplicating the Android PR build",
-              "v1.7.0 release review runs completion and dual-timezone regression without duplicating the Android PR build",
-          )
-          completion.write_text(text)
-
-          workflow_names = {
-              ".github/workflows/v1.6.5-release-review.yml": "Alpha v1.7.0 release review - analytics regression",
-              ".github/workflows/v1.6.7-release-review.yml": "Alpha v1.7.0 release review - completion regression",
-              ".github/workflows/android-alpha.yml": "Alpha v1.7.0 Android bundle",
-          }
-          for filename, name in workflow_names.items():
-              path = Path(filename)
-              text = path.read_text()
-              updated, count = re.subn(r"(?m)^name:.*$", f"name: {name}", text, count=1)
-              if count != 1:
-                  raise SystemExit(f"Could not update workflow name in {filename}")
-              path.write_text(updated)
-              print(f"Renamed active workflow {filename} -> {name}")
+          if updated == text:
+              print("Completion contract already points to the v1.7.0 current-release audit")
+          else:
+              completion.write_text(updated)
+              print("Updated completion regression to use the v1.7.0 current-release audit")
           PY
 
       - name: Install dependencies
@@ -113,6 +94,6 @@ jobs:
           git rm .github/workflows/v1.7.0-release-repair.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tests .github/workflows
+          git add tests
           git commit -m "Fix stale release contracts for Alpha v1.7.0"
           git push origin HEAD:release/v1.7.0-live
