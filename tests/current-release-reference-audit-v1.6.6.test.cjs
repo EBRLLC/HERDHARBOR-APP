@@ -19,7 +19,7 @@ assert.match(notes, /Mobile Analytics Hotfix/);
 assert.match(js, /Compare animals and choose stable colors/);
 assert.match(css, /@media \(max-width: 700px\)[\s\S]*?\.analytics-growth-controls \{[\s\S]*?max-width: 100%[\s\S]*?overflow: hidden/);
 assert.match(css, /\.analytics-growth-controls fieldset \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)[\s\S]*?max-width: 100%[\s\S]*?overflow-x: hidden/);
-assert.match(css, /\.analytics-color-control span \{ min-width: 0; overflow-wrap: anywhere; \}/);
+assert.match(css, /\.analytics-color-control span \{ min-width: 0; overflow-wrap: break-word; word-break: normal;/);
 assert.match(css, /@supports selector\(fieldset:has\(> \.analytics-color-control\)\)/);
 assert.match(mobileGuard, /Alpha v1\.6\.6 mobile Growth layout guard passed/);
 assert.match(audit, /v1\.6\.6 mobile Analytics hotfix[\s\S]*Complete\/live and preserved/i);
