@@ -18,7 +18,7 @@ const instrumentation = read("monitoring/herdharbor-monitoring-instrumentation.m
 const cloud = read("herdharbor-cloud.js");
 const shows = read("shows-v1.6.1.js");
 
-assert.equal(pkg.version, "1.6.7");
+assert.equal(pkg.version, "1.7.0");
 assert.equal(pkg.dependencies["@sentry/browser"], "10.71.0");
 assert.ok(pkg.devDependencies.esbuild);
 assert.match(browser, /import \* as Sentry from "@sentry\/browser"/);
@@ -27,11 +27,11 @@ assert.doesNotMatch(browser, /loader\.js|browser\.sentry-cdn\.com|sentry\.io\/ap
 
 assert.match(config, /dsn: ""/);
 assert.doesNotMatch(config, /https:\/\/[^"']+@[^"']*sentry/i, "DSN is not hard-coded in source");
-assert.match(config, /HerdHarbor@1\.6\.7/);
-assert.match(config, /build: "completion-debt-1"/);
+assert.match(config, /HerdHarbor@1\.7\.0/);
+assert.match(config, /build: "arba-standards-1"/);
 assert.match(config, /enableTestCrash: false/);
-assert.match(generator, /release: "HerdHarbor@1\.6\.7"/);
-assert.match(generator, /completion-debt-1/);
+assert.match(generator, /release: "HerdHarbor@1\.7\.0"/);
+assert.match(generator, /arba-standards-1/);
 
 assert.match(core, /beforeSend:/);
 assert.match(core, /beforeBreadcrumb:/);
@@ -64,17 +64,17 @@ assert.match(instrumentation, /local_storage_remove/);
 assert.doesNotMatch(instrumentation, /localStorage\.getItem/);
 assert.doesNotMatch(instrumentation, /JSON\.parse\(value\)|String\(value\)|JSON\.stringify\(value\)/, "storage instrumentation never inspects stored values");
 
-assert.match(pwa, /herdharbor-monitoring-config\.js\?v=1\.6\.7/);
-assert.match(pwa, /vendor\/herdharbor-monitoring-v1\.6\.1\.min\.js\?v=1\.6\.7/);
+assert.match(pwa, /herdharbor-monitoring-config\.js\?v=1\.7\.0/);
+assert.match(pwa, /vendor\/herdharbor-monitoring-v1\.6\.1\.min\.js\?v=1\.7\.0/);
 assert.match(pwa, /addOptionalScript/);
 assert.match(pwa, /loadMonitoring\(bootApplication\)/);
 assert.match(pwa, /Monitoring is optional and fail-open/);
 assert.match(pwa, /registration\.update\(\)/, "application update regression fix remains intact");
 assert.doesNotMatch(pwa, /HerdHarborCloud.*syncNow[\s\S]*SKIP_WAITING/, "app updates remain independent of Cloud Sync");
 
-assert.match(worker, /v1\.6\.7-alpha-completion-debt-1/);
-assert.match(worker, /herdharbor-monitoring-config\.js\?v=1\.6\.7/);
-assert.match(worker, /herdharbor-monitoring-v1\.6\.1\.min\.js\?v=1\.6\.7/);
+assert.match(worker, /v1\.7\.0-alpha-arba-standards-1/);
+assert.match(worker, /herdharbor-monitoring-config\.js\?v=1\.7\.0/);
+assert.match(worker, /herdharbor-monitoring-v1\.6\.1\.min\.js\?v=1\.7\.0/);
 assert.match(worker, /cache: "no-store"/);
 assert.doesNotMatch(worker, /install[\s\S]{0,500}skipWaiting\(\)/, "waiting-worker update UX remains intact");
 assert.match(worker, /event\.data\?\.type === "SKIP_WAITING"/);
@@ -87,4 +87,4 @@ for (const billingTerm of ["RevenueCat", "StoreKit", "Google Play Billing", "Fou
   assert.ok(!core.includes(billingTerm), `monitoring core must not implement ${billingTerm}`);
 }
 
-console.log("Alpha v1.6.7 monitoring integration and scope guardrails passed");
+console.log("Alpha v1.7.0 monitoring integration and scope guardrails passed");
