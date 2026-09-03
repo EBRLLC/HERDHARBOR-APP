@@ -25,10 +25,10 @@ test("visible genetics actions are captured and routed by selected animal id", (
   assert.match(release, /event\.stopImmediatePropagation\(\)/);
 });
 
-test("current completion build and PWA cache move together while preserving the v1.6.6 mobile hotfix", () => {
-  assert.match(build, /version:\s*"1\.6\.7"/);
-  assert.match(build, /buildId:\s*"completion-debt-1"/);
-  assert.match(build, /build:\s*"1\.6\.7-alpha-completion-debt-1"/);
-  assert.match(worker, /herdharbor-shell-v1\.6\.7-alpha-completion-debt-1/);
-  assert.match(worker, /herdharbor-release-v1\.6\.1\.js\?v=1\.6\.7/);
+test("current release build and PWA cache move together while preserving the v1.6.6 mobile hotfix", () => {
+  assert.match(build, /version:\s*"1\.7\.0"/);
+  assert.match(build, /buildId:\s*"arba-standards-1"/);
+  assert.match(build, /build:\s*"1\.7\.0-alpha-arba-standards-1"/);
+  assert.match(worker, /herdharbor-shell-v1\.7\.0-alpha-arba-standards-1/);
+  assert.match(worker, /herdharbor-release-v1\.6\.1\.js\?v=1\.7\.0/);
 });
