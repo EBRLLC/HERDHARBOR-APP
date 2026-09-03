@@ -135,7 +135,7 @@ test("backend constructs facts from canonical state and exposes aggregates only 
   const edge = fs.readFileSync(path.join(root, "supabase/functions/market-contribution/index.ts"), "utf8");
   const factTable = sql.slice(sql.indexOf("create table if not exists market_private.market_facts"), sql.indexOf("create table if not exists market_private.market_config"));
   assert.match(sql, /public\.herdharbor_user_data/);
-  assert.match(sql, /v_sale ->> 'status' <> 'Completed'/);
+  assert.match(sql, /coalesce\(v_sale ->> 'status', ''\) <> 'Completed'/);
   assert.match(sql, /unique \(user_id, source_sale_id, source_item_id\)/);
   assert.match(sql, /percentile_cont\(0\.5\)/);
   assert.match(sql, /avg\(f\.sale_price\)/);
@@ -205,4 +205,68 @@ test("aggregate filter serialization keeps date and advanced filters without wid
   assert.equal(filters.currency, "USD");
   assert.equal(filters.customer_name, undefined);
   assert.equal(filters.notes, undefined);
+});
+
+test("enabled consent from an older language version requires review", () => {
+  const result = market.getConsent({ settings: { marketAnalyticsConsent: consent({ consentVersion: "2026-09-v1" }) } });
+  assert.equal(result.enabled, false);
+  assert.equal(result.needsReview, true);
+  assert.equal(result.includeHistorical, false);
+});
+
+test("aggregate filters reject impossible dates and out-of-range calendar values", () => {
+  const filters = market.sanitizeAggregateFilters({
+    start: "2026-02-30", end: "2026-03-01", sale_month: "13", sale_year: "1899", breed: "Holland Lop"
+  });
+  assert.equal(filters.start, undefined);
+  assert.equal(filters.end, "2026-03-01");
+  assert.equal(filters.sale_month, undefined);
+  assert.equal(filters.sale_year, undefined);
+  assert.equal(filters.breed, "Holland Lop");
+});
+
+test("offline queue and receipts are account scoped", () => {
+  let userId = "user-a";
+  const previousCloud = global.HerdHarborCloud;
+  try {
+    global.HerdHarborCloud = { getSession: () => ({ user: { id: userId } }) };
+    market.resetForTests();
+    market.reconcileSale(completedSale(), null, state());
+    assert.equal(store.has(`${market.QUEUE_KEY}:user-a`), true);
+    userId = "user-b";
+    assert.deepEqual(market.readQueue(), []);
+    userId = "user-a";
+    assert.equal(market.readQueue().length, 1);
+  } finally {
+    market.resetForTests();
+    if (previousCloud === undefined) delete global.HerdHarborCloud;
+    else global.HerdHarborCloud = previousCloud;
+  }
+});
+
+test("flush never acknowledges a contribution after the account changes", async () => {
+  let userId = "user-a";
+  const invoked = [];
+  const previousCloud = global.HerdHarborCloud;
+  try {
+    global.HerdHarborCloud = {
+      getSession: () => ({ user: { id: userId } }),
+      invokeFunction: async () => {
+        invoked.push(userId);
+        userId = "user-b";
+        return { processedAt: "2026-09-01T00:00:00.000Z" };
+      }
+    };
+    market.resetForTests();
+    market.reconcileSale(completedSale(), null, state());
+    const result = await market.flush();
+    assert.deepEqual(invoked, ["user-a"]);
+    assert.equal(result.submitted, 0);
+    userId = "user-a";
+    assert.equal(market.readQueue().length, 1);
+  } finally {
+    market.resetForTests();
+    if (previousCloud === undefined) delete global.HerdHarborCloud;
+    else global.HerdHarborCloud = previousCloud;
+  }
 });

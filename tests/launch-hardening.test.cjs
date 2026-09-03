@@ -17,7 +17,7 @@ const hardening = fs.readFileSync(path.join(root, "shows-v1.6.1-hardening.js"), 
 // The recovered consolidated shell remains intact; HerdHarborBuild is authoritative for the current Alpha release.
 assert.match(build, /version:\s*"1\.7\.0"/);
 assert.match(build, /buildId:\s*"arba-standards-1"/);
-assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.6\.5"/);
+assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.7\.0"/);
 assert.match(html, /id="request-account-deletion"/);
 assert.match(html, /Type DELETE to confirm/);
 assert.match(html, /herdharbor\.com\/delete-account\//);
@@ -36,7 +36,7 @@ assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
 assert.match(worker, /v1\.7\.0-alpha-arba-standards-1/);
 assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.0/);
-assert.match(worker, /herdharbor-cloud\.js\?v=19/);
+assert.match(worker, /herdharbor-cloud\.js\?v=20/);
 assert.match(worker, /pwa\.js\?v=28/);
 assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=1\.7\.0/);
 assert.match(worker, /rabbit-genetics-runtime-v1\.6\.1\.js\?v=1\.7\.0/);

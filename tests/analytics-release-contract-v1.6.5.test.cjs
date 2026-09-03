@@ -230,6 +230,10 @@ test("final Market filters refresh correctly and species colors are real persist
     assert.ok(js.includes(`data-market-filter="${field}"`), `missing Market UI filter ${field}`);
   }
   assert.match(js, /queryAggregate\(\{ species: ui\.species \|\| undefined, \.\.\.marketFilterPayload\(\), currency: "USD", start:/);
+  assert.match(js, /let marketRequestToken = 0/);
+  assert.match(js, /function invalidateMarket\(\)/);
+  assert.match(js, /const consent = market\.getConsent\?\.\(currentState\(\)\)/);
+  assert.match(js, /if \(requestToken !== marketRequestToken\) return;/);
   const startHandler = js.slice(js.indexOf('container.querySelector("[data-analytics-start]")'), js.indexOf('container.querySelector("[data-analytics-end]")'));
   assert.match(startHandler, /loadMarketAggregate\(\)/);
   assert.match(js, /colorFor\(`species:\$\{row\.x\}`/);

@@ -271,7 +271,7 @@ begin
     return jsonb_build_object('active', false, 'contributionId', v_contribution_id, 'processedAt', now());
   end if;
 
-  if v_sale ->> 'status' <> 'Completed' or v_item is null then
+  if coalesce(v_sale ->> 'status', '') <> 'Completed' or v_item is null then
     raise exception 'Only canonical Completed sale items qualify.' using errcode = '22023';
   end if;
 
@@ -292,7 +292,7 @@ begin
     raise exception 'The canonical sale animal was not found.' using errcode = 'P0002';
   end if;
 
-  v_sale_price := market_private.safe_numeric(coalesce(v_item ->> 'salePrice', v_item ->> 'unitPrice'));
+  v_sale_price := market_private.safe_numeric(coalesce(nullif(v_item ->> 'salePrice', ''), nullif(v_item ->> 'unitPrice', '')));
   v_listed_price := market_private.safe_numeric(v_item ->> 'listedPriceAtSale');
   v_sale_date := market_private.safe_date(coalesce(nullif(v_sale ->> 'completedAt', ''), v_sale ->> 'saleDate'));
   v_birth_date := market_private.safe_date(v_animal ->> 'dob');
@@ -408,7 +408,9 @@ begin
   v_end := market_private.safe_date(p_filters ->> 'end');
   if not exists (
     select 1 from market_private.market_consent
-    where user_id = p_user_id and enabled
+    where user_id = p_user_id
+      and enabled
+      and consent_version = '2026-09-v2'
   ) then
     raise exception 'Current Market Analytics consent is required.' using errcode = '42501';
   end if;

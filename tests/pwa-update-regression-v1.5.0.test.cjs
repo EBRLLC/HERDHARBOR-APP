@@ -21,10 +21,10 @@ assert.match(build, /buildId:\s*"arba-standards-1"/);
 assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "1\.7\.0"/);
 assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "arba-standards-1"/);
 assert.match(pwa, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
-assert.match(html, /herdharbor-build\.js\?v=1\.6\.5/, "the inherited shell bootstrap can retain its stable query because build metadata is network-first and authoritative");
+assert.match(html, /herdharbor-build\.js\?v=1\.7\.0/, "the shell bootstrap must use the current release identity");
 
 // Service-worker discovery is explicit and independent from Cloud Sync.
-assert.match(pwa, /navigator\.serviceWorker\.register\("service-worker\.js"/);
+assert.match(pwa, /navigatorRef\(\)\.serviceWorker\.register\("service-worker\.js"/);
 assert.match(pwa, /updateViaCache: "none"/);
 assert.match(pwa, /registration\.update\(\)/);
 assert.match(pwa, /checkForAppUpdate\(\{ force: true \}\)/);

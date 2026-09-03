@@ -12,8 +12,11 @@ const manifest = JSON.parse(read("manifest.json"));
 const twa = JSON.parse(read("twa-manifest.json"));
 const gradle = read("android/app/build.gradle");
 const pkg = JSON.parse(read("package.json"));
+const packageLock = JSON.parse(read("package-lock.json"));
 const pwa = read("pwa.js");
 const worker = read("service-worker.js");
+const html = read("index.html");
+const cloud = read("herdharbor-cloud.js");
 const monitoringConfig = read("herdharbor-monitoring-config.js");
 const monitoringGenerator = read("scripts/build-monitoring-config.mjs");
 const release = read("herdharbor-release-v1.6.1.js");
@@ -28,6 +31,8 @@ assert.equal(buildId, "arba-standards-1");
 assert.match(build, /build:\s*"1\.7\.0-alpha-arba-standards-1"/);
 assert.equal(manifest.version, "1.7.0");
 assert.equal(pkg.version, "1.7.0");
+assert.equal(packageLock.version, "1.7.0");
+assert.equal(packageLock.packages[""].version, "1.7.0");
 assert.equal(twa.appVersion, "1.7.0");
 assert.equal(twa.appVersionCode, 13);
 assert.match(gradle, /versionCode 13/);
@@ -37,6 +42,21 @@ assert.match(pwa, /Current release contract: const APP_VERSION = "1\.7\.0"/);
 assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "1\.7\.0"/);
 assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "arba-standards-1"/);
 assert.match(worker, /herdharbor-shell-v1\.7\.0-alpha-arba-standards-1/);
+assert.match(pwa, /const navigatorRef = \(\) =>/);
+assert.match(html, /window\.HerdHarborApp = Object\.freeze/);
+assert.match(html, /herdharbor:app-ready/);
+assert.match(html, /herdharbor-build\.js\?v=1\.7\.0/);
+assert.match(html, /herdharbor-cloud\.js\?v=20/);
+assert.match(html, /pwa\.js\?v=28/);
+for (const asset of [
+  "herdharbor-release-v1.6.1.js",
+  "herdharbor-membership-v1.6.1.js",
+  "herdharbor-access-cache-v1.6.1.js",
+  "herdharbor-admin-v1.6.1.js",
+  "market-analytics-v1.6.5.js",
+  "analytics-v1.6.1.js"
+]) assert.ok(html.includes(`${asset}?v=1.7.0`), `index shell current release identity missing for ${asset}`);
+assert.match(cloud, /let marketCleanup = \{ backendConfirmed: false, localQueueCleared: true \}/);
 
 for (const asset of [
   "manifest.json",

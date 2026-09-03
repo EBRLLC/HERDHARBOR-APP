@@ -16,8 +16,12 @@
   let reloading = false;
   let updateDeferredUntil = 0;
 
-  const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-  const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const navigatorRef = () => window.navigator || (typeof navigator !== "undefined" ? navigator : {});
+  const isStandalone = () => window.matchMedia?.("(display-mode: standalone)")?.matches === true || navigatorRef().standalone === true;
+  const isIos = () => {
+    const nav = navigatorRef();
+    return /iphone|ipad|ipod/i.test(nav.userAgent || "") || (nav.platform === "MacIntel" && nav.maxTouchPoints > 1);
+  };
 
   const pendingDynamicNodes = new Map();
 
@@ -233,15 +237,15 @@
   function watchInstallingWorker(worker) {
     if (!worker) return;
     worker.addEventListener("statechange", () => {
-      if (worker.state === "installed" && navigator.serviceWorker.controller) {
+      if (worker.state === "installed" && navigatorRef().serviceWorker?.controller) {
         showUpdateReady(registration?.waiting || worker);
       }
     });
   }
 
   async function checkForAppUpdate({ force = false } = {}) {
-    if (!registration || navigator.onLine === false) return false;
-    if (registration.waiting && navigator.serviceWorker.controller) {
+    if (!registration || navigatorRef().onLine === false) return false;
+    if (registration.waiting && navigatorRef().serviceWorker?.controller) {
       showUpdateReady(registration.waiting);
       return true;
     }
@@ -252,13 +256,13 @@
     updateCheckInFlight = (async () => {
       try {
         await registration.update();
-        if (registration.waiting && navigator.serviceWorker.controller) {
+        if (registration.waiting && navigatorRef().serviceWorker?.controller) {
           showUpdateReady(registration.waiting);
           return true;
         }
         return false;
       } catch (error) {
-        if (navigator.onLine !== false) {
+        if (navigatorRef().onLine !== false) {
           console.warn("HerdHarbor could not check for an app update:", error);
           monitorFailure(error, "update_check_failure", "dashboard", { operation: "pwa_update_check" });
         }
@@ -273,13 +277,13 @@
   }
 
   async function registerServiceWorker() {
-    if (!("serviceWorker" in navigator)) return;
+    if (!("serviceWorker" in navigatorRef())) return;
     try {
-      registration = await navigator.serviceWorker.register("service-worker.js", {
+      registration = await navigatorRef().serviceWorker.register("service-worker.js", {
         scope: "./",
         updateViaCache: "none"
       });
-      if (registration.waiting && navigator.serviceWorker.controller) showUpdateReady(registration.waiting);
+      if (registration.waiting && navigatorRef().serviceWorker?.controller) showUpdateReady(registration.waiting);
       if (registration.installing) watchInstallingWorker(registration.installing);
       registration.addEventListener("updatefound", () => watchInstallingWorker(registration.installing));
       await checkForAppUpdate({ force: true });
@@ -299,7 +303,7 @@
   window.addEventListener("online", () => checkForAppUpdate({ force: true }));
   window.addEventListener("pageshow", (event) => { if (event.persisted || document.visibilityState === "visible") checkForAppUpdate(); });
   document.addEventListener("visibilitychange", requestForegroundUpdateCheck);
-  navigator.serviceWorker?.addEventListener("controllerchange", () => {
+  navigatorRef().serviceWorker?.addEventListener("controllerchange", () => {
     if (reloading) return;
     reloading = true;
     updateToast?.remove();
