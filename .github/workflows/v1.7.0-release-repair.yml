@@ -23,6 +23,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Verify current audit parses before repair
+        run: node --check tests/current-release-reference-audit-v1.7.0.test.cjs
+
       - name: Repair current-release test contracts without rewriting historical contracts
         shell: bash
         run: |
@@ -35,6 +38,9 @@ jobs:
 
           def replace(pathname, old, new):
               path = Path(pathname)
+              if not path.exists():
+                  print(f"Not applicable: {pathname}")
+                  return
               text = path.read_text()
               if old not in text:
                   print(f"Already current or not applicable: {pathname}: {old}")
@@ -64,6 +70,7 @@ jobs:
           replace("tests/google-play-readiness.test.cjs", 'assert.equal(twa.appVersionCode, 12);', 'assert.equal(twa.appVersionCode, 13);')
           replace("tests/google-play-readiness.test.cjs", '/versionCode 12/', '/versionCode 13/')
           replace("tests/google-play-readiness.test.cjs", r'/\$\{APP_VERSION\}-alpha-stability-\$\{BUILD_ID\}/', r'/\$\{APP_VERSION\}-alpha-\$\{BUILD_ID\}/')
+
           for pathname in [
               "tests/google-play-readiness.test.cjs",
               "tests/launch-hardening.test.cjs",
@@ -82,16 +89,17 @@ jobs:
               "tests/current-release-reference-audit-v1.7.0.test.cjs",
           )
 
+          # v1.6.5/v1.6.7 review workflows are historical release gates; they should
+          # not re-gate every future pull request to main.
           for pathname in [
               ".github/workflows/v1.6.5-release-review.yml",
               ".github/workflows/v1.6.7-release-review.yml",
           ]:
               replace(pathname, "  pull_request:\n    branches: [main]\n", "")
 
-          # package-lock is release metadata too; normalize the root package identity.
+          # Normalize the root package-lock release identity.
           replace("package-lock.json", '"version": "1.6.5"', '"version": "1.7.0"')
 
-          # Hard postconditions: current completion entrypoint must target the current audit.
           pkg = json.loads(Path("package.json").read_text())
           completion = pkg["scripts"]["test:completion"]
           assert "tests/current-release-reference-audit-v1.7.0.test.cjs" in completion, completion
@@ -99,6 +107,9 @@ jobs:
           completion_test = Path("tests/completion-release-contract-v1.6.7.test.cjs").read_text()
           assert "tests/current-release-reference-audit-v1.7.0.test.cjs" in completion_test
           PY
+
+      - name: Show repair diff
+        run: git diff --check && git diff --stat
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
@@ -118,6 +129,13 @@ jobs:
             TZ=UTC node "$test_file"
             TZ=America/New_York node "$test_file"
           done
+
+      - name: Verify Android release identity
+        shell: bash
+        run: |
+          node --test tests/google-play-readiness.test.cjs tests/current-release-reference-audit-v1.7.0.test.cjs
+          grep -q 'versionCode 13' android/app/build.gradle
+          grep -q 'versionName "1.7.0"' android/app/build.gradle
 
       - name: Commit verified repair and remove temporary workflow
         shell: bash
