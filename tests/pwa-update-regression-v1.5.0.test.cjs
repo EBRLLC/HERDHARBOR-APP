@@ -14,12 +14,12 @@ const manifest = JSON.parse(read("manifest.json"));
 const html = read("index.html");
 const build = read("herdharbor-build.js");
 
-// v1.6.7 keeps the independently verified update path and uses HerdHarborBuild as authoritative identity.
-assert.equal(manifest.version, "1.6.7");
-assert.match(build, /version:\s*"1\.6\.7"/);
-assert.match(build, /buildId:\s*"completion-debt-1"/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "1\.6\.7"/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "completion-debt-1"/);
+// v1.7.0 keeps the independently verified update path and uses HerdHarborBuild as authoritative identity.
+assert.equal(manifest.version, "1.7.0");
+assert.match(build, /version:\s*"1\.7\.0"/);
+assert.match(build, /buildId:\s*"arba-standards-1"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "1\.7\.0"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "arba-standards-1"/);
 assert.match(pwa, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
 assert.match(html, /herdharbor-build\.js\?v=1\.6\.5/, "the inherited shell bootstrap can retain its stable query because build metadata is network-first and authoritative");
 
@@ -58,7 +58,7 @@ assert.match(cloud, /hasUnsyncedChanges/);
 assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
 // Browser/app shell requests favor production over stale frontend caches while retaining offline fallback.
-assert.match(worker, /v1\.6\.7-alpha-completion-debt-1/);
+assert.match(worker, /v1\.7\.0-alpha-arba-standards-1/);
 assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
 assert.match(worker, /NETWORK_FIRST_PATHS/);
 assert.match(worker, /\/manifest\.json/);
@@ -71,4 +71,4 @@ assert.match(worker, /caches\.delete\(key\)/);
 assert.match(worker, /self\.clients\.claim\(\)/);
 assert.match(pwa, /manifest\.json\?build=\$\{encodeURIComponent\(PWA_BUILD\)\}/);
 
-console.log("Alpha v1.6.7 PWA update-regression tests passed");
+console.log("Alpha v1.7.0 PWA update-regression tests passed");
