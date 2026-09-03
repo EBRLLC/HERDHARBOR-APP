@@ -43,7 +43,7 @@ assert.match(worker, /shows-v1\.6\.1\.css\?v=1\.7\.0/);
 assert.match(worker, /shows-v1\.6\.1\.js\?v=1\.7\.0/);
 assert.match(worker, /shows-v1\.6\.1-hardening\.js\?v=1\.7\.0/);
 assert.match(pwa, /\$\{APP_VERSION\}-alpha-\$\{BUILD_ID\}/);
-assert.match(pwa, /const BUILD_ID = BUILD_INFO\.buildId \|\| "arba-standards-1"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "arba-standards-1"/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
 assert.match(pwa, /loadShows/);
