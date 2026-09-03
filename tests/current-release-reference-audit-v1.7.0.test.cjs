@@ -17,27 +17,26 @@ const worker = read("service-worker.js");
 const monitoringConfig = read("herdharbor-monitoring-config.js");
 const monitoringGenerator = read("scripts/build-monitoring-config.mjs");
 const release = read("herdharbor-release-v1.6.1.js");
-const reviewWorkflow = read(".github/workflows/v1.6.7-release-review.yml");
-const productionWorkflow = read(".github/workflows/v1.6.7-production-acceptance.yml");
 const playNotes = read("google-play/listing/en-US/release-notes.txt");
+const releaseNotes = read("RELEASE_NOTES-v1.7.0.md");
 
 const version = build.match(/version:\s*"([^"]+)"/)?.[1];
 const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
 
-assert.equal(version, "1.6.7");
-assert.equal(buildId, "completion-debt-1");
-assert.match(build, /build:\s*"1\.6\.7-alpha-completion-debt-1"/);
-assert.equal(manifest.version, "1.6.7");
-assert.equal(pkg.version, "1.6.7");
-assert.equal(twa.appVersion, "1.6.7");
-assert.equal(twa.appVersionCode, 12);
-assert.match(gradle, /versionCode 12/);
-assert.match(gradle, /versionName "1\.6\.7"/);
+assert.equal(version, "1.7.0");
+assert.equal(buildId, "arba-standards-1");
+assert.match(build, /build:\s*"1\.7\.0-alpha-arba-standards-1"/);
+assert.equal(manifest.version, "1.7.0");
+assert.equal(pkg.version, "1.7.0");
+assert.equal(twa.appVersion, "1.7.0");
+assert.equal(twa.appVersionCode, 13);
+assert.match(gradle, /versionCode 13/);
+assert.match(gradle, /versionName "1\.7\.0"/);
 
-assert.match(pwa, /Current release contract: const APP_VERSION = "1\.6\.7"/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "1\.6\.7"/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "completion-debt-1"/);
-assert.match(worker, /herdharbor-shell-v1\.6\.7-alpha-completion-debt-1/);
+assert.match(pwa, /Current release contract: const APP_VERSION = "1\.7\.0"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "1\.7\.0"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "arba-standards-1"/);
+assert.match(worker, /herdharbor-shell-v1\.7\.0-alpha-arba-standards-1/);
 
 for (const asset of [
   "manifest.json",
@@ -55,24 +54,24 @@ for (const asset of [
   "pedigree-genetics-v1.6.1.js",
   "rabbit-genetics-v1.6.1.js",
   "shows-v1.6.1.js",
-  "shows-v1.6.1-hardening.js"
+  "shows-v1.6.1-hardening.js",
+  "standards-v1.7.0.css",
+  "standards-registry-v1.7.0.js",
+  "standards-ui-v1.7.0.js"
 ]) {
-  assert.ok(worker.includes(`./${asset}?v=1.6.7`), `service worker current release identity missing for ${asset}`);
+  assert.ok(worker.includes(`./${asset}?v=1.7.0`), `service worker current release identity missing for ${asset}`);
 }
 
-assert.match(monitoringConfig, /release: "HerdHarbor@1\.6\.7"/);
-assert.match(monitoringConfig, /build: "completion-debt-1"/);
-assert.match(monitoringGenerator, /release: "HerdHarbor@1\.6\.7"/);
-assert.match(monitoringGenerator, /completion-debt-1/);
-assert.match(release, /window\.HerdHarborBuild\?\.version \|\| "1\.6\.7"/);
-assert.match(release, /window\.HerdHarborBuild\?\.buildId \|\| "completion-debt-1"/);
-assert.match(release, /1\.6\.7-alpha-completion-debt-1/);
-
-assert.match(reviewWorkflow, /name: Alpha v1\.6\.7 release review/);
-assert.match(reviewWorkflow, /herdharbor-v1\.6\.7-release-review-bundle/);
-assert.match(productionWorkflow, /name: Alpha v1\.6\.7 production acceptance/);
-assert.match(productionWorkflow, /HERDHARBOR_BUILD_ID: completion-debt-1/);
-assert.match(playNotes, /Alpha v1\.6\.7/);
+assert.match(monitoringConfig, /release: "HerdHarbor@1\.7\.0"/);
+assert.match(monitoringConfig, /build: "arba-standards-1"/);
+assert.match(monitoringGenerator, /release: "HerdHarbor@1\.7\.0"/);
+assert.match(monitoringGenerator, /arba-standards-1/);
+assert.match(release, /window\.HerdHarborBuild\?\.version \|\| "1\.7\.0"/);
+assert.match(release, /window\.HerdHarborBuild\?\.buildId \|\| "arba-standards-1"/);
+assert.match(release, /1\.7\.0-alpha-arba-standards-1/);
+assert.match(playNotes, /Alpha v1\.7\.0/);
+assert.match(releaseNotes, /Alpha v1\.7\.0/);
+assert.doesNotMatch(releaseNotes, /Review candidate/i);
 
 const currentIdentityFiles = [
   "herdharbor-build.js",
@@ -85,16 +84,15 @@ const currentIdentityFiles = [
   "herdharbor-monitoring-config.js",
   "scripts/build-monitoring-config.mjs",
   "herdharbor-release-v1.6.1.js",
-  ".github/workflows/v1.6.7-release-review.yml",
-  ".github/workflows/v1.6.7-production-acceptance.yml",
-  "google-play/listing/en-US/release-notes.txt"
+  "google-play/listing/en-US/release-notes.txt",
+  "RELEASE_NOTES-v1.7.0.md"
 ];
 const currentIdentityText = currentIdentityFiles.map((file) => `\n--- ${file} ---\n${read(file)}`).join("\n");
-assert.doesNotMatch(currentIdentityText, /1\.6\.6-alpha-completion-debt-1/);
-assert.doesNotMatch(currentIdentityText, /HerdHarbor@1\.6\.6/);
-assert.doesNotMatch(currentIdentityText, /versionName "1\.6\.6"/);
-assert.doesNotMatch(currentIdentityText, /"appVersion":\s*"1\.6\.6"/);
-assert.doesNotMatch(currentIdentityText, /"version":\s*"1\.6\.6"/);
+assert.doesNotMatch(currentIdentityText, /completion-debt-1/);
+assert.doesNotMatch(currentIdentityText, /HerdHarbor@1\.6\.7/);
+assert.doesNotMatch(currentIdentityText, /versionName "1\.6\.7"/);
+assert.doesNotMatch(currentIdentityText, /"appVersion":\s*"1\.6\.7"/);
+assert.doesNotMatch(currentIdentityText, /"version":\s*"1\.6\.7"/);
 
 const retiredRuntimeAssets = [
   "herdharbor-release-v1.4.5.js",

@@ -1,0 +1,148 @@
+name: Alpha v1.7.0 release contract repair
+
+on:
+  push:
+    branches:
+      - release/v1.7.0-live
+    paths:
+      - .github/workflows/v1.7.0-release-repair.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: release/v1.7.0-live
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify current audit parses before repair
+        run: node --check tests/current-release-reference-audit-v1.7.0.test.cjs
+
+      - name: Repair current-release test contracts without rewriting historical contracts
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+
+          CURRENT_VERSION = "1.7.0"
+          CURRENT_BUILD = "arba-standards-1"
+
+          def replace(pathname, old, new):
+              path = Path(pathname)
+              if not path.exists():
+                  print(f"Not applicable: {pathname}")
+                  return
+              text = path.read_text()
+              if old not in text:
+                  print(f"Already current or not applicable: {pathname}: {old}")
+                  return
+              path.write_text(text.replace(old, new))
+              print(f"Updated {pathname}: {old} -> {new}")
+
+          current_identity_files = [
+              "tests/analytics-release-contract-v1.6.5.test.cjs",
+              "tests/breeding-intelligence-tools.test.cjs",
+              "tests/genetics-routing-completion-v1.6.1.test.cjs",
+              "tests/google-play-readiness.test.cjs",
+              "tests/launch-hardening.test.cjs",
+              "tests/monitoring-integration-v1.5.1.test.cjs",
+              "tests/phase2-release-v1.6.1.test.cjs",
+              "tests/phase3-integration.test.cjs",
+              "tests/pwa-update-regression-v1.5.0.test.cjs",
+              "tests/runtime-consolidation-v1.5.1.test.cjs",
+              "tests/shows-performance-v1.5.0.test.cjs",
+              "tests/stability-release.test.cjs",
+              "tests/tablet-layout-login-color.test.cjs",
+          ]
+          for pathname in current_identity_files:
+              replace(pathname, "1.6.7", CURRENT_VERSION)
+              replace(pathname, "completion-debt-1", CURRENT_BUILD)
+
+          replace("tests/google-play-readiness.test.cjs", 'assert.equal(twa.appVersionCode, 12);', 'assert.equal(twa.appVersionCode, 13);')
+          replace("tests/google-play-readiness.test.cjs", '/versionCode 12/', '/versionCode 13/')
+          replace("tests/google-play-readiness.test.cjs", r'/\$\{APP_VERSION\}-alpha-stability-\$\{BUILD_ID\}/', r'/\$\{APP_VERSION\}-alpha-\$\{BUILD_ID\}/')
+
+          for pathname in [
+              "tests/google-play-readiness.test.cjs",
+              "tests/launch-hardening.test.cjs",
+              "tests/runtime-consolidation-v1.5.1.test.cjs",
+              "tests/stability-release.test.cjs",
+          ]:
+              replace(pathname, "pwa.js?v=27", "pwa.js?v=28")
+              replace(pathname, r'pwa\.js\?v=27', r'pwa\.js\?v=28')
+
+          replace("tests/monitoring-deployment-v1.5.1.test.cjs", r'assert.match(config, /HerdHarbor@1\.6\.7/);', r'assert.match(config, /HerdHarbor@1\.7\.0/);')
+          replace("tests/monitoring-deployment-v1.5.1.test.cjs", r'assert.match(config, /completion-debt-1/);', r'assert.match(config, /arba-standards-1/);')
+
+          replace(
+              "tests/completion-release-contract-v1.6.7.test.cjs",
+              "tests/current-release-reference-audit-v1.6.7.test.cjs",
+              "tests/current-release-reference-audit-v1.7.0.test.cjs",
+          )
+
+          # v1.6.5/v1.6.7 review workflows are historical release gates; they should
+          # not re-gate every future pull request to main.
+          for pathname in [
+              ".github/workflows/v1.6.5-release-review.yml",
+              ".github/workflows/v1.6.7-release-review.yml",
+          ]:
+              replace(pathname, "  pull_request:\n    branches: [main]\n", "")
+
+          # Normalize the root package-lock release identity.
+          replace("package-lock.json", '"version": "1.6.5"', '"version": "1.7.0"')
+
+          pkg = json.loads(Path("package.json").read_text())
+          completion = pkg["scripts"]["test:completion"]
+          assert "tests/current-release-reference-audit-v1.7.0.test.cjs" in completion, completion
+          assert "tests/current-release-reference-audit-v1.6.7.test.cjs" not in completion, completion
+          completion_test = Path("tests/completion-release-contract-v1.6.7.test.cjs").read_text()
+          assert "tests/current-release-reference-audit-v1.7.0.test.cjs" in completion_test
+          PY
+
+      - name: Show repair diff
+        run: git diff --check && git diff --stat
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build monitoring bundle
+        env:
+          NODE_ENV: production
+        run: npm run build:monitoring
+
+      - name: Run full Alpha v1.7.0 test suite
+        run: npm test
+
+      - name: Run all regression contracts in UTC and Eastern time
+        shell: bash
+        run: |
+          for test_file in tests/*.test.cjs; do
+            TZ=UTC node "$test_file"
+            TZ=America/New_York node "$test_file"
+          done
+
+      - name: Verify Android release identity
+        shell: bash
+        run: |
+          node --test tests/google-play-readiness.test.cjs tests/current-release-reference-audit-v1.7.0.test.cjs
+          grep -q 'versionCode 13' android/app/build.gradle
+          grep -q 'versionName "1.7.0"' android/app/build.gradle
+
+      - name: Commit verified repair and remove temporary workflow
+        shell: bash
+        run: |
+          git rm .github/workflows/v1.7.0-release-repair.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests .github/workflows package-lock.json
+          git commit -m "Fix stale release contracts for Alpha v1.7.0"
+          git push origin HEAD:release/v1.7.0-live

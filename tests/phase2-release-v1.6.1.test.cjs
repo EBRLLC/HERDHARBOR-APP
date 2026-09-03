@@ -5,10 +5,10 @@ const path=require('node:path');
 const root=path.join(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 
-test('current completion release build identity has one authoritative source',()=>{
+test('current release build identity has one authoritative source',()=>{
   const build=read('herdharbor-build.js'),html=read('index.html'),pwa=read('pwa.js');
-  assert.match(build,/version:\s*"1\.6\.7"/);
-  assert.match(build,/buildId:\s*"completion-debt-1"/);
+  assert.match(build,/version:\s*"1\.7\.0"/);
+  assert.match(build,/buildId:\s*"arba-standards-1"/);
   assert.match(html,/HerdHarborBuild\?\.version/);
   assert.match(pwa,/HerdHarborBuild\?\.version/);
 });
@@ -23,5 +23,5 @@ test('sync state is pinned in the top bar and settings build details are compact
 test('new genetics engine is loaded after compatibility runtimes and cached offline',()=>{
   const pwa=read('pwa.js'),worker=read('service-worker.js');
   assert.ok(pwa.indexOf('rabbit-genetics-v1.6.1.js')>pwa.indexOf('rabbit-genetics-runtime-v1.6.1.js'));
-  assert.match(worker,/rabbit-genetics-v1\.6\.1\.js\?v=1\.6\.7/);
+  assert.match(worker,/rabbit-genetics-v1\.6\.1\.js\?v=1\.7\.0/);
 });

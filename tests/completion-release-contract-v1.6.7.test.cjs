@@ -113,7 +113,7 @@ test("v1.6.7 release review runs completion and dual-timezone regression without
   assert.match(workflow, /herdharbor-v1\.6\.7-release-review-unsigned-aab/);
   assert.match(androidAlpha, /^\s*pull_request:/m);
   assert.match(androidAlpha, /\.\/gradlew --no-daemon bundleRelease/);
-  assert.equal(pkg.scripts["test:completion"], "node --test tests/completion-release-contract-v1.6.7.test.cjs tests/current-release-reference-audit-v1.6.7.test.cjs");
+  assert.equal(pkg.scripts["test:completion"], "node --test tests/completion-release-contract-v1.6.7.test.cjs tests/current-release-reference-audit-v1.7.0.test.cjs");
 });
 
 console.log("Alpha v1.6.7 completion release contract passed");

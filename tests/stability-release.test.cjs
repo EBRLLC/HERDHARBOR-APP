@@ -19,10 +19,10 @@ const showsCss = fs.readFileSync(path.join(root, "shows-v1.6.1.css"), "utf8");
 const showsHardening = fs.readFileSync(path.join(root, "shows-v1.6.1-hardening.js"), "utf8");
 const mobileGrowth = fs.readFileSync(path.join(root, "tests/mobile-growth-layout-v1.6.6.test.cjs"), "utf8");
 
-// v1.6.7 remains additive: the established app/data model and live v1.6.6 mobile hotfix stay intact.
-assert.match(build, /version:\s*"1\.6\.7"/);
-assert.match(build, /buildId:\s*"completion-debt-1"/);
-assert.match(html, /HerdHarbor Alpha v1\.6\.5 consolidated application shell/, "the recovered shell stays intact while HerdHarborBuild is authoritative for v1.6.7");
+// Current release remains additive: the established app/data model and live v1.6.6 mobile hotfix stay intact.
+assert.match(build, /version:\s*"1\.7\.0"/);
+assert.match(build, /buildId:\s*"arba-standards-1"/);
+assert.match(html, /HerdHarbor Alpha v1\.6\.5 consolidated application shell/, "the recovered shell stays intact while HerdHarborBuild is authoritative for v1.7.0");
 assert.match(html, /id="settings-sync-now"/);
 assert.match(html, /id="settings-last-synced"/);
 assert.match(html, /id="export-excel"/);
@@ -82,12 +82,12 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /v1\.6\.7-alpha-completion-debt-1/);
+assert.match(serviceWorker, /v1\.7\.0-alpha-arba-standards-1/);
 assert.match(serviceWorker, /spreadsheet-import\.js\?v=17/);
-assert.match(serviceWorker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.6\.7/);
+assert.match(serviceWorker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.0/);
 assert.match(serviceWorker, /herdharbor-cloud\.js\?v=19/);
 assert.match(serviceWorker, /symptom-guide\.js\?v=1/);
-assert.match(serviceWorker, /pwa\.js\?v=27/);
+assert.match(serviceWorker, /pwa\.js\?v=28/);
 assert.match(serviceWorker, /pedigree-visual\.css\?v=2/);
 assert.match(serviceWorker, /pedigree-visual\.js\?v=2/);
 for (const asset of [
@@ -96,15 +96,15 @@ for (const asset of [
   "rabbit-genetics-engine-advanced-v1.6.1.js", "rabbit-genetics-runtime-v1.6.1.js",
   "rabbit-genetics-ui-compat-v1.6.1.js", "rabbit-genetics-ui-advanced-v1.6.1.js",
   "herdharbor-release-v1.6.1.js", "shows-v1.6.1.css", "shows-v1.6.1.js", "shows-v1.6.1-hardening.js"
-]) assert.ok(serviceWorker.includes(`${asset}?v=1.6.7`), `${asset} is not cached with v1.6.7 identity`);
+]) assert.ok(serviceWorker.includes(`${asset}?v=1.7.0`), `${asset} is not cached with v1.7.0 identity`);
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);
 assert.match(serviceWorker, /NETWORK_FIRST_PATHS/);
 assert.match(serviceWorker, /fetch\(request, \{ cache: "no-store" \}\)/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "completion-debt-1"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "arba-standards-1"/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
 assert.match(pwa, /loadShows/);
-assert.match(pwa, /shows-v1\.6\.1-hardening\.js\?v=1\.6\.7/);
+assert.match(pwa, /shows-v1\.6\.1-hardening\.js\?v=1\.7\.0/);
 assert.match(pwa, /schemaVersion: 3/);
 assert.match(pwa, /registration\.update\(\)/);
 assert.match(pwa, /updateViaCache: "none"/);
@@ -144,4 +144,4 @@ assert.match(showsHardening, /PAGE_SIZE = 24/);
 assert.match(showsCss, /overflow-x:auto/);
 assert.match(showsCss, /@media \(max-width:520px\)/);
 
-console.log("Alpha v1.6.7 completion release stability tests passed");
+console.log("Alpha v1.7.0 release stability tests passed");

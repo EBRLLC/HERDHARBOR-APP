@@ -1,8 +1,6 @@
 # HerdHarbor Alpha v1.7.0 — Optional ARBA Standards & Judging
 
-## Review candidate
-
-Alpha v1.7.0 adds optional rabbit standards and judging-reference tools without changing HerdHarbor's general livestock-management behavior for users who do not use ARBA.
+Alpha v1.7.0 introduces optional rabbit standards and judging-reference tools while preserving HerdHarbor as a general rabbit-management and genetics platform for breeders who do not use ARBA.
 
 ### ARBA standards registry
 
@@ -39,10 +37,12 @@ Existing judge, class, placement, score, comments, notes, attachments, and award
 
 The Standards area can combine existing HerdHarbor genetics output, available three-generation pedigree context, show history, and saved standards evaluations. It reports evidence separately rather than creating an unsupported composite score or treating standards observations as genetic facts.
 
-### Optional-by-design behavior
+### Optional by design
 
 `settings.arbaStandardsEnabled` defaults to `false`. With the feature disabled, HerdHarbor's normal animals, pedigrees, breeding/genetics, health, sales, production, finance, and Shows workflows continue independently.
 
-### Release-cut note
+### Release identity
 
-This branch is a v1.7.0 development review candidate. The app-wide production identity remains on the currently approved Alpha release until this pull request is reviewed and the release is explicitly cut.
+- Version: Alpha 1.7.0
+- Build: `arba-standards-1`
+- Android version code: 13
