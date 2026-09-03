@@ -77,7 +77,7 @@ assert.doesNotMatch(geneticsV2, /breeding-intelligence-core\.js['"]/, "advanced 
 
 assert.ok(pwa.includes('const APP_VERSION = window.HerdHarborBuild?.version || "1.7.0"'));
 assert.ok(worker.includes("v1.7.0-alpha-arba-standards-1"));
-assert.ok(worker.includes("pwa.js?v=27"));
+assert.ok(worker.includes("pwa.js?v=28"));
 assert.ok(!pwa.includes(";" + String.fromCharCode(92) + "n    if"), "pwa.js contains no literal newline escape in executable source");
 assert.ok(!read("herdharbor-membership-v1.6.1.js").includes(";" + String.fromCharCode(92) + "n    if"), "membership source contains no literal newline escape in executable source");
 assert.ok(!read("pedigree-visual.js").includes(";" + String.fromCharCode(92) + "n    if"), "pedigree source contains no literal newline escape in executable source");
