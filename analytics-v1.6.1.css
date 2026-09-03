@@ -26,9 +26,41 @@
 .analytics-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .analytics-legend i { width: 10px; height: 10px; border-radius: 50%; }
 .analytics-growth-controls { align-items: start; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--white); }
-.analytics-growth-controls fieldset { display: flex; flex: 1 1 460px; flex-wrap: wrap; gap: 8px; min-width: 0; margin: 0; padding: 8px 10px 10px; border: 1px solid var(--border); border-radius: 12px; }
+.analytics-growth-controls fieldset {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  flex: 1 1 720px;
+  gap: 8px;
+  min-width: 0;
+  max-height: 320px;
+  margin: 0;
+  padding: 8px 10px 10px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  align-content: start;
+  scrollbar-gutter: stable;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
 .analytics-growth-controls legend { padding: 0 5px; color: var(--muted); font-size: .78rem; font-weight: 800; }
-.analytics-growth-controls fieldset label { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--cream); font-size: .82rem; font-weight: 750; }
+.analytics-growth-controls fieldset > label {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--cream);
+  font-size: .82rem;
+  font-weight: 750;
+}
+.analytics-growth-controls fieldset > label > input[type="checkbox"] { justify-self: center; margin: 0; }
+.analytics-growth-controls fieldset label { font-size: .82rem; font-weight: 750; }
 .analytics-growth-controls input[type="color"] { width: 26px; height: 26px; padding: 1px; border: 0; border-radius: 50%; background: transparent; }
 .analytics-color-row,
 .analytics-module-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin: 12px 0; }
@@ -39,8 +71,8 @@
 html[data-theme="dark"] .analytics-market-filters { background: #172738; }
 .analytics-color-control { display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 5px 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--cream); color: var(--navy); font-size: .78rem; font-weight: 800; }
 .analytics-color-control input[type="color"] { flex: 0 0 auto; width: 26px; height: 26px; padding: 1px; border: 0; border-radius: 50%; background: transparent; }
-.analytics-color-control span { min-width: 0; overflow-wrap: anywhere; }
-.analytics-growth-controls fieldset > label > .analytics-color-control { padding: 0; border: 0; background: transparent; }
+.analytics-color-control span { min-width: 0; overflow-wrap: break-word; word-break: normal; line-height: 1.2; }
+.analytics-growth-controls fieldset > label > .analytics-color-control { width: 100%; min-width: 0; box-sizing: border-box; padding: 0; border: 0; background: transparent; }
 .analytics-two-column { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .analytics-two-column .analytics-panel { min-width: 0; }
 .analytics-notice { margin: 0 0 14px; padding: 11px 13px; border: 1px solid #c88f2e; border-radius: 10px; color: var(--navy); background: #fff4d7; font-size: .85rem; font-weight: 750; }
@@ -57,9 +89,10 @@ html[data-theme="dark"] .analytics-market-filters { background: #172738; }
 html[data-theme="dark"] .analytics-toolbar,
 html[data-theme="dark"] .analytics-growth-controls,
 html[data-theme="dark"] .analytics-empty { background: #172738; }
-html[data-theme="dark"] .analytics-growth-controls fieldset label,
+html[data-theme="dark"] .analytics-growth-controls fieldset > label,
 html[data-theme="dark"] .analytics-availability > div,
 html[data-theme="dark"] .analytics-color-control { color: #f3efe5; background: #203245; }
+html[data-theme="dark"] .analytics-growth-controls fieldset > label > .analytics-color-control { background: transparent; }
 html[data-theme="dark"] .analytics-empty strong { color: #f3efe5; }
 html[data-theme="dark"] .analytics-notice { border-color: #c99a45; color: #fff4d7; background: #3a3021; }
 html[data-theme="dark"] .analytics-table-wrap th { color: #f3efe5; background: #172738; }
