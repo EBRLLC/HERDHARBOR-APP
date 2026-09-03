@@ -8,24 +8,32 @@ const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 
-// The consolidated HTML shell still carries historical query strings, so every
-// authentication-critical asset it requests must remain network-first until the
-// shell itself is version-aligned. This prevents a cached pre-hotfix release
-// router from loading ahead of herdharbor-cloud.js on installed PWA/TWA clients.
+// Every executable shell asset must use the same current release identity. A
+// mixed query-string set can make installed PWA/TWA clients load incompatible
+// combinations of the shell, auth, and optional modules.
 for (const asset of [
   "herdharbor-release-v1.6.1.js",
   "herdharbor-membership-v1.6.1.js",
   "herdharbor-access-cache-v1.6.1.js",
-  "herdharbor-cloud.js",
   "herdharbor-build.js",
-  "pwa.js"
+  "market-analytics-v1.6.5.js",
+  "analytics-v1.6.1.js"
 ]) {
-  assert.ok(worker.includes(`/${asset}`), `${asset} must remain network-first while index.html carries historical query strings`);
+  assert.ok(worker.includes(`/${asset}`), `${asset} must remain network-first`);
 }
 
-assert.match(html, /herdharbor-release-v1\.6\.1\.js\?v=1\.6\.5/);
-assert.match(html, /herdharbor-cloud\.js\?v=19/);
+for (const asset of [
+  "herdharbor-release-v1.6.1.js",
+  "herdharbor-membership-v1.6.1.js",
+  "herdharbor-access-cache-v1.6.1.js",
+  "herdharbor-build.js",
+  "market-analytics-v1.6.5.js",
+  "analytics-v1.6.1.js"
+]) assert.match(html, new RegExp(`${asset.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}\\?v=1\\.7\\.0`));
+assert.match(html, /herdharbor-cloud\.js\?v=20/);
+assert.match(html, /pwa\.js\?v=28/);
+assert.doesNotMatch(html, /(?:herdharbor-release-v1\.6\.1|herdharbor-membership-v1\.6\.1|herdharbor-access-cache-v1\.6\.1|herdharbor-build|pwa|market-analytics-v1\.6\.5|analytics-v1\.6\.1)\.js\?v=1\.6\.5/);
 assert.match(worker, /"\/herdharbor-release-v1\.6\.1\.js"/);
 assert.match(worker, /"\/herdharbor-cloud\.js"/);
 
-console.log("Alpha v1.6.7 current shell authentication asset guard passed");
+console.log("Alpha v1.7.0 current shell asset identity guard passed");

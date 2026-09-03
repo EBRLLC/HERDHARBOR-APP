@@ -35,6 +35,26 @@ function allowlistedFilters(value: unknown) {
   return result;
 }
 
+function isIsoDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function validateAggregateFilters(filters: Record<string, string>) {
+  for (const field of ["start", "end"]) {
+    if (filters[field] && !isIsoDate(filters[field])) return `Use a valid ISO date for ${field}.`;
+  }
+  if (filters.start && filters.end && filters.start > filters.end) return "The aggregate start date must not be after the end date.";
+  if (filters.sale_month && (!/^\d{1,2}$/.test(filters.sale_month) || Number(filters.sale_month) < 1 || Number(filters.sale_month) > 12)) {
+    return "Use a sale month from 1 through 12.";
+  }
+  if (filters.sale_year && (!/^\d{4}$/.test(filters.sale_year) || Number(filters.sale_year) < 1900 || Number(filters.sale_year) > 2200)) {
+    return "Use a sale year from 1900 through 2200.";
+  }
+  return "";
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
   if (request.method !== "POST") return response({ error: "Method not allowed." }, 405);
@@ -104,9 +124,12 @@ Deno.serve(async (request) => {
     }
 
     if (action === "aggregate") {
+      const filters = allowlistedFilters(body?.filters);
+      const filterError = validateAggregateFilters(filters);
+      if (filterError) return response({ error: filterError }, 400);
       const { data, error } = await admin.rpc("market_aggregate", {
         p_user_id: user.id,
-        p_filters: allowlistedFilters(body?.filters)
+        p_filters: filters
       });
       if (error) throw error;
       return response(data);

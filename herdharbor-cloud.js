@@ -1204,8 +1204,12 @@
       throw new Error("Your latest records have not synced. Download a backup, reconnect, and try again.");
     }
 
-    const marketCleanup = await window.HerdHarborMarket?.prepareAccountDeletion?.()
-      .catch(() => ({ backendConfirmed: false, localQueueCleared: true }));
+    let marketCleanup = { backendConfirmed: false, localQueueCleared: true };
+    try {
+      marketCleanup = await window.HerdHarborMarket?.prepareAccountDeletion?.() || marketCleanup;
+    } catch {
+      // Market Analytics cleanup is optional; the canonical deletion request must still proceed.
+    }
 
     const formData = new FormData();
     formData.set("_subject", "HerdHarbor account deletion request");
@@ -1823,7 +1827,7 @@
     }
     const payload = JSON.stringify({
       app: "HerdHarbor",
-      version: "1.6.5",
+      version: "1.7.0",
       backupType: "local-safety-backup",
       exportedAt: new Date().toISOString(),
       data: appState

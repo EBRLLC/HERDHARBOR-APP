@@ -19,15 +19,15 @@ const showsCss = fs.readFileSync(path.join(root, "shows-v1.6.1.css"), "utf8");
 const showsHardening = fs.readFileSync(path.join(root, "shows-v1.6.1-hardening.js"), "utf8");
 const mobileGrowth = fs.readFileSync(path.join(root, "tests/mobile-growth-layout-v1.6.6.test.cjs"), "utf8");
 
-// Current release remains additive: the established app/data model and live v1.6.6 mobile hotfix stay intact.
+// Current release remains additive: the established app/data model and mobile hotfix stay intact.
 assert.match(build, /version:\s*"1\.7\.0"/);
 assert.match(build, /buildId:\s*"arba-standards-1"/);
-assert.match(html, /HerdHarbor Alpha v1\.6\.5 consolidated application shell/, "the recovered shell stays intact while HerdHarborBuild is authoritative for v1.7.0");
+assert.match(html, /HerdHarbor Alpha v1\.7\.0 consolidated application shell/);
 assert.match(html, /id="settings-sync-now"/);
 assert.match(html, /id="settings-last-synced"/);
 assert.match(html, /id="export-excel"/);
 assert.match(html, /HerdHarbor Alpha v\$\{APP_VERSION\}/);
-assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.6\.5"/, "legacy inline fallback remains only a fallback after HerdHarborBuild loads");
+assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.7\.0"/);
 assert.match(html, /Guided pedigree builder · v\$\{APP_VERSION\}/);
 assert.doesNotMatch(html, /Guided pedigree builder · v0\.2\.1/);
 assert.match(html, /let animalView = \{[\s\S]*?status: "Active"[\s\S]*?\};/);
@@ -85,7 +85,7 @@ assert.match(spreadsheet, /Download issue report/);
 assert.match(serviceWorker, /v1\.7\.0-alpha-arba-standards-1/);
 assert.match(serviceWorker, /spreadsheet-import\.js\?v=17/);
 assert.match(serviceWorker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.0/);
-assert.match(serviceWorker, /herdharbor-cloud\.js\?v=19/);
+assert.match(serviceWorker, /herdharbor-cloud\.js\?v=20/);
 assert.match(serviceWorker, /symptom-guide\.js\?v=1/);
 assert.match(serviceWorker, /pwa\.js\?v=28/);
 assert.match(serviceWorker, /pedigree-visual\.css\?v=2/);

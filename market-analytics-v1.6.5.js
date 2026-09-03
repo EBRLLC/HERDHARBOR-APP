@@ -34,27 +34,50 @@
   let retryTimer = null;
   let retryAttempt = 0;
 
-  const memory = { queue: [], receipts: {} };
+  const memory = { queue: [], queueKey: "", receipts: {}, receiptsKey: "" };
   const storage = () => root?.localStorage || null;
+  const currentUserId = () => String(root?.HerdHarborCloud?.getSession?.()?.user?.id || "").trim();
+  const storageKey = (base) => {
+    const cloud = root?.HerdHarborCloud;
+    const userId = currentUserId();
+    if (cloud && !userId) return null;
+    return userId ? `${base}:${userId}` : base;
+  };
   const parse = (value, fallback) => {
     try { return value ? JSON.parse(value) : fallback; } catch { return fallback; }
   };
   const readQueue = () => {
-    const value = parse(storage()?.getItem?.(QUEUE_KEY), memory.queue);
-    return Array.isArray(value) ? value : [];
+    const key = storageKey(QUEUE_KEY);
+    if (!key) return [];
+    const fallback = memory.queueKey === key ? memory.queue : [];
+    const value = parse(storage()?.getItem?.(key), fallback);
+    memory.queueKey = key;
+    memory.queue = Array.isArray(value) ? value : [];
+    return memory.queue;
   };
   const writeQueue = (queue) => {
+    const key = storageKey(QUEUE_KEY);
+    if (!key) return queue;
+    memory.queueKey = key;
     memory.queue = queue;
-    storage()?.setItem?.(QUEUE_KEY, JSON.stringify(queue));
+    storage()?.setItem?.(key, JSON.stringify(queue));
     return queue;
   };
   const readReceipts = () => {
-    const value = parse(storage()?.getItem?.(RECEIPT_KEY), memory.receipts);
-    return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    const key = storageKey(RECEIPT_KEY);
+    if (!key) return {};
+    const fallback = memory.receiptsKey === key ? memory.receipts : {};
+    const value = parse(storage()?.getItem?.(key), fallback);
+    memory.receiptsKey = key;
+    memory.receipts = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    return memory.receipts;
   };
   const writeReceipts = (receipts) => {
+    const key = storageKey(RECEIPT_KEY);
+    if (!key) return receipts;
+    memory.receiptsKey = key;
     memory.receipts = receipts;
-    storage()?.setItem?.(RECEIPT_KEY, JSON.stringify(receipts));
+    storage()?.setItem?.(key, JSON.stringify(receipts));
     return receipts;
   };
   const now = () => new Date().toISOString();
@@ -87,21 +110,35 @@
   function sanitizeAggregateFilters(input = {}) {
     const output = {};
     for (const field of AGGREGATE_FILTER_FIELDS) {
-      const value = input[field];
-      if (typeof value === "string" && value.trim()) output[field] = value.trim();
-      else if (typeof value === "number" && Number.isFinite(value)) output[field] = String(value);
+      const value = input?.[field];
+      if (typeof value !== "string" && typeof value !== "number") continue;
+      const text = String(value).trim();
+      if (!text) continue;
+      if ((field === "start" || field === "end") && !isIsoDate(text)) continue;
+      if (field === "sale_month" && (!/^\d{1,2}$/.test(text) || Number(text) < 1 || Number(text) > 12)) continue;
+      if (field === "sale_year" && (!/^\d{4}$/.test(text) || Number(text) < 1900 || Number(text) > 2200)) continue;
+      output[field] = text.slice(0, 160);
     }
     return output;
   }
 
+  function isIsoDate(value) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return false;
+    const date = new Date(`${value}T00:00:00Z`);
+    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+  }
+
   function getConsent(state = {}) {
     const value = state?.settings?.marketAnalyticsConsent;
+    const consentVersion = String(value?.consentVersion || "");
+    const currentVersion = consentVersion === CONSENT_VERSION;
     return {
-      enabled: value?.enabled === true,
-      consentVersion: String(value?.consentVersion || ""),
+      enabled: value?.enabled === true && currentVersion,
+      needsReview: value?.enabled === true && !currentVersion,
+      consentVersion,
       enabledAt: String(value?.enabledAt || ""),
       disabledAt: String(value?.disabledAt || ""),
-      includeHistorical: value?.includeHistorical === true,
+      includeHistorical: currentVersion && value?.includeHistorical === true,
       regionCountry: String(value?.regionCountry || "US").slice(0, 2).toUpperCase(),
       regionCode: String(value?.regionCode || "").slice(0, 32),
       broadRegion: String(value?.broadRegion || "").slice(0, 64)
@@ -219,16 +256,26 @@
 
   async function flush() {
     if (flushPromise) return flushPromise;
-    if (root?.navigator?.onLine === false || !root?.HerdHarborCloud?.getSession?.()?.user?.id) {
+    const flushUserId = currentUserId();
+    if (root?.navigator?.onLine === false || !flushUserId) {
       if (readQueue().length) scheduleFlush();
       return { submitted: 0, pending: readQueue().length };
     }
     flushPromise = (async () => {
       let submitted = 0;
       let failed = false;
+      let switched = false;
       for (const entry of [...readQueue()]) {
+        if (currentUserId() !== flushUserId) {
+          switched = true;
+          break;
+        }
         try {
           const result = await invoke(entry);
+          if (currentUserId() !== flushUserId) {
+            switched = true;
+            break;
+          }
           const queue = readQueue();
           const match = (candidate) => candidate.queuedAt === entry.queuedAt && candidate.action === entry.action && candidate.saleId === entry.saleId && candidate.itemId === entry.itemId;
           writeQueue(queue.filter((candidate) => !match(candidate)));
@@ -245,7 +292,9 @@
         }
       }
       const pending = readQueue().length;
-      if (!pending) resetRetry();
+      if (switched) {
+        if (pending) scheduleFlush(250);
+      } else if (!pending) resetRetry();
       else if (failed) scheduleFlush();
       else scheduleFlush(250);
       return { submitted, pending };
@@ -309,11 +358,17 @@
   }
 
   function resetForTests() {
+    const queueKey = storageKey(QUEUE_KEY);
+    const receiptsKey = storageKey(RECEIPT_KEY);
     memory.queue = [];
+    memory.queueKey = "";
     memory.receipts = {};
+    memory.receiptsKey = "";
     resetRetry();
     storage()?.removeItem?.(QUEUE_KEY);
     storage()?.removeItem?.(RECEIPT_KEY);
+    if (queueKey && queueKey !== QUEUE_KEY) storage()?.removeItem?.(queueKey);
+    if (receiptsKey && receiptsKey !== RECEIPT_KEY) storage()?.removeItem?.(receiptsKey);
   }
 
   function retryNow() {

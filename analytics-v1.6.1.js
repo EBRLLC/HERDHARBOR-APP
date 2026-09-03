@@ -35,6 +35,7 @@
     marketFilters: { breed: "", sex: "", age_bucket: "", color_variety: "", pedigree_status: "", registration_status: "", region_country: "", region_code: "", broad_region: "", sale_month: "", sale_year: "" }
   };
   let host = null;
+  let marketRequestToken = 0;
 
   const num = (value) => value !== "" && value !== null && value !== undefined && Number.isFinite(Number(value)) ? Number(value) : null;
   const sum = (values) => values.reduce((total, value) => total + (num(value) || 0), 0);
@@ -110,6 +111,7 @@
       const totalOunces = Math.abs(value) / OZ_GRAMS;
       const pounds = Math.floor(totalOunces / 16);
       const ounces = Math.round((totalOunces - pounds * 16) * 10) / 10;
+      if (ounces >= 16) return `${sign}${pounds + 1} lb 0 oz`;
       return `${sign}${pounds} lb ${decimal(ounces, 1)} oz`;
     }
     const factors = { lb: LB_GRAMS, oz: OZ_GRAMS, kg: 1000, g: 1 };
@@ -124,13 +126,12 @@
   const speciesForAnimal = (source, id) => animalFor(source, id)?.species || "";
 
   function birthWeightRow(record) {
-    if (!record?.dob || num(record.birthWeight) === null) return null;
     const grams = normalizeWeight(record.birthWeight, record.birthWeightUnit || "lb", record.birthWeightOunces);
-    if (grams === null) return null;
+    if (!record?.dob || grams === null) return null;
     return {
       id: `birth:${record.id}`, animalId: record.id, animalName: record.name || "Unknown animal",
       species: record.species || "", breed: record.breed || "", dob: isoDate(record.dob),
-      date: isoDate(record.dob), grams, recordedValue: num(record.birthWeight),
+      date: isoDate(record.dob), grams, recordedValue: num(record.birthWeight) ?? String(record.birthWeight).trim(),
       recordedOunces: num(record.birthWeightOunces), recordedUnit: record.birthWeightUnit || "lb",
       isBirth: true, ageDays: 0
     };
@@ -148,7 +149,6 @@
       }
     }
     for (const record of sourceArray(source, "health")) {
-      if (num(record.weight) === null) continue;
       const subject = animals.get(record.animalId) || {};
       const date = isoDate(record.date);
       const grams = normalizeWeight(record.weight, record.weightUnit || "lb", record.weightOunces);
@@ -156,7 +156,7 @@
       rows.push({
         id: record.id, animalId: record.animalId, animalName: subject.name || "Unknown animal",
         species: subject.species || "", breed: subject.breed || "", dob: isoDate(subject.dob), date, grams,
-        recordedValue: num(record.weight), recordedOunces: num(record.weightOunces),
+        recordedValue: num(record.weight) ?? String(record.weight).trim(), recordedOunces: num(record.weightOunces),
         recordedUnit: record.weightUnit || "lb", isBirth: false,
         ageDays: subject.dob ? daysBetween(subject.dob, date) : null
       });
@@ -258,8 +258,9 @@
   }
 
   function saleItemPrice(item) {
-    const unit = num(item.salePrice ?? item.unitPrice) || 0;
-    return Math.max(0, (num(item.quantity) || 1) * unit);
+    const unit = num(item.salePrice) ?? num(item.unitPrice) ?? 0;
+    const quantity = num(item.quantity) ?? 1;
+    return Math.max(0, quantity * unit);
   }
 
   function saleTotal(sale) {
@@ -665,9 +666,10 @@
   }
 
   function marketView() {
-    const consent = currentState()?.settings?.marketAnalyticsConsent;
+    const market = root?.HerdHarborMarket;
+    if (!market) return empty("Market Analytics is unavailable", "Your private records are unchanged. Reopen HerdHarbor after the v1.7.0 update finishes.");
+    const consent = market.getConsent?.(currentState());
     if (!consent?.enabled) return empty("Market Analytics participation is off", "Enable the separate, optional Market Analytics setting to contribute future completed sales and view privacy-safe aggregate results.");
-    if (!root?.HerdHarborMarket) return empty("Market Analytics is unavailable", "Your private records are unchanged. Reopen HerdHarbor after the v1.6.5 update finishes.");
     const controls = marketFilterControls();
     if (ui.marketLoading) return `${controls}${empty("Loading privacy-safe market results…", "Only groups meeting the minimum sample threshold can be returned.")}`;
     if (ui.marketError) return `${controls}${empty("Market results could not load", ui.marketError)}`;
@@ -680,16 +682,29 @@
     return ({ overview: overviewView, growth: growthView, breeding: breedingView, litters: litterView, production: productionView, eggs: eggsView, milk: milkView, shows: showsView, sales: salesView, revenue: revenueView, feed: feedView, health: healthView, market: marketView }[ui.tab] || overviewView)();
   }
 
+  function invalidateMarket() {
+    marketRequestToken += 1;
+    ui.market = null;
+    ui.marketError = "";
+    ui.marketLoading = false;
+  }
+
   async function loadMarketAggregate() {
-    if (ui.tab !== "market" || !currentState()?.settings?.marketAnalyticsConsent?.enabled || !root?.HerdHarborMarket?.queryAggregate || ui.marketLoading) return;
+    const market = root?.HerdHarborMarket;
+    if (ui.tab !== "market" || !market?.getConsent?.(currentState())?.enabled || !market?.queryAggregate || ui.marketLoading) return;
+    const requestToken = ++marketRequestToken;
     ui.marketLoading = true;
     ui.marketError = "";
     render(host);
     try {
-      ui.market = await root.HerdHarborMarket.queryAggregate({ species: ui.species || undefined, ...marketFilterPayload(), currency: "USD", start: context().start || undefined, end: context().end || undefined });
+      const result = await market.queryAggregate({ species: ui.species || undefined, ...marketFilterPayload(), currency: "USD", start: context().start || undefined, end: context().end || undefined });
+      if (requestToken !== marketRequestToken) return;
+      ui.market = result;
     } catch (error) {
+      if (requestToken !== marketRequestToken) return;
       ui.marketError = error?.message || "The aggregate service is temporarily unavailable.";
     } finally {
+      if (requestToken !== marketRequestToken) return;
       ui.marketLoading = false;
       render(host);
     }
@@ -700,11 +715,11 @@
     if (range) range.value = ui.range;
     const age = container.querySelector("[data-growth-age]");
     if (age) age.value = ui.agePreset;
-    container.querySelector("[data-analytics-species]")?.addEventListener("change", (event) => { ui.species = event.target.value; ui.animalIds = []; ui.market = null; render(host); if (ui.tab === "market") loadMarketAggregate(); });
-    range?.addEventListener("change", (event) => { ui.range = event.target.value; ui.market = null; render(host); if (ui.tab === "market") loadMarketAggregate(); });
-    container.querySelector("[data-analytics-start]")?.addEventListener("change", (event) => { ui.start = event.target.value; ui.market = null; render(host); if (ui.tab === "market") loadMarketAggregate(); });
-    container.querySelector("[data-analytics-end]")?.addEventListener("change", (event) => { ui.end = event.target.value; ui.market = null; render(host); if (ui.tab === "market") loadMarketAggregate(); });
-    container.querySelectorAll("[data-analytics-tab]").forEach((button) => button.addEventListener("click", () => { ui.tab = button.dataset.analyticsTab; render(host); if (ui.tab === "market" && !ui.market) loadMarketAggregate(); }));
+    container.querySelector("[data-analytics-species]")?.addEventListener("change", (event) => { ui.species = event.target.value; ui.animalIds = []; invalidateMarket(); render(host); if (ui.tab === "market") loadMarketAggregate(); });
+    range?.addEventListener("change", (event) => { ui.range = event.target.value; invalidateMarket(); render(host); if (ui.tab === "market") loadMarketAggregate(); });
+    container.querySelector("[data-analytics-start]")?.addEventListener("change", (event) => { ui.start = event.target.value; invalidateMarket(); render(host); if (ui.tab === "market") loadMarketAggregate(); });
+    container.querySelector("[data-analytics-end]")?.addEventListener("change", (event) => { ui.end = event.target.value; invalidateMarket(); render(host); if (ui.tab === "market") loadMarketAggregate(); });
+    container.querySelectorAll("[data-analytics-tab]").forEach((button) => button.addEventListener("click", () => { ui.tab = button.dataset.analyticsTab; invalidateMarket(); render(host); if (ui.tab === "market") loadMarketAggregate(); }));
     container.querySelector("[data-growth-mode]")?.addEventListener("change", (event) => { ui.growthMode = event.target.value; render(host); });
     age?.addEventListener("change", (event) => { ui.agePreset = event.target.value; render(host); });
     container.querySelector("[data-growth-age-start]")?.addEventListener("change", (event) => { ui.ageStart = event.target.value; render(host); });
@@ -713,13 +728,13 @@
     container.querySelector("[data-production-product]")?.addEventListener("change", (event) => { ui.product = event.target.value; render(host); });
     container.querySelectorAll("[data-market-filter]").forEach((input) => input.addEventListener("change", (event) => {
       ui.marketFilters[event.target.dataset.marketFilter] = event.target.value;
-      ui.market = null;
+      invalidateMarket();
       render(host);
       loadMarketAggregate();
     }));
     container.querySelector("[data-market-clear]")?.addEventListener("click", () => {
       Object.keys(ui.marketFilters).forEach((key) => { ui.marketFilters[key] = ""; });
-      ui.market = null;
+      invalidateMarket();
       render(host);
       loadMarketAggregate();
     });
