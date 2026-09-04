@@ -50,6 +50,9 @@ const APP_SHELL = [
   "./standards-v1.7.0.css?v=1.7.0",
   "./standards-registry-v1.7.0.js?v=1.7.0",
   "./standards-ui-v1.7.0.js?v=1.7.0",
+  "./standards-public-reference-v1.7.0.js?v=1.7.0",
+  "./shows-youth-guides-v1.7.0.js?v=1.7.0",
+  "./reference-guides-v1.7.0.css?v=1.7.0",
   "./vendor/supabase-2.111.0.js",
   "./vendor/jszip-3.10.1.min.js",
   "./vendor/exceljs-4.4.0.min.js",
@@ -105,7 +108,10 @@ const NETWORK_FIRST_PATHS = [
   "/shows-v1.6.1.css",
   "/standards-v1.7.0.css",
   "/standards-registry-v1.7.0.js",
-  "/standards-ui-v1.7.0.js"
+  "/standards-ui-v1.7.0.js",
+  "/standards-public-reference-v1.7.0.js",
+  "/shows-youth-guides-v1.7.0.js",
+  "/reference-guides-v1.7.0.css"
 ];
 
 function isNetworkFirstPath(pathname) {
