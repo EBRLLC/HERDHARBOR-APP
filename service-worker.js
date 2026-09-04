@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v1.7.0-alpha-arba-youth-guides-2";
+const CACHE_NAME = "herdharbor-shell-v1.7.0-alpha-arba-standards-1";
 const APP_SHELL = [
   "./",
   "./index.html",
