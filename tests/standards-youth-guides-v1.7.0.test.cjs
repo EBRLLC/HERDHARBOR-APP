@@ -47,6 +47,16 @@ test("FFA guide is intentionally configurable instead of inventing a national ra
   assert.ok(Youth.SHOWMANSHIP_PRACTICE.length>=6);
 });
 
+test("v1.7.0 reference cards preserve readable dark-mode surfaces",()=>{
+  const css=fs.readFileSync(path.join(__dirname,"..","reference-guides-v1.7.0.css"),"utf8");
+  assert.match(css,/html\[data-theme="dark"\] \.hh-public-source-strip/);
+  assert.match(css,/html\[data-theme="dark"\] \.hh-public-reference/);
+  assert.match(css,/background:#102a41/);
+  assert.match(css,/color:#e8eef2/);
+  assert.match(css,/\.hh-public-reference-grid>div\{background:#0a2033/);
+  assert.match(css,/\.hh-youth-source-note\{background:#173b4a/);
+});
+
 test("v1.7.0 build and offline shell load the new reference-guide assets without changing release identity",()=>{
   const build=fs.readFileSync(path.join(__dirname,"..","herdharbor-build.js"),"utf8");
   const sw=fs.readFileSync(path.join(__dirname,"..","service-worker.js"),"utf8");
