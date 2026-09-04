@@ -90,5 +90,5 @@ The Standards area can combine existing HerdHarbor genetics output, available th
 ### Release identity
 
 - Version: Alpha 1.7.0
-- Build: `arba-youth-guides-2`
+- Build: `arba-standards-1`
 - Android version code: 13
