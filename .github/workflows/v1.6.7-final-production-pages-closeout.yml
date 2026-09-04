@@ -24,7 +24,7 @@ jobs:
       - name: Checkout approved v1.7.0 hotfix release
         uses: actions/checkout@v4
         with:
-          ref: cbda7dae05d6887ef95912acacd4a456f438b517
+          ref: af6b80ef6e1f9dc2a46961dbc7d9c2270ece46fe
       - name: One-time sequencing gate
         if: ${{ github.run_attempt == 1 }}
         run: |
@@ -48,7 +48,7 @@ jobs:
           HERDHARBOR_MONITORING_ENVIRONMENT: production
         run: |
           RELEASE_SHA="$(git rev-parse HEAD)"
-          test "$RELEASE_SHA" = "cbda7dae05d6887ef95912acacd4a456f438b517"
+          test "$RELEASE_SHA" = "af6b80ef6e1f9dc2a46961dbc7d9c2270ece46fe"
           HERDHARBOR_BUILD_ID="$RELEASE_SHA" NODE_ENV=production npm run build:monitoring
           HERDHARBOR_BUILD_ID="$RELEASE_SHA" npm run build:monitoring-config
       - name: Stage and verify static Pages artifact
@@ -70,7 +70,7 @@ jobs:
           ! grep -q '"dsn": ""' _site/herdharbor-monitoring-config.js
           grep -q '"environment": "production"' _site/herdharbor-monitoring-config.js
           grep -q '"release": "HerdHarbor@1.7.0"' _site/herdharbor-monitoring-config.js
-          grep -q '"build": "cbda7dae05d6887ef95912acacd4a456f438b517"' _site/herdharbor-monitoring-config.js
+          grep -q '"build": "af6b80ef6e1f9dc2a46961dbc7d9c2270ece46fe"' _site/herdharbor-monitoring-config.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
