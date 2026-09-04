@@ -4,8 +4,8 @@
     product: "HerdHarbor",
     channel: "Alpha",
     version: "1.7.0",
-    buildId: "arba-youth-guides-2",
-    build: "1.7.0-alpha-arba-youth-guides-2"
+    buildId: "arba-standards-1",
+    build: "1.7.0-alpha-arba-standards-1"
   });
 
   // Alpha v1.7.0 optional ARBA Standards & Judging + youth show guide layer.
