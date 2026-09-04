@@ -1,4 +1,4 @@
-name: Alpha v1.6.7 final production Pages closeout
+name: Alpha v1.7.0 final production Pages publish
 
 on:
   push:
@@ -21,14 +21,14 @@ jobs:
       name: github-pages
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout approved v1.6.7 release
+      - name: Checkout approved v1.7.0 release
         uses: actions/checkout@v4
         with:
-          ref: 65fa177645897de272784ac60a059d58af0f4707
+          ref: a72cb87c190404b9677f7a66ae3984b6af25833a
       - name: One-time sequencing gate
         if: ${{ github.run_attempt == 1 }}
         run: |
-          echo "Initial closeout attempt intentionally stops before deployment."
+          echo "Initial publish attempt intentionally stops before deployment."
           echo "Rerun after GitHub's branch-source Pages build finishes so monitored Pages is the final publisher."
           exit 1
       - uses: actions/setup-node@v4
@@ -47,10 +47,10 @@ jobs:
           HERDHARBOR_SENTRY_DSN: ${{ secrets.HERDHARBOR_SENTRY_DSN }}
           HERDHARBOR_MONITORING_ENVIRONMENT: production
         run: |
-          MAIN_SHA="$(git rev-parse HEAD)"
-          test "$MAIN_SHA" = "65fa177645897de272784ac60a059d58af0f4707"
-          HERDHARBOR_BUILD_ID="$MAIN_SHA" NODE_ENV=production npm run build:monitoring
-          HERDHARBOR_BUILD_ID="$MAIN_SHA" npm run build:monitoring-config
+          RELEASE_SHA="$(git rev-parse HEAD)"
+          test "$RELEASE_SHA" = "a72cb87c190404b9677f7a66ae3984b6af25833a"
+          HERDHARBOR_BUILD_ID="$RELEASE_SHA" NODE_ENV=production npm run build:monitoring
+          HERDHARBOR_BUILD_ID="$RELEASE_SHA" npm run build:monitoring-config
       - name: Stage and verify static Pages artifact
         run: |
           mkdir -p _site
@@ -69,8 +69,8 @@ jobs:
           test -s _site/vendor/herdharbor-monitoring-v1.6.1.min.js
           ! grep -q '"dsn": ""' _site/herdharbor-monitoring-config.js
           grep -q '"environment": "production"' _site/herdharbor-monitoring-config.js
-          grep -q '"release": "HerdHarbor@1.6.7"' _site/herdharbor-monitoring-config.js
-          grep -q '"build": "65fa177645897de272784ac60a059d58af0f4707"' _site/herdharbor-monitoring-config.js
+          grep -q '"release": "HerdHarbor@1.7.0"' _site/herdharbor-monitoring-config.js
+          grep -q '"build": "a72cb87c190404b9677f7a66ae3984b6af25833a"' _site/herdharbor-monitoring-config.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
