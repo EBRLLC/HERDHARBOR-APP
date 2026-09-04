@@ -47,13 +47,13 @@ test("FFA guide is intentionally configurable instead of inventing a national ra
   assert.ok(Youth.SHOWMANSHIP_PRACTICE.length>=6);
 });
 
-test("v1.7.0 build and offline shell load the new reference-guide assets",()=>{
+test("v1.7.0 build and offline shell load the new reference-guide assets without changing release identity",()=>{
   const build=fs.readFileSync(path.join(__dirname,"..","herdharbor-build.js"),"utf8");
   const sw=fs.readFileSync(path.join(__dirname,"..","service-worker.js"),"utf8");
   for(const asset of ["standards-public-reference-v1.7.0.js","shows-youth-guides-v1.7.0.js","reference-guides-v1.7.0.css"]){
     assert.ok(build.includes(asset),`build missing ${asset}`);
     assert.ok(sw.includes(asset),`service worker missing ${asset}`);
   }
-  assert.match(build,/arba-youth-guides-2/);
-  assert.match(sw,/arba-youth-guides-2/);
+  assert.match(build,/buildId: "arba-standards-1"/);
+  assert.match(sw,/herdharbor-shell-v1\.7\.0-alpha-arba-standards-1/);
 });
