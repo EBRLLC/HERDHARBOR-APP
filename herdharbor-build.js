@@ -4,11 +4,11 @@
     product: "HerdHarbor",
     channel: "Alpha",
     version: "1.7.0",
-    buildId: "arba-standards-1",
-    build: "1.7.0-alpha-arba-standards-1"
+    buildId: "arba-youth-guides-2",
+    build: "1.7.0-alpha-arba-youth-guides-2"
   });
 
-  // Alpha v1.7.0 optional ARBA Standards & Judging feature layer.
+  // Alpha v1.7.0 optional ARBA Standards & Judging + youth show guide layer.
   if (!root.document) return;
   const target = document.head || document.documentElement;
   function addStyle(id, href) {
@@ -29,7 +29,11 @@
     target.appendChild(node);
   }
   addStyle("hh-arba-v170-style", "standards-v1.7.0.css?v=1.7.0");
+  addStyle("hh-reference-guides-v170-style", "reference-guides-v1.7.0.css?v=1.7.0");
   addScript("hh-arba-v170-registry", "standards-registry-v1.7.0.js?v=1.7.0", () => {
-    addScript("hh-arba-v170-ui", "standards-ui-v1.7.0.js?v=1.7.0");
+    addScript("hh-arba-v170-ui", "standards-ui-v1.7.0.js?v=1.7.0", () => {
+      addScript("hh-arba-public-v170", "standards-public-reference-v1.7.0.js?v=1.7.0");
+    });
   });
+  addScript("hh-youth-guides-v170", "shows-youth-guides-v1.7.0.js?v=1.7.0");
 })(typeof globalThis !== "undefined" ? globalThis : this);
