@@ -37,6 +37,9 @@ test("shared genetics UI exposes the v1.7.1 foundation surface", () => {
   assert.equal(UI.version, "1.7.1");
   assert.equal(typeof UI.open, "function");
   assert.equal(typeof UI.render, "function");
+  assert.equal(typeof UI.activeAnimals, "function");
+  assert.equal(typeof UI.breedingSpecies, "function");
+  assert.equal(typeof UI.renderBreeding, "function");
 });
 
 test("foundation UI clearly reports architecture-only status and preserves unclassified records", () => {
@@ -81,4 +84,62 @@ test("rabbit remains routed to the existing rabbit genetics profile instead of t
   assert.match(source, /HerdHarborRabbitGeneticsV2\?\.openProfile/);
   assert.match(source, /HerdHarborBreedingIntelligence\?\.openGeneticProfile/);
   assert.match(source, /HerdHarborGeneticsPlatform/);
+});
+
+test("Breeding genetics only exposes species represented by current active animals", () => {
+  const state = {
+    animals: [
+      { id: "c1", name: "Daisy", species: "Cattle", breed: "Angus", status: "Active" },
+      { id: "c2", name: "Mabel", species: "Cow", breed: "Hereford", status: "Breeding" },
+      { id: "r-old", name: "Old Rabbit", species: "Rabbit", status: "Sold" },
+      { id: "g-old", name: "Old Goat", species: "Goat", status: "Deceased" },
+      { id: "r-ancestor", name: "Rabbit Ancestor", species: "Rabbit", status: "Ancestor Only" }
+    ]
+  };
+  const UI = loadUi(state);
+  const groups = UI.breedingSpecies(state);
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].species, "cattle");
+  assert.deepEqual(groups[0].animals.map(animal => animal.id), ["c1", "c2"]);
+
+  const html = UI.renderBreeding(state);
+  assert.match(html, /Cattle/);
+  assert.match(html, /2 active animals/);
+  assert.doesNotMatch(html, /Rabbit genetics|Goat genetics|Poultry genetics|Swine genetics/);
+});
+
+test("Breeding genetics creates one species tab for each species the farm currently has", () => {
+  const state = {
+    animals: [
+      { id: "g1", name: "Hazel", species: "Goat", status: "Active" },
+      { id: "c1", name: "Daisy", species: "Cows", status: "Active" },
+      { id: "r1", name: "Penny", species: "Rabbits", status: "Active" },
+      { id: "horse1", name: "Scout", species: "Horse", status: "Active" }
+    ]
+  };
+  const UI = loadUi(state);
+  const groups = UI.breedingSpecies(state);
+  assert.deepEqual(groups.map(group => group.species), ["cattle", "goat", "rabbit"]);
+
+  const html = UI.renderBreeding(state);
+  assert.match(html, /data-hh-genetics-species="cattle"/);
+  assert.match(html, /data-hh-genetics-species="goat"/);
+  assert.match(html, /data-hh-genetics-species="rabbit"/);
+  assert.doesNotMatch(html, /data-hh-genetics-species="poultry"/);
+  assert.doesNotMatch(html, /data-hh-genetics-species="swine"/);
+  assert.doesNotMatch(html, /data-hh-genetics-species="horse"/);
+  assert.match(html, /Daisy/);
+  assert.match(html, /Hazel/);
+  assert.match(html, /Penny/);
+});
+
+test("Breeding genetics renders nothing when the farm has no active animals with a genetics adapter", () => {
+  const state = {
+    animals: [
+      { id: "r1", name: "Sold Rabbit", species: "Rabbit", status: "Sold" },
+      { id: "h1", name: "Horse", species: "Horse", status: "Active" }
+    ]
+  };
+  const UI = loadUi(state);
+  assert.equal(UI.renderBreeding(state), "");
 });
