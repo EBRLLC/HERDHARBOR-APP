@@ -64,6 +64,6 @@ test("v1.7.0 build and offline shell load the new reference-guide assets without
     assert.ok(build.includes(asset),`build missing ${asset}`);
     assert.ok(sw.includes(asset),`service worker missing ${asset}`);
   }
-  assert.match(build,/buildId: "arba-standards-1"/);
-  assert.match(sw,/herdharbor-shell-v1\.7\.0-alpha-arba-standards-1/);
+  assert.match(build,/buildId: "multispecies-genetics-foundation-1"/);
+  assert.match(sw,/herdharbor-shell-v1\.7\.1-alpha-multispecies-genetics-foundation-1/);
 });

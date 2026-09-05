@@ -48,7 +48,7 @@ jobs:
         run: |
           npm run build:monitoring-config
           grep -q '"environment": "test"' herdharbor-monitoring-config.js
-          grep -q '"release": "HerdHarbor@1.7.0"' herdharbor-monitoring-config.js
+          grep -q '"release": "HerdHarbor@1.7.1"' herdharbor-monitoring-config.js
           grep -q '"build": "ci-monitoring-test"' herdharbor-monitoring-config.js
           grep -q '"enableTestCrash": true' herdharbor-monitoring-config.js
           git checkout -- herdharbor-monitoring-config.js

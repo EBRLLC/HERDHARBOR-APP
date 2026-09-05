@@ -1,10 +1,10 @@
 (() => {
   "use strict";
 
-  // Current release contract: const APP_VERSION = "1.7.0";
-  // Current build contract: const BUILD_ID = "arba-standards-1";
-  const APP_VERSION = window.HerdHarborBuild?.version || "1.7.0";
-  const BUILD_ID = window.HerdHarborBuild?.buildId || "arba-standards-1";
+  // Current release contract: const APP_VERSION = "1.7.1";
+  // Current build contract: const BUILD_ID = "multispecies-genetics-foundation-1";
+  const APP_VERSION = window.HerdHarborBuild?.version || "1.7.1";
+  const BUILD_ID = window.HerdHarborBuild?.buildId || "multispecies-genetics-foundation-1";
   const PWA_BUILD = `${APP_VERSION}-alpha-${BUILD_ID}`;
   const UPDATE_CHECK_MIN_INTERVAL_MS = 60_000;
   let installPrompt = null;
@@ -105,9 +105,9 @@
   }
 
   function loadMonitoring(done) {
-    addOptionalScript("hh-monitoring-config", "herdharbor-monitoring-config.js?v=1.7.0", (configLoaded) => {
+    addOptionalScript("hh-monitoring-config", "herdharbor-monitoring-config.js?v=1.7.1", (configLoaded) => {
       if (!configLoaded) { done?.(); return; }
-      addOptionalScript("hh-monitoring-v151", "vendor/herdharbor-monitoring-v1.6.1.min.js?v=1.7.0", () => done?.());
+      addOptionalScript("hh-monitoring-v151", "vendor/herdharbor-monitoring-v1.6.1.min.js?v=1.7.1", () => done?.());
     });
   }
 
@@ -117,30 +117,37 @@
   }
 
   function loadBreedingIntelligence() {
-    addStylesheet("hh-breeding-intelligence-style", "breeding-intelligence-v1.6.1.css?v=1.7.0");
-    addStylesheet("hh-rabbit-genetics-v2-style", "breeding-genetics-advanced-v1.6.1.css?v=1.7.0");
-    addStylesheet("hh-phase3-style", "standards-genetics-v1.6.1.css?v=1.7.0");
-    addScript("hh-rabbit-records-v151", "rabbit-records-v1.6.1.js?v=1.7.0", () => {
-      addScript("hh-breeding-intelligence-core-script", "breeding-intelligence-core-v1.6.1.js?v=1.7.0", () => {
-        addScript("hh-rabbit-genetics-v2-engine", "rabbit-genetics-engine-advanced-v1.6.1.js?v=1.7.0", () => {
-          addScript("hh-rabbit-genetics-v151-engine", "rabbit-genetics-engine-compat-v1.6.1.js?v=1.7.0", () => {
-            addScript("hh-rabbit-genetics-v151-runtime", "rabbit-genetics-runtime-v1.6.1.js?v=1.7.0", () => {
-              addScript("hh-rabbit-genetics-v161", "rabbit-genetics-v1.6.1.js?v=1.7.0", () => {
-                addScript("hh-standards-phase3", "standards-registry-v1.6.1.js?v=1.7.0", () => {
-                  addScript("hh-multispecies-genetics-v1.6.1", "multispecies-genetics-v1.6.1.js?v=1.7.0", () => {
-                    addScript("hh-standards-genetics-ui-v1.6.1", "standards-genetics-ui-v1.6.1.js?v=1.7.0");
+    addStylesheet("hh-breeding-intelligence-style", "breeding-intelligence-v1.6.1.css?v=1.7.1");
+    addStylesheet("hh-rabbit-genetics-v2-style", "breeding-genetics-advanced-v1.6.1.css?v=1.7.1");
+    addStylesheet("hh-phase3-style", "standards-genetics-v1.6.1.css?v=1.7.1");
+    addStylesheet("hh-multispecies-genetics-v171-style", "multispecies-genetics-v1.7.1.css?v=1.7.1");
+    addStylesheet("hh-multispecies-genetics-v171-style", "multispecies-genetics-v1.7.1.css?v=1.7.1");
+    addStylesheet("hh-multispecies-genetics-v171-style", "multispecies-genetics-v1.7.1.css?v=1.7.1");
+    addStylesheet("hh-multispecies-genetics-v171-style", "multispecies-genetics-v1.7.1.css?v=1.7.1");
+    addStylesheet("hh-multispecies-genetics-v171-style", "multispecies-genetics-v1.7.1.css?v=1.7.1");
+    addScript("hh-rabbit-records-v151", "rabbit-records-v1.6.1.js?v=1.7.1", () => {
+      addScript("hh-breeding-intelligence-core-script", "breeding-intelligence-core-v1.6.1.js?v=1.7.1", () => {
+        addScript("hh-rabbit-genetics-v2-engine", "rabbit-genetics-engine-advanced-v1.6.1.js?v=1.7.1", () => {
+          addScript("hh-rabbit-genetics-v151-engine", "rabbit-genetics-engine-compat-v1.6.1.js?v=1.7.1", () => {
+            addScript("hh-rabbit-genetics-v151-runtime", "rabbit-genetics-runtime-v1.6.1.js?v=1.7.1", () => {
+              addScript("hh-rabbit-genetics-v161", "rabbit-genetics-v1.6.1.js?v=1.7.1", () => {
+                addScript("hh-standards-phase3", "standards-registry-v1.6.1.js?v=1.7.1", () => {
+                  addScript("hh-multispecies-genetics-v1.7.1", "multispecies-genetics-v1.7.1.js?v=1.7.1", () => {
+                    addScript("hh-standards-genetics-ui-v1.6.1", "standards-genetics-ui-v1.6.1.js?v=1.7.1", () => {
+                      addScript("hh-multispecies-genetics-ui-v1.7.1", "multispecies-genetics-ui-v1.7.1.js?v=1.7.1");
+                    });
                   });
                 });
-                addStylesheet("hh-pedigree-genetics-v151-style", "pedigree-genetics-v1.6.1.css?v=1.7.0");
-                addScript("hh-pedigree-genetics-v151-script", "pedigree-genetics-v1.6.1.js?v=1.7.0", () => {
+                addStylesheet("hh-pedigree-genetics-v151-style", "pedigree-genetics-v1.6.1.css?v=1.7.1");
+                addScript("hh-pedigree-genetics-v151-script", "pedigree-genetics-v1.6.1.js?v=1.7.1", () => {
                   window.HerdHarborPedigreeGenetics?.start?.(window);
                   window.dispatchEvent(new CustomEvent("herdharbor:genetics-ready", { detail: { releaseVersion: APP_VERSION, schemaVersion: 3 } }));
-                  addScript("hh-breeding-intelligence-script", "breeding-intelligence-v1.6.1.js?v=1.7.0", () => {
-                    addScript("hh-breeding-pair-hotfix-script", "breeding-pair-v1.6.1.js?v=1.7.0", () => {
-                      addScript("hh-rabbit-genetics-v151-ui", "rabbit-genetics-ui-compat-v1.6.1.js?v=1.7.0", () => {
-                        addScript("hh-rabbit-genetics-v2-ui", "rabbit-genetics-ui-advanced-v1.6.1.js?v=1.7.0", () => {
-                          addScript("hh-breeding-intelligence-tools-script", "breeding-intelligence-tools-v1.6.1.js?v=1.7.0", () => {
-                            addScript("hh-v151-release-script", "herdharbor-release-v1.6.1.js?v=1.7.0");
+                  addScript("hh-breeding-intelligence-script", "breeding-intelligence-v1.6.1.js?v=1.7.1", () => {
+                    addScript("hh-breeding-pair-hotfix-script", "breeding-pair-v1.6.1.js?v=1.7.1", () => {
+                      addScript("hh-rabbit-genetics-v151-ui", "rabbit-genetics-ui-compat-v1.6.1.js?v=1.7.1", () => {
+                        addScript("hh-rabbit-genetics-v2-ui", "rabbit-genetics-ui-advanced-v1.6.1.js?v=1.7.1", () => {
+                          addScript("hh-breeding-intelligence-tools-script", "breeding-intelligence-tools-v1.6.1.js?v=1.7.1", () => {
+                            addScript("hh-v151-release-script", "herdharbor-release-v1.6.1.js?v=1.7.1");
                           });
                         });
                       });
@@ -156,10 +163,10 @@
   }
 
   function loadShows() {
-    addStylesheet("hh-shows-v151-style", "shows-v1.6.1.css?v=1.7.0");
-    addScript("hh-shows-v151-script", "shows-v1.6.1.js?v=1.7.0", () => {
-      addScript("hh-shows-v151-hardening", "shows-v1.6.1-hardening.js?v=1.7.0", () => {
-        addScript("hh-shows-v151-performance", "shows-v1.6.1-performance.js?v=1.7.0");
+    addStylesheet("hh-shows-v151-style", "shows-v1.6.1.css?v=1.7.1");
+    addScript("hh-shows-v151-script", "shows-v1.6.1.js?v=1.7.1", () => {
+      addScript("hh-shows-v151-hardening", "shows-v1.6.1-hardening.js?v=1.7.1", () => {
+        addScript("hh-shows-v151-performance", "shows-v1.6.1-performance.js?v=1.7.1");
       });
     });
   }

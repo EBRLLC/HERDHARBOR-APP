@@ -2,9 +2,9 @@
   "use strict";
 
   const release = Object.freeze({
-    version: window.HerdHarborBuild?.version || "1.7.0",
-    buildId: window.HerdHarborBuild?.buildId || "arba-standards-1",
-    build: window.HerdHarborBuild?.build || "1.7.0-alpha-arba-standards-1",
+    version: window.HerdHarborBuild?.version || "1.7.1",
+    buildId: window.HerdHarborBuild?.buildId || "multispecies-genetics-foundation-1",
+    build: window.HerdHarborBuild?.build || "1.7.1-alpha-multispecies-genetics-foundation-1",
     howToUrl: "https://herdharbor.com/how-to/",
     featureFlags: Object.freeze({
       adminMemberManagementEnabled: true,
@@ -128,6 +128,8 @@
       trigger.dataset?.gv2Profile,
       trigger.dataset?.animalGenetics,
       trigger.dataset?.geneticsAnimalId,
+      trigger.dataset?.phase3AnimalGenetics,
+      trigger.dataset?.multispeciesGenetics,
       trigger.dataset?.animalId,
       trigger.closest?.("[data-animal-id]")?.dataset?.animalId,
       trigger.closest?.("[data-view-animal]")?.dataset?.viewAnimal,
@@ -147,8 +149,12 @@
     const animal = state.animals.find((row) => String(row.id) === String(animalId));
     if (!animal) return false;
 
-    if (canonicalSpecies(animal.species) !== "Rabbit") {
+    if (String(canonicalSpecies(animal.species)).toLowerCase() !== "rabbit") {
       try {
+        if (window.HerdHarborMultiSpeciesGeneticsUI?.open) {
+          window.HerdHarborMultiSpeciesGeneticsUI.open(animal.id);
+          return true;
+        }
         window.HerdHarborPhase3?.openGenetics?.(animal.id);
         return Boolean(window.HerdHarborPhase3?.openGenetics);
       } catch {

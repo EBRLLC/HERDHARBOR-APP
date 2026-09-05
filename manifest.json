@@ -2,26 +2,68 @@
   "id": "./",
   "name": "HerdHarbor",
   "short_name": "HerdHarbor",
-  "description": "HerdHarbor Alpha v1.7.0 adds optional ARBA Standards & Judging tools, including an in-app standards browser, breeder-facing standards evaluation, Shows integration, and standards-aware breeding intelligence while preserving general rabbit-management workflows for breeders who do not use ARBA.",
-  "version": "1.7.0",
+  "description": "HerdHarbor Alpha v1.7.1 adds a shared multi-species genetics architecture around the completed rabbit genetics engine, with registered foundation adapters for cattle, goats, sheep, poultry, and swine.",
+  "version": "1.7.1",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#F7F3EA",
   "theme_color": "#0D2540",
   "orientation": "portrait",
-  "categories": ["business", "productivity", "utilities"],
+  "categories": [
+    "business",
+    "productivity",
+    "utilities"
+  ],
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ],
   "shortcuts": [
-    { "name": "Animals", "short_name": "Animals", "url": "./#animals" },
-    { "name": "Shows", "short_name": "Shows", "url": "./#shows" },
-    { "name": "Tasks", "short_name": "Tasks", "url": "./#tasks" },
-    { "name": "Health records", "short_name": "Health", "url": "./#health" },
-    { "name": "Breeding Intelligence", "short_name": "Breeding", "url": "./#breeding" },
-    { "name": "Births and litters", "short_name": "Births", "url": "./#litters" },
-    { "name": "Sales and customers", "short_name": "Sales", "url": "./#sales" }
+    {
+      "name": "Animals",
+      "short_name": "Animals",
+      "url": "./#animals"
+    },
+    {
+      "name": "Shows",
+      "short_name": "Shows",
+      "url": "./#shows"
+    },
+    {
+      "name": "Tasks",
+      "short_name": "Tasks",
+      "url": "./#tasks"
+    },
+    {
+      "name": "Health records",
+      "short_name": "Health",
+      "url": "./#health"
+    },
+    {
+      "name": "Breeding Intelligence",
+      "short_name": "Breeding",
+      "url": "./#breeding"
+    },
+    {
+      "name": "Births and litters",
+      "short_name": "Births",
+      "url": "./#litters"
+    },
+    {
+      "name": "Sales and customers",
+      "short_name": "Sales",
+      "url": "./#sales"
+    }
   ]
 }
