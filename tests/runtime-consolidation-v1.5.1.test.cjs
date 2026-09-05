@@ -76,11 +76,11 @@ assert.match(pedigreeGeneticsCss, /html\.hh-pedigree-print-document \.hh-pedigre
 assert.doesNotMatch(geneticsV2, /breeding-intelligence-core\.js['"]/, "advanced genetics engine does not require the legacy unversioned core");
 
 assert.ok(pwa.includes('const APP_VERSION = window.HerdHarborBuild?.version || "1.7.1"'));
-assert.ok(worker.includes("v1.7.1-alpha-multispecies-genetics-foundation-1"));
+assert.ok(worker.includes("herdharbor-shell-v1.8.0-alpha-subscription-engine-7"));
 assert.ok(worker.includes("pwa.js?v=29"));
 assert.ok(!pwa.includes(";" + String.fromCharCode(92) + "n    if"), "pwa.js contains no literal newline escape in executable source");
 assert.ok(!read("herdharbor-membership-v1.6.1.js").includes(";" + String.fromCharCode(92) + "n    if"), "membership source contains no literal newline escape in executable source");
 assert.ok(!read("pedigree-visual.js").includes(";" + String.fromCharCode(92) + "n    if"), "pedigree source contains no literal newline escape in executable source");
 assert.ok(!read("spreadsheet-import.js").includes(";" + String.fromCharCode(92) + "n    if"), "spreadsheet source contains no literal newline escape in executable source");
 
-console.log("v1.7.1 runtime consolidation tests passed");
+console.log("v1.7.1 runtime consolidation tests passed under the v1.8.0 web shell");
