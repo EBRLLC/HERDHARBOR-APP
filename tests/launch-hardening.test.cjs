@@ -14,9 +14,10 @@ const build = fs.readFileSync(path.join(root, "herdharbor-build.js"), "utf8");
 const shows = fs.readFileSync(path.join(root, "shows-v1.6.1.js"), "utf8");
 const hardening = fs.readFileSync(path.join(root, "shows-v1.6.1-hardening.js"), "utf8");
 
-// The recovered consolidated shell remains intact; HerdHarborBuild is authoritative for the current Alpha release.
-assert.match(build, /version:\s*"1\.7\.1"/);
-assert.match(build, /buildId:\s*"multispecies-genetics-foundation-1"/);
+// HerdHarborBuild is authoritative for the current web Alpha release while the shipped v1.7.1 domain/PWA runtime remains preserved underneath v1.8.0.
+assert.match(build, /version:\s*"1\.8\.0"/);
+assert.match(build, /buildId:\s*"subscription-engine-7"/);
+assert.match(build, /build:\s*"1\.8\.0-alpha-subscription-engine-7"/);
 assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.7\.1"/);
 assert.match(html, /id="request-account-deletion"/);
 assert.match(html, /Type DELETE to confirm/);
@@ -34,7 +35,7 @@ assert.match(cloud, /navigator\.onLine === false/);
 assert.match(cloud, /dirty && !\(await syncNow\(\)\)/);
 assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
-assert.match(worker, /v1\.7\.1-alpha-multispecies-genetics-foundation-1/);
+assert.match(worker, /herdharbor-shell-v1\.8\.0-alpha-subscription-engine-7/);
 assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /herdharbor-cloud\.js\?v=20/);
 assert.match(worker, /pwa\.js\?v=29/);
@@ -68,4 +69,4 @@ assert.match(hardening, /Remove this attachment from the record\?/);
 assert.match(hardening, /Animal Show History/);
 assert.match(hardening, /PAGE_SIZE = 24/);
 
-console.log("Alpha v1.7.1 launch hardening, PWA update independence, and account-safety tests passed");
+console.log("Alpha v1.8.0 web launch hardening passed while preserving v1.7.1 domain/PWA safety contracts");
