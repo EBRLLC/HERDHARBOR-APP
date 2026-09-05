@@ -8,6 +8,12 @@ Alpha v1.7.1 establishes the architecture HerdHarbor will use to expand genetics
 
 Rabbit genetics remains delegated to the completed v1.6.1 rabbit engine. Alpha v1.7.1 builds a shared species-adapter layer around that existing implementation so future species can plug into one contract without forcing rabbit genetics through a rewrite.
 
+## Hardlocked species-context design rule
+
+HerdHarbor operational species-aware UI is now governed by `HH-SPECIES-CONTEXT-001`: visible species must come from animals currently on that farm, not from a static list of every species HerdHarbor supports. Sold, Deceased, Archived, and Ancestor Only records do not create operational species tabs or cards. Historical/reporting surfaces may intentionally include historical animals only through an explicit historical-scope reason.
+
+This is an application architecture rule, not a user preference. New species-aware operational features should consume `window.HerdHarborSpeciesContext` and must not enumerate the global species registry merely to decide what the user sees.
+
 ## Added in v1.7.1
 
 - Shared, versioned genetics API and schema contract.
@@ -23,6 +29,7 @@ Rabbit genetics remains delegated to the completed v1.6.1 rabbit engine. Alpha v
 - A shared non-rabbit genetics UI foundation that clearly distinguishes architecture readiness from reviewed genetics content.
 - Breeding now derives genetics tabs from the farm's current active animals, so only species actually present on the farm appear; historical Sold, Deceased, Archived, and Ancestor Only records do not create unrelated genetics tabs.
 - Each active species tab lists that farm's current animals and routes directly into the correct genetics experience, including the existing rabbit engine for rabbits.
+- Shared `HerdHarborSpeciesContext` runtime contract and regression guard for future species-aware operational UI.
 - PWA/offline integration for the new genetics platform and UI.
 - Android Alpha version advancement to v1.7.1 / version code 14.
 - Release identity, monitoring identity, Google Play metadata, and regression coverage for the new foundation.
