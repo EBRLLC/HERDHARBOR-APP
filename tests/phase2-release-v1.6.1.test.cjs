@@ -8,7 +8,7 @@ const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 test('current release build identity has one authoritative source',()=>{
   const build=read('herdharbor-build.js'),html=read('index.html'),pwa=read('pwa.js');
   assert.match(build,/version:\s*"1\.7\.0"/);
-  assert.match(build,/buildId:\s*"arba-standards-1"/);
+  assert.match(build,/buildId:\s*"multispecies-genetics-foundation-1"/);
   assert.match(html,/HerdHarborBuild\?\.version/);
   assert.match(pwa,/HerdHarborBuild\?\.version/);
 });

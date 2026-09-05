@@ -667,7 +667,7 @@
 
   function marketView() {
     const market = root?.HerdHarborMarket;
-    if (!market) return empty("Market Analytics is unavailable", "Your private records are unchanged. Reopen HerdHarbor after the v1.7.0 update finishes.");
+    if (!market) return empty("Market Analytics is unavailable", "Your private records are unchanged. Reopen HerdHarbor after the v1.7.1 update finishes.");
     const consent = market.getConsent?.(currentState());
     if (!consent?.enabled) return empty("Market Analytics participation is off", "Enable the separate, optional Market Analytics setting to contribute future completed sales and view privacy-safe aggregate results.");
     const controls = marketFilterControls();
