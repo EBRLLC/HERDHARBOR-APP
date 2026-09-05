@@ -12,8 +12,6 @@ jobs:
   prepare:
     if: github.event_name == 'workflow_dispatch' || github.head_ref == 'v1.7.1-multispecies-genetics-foundation'
     runs-on: ubuntu-latest
-    outputs:
-      changed: ${{ steps.prepare.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,17 +20,44 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - id: prepare
-        name: Generate v1.7.1 release shell and regression contract
+      - name: Generate v1.7.1 release shell
         run: |
-          node scripts/prepare-v1.7.1-release.mjs
-          if git diff --quiet; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "changed=true" >> "$GITHUB_OUTPUT"
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          root=Path('.')
+          def read(p): return (root/p).read_text()
+          def write(p,s): (root/p).write_text(s)
+          def edit(p,fn): write(p,fn(read(p)))
+          def current(s): return s.replace('1.7.0','1.7.1').replace('arba-standards-1','multispecies-genetics-foundation-1')
+          current_files=['index.html','pwa.js','service-worker.js','herdharbor-build.js','herdharbor-release-v1.6.1.js','herdharbor-monitoring-config.js','scripts/build-monitoring-config.mjs','herdharbor-cloud.js','analytics-v1.6.1.js']
+          for p in current_files: edit(p,current)
+          arba={'standards-v1.7.1.css':'standards-v1.7.0.css','reference-guides-v1.7.1.css':'reference-guides-v1.7.0.css','standards-registry-v1.7.1.js':'standards-registry-v1.7.0.js','standards-ui-v1.7.1.js':'standards-ui-v1.7.0.js','standards-public-reference-v1.7.1.js':'standards-public-reference-v1.7.0.js','shows-youth-guides-v1.7.1.js':'shows-youth-guides-v1.7.0.js'}
+          for p in ['herdharbor-build.js','service-worker.js']:
+            s=read(p)
+            for a,b in arba.items(): s=s.replace(a,b)
+            write(p,s)
+          edit('herdharbor-build.js',lambda s:s.replace('// Alpha v1.7.1 optional ARBA Standards & Judging + youth show guide layer.','// Alpha v1.7.1 Multi-Species Genetics Foundation; v1.7.0 ARBA + youth show layers remain preserved.'))
+          edit('index.html',lambda s:s.replace('HerdHarbor Alpha v1.7.1 consolidated application shell with optional ARBA Standards & Judging.','HerdHarbor Alpha v1.7.1 consolidated application shell with Multi-Species Genetics Foundation; v1.7.0 ARBA and youth-show features preserved.').replace('Version 1.7.1 adds optional ARBA Standards & Judging references while preserving domestic rabbit genetics, pedigrees, breeding, Shows, production, health, privacy-safe Market Analytics, and multi-species guidance.','Version 1.7.1 adds the Multi-Species Genetics Foundation while preserving the completed rabbit genetics engine, ARBA references, youth-show tools, pedigrees, breeding, Shows, production, health, and privacy-safe Market Analytics.').replace('pwa.js?v=28','pwa.js?v=29'))
+          edit('pwa.js',lambda s:s.replace('addStylesheet("hh-phase3-style", "standards-genetics-v1.6.1.css?v=1.7.1");','addStylesheet("hh-phase3-style", "standards-genetics-v1.6.1.css?v=1.7.1");\n    addStylesheet("hh-multispecies-genetics-v171-style", "multispecies-genetics-v1.7.1.css?v=1.7.1");').replace('addScript("hh-multispecies-genetics-v1.6.1", "multispecies-genetics-v1.6.1.js?v=1.7.1", () => {\n                    addScript("hh-standards-genetics-ui-v1.6.1", "standards-genetics-ui-v1.6.1.js?v=1.7.1");\n                  });','addScript("hh-multispecies-genetics-v1.7.1", "multispecies-genetics-v1.7.1.js?v=1.7.1", () => {\n                    addScript("hh-standards-genetics-ui-v1.6.1", "standards-genetics-ui-v1.6.1.js?v=1.7.1", () => {\n                      addScript("hh-multispecies-genetics-ui-v1.7.1", "multispecies-genetics-ui-v1.7.1.js?v=1.7.1");\n                    });\n                  });'))
+          edit('service-worker.js',lambda s:s.replace('"./multispecies-genetics-v1.6.1.js?v=1.7.1",','"./multispecies-genetics-v1.7.1.js?v=1.7.1",\n  "./multispecies-genetics-ui-v1.7.1.js?v=1.7.1",\n  "./multispecies-genetics-v1.7.1.css?v=1.7.1",').replace('"/multispecies-genetics-v1.6.1.js",','"/multispecies-genetics-v1.7.1.js",\n  "/multispecies-genetics-ui-v1.7.1.js",\n  "/multispecies-genetics-v1.7.1.css",').replace('"./pwa.js?v=28"','"./pwa.js?v=29"'))
+          edit('herdharbor-release-v1.6.1.js',lambda s:s.replace('trigger.dataset?.geneticsAnimalId,\n      trigger.dataset?.animalId,','trigger.dataset?.geneticsAnimalId,\n      trigger.dataset?.phase3AnimalGenetics,\n      trigger.dataset?.multispeciesGenetics,\n      trigger.dataset?.animalId,').replace('if (canonicalSpecies(animal.species) !== "Rabbit") {\n      try {\n        window.HerdHarborPhase3?.openGenetics?.(animal.id);\n        return Boolean(window.HerdHarborPhase3?.openGenetics);\n      } catch {\n        return false;\n      }\n    }','if (String(canonicalSpecies(animal.species)).toLowerCase() !== "rabbit") {\n      try {\n        if (window.HerdHarborMultiSpeciesGeneticsUI?.open) {\n          window.HerdHarborMultiSpeciesGeneticsUI.open(animal.id);\n          return true;\n        }\n        window.HerdHarborPhase3?.openGenetics?.(animal.id);\n        return Boolean(window.HerdHarborPhase3?.openGenetics);\n      } catch {\n        return false;\n      }\n    }').replace('[data-gv2-profile], [data-animal-genetics], [data-genetics-animal-id], [data-bi-action="genetics"], [data-bi-action="profile"]','[data-gv2-profile], [data-animal-genetics], [data-genetics-animal-id], [data-phase3-animal-genetics], [data-multispecies-genetics], [data-bi-action="genetics"], [data-bi-action="profile"]'))
+          write('herdharbor-monitoring-config.js','''(() => {\n  "use strict";\n  // Generated/overridden by the approved build environment. Keep the DSN blank in source control.\n  window.HerdHarborMonitoringConfig = Object.freeze({\n    dsn: "",\n    environment: "",\n    release: "HerdHarbor@1.7.1",\n    build: "multispecies-genetics-foundation-1",\n    enableTestCrash: false\n  });\n})();\n''')
+          pkg=json.loads(read('package.json')); pkg['version']='1.7.1'; pkg['description']='HerdHarbor Alpha v1.7.1 Multi-Species Genetics Foundation'; pkg['scripts']['test:genetics']='node --test tests/rabbit-genetics-v1.6.1.test.cjs tests/genetics-release-contract-v1.6.5.test.cjs tests/multispecies-genetics-v1.7.1.test.cjs tests/multispecies-genetics-ui-v1.7.1.test.cjs'; pkg['scripts']['test:v1.7.1']='node --test tests/multispecies-genetics-v1.7.1.test.cjs tests/multispecies-genetics-ui-v1.7.1.test.cjs tests/phase3-integration.test.cjs tests/current-release-reference-audit-v1.7.1.test.cjs'; pkg['scripts']['test:completion']='node --test tests/completion-release-contract-v1.6.7.test.cjs tests/current-release-reference-audit-v1.7.1.test.cjs'; write('package.json',json.dumps(pkg,indent=2)+'\n')
+          lock=json.loads(read('package-lock.json')); lock['version']='1.7.1'; lock['packages']['']['version']='1.7.1'; write('package-lock.json',json.dumps(lock,indent=2)+'\n')
+          manifest=json.loads(read('manifest.json')); manifest['version']='1.7.1'; manifest['description']='HerdHarbor Alpha v1.7.1 adds a shared multi-species genetics architecture around the completed rabbit genetics engine, with registered foundation adapters for cattle, goats, sheep, poultry, and swine.'; write('manifest.json',json.dumps(manifest,indent=2)+'\n')
+          twa=json.loads(read('twa-manifest.json')); twa['appVersion']='1.7.1'; twa['appVersionCode']=14; write('twa-manifest.json',json.dumps(twa,indent=2)+'\n')
+          edit('android/app/build.gradle',lambda s:s.replace('versionCode 13','versionCode 14').replace('versionName "1.7.0"','versionName "1.7.1"'))
+          write('google-play/listing/en-US/release-notes.txt','Alpha v1.7.1 introduces HerdHarbor’s Multi-Species Genetics Foundation. The completed rabbit genetics engine remains unchanged while a shared species-adapter, trait/locus registry, inheritance, pedigree-evidence, carrier-status, and offspring-prediction architecture is added for future cattle, goat, sheep, poultry, and swine genetics releases. Non-rabbit gene libraries are intentionally not bundled yet.\n')
+          identity=['completion-release-contract-v1.6.7.test.cjs','genetics-routing-completion-v1.6.1.test.cjs','google-play-readiness.test.cjs','junior-entry-paths-v1.5.1.test.cjs','launch-hardening.test.cjs','monitoring-deployment-v1.5.1.test.cjs','monitoring-integration-v1.5.1.test.cjs','phase2-release-v1.6.1.test.cjs','pwa-update-regression-v1.5.0.test.cjs','runtime-consolidation-v1.5.1.test.cjs','stability-release.test.cjs','tablet-layout-login-color.test.cjs','analytics-release-contract-v1.6.5.test.cjs','breeding-intelligence-tools.test.cjs','pedigree-storage.test.cjs','storage-efficiency.test.cjs','current-shell-asset-identity-v1.6.7.test.cjs','shows-performance-v1.5.0.test.cjs']
+          for n in identity:
+            p=root/'tests'/n
+            if p.exists(): write('tests/'+n,read('tests/'+n).replace('1.7.0','1.7.1').replace('arba-standards-1','multispecies-genetics-foundation-1').replace('current-release-reference-audit-v1.7.0.test.cjs','current-release-reference-audit-v1.7.1.test.cjs').replace('pwa.js?v=28','pwa.js?v=29').replace('versionCode 13','versionCode 14'))
+          print('Prepared Alpha v1.7.1 release shell.')
+          PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
+          if git diff --cached --quiet; then exit 0; fi
           git commit -m "Finalize Alpha v1.7.1 release shell"
           git push origin "HEAD:${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}"
