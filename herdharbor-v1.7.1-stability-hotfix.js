@@ -432,7 +432,7 @@ function install(){
   root.document.addEventListener('submit',onSubmit,true);
   root.document.addEventListener('click',onClick,true);
   root.document.addEventListener('change',event=>{if(event.target?.matches?.('#animal-form [name="species"]'))queueMicrotask(()=>patchAnimalParentOptions(event.target.closest('form')));if(event.target?.matches?.('#breeding-form [name="femaleId"],#breeding-form [name="maleId"]'))queueMicrotask(()=>patchBreedingOptions(event.target.closest('form')))},true);
-  if(typeof root.MutationObserver==='function'&&root.document.body){let queued=false;new root.MutationObserver(()=>{if(queued)return;queued=true;queueMicrotask(()=>{queued=false;patchCurrentDom()})}).observe(root.document.body,{childList:true,subtree:true});}
+  if(typeof root.MutationObserver==='function'&&root.document.body){let queued=false;const observerOptions={childList:true,subtree:true};const observer=new root.MutationObserver(()=>{if(queued)return;queued=true;const run=()=>{queued=false;observer.disconnect();try{patchCurrentDom()}finally{observer.observe(root.document.body,observerOptions)}};if(typeof root.requestAnimationFrame==='function')root.requestAnimationFrame(run);else root.setTimeout?.(run,0)});observer.observe(root.document.body,observerOptions);}
   root.addEventListener?.('herdharbor:app-ready',patchCurrentDom);
   root.addEventListener?.('herdharbor:health-intelligence-changed',patchCurrentDom);
   const timer=root.setInterval?.(()=>{patchCurrentDom();if(root.HerdHarborApp&&root.HerdHarborSpreadsheet&&root.HerdHarborSpeciesContext)root.clearInterval?.(timer)},150);
