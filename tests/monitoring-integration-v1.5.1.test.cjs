@@ -72,7 +72,8 @@ assert.match(pwa, /Monitoring is optional and fail-open/);
 assert.match(pwa, /registration\.update\(\)/, "application update regression fix remains intact");
 assert.doesNotMatch(pwa, /HerdHarborCloud.*syncNow[\s\S]*SKIP_WAITING/, "app updates remain independent of Cloud Sync");
 
-assert.match(worker, /v1\.7\.1-alpha-multispecies-genetics-foundation-1/);
+// Monitoring remains the v1.7.1 runtime, but the current web shell/cache is v1.8.0.
+assert.match(worker, /herdharbor-shell-v1\.8\.0-alpha-subscription-engine-7/);
 assert.match(worker, /herdharbor-monitoring-config\.js\?v=1\.7\.1/);
 assert.match(worker, /herdharbor-monitoring-v1\.6\.1\.min\.js\?v=1\.7\.1/);
 assert.match(worker, /cache: "no-store"/);
@@ -87,4 +88,4 @@ for (const billingTerm of ["RevenueCat", "StoreKit", "Google Play Billing", "Fou
   assert.ok(!core.includes(billingTerm), `monitoring core must not implement ${billingTerm}`);
 }
 
-console.log("Alpha v1.7.1 monitoring integration and scope guardrails passed");
+console.log("Alpha v1.7.1 monitoring guardrails passed under the v1.8.0 web shell");
