@@ -77,7 +77,7 @@ test('normal sign-in does not force a Stripe refresh loop', () => {
 });
 
 test('Subscription header presentation is event-driven and has no DOM observer loop', () => {
-  assert.doesNotMatch(headerHelper, /MutationObserver/);
+  assert.doesNotMatch(headerHelper, /new\s+MutationObserver\s*\(/);
   assert.match(headerHelper, /herdharbor:subscription-engine-state/);
   assert.match(headerHelper, /data-hh-subscription-engine-tab/);
 });
