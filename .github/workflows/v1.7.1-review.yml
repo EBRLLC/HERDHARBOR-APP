@@ -2,7 +2,7 @@ name: Alpha v1.7.1 release review
 
 on:
   push:
-    branches: [v1.7.1-multispecies-genetics-foundation]
+    branches: [v1.7.1-multispecies-genetics-foundation, 'fix/v1.7.1-*']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -13,7 +13,7 @@ permissions:
 jobs:
   genetics-and-regression:
     name: Multi-species genetics and regression
-    if: github.event_name != 'pull_request' || github.head_ref == 'v1.7.1-multispecies-genetics-foundation'
+    if: github.event_name != 'pull_request' || github.head_ref == 'v1.7.1-multispecies-genetics-foundation' || startsWith(github.head_ref, 'fix/v1.7.1-')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,7 +62,7 @@ jobs:
 
   android-review-build:
     name: Android v1.7.1 review build
-    if: github.event_name != 'pull_request' || github.head_ref == 'v1.7.1-multispecies-genetics-foundation'
+    if: github.event_name != 'pull_request' || github.head_ref == 'v1.7.1-multispecies-genetics-foundation' || startsWith(github.head_ref, 'fix/v1.7.1-')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
