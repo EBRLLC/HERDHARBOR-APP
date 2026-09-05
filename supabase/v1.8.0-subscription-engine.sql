@@ -20,7 +20,7 @@ create table if not exists public.subscription_plans (
 insert into public.subscription_plans (id,label,active,billing_interval,price_cents,currency,max_active_animals,metadata)
 values
  ('junior','Junior',true,'month',0,'usd',5,'{"release":"1.8.0"}'::jsonb),
- ('founder','Founder',true,'month',799,'usd',null,'{"release":"1.8.0","legacy_founder":true}'::jsonb),
+ ('founder','Founder Member',true,'month',999,'usd',null,'{"release":"1.8.0","stripe":true}'::jsonb),
  ('member','Member',true,'month',1499,'usd',null,'{"release":"1.8.0"}'::jsonb),
  ('business','Business',true,'month',4999,'usd',null,'{"release":"1.8.0"}'::jsonb)
 on conflict (id) do update set label=excluded.label,active=excluded.active,billing_interval=excluded.billing_interval,price_cents=excluded.price_cents,currency=excluded.currency,max_active_animals=excluded.max_active_animals,metadata=public.subscription_plans.metadata||excluded.metadata,updated_at=now();

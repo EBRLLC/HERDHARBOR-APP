@@ -4,3 +4,23 @@
 #hh-subscription-engine-panel .hh-subscription-section:has(> .hh-subscription-diagnostics) {
   display: none !important;
 }
+
+.hh-subscription-interval-switcher {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.hh-subscription-interval-switcher .hh-subscription-note {
+  margin-left: 4px;
+}
+@media (max-width: 620px) {
+  .hh-subscription-interval-switcher .button {
+    flex: 1 1 120px;
+  }
+  .hh-subscription-interval-switcher .hh-subscription-note {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+}
