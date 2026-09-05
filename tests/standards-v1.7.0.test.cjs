@@ -68,7 +68,7 @@ test("1.7.0 UI integrates Standards browser, optional settings, animal evaluatio
   assert.match(ui,/HerdHarborBreedingPairHotfix/);assert.match(ui,/Standards\.pairingInsights/);assert.match(ui,/does not replace an ARBA judge/i);
   assert.match(ui,/const live=app\(\)\?\.getState\?\.\(\)/);
   assert.match(ui,/api\.commitState\(s\)/);
-  assert.match(build,/standards-ui-v1\.7\.0\.js\?v=1\.7\.0/);
+  assert.match(build,/standards-ui-v1\.7\.0\.js\?v=1\.7\.1/);
   assert.match(html,/window\.HerdHarborApp = Object\.freeze/);
   assert.match(html,/herdharbor:app-ready/);
 });

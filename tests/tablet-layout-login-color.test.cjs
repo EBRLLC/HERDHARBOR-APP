@@ -14,7 +14,7 @@ const pedigreeGeneticsCss = fs.readFileSync(path.join(root, "pedigree-genetics-v
 const showsCss = fs.readFileSync(path.join(root, "shows-v1.6.1.css"), "utf8");
 
 // HerdHarborBuild is authoritative for the current Alpha v1.7.1 identity.
-assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.7\.0"/);
+assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.7\.1"/);
 assert.match(html, /html \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
 assert.match(html, /body \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
 assert.match(html, /\.app-shell \{[\s\S]*?grid-template-columns: minmax\(0, var\(--sidebar-width\)\) minmax\(0, 1fr\);[\s\S]*?overflow-x: clip;/);
@@ -31,7 +31,7 @@ assert.match(html, /@media \(max-width: 820px\) \{[\s\S]*?#quick-add-button[\s\S
 assert.equal(manifest.orientation, "portrait");
 assert.equal(manifest.version, "1.7.1");
 
-assert.match(cloud, /version: "1\.7\.0"/);
+assert.match(cloud, /version: "1\.7\.1"/);
 assert.match(cloud, /html\[data-theme="dark"\] #hh-auth-root/);
 assert.match(cloud, /#hh-auth-root \.hh-auth-form label/);
 assert.match(cloud, /#hh-auth-root \.hh-auth-form input/);
@@ -42,14 +42,14 @@ assert.match(cloud, /--hh-auth-input: #0A2033/);
 assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog \{[\s\S]*?color: #18212A;[\s\S]*?background: #FFFFFF;[\s\S]*?color-scheme: light;/);
 assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog h2 \{ color: #0D2540; \}/);
 assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog \.hh-account-email \{ color: #526474; \}/);
-assert.match(worker, /v1\.7\.0-alpha-multispecies-genetics-foundation-1/);
-assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.0/);
+assert.match(worker, /v1\.7\.1-alpha-multispecies-genetics-foundation-1/);
+assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /herdharbor-cloud\.js\?v=20/);
 assert.match(worker, /pedigree-visual\.css\?v=2/);
-assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=1\.7\.0/);
+assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.ok(worker.includes("shows-v1.6.1.css?v=1.7.1"));
-assert.match(worker, /shows-v1\.6\.1\.js\?v=1\.7\.0/);
-assert.match(worker, /shows-v1\.6\.1-hardening\.js\?v=1\.7\.0/);
+assert.match(worker, /shows-v1\.6\.1\.js\?v=1\.7\.1/);
+assert.match(worker, /shows-v1\.6\.1-hardening\.js\?v=1\.7\.1/);
 assert.match(worker, /NETWORK_FIRST_PATHS/);
 assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
 assert.match(release, /@media\(max-width:620px\)/);

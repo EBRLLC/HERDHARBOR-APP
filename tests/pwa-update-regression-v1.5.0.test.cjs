@@ -16,12 +16,12 @@ const build = read("herdharbor-build.js");
 
 // v1.7.1 keeps the independently verified update path and uses HerdHarborBuild as authoritative identity.
 assert.equal(manifest.version, "1.7.1");
-assert.match(build, /version:\s*"1\.7\.0"/);
+assert.match(build, /version:\s*"1\.7\.1"/);
 assert.match(build, /buildId:\s*"multispecies-genetics-foundation-1"/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "1\.7\.0"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "1\.7\.1"/);
 assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "multispecies-genetics-foundation-1"/);
 assert.match(pwa, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
-assert.match(html, /herdharbor-build\.js\?v=1\.7\.0/, "the shell bootstrap must use the current release identity");
+assert.match(html, /herdharbor-build\.js\?v=1\.7\.1/, "the shell bootstrap must use the current release identity");
 
 // Service-worker discovery is explicit and independent from Cloud Sync.
 assert.match(pwa, /navigatorRef\(\)\.serviceWorker\.register\("service-worker\.js"/);
@@ -58,7 +58,7 @@ assert.match(cloud, /hasUnsyncedChanges/);
 assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
 // Browser/app shell requests favor production over stale frontend caches while retaining offline fallback.
-assert.match(worker, /v1\.7\.0-alpha-multispecies-genetics-foundation-1/);
+assert.match(worker, /v1\.7\.1-alpha-multispecies-genetics-foundation-1/);
 assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
 assert.match(worker, /NETWORK_FIRST_PATHS/);
 assert.match(worker, /\/manifest\.json/);

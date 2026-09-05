@@ -19,7 +19,7 @@ assert.match(tools, /Genetics Data Exchange/);
 assert.match(tools, /addWorksheet\("Genetics"\)/);
 assert.match(tools, /addWorksheet\("Genetic Tests"\)/);
 assert.match(tools, /lower-confidence information never silently replaces/i);
-assert.match(pwa, /breeding-intelligence-tools-v1\.6\.1\.js\?v=1\.7\.0/);
-assert.match(worker, /breeding-intelligence-tools-v1\.6\.1\.js\?v=1\.7\.0/);
+assert.match(pwa, /breeding-intelligence-tools-v1\.6\.1\.js\?v=1\.7\.1/);
+assert.match(worker, /breeding-intelligence-tools-v1\.6\.1\.js\?v=1\.7\.1/);
 
 console.log('HerdHarbor v1.6.1 genetics tools tests passed');

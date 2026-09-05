@@ -18,7 +18,7 @@ const monitoringSetup = read("V1.6.1-CRASH-MONITORING-SETUP.md");
 
 assert.match(readme, /deployed from the `main` branch through GitHub Pages/);
 assert.match(config, /dsn: ""/);
-assert.match(config, /HerdHarbor@1\.7\.0/);
+assert.match(config, /HerdHarbor@1\.7\.1/);
 assert.match(config, /multispecies-genetics-foundation-1/);
 assert.doesNotMatch(config, /https:\/\/[^"']+@[^"']*sentry/i);
 

@@ -20,14 +20,14 @@ const showsHardening = fs.readFileSync(path.join(root, "shows-v1.6.1-hardening.j
 const mobileGrowth = fs.readFileSync(path.join(root, "tests/mobile-growth-layout-v1.6.6.test.cjs"), "utf8");
 
 // Current release remains additive: the established app/data model and mobile hotfix stay intact.
-assert.match(build, /version:\s*"1\.7\.0"/);
+assert.match(build, /version:\s*"1\.7\.1"/);
 assert.match(build, /buildId:\s*"multispecies-genetics-foundation-1"/);
-assert.match(html, /HerdHarbor Alpha v1\.7\.0 consolidated application shell/);
+assert.match(html, /HerdHarbor Alpha v1\.7\.1 consolidated application shell/);
 assert.match(html, /id="settings-sync-now"/);
 assert.match(html, /id="settings-last-synced"/);
 assert.match(html, /id="export-excel"/);
 assert.match(html, /HerdHarbor Alpha v\$\{APP_VERSION\}/);
-assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.7\.0"/);
+assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.7\.1"/);
 assert.match(html, /Guided pedigree builder · v\$\{APP_VERSION\}/);
 assert.doesNotMatch(html, /Guided pedigree builder · v0\.2\.1/);
 assert.match(html, /let animalView = \{[\s\S]*?status: "Active"[\s\S]*?\};/);
@@ -82,9 +82,9 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /v1\.7\.0-alpha-multispecies-genetics-foundation-1/);
+assert.match(serviceWorker, /v1\.7\.1-alpha-multispecies-genetics-foundation-1/);
 assert.match(serviceWorker, /spreadsheet-import\.js\?v=17/);
-assert.match(serviceWorker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.0/);
+assert.match(serviceWorker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(serviceWorker, /herdharbor-cloud\.js\?v=20/);
 assert.match(serviceWorker, /symptom-guide\.js\?v=1/);
 assert.match(serviceWorker, /pwa\.js\?v=28/);
@@ -104,7 +104,7 @@ assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "multispecies-genetic
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
 assert.match(pwa, /loadShows/);
-assert.match(pwa, /shows-v1\.6\.1-hardening\.js\?v=1\.7\.0/);
+assert.match(pwa, /shows-v1\.6\.1-hardening\.js\?v=1\.7\.1/);
 assert.match(pwa, /schemaVersion: 3/);
 assert.match(pwa, /registration\.update\(\)/);
 assert.match(pwa, /updateViaCache: "none"/);

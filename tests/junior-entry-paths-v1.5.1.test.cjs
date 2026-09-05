@@ -23,8 +23,8 @@ assert.match(cloud, /syncValueToCloud[\s\S]*?allowAnimalStateTransition\(/, "clo
 assert.match(cloud, /checkForCloudChanges[\s\S]*?allowAnimalStateTransition\(/, "multi-device cloud updates are gated");
 assert.match(cloud, /resolveConflict[\s\S]*?allowAnimalStateTransition\(/, "manual cloud conflict resolution is gated");
 assert.match(cloud, /await loadAccessProfile\(\);[\s\S]*?const \{ data, error \} = await fetchCloudRecord/, "cloud hydration verifies entitlement before applying records");
-assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.7\.0";/, "embedded app metadata is Alpha v1.7.1");
-assert.match(cloud, /version: "1\.7\.0"[\s\S]*?backupType: "local-safety-backup"/, "safety backups identify Alpha v1.7.1");
+assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.7\.1";/, "embedded app metadata is Alpha v1.7.1");
+assert.match(cloud, /version: "1\.7\.1"[\s\S]*?backupType: "local-safety-backup"/, "safety backups identify Alpha v1.7.1");
 assert.match(html, /\["Sold", "Deceased", "Archived", "Ancestor Only"\]/);
 assert.match(html, /<option[^>]*>Archived<\/option>|"Archived", "Ancestor Only"/);
 assert.match(spreadsheet, /"Archived"/);
