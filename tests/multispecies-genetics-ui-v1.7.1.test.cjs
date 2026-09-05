@@ -100,7 +100,7 @@ test("Breeding genetics only exposes species represented by current active anima
   const groups = UI.breedingSpecies(state);
   assert.equal(groups.length, 1);
   assert.equal(groups[0].species, "cattle");
-  assert.deepEqual(groups[0].animals.map(animal => animal.id), ["c1", "c2"]);
+  assert.equal(groups[0].animals.map(animal => animal.id).join(","), "c1,c2");
 
   const html = UI.renderBreeding(state);
   assert.match(html, /Cattle/);
@@ -119,7 +119,7 @@ test("Breeding genetics creates one species tab for each species the farm curren
   };
   const UI = loadUi(state);
   const groups = UI.breedingSpecies(state);
-  assert.deepEqual(groups.map(group => group.species), ["cattle", "goat", "rabbit"]);
+  assert.equal(groups.map(group => group.species).join(","), "cattle,goat,rabbit");
 
   const html = UI.renderBreeding(state);
   assert.match(html, /data-hh-genetics-species="cattle"/);
