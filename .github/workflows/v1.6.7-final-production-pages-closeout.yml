@@ -1,13 +1,13 @@
-name: Alpha v1.7.1 final production Pages publish
+name: Alpha v1.7.1 monitored production Pages publish
 
 on:
   push:
     branches: [main]
-    paths:
-      - .github/workflows/v1.6.7-final-production-pages-closeout.yml
+  workflow_dispatch:
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -21,25 +21,51 @@ jobs:
       name: github-pages
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout approved v1.7.1 Health Intelligence release
+      - name: Wait for branch-source Pages publisher
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          found=""
+          for attempt in $(seq 1 24); do
+            payload="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${RELEASE_SHA}&event=push&per_page=100")"
+            state="$(printf '%s' "$payload" | node -e '
+              let input=""; process.stdin.on("data", c => input += c); process.stdin.on("end", () => {
+                const data = JSON.parse(input || "{}");
+                const run = (data.workflow_runs || []).find(item => item.name === "pages-build-deployment");
+                process.stdout.write(run ? `${run.status}|${run.conclusion || ""}` : "missing|");
+              });
+            ')"
+            status="${state%%|*}"
+            if [ "$status" = "completed" ]; then
+              found="yes"
+              echo "Branch-source Pages run finished; monitored publisher can safely publish last."
+              break
+            fi
+            if [ "$status" = "missing" ]; then
+              echo "Branch-source Pages run not visible yet (attempt ${attempt}/24)."
+            else
+              echo "Branch-source Pages run is ${status} (attempt ${attempt}/24)."
+            fi
+            sleep 10
+          done
+          if [ -z "$found" ]; then
+            echo "No unfinished branch-source Pages run remained after the wait window; continuing with the authoritative monitored publisher."
+          fi
+      - name: Checkout exact main release payload
         uses: actions/checkout@v4
         with:
-          ref: aad206c5b5c69395d8d5405c1e9ee1b0840c1d34
-      - name: One-time sequencing gate
-        if: ${{ github.run_attempt == 1 }}
-        run: |
-          echo "Initial publish attempt intentionally stops before deployment."
-          echo "Rerun after GitHub's branch-source Pages build finishes so monitored Pages is the final publisher."
-          exit 1
+          ref: ${{ github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Install pinned monitoring dependencies
         run: npm ci --no-audit --no-fund
-      - name: Verify approved release contract
+      - name: Verify v1.7.1 release and stabilization contract
         run: |
           npm run test:v1.7.1
           npm run test:completion
+          node --test tests/app-script-compile.test.cjs
       - name: Require production Sentry DSN
         env:
           HERDHARBOR_SENTRY_DSN: ${{ secrets.HERDHARBOR_SENTRY_DSN }}
@@ -50,11 +76,12 @@ jobs:
           HERDHARBOR_MONITORING_ENVIRONMENT: production
         run: |
           RELEASE_SHA="$(git rev-parse HEAD)"
-          test "$RELEASE_SHA" = "aad206c5b5c69395d8d5405c1e9ee1b0840c1d34"
+          test "$RELEASE_SHA" = "${GITHUB_SHA}"
           HERDHARBOR_BUILD_ID="$RELEASE_SHA" NODE_ENV=production npm run build:monitoring
           HERDHARBOR_BUILD_ID="$RELEASE_SHA" npm run build:monitoring-config
       - name: Stage and verify static Pages artifact
         run: |
+          RELEASE_SHA="$(git rev-parse HEAD)"
           mkdir -p _site
           rsync -a \
             --exclude='.git/' \
@@ -71,10 +98,11 @@ jobs:
           test -s _site/vendor/herdharbor-monitoring-v1.6.1.min.js
           test -s _site/health-intelligence-v1.7.1.js
           test -s _site/health-intelligence-v1.7.1.css
+          test -s _site/herdharbor-v1.7.1-stability-hotfix.js
           ! grep -q '"dsn": ""' _site/herdharbor-monitoring-config.js
           grep -q '"environment": "production"' _site/herdharbor-monitoring-config.js
           grep -q '"release": "HerdHarbor@1.7.1"' _site/herdharbor-monitoring-config.js
-          grep -q '"build": "aad206c5b5c69395d8d5405c1e9ee1b0840c1d34"' _site/herdharbor-monitoring-config.js
+          grep -q "\"build\": \"${RELEASE_SHA}\"" _site/herdharbor-monitoring-config.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
