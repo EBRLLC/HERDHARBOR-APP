@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v1.7.1-alpha-multispecies-genetics-foundation-1-phase1-2";
+const CACHE_NAME = "herdharbor-shell-v1.7.1-alpha-multispecies-genetics-foundation-1-phase1-3";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -17,7 +17,7 @@ const APP_SHELL = [
   "./herdharbor-build.js?v=1.7.1",
   "./herdharbor-v1.7.1-stability-hotfix.js?v=2",
   "./workflow-phase1-v1.7.1.js?v=2",
-  "./workflow-phase1-v1.7.1.css?v=1",
+  "./workflow-phase1-v1.7.1.css?v=2",
   "./analytics-v1.6.1.css?v=1.7.1",
   "./market-analytics-v1.6.5.js?v=1.7.1",
   "./analytics-v1.6.1.js?v=1.7.1",

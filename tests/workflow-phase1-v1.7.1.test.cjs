@@ -111,18 +111,21 @@ test('sign-in bootstrap keeps the Supabase callback deadlock guard ahead of clou
   assert.match(cloud,/client\.auth\.onAuthStateChange/);
 });
 
-test('Phase 1 assets are cache-busted after stability repair and no v1.7.5 workflow runtime is loaded',()=>{
+test('Phase 1 assets are cache-busted after stability repair, dark mode is explicit, and no v1.7.5 workflow runtime is loaded',()=>{
   const repo=path.resolve(__dirname,'..');
   const build=fs.readFileSync(path.join(repo,'herdharbor-build.js'),'utf8');
   const sw=fs.readFileSync(path.join(repo,'service-worker.js'),'utf8');
-  assert.match(build,/workflow-phase1-v1\.7\.1\.css\?v=1/);
+  const css=fs.readFileSync(path.join(repo,'workflow-phase1-v1.7.1.css'),'utf8');
+  assert.match(build,/workflow-phase1-v1\.7\.1\.css\?v=2/);
   assert.match(build,/herdharbor-v1\.7\.1-stability-hotfix\.js\?v=2[\s\S]*workflow-phase1-v1\.7\.1\.js\?v=2/);
-  assert.match(sw,/herdharbor-shell-v1\.7\.1-alpha-multispecies-genetics-foundation-1-phase1-2/);
+  assert.match(sw,/herdharbor-shell-v1\.7\.1-alpha-multispecies-genetics-foundation-1-phase1-3/);
   assert.match(sw,/workflow-phase1-v1\.7\.1\.js\?v=2/);
   assert.match(sw,/herdharbor-v1\.7\.1-stability-hotfix\.js\?v=2/);
-  assert.match(sw,/workflow-phase1-v1\.7\.1\.css\?v=1/);
+  assert.match(sw,/workflow-phase1-v1\.7\.1\.css\?v=2/);
   assert.match(sw,/\/workflow-phase1-v1\.7\.1\.js/);
   assert.match(sw,/\/workflow-phase1-v1\.7\.1\.css/);
+  assert.match(css,/\[data-theme="dark"\] \.hh-p1-today-stats span/);
+  assert.match(css,/background:#10283a;color:#edf5f7;border-color:#294359/);
   assert.doesNotMatch(build,/workflow-engine-v1\.7\.5|health-intelligence-ui-hotfix-v1\.7\.5/);
   assert.doesNotMatch(sw,/workflow-engine-v1\.7\.5|health-intelligence-ui-hotfix-v1\.7\.5/);
 });
