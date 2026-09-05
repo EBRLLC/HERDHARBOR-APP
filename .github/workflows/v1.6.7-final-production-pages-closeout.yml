@@ -28,11 +28,14 @@ jobs:
         run: |
           found=""
           for attempt in $(seq 1 24); do
-            payload="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${RELEASE_SHA}&event=push&per_page=100")"
+            payload="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${RELEASE_SHA}&per_page=100")"
             state="$(printf '%s' "$payload" | node -e '
               let input=""; process.stdin.on("data", c => input += c); process.stdin.on("end", () => {
                 const data = JSON.parse(input || "{}");
-                const run = (data.workflow_runs || []).find(item => item.name === "pages-build-deployment");
+                const run = (data.workflow_runs || []).find(item =>
+                  item.name === "pages build and deployment" ||
+                  item.path === "dynamic/pages/pages-build-deployment"
+                );
                 process.stdout.write(run ? `${run.status}|${run.conclusion || ""}` : "missing|");
               });
             ')"
@@ -50,7 +53,7 @@ jobs:
             sleep 10
           done
           if [ -z "$found" ]; then
-            echo "No unfinished branch-source Pages run remained after the wait window; continuing with the authoritative monitored publisher."
+            echo "No branch-source Pages run was resolved within the wait window; continuing with the authoritative monitored publisher."
           fi
       - name: Checkout exact main release payload
         uses: actions/checkout@v4
