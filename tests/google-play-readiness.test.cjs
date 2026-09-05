@@ -36,7 +36,7 @@ assert.match(appGradle, /targetSdkVersion 36/);
 assert.match(appGradle, /versionCode 14/);
 assert.match(appGradle, /versionName "1\.7\.1"/);
 assert.match(appGradle, /https:\/\/app\.herdharbor\.com\/manifest\.json/);
-assert.match(worker, /v1\.7\.1-alpha-multispecies-genetics-foundation-1/);
+assert.match(worker, /herdharbor-shell-v1\.8\.0-alpha-subscription-engine-7/);
 assert.match(worker, /rabbit-records-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /shows-v1\.6\.1\.css\?v=1\.7\.1/);
@@ -73,4 +73,4 @@ assert.ok(fs.statSync(path.join(root, "android/store_icon.png")).size <= 1024 * 
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/app-icon-512.png")));
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/feature-graphic-1024x500.png")));
 
-console.log("Google Play Alpha v1.7.1 release readiness tests passed");
+console.log("Google Play Alpha v1.7.1 Android readiness tests passed with v1.8.0 web shell");
