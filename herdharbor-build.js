@@ -39,8 +39,8 @@
   });
   addScript("hh-youth-guides-v170", "shows-youth-guides-v1.7.0.js?v=1.7.1");
   addScript("hh-health-intelligence-v171", "health-intelligence-v1.7.1.js?v=1.7.1", () => {
-    addScript("hh-v171-stability-hotfix", "herdharbor-v1.7.1-stability-hotfix.js?v=1", () => {
-      addScript("hh-phase1-workflow-v171", "workflow-phase1-v1.7.1.js?v=1");
+    addScript("hh-v171-stability-hotfix", "herdharbor-v1.7.1-stability-hotfix.js?v=2", () => {
+      addScript("hh-phase1-workflow-v171", "workflow-phase1-v1.7.1.js?v=2");
     });
   });
 })(typeof globalThis !== "undefined" ? globalThis : this);
