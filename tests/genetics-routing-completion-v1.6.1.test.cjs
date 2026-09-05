@@ -31,5 +31,7 @@ test("current web release build and PWA cache move together while preserving the
   assert.match(build, /build:\s*"1\.8\.0-alpha-subscription-engine-7"/);
   assert.match(worker, /herdharbor-shell-v1\.8\.0-alpha-subscription-engine-7/);
   assert.match(worker, /herdharbor-release-v1\.6\.1\.js\?v=1\.7\.1/);
-  assert.match(build, /multispecies-genetics/);
+  assert.match(worker, /multispecies-genetics-v1\.7\.1\.js\?v=1\.7\.1/);
+  assert.match(worker, /multispecies-genetics-ui-v1\.7\.1\.js\?v=1\.7\.1/);
+  assert.match(worker, /multispecies-genetics-v1\.7\.1\.css\?v=1\.7\.1/);
 });
