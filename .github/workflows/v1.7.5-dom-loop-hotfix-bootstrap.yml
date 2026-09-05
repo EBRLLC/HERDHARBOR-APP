@@ -1,0 +1,57 @@
+name: Bootstrap v1.7.5 DOM observer loop hotfix
+
+on:
+  push:
+    branches: [hotfix/v1.7.5-dom-observer-loop]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout hotfix branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch recursive DOM observer and cache-bust runtime
+        shell: python
+        run: |
+          from pathlib import Path
+
+          hotfix = Path('herdharbor-v1.7.1-stability-hotfix.js')
+          text = hotfix.read_text()
+          old = "if(typeof root.MutationObserver==='function'&&root.document.body){let queued=false;new root.MutationObserver(()=>{if(queued)return;queued=true;queueMicrotask(()=>{queued=false;patchCurrentDom()})}).observe(root.document.body,{childList:true,subtree:true});}"
+          new = "if(typeof root.MutationObserver==='function'&&root.document.body){let queued=false;const observerOptions={childList:true,subtree:true};const observer=new root.MutationObserver(()=>{if(queued)return;queued=true;const run=()=>{queued=false;observer.disconnect();try{patchCurrentDom()}finally{observer.observe(root.document.body,observerOptions)}};if(typeof root.requestAnimationFrame==='function')root.requestAnimationFrame(run);else root.setTimeout?.(run,0)});observer.observe(root.document.body,observerOptions);}"
+          if old not in text:
+              raise SystemExit('Expected recursive MutationObserver block was not found; refusing to patch.')
+          hotfix.write_text(text.replace(old, new, 1))
+
+          build = Path('herdharbor-build.js')
+          text = build.read_text()
+          old = 'herdharbor-v1.7.1-stability-hotfix.js?v=1'
+          if old not in text:
+              raise SystemExit('Expected build hotfix reference was not found.')
+          build.write_text(text.replace(old, 'herdharbor-v1.7.1-stability-hotfix.js?v=2'))
+
+          worker = Path('service-worker.js')
+          text = worker.read_text()
+          old_cache = 'herdharbor-shell-v1.7.1-alpha-multispecies-genetics-foundation-1-hotfix-1-interaction-recovery-1'
+          if old_cache not in text:
+              raise SystemExit('Expected recovery cache identity was not found.')
+          text = text.replace(old_cache, 'herdharbor-shell-v1.7.1-alpha-multispecies-genetics-foundation-1-hotfix-1-dom-observer-recovery-1', 1)
+          old_asset = './herdharbor-v1.7.1-stability-hotfix.js?v=1'
+          if old_asset not in text:
+              raise SystemExit('Expected service-worker hotfix asset was not found.')
+          worker.write_text(text.replace(old_asset, './herdharbor-v1.7.1-stability-hotfix.js?v=2', 1))
+      - name: Run focused regression test
+        run: node --test tests/v1.7.5-dom-observer-loop.test.cjs
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add herdharbor-v1.7.1-stability-hotfix.js herdharbor-build.js service-worker.js
+          git commit -m "Hotfix recursive DOM observer interaction lock"
+          git push origin HEAD:hotfix/v1.7.5-dom-observer-loop
