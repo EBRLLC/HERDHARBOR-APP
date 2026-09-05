@@ -9,12 +9,17 @@
     if (!header) return;
 
     const kicker = header.querySelector(".hh-subscription-kicker");
-    if (kicker) kicker.textContent = "HERDHARBOR";
+    if (kicker && kicker.textContent !== "HERDHARBOR") {
+      kicker.textContent = "HERDHARBOR";
+    }
 
     const title = header.querySelector("#hh-subscription-title");
-    if (title) title.textContent = "Subscription";
+    if (title && title.textContent !== "Subscription") {
+      title.textContent = "Subscription";
+    }
 
-    header.querySelector("p")?.remove();
+    const description = header.querySelector("p");
+    if (description) description.remove();
   }
 
   function boot() {
