@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v1.7.1-alpha-multispecies-genetics-foundation-1-hotfix-1-dom-observer-recovery-1-health-ui-recovery-1";
+const CACHE_NAME = "herdharbor-shell-v1.7.1-alpha-multispecies-genetics-foundation-1-phase1-2";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -16,6 +16,8 @@ const APP_SHELL = [
   "./herdharbor-v1.6.1.css?v=1.7.1",
   "./herdharbor-build.js?v=1.7.1",
   "./herdharbor-v1.7.1-stability-hotfix.js?v=2",
+  "./workflow-phase1-v1.7.1.js?v=2",
+  "./workflow-phase1-v1.7.1.css?v=1",
   "./analytics-v1.6.1.css?v=1.7.1",
   "./market-analytics-v1.6.5.js?v=1.7.1",
   "./analytics-v1.6.1.js?v=1.7.1",
@@ -24,8 +26,6 @@ const APP_SHELL = [
   "./symptom-guide.js?v=1",
   "./health-intelligence-v1.7.1.js?v=1.7.1",
   "./health-intelligence-v1.7.1.css?v=1.7.1",
-  "./health-intelligence-ui-hotfix-v1.7.5.css?v=1",
-  "./health-intelligence-ui-hotfix-v1.7.5.js?v=1",
   "./pwa.js?v=29",
   "./pedigree-visual.css?v=2",
   "./pedigree-visual.js?v=2",
@@ -82,6 +82,8 @@ const NETWORK_FIRST_PATHS = [
   "/herdharbor-v1.6.1.css",
   "/herdharbor-build.js",
   "/herdharbor-v1.7.1-stability-hotfix.js",
+  "/workflow-phase1-v1.7.1.js",
+  "/workflow-phase1-v1.7.1.css",
   "/analytics-v1.6.1.css",
   "/market-analytics-v1.6.5.js",
   "/analytics-v1.6.1.js",
@@ -90,8 +92,6 @@ const NETWORK_FIRST_PATHS = [
   "/symptom-guide.js",
   "/health-intelligence-v1.7.1.js",
   "/health-intelligence-v1.7.1.css",
-  "/health-intelligence-ui-hotfix-v1.7.5.css",
-  "/health-intelligence-ui-hotfix-v1.7.5.js",
   "/spreadsheet-import.js",
   "/pedigree-visual.css",
   "/pedigree-visual.js",
