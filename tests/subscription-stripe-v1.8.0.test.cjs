@@ -44,6 +44,37 @@ test('browser adapter reuses authenticated HerdHarborCloud transport', () => {
   assert.match(adapter, /reactivateSubscription/);
 });
 
+test('billing transport is bounded and cannot remain pending forever', () => {
+  assert.match(adapter, /CALL_TIMEOUT_MS\s*=\s*15000/);
+  assert.match(adapter, /Promise\.race/);
+  assert.match(adapter, /window\.clearTimeout\(timeoutId\)/);
+});
+
+test('billing never calls the backend while HerdHarbor auth is locked', () => {
+  assert.match(adapter, /appReadyForBilling/);
+  assert.match(adapter, /classList\.contains\("hh-auth-locked"\)/);
+  assert.match(adapter, /if \(!appReadyForBilling\(\)\) return null/);
+});
+
+test('retry timers are bounded and do not shadow the browser setInterval API', () => {
+  assert.doesNotMatch(adapter, /function\s+setInterval\s*\(/);
+  assert.match(adapter, /function\s+setBillingInterval\s*\(/);
+  assert.match(adapter, /window\.setInterval/);
+  assert.match(adapter, /attempts\s*>=\s*40/);
+  assert.match(adapter, /window\.clearInterval\(timer\)/);
+});
+
+test('membership bridge suppresses duplicate membership-change storms', () => {
+  assert.match(adapter, /lastMembershipSignature/);
+  assert.match(adapter, /if \(signature === lastMembershipSignature\) return/);
+});
+
+test('normal sign-in does not force a Stripe refresh loop', () => {
+  const authHandler = adapter.match(/document\.addEventListener\("herdharbor:auth-session"[\s\S]*?\n\s*}\);/)?.[0] || '';
+  assert.match(authHandler, /refreshCheckoutWhenReady/);
+  assert.doesNotMatch(authHandler, /SubscriptionEngine\?\.refresh/);
+});
+
 test('monthly and yearly prices are exposed in the member UI', () => {
   assert.match(adapter, /founder:[\s\S]*month:\s*999[\s\S]*year:\s*11000/);
   assert.match(adapter, /member:[\s\S]*month:\s*1499[\s\S]*year:\s*15000/);
@@ -83,6 +114,7 @@ test('webhook synchronizes subscription and payment lifecycle', () => {
 
 test('build loads Stripe adapter after existing subscription helpers', () => {
   assert.match(build, /buildId:\s*"subscription-engine-7"/);
+  assert.match(build, /subscription-stripe-provider-v1\.8\.0\.js\?v=2/);
   const engine = build.indexOf('subscription-engine-v1.8.0.js');
   const visibility = build.indexOf('subscription-tab-visibility-v1.8.0.js');
   const header = build.indexOf('subscription-header-copy-v1.8.0.js');
@@ -92,6 +124,7 @@ test('build loads Stripe adapter after existing subscription helpers', () => {
 
 test('service worker rotates stale cache and covers all subscription assets', () => {
   assert.match(sw, /herdharbor-shell-v1\.8\.0-alpha-subscription-engine-7/);
+  assert.match(sw, /subscription-stripe-provider-v1\.8\.0\.js\?v=2/);
   for (const asset of [
     'subscription-engine-v1.8.0.js',
     'subscription-engine-v1.8.0.css',
