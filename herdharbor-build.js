@@ -8,7 +8,7 @@
     build: "1.7.1-alpha-multispecies-genetics-foundation-1"
   });
 
-  // Alpha v1.7.1 Multi-Species Genetics Foundation; v1.7.0 ARBA + youth show layers remain preserved.
+  // Alpha v1.7.1 Multi-Species Genetics Foundation; v1.7.1 ARBA + youth show layers remain preserved.
   if (!root.document) return;
   const target = document.head || document.documentElement;
   function addStyle(id, href) {
