@@ -57,13 +57,14 @@ test("v1.7.0 reference cards preserve readable dark-mode surfaces",()=>{
   assert.match(css,/\.hh-youth-source-note\{background:#173b4a/);
 });
 
-test("v1.7.0 build and offline shell load the new reference-guide assets without changing release identity",()=>{
+test("v1.7.0 reference-guide assets remain loaded under the v1.8.0 web release",()=>{
   const build=fs.readFileSync(path.join(__dirname,"..","herdharbor-build.js"),"utf8");
   const sw=fs.readFileSync(path.join(__dirname,"..","service-worker.js"),"utf8");
   for(const asset of ["standards-public-reference-v1.7.0.js","shows-youth-guides-v1.7.0.js","reference-guides-v1.7.0.css"]){
     assert.ok(build.includes(asset),`build missing ${asset}`);
     assert.ok(sw.includes(asset),`service worker missing ${asset}`);
   }
-  assert.match(build,/buildId: "multispecies-genetics-foundation-1"/);
-  assert.match(sw,/herdharbor-shell-v1\.7\.1-alpha-multispecies-genetics-foundation-1/);
+  assert.match(build,/buildId: "subscription-engine-7"/);
+  assert.match(build,/version: "1\.8\.0"/);
+  assert.match(sw,/herdharbor-shell-v1\.8\.0-alpha-subscription-engine-7/);
 });
