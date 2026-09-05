@@ -26,7 +26,7 @@ assert.equal(manifest.display, "standalone");
 assert.ok(manifest.shortcuts.some((shortcut) => shortcut.url === "./#shows"));
 assert.equal(twa.packageId, "com.ebrllc.herdharbor");
 assert.equal(twa.appVersion, "1.7.1");
-assert.equal(twa.appVersionCode, 13);
+assert.equal(twa.appVersionCode, 14);
 assert.equal(twa.host, "app.herdharbor.com");
 assert.match(appGradle, /applicationId:\s*'com\.ebrllc\.herdharbor'/);
 assert.match(appGradle, /namespace "com\.ebrllc\.herdharbor"/);
