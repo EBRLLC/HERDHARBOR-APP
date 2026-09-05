@@ -4,6 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 
 const Health = require("../health-intelligence-v1.7.1.js");
 const source = fs.readFileSync(path.resolve(__dirname, "../health-intelligence-v1.7.1.js"), "utf8");
@@ -111,6 +112,46 @@ test("health intelligence detects repeated concerns and factual weight trends wi
   assert.ok(insights.some((item) => /group-level pattern/i.test(item.text)));
   assert.ok(insights.some((item) => /-7\.0%/.test(item.text)));
   assert.ok(insights.some((item) => /not assigning a cause/i.test(item.text)));
+});
+
+test("Health Intelligence persists inside the canonical farm state so cloud sync and backups carry it", () => {
+  let appState = {
+    animals: [{ id: "cow1", name: "Daisy", species: "Cattle", status: "Active" }],
+    health: [{ id: "legacy-weight", animalId: "cow1", type: "Weight", date: "2026-09-01", weight: "100", weightUnit: "lb" }],
+    settings: { theme: "system" }
+  };
+  let legacyWrites = 0;
+  const context = {
+    console,
+    JSON,
+    Date,
+    Math,
+    Set,
+    Map,
+    structuredClone,
+    HerdHarborApp: {
+      getState: () => appState,
+      commitState: (next) => { appState = next; return true; }
+    },
+    localStorage: {
+      getItem: () => null,
+      setItem: () => { legacyWrites += 1; },
+      removeItem: () => {}
+    }
+  };
+  vm.createContext(context);
+  vm.runInContext(source, context, { filename: "health-intelligence-v1.7.1.js" });
+  const Runtime = context.HerdHarborHealthIntelligence;
+  Runtime.saveEpisode({ animalId: "cow1", concern: "cough", appetite: "Normal", manure: "Normal", activity: "Normal", breathing: "Normal" });
+
+  assert.equal(appState.health.length, 1, "legacy core Health history remains intact");
+  assert.equal(appState.healthIntelligence.schemaVersion, 1);
+  assert.equal(appState.healthIntelligence.episodes.length, 1);
+  assert.equal(appState.healthIntelligence.episodes[0].animalId, "cow1");
+  assert.equal(legacyWrites, 0, "canonical app persistence is used instead of a sidecar local-only store");
+  assert.match(source, /HerdHarborApp\?\.getState/);
+  assert.match(source, /commitState/);
+  assert.match(source, /healthIntelligence/);
 });
 
 test("health UI includes episodes, preventive care, quarantine, group care, measurements, and food-animal safeguards", () => {
