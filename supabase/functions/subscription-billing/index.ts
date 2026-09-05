@@ -25,6 +25,57 @@ const PRICES: Record<string, Record<string, { priceId: string; cents: number }>>
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: CORS });
 const text = (value: unknown, max = 120) => typeof value === "string" ? value.trim().slice(0, max) : "";
 
+async function buildSnapshot(admin: ReturnType<typeof createClient>, userId: string) {
+  const [subscriptionResult, referralResult, creditResult, paymentResult] = await Promise.all([
+    admin.from("subscriptions").select("*").eq("user_id", userId).maybeSingle(),
+    admin.from("subscription_referrals").select("status").eq("referrer_user_id", userId),
+    admin.from("subscription_credits").select("credit_type,quantity,status").eq("user_id", userId),
+    admin.from("subscription_payments").select("id,occurred_at,amount_cents,currency,status,description").eq("user_id", userId).order("occurred_at", { ascending: false }).limit(25)
+  ]);
+  for (const result of [subscriptionResult, referralResult, creditResult, paymentResult]) {
+    if (result.error) throw result.error;
+  }
+  const sub = subscriptionResult.data;
+  const referrals = referralResult.data || [];
+  const credits = creditResult.data || [];
+  const payments = paymentResult.data || [];
+  const successfulReferrals = referrals.filter((row) => row.status === "active").length;
+  const free = credits.filter((row) => row.credit_type === "free_month");
+  const sum = (statuses: string[]) => free.filter((row) => statuses.includes(row.status)).reduce((total, row) => total + Number(row.quantity || 0), 0);
+  return {
+    status: sub?.status || "not_configured",
+    plan: sub?.plan_id || null,
+    billingInterval: sub?.billing_interval || "month",
+    priceCents: sub?.price_cents ?? null,
+    currency: sub?.currency || "usd",
+    currentPeriodStart: sub?.current_period_start || null,
+    currentPeriodEnd: sub?.current_period_end || null,
+    trialEndsAt: sub?.trial_ends_at || null,
+    cancelAtPeriodEnd: sub?.cancel_at_period_end === true,
+    canceledAt: sub?.canceled_at || null,
+    gracePeriodEndsAt: sub?.grace_period_ends_at || null,
+    provider: sub?.provider || "stripe",
+    providerCustomerId: sub?.provider_customer_id || null,
+    providerSubscriptionId: sub?.provider_subscription_id || null,
+    referral: {
+      successfulReferrals,
+      freeMonthsEarned: sum(["available", "reserved", "applied"]),
+      freeMonthsUsed: sum(["applied"]),
+      freeMonthsRemaining: sum(["available", "reserved"])
+    },
+    paymentHistory: payments.map((row) => ({
+      id: row.id,
+      createdAt: row.occurred_at,
+      amountCents: row.amount_cents,
+      currency: row.currency,
+      status: row.status,
+      description: row.description || "Subscription payment"
+    })),
+    refreshedAt: new Date().toISOString(),
+    source: "stripe_backend"
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed." }, 405);
@@ -42,17 +93,14 @@ Deno.serve(async (req) => {
     const user = authData?.user;
     if (authError || !user?.id) return json({ error: "The authentication session is invalid or expired." }, 401);
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    const stripe = new Stripe(stripeKey);
     const body = await req.json().catch(() => ({})) as Record<string, unknown>;
     const action = text(body.action, 32);
 
-    if (action === "snapshot") {
-      const { data, error } = await admin.rpc("subscription_account_snapshot", {}, { headers: { Authorization: `Bearer ${token}` } });
-      if (error) throw error;
-      return json(data);
-    }
+    if (action === "snapshot") return json(await buildSnapshot(admin, user.id));
 
-    const { data: current } = await admin.from("subscriptions").select("*").eq("user_id", user.id).maybeSingle();
+    const { data: current, error: currentError } = await admin.from("subscriptions").select("*").eq("user_id", user.id).maybeSingle();
+    if (currentError) throw currentError;
 
     if (action === "checkout") {
       const planId = text(body.planId, 20).toLowerCase();
