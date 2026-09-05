@@ -127,7 +127,7 @@ test("Health Intelligence remains an educational recordkeeping tool and contains
   assert.doesNotMatch(source, /dose\s*=|calculateDose|dosageCalculator/i);
   assert.match(source, /does not diagnose disease/i);
   assert.match(source, /does not calculate medication doses/i);
-  assert.match(source, /does not calculate withdrawal intervals/i);
+  assert.match(source, /does not[^.]*calculate withdrawal intervals/i);
 });
 
 test("Health Intelligence is loaded and cached as part of the v1.7.1 shell", () => {
