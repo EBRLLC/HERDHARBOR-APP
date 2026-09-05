@@ -4,8 +4,8 @@
     product: "HerdHarbor",
     channel: "Alpha",
     version: "1.8.0",
-    buildId: "subscription-engine-8",
-    build: "1.8.0-alpha-subscription-engine-8"
+    buildId: "subscription-engine-7",
+    build: "1.8.0-alpha-subscription-engine-7"
   });
 
   // Alpha v1.8.0 adds the standalone Subscription Engine while preserving the v1.7.1 stable domain engines, Phase 1 workflow, and v1.7.0 ARBA layers.
