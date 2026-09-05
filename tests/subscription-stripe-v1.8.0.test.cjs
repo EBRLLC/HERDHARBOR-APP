@@ -6,6 +6,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const read = (name) => fs.readFileSync(path.join(root, name), 'utf8');
 const adapter = read('subscription-stripe-provider-v1.8.0.js');
+const headerHelper = read('subscription-header-copy-v1.8.0.js');
 const build = read('herdharbor-build.js');
 const sw = read('service-worker.js');
 const migration = read('supabase/v1.8.0-stripe-billing.sql');
@@ -73,6 +74,12 @@ test('normal sign-in does not force a Stripe refresh loop', () => {
   const authHandler = adapter.match(/document\.addEventListener\("herdharbor:auth-session"[\s\S]*?\n\s*}\);/)?.[0] || '';
   assert.match(authHandler, /refreshCheckoutWhenReady/);
   assert.doesNotMatch(authHandler, /SubscriptionEngine\?\.refresh/);
+});
+
+test('Subscription header presentation is event-driven and has no DOM observer loop', () => {
+  assert.doesNotMatch(headerHelper, /MutationObserver/);
+  assert.match(headerHelper, /herdharbor:subscription-engine-state/);
+  assert.match(headerHelper, /data-hh-subscription-engine-tab/);
 });
 
 test('monthly and yearly prices are exposed in the member UI', () => {
