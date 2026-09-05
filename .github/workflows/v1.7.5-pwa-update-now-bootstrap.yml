@@ -1,0 +1,72 @@
+name: Bootstrap v1.7.5 PWA Update Now hotfix
+
+on:
+  push:
+    branches: [hotfix/v1.7.5-pwa-update-now]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch Update Now activation flow
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('pwa.js')
+          text = p.read_text()
+
+          text = text.replace(
+              '  const UPDATE_CHECK_MIN_INTERVAL_MS = 60_000;\n',
+              '  const UPDATE_CHECK_MIN_INTERVAL_MS = 60_000;\n  const UPDATE_ACTIVATION_TIMEOUT_MS = 8_000;\n',
+              1
+          )
+          text = text.replace(
+              '  let reloading = false;\n  let updateDeferredUntil = 0;\n',
+              '  let reloading = false;\n  let updateActivationInFlight = false;\n  let updateActivationTimer = null;\n  let updateDeferredUntil = 0;\n',
+              1
+          )
+
+          anchor = '  function showUpdateReady(worker) {\n'
+          if anchor not in text:
+              raise SystemExit('showUpdateReady anchor not found')
+          helpers = '''  function clearUpdateActivationTimer() {\n    if (updateActivationTimer === null) return;\n    window.clearTimeout(updateActivationTimer);\n    updateActivationTimer = null;\n  }\n\n  function reloadAfterUpdate({ cacheBust = false } = {}) {\n    if (reloading) return;\n    reloading = true;\n    clearUpdateActivationTimer();\n    updateActivationInFlight = false;\n    updateToast?.remove();\n    updateToast = null;\n    if (cacheBust) {\n      const url = new URL(window.location.href);\n      url.searchParams.set("hh_update", Date.now().toString());\n      window.location.replace(url.toString());\n      return;\n    }\n    window.location.reload();\n  }\n\n  async function activatePendingUpdate(button) {\n    if (!button || updateActivationInFlight) return;\n    let workerToActivate = registration?.waiting || pendingUpdateWorker;\n    if (!workerToActivate) {\n      button.disabled = true;\n      button.textContent = "Checking…";\n      await checkForAppUpdate({ force: true });\n      workerToActivate = registration?.waiting || pendingUpdateWorker;\n      if (!workerToActivate) {\n        button.disabled = false;\n        button.textContent = "Update Now";\n        return;\n      }\n    }\n\n    updateActivationInFlight = true;\n    button.disabled = true;\n    button.textContent = "Updating…";\n    clearUpdateActivationTimer();\n    updateActivationTimer = window.setTimeout(async () => {\n      try { await registration?.update?.(); } catch (error) {\n        monitorFailure(error, "update_activation_refresh_failure", "dashboard", { operation: "pwa_update_activation_timeout_refresh" });\n      }\n      monitorFailure(new Error("PWA update activation timed out; forcing a fresh navigation."), "update_activation_timeout", "dashboard", { operation: "pwa_update_activation_timeout" });\n      reloadAfterUpdate({ cacheBust: true });\n    }, UPDATE_ACTIVATION_TIMEOUT_MS);\n\n    try {\n      workerToActivate.postMessage({ type: "SKIP_WAITING" });\n      if (workerToActivate.state === "activated") reloadAfterUpdate();\n    } catch (error) {\n      clearUpdateActivationTimer();\n      updateActivationInFlight = false;\n      button.disabled = false;\n      button.textContent = "Retry Update";\n      monitorFailure(error, "update_activation_failure", "dashboard", { operation: "pwa_update_activation" });\n    }\n  }\n\n'''
+          text = text.replace(anchor, helpers + anchor, 1)
+
+          old_click = '''    updateToast.querySelector("[data-hh-update-now]").addEventListener("click", () => {\n      const workerToActivate = registration?.waiting || pendingUpdateWorker;\n      if (!workerToActivate) {\n        updateToast.querySelector("[data-hh-update-now]").textContent = "Checking…";\n        checkForAppUpdate({ force: true });\n        return;\n      }\n      updateToast.querySelector("[data-hh-update-now]").disabled = true;\n      updateToast.querySelector("[data-hh-update-now]").textContent = "Updating…";\n      workerToActivate.postMessage({ type: "SKIP_WAITING" });\n    });\n'''
+          new_click = '''    updateToast.querySelector("[data-hh-update-now]").addEventListener("click", (event) => {\n      activatePendingUpdate(event.currentTarget);\n    });\n'''
+          if old_click not in text:
+              raise SystemExit('Update Now click block not found')
+          text = text.replace(old_click, new_click, 1)
+
+          old_controller = '''  navigatorRef().serviceWorker?.addEventListener("controllerchange", () => {\n    if (reloading) return;\n    reloading = true;\n    updateToast?.remove();\n    updateToast = null;\n    window.location.reload();\n  });\n'''
+          new_controller = '''  navigatorRef().serviceWorker?.addEventListener("controllerchange", () => {\n    reloadAfterUpdate();\n  });\n'''
+          if old_controller not in text:
+              raise SystemExit('controllerchange block not found')
+          text = text.replace(old_controller, new_controller, 1)
+          p.write_text(text)
+
+          index = Path('index.html')
+          html = index.read_text()
+          old = '<script src="pwa.js?v=29"></script>'
+          if old not in html:
+              raise SystemExit('pwa v29 script tag not found')
+          index.write_text(html.replace(old, '<script src="pwa.js?v=30"></script>', 1))
+      - name: Run PWA focused tests
+        run: node --test tests/pwa-update-regression-v1.5.0.test.cjs tests/pwa-update-now-hotfix-v1.7.5.test.cjs
+      - name: Run full regression suite
+        run: npm ci && npm test
+      - name: Commit hotfix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pwa.js index.html
+          git commit -m "Fix PWA Update Now activation freeze"
+          git push origin HEAD:hotfix/v1.7.5-pwa-update-now
