@@ -47,6 +47,10 @@ That means v1.7.1 does **not** attempt to cram complete cattle, goat, sheep, pou
 - Existing ARBA Standards & Judging and youth-show layers from v1.7.0 remain preserved.
 - Market Analytics, Shows, pedigrees, breeding records, health records, memberships, monitoring, and existing cloud data remain outside the genetics-architecture rewrite and are preserved.
 
+## Release review
+
+The v1.7.1 branch includes a dedicated release-review gate covering the shared genetics contract, rabbit-engine delegation, architecture-only non-rabbit adapters, inherited application regressions, production monitoring build, release identity, PWA/offline assets, and an unsigned Android review bundle.
+
 ## Deferred
 
 - Reviewed cattle gene and trait library: v1.7.2.
