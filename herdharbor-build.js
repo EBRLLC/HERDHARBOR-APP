@@ -8,7 +8,7 @@
     build: "1.7.1-alpha-multispecies-genetics-foundation-1"
   });
 
-  // Alpha v1.7.1 Multi-Species Genetics Foundation + Health Intelligence Foundation; v1.7.0 ARBA + youth show layers remain preserved.
+  // Published release identity remains Alpha v1.7.1. The v1.7.5 workflow engine is an additive development foundation loaded underneath the existing UI for review.
   if (!root.document) return;
   const target = document.head || document.documentElement;
   function addStyle(id, href) {
@@ -38,6 +38,8 @@
   });
   addScript("hh-youth-guides-v170", "shows-youth-guides-v1.7.0.js?v=1.7.1");
   addScript("hh-health-intelligence-v171", "health-intelligence-v1.7.1.js?v=1.7.1", () => {
-    addScript("hh-v171-stability-hotfix", "herdharbor-v1.7.1-stability-hotfix.js?v=1");
+    addScript("hh-v171-stability-hotfix", "herdharbor-v1.7.1-stability-hotfix.js?v=1", () => {
+      addScript("hh-workflow-engine-v175", "workflow-engine-v1.7.5.js?v=1.7.5");
+    });
   });
 })(typeof globalThis !== "undefined" ? globalThis : this);
