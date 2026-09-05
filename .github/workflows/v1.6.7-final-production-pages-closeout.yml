@@ -1,4 +1,4 @@
-name: Alpha v1.7.0 final production Pages publish
+name: Alpha v1.7.1 final production Pages publish
 
 on:
   push:
@@ -21,10 +21,10 @@ jobs:
       name: github-pages
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout approved v1.7.0 hotfix release
+      - name: Checkout approved v1.7.1 Health Intelligence release
         uses: actions/checkout@v4
         with:
-          ref: af6b80ef6e1f9dc2a46961dbc7d9c2270ece46fe
+          ref: aad206c5b5c69395d8d5405c1e9ee1b0840c1d34
       - name: One-time sequencing gate
         if: ${{ github.run_attempt == 1 }}
         run: |
@@ -37,7 +37,9 @@ jobs:
       - name: Install pinned monitoring dependencies
         run: npm ci --no-audit --no-fund
       - name: Verify approved release contract
-        run: npm run test:completion
+        run: |
+          npm run test:v1.7.1
+          npm run test:completion
       - name: Require production Sentry DSN
         env:
           HERDHARBOR_SENTRY_DSN: ${{ secrets.HERDHARBOR_SENTRY_DSN }}
@@ -48,7 +50,7 @@ jobs:
           HERDHARBOR_MONITORING_ENVIRONMENT: production
         run: |
           RELEASE_SHA="$(git rev-parse HEAD)"
-          test "$RELEASE_SHA" = "af6b80ef6e1f9dc2a46961dbc7d9c2270ece46fe"
+          test "$RELEASE_SHA" = "aad206c5b5c69395d8d5405c1e9ee1b0840c1d34"
           HERDHARBOR_BUILD_ID="$RELEASE_SHA" NODE_ENV=production npm run build:monitoring
           HERDHARBOR_BUILD_ID="$RELEASE_SHA" npm run build:monitoring-config
       - name: Stage and verify static Pages artifact
@@ -67,10 +69,12 @@ jobs:
             ./ _site/
           test -s _site/herdharbor-monitoring-config.js
           test -s _site/vendor/herdharbor-monitoring-v1.6.1.min.js
+          test -s _site/health-intelligence-v1.7.1.js
+          test -s _site/health-intelligence-v1.7.1.css
           ! grep -q '"dsn": ""' _site/herdharbor-monitoring-config.js
           grep -q '"environment": "production"' _site/herdharbor-monitoring-config.js
-          grep -q '"release": "HerdHarbor@1.7.0"' _site/herdharbor-monitoring-config.js
-          grep -q '"build": "af6b80ef6e1f9dc2a46961dbc7d9c2270ece46fe"' _site/herdharbor-monitoring-config.js
+          grep -q '"release": "HerdHarbor@1.7.1"' _site/herdharbor-monitoring-config.js
+          grep -q '"build": "aad206c5b5c69395d8d5405c1e9ee1b0840c1d34"' _site/herdharbor-monitoring-config.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
