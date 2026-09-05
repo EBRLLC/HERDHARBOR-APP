@@ -2,6 +2,7 @@
   "use strict";
 
   const INTERVAL_KEY = "herdharbor_subscription_interval_v1";
+  const CALL_TIMEOUT_MS = 15000;
   const ACTIVE = new Set(["active", "trialing", "founder", "free_junior", "resubscribed"]);
   const PLAN_ORDER = ["junior", "founder", "member", "business"];
   const PRICING = Object.freeze({
@@ -17,9 +18,16 @@
   })();
   let configured = false;
   let successRefreshInFlight = false;
+  let lastMembershipSignature = "";
 
   function appReturnUrl() {
     return `${window.location.origin}${window.location.pathname}`;
+  }
+
+  function appReadyForBilling() {
+    const signedIn = Boolean(window.HerdHarborCloud?.getSession?.()?.user?.id);
+    const authLocked = document.documentElement.classList.contains("hh-auth-locked");
+    return signedIn && !authLocked;
   }
 
   function money(cents, interval) {
@@ -30,22 +38,38 @@
   async function call(action, payload = {}) {
     const cloud = window.HerdHarborCloud;
     if (!cloud?.invokeFunction) throw new Error("HerdHarbor secure billing is still starting. Try again in a moment.");
-    return cloud.invokeFunction("subscription-billing", { action, ...payload });
+    if (!appReadyForBilling()) throw new Error("HerdHarbor secure billing will be available after sign-in finishes.");
+
+    let timeoutId = null;
+    try {
+      return await Promise.race([
+        cloud.invokeFunction("subscription-billing", { action, ...payload }),
+        new Promise((_, reject) => {
+          timeoutId = window.setTimeout(() => reject(new Error("The billing service took too long to respond. Try again.")), CALL_TIMEOUT_MS);
+        })
+      ]);
+    } finally {
+      if (timeoutId != null) window.clearTimeout(timeoutId);
+    }
   }
 
   function bridgeMembership(snapshot = {}) {
     const status = String(snapshot.status || "not_configured").toLowerCase();
     const tier = String(snapshot.plan || "").toLowerCase();
-    window.HerdHarborMembership?.applySubscriptionState?.({
-      status,
-      tier,
-      active: ACTIVE.has(status)
-    });
+    const active = ACTIVE.has(status);
+    const signature = `${status}|${tier}|${active ? "1" : "0"}`;
+    if (signature === lastMembershipSignature) return;
+    lastMembershipSignature = signature;
+    window.HerdHarborMembership?.applySubscriptionState?.({ status, tier, active });
   }
 
   const provider = Object.freeze({
     name: "stripe",
     async getSubscriptionSnapshot() {
+      // The subscription engine performs background stale-screen checks during
+      // auth transitions. Never make billing network calls while the auth lock
+      // is active; returning null preserves the engine's current local state.
+      if (!appReadyForBilling()) return null;
       const snapshot = await call("snapshot");
       bridgeMembership(snapshot || {});
       return snapshot;
@@ -74,7 +98,7 @@
     }
   });
 
-  function setInterval(next) {
+  function setBillingInterval(next) {
     selectedInterval = next === "year" ? "year" : "month";
     try { localStorage.setItem(INTERVAL_KEY, selectedInterval); } catch {}
     enhancePanel();
@@ -101,7 +125,7 @@
       switcher.addEventListener("click", (event) => {
         const button = event.target?.closest?.("[data-hh-stripe-interval]");
         if (!button) return;
-        setInterval(button.dataset.hhStripeInterval);
+        setBillingInterval(button.dataset.hhStripeInterval);
       });
     }
 
@@ -133,12 +157,16 @@
     if (!engine?.configureProvider || !window.HerdHarborCloud?.invokeFunction) return false;
     engine.configureProvider(provider);
     configured = true;
-    queueMicrotask(() => engine.refresh?.({ force: true }));
     return true;
   }
 
+  function hasCheckoutResult() {
+    try { return Boolean(new URL(window.location.href).searchParams.get("subscription")); }
+    catch { return false; }
+  }
+
   async function refreshAfterCheckout() {
-    if (successRefreshInFlight) return;
+    if (successRefreshInFlight || !appReadyForBilling()) return;
     let url;
     try { url = new URL(window.location.href); } catch { return; }
     const result = url.searchParams.get("subscription");
@@ -152,7 +180,7 @@
     successRefreshInFlight = true;
     try {
       for (let attempt = 0; attempt < 5; attempt += 1) {
-        if (attempt) await new Promise((resolve) => setTimeout(resolve, 1000));
+        if (attempt) await new Promise((resolve) => window.setTimeout(resolve, 1000));
         await window.HerdHarborCloud?.refreshAccess?.().catch?.(() => {});
         const snapshot = await provider.getSubscriptionSnapshot().catch(() => null);
         if (snapshot && ACTIVE.has(String(snapshot.status || "").toLowerCase())) {
@@ -165,33 +193,47 @@
     }
   }
 
+  function refreshCheckoutWhenReady() {
+    if (!hasCheckoutResult()) return;
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      if (appReadyForBilling()) {
+        window.clearInterval(timer);
+        refreshAfterCheckout();
+      } else if (attempts >= 40) {
+        window.clearInterval(timer);
+      }
+    }, 250);
+  }
+
   function boot() {
     if (!configure()) {
       let attempts = 0;
-      const timer = setInterval(() => {
+      const timer = window.setInterval(() => {
         attempts += 1;
-        if (configure() || attempts >= 40) clearInterval(timer);
+        if (configure() || attempts >= 40) window.clearInterval(timer);
       }, 250);
     }
 
     document.addEventListener("herdharbor:auth-session", (event) => {
       if (event.detail?.signedIn === true) {
-        setTimeout(() => {
-          configure();
-          window.HerdHarborSubscriptionEngine?.refresh?.({ force: true });
-          refreshAfterCheckout();
-        }, 0);
+        // Do not force billing refreshes during normal login. The subscription
+        // engine refreshes when opened; checkout completion is the only auth
+        // transition that needs a bounded post-login refresh here.
+        configure();
+        refreshCheckoutWhenReady();
       }
     });
 
-    document.addEventListener("herdharbor:subscription-engine-state", () => setTimeout(enhancePanel, 0));
+    document.addEventListener("herdharbor:subscription-engine-state", () => window.setTimeout(enhancePanel, 0));
     document.addEventListener("click", (event) => {
-      if (event.target?.closest?.("[data-hh-subscription-engine-tab]")) setTimeout(enhancePanel, 0);
+      if (event.target?.closest?.("[data-hh-subscription-engine-tab]")) window.setTimeout(enhancePanel, 0);
     }, true);
 
-    setTimeout(() => {
+    window.setTimeout(() => {
       enhancePanel();
-      refreshAfterCheckout();
+      refreshCheckoutWhenReady();
     }, 0);
   }
 
