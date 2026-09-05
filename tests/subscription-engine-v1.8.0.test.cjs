@@ -127,3 +127,23 @@ test("subscription nav uses an isolated attribute rather than native app routing
   assert.match(source, /data-hh-subscription-engine-tab/);
   assert.doesNotMatch(source, /data-route=["']subscription["']/);
 });
+
+test("v1.8.0 build bootstraps the standalone engine", () => {
+  const build = fs.readFileSync("herdharbor-build.js", "utf8");
+  assert.match(build, /version:\s*"1\.8\.0"/);
+  assert.match(build, /subscription-engine-v1\.8\.0\.js\?v=1/);
+  assert.match(build, /subscription-engine-v1\.8\.0\.css\?v=1/);
+});
+
+test("legacy billing remains disabled by the existing release contract", () => {
+  const release = fs.readFileSync("herdharbor-release-v1.6.1.js", "utf8");
+  assert.match(release, /billingEnabled:\s*false/);
+});
+
+test("v1.8.0 service worker rolls the shell and keeps subscription assets network-first", () => {
+  const worker = fs.readFileSync("service-worker.js", "utf8");
+  assert.match(worker, /CACHE_NAME = "herdharbor-shell-v1\.8\.0-alpha-subscription-engine-1"/);
+  assert.match(worker, /"\.\/subscription-engine-v1\.8\.0\.js\?v=1"/);
+  assert.match(worker, /"\/subscription-engine-v1\.8\.0\.js"/);
+  assert.match(worker, /"\/subscription-engine-v1\.8\.0\.css"/);
+});
