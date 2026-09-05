@@ -114,14 +114,15 @@ The Health/Symptom experience follows the same hardlocked current-farm species r
 
 Alpha v1.7.1 ships **zero new production non-rabbit trait or locus claims**. Existing imported or stored genetics records for foundation species are preserved as unclassified evidence until a later reviewed species release defines how they should be interpreted.
 
-## Compatibility
+## Compatibility and persistence
 
 - No migration is required for existing core Health records.
-- Existing Health records remain intact; Health Intelligence is additive.
+- Existing Health records remain intact; Health Intelligence is additive under the canonical farm-state `healthIntelligence` namespace.
+- Health Intelligence saves through `HerdHarborApp.commitState`, so the same canonical farm-state persistence path used by cloud sync and safety backups carries the new records rather than leaving them in a sidecar local-only store.
+- A legacy temporary Health Intelligence sidecar key is read only as a migration fallback and is removed after the next successful canonical save.
 - Existing rabbit genetics records remain compatible with the v1.6.1 engine.
 - Existing ARBA Standards & Judging and youth-show layers from v1.7.0 remain preserved.
 - Market Analytics, Shows, pedigrees, breeding records, memberships, monitoring, and existing cloud data remain preserved.
-- Health Intelligence data uses a versioned local foundation store so the legacy core Health table is not destructively rewritten during this release.
 
 ## Safety boundaries
 
@@ -137,7 +138,7 @@ Alpha v1.7.1 ships **zero new production non-rabbit trait or locus claims**. Exi
 - Health Intelligence JavaScript and CSS are included in the v1.7.1 application shell and offline cache.
 - Android Alpha remains v1.7.1 / version code 14.
 - Release identity, monitoring identity, Google Play metadata, and inherited regressions remain protected.
-- Dedicated Health Intelligence regression coverage is part of the v1.7.1 review contract.
+- Dedicated Health Intelligence regression coverage is part of the v1.7.1 review contract, including canonical farm-state persistence.
 
 ## Deferred genetics releases
 
