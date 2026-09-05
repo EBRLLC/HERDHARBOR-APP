@@ -21,6 +21,8 @@ Rabbit genetics remains delegated to the completed v1.6.1 rabbit engine. Alpha v
 - Shared pairing-compatibility and offspring-prediction entry points.
 - Species-specific capability and explanation metadata.
 - A shared non-rabbit genetics UI foundation that clearly distinguishes architecture readiness from reviewed genetics content.
+- Breeding now derives genetics tabs from the farm's current active animals, so only species actually present on the farm appear; historical Sold, Deceased, Archived, and Ancestor Only records do not create unrelated genetics tabs.
+- Each active species tab lists that farm's current animals and routes directly into the correct genetics experience, including the existing rabbit engine for rabbits.
 - PWA/offline integration for the new genetics platform and UI.
 - Android Alpha version advancement to v1.7.1 / version code 14.
 - Release identity, monitoring identity, Google Play metadata, and regression coverage for the new foundation.
