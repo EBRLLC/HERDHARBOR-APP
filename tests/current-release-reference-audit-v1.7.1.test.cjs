@@ -45,7 +45,7 @@ assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "1\.7\.1"/);
 assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "multispecies-genetics-foundation-1"/);
 assert.match(worker, /herdharbor-shell-v1\.7\.1-alpha-multispecies-genetics-foundation-1/);
 assert.match(html, /herdharbor-build\.js\?v=1\.7\.1/);
-assert.match(html, /pwa\.js\?v=29/);
+assert.match(html, /pwa\.js\?v=30/);
 assert.match(cloud, /version:\s*"1\.7\.1"/);
 
 for (const asset of [
