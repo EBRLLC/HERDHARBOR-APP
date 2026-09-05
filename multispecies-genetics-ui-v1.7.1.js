@@ -1,13 +1,78 @@
 (function(root){
 'use strict';
 
-const Genetics=root.HerdHarborGeneticsPlatform;
 const STORAGE_KEY='herdharbor_pre_alpha_v1';
 const BREEDING_PANEL_ID='hh-breeding-genetics';
+const INACTIVE_CURRENT_STATUSES=Object.freeze(['Sold','Deceased','Archived','Ancestor Only']);
+const SPECIES_CONTEXT_CONTRACT=Object.freeze({
+  id:'HH-SPECIES-CONTEXT-001',
+  version:'1.7.1',
+  hardlocked:true,
+  defaultScope:'current-active-farm',
+  rule:'Operational species-aware surfaces show only species represented by animals currently on the farm.',
+  historicalOverride:'explicit-reason-required'
+});
+
+const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+const read=()=>{try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch{return{}}};
+
+function isCurrentAnimal(animal){
+  const membership=root.HerdHarborMembership;
+  if(typeof membership?.isActiveAnimal==='function'){
+    try{return Boolean(membership.isActiveAnimal(animal));}catch{}
+  }
+  return !INACTIVE_CURRENT_STATUSES.includes(String(animal?.status||''));
+}
+
+function currentAnimals(state=read()){
+  return (state.animals||[]).filter(isCurrentAnimal);
+}
+
+function animalsForSurface(state=read(),options={}){
+  if(options.includeHistorical===true){
+    const reason=String(options.reason||'').trim();
+    if(!reason)throw new Error('Historical species context requires an explicit reason.');
+    return [...(state.animals||[])];
+  }
+  return currentAnimals(state);
+}
+
+function groupCurrentAnimalsBySpecies(state=read(),options={}){
+  const canonicalize=typeof options.canonicalize==='function'
+    ? options.canonicalize
+    : value=>String(value==null?'':value).trim().toLowerCase();
+  const supported=typeof options.supported==='function'?options.supported:()=>true;
+  const groups=new Map();
+  for(const animal of animalsForSurface(state)){
+    const species=canonicalize(animal?.species);
+    if(!species||!supported(species,animal))continue;
+    if(!groups.has(species))groups.set(species,[]);
+    groups.get(species).push(animal);
+  }
+  return [...groups.entries()].map(([species,animals])=>({species,animals:[...animals]}));
+}
+
+function currentSpecies(state=read(),options={}){
+  return groupCurrentAnimalsBySpecies(state,options).map(group=>group.species);
+}
+
+const SpeciesContext=Object.freeze({
+  version:'1.7.1',
+  hardlocked:true,
+  contract:SPECIES_CONTEXT_CONTRACT,
+  defaultScope:SPECIES_CONTEXT_CONTRACT.defaultScope,
+  excludedCurrentStatuses:INACTIVE_CURRENT_STATUSES,
+  isCurrentAnimal,
+  currentAnimals,
+  animalsForSurface,
+  currentSpecies,
+  groupCurrentAnimalsBySpecies
+});
+root.HerdHarborSpeciesContext=SpeciesContext;
+
+const Genetics=root.HerdHarborGeneticsPlatform;
 if(!Genetics)return;
 
-const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const read=()=>{try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch{return{}}};
 const label=s=>Genetics.getAdapter(s)?.label||String(s||'Unknown species');
 
 function statusBadge(adapter){
@@ -72,31 +137,19 @@ function open(animalId){
   return dialog(`${animal.name||'Animal'} Genetics`,foundationHtml(animal));
 }
 
-function isActiveAnimal(animal){
-  const membership=root.HerdHarborMembership;
-  if(typeof membership?.isActiveAnimal==='function'){
-    try{return Boolean(membership.isActiveAnimal(animal));}catch{}
-  }
-  return !['Sold','Deceased','Archived','Ancestor Only'].includes(String(animal?.status||''));
-}
-
 function activeGeneticsAnimals(state=read()){
-  return (state.animals||[]).filter(animal=>{
-    if(!isActiveAnimal(animal))return false;
+  return SpeciesContext.currentAnimals(state).filter(animal=>{
     const species=Genetics.canonicalSpecies(animal.species);
     return Boolean(species&&Genetics.getAdapter(species));
   });
 }
 
 function breedingSpecies(state=read()){
-  const groups=new Map();
-  for(const animal of activeGeneticsAnimals(state)){
-    const species=Genetics.canonicalSpecies(animal.species);
-    if(!groups.has(species))groups.set(species,[]);
-    groups.get(species).push(animal);
-  }
-  return [...groups.entries()]
-    .map(([species,animals])=>({species,label:label(species),animals:[...animals].sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')))}))
+  return SpeciesContext.groupCurrentAnimalsBySpecies(state,{
+    canonicalize:Genetics.canonicalSpecies,
+    supported:species=>Boolean(species&&Genetics.getAdapter(species))
+  })
+    .map(group=>({species:group.species,label:label(group.species),animals:[...group.animals].sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')))}))
     .sort((a,b)=>a.label.localeCompare(b.label));
 }
 
