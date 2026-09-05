@@ -46,9 +46,13 @@ test('browser provider supports monthly and yearly billing without owning auth',
   const provider = read('subscription-stripe-provider-v1.8.0.js');
   assert.match(provider, /selectedInterval/);
   assert.match(provider, /"year"/);
-  assert.match(provider, /HerdHarborCloud\.invokeFunction/);
+  assert.match(provider, /const cloud = window\.HerdHarborCloud/);
+  assert.match(provider, /cloud\.invokeFunction\("subscription-billing"/);
+  assert.match(provider, /appReadyForBilling/);
+  assert.match(provider, /classList\.contains\("hh-auth-locked"\)/);
   assert.doesNotMatch(provider, /signOut\s*\(/);
   assert.doesNotMatch(provider, /setSession\s*\(/);
+  assert.doesNotMatch(provider, /createClient\s*\(/);
 });
 
 test('service worker refreshes the Stripe provider instead of serving stale v1.8.0 assets', () => {
