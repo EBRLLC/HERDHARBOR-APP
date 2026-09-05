@@ -124,6 +124,7 @@
     addStylesheet("hh-multispecies-genetics-v171-style", "multispecies-genetics-v1.7.1.css?v=1.7.1");
     addStylesheet("hh-multispecies-genetics-v171-style", "multispecies-genetics-v1.7.1.css?v=1.7.1");
     addStylesheet("hh-multispecies-genetics-v171-style", "multispecies-genetics-v1.7.1.css?v=1.7.1");
+    addStylesheet("hh-multispecies-genetics-v171-style", "multispecies-genetics-v1.7.1.css?v=1.7.1");
     addScript("hh-rabbit-records-v151", "rabbit-records-v1.6.1.js?v=1.7.1", () => {
       addScript("hh-breeding-intelligence-core-script", "breeding-intelligence-core-v1.6.1.js?v=1.7.1", () => {
         addScript("hh-rabbit-genetics-v2-engine", "rabbit-genetics-engine-advanced-v1.6.1.js?v=1.7.1", () => {
