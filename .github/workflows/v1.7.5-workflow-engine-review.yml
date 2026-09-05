@@ -1,0 +1,36 @@
+name: Alpha v1.7.5 workflow engine review
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "workflow-engine-v1.7.5.js"
+      - "WORKFLOW-ENGINE-DESIGN-v1.7.5.md"
+      - "tests/workflow-engine-v1.7.5.test.cjs"
+      - "herdharbor-build.js"
+      - "service-worker.js"
+      - "package.json"
+      - ".github/workflows/v1.7.5-workflow-engine-review.yml"
+  push:
+    branches: [feature/v1.7.5-workflow-engine]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Test v1.7.5 workflow engine
+        run: npm run test:v1.7.5
+      - name: Run full regression suite
+        run: npm test
