@@ -65,19 +65,61 @@ test('Today queue uses current farm animals and suppresses historical species wo
   assert.equal(events.some(e=>e.key==='group:g1:followup'),false);
 });
 
+test('Today signature changes when canonical work changes so an open dashboard cannot stay stale',()=>{
+  const state=fixture();
+  const first=Phase1.eventSignature(Phase1.todayEvents(state,{today:'2026-09-05',horizon:7}));
+  state.tasks[0].title='Pregnancy check updated';
+  const second=Phase1.eventSignature(Phase1.todayEvents(state,{today:'2026-09-05',horizon:7}));
+  assert.notEqual(first,second);
+});
+
 test('contextual Quick Add prioritizes the current workflow without replacing existing forms',()=>{
   assert.deepEqual(Phase1.contextualQuickTypes('health'),['health','task']);
   assert.deepEqual(Phase1.contextualQuickTypes('breeding'),['breeding','litter','task']);
   assert.deepEqual(Phase1.contextualQuickTypes('sales'),['sale','customer','income']);
 });
 
-test('Phase 1 assets are loaded after stable v1.7.1 repair and cached offline without v1.7.5 runtime dependencies',()=>{
+test('Phase 1 does not install its DOM observer until the core app is ready',()=>{
+  const repo=path.resolve(__dirname,'..');
+  const source=fs.readFileSync(path.join(repo,'workflow-phase1-v1.7.1.js'),'utf8');
+  assert.match(source,/function startObserver\(\)/);
+  assert.match(source,/root\.addEventListener\?\.\('herdharbor:app-ready',markAppReady\)/);
+  assert.match(source,/if\(root\.HerdHarborApp\?\.getState\)markAppReady\(\)/);
+  assert.match(source,/function scheduleEnhance\(\)\{if\(!appReady\|\|queued\)return/);
+  assert.match(source,/observer\.disconnect\(\);try\{enhance\(\);\}finally\{/);
+});
+
+test('Phase 1 expires consumed animal selection and refreshes the Today panel instead of cloning stale panels',()=>{
+  const repo=path.resolve(__dirname,'..');
+  const source=fs.readFileSync(path.join(repo,'workflow-phase1-v1.7.1.js'),'utf8');
+  assert.match(source,/PENDING_ANIMAL_MAX_AGE_MS=5000/);
+  assert.match(source,/function consumePendingAnimal/);
+  assert.match(source,/pendingAnimalId='';pendingAnimalAt=0/);
+  assert.match(source,/existing\?\.dataset\?\.hhP1Signature===signature/);
+  assert.match(source,/if\(existing\)existing\.replaceWith\(panel\)/);
+});
+
+test('sign-in bootstrap keeps the Supabase callback deadlock guard ahead of cloud startup',()=>{
+  const repo=path.resolve(__dirname,'..');
+  const html=fs.readFileSync(path.join(repo,'index.html'),'utf8');
+  const release=fs.readFileSync(path.join(repo,'herdharbor-release-v1.6.1.js'),'utf8');
+  const cloud=fs.readFileSync(path.join(repo,'herdharbor-cloud.js'),'utf8');
+  assert.ok(html.indexOf('herdharbor-release-v1.6.1.js?v=1.7.1')>=0);
+  assert.ok(html.indexOf('herdharbor-cloud.js?v=20')>html.indexOf('herdharbor-release-v1.6.1.js?v=1.7.1'));
+  assert.match(release,/installSupabaseAuthDeadlockGuard\(\);/);
+  assert.match(release,/setTimeout\.bind\(window\)|window\.setTimeout/);
+  assert.match(cloud,/client\.auth\.onAuthStateChange/);
+});
+
+test('Phase 1 assets are cache-busted after stability repair and no v1.7.5 workflow runtime is loaded',()=>{
   const repo=path.resolve(__dirname,'..');
   const build=fs.readFileSync(path.join(repo,'herdharbor-build.js'),'utf8');
   const sw=fs.readFileSync(path.join(repo,'service-worker.js'),'utf8');
   assert.match(build,/workflow-phase1-v1\.7\.1\.css\?v=1/);
-  assert.match(build,/herdharbor-v1\.7\.1-stability-hotfix\.js\?v=1[\s\S]*workflow-phase1-v1\.7\.1\.js\?v=1/);
-  assert.match(sw,/workflow-phase1-v1\.7\.1\.js\?v=1/);
+  assert.match(build,/herdharbor-v1\.7\.1-stability-hotfix\.js\?v=2[\s\S]*workflow-phase1-v1\.7\.1\.js\?v=2/);
+  assert.match(sw,/herdharbor-shell-v1\.7\.1-alpha-multispecies-genetics-foundation-1-phase1-2/);
+  assert.match(sw,/workflow-phase1-v1\.7\.1\.js\?v=2/);
+  assert.match(sw,/herdharbor-v1\.7\.1-stability-hotfix\.js\?v=2/);
   assert.match(sw,/workflow-phase1-v1\.7\.1\.css\?v=1/);
   assert.match(sw,/\/workflow-phase1-v1\.7\.1\.js/);
   assert.match(sw,/\/workflow-phase1-v1\.7\.1\.css/);
