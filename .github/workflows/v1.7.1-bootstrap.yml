@@ -1,0 +1,38 @@
+name: Bootstrap Alpha v1.7.1 release shell
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'v1.7.1-multispecies-genetics-foundation'
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.prepare.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: prepare
+        name: Generate v1.7.1 release shell and regression contract
+        run: |
+          node scripts/prepare-v1.7.1-release.mjs
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Finalize Alpha v1.7.1 release shell"
+          git push origin "HEAD:${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}"
