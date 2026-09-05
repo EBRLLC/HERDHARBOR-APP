@@ -51,6 +51,8 @@ That means v1.7.1 does **not** attempt to cram complete cattle, goat, sheep, pou
 
 The v1.7.1 branch includes a dedicated release-review gate covering the shared genetics contract, rabbit-engine delegation, architecture-only non-rabbit adapters, inherited application regressions, production monitoring build, release identity, PWA/offline assets, and an unsigned Android review bundle.
 
+The completed PR review set is green for the dedicated v1.7.1 release review, inherited v1.6.7 release review, inherited v1.6.5 release review, preserved v1.7.0 ARBA standards review, and repository Android Alpha bundle.
+
 ## Deferred
 
 - Reviewed cattle gene and trait library: v1.7.2.
