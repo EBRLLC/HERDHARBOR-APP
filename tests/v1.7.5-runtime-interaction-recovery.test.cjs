@@ -31,7 +31,12 @@ test("v1.7.5 engine stays available for development without joining browser star
   assert.doesNotMatch(build, /workflow-engine-v1\.7\.5\.js/);
   assert.doesNotMatch(worker, /workflow-engine-v1\.7\.5\.js/);
   assert.match(build, /Runtime recovery: keep the reviewed v1\.7\.1 browser startup path intact/);
-  assert.match(worker, /interaction-recovery-1/);
+  assert.match(worker, /interaction-recovery-2/);
+});
+
+test("emergency recovery worker activates immediately instead of waiting for a dead UI", () => {
+  assert.match(worker, /\.then\(\(\) => self\.skipWaiting\(\)\)/);
+  assert.match(worker, /\.then\(\(\) => self\.clients\.claim\(\)\)/);
 });
 
 test("genetics routing remains narrowly scoped and does not consume View/Edit/Add clicks", () => {
@@ -44,5 +49,5 @@ test("genetics routing remains narrowly scoped and does not consume View/Edit/Ad
 test("recovery changes do not alter the published application identity", () => {
   assert.match(build, /version: "1\.7\.1"/);
   assert.match(build, /buildId: "multispecies-genetics-foundation-1"/);
-  assert.match(worker, /herdharbor-shell-v1\.7\.1-alpha-multispecies-genetics-foundation-1-hotfix-1-interaction-recovery-1/);
+  assert.match(worker, /herdharbor-shell-v1\.7\.1-alpha-multispecies-genetics-foundation-1-hotfix-1-interaction-recovery-2/);
 });
