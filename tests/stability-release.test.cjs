@@ -19,9 +19,10 @@ const showsCss = fs.readFileSync(path.join(root, "shows-v1.6.1.css"), "utf8");
 const showsHardening = fs.readFileSync(path.join(root, "shows-v1.6.1-hardening.js"), "utf8");
 const mobileGrowth = fs.readFileSync(path.join(root, "tests/mobile-growth-layout-v1.6.6.test.cjs"), "utf8");
 
-// Current release remains additive: the established app/data model and mobile hotfix stay intact.
-assert.match(build, /version:\s*"1\.7\.1"/);
-assert.match(build, /buildId:\s*"multispecies-genetics-foundation-1"/);
+// Current v1.8.0 web release remains additive: established v1.7.1 app/data runtimes and mobile hotfixes stay intact.
+assert.match(build, /version:\s*"1\.8\.0"/);
+assert.match(build, /buildId:\s*"subscription-engine-7"/);
+assert.match(build, /build:\s*"1\.8\.0-alpha-subscription-engine-7"/);
 assert.match(html, /HerdHarbor Alpha v1\.7\.1 consolidated application shell/);
 assert.match(html, /id="settings-sync-now"/);
 assert.match(html, /id="settings-last-synced"/);
@@ -82,7 +83,7 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /v1\.7\.1-alpha-multispecies-genetics-foundation-1/);
+assert.match(serviceWorker, /herdharbor-shell-v1\.8\.0-alpha-subscription-engine-7/);
 assert.match(serviceWorker, /spreadsheet-import\.js\?v=17/);
 assert.match(serviceWorker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(serviceWorker, /herdharbor-cloud\.js\?v=20/);
@@ -144,4 +145,4 @@ assert.match(showsHardening, /PAGE_SIZE = 24/);
 assert.match(showsCss, /overflow-x:auto/);
 assert.match(showsCss, /@media \(max-width:520px\)/);
 
-console.log("Alpha v1.7.1 release stability tests passed");
+console.log("Alpha v1.8.0 web release stability tests passed with v1.7.1 domain runtimes preserved");
