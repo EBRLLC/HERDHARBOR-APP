@@ -13,7 +13,7 @@ const release = fs.readFileSync(path.join(root, "herdharbor-release-v1.6.1.js"),
 const pedigreeGeneticsCss = fs.readFileSync(path.join(root, "pedigree-genetics-v1.6.1.css"), "utf8");
 const showsCss = fs.readFileSync(path.join(root, "shows-v1.6.1.css"), "utf8");
 
-// HerdHarborBuild is authoritative for the current Alpha v1.7.1 identity.
+// HerdHarborBuild is authoritative for the current web Alpha identity; established login/layout runtimes remain v1.7.1.
 assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.7\.1"/);
 assert.match(html, /html \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
 assert.match(html, /body \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
@@ -42,7 +42,7 @@ assert.match(cloud, /--hh-auth-input: #0A2033/);
 assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog \{[\s\S]*?color: #18212A;[\s\S]*?background: #FFFFFF;[\s\S]*?color-scheme: light;/);
 assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog h2 \{ color: #0D2540; \}/);
 assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog \.hh-account-email \{ color: #526474; \}/);
-assert.match(worker, /v1\.7\.1-alpha-multispecies-genetics-foundation-1/);
+assert.match(worker, /herdharbor-shell-v1\.8\.0-alpha-subscription-engine-7/);
 assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /herdharbor-cloud\.js\?v=20/);
 assert.match(worker, /pedigree-visual\.css\?v=2/);
@@ -88,4 +88,4 @@ function contrast(foreground, background) {
   assert.ok(contrast(foreground, background) >= 4.5, `${label} meets WCAG AA contrast`);
 });
 
-console.log("Alpha v1.7.1 tablet containment, PWA cache freshness, existing pedigree genetics, Help, and login color tests passed");
+console.log("Alpha v1.8.0 web-shell tablet containment, PWA cache freshness, existing pedigree genetics, Help, and login color tests passed");
