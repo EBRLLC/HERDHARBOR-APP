@@ -7,7 +7,6 @@
   const BUILD_ID = window.HerdHarborBuild?.buildId || "multispecies-genetics-foundation-1";
   const PWA_BUILD = `${APP_VERSION}-alpha-${BUILD_ID}`;
   const UPDATE_CHECK_MIN_INTERVAL_MS = 60_000;
-  const UPDATE_ACTIVATION_TIMEOUT_MS = 8_000;
   let installPrompt = null;
   let registration = null;
   let updateToast = null;
@@ -15,8 +14,6 @@
   let updateCheckInFlight = null;
   let lastUpdateCheckAt = 0;
   let reloading = false;
-  let updateActivationInFlight = false;
-  let updateActivationTimer = null;
   let updateDeferredUntil = 0;
 
   const navigatorRef = () => window.navigator || (typeof navigator !== "undefined" ? navigator : {});
@@ -215,67 +212,6 @@
     window.alert("Open your browser menu and choose Install app or Add to Home screen.");
   }
 
-  function clearUpdateActivationTimer() {
-    if (updateActivationTimer === null) return;
-    window.clearTimeout(updateActivationTimer);
-    updateActivationTimer = null;
-  }
-
-  function reloadAfterUpdate({ cacheBust = false } = {}) {
-    if (reloading) return;
-    reloading = true;
-    clearUpdateActivationTimer();
-    updateActivationInFlight = false;
-    updateToast?.remove();
-    updateToast = null;
-    if (cacheBust) {
-      const url = new URL(window.location.href);
-      url.searchParams.set("hh_update", Date.now().toString());
-      window.location.replace(url.toString());
-      return;
-    }
-    window.location.reload();
-  }
-
-  async function activatePendingUpdate(button) {
-    if (!button || updateActivationInFlight) return;
-    let workerToActivate = registration?.waiting || pendingUpdateWorker;
-    if (!workerToActivate) {
-      button.disabled = true;
-      button.textContent = "Checking…";
-      await checkForAppUpdate({ force: true });
-      workerToActivate = registration?.waiting || pendingUpdateWorker;
-      if (!workerToActivate) {
-        button.disabled = false;
-        button.textContent = "Update Now";
-        return;
-      }
-    }
-
-    updateActivationInFlight = true;
-    button.disabled = true;
-    button.textContent = "Updating…";
-    clearUpdateActivationTimer();
-    updateActivationTimer = window.setTimeout(async () => {
-      try { await registration?.update?.(); } catch (error) {
-        monitorFailure(error, "update_activation_refresh_failure", "dashboard", { operation: "pwa_update_activation_timeout_refresh" });
-      }
-      monitorFailure(new Error("PWA update activation timed out; forcing a fresh navigation."), "update_activation_timeout", "dashboard", { operation: "pwa_update_activation_timeout" });
-      reloadAfterUpdate({ cacheBust: true });
-    }, UPDATE_ACTIVATION_TIMEOUT_MS);
-
-    try {
-      workerToActivate.postMessage({ type: "SKIP_WAITING" });
-      if (workerToActivate.state === "activated") reloadAfterUpdate();
-    } catch (error) {
-      clearUpdateActivationTimer();
-      updateActivationInFlight = false;
-      button.disabled = false;
-      button.textContent = "Retry Update";
-      monitorFailure(error, "update_activation_failure", "dashboard", { operation: "pwa_update_activation" });
-    }
-  }
-
   function showUpdateReady(worker) {
     if (!worker) return;
     pendingUpdateWorker = worker;
@@ -285,8 +221,16 @@
     updateToast.className = "hh-pwa-update";
     updateToast.setAttribute("role", "status");
     updateToast.innerHTML = `<strong>HerdHarbor Update Available</strong><span>A new version of HerdHarbor is ready. Finish any unsaved entry before updating. Cloud Sync is not required.</span><div><button type="button" data-hh-update-now>Update Now</button><button type="button" data-hh-update-later>Later</button></div>`;
-    updateToast.querySelector("[data-hh-update-now]").addEventListener("click", (event) => {
-      activatePendingUpdate(event.currentTarget);
+    updateToast.querySelector("[data-hh-update-now]").addEventListener("click", () => {
+      const workerToActivate = registration?.waiting || pendingUpdateWorker;
+      if (!workerToActivate) {
+        updateToast.querySelector("[data-hh-update-now]").textContent = "Checking…";
+        checkForAppUpdate({ force: true });
+        return;
+      }
+      updateToast.querySelector("[data-hh-update-now]").disabled = true;
+      updateToast.querySelector("[data-hh-update-now]").textContent = "Updating…";
+      workerToActivate.postMessage({ type: "SKIP_WAITING" });
     });
     updateToast.querySelector("[data-hh-update-later]").addEventListener("click", () => {
       updateDeferredUntil = Date.now() + (4 * 60 * 60 * 1000);
@@ -367,7 +311,11 @@
   window.addEventListener("pageshow", (event) => { if (event.persisted || document.visibilityState === "visible") checkForAppUpdate(); });
   document.addEventListener("visibilitychange", requestForegroundUpdateCheck);
   navigatorRef().serviceWorker?.addEventListener("controllerchange", () => {
-    reloadAfterUpdate();
+    if (reloading) return;
+    reloading = true;
+    updateToast?.remove();
+    updateToast = null;
+    window.location.reload();
   });
   document.addEventListener("click", (event) => { const trigger = event.target.closest("[data-pwa-install]"); if (trigger) requestInstall(); });
 
