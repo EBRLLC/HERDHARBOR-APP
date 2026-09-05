@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v1.7.1-alpha-multispecies-genetics-foundation-1-hotfix-1-interaction-recovery-1";
+const CACHE_NAME = "herdharbor-shell-v1.7.1-alpha-multispecies-genetics-foundation-1-hotfix-1-interaction-recovery-2";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -146,10 +146,12 @@ async function networkFirst(request) {
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      const requests = APP_SHELL.map((path) => new Request(new URL(path, self.location.href), { cache: "reload" }));
-      return cache.addAll(requests);
-    })
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        const requests = APP_SHELL.map((path) => new Request(new URL(path, self.location.href), { cache: "reload" }));
+        return cache.addAll(requests);
+      })
+      .then(() => self.skipWaiting())
   );
 });
 
