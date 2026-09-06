@@ -58,16 +58,25 @@
   function resolveAccount(now = new Date()) {
     const base = original.getAccount();
     const policy = policyState(now);
-    const storedSource = normalize(base.storedMembershipSource || base.membershipSource);
     const role = normalize(base.accountRole || "user");
+    const currentSource = normalize(base.membershipSource);
+    const storedSource = normalize(base.storedMembershipSource || currentSource);
     const snapshot = subscriptionSnapshot();
 
-    // Owner/admin/manual overrides and Founder access are preserved exactly.
-    if (storedSource === "manual_override" || normalize(base.membershipSource) === "manual_override") {
+    // Internal owner/admin accounts and live manual overrides remain untouched.
+    if (role === "owner" || role === "admin" || currentSource === "manual_override") {
       return { ...base, subscriptionLaunch: policy };
     }
-    if (storedSource === "founder" || normalize(base.membershipSource) === "founder" || normalize(base.membershipTier) === "founder") {
-      return { ...base, effectiveMembershipTier: "founder", membershipSource: "founder", maxActiveAnimals: null, subscriptionLaunch: policy };
+
+    // Founder access is permanent and is not converted into a launch trial.
+    if (currentSource === "founder" || storedSource === "founder" || normalize(base.membershipTier) === "founder") {
+      return {
+        ...base,
+        effectiveMembershipTier: "founder",
+        membershipSource: "founder",
+        maxActiveAnimals: null,
+        subscriptionLaunch: policy
+      };
     }
 
     // Through 11:59 PM ET on September 30, every signed-up HerdHarbor member
