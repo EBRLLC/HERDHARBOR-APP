@@ -1,4 +1,4 @@
-name: Alpha v1.7.1 monitored production Pages publish
+name: Alpha v1.8.0 monitored production Pages publish
 
 on:
   push:
@@ -64,11 +64,15 @@ jobs:
           node-version: 22
       - name: Install pinned monitoring dependencies
         run: npm ci --no-audit --no-fund
-      - name: Verify v1.7.1 release and stabilization contract
+      - name: Verify v1.8.0 web release and mobile hotfix contract
         run: |
-          npm run test:v1.7.1
-          npm run test:completion
+          node --test tests/subscription-engine-v1.8.0.test.cjs
+          node --test tests/mobile-viewport-hotfix-v1.8.0.test.cjs
           node --test tests/app-script-compile.test.cjs
+          node --test tests/auth-signin-deadlock-v1.6.7.test.cjs
+          node --test tests/workflow-phase1-v1.7.1.test.cjs
+          npm run test:health
+          npm run test:genetics
       - name: Require production Sentry DSN
         env:
           HERDHARBOR_SENTRY_DSN: ${{ secrets.HERDHARBOR_SENTRY_DSN }}
@@ -102,6 +106,9 @@ jobs:
           test -s _site/health-intelligence-v1.7.1.js
           test -s _site/health-intelligence-v1.7.1.css
           test -s _site/herdharbor-v1.7.1-stability-hotfix.js
+          test -s _site/subscription-engine-v1.8.0.js
+          test -s _site/subscription-engine-v1.8.0.css
+          test -s _site/mobile-viewport-hotfix-v1.8.0.css
           ! grep -q '"dsn": ""' _site/herdharbor-monitoring-config.js
           grep -q '"environment": "production"' _site/herdharbor-monitoring-config.js
           grep -q '"release": "HerdHarbor@1.7.1"' _site/herdharbor-monitoring-config.js

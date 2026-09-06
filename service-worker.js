@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v1.8.0-alpha-subscription-engine-1";
+const CACHE_NAME = "herdharbor-shell-v1.8.0-alpha-subscription-engine-2-mobile-fit";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -17,6 +17,7 @@ const APP_SHELL = [
   "./herdharbor-build.js?v=1.7.1",
   "./subscription-engine-v1.8.0.js?v=1",
   "./subscription-engine-v1.8.0.css?v=1",
+  "./mobile-viewport-hotfix-v1.8.0.css?v=1",
   "./herdharbor-v1.7.1-stability-hotfix.js?v=2",
   "./workflow-phase1-v1.7.1.js?v=2",
   "./workflow-phase1-v1.7.1.css?v=2",
@@ -85,6 +86,7 @@ const NETWORK_FIRST_PATHS = [
   "/herdharbor-build.js",
   "/subscription-engine-v1.8.0.js",
   "/subscription-engine-v1.8.0.css",
+  "/mobile-viewport-hotfix-v1.8.0.css",
   "/herdharbor-v1.7.1-stability-hotfix.js",
   "/workflow-phase1-v1.7.1.js",
   "/workflow-phase1-v1.7.1.css",
