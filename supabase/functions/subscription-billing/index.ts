@@ -9,16 +9,16 @@ const CORS = {
 };
 const PRICES: Record<string, Record<string, { priceId: string; cents: number }>> = {
   founder: {
-    month: { priceId: "price_1UCOktGIRukEX5RKPo6jm6Vr", cents: 999 },
-    year: { priceId: "price_1UCOwAGIRukEX5RK34xr9dQS", cents: 11000 }
+    month: { priceId: "price_1UCOktGlRukEX5RKPo6jm6Vr", cents: 999 },
+    year: { priceId: "price_1UCOwAGlRukEX5RK34xr9dQS", cents: 11000 }
   },
   member: {
-    month: { priceId: "price_1UCOjrGIRukEX5RK9my06yUP", cents: 1499 },
-    year: { priceId: "price_1UCOvPGIRukEX5RKJA05IDmb", cents: 15000 }
+    month: { priceId: "price_1UCOjrGlRukEX5RK9my06yUP", cents: 1499 },
+    year: { priceId: "price_1UCOvPGlRukEX5RKJA05lDmb", cents: 15000 }
   },
   business: {
-    month: { priceId: "price_1UCOuYGIRukEX5RKo6LUWZq3", cents: 4999 },
-    year: { priceId: "price_1UCOnnGIRukEX5RK36kjzNZ6", cents: 55000 }
+    month: { priceId: "price_1UCOuYGlRukEX5RKo6LUWZq3", cents: 4999 },
+    year: { priceId: "price_1UCOnnGlRukEX5RK36kjzNZ6", cents: 55000 }
   }
 };
 
