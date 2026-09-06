@@ -1,0 +1,55 @@
+name: Alpha v1.8.1 release review
+
+on:
+  push:
+    branches:
+      - feature/v1.8.1-*
+      - fix/v1.8.1-*
+  pull_request:
+    branches: [main]
+    paths:
+      - "subscription-launch-v1.8.1.js"
+      - "subscription-launch-v1.8.1.css"
+      - "subscription-engine-v1.8.0.js"
+      - "herdharbor-build.js"
+      - "service-worker.js"
+      - "supabase/v1.8.1-october-launch-trial.sql"
+      - "supabase/functions/subscription-billing/**"
+      - "tests/subscription-launch-v1.8.1.test.cjs"
+      - "tests/subscription-engine-v1.8.0.test.cjs"
+      - "tests/mobile-viewport-hotfix-v1.8.0.test.cjs"
+      - "tests/workflow-phase1-v1.7.1.test.cjs"
+      - "tests/current-release-reference-audit-v1.7.1.test.cjs"
+      - ".github/workflows/v1.8.1-review.yml"
+      - ".github/workflows/v1.6.7-final-production-pages-closeout.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  launch-trial-and-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --no-audit --no-fund
+      - name: v1.8.1 launch-trial contract
+        run: node --test tests/subscription-launch-v1.8.1.test.cjs
+      - name: Preserved subscription and mobile contracts
+        run: |
+          node --test tests/subscription-engine-v1.8.0.test.cjs
+          node --test tests/mobile-viewport-hotfix-v1.8.0.test.cjs
+      - name: Sign-in, application, and Phase 1 regression
+        run: |
+          node --test tests/app-script-compile.test.cjs
+          node --test tests/auth-signin-deadlock-v1.6.7.test.cjs
+          node --test tests/workflow-phase1-v1.7.1.test.cjs
+          node tests/current-release-reference-audit-v1.7.1.test.cjs
+      - name: Health and genetics regression
+        run: |
+          npm run test:health
+          npm run test:genetics
+      - name: Source-safe monitoring regression
+        run: npm run test:monitoring

@@ -1,0 +1,32 @@
+.hh-subscription-launch-banner{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin:0 0 18px;
+  padding:14px 16px;
+  border:1px solid #b9d8d6;
+  border-radius:14px;
+  background:#eef9f7;
+  color:#143e3d;
+}
+.hh-subscription-launch-banner strong{font-size:1rem;color:#0d2540}
+.hh-subscription-launch-banner span{line-height:1.45}
+.hh-subscription-launch-banner[data-phase="subscriptions_live"]{
+  border-color:#cbd6df;
+  background:#f4f7f9;
+  color:#34495a;
+}
+html[data-theme="dark"] .hh-subscription-launch-banner{
+  border-color:#315d5a;
+  background:#102f31;
+  color:#d9efec;
+}
+html[data-theme="dark"] .hh-subscription-launch-banner strong{color:#f3f7f8}
+html[data-theme="dark"] .hh-subscription-launch-banner[data-phase="subscriptions_live"]{
+  border-color:#344c61;
+  background:#10283a;
+  color:#dce6ed;
+}
+@media (max-width:480px){
+  .hh-subscription-launch-banner{margin-bottom:14px;padding:12px 13px;border-radius:12px}
+}

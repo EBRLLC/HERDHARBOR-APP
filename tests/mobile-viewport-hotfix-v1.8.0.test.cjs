@@ -34,10 +34,10 @@ test("mobile dashboard and Today workflow are constrained to the viewport", () =
   assert.match(css, /env\(safe-area-inset-right\)/);
 });
 
-test("mobile hotfix is loaded last and delivered through a rotated network-first shell", () => {
+test("mobile hotfix stays loaded last among the v1.8.0 layout assets under the v1.8.x shell", () => {
   assert.match(build, /addStyle\("hh-mobile-viewport-v180-style", "mobile-viewport-hotfix-v1\.8\.0\.css\?v=1"\)/);
   assert.ok(build.indexOf("mobile-viewport-hotfix-v1.8.0.css?v=1") > build.indexOf("subscription-member-ui-v1.8.0.css?v=1"));
-  assert.match(worker, /herdharbor-shell-v1\.8\.0-alpha-subscription-engine-2-mobile-fit/);
+  assert.match(worker, /herdharbor-shell-v1\.8\.[01]-alpha-/);
   assert.match(worker, /"\.\/mobile-viewport-hotfix-v1\.8\.0\.css\?v=1"/);
   assert.match(worker, /"\/mobile-viewport-hotfix-v1\.8\.0\.css"/);
 });
