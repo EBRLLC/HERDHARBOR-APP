@@ -1,0 +1,127 @@
+/* HerdHarbor Alpha v1.8.0 — iPhone/mobile viewport fit hotfix.
+   Keeps the compact topbar and Phase 1 Today workflow inside the device viewport
+   without requiring pinch-to-zoom. */
+
+@media (max-width: 480px) {
+  html,
+  body,
+  .app-shell,
+  .workspace,
+  .topbar,
+  .main-content,
+  .view.active,
+  .page-header,
+  .header-actions,
+  .hh-p1-today,
+  .hh-p1-today-head,
+  .hh-p1-today-stats,
+  .hh-p1-today-list,
+  .hh-p1-today-item {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .topbar {
+    gap: 6px;
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+  }
+
+  .topbar-operation {
+    flex: 0 1 auto;
+    min-width: 36px;
+    gap: 0;
+  }
+
+  /* The operation name is already available in the page body and sidebar.
+     Hiding it only on narrow phones prevents the topbar's fixed controls from
+     establishing a layout width wider than the visual viewport. */
+  .topbar-title {
+    display: none;
+  }
+
+  .operation-logo {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+  }
+
+  .topbar-actions {
+    min-width: 0;
+    margin-left: auto;
+    gap: 4px;
+  }
+
+  .topbar-actions .icon-button,
+  .topbar-actions .profile-button,
+  .topbar-actions .topbar-sync,
+  .topbar-actions .feedback-button,
+  .topbar-actions #quick-add-button {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    min-height: 36px;
+    padding: 0;
+    flex: 0 0 36px;
+  }
+
+  .main-content {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+
+  .page-header,
+  .hh-p1-today-head {
+    overflow-wrap: anywhere;
+  }
+
+  .header-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .header-actions .button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .hh-p1-today {
+    overflow: hidden;
+  }
+
+  .hh-p1-today-stats > *,
+  .hh-p1-today-item > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .hh-p1-today-copy strong,
+  .hh-p1-today-copy span {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 360px) {
+  .topbar {
+    gap: 4px;
+    padding-left: max(6px, env(safe-area-inset-left));
+    padding-right: max(6px, env(safe-area-inset-right));
+  }
+
+  .topbar-actions {
+    gap: 3px;
+  }
+
+  .topbar-actions .icon-button,
+  .topbar-actions .profile-button,
+  .topbar-actions .topbar-sync,
+  .topbar-actions .feedback-button,
+  .topbar-actions #quick-add-button {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    flex-basis: 34px;
+  }
+}
