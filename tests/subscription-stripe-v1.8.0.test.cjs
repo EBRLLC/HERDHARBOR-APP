@@ -45,9 +45,12 @@ test('browser adapter reuses authenticated HerdHarborCloud transport', () => {
   assert.match(adapter, /reactivateSubscription/);
 });
 
-test('billing transport is bounded and cannot remain pending forever', () => {
+test('billing transport and access refreshes are bounded and cannot remain pending forever', () => {
   assert.match(adapter, /CALL_TIMEOUT_MS\s*=\s*15000/);
+  assert.match(adapter, /ACCESS_REFRESH_TIMEOUT_MS\s*=\s*5000/);
+  assert.match(adapter, /function\s+settleWithin\s*\(/);
   assert.match(adapter, /Promise\.race/);
+  assert.match(adapter, /refreshAccessBounded/);
   assert.match(adapter, /window\.clearTimeout\(timeoutId\)/);
 });
 
@@ -57,12 +60,15 @@ test('billing never calls the backend while HerdHarbor auth is locked', () => {
   assert.match(adapter, /if \(!appReadyForBilling\(\)\) return null/);
 });
 
-test('retry timers are bounded and do not shadow the browser setInterval API', () => {
+test('retry timers are bounded, singular, and do not shadow the browser setInterval API', () => {
   assert.doesNotMatch(adapter, /function\s+setInterval\s*\(/);
   assert.match(adapter, /function\s+setBillingInterval\s*\(/);
+  assert.match(adapter, /checkoutReadyTimer/);
+  assert.match(adapter, /if \(checkoutReadyTimer != null\) return/);
+  assert.match(adapter, /function\s+stopCheckoutReadyTimer\s*\(/);
   assert.match(adapter, /window\.setInterval/);
   assert.match(adapter, /attempts\s*>=\s*40/);
-  assert.match(adapter, /window\.clearInterval\(timer\)/);
+  assert.match(adapter, /window\.clearInterval/);
 });
 
 test('membership bridge suppresses duplicate membership-change storms', () => {
@@ -70,9 +76,10 @@ test('membership bridge suppresses duplicate membership-change storms', () => {
   assert.match(adapter, /if \(signature === lastMembershipSignature\) return/);
 });
 
-test('normal sign-in does not force a Stripe refresh loop', () => {
+test('normal sign-in does not force a Stripe refresh loop and sign-out stops checkout polling', () => {
   const authHandler = adapter.match(/document\.addEventListener\("herdharbor:auth-session"[\s\S]*?\n\s*}\);/)?.[0] || '';
   assert.match(authHandler, /refreshCheckoutWhenReady/);
+  assert.match(authHandler, /stopCheckoutReadyTimer/);
   assert.doesNotMatch(authHandler, /SubscriptionEngine\?\.refresh/);
 });
 
@@ -104,6 +111,21 @@ test('webhook verifies Stripe signature before processing', () => {
   assert.match(webhook, /subscription_events/);
   assert.match(webhook, /provider_event_id:\s*event\.id/);
   assert.match(webhook, /23505/);
+});
+
+test('failed webhook deliveries can be reclaimed instead of becoming permanently stale', () => {
+  assert.match(webhook, /priorEvent\.event_status === "processed"/);
+  assert.match(webhook, /priorEvent\.event_status === "processing"/);
+  assert.match(webhook, /event_status:\s*"processing",\s*processed_at:\s*null/);
+  assert.match(webhook, /\.eq\("event_status", "failed"\)/);
+  assert.match(webhook, /Could not reclaim failed webhook event/);
+});
+
+test('out-of-order subscription events cannot roll a newer Stripe state backward', () => {
+  assert.match(webhook, /eventOccurredAt/);
+  assert.match(webhook, /provider_updated_at/);
+  assert.match(webhook, /storedTime > eventTime/);
+  assert.match(webhook, /never roll the account back to older subscription data/);
 });
 
 test('webhook synchronizes subscription and payment lifecycle', () => {
