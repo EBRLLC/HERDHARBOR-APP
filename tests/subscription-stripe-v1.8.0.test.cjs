@@ -7,6 +7,7 @@ const root = path.resolve(__dirname, '..');
 const read = (name) => fs.readFileSync(path.join(root, name), 'utf8');
 const adapter = read('subscription-stripe-provider-v1.8.0.js');
 const headerHelper = read('subscription-header-copy-v1.8.0.js');
+const visibilityHelper = read('subscription-tab-visibility-v1.8.0.js');
 const build = read('herdharbor-build.js');
 const sw = read('service-worker.js');
 const migration = read('supabase/v1.8.0-stripe-billing.sql');
@@ -83,6 +84,13 @@ test('normal sign-in does not force a Stripe refresh loop and sign-out stops che
   assert.doesNotMatch(authHandler, /SubscriptionEngine\?\.refresh/);
 });
 
+test('Subscription tab helper requires a real session and an unlocked auth shell before revealing', () => {
+  assert.match(visibilityHelper, /HerdHarborCloud\?\.getSession/);
+  assert.match(visibilityHelper, /classList\.contains\("hh-auth-locked"\)/);
+  assert.match(visibilityHelper, /return signedIn && !authLocked && sidebarIsVisible\(\)/);
+  assert.doesNotMatch(visibilityHelper, /MutationObserver/);
+});
+
 test('Subscription header presentation is event-driven and has no DOM observer loop', () => {
   assert.doesNotMatch(headerHelper, /new\s+MutationObserver\s*\(/);
   assert.match(headerHelper, /herdharbor:subscription-engine-state/);
@@ -141,9 +149,10 @@ test('webhook synchronizes subscription and payment lifecycle', () => {
   assert.match(webhook, /subscription_status/);
 });
 
-test('build loads Stripe adapter after existing subscription helpers', () => {
+test('build loads hardened Stripe adapter after existing subscription helpers', () => {
   assert.match(build, /buildId:\s*"subscription-engine-7"/);
-  assert.match(build, /subscription-stripe-provider-v1\.8\.0\.js\?v=2/);
+  assert.match(build, /subscription-tab-visibility-v1\.8\.0\.js\?v=3/);
+  assert.match(build, /subscription-stripe-provider-v1\.8\.0\.js\?v=3/);
   const engine = build.indexOf('subscription-engine-v1.8.0.js');
   const visibility = build.indexOf('subscription-tab-visibility-v1.8.0.js');
   const header = build.indexOf('subscription-header-copy-v1.8.0.js');
@@ -151,9 +160,10 @@ test('build loads Stripe adapter after existing subscription helpers', () => {
   assert.ok(engine >= 0 && visibility > engine && header > visibility && stripe > header);
 });
 
-test('service worker rotates stale cache and covers all subscription assets', () => {
+test('service worker covers the exact hardened subscription assets with network-first freshness', () => {
   assert.match(sw, /herdharbor-shell-v1\.8\.0-alpha-subscription-engine-7/);
-  assert.match(sw, /subscription-stripe-provider-v1\.8\.0\.js\?v=2/);
+  assert.match(sw, /subscription-tab-visibility-v1\.8\.0\.js\?v=3/);
+  assert.match(sw, /subscription-stripe-provider-v1\.8\.0\.js\?v=3/);
   for (const asset of [
     'subscription-engine-v1.8.0.js',
     'subscription-engine-v1.8.0.css',
@@ -162,4 +172,5 @@ test('service worker rotates stale cache and covers all subscription assets', ()
     'subscription-header-copy-v1.8.0.js',
     'subscription-stripe-provider-v1.8.0.js'
   ]) assert.match(sw, new RegExp(asset.replaceAll('.', '\\.')));
+  assert.match(sw, /NETWORK_FIRST_PATHS/);
 });
