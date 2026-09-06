@@ -3,6 +3,7 @@
 
   const INTERVAL_KEY = "herdharbor_subscription_interval_v1";
   const CALL_TIMEOUT_MS = 15000;
+  const ACCESS_REFRESH_TIMEOUT_MS = 5000;
   const ACTIVE = new Set(["active", "trialing", "founder", "free_junior", "resubscribed"]);
   const PLAN_ORDER = ["junior", "founder", "member", "business"];
   const PRICING = Object.freeze({
@@ -18,6 +19,7 @@
   })();
   let configured = false;
   let successRefreshInFlight = false;
+  let checkoutReadyTimer = null;
   let lastMembershipSignature = "";
 
   function appReturnUrl() {
@@ -33,6 +35,29 @@
   function money(cents, interval) {
     if (cents === 0) return "Free";
     return `$${(Number(cents) / 100).toFixed(2)}/${interval === "year" ? "yr" : "mo"}`;
+  }
+
+  async function settleWithin(promise, timeoutMs = ACCESS_REFRESH_TIMEOUT_MS) {
+    if (!promise || typeof promise.then !== "function") return null;
+    let timeoutId = null;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise((resolve) => {
+          timeoutId = window.setTimeout(() => resolve(null), timeoutMs);
+        })
+      ]);
+    } catch {
+      return null;
+    } finally {
+      if (timeoutId != null) window.clearTimeout(timeoutId);
+    }
+  }
+
+  async function refreshAccessBounded() {
+    const refresh = window.HerdHarborCloud?.refreshAccess;
+    if (typeof refresh !== "function") return null;
+    return settleWithin(Promise.resolve().then(() => refresh()), ACCESS_REFRESH_TIMEOUT_MS);
   }
 
   async function call(action, payload = {}) {
@@ -88,12 +113,12 @@
     },
     async cancelSubscription() {
       const result = await call("cancel");
-      await window.HerdHarborCloud?.refreshAccess?.().catch?.(() => {});
+      await refreshAccessBounded();
       return result;
     },
     async reactivateSubscription() {
       const result = await call("reactivate");
-      await window.HerdHarborCloud?.refreshAccess?.().catch?.(() => {});
+      await refreshAccessBounded();
       return result;
     }
   });
@@ -181,7 +206,7 @@
     try {
       for (let attempt = 0; attempt < 5; attempt += 1) {
         if (attempt) await new Promise((resolve) => window.setTimeout(resolve, 1000));
-        await window.HerdHarborCloud?.refreshAccess?.().catch?.(() => {});
+        await refreshAccessBounded();
         const snapshot = await provider.getSubscriptionSnapshot().catch(() => null);
         if (snapshot && ACTIVE.has(String(snapshot.status || "").toLowerCase())) {
           window.HerdHarborSubscriptionEngine?.applySnapshot?.(snapshot);
@@ -193,16 +218,28 @@
     }
   }
 
+  function stopCheckoutReadyTimer() {
+    if (checkoutReadyTimer != null) {
+      window.clearInterval(checkoutReadyTimer);
+      checkoutReadyTimer = null;
+    }
+  }
+
   function refreshCheckoutWhenReady() {
-    if (!hasCheckoutResult()) return;
+    if (!hasCheckoutResult()) {
+      stopCheckoutReadyTimer();
+      return;
+    }
+    if (checkoutReadyTimer != null) return;
+
     let attempts = 0;
-    const timer = window.setInterval(() => {
+    checkoutReadyTimer = window.setInterval(() => {
       attempts += 1;
       if (appReadyForBilling()) {
-        window.clearInterval(timer);
-        refreshAfterCheckout();
+        stopCheckoutReadyTimer();
+        void refreshAfterCheckout();
       } else if (attempts >= 40) {
-        window.clearInterval(timer);
+        stopCheckoutReadyTimer();
       }
     }, 250);
   }
@@ -223,6 +260,8 @@
         // transition that needs a bounded post-login refresh here.
         configure();
         refreshCheckoutWhenReady();
+      } else if (event.detail?.signedIn === false) {
+        stopCheckoutReadyTimer();
       }
     });
 
