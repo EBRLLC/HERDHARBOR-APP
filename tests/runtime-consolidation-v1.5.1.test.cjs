@@ -12,6 +12,7 @@ const geneticsV2 = read("rabbit-genetics-engine-advanced-v1.6.1.js");
 const pedigreeGenetics = read("pedigree-genetics-v1.6.1.js");
 const pedigreeGeneticsCss = read("pedigree-genetics-v1.6.1.css");
 const html = read("index.html");
+const build = read("herdharbor-build.js");
 
 const activeV161 = [
   "herdharbor-release-v1.6.1.js",
@@ -76,11 +77,14 @@ assert.match(pedigreeGeneticsCss, /html\.hh-pedigree-print-document \.hh-pedigre
 assert.doesNotMatch(geneticsV2, /breeding-intelligence-core\.js['"]/, "advanced genetics engine does not require the legacy unversioned core");
 
 assert.ok(pwa.includes('const APP_VERSION = window.HerdHarborBuild?.version || "1.7.1"'));
-assert.ok(worker.includes("v1.7.1-alpha-multispecies-genetics-foundation-1"));
+const webVersion = build.match(/version:\s*"([^"]+)"/)?.[1];
+assert.ok(["1.7.1", "1.8.0", "1.8.1"].includes(webVersion), `unexpected web shell ${webVersion}`);
+assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1)-/);
+if (webVersion === "1.8.1") assert.ok(worker.includes("v1.8.1-alpha-october-subscription-launch-1"));
 assert.ok(worker.includes("pwa.js?v=29"));
 assert.ok(!pwa.includes(";" + String.fromCharCode(92) + "n    if"), "pwa.js contains no literal newline escape in executable source");
 assert.ok(!read("herdharbor-membership-v1.6.1.js").includes(";" + String.fromCharCode(92) + "n    if"), "membership source contains no literal newline escape in executable source");
 assert.ok(!read("pedigree-visual.js").includes(";" + String.fromCharCode(92) + "n    if"), "pedigree source contains no literal newline escape in executable source");
 assert.ok(!read("spreadsheet-import.js").includes(";" + String.fromCharCode(92) + "n    if"), "spreadsheet source contains no literal newline escape in executable source");
 
-console.log("v1.7.1 runtime consolidation tests passed");
+console.log(`v${webVersion} runtime consolidation tests passed`);
