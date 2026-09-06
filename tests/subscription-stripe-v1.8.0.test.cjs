@@ -10,23 +10,23 @@ const headerHelper = read('subscription-header-copy-v1.8.0.js');
 const visibilityHelper = read('subscription-tab-visibility-v1.8.0.js');
 const build = read('herdharbor-build.js');
 const sw = read('service-worker.js');
-const migration = read('supabase/v1.8.0-stripe-billing.sql');
+const correction = read('supabase/v1.8.0-stripe-price-id-correction.sql');
 const billing = read('supabase/functions/subscription-billing/index.ts');
 const webhook = read('supabase/functions/subscription-webhook/index.ts');
 
 const priceIds = [
-  'price_1UCOktGIRukEX5RKPo6jm6Vr',
-  'price_1UCOwAGIRukEX5RK34xr9dQS',
-  'price_1UCOjrGIRukEX5RK9my06yUP',
-  'price_1UCOvPGIRukEX5RKJA05IDmb',
-  'price_1UCOuYGIRukEX5RKo6LUWZq3',
-  'price_1UCOnnGIRukEX5RK36kjzNZ6'
+  'price_1UCOktGlRukEX5RKPo6jm6Vr',
+  'price_1UCOwAGlRukEX5RK34xr9dQS',
+  'price_1UCOjrGlRukEX5RK9my06yUP',
+  'price_1UCOvPGlRukEX5RKJA05lDmb',
+  'price_1UCOuYGlRukEX5RKo6LUWZq3',
+  'price_1UCOnnGlRukEX5RK36kjzNZ6'
 ];
 
-test('all six approved Stripe prices are allowlisted server-side', () => {
+test('all six verified live Stripe prices are allowlisted server-side', () => {
   for (const id of priceIds) {
     assert.match(billing, new RegExp(id));
-    assert.match(migration, new RegExp(id));
+    assert.match(correction, new RegExp(id));
   }
 });
 
@@ -150,7 +150,7 @@ test('webhook synchronizes subscription and payment lifecycle', () => {
 });
 
 test('build loads hardened Stripe adapter after existing subscription helpers', () => {
-  assert.match(build, /buildId:\s*"subscription-engine-7"/);
+  assert.match(build, /buildId:\s*"subscription-engine-8"/);
   assert.match(build, /subscription-tab-visibility-v1\.8\.0\.js\?v=3/);
   assert.match(build, /subscription-stripe-provider-v1\.8\.0\.js\?v=3/);
   const engine = build.indexOf('subscription-engine-v1.8.0.js');
@@ -161,7 +161,7 @@ test('build loads hardened Stripe adapter after existing subscription helpers', 
 });
 
 test('service worker covers the exact hardened subscription assets with network-first freshness', () => {
-  assert.match(sw, /herdharbor-shell-v1\.8\.0-alpha-subscription-engine-7/);
+  assert.match(sw, /herdharbor-shell-v1\.8\.0-alpha-subscription-engine-8/);
   assert.match(sw, /subscription-tab-visibility-v1\.8\.0\.js\?v=3/);
   assert.match(sw, /subscription-stripe-provider-v1\.8\.0\.js\?v=3/);
   for (const asset of [
