@@ -31,8 +31,8 @@ const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
 // The web runtime has advanced to v1.8.0, while this audit intentionally
 // preserves the shipped v1.7.1 packaged/mobile and domain-engine contracts.
 assert.equal(version, "1.8.0");
-assert.equal(buildId, "subscription-engine-7");
-assert.match(build, /build:\s*"1\.8\.0-alpha-subscription-engine-7"/);
+assert.equal(buildId, "subscription-engine-8");
+assert.match(build, /build:\s*"1\.8\.0-alpha-subscription-engine-8"/);
 assert.equal(manifest.version, "1.7.1");
 assert.equal(pkg.version, "1.7.1");
 assert.equal(packageLock.version, "1.7.1");
@@ -45,7 +45,7 @@ assert.match(gradle, /versionName "1\.7\.1"/);
 assert.match(pwa, /Current release contract: const APP_VERSION = "1\.7\.1"/);
 assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "1\.7\.1"/);
 assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "multispecies-genetics-foundation-1"/);
-assert.match(worker, /herdharbor-shell-v1\.8\.0-alpha-subscription-engine-7/);
+assert.match(worker, /herdharbor-shell-v1\.8\.0-alpha-subscription-engine-8/);
 assert.match(html, /herdharbor-build\.js\?v=1\.7\.1/);
 assert.match(html, /pwa\.js\?v=29/);
 assert.match(cloud, /version:\s*"1\.7\.1"/);
