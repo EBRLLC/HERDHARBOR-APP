@@ -32,22 +32,24 @@ Register the webhook URL above for:
 
 Use the signing secret generated for that exact Stripe webhook endpoint as `STRIPE_WEBHOOK_SIGNING_SECRET`.
 
-## Approved recurring prices
+## Verified live recurring prices
+
+These IDs were verified directly against the connected HerdHarbor Stripe live account. Stripe IDs are case-sensitive; lowercase `l` characters must not be changed to uppercase `I`.
 
 | Plan | Interval | Amount | Stripe Price ID |
 | --- | --- | ---: | --- |
-| Founder Member | Monthly | $9.99 | `price_1UCOktGIRukEX5RKPo6jm6Vr` |
-| Founder Member | Yearly | $110.00 | `price_1UCOwAGIRukEX5RK34xr9dQS` |
-| Member | Monthly | $14.99 | `price_1UCOjrGIRukEX5RK9my06yUP` |
-| Member | Yearly | $150.00 | `price_1UCOvPGIRukEX5RKJA05IDmb` |
-| HerdHarbor Business | Monthly | $49.99 | `price_1UCOuYGIRukEX5RKo6LUWZq3` |
-| HerdHarbor Business | Yearly | $550.00 | `price_1UCOnnGIRukEX5RK36kjzNZ6` |
+| Founder Member | Monthly | $9.99 | `price_1UCOktGlRukEX5RKPo6jm6Vr` |
+| Founder Member | Yearly | $110.00 | `price_1UCOwAGlRukEX5RK34xr9dQS` |
+| Member | Monthly | $14.99 | `price_1UCOjrGlRukEX5RK9my06yUP` |
+| Member | Yearly | $150.00 | `price_1UCOvPGlRukEX5RKJA05lDmb` |
+| HerdHarbor Business | Monthly | $49.99 | `price_1UCOuYGlRukEX5RKo6LUWZq3` |
+| HerdHarbor Business | Yearly | $550.00 | `price_1UCOnnGlRukEX5RK36kjzNZ6` |
 
 The billing Edge Function uses a server-side allowlist. A browser request cannot substitute an arbitrary Stripe Price ID.
 
 ## Activation order
 
-1. Confirm whether the six Stripe prices are Test mode or Live mode prices.
+1. Confirm the six Stripe prices are in the intended mode and match the server allowlist.
 2. Set the matching Stripe secret key in Supabase project secrets.
 3. Register the webhook endpoint in the same Stripe mode.
 4. Copy that endpoint's signing secret into Supabase project secrets.
