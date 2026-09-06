@@ -1,6 +1,6 @@
 {
   "name": "herdharbor-monitoring",
-  "version": "1.8.1",
+  "version": "1.7.1",
   "private": true,
   "description": "HerdHarbor Alpha v1.8.1 October subscription launch policy on top of the standalone v1.8.0 subscription engine",
   "scripts": {
