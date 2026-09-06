@@ -1,8 +1,8 @@
 {
   "name": "herdharbor-monitoring",
-  "version": "1.7.1",
+  "version": "1.8.1",
   "private": true,
-  "description": "HerdHarbor Alpha v1.7.1 stable foundations with Phase 1 animal-first workflow",
+  "description": "HerdHarbor Alpha v1.8.1 October subscription launch policy on top of the standalone v1.8.0 subscription engine",
   "scripts": {
     "test": "node --test tests/*.test.cjs",
     "build:monitoring": "node scripts/build-monitoring.mjs",
@@ -15,7 +15,8 @@
     "test:phase2": "node --test tests/rabbit-genetics-v1.6.1.test.cjs tests/genetics-release-contract-v1.6.5.test.cjs tests/phase2-release-v1.6.1.test.cjs",
     "test:phase3": "node --test tests/standards-phase3.test.cjs tests/multispecies-genetics-phase3.test.cjs tests/phase3-integration.test.cjs tests/standards-v1.7.0.test.cjs",
     "test:completion": "node --test tests/completion-release-contract-v1.6.7.test.cjs tests/current-release-reference-audit-v1.7.1.test.cjs",
-    "test:v1.7.1": "node --test tests/multispecies-genetics-v1.7.1.test.cjs tests/multispecies-genetics-ui-v1.7.1.test.cjs tests/species-context-hardlock-v1.7.1.test.cjs tests/health-intelligence-v1.7.1.test.cjs tests/v1.7.1-stability-hotfix.test.cjs tests/workflow-phase1-v1.7.1.test.cjs tests/phase3-integration.test.cjs tests/current-release-reference-audit-v1.7.1.test.cjs"
+    "test:v1.7.1": "node --test tests/multispecies-genetics-v1.7.1.test.cjs tests/multispecies-genetics-ui-v1.7.1.test.cjs tests/species-context-hardlock-v1.7.1.test.cjs tests/health-intelligence-v1.7.1.test.cjs tests/v1.7.1-stability-hotfix.test.cjs tests/workflow-phase1-v1.7.1.test.cjs tests/phase3-integration.test.cjs tests/current-release-reference-audit-v1.7.1.test.cjs",
+    "test:v1.8.1": "node --test tests/subscription-engine-v1.8.0.test.cjs tests/subscription-launch-v1.8.1.test.cjs tests/mobile-viewport-hotfix-v1.8.0.test.cjs tests/app-script-compile.test.cjs tests/auth-signin-deadlock-v1.6.7.test.cjs"
   },
   "dependencies": {
     "@sentry/browser": "10.71.0"
