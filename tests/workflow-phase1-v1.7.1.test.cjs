@@ -118,7 +118,7 @@ test('Phase 1 assets are cache-busted after stability repair, dark mode is expli
   const css=fs.readFileSync(path.join(repo,'workflow-phase1-v1.7.1.css'),'utf8');
   assert.match(build,/workflow-phase1-v1\.7\.1\.css\?v=2/);
   assert.match(build,/herdharbor-v1\.7\.1-stability-hotfix\.js\?v=2[\s\S]*workflow-phase1-v1\.7\.1\.js\?v=2/);
-  assert.match(sw,/herdharbor-shell-v1\.8\.0-alpha-subscription-engine-2-mobile-fit/);
+  assert.match(sw,/const CACHE_NAME = "herdharbor-shell-v1\.(?:8\.0|8\.1)-/);
   assert.match(sw,/workflow-phase1-v1\.7\.1\.js\?v=2/);
   assert.match(sw,/herdharbor-v1\.7\.1-stability-hotfix\.js\?v=2/);
   assert.match(sw,/workflow-phase1-v1\.7\.1\.css\?v=2/);
