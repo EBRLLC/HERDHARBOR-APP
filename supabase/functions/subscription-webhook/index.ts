@@ -12,6 +12,10 @@ const iso = (seconds: unknown) => Number.isFinite(Number(seconds)) && Number(sec
   ? new Date(Number(seconds) * 1000).toISOString()
   : null;
 const stringId = (value: unknown) => typeof value === "string" ? value : (value && typeof value === "object" && "id" in value ? String((value as { id?: unknown }).id || "") : "");
+const timeValue = (value: unknown) => {
+  const parsed = value ? new Date(String(value)).getTime() : 0;
+  return Number.isFinite(parsed) ? parsed : 0;
+};
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed." }, 405);
@@ -42,29 +46,63 @@ Deno.serve(async (req) => {
   }
 
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const eventOccurredAt = iso(event.created) || new Date().toISOString();
 
-  // Stripe retries webhook deliveries. A unique provider event id makes every
-  // handler below safe to receive the same event more than once.
-  const { data: claimed, error: claimError } = await admin
+  // Stripe retries deliveries and can deliver events out of order. A processed
+  // event is final, a currently-processing duplicate is ignored, and a failed
+  // event is explicitly reclaimed so a transient database/network error cannot
+  // leave subscription state stale forever.
+  let eventRowId: string | undefined;
+  const { data: priorEvent, error: priorError } = await admin
     .from("subscription_events")
-    .insert({
-      provider: "stripe",
-      provider_event_id: event.id,
-      event_type: event.type,
-      event_status: "processing",
-      occurred_at: iso(event.created),
-      payload: { object_id: stringId((event.data.object as { id?: unknown })?.id), livemode: event.livemode }
-    })
-    .select("id")
+    .select("id,event_status")
+    .eq("provider", "stripe")
+    .eq("provider_event_id", event.id)
     .maybeSingle();
-
-  if (claimError) {
-    if (claimError.code === "23505") return json({ received: true, duplicate: true });
-    console.error("stripe-webhook-claim", claimError);
-    return json({ error: "Could not claim webhook event." }, 500);
+  if (priorError) {
+    console.error("stripe-webhook-prior-event", priorError);
+    return json({ error: "Could not inspect webhook event state." }, 500);
   }
 
-  const eventRowId = claimed?.id;
+  if (priorEvent?.id) {
+    if (priorEvent.event_status === "processed") return json({ received: true, duplicate: true });
+    if (priorEvent.event_status === "processing") return json({ received: true, duplicate: true, processing: true });
+    const { data: reclaimed, error: reclaimError } = await admin
+      .from("subscription_events")
+      .update({ event_status: "processing", processed_at: null })
+      .eq("id", priorEvent.id)
+      .eq("event_status", "failed")
+      .select("id")
+      .maybeSingle();
+    if (reclaimError) {
+      console.error("stripe-webhook-reclaim", reclaimError);
+      return json({ error: "Could not reclaim failed webhook event." }, 500);
+    }
+    if (!reclaimed?.id) return json({ received: true, duplicate: true });
+    eventRowId = reclaimed.id;
+  } else {
+    const { data: claimed, error: claimError } = await admin
+      .from("subscription_events")
+      .insert({
+        provider: "stripe",
+        provider_event_id: event.id,
+        event_type: event.type,
+        event_status: "processing",
+        occurred_at: eventOccurredAt,
+        payload: { object_id: stringId((event.data.object as { id?: unknown })?.id), livemode: event.livemode }
+      })
+      .select("id")
+      .maybeSingle();
+
+    if (claimError) {
+      // A concurrent delivery may have won the unique-key race after our prior
+      // lookup. Treat only that race as a duplicate; all other failures retry.
+      if (claimError.code === "23505") return json({ received: true, duplicate: true });
+      console.error("stripe-webhook-claim", claimError);
+      return json({ error: "Could not claim webhook event." }, 500);
+    }
+    eventRowId = claimed?.id;
+  }
 
   async function lookupPrice(priceId: string) {
     if (!priceId) return null;
@@ -103,13 +141,26 @@ Deno.serve(async (req) => {
     const userFromMetadata = String(raw.metadata?.herdharbor_user_id || "").trim();
     const existingResult = await admin
       .from("subscriptions")
-      .select("user_id")
+      .select("id,user_id,plan_id,status,provider_updated_at")
       .eq("provider", "stripe")
       .eq("provider_subscription_id", subscription.id)
       .maybeSingle();
     if (existingResult.error) throw existingResult.error;
     const userId = userFromMetadata || existingResult.data?.user_id || "";
     if (!userId) throw new Error(`Stripe subscription ${subscription.id} is missing a HerdHarbor user id.`);
+
+    const eventTime = timeValue(eventOccurredAt);
+    const storedTime = timeValue(existingResult.data?.provider_updated_at);
+    if (existingResult.data?.id && storedTime > eventTime) {
+      // A newer Stripe event was already applied. Mark this event processed but
+      // never roll the account back to older subscription data.
+      return {
+        userId,
+        subscriptionRowId: existingResult.data.id,
+        planId: existingResult.data.plan_id,
+        status: existingResult.data.status
+      };
+    }
 
     const customerId = stringId(raw.customer);
     const status = String(raw.status || "incomplete");
@@ -132,7 +183,7 @@ Deno.serve(async (req) => {
       trial_ends_at: iso(raw.trial_end),
       cancel_at_period_end: raw.cancel_at_period_end === true,
       canceled_at: iso(raw.canceled_at),
-      provider_updated_at: new Date().toISOString(),
+      provider_updated_at: eventOccurredAt,
       updated_at: new Date().toISOString(),
       metadata: { stripe_price_id: priceId, livemode: event.livemode }
     };
@@ -200,7 +251,7 @@ Deno.serve(async (req) => {
           status: "paid",
           description: "HerdHarbor subscription payment",
           invoice_url: raw.hosted_invoice_url || null,
-          occurred_at: iso(raw.status_transitions?.paid_at) || new Date().toISOString(),
+          occurred_at: iso(raw.status_transitions?.paid_at) || eventOccurredAt,
           metadata: { stripe_invoice_id: invoice.id, livemode: event.livemode }
         }, { onConflict: "provider,provider_payment_id" });
         if (error) throw error;
@@ -210,7 +261,11 @@ Deno.serve(async (req) => {
       const invoice = event.data.object as Stripe.Invoice;
       const invoiceContext = await resolveInvoiceContext(invoice);
       if (invoiceContext) {
-        await admin.from("subscriptions").update({ status: "past_due", updated_at: new Date().toISOString() }).eq("id", invoiceContext.id);
+        const { error: updateError } = await admin
+          .from("subscriptions")
+          .update({ status: "past_due", updated_at: new Date().toISOString() })
+          .eq("id", invoiceContext.id);
+        if (updateError) throw updateError;
         await accessStatus(invoiceContext.user_id, "past_due", invoiceContext.plan_id);
         context = { userId: invoiceContext.user_id, subscriptionRowId: invoiceContext.id, planId: invoiceContext.plan_id, status: "past_due" };
       }
