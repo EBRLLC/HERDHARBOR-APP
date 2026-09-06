@@ -27,19 +27,26 @@ const releaseNotes = read("RELEASE_NOTES-v1.7.1.md");
 const version = build.match(/version:\s*"([^"]+)"/)?.[1];
 const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
 
-// This file originated as the v1.7.1 current-release audit. v1.8.0 is now the
-// web release, while v1.7.1 remains the authoritative domain/genetics foundation.
-// Keep guarding those inherited contracts without falsely requiring the entire
-// application shell to still identify itself as v1.7.1.
-assert.ok(["1.7.1", "1.8.0"].includes(version), `unexpected current web release ${version}`);
+// This file originated as the v1.7.1 current-release audit. v1.8.x now owns
+// the web shell, while v1.7.1 remains the authoritative domain/genetics
+// foundation. Keep guarding those inherited contracts without falsely
+// requiring the entire application shell to still identify itself as v1.7.1.
+assert.ok(["1.7.1", "1.8.0", "1.8.1"].includes(version), `unexpected current web release ${version}`);
 if (version === "1.7.1") {
   assert.equal(buildId, "multispecies-genetics-foundation-1");
   assert.match(build, /build:\s*"1\.7\.1-alpha-multispecies-genetics-foundation-1"/);
-} else {
+} else if (version === "1.8.0") {
   assert.match(buildId, /^subscription-engine-/);
   assert.match(build, /build:\s*"1\.8\.0-alpha-subscription-engine-/);
   assert.match(build, /subscription-engine-v1\.8\.0\.js\?v=1/);
   assert.match(worker, /herdharbor-shell-v1\.8\.0/);
+} else {
+  assert.match(buildId, /^october-subscription-launch-/);
+  assert.match(build, /build:\s*"1\.8\.1-alpha-october-subscription-launch-/);
+  assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=1/);
+  assert.match(build, /subscription-engine-v1\.8\.0\.js\?v=1/);
+  assert.match(worker, /herdharbor-shell-v1\.8\.1/);
+  assert.match(worker, /subscription-launch-v1\.8\.1\.js\?v=1/);
 }
 
 // Native/package identities have their own release cadence. They must remain
