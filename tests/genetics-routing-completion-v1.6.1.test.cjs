@@ -28,13 +28,16 @@ test("visible genetics actions are captured and routed by selected animal id", (
 test("current web release and PWA cache move together while preserving the v1.7.1 genetics foundation", () => {
   const version = build.match(/version:\s*"([^"]+)"/)?.[1];
   const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
-  assert.ok(["1.7.1", "1.8.0"].includes(version), `unexpected web release ${version}`);
+  assert.ok(["1.7.1", "1.8.0", "1.8.1"].includes(version), `unexpected web release ${version}`);
   if (version === "1.7.1") {
     assert.equal(buildId, "multispecies-genetics-foundation-1");
     assert.match(worker, /herdharbor-shell-v1\.7\.1-alpha-multispecies-genetics-foundation-1/);
-  } else {
+  } else if (version === "1.8.0") {
     assert.match(buildId, /^subscription-engine-/);
     assert.match(worker, /herdharbor-shell-v1\.8\.0/);
+  } else {
+    assert.match(buildId, /^october-subscription-launch-/);
+    assert.match(worker, /herdharbor-shell-v1\.8\.1/);
   }
   assert.match(worker, /herdharbor-release-v1\.6\.1\.js\?v=1\.7\.1/);
   assert.match(worker, /multispecies-genetics-v1\.7\.1\.js\?v=1\.7\.1/);

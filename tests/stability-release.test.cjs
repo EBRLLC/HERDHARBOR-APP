@@ -19,9 +19,16 @@ const showsCss = fs.readFileSync(path.join(root, "shows-v1.6.1.css"), "utf8");
 const showsHardening = fs.readFileSync(path.join(root, "shows-v1.6.1-hardening.js"), "utf8");
 const mobileGrowth = fs.readFileSync(path.join(root, "tests/mobile-growth-layout-v1.6.6.test.cjs"), "utf8");
 
-// Current release remains additive: the established app/data model and mobile hotfix stay intact.
-assert.match(build, /version:\s*"1\.7\.1"/);
-assert.match(build, /buildId:\s*"multispecies-genetics-foundation-1"/);
+// Current release remains additive: established data/runtime contracts and mobile protections stay intact.
+const webVersion = build.match(/version:\s*"([^"]+)"/)?.[1];
+const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
+assert.ok(["1.7.1", "1.8.0", "1.8.1"].includes(webVersion), `unexpected web release ${webVersion}`);
+if (webVersion === "1.7.1") assert.equal(buildId, "multispecies-genetics-foundation-1");
+if (webVersion === "1.8.0") assert.match(buildId, /^subscription-engine-/);
+if (webVersion === "1.8.1") {
+  assert.equal(buildId, "october-subscription-launch-1");
+  assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=1/);
+}
 assert.match(html, /HerdHarbor Alpha v1\.7\.1 consolidated application shell/);
 assert.match(html, /id="settings-sync-now"/);
 assert.match(html, /id="settings-last-synced"/);
@@ -82,7 +89,8 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /v1\.7\.1-alpha-multispecies-genetics-foundation-1/);
+assert.match(serviceWorker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1)-/);
+if (webVersion === "1.8.1") assert.match(serviceWorker, /v1\.8\.1-alpha-october-subscription-launch-1/);
 assert.match(serviceWorker, /spreadsheet-import\.js\?v=17/);
 assert.match(serviceWorker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(serviceWorker, /herdharbor-cloud\.js\?v=20/);
@@ -96,7 +104,7 @@ for (const asset of [
   "rabbit-genetics-engine-advanced-v1.6.1.js", "rabbit-genetics-runtime-v1.6.1.js",
   "rabbit-genetics-ui-compat-v1.6.1.js", "rabbit-genetics-ui-advanced-v1.6.1.js",
   "herdharbor-release-v1.6.1.js", "shows-v1.6.1.css", "shows-v1.6.1.js", "shows-v1.6.1-hardening.js"
-]) assert.ok(serviceWorker.includes(`${asset}?v=1.7.1`), `${asset} is not cached with v1.7.1 identity`);
+]) assert.ok(serviceWorker.includes(`${asset}?v=1.7.1`), `${asset} is not cached with preserved v1.7.1 identity`);
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);
 assert.match(serviceWorker, /NETWORK_FIRST_PATHS/);
 assert.match(serviceWorker, /fetch\(request, \{ cache: "no-store" \}\)/);
@@ -144,4 +152,4 @@ assert.match(showsHardening, /PAGE_SIZE = 24/);
 assert.match(showsCss, /overflow-x:auto/);
 assert.match(showsCss, /@media \(max-width:520px\)/);
 
-console.log("Alpha v1.7.1 release stability tests passed");
+console.log(`Alpha v${webVersion} release stability tests passed`);

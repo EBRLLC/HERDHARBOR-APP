@@ -3,12 +3,12 @@
   root.HerdHarborBuild = Object.freeze({
     product: "HerdHarbor",
     channel: "Alpha",
-    version: "1.8.0",
-    buildId: "subscription-engine-6",
-    build: "1.8.0-alpha-subscription-engine-6"
+    version: "1.8.1",
+    buildId: "october-subscription-launch-1",
+    build: "1.8.1-alpha-october-subscription-launch-1"
   });
 
-  // Alpha v1.8.0 adds the standalone Subscription Engine while preserving the v1.7.1 stable domain engines, Phase 1 workflow, and v1.7.0 ARBA layers.
+  // Alpha v1.8.1 establishes the September launch trial and October 1 subscription hard-launch policy while preserving the v1.8.0 subscription engine and stable domain engines.
   if (!root.document) return;
   const target = document.head || document.documentElement;
   function addStyle(id, href) {
@@ -46,9 +46,11 @@
       addScript("hh-phase1-workflow-v171", "workflow-phase1-v1.7.1.js?v=2");
     });
   });
-  addScript("hh-subscription-engine-v180", "subscription-engine-v1.8.0.js?v=1", () => {
-    addScript("hh-subscription-tab-visibility-v180", "subscription-tab-visibility-v1.8.0.js?v=2", () => {
-      addScript("hh-subscription-header-copy-v180", "subscription-header-copy-v1.8.0.js?v=2");
+  addScript("hh-subscription-launch-v181", "subscription-launch-v1.8.1.js?v=1", () => {
+    addScript("hh-subscription-engine-v180", "subscription-engine-v1.8.0.js?v=1", () => {
+      addScript("hh-subscription-tab-visibility-v180", "subscription-tab-visibility-v1.8.0.js?v=2", () => {
+        addScript("hh-subscription-header-copy-v180", "subscription-header-copy-v1.8.0.js?v=2");
+      });
     });
   });
 })(typeof globalThis !== "undefined" ? globalThis : this);

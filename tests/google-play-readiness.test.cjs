@@ -36,7 +36,10 @@ assert.match(appGradle, /targetSdkVersion 36/);
 assert.match(appGradle, /versionCode 14/);
 assert.match(appGradle, /versionName "1\.7\.1"/);
 assert.match(appGradle, /https:\/\/app\.herdharbor\.com\/manifest\.json/);
-assert.match(worker, /v1\.7\.1-alpha-multispecies-genetics-foundation-1/);
+// The native/TWA package remains v1.7.1 while the web shell may advance independently.
+// Verify the current service worker has a valid HerdHarbor shell identity and still
+// preserves every native-facing v1.7.1 domain asset required by the installed TWA.
+assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1)-/);
 assert.match(worker, /rabbit-records-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /shows-v1\.6\.1\.css\?v=1\.7\.1/);
@@ -73,4 +76,4 @@ assert.ok(fs.statSync(path.join(root, "android/store_icon.png")).size <= 1024 * 
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/app-icon-512.png")));
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/feature-graphic-1024x500.png")));
 
-console.log("Google Play Alpha v1.7.1 release readiness tests passed");
+console.log("Google Play Alpha v1.7.1 native readiness tests passed against current web shell");

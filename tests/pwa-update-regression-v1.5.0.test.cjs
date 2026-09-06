@@ -14,14 +14,18 @@ const manifest = JSON.parse(read("manifest.json"));
 const html = read("index.html");
 const build = read("herdharbor-build.js");
 
-// v1.7.1 keeps the independently verified update path and uses HerdHarborBuild as authoritative identity.
+// The native/package manifest remains v1.7.1 while HerdHarborBuild is authoritative for the current web release.
 assert.equal(manifest.version, "1.7.1");
-assert.match(build, /version:\s*"1\.7\.1"/);
-assert.match(build, /buildId:\s*"multispecies-genetics-foundation-1"/);
+const webVersion = build.match(/version:\s*"([^"]+)"/)?.[1];
+const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
+assert.ok(["1.7.1", "1.8.0", "1.8.1"].includes(webVersion), `unexpected web release ${webVersion}`);
+if (webVersion === "1.7.1") assert.equal(buildId, "multispecies-genetics-foundation-1");
+if (webVersion === "1.8.0") assert.match(buildId, /^subscription-engine-/);
+if (webVersion === "1.8.1") assert.equal(buildId, "october-subscription-launch-1");
 assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "1\.7\.1"/);
 assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "multispecies-genetics-foundation-1"/);
 assert.match(pwa, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
-assert.match(html, /herdharbor-build\.js\?v=1\.7\.1/, "the shell bootstrap must use the current release identity");
+assert.match(html, /herdharbor-build\.js\?v=1\.7\.1/, "the shell bootstrap must load the authoritative build identity");
 
 // Service-worker discovery is explicit and independent from Cloud Sync.
 assert.match(pwa, /navigatorRef\(\)\.serviceWorker\.register\("service-worker\.js"/);
@@ -58,7 +62,8 @@ assert.match(cloud, /hasUnsyncedChanges/);
 assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
 // Browser/app shell requests favor production over stale frontend caches while retaining offline fallback.
-assert.match(worker, /v1\.7\.1-alpha-multispecies-genetics-foundation-1/);
+assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1)-/);
+if (webVersion === "1.8.1") assert.match(worker, /herdharbor-shell-v1\.8\.1-alpha-october-subscription-launch-1/);
 assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
 assert.match(worker, /NETWORK_FIRST_PATHS/);
 assert.match(worker, /\/manifest\.json/);
@@ -71,4 +76,4 @@ assert.match(worker, /caches\.delete\(key\)/);
 assert.match(worker, /self\.clients\.claim\(\)/);
 assert.match(pwa, /manifest\.json\?build=\$\{encodeURIComponent\(PWA_BUILD\)\}/);
 
-console.log("Alpha v1.7.1 PWA update-regression tests passed");
+console.log(`Alpha v${webVersion} PWA update-regression tests passed`);

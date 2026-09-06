@@ -1,4 +1,4 @@
-name: Alpha v1.8.0 monitored production Pages publish
+name: Alpha v1.8.1 monitored production Pages publish
 
 on:
   push:
@@ -64,12 +64,9 @@ jobs:
           node-version: 22
       - name: Install pinned monitoring dependencies
         run: npm ci --no-audit --no-fund
-      - name: Verify v1.8.0 web release and mobile hotfix contract
+      - name: Verify v1.8.1 subscription launch and web regression contract
         run: |
-          node --test tests/subscription-engine-v1.8.0.test.cjs
-          node --test tests/mobile-viewport-hotfix-v1.8.0.test.cjs
-          node --test tests/app-script-compile.test.cjs
-          node --test tests/auth-signin-deadlock-v1.6.7.test.cjs
+          npm run test:v1.8.1
           node --test tests/workflow-phase1-v1.7.1.test.cjs
           npm run test:health
           npm run test:genetics
@@ -106,9 +103,12 @@ jobs:
           test -s _site/health-intelligence-v1.7.1.js
           test -s _site/health-intelligence-v1.7.1.css
           test -s _site/herdharbor-v1.7.1-stability-hotfix.js
+          test -s _site/subscription-launch-v1.8.1.js
           test -s _site/subscription-engine-v1.8.0.js
           test -s _site/subscription-engine-v1.8.0.css
           test -s _site/mobile-viewport-hotfix-v1.8.0.css
+          grep -q 'version: "1.8.1"' _site/herdharbor-build.js
+          grep -q '2026-10-01T00:00:00-04:00' _site/subscription-launch-v1.8.1.js
           ! grep -q '"dsn": ""' _site/herdharbor-monitoring-config.js
           grep -q '"environment": "production"' _site/herdharbor-monitoring-config.js
           grep -q '"release": "HerdHarbor@1.7.1"' _site/herdharbor-monitoring-config.js
