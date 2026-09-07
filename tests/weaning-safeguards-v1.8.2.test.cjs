@@ -1,5 +1,7 @@
 const test=require("node:test");
 const assert=require("node:assert/strict");
+const fs=require("node:fs");
+const path=require("node:path");
 const Core=require("../weaning-safeguards-core-v1.8.2.js");
 
 function fixture(){
@@ -61,4 +63,18 @@ test("deceased offspring cannot be marked weaned",()=>{
   const result=Core.weanEligibility(state,"l1","k3","2026-10-10");
   assert.equal(result.allowed,false);
   assert.match(result.reason,/Deceased/);
+});
+
+test("litter workspace integration loads the safeguard UI and styling",()=>{
+  const root=path.resolve(__dirname,"..");
+  const integration=fs.readFileSync(path.join(root,"breeding-litter-workspace-integration-v1.8.2.js"),"utf8");
+  const ui=fs.readFileSync(path.join(root,"weaning-safeguards-v1.8.2.js"),"utf8");
+  const css=fs.readFileSync(path.join(root,"weaning-safeguards-v1.8.2.css"),"utf8");
+  assert.match(integration,/weaning-safeguards-core-v1\.8\.2\.js\?v=1/);
+  assert.match(integration,/weaning-safeguards-v1\.8\.2\.js\?v=1/);
+  assert.match(integration,/weaning-safeguards-v1\.8\.2\.css\?v=1/);
+  assert.match(ui,/data-hh-ws-unwean/);
+  assert.match(ui,/data-hh-ws-lock-date/);
+  assert.match(ui,/data-hh-bw-weaning-form/);
+  assert.match(css,/hh-ws-age-locked/);
 });
