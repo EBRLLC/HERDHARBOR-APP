@@ -1,0 +1,64 @@
+name: Alpha v1.8.1 production acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_membership:
+        description: Run read-only membership/RLS acceptance with dedicated test accounts
+        required: true
+        default: false
+        type: boolean
+      run_sentry:
+        description: Send one synthetic-only Sentry acceptance event
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+env:
+  HERDHARBOR_MONITORING_ENVIRONMENT: production
+  HERDHARBOR_BUILD_ID: v1.8.1-production-acceptance
+
+jobs:
+  production-acceptance:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify reviewed Alpha v1.8.1 release contract before production acceptance
+        run: |
+          npm ci --no-audit --no-fund
+          npm run test:release
+          npm run test:v1.8.1
+
+      - name: Run membership/RLS production acceptance
+        if: ${{ inputs.run_membership }}
+        env:
+          HERDHARBOR_SUPABASE_URL: ${{ secrets.HERDHARBOR_SUPABASE_URL }}
+          HERDHARBOR_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.HERDHARBOR_SUPABASE_PUBLISHABLE_KEY }}
+          HH_ACCEPTANCE_OWNER_EMAIL: ${{ secrets.HH_ACCEPTANCE_OWNER_EMAIL }}
+          HH_ACCEPTANCE_OWNER_PASSWORD: ${{ secrets.HH_ACCEPTANCE_OWNER_PASSWORD }}
+          HH_ACCEPTANCE_USER_EMAIL: ${{ secrets.HH_ACCEPTANCE_USER_EMAIL }}
+          HH_ACCEPTANCE_USER_PASSWORD: ${{ secrets.HH_ACCEPTANCE_USER_PASSWORD }}
+          HH_ACCEPTANCE_NEW_USER_EMAIL: ${{ secrets.HH_ACCEPTANCE_NEW_USER_EMAIL }}
+          HH_ACCEPTANCE_NEW_USER_PASSWORD: ${{ secrets.HH_ACCEPTANCE_NEW_USER_PASSWORD }}
+          HH_ACCEPTANCE_JUNIOR_EMAIL: ${{ secrets.HH_ACCEPTANCE_JUNIOR_EMAIL }}
+          HH_ACCEPTANCE_JUNIOR_PASSWORD: ${{ secrets.HH_ACCEPTANCE_JUNIOR_PASSWORD }}
+        run: node scripts/membership-production-acceptance.mjs
+
+      - name: Run synthetic-only Sentry production acceptance
+        if: ${{ inputs.run_sentry }}
+        env:
+          HERDHARBOR_SENTRY_DSN: ${{ secrets.HERDHARBOR_SENTRY_DSN }}
+        run: node scripts/sentry-production-acceptance.mjs
+
+      - name: Production acceptance summary
+        run: |
+          echo "Alpha v1.8.1 protected production acceptance finished."
+          echo "Membership acceptance requested: ${{ inputs.run_membership }}"
+          echo "Sentry acceptance requested: ${{ inputs.run_sentry }}"
