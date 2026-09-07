@@ -7,6 +7,9 @@ const CORS = {
   "Content-Type": "application/json; charset=utf-8"
 };
 
+const GENERAL_SEGMENT_ID = "bc11864d-34f0-46a8-beb9-29e41f6e51d8";
+const RESEND_API = "https://api.resend.com";
+
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: CORS });
 const clean = (value: unknown, max = 120) => typeof value === "string" ? value.trim().replace(/\s+/g, " ").slice(0, max) : "";
 const NAME_RE = /^[\p{L}\p{M}][\p{L}\p{M} .'’-]{0,79}$/u;
@@ -85,6 +88,74 @@ async function registrationStatus(admin: ReturnType<typeof createClient>, user: 
     riskStatus: data?.risk_status || "pending",
     usageType: data?.usage_type || null
   };
+}
+
+async function syncResendContact(
+  admin: ReturnType<typeof createClient>,
+  user: { id: string; email?: string | null },
+  registration: { firstName: string; lastName: string; usageType: string }
+) {
+  const managementKey = Deno.env.get("RESEND_MANAGEMENT_API_KEY") || "";
+  const email = String(user.email || "").trim().toLowerCase();
+  if (!managementKey || !email) return;
+
+  const { data: access, error: accessError } = await admin
+    .from("account_access")
+    .select("account_role,membership_tier,account_status")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (accessError) throw accessError;
+
+  const headers = {
+    "Authorization": `Bearer ${managementKey}`,
+    "Content-Type": "application/json"
+  };
+  const properties = {
+    membership_tier: access?.membership_tier || "junior",
+    account_role: access?.account_role || "user",
+    account_status: access?.account_status || "active",
+    usage_type: registration.usageType || "adult_self"
+  };
+  const lookup = await fetch(`${RESEND_API}/contacts/${encodeURIComponent(email)}`, { headers });
+
+  if (lookup.status === 404) {
+    const created = await fetch(`${RESEND_API}/contacts`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        email,
+        first_name: registration.firstName,
+        last_name: registration.lastName,
+        unsubscribed: false,
+        properties,
+        segments: [{ id: GENERAL_SEGMENT_ID }]
+      })
+    });
+    if (!created.ok) {
+      const detail = await created.text().catch(() => "");
+      throw new Error(`Resend contact create failed (${created.status}): ${detail.slice(0, 300)}`);
+    }
+    return;
+  }
+
+  if (!lookup.ok) {
+    const detail = await lookup.text().catch(() => "");
+    throw new Error(`Resend contact lookup failed (${lookup.status}): ${detail.slice(0, 300)}`);
+  }
+
+  const updated = await fetch(`${RESEND_API}/contacts/${encodeURIComponent(email)}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({
+      first_name: registration.firstName,
+      last_name: registration.lastName,
+      properties
+    })
+  });
+  if (!updated.ok) {
+    const detail = await updated.text().catch(() => "");
+    throw new Error(`Resend contact update failed (${updated.status}): ${detail.slice(0, 300)}`);
+  }
 }
 
 Deno.serve(async (req) => {
@@ -189,6 +260,12 @@ Deno.serve(async (req) => {
       updated_at: now
     });
     if (insertError) throw insertError;
+
+    try {
+      await syncResendContact(admin, user, { firstName, lastName, usageType });
+    } catch (syncError) {
+      console.warn("registration-profile: Resend audience sync failed without blocking registration", syncError);
+    }
 
     return json(await registrationStatus(admin, user, policy));
   } catch (error) {
