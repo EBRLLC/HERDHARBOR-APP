@@ -10,7 +10,7 @@
   const TERMINAL_BREEDING=new Set(["not pregnant","cancelled","canceled"]);
   const TERMINAL_ANIMAL=new Set(["sold","deceased","archived","ancestor only"]);
   const ACTIVE_SALE_STATUSES=new Set(["Draft","Reserved","Pending","Completed"]);
-  const RABBIT_DEFAULTS=Object.freeze({pregnancyCheckDay:12,gestationDay:31});
+  const RABBIT_DEFAULTS=Object.freeze({pregnancyCheckDay:12,gestationDay:31,weaningDay:42});
 
   const clean=value=>String(value==null?"":value).trim();
   const lower=value=>clean(value).toLowerCase();
@@ -37,6 +37,9 @@
   }
   function liveAvailable(litter={}){return Math.max(0,Number(litter.bornAlive||0)+Number(litter.fosteredIn||0)-Number(litter.fosteredOut||0)-Number(litter.lostBeforeWeaning||0));}
   function speciesForBreeding(state,breeding){return lower(animalById(state,breeding?.femaleId)?.species||animalById(state,breeding?.maleId)?.species);}
+  function speciesForLitter(state,litter){
+    return lower(animalById(state,litter?.damId)?.species||animalById(state,litter?.sireId)?.species||offspringForLitter(state,litter)[0]?.species);
+  }
   function speciesDefaults(species){return lower(species)==="rabbit"?RABBIT_DEFAULTS:null;}
 
   function derivedPregnancyCheckDate(state,breeding){
@@ -48,6 +51,26 @@
     const explicit=dateOnly(breeding?.dueDate);if(explicit)return explicit;
     const defaults=speciesDefaults(speciesForBreeding(state,breeding));
     return defaults&&breeding?.breedingDate?addDays(breeding.breedingDate,defaults.gestationDay):"";
+  }
+  function derivedWeanDate(state,litter){
+    const explicit=dateOnly(litter?.expectedWeanDate);if(explicit)return explicit;
+    const defaults=speciesDefaults(speciesForLitter(state,litter));
+    return defaults&&litter?.birthDate?addDays(litter.birthDate,defaults.weaningDay):"";
+  }
+  function explicitWeanedCount(state,litter){
+    return offspringForLitter(state,litter).filter(animal=>lower(animal.status)!=="deceased"&&Boolean(dateOnly(animal.weanedDate))).length;
+  }
+  function effectiveWeanedCount(state,litter){
+    const offspring=offspringForLitter(state,litter);
+    if(offspring.length)return explicitWeanedCount(state,litter);
+    return Math.max(0,Number(litter?.weaned||0));
+  }
+  function weaningComplete(state,litter,today=todayValue()){
+    const living=offspringForLitter(state,litter).filter(animal=>lower(animal.status)!=="deceased");
+    if(living.length)return living.every(animal=>Boolean(dateOnly(animal.weanedDate)));
+    const available=liveAvailable(litter);if(available<=0)return true;
+    if(Math.max(0,Number(litter?.weaned||0))<available)return false;
+    const expected=derivedWeanDate(state,litter);return !expected||dayDelta(today,expected)<=0;
   }
 
   function saleContainsAnimal(sale,animalId){return array(sale,"items").some(item=>String(item.animalId)===String(animalId));}
@@ -84,17 +107,17 @@
 
   function litterNextAction(state,litter,today=todayValue()){
     if(!litter)return null;
-    const offspring=offspringForLitter(state,litter),available=liveAvailable(litter),weaned=Math.max(0,Number(litter.weaned||0));
+    const offspring=offspringForLitter(state,litter),available=liveAvailable(litter),weaned=effectiveWeanedCount(state,litter);
     const subjectAnimalId=clean(litter.damId)||clean(litter.sireId);
-    if(available>0&&weaned<available){
-      const expected=dateOnly(litter.expectedWeanDate);const delta=expected?dayDelta(today,expected):null;
-      if(expected&&delta<=0)return action({kind:"wean-litter",label:deltaLabel("Weaning due",delta),shortLabel:"Wean litter",urgency:urgencyForDelta(delta),dueDate:expected,litterId:litter.id,breedingId:litter.breedingId,animalId:subjectAnimalId,tab:"weaning",reason:`${weaned} of ${available} living offspring are weaned.`});
+    const expected=derivedWeanDate(state,litter),delta=expected?dayDelta(today,expected):null;
+    if(available>0&&!weaningComplete(state,litter,today)){
+      if(expected&&delta<=0)return action({kind:"wean-litter",label:deltaLabel("Weaning due",delta),shortLabel:"Wean litter",urgency:urgencyForDelta(delta),dueDate:expected,litterId:litter.id,breedingId:litter.breedingId,animalId:subjectAnimalId,tab:"weaning",reason:`${weaned} of ${available} living offspring have an explicit weaning record.`});
       const unidentified=offspring.filter(animal=>lower(animal.status)!=="deceased"&&(lower(animal.sex)==="unknown"||(!clean(animal.tag)&&!clean(animal.tattoo))));
-      if(unidentified.length)return action({kind:"update-offspring",label:`Update offspring details (${unidentified.length})`,shortLabel:"Update offspring",litterId:litter.id,breedingId:litter.breedingId,animalId:subjectAnimalId,tab:"offspring",reason:"Sex and permanent ID can be entered for the litter from one screen."});
+      if(unidentified.length)return action({kind:"update-offspring",label:`Update offspring details (${unidentified.length})`,shortLabel:"Update offspring",dueDate:expected,litterId:litter.id,breedingId:litter.breedingId,animalId:subjectAnimalId,tab:"offspring",reason:"Sex and permanent ID can be entered for the litter from one screen. This does not mark the litter ready to wean."});
       return action({kind:"manage-litter",label:expected?deltaLabel("Weaning",delta):"Manage litter",shortLabel:"Manage litter",urgency:urgencyForDelta(delta),dueDate:expected,litterId:litter.id,breedingId:litter.breedingId,animalId:subjectAnimalId,tab:"offspring",reason:`${available} living offspring remain in the litter workflow.`});
     }
 
-    if(!evaluationComplete(state,litter))return action({kind:"evaluate-litter",label:"Evaluate offspring",shortLabel:"Evaluate offspring",litterId:litter.id,breedingId:litter.breedingId,animalId:subjectAnimalId,tab:"decisions",reason:"Weaning is complete. Decide which offspring are retained, for sale, or reserved."});
+    if(!evaluationComplete(state,litter))return action({kind:"evaluate-litter",label:"Evaluate offspring",shortLabel:"Evaluate offspring",litterId:litter.id,breedingId:litter.breedingId,animalId:subjectAnimalId,tab:"decisions",reason:"Weaning has been explicitly recorded. Decide which offspring are retained, for sale, or reserved."});
 
     const sales=salesForLitter(state,litter);
     const completedReady=sales.find(sale=>clean(sale.status)==="Completed"&&!transferForSale(state,sale));
@@ -159,5 +182,5 @@
     return{...state,litters:array(state,"litters").map(litter=>String(litter.id)!==String(litterId)?litter:{...litter,nextActionEvaluatedIds:unique([...array(litter,"nextActionEvaluatedIds"),...selected])})};
   }
 
-  return Object.freeze({VERSION,RABBIT_DEFAULTS,addDays,dayDelta,derivedPregnancyCheckDate,derivedDueDate,linkedLitter,offspringForLitter,liveAvailable,evaluationComplete,litterNextAction,breedingNextAction,latestBreedingForAnimal,animalNextAction,dashboardActions,markEvaluated});
+  return Object.freeze({VERSION,RABBIT_DEFAULTS,addDays,dayDelta,derivedPregnancyCheckDate,derivedDueDate,derivedWeanDate,linkedLitter,offspringForLitter,liveAvailable,explicitWeanedCount,effectiveWeanedCount,weaningComplete,evaluationComplete,litterNextAction,breedingNextAction,latestBreedingForAnimal,animalNextAction,dashboardActions,markEvaluated});
 });
