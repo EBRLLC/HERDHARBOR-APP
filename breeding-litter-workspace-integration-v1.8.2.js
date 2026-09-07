@@ -25,12 +25,16 @@
       const litterId=edit?.dataset?.editLitter;
       if(!litterId)return;
       const create=card.querySelector("[data-create-offspring]");
-      if(create){
-        create.dataset.hhBwManageLitter=litterId;
-        create.removeAttribute("data-create-offspring");
-        create.textContent="Manage litter";
-        create.classList.add("button-primary");
+      if(!create)return;
+      const existing=card.querySelector("[data-hh-bw-manage-litter]");
+      if(existing&&existing!==create){
+        create.remove();
+        return;
       }
+      create.dataset.hhBwManageLitter=litterId;
+      create.removeAttribute("data-create-offspring");
+      create.textContent="Manage litter";
+      create.classList.add("button-primary");
     });
   }
 
