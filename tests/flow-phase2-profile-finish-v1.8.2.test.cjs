@@ -41,6 +41,12 @@ test('an incoming direct transfer remains owned here while preserving provenance
   assert.equal(result.date,'2026-09-07');
 });
 
+test('sale action opens an existing sale, creates an eligible sale, and hides for historical records',()=>{
+  assert.deepEqual(Finish.saleActionForOwnership({saleId:'s1',canSell:false}),{kind:'open-sale',label:'Sale / transfer',saleId:'s1'});
+  assert.deepEqual(Finish.saleActionForOwnership({saleId:'',canSell:true}),{kind:'new-sale',label:'Sell / transfer',saleId:''});
+  assert.deepEqual(Finish.saleActionForOwnership({saleId:'',canSell:false}),{kind:'none',label:'',saleId:''});
+});
+
 test('salesForAnimal only returns sales containing the selected animal and newest first',()=>{
   const state={sales:[
     {id:'older',saleDate:'2026-01-01',items:[{animalId:'a1'}]},
