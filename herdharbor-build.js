@@ -8,7 +8,7 @@
     build: "1.8.1-alpha-october-subscription-launch-referrals-credits-4"
   });
 
-  // Alpha v1.8.1 establishes the September launch trial and October 1 subscription hard-launch policy while preserving the v1.8.0 subscription engine and stable domain engines. Direct member animal/pedigree transfers are layered in without changing the release identity.
+  // Alpha v1.8.1 establishes the September launch trial and October 1 subscription hard-launch policy while preserving the v1.8.0 subscription engine and stable domain engines. Direct member animal/pedigree transfers and the v1.8.2 Phase One flow cleanup are layered in without changing the current release identity.
   if (!root.document) return;
   const target = document.head || document.documentElement;
   function addStyle(id, href) {
@@ -32,6 +32,7 @@
   addStyle("hh-reference-guides-v170-style", "reference-guides-v1.7.0.css?v=1.7.1");
   addStyle("hh-health-intelligence-v171-style", "health-intelligence-v1.7.1.css?v=1.7.1");
   addStyle("hh-phase1-workflow-v171-style", "workflow-phase1-v1.7.1.css?v=2");
+  addStyle("hh-flow-phase1-v182-style", "flow-phase1-v1.8.2.css?v=1");
   addStyle("hh-subscription-engine-v180-style", "subscription-engine-v1.8.0.css?v=1");
   addStyle("hh-subscription-member-ui-v180-style", "subscription-member-ui-v1.8.0.css?v=1");
   addStyle("hh-mobile-viewport-v180-style", "mobile-viewport-hotfix-v1.8.0.css?v=1");
@@ -54,7 +55,9 @@
   addScript("hh-youth-guides-v170", "shows-youth-guides-v1.7.0.js?v=1.7.1");
   addScript("hh-health-intelligence-v171", "health-intelligence-v1.7.1.js?v=1.7.1", () => {
     addScript("hh-v171-stability-hotfix", "herdharbor-v1.7.1-stability-hotfix.js?v=2", () => {
-      addScript("hh-phase1-workflow-v171", "workflow-phase1-v1.7.1.js?v=2");
+      addScript("hh-phase1-workflow-v171", "workflow-phase1-v1.7.1.js?v=2", () => {
+        addScript("hh-flow-phase1-v182", "flow-phase1-v1.8.2.js?v=1");
+      });
     });
   });
   addScript("hh-subscription-launch-v181", "subscription-launch-v1.8.1.js?v=1", () => {
