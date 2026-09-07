@@ -68,7 +68,7 @@
                 addScript("hh-breeding-litter-workspace-integration-v182", "breeding-litter-workspace-integration-v1.8.2.js?v=1", () => {
                   addScript("hh-litter-sale-transfer-core-v182", "litter-sale-transfer-core-v1.8.2.js?v=1", () => {
                     addScript("hh-litter-sale-transfer-v182", "litter-sale-transfer-v1.8.2.js?v=1", () => {
-                      addScript("hh-breeding-next-action-core-v182", "breeding-next-action-core-v1.8.2.js?v=1", () => {
+                      addScript("hh-breeding-next-action-core-v182", "breeding-next-action-core-v1.8.2.js?v=2", () => {
                         addScript("hh-breeding-next-action-v182", "breeding-next-action-v1.8.2.js?v=1", () => {
                           addScript("hh-breeding-performance-core-v182", "breeding-performance-core-v1.8.2.js?v=1", () => {
                             addScript("hh-breeding-performance-dashboard-v182", "breeding-performance-dashboard-v1.8.2.js?v=1", () => {
