@@ -39,8 +39,11 @@
     box.className=`hh-next-workspace is-${tone(next.urgency)}`;box.innerHTML=actionHtml(next,true);return true;
   }
 
+  function todayTextWithoutEngine(panel){
+    if(!panel)return"";const clone=panel.cloneNode(true);clone.querySelector(".hh-next-dashboard")?.remove();return lower(clone.textContent);
+  }
   function alreadyInToday(panel,next){
-    const text=lower(panel?.textContent);const name=lower(next.animalName);if(!text||!name||!text.includes(name))return false;
+    const text=todayTextWithoutEngine(panel),name=lower(next.animalName);if(!text||!name||!text.includes(name))return false;
     const keys={"pregnancy-check":["pregnancy","check"],"record-birth":["birth"],"wean-litter":["wean"],"transfer-buyer":["transfer"],"create-sale":["sale"]}[next.kind]||[];
     return keys.some(key=>text.includes(key));
   }
