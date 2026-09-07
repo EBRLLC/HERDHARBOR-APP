@@ -6,11 +6,14 @@ const fs = require("node:fs");
 
 const read = (name) => fs.readFileSync(name, "utf8");
 const policy = read("subscription-referral-policy-v1.8.1.js");
+const closeout = read("subscription-closeout-v1.8.1.js");
 const adminCredits = read("subscription-admin-credits-v1.8.1.js");
+const adminHealth = read("subscription-admin-health-v1.8.1.js");
 const registrationFn = read("supabase/functions/registration-referral/index.ts");
 const billing = read("supabase/functions/subscription-billing/index.ts");
 const webhook = read("supabase/functions/subscription-webhook/index.ts");
 const schema = read("supabase/v1.8.1-referrals-credits.sql");
+const closeoutSchema = read("supabase/v1.8.1-subscription-closeout.sql");
 const readPolicy = read("supabase/v1.8.1-referral-code-read-policy.sql");
 const config = read("supabase/config.toml");
 const build = read("herdharbor-build.js");
@@ -26,12 +29,12 @@ test("public signup exposes Junior, Member and Business Coming Soon but never Fo
   assert.match(policy, /localStorage\.setItem\(INTERVAL_KEY, "month"\)/);
 });
 
-test("referral ID is optional: blank never performs validation or stalls signup", () => {
+test("blank referral never stalls signup while a nonblank referral is verified before account creation", () => {
   assert.match(policy, /Optional — leave this blank if nobody referred you/);
-  assert.match(policy, /if \(!choice\.referralCode\) return; \/\/ Blank referral must never delay signup\./);
+  assert.match(policy, /if \(!choice\.referralCode\) \{[\s\S]*?void stageChoice\(choice, email, \{ keepalive: true \}\)\.catch\(\(\) => null\);[\s\S]*?return;/);
+  assert.match(policy, /if \(choice\.referralCode === lastCode && lastCodeValid\)[\s\S]*?await stageChoice/);
   assert.match(policy, /Invalid referral ID\. Check the code or remove it to continue signup/);
   assert.match(policy, /window\.alert\("Invalid referral ID/);
-  assert.match(policy, /Referral ID verified\./);
 });
 
 test("signup referral layer does not create or replace the proven browser Supabase auth client", () => {
@@ -50,13 +53,18 @@ test("email-confirmation signout cannot erase the pending signup choice", () => 
   assert.match(policy, /CHOICE_MAX_AGE_MS\s*=\s*24 \* 60 \* 60 \* 1000/);
 });
 
-test("public referral validation is privacy-minimal while secure completion authenticates the member", () => {
+test("public referral validation remains privacy-minimal and cross-device intent stores no raw email", () => {
   assert.match(registrationFn, /action === "validate"/);
-  assert.match(registrationFn, /return json\(\{ valid: Boolean\(data\?\.code\) \}\)/);
+  assert.match(registrationFn, /return json\(\{ valid: await validateCode\(code\) \}\)/);
   assert.doesNotMatch(registrationFn, /valid:[^\n]*(email|name|user_id)/i);
+  assert.match(registrationFn, /action === "stage"/);
+  assert.match(registrationFn, /registrationIntentHash/);
+  assert.match(registrationFn, /crypto\.subtle\.digest\("SHA-256"/);
+  assert.match(closeoutSchema, /create table if not exists public\.registration_intents/);
+  assert.match(closeoutSchema, /email_hash text primary key/);
+  assert.doesNotMatch(closeoutSchema, /\n\s*email\s+text/i);
+  assert.match(policy, /hydrateRemoteChoice/);
   assert.match(registrationFn, /admin\.auth\.getUser\(token\)/);
-  assert.match(registrationFn, /action === "complete"/);
-  assert.match(registrationFn, /complete_registration_choice/);
   assert.match(config, /\[functions\.registration-referral\][\s\S]*verify_jwt\s*=\s*false/);
 });
 
@@ -81,14 +89,16 @@ test("first monthly renewal qualifies a referral; initial subscription does not"
   assert.match(webhook, /customer\.subscription\.deleted[\s\S]*expireUnqualifiedReferral/);
 });
 
-test("every five qualified referrals produces exactly one stackable Member month credit", () => {
+test("every five qualified referrals continuously produces one stackable Member month", () => {
   assert.match(schema, /generate_series\(5, greatest\(coalesce\(active_referrals,0\),0\), 5\)/);
-  assert.match(webhook, /for \(let milestone = 5; milestone <= qualified; milestone \+= 5\)/);
+  assert.match(webhook, /const desired = Math\.floor\(qualified \/ 5\)/);
   assert.match(webhook, /source:\s*"referral_reward"/);
   assert.match(webhook, /quantity:\s*1/);
-  assert.match(webhook, /sourceReference = `qualified:\$\{milestone\}`/);
+  assert.match(webhook, /sourceReference = `qualified:\$\{slot \* 5\}`/);
   assert.match(policy, /Every 5 qualified referrals = 1 Member subscription month credit/);
   assert.match(policy, /qualified % 5/);
+  assert.match(closeout, /continuous:\s*true/);
+  assert.match(closeout, /const cycles = Math\.floor\(count \/ 5\)/);
 });
 
 test("free-month renewal becomes $0 only after a credit has been reserved", () => {
@@ -114,12 +124,32 @@ test("reserved credit applies to one draft renewal invoice without moving billin
   assert.match(webhook, /status:\s*"applied"/);
 });
 
-test("subscription notification outbox is provider-neutral for the separate email integration", () => {
+test("refunds and disputes reverse referral qualification without destructively reclaiming used credits", () => {
+  assert.match(webhook, /charge\.refunded/);
+  assert.match(webhook, /charge\.dispute\.created/);
+  assert.match(webhook, /charge\.dispute\.closed/);
+  assert.match(webhook, /reverseReferralForInvoice/);
+  assert.match(webhook, /restoreReferralForInvoice/);
+  assert.match(webhook, /subscription_referral_reward_offsets/);
+  assert.match(closeoutSchema, /subscription_referral_reward_offsets/);
+  assert.match(webhook, /status:\s*"reversed"/);
+  assert.match(webhook, /status:\s*"settled"/);
+});
+
+test("credit-only Member entitlement follows Stripe/paid-through priority and preserves records", () => {
+  assert.match(closeoutSchema, /activate_member_credit_entitlement/);
+  assert.match(closeoutSchema, /subscription_credit_entitlements/);
+  assert.match(closeoutSchema, /membership_source='subscription_credit'/);
+  assert.match(closeoutSchema, /subscription_status='credit_active'/);
+  assert.match(closeoutSchema, /current_period_end is not null and v_sub\.current_period_end > v_now/);
+  assert.match(webhook, /activate_member_credit_entitlement/);
+  assert.match(billing, /reconcileCreditEntitlement/);
+  assert.match(billing, /status: creditActive \? "credit_active"/);
+});
+
+test("subscription notification outbox stays provider-neutral and gains automatic retry support", () => {
   assert.match(schema, /create table if not exists public\.subscription_notification_outbox/);
-  assert.match(schema, /event_type text not null/);
   assert.match(schema, /dedupe_key text not null unique/);
-  assert.match(schema, /not_before timestamptz/);
-  assert.match(schema, /provider_message_id text/);
   assert.match(webhook, /upcoming_paid_renewal/);
   assert.match(webhook, /upcoming_free_renewal/);
   assert.match(webhook, /referral_reward_earned/);
@@ -129,33 +159,43 @@ test("subscription notification outbox is provider-neutral for the separate emai
   assert.doesNotMatch(billing, /api\.resend\.com|RESEND_API_KEY/);
 });
 
-test("admin can add auditable stackable Member credits without assigning Founder", () => {
+test("admin can add auditable credits and inspect subscription health", () => {
   assert.match(adminCredits, /Add Member month credit/);
   assert.match(adminCredits, /admin_credit_snapshot/);
   assert.match(adminCredits, /admin_credit/);
   assert.match(adminCredits, /window\.confirm/);
-  assert.match(billing, /Owner or Admin access is required for subscription credits/);
+  assert.match(billing, /Owner or Admin access is required for subscription administration/);
   assert.match(billing, /months < 1 \|\| months > 60/);
   assert.match(billing, /source:\s*"admin"/);
   assert.match(billing, /action:\s*"subscription_credit_added"/);
   assert.match(billing, /eventType:\s*"admin_credit_added"/);
+  assert.match(adminHealth, /admin_subscription_health/);
+  assert.match(adminHealth, /admin_retry_notifications/);
+  assert.match(billing, /buildAdminHealth/);
   assert.doesNotMatch(adminCredits, /MutationObserver/);
+  assert.doesNotMatch(adminHealth, /MutationObserver/);
 });
 
-test("public checkout is server-enforced as Junior free, Member monthly and Business coming soon", () => {
+test("public checkout remains Junior free, Member monthly and Business coming soon", () => {
   assert.match(billing, /planId === "founder"/);
   assert.match(billing, /planId === "business"/);
   assert.match(billing, /planId === "junior"/);
   assert.match(billing, /planId !== "member" \|\| billingInterval !== "month"/);
   assert.match(billing, /price_1UCOjrGlRukEX5RK9my06yUP/);
   assert.match(billing, /cents:\s*1499/);
+  assert.match(billing, /complimentary Member month is active through/);
 });
 
-test("new policy assets load in the build and remain network-first in the PWA", () => {
-  for (const asset of ["subscription-referral-policy-v1.8.1.js", "subscription-admin-credits-v1.8.1.js"]) {
+test("all v1.8.1 closeout policy assets load and stay network-first", () => {
+  for (const asset of [
+    "subscription-referral-policy-v1.8.1.js",
+    "subscription-admin-credits-v1.8.1.js",
+    "subscription-admin-health-v1.8.1.js",
+    "subscription-closeout-v1.8.1.js"
+  ]) {
     assert.match(build, new RegExp(asset.replaceAll(".", "\\.")));
     assert.match(sw, new RegExp(asset.replaceAll(".", "\\.")));
   }
-  assert.match(sw, /herdharbor-shell-v1\.8\.1-alpha-october-subscription-launch-referrals-credits-\d+/);
+  assert.match(sw, /herdharbor-shell-v1\.8\.1-alpha-october-subscription-launch-referrals-credits-5/);
   assert.match(sw, /NETWORK_FIRST_PATHS/);
 });
