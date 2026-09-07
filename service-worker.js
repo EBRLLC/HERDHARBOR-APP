@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v1.8.1-alpha-october-subscription-launch-referrals-credits-4-flow-phase2-litter-sale-transfer-1";
+const CACHE_NAME = "herdharbor-shell-v1.8.1-alpha-october-subscription-launch-referrals-credits-4-breeding-next-action-1";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -44,6 +44,9 @@ const APP_SHELL = [
   "./litter-sale-transfer-core-v1.8.2.js?v=1",
   "./litter-sale-transfer-v1.8.2.js?v=1",
   "./litter-sale-transfer-v1.8.2.css?v=1",
+  "./breeding-next-action-core-v1.8.2.js?v=1",
+  "./breeding-next-action-v1.8.2.js?v=1",
+  "./breeding-next-action-v1.8.2.css?v=1",
   "./flow-phase2-profile-finish-v1.8.2.js?v=1",
   "./flow-phase2-profile-finish-v1.8.2.css?v=1",
   "./flow-phase1-completion-v1.8.2.js?v=1",
@@ -140,6 +143,9 @@ const NETWORK_FIRST_PATHS = [
   "/litter-sale-transfer-core-v1.8.2.js",
   "/litter-sale-transfer-v1.8.2.js",
   "/litter-sale-transfer-v1.8.2.css",
+  "/breeding-next-action-core-v1.8.2.js",
+  "/breeding-next-action-v1.8.2.js",
+  "/breeding-next-action-v1.8.2.css",
   "/flow-phase2-profile-finish-v1.8.2.js",
   "/flow-phase2-profile-finish-v1.8.2.css",
   "/flow-phase1-completion-v1.8.2.js",
