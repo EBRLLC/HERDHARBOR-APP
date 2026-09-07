@@ -10,7 +10,6 @@ const root = path.resolve(__dirname, "..");
 const uiSource = fs.readFileSync(path.join(root, "pedigree-genetics-v1.6.1.js"), "utf8");
 const css = fs.readFileSync(path.join(root, "pedigree-genetics-v1.6.1.css"), "utf8");
 const visualCss = fs.readFileSync(path.join(root, "pedigree-visual.css"), "utf8");
-const notes = fs.readFileSync(path.join(root, "RELEASE_NOTES-v1.6.1.md"), "utf8");
 
 function locus(alleles, source = "breeder", status = "confirmed") {
   return { alleles, source, status };

@@ -29,12 +29,12 @@ if (webVersion === "1.8.1") {
   assert.match(buildId, /^october-subscription-launch-/);
   assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=1/);
 }
-assert.match(html, /HerdHarbor Alpha v1\.7\.1 consolidated application shell/);
+assert.match(html, /HerdHarbor Alpha v1\.8\.1 current application shell/);
 assert.match(html, /id="settings-sync-now"/);
 assert.match(html, /id="settings-last-synced"/);
 assert.match(html, /id="export-excel"/);
 assert.match(html, /HerdHarbor Alpha v\$\{APP_VERSION\}/);
-assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.7\.1"/);
+assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.1"/);
 assert.match(html, /Guided pedigree builder · v\$\{APP_VERSION\}/);
 assert.doesNotMatch(html, /Guided pedigree builder · v0\.2\.1/);
 assert.match(html, /let animalView = \{[\s\S]*?status: "Active"[\s\S]*?\};/);
@@ -95,7 +95,7 @@ assert.match(serviceWorker, /spreadsheet-import\.js\?v=17/);
 assert.match(serviceWorker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(serviceWorker, /herdharbor-cloud\.js\?v=20/);
 assert.match(serviceWorker, /symptom-guide\.js\?v=1/);
-assert.match(serviceWorker, /pwa\.js\?v=29/);
+assert.match(serviceWorker, /pwa\.js\?v=30/);
 assert.match(serviceWorker, /pedigree-visual\.css\?v=2/);
 assert.match(serviceWorker, /pedigree-visual\.js\?v=2/);
 for (const asset of [
@@ -108,7 +108,7 @@ for (const asset of [
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);
 assert.match(serviceWorker, /NETWORK_FIRST_PATHS/);
 assert.match(serviceWorker, /fetch\(request, \{ cache: "no-store" \}\)/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "multispecies-genetics-foundation-1"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "october-subscription-launch-referrals-credits-4"/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
 assert.match(pwa, /loadShows/);

@@ -56,8 +56,10 @@ test("PWA and offline shell use the current release while preserving safe update
   assert.match(worker, /NETWORK_FIRST_PATHS/);
   assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
   assert.match(html, /<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">/);
-  assert.match(html, /herdharbor-build\.js/);
-  assert.match(html, /pwa\.js/);
+  assert.match(html, /manifest\.json\?v=1\.8\.1/);
+  assert.match(html, /herdharbor-build\.js\?v=1\.8\.1/);
+  assert.match(html, /pwa\.js\?v=30/);
+  assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.1"/);
 });
 
 test("v1.8.1 account, subscription, referral and registration layers remain in the release shell", () => {

@@ -15,7 +15,6 @@ for (const asset of [
   "herdharbor-release-v1.6.1.js",
   "herdharbor-membership-v1.6.1.js",
   "herdharbor-access-cache-v1.6.1.js",
-  "herdharbor-build.js",
   "market-analytics-v1.6.5.js",
   "analytics-v1.6.1.js"
 ]) {
@@ -26,12 +25,12 @@ for (const asset of [
   "herdharbor-release-v1.6.1.js",
   "herdharbor-membership-v1.6.1.js",
   "herdharbor-access-cache-v1.6.1.js",
-  "herdharbor-build.js",
   "market-analytics-v1.6.5.js",
   "analytics-v1.6.1.js"
 ]) assert.match(html, new RegExp(`${asset.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}\\?v=1\\.7\\.1`));
+assert.match(html, /herdharbor-build\.js\?v=1\.8\.1/);
 assert.match(html, /herdharbor-cloud\.js\?v=20/);
-assert.match(html, /pwa\.js\?v=29/);
+assert.match(html, /pwa\.js\?v=30/);
 assert.doesNotMatch(html, /(?:herdharbor-release-v1\.6\.1|herdharbor-membership-v1\.6\.1|herdharbor-access-cache-v1\.6\.1|herdharbor-build|pwa|market-analytics-v1\.6\.5|analytics-v1\.6\.1)\.js\?v=1\.6\.5/);
 assert.match(worker, /"\/herdharbor-release-v1\.6\.1\.js"/);
 assert.match(worker, /"\/herdharbor-cloud\.js"/);
