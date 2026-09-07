@@ -217,7 +217,7 @@ Deno.serve(async (req) => {
       }, 403);
     }
     if (age > 120) return json({ error: "Enter a valid date of birth." }, 400);
-    if (!phone) return json({ error: "Enter a valid phone number.\" }, 400);
+    if (!phone) return json({ error: "Enter a valid phone number." }, 400);
     if (!/^[A-Z]{2}$/.test(countryCode)) return json({ error: "Choose a valid country." }, 400);
     if (!region) return json({ error: "Enter your state, province, or region." }, 400);
     if (!POSTAL_RE.test(postalCode)) return json({ error: "Enter a valid ZIP or postal code." }, 400);
