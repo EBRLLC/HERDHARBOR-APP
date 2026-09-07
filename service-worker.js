@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v1.8.1-alpha-october-subscription-launch-1";
+const CACHE_NAME = "herdharbor-shell-v1.8.1-alpha-october-subscription-launch-referrals-credits-2";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -16,6 +16,8 @@ const APP_SHELL = [
   "./herdharbor-v1.6.1.css?v=1.7.1",
   "./herdharbor-build.js?v=1.7.1",
   "./registration-safety-v1.8.1.js?v=1",
+  "./subscription-referral-policy-v1.8.1.js?v=1",
+  "./subscription-admin-credits-v1.8.1.js?v=1",
   "./subscription-launch-v1.8.1.js?v=1",
   "./subscription-engine-v1.8.0.js?v=1",
   "./subscription-engine-v1.8.0.css?v=1",
@@ -92,6 +94,8 @@ const NETWORK_FIRST_PATHS = [
   "/herdharbor-v1.6.1.css",
   "/herdharbor-build.js",
   "/registration-safety-v1.8.1.js",
+  "/subscription-referral-policy-v1.8.1.js",
+  "/subscription-admin-credits-v1.8.1.js",
   "/subscription-launch-v1.8.1.js",
   "/subscription-engine-v1.8.0.js",
   "/subscription-engine-v1.8.0.css",

@@ -9,6 +9,7 @@ const read = (name) => fs.readFileSync(name, "utf8");
 const provider = read("subscription-stripe-provider-v1.8.0.js");
 const bridge = read("subscription-stripe-launch-bridge-v1.8.1.js");
 const launch = read("subscription-launch-v1.8.1.js");
+const referralPolicy = read("subscription-referral-policy-v1.8.1.js");
 const build = read("herdharbor-build.js");
 const sw = read("service-worker.js");
 const billing = read("supabase/functions/subscription-billing/index.ts");
@@ -25,11 +26,12 @@ const PRICE_IDS = [
   "price_1UCOnnGlRukEX5RK36kjzNZ6"
 ];
 
-test("v1.8.1 carries all six production Stripe recurring prices server-side", () => {
-  for (const id of PRICE_IDS) {
-    assert.match(billing, new RegExp(id));
-    assert.match(correction, new RegExp(id));
-  }
+test("v1.8.1 preserves the six production Stripe prices while public checkout is Member monthly only", () => {
+  for (const id of PRICE_IDS) assert.match(correction, new RegExp(id));
+  assert.match(billing, /price_1UCOjrGlRukEX5RK9my06yUP/);
+  assert.match(billing, /Founder access is assigned internally/);
+  assert.match(billing, /HerdHarbor Business is coming soon/);
+  assert.match(billing, /Member is currently offered month-to-month/);
 });
 
 test("Stripe credentials stay server-side and browser billing reuses HerdHarbor auth transport", () => {
@@ -109,27 +111,34 @@ test("auth-settled Stripe launch bridge performs one bounded post-login provider
   assert.doesNotMatch(bridge, /createClient\s*\(/);
 });
 
-test("monthly and yearly plan UI is connected to the production Stripe provider", () => {
+test("legacy Stripe provider keeps the price catalog while v1.8.1 policy hides yearly/public Founder controls", () => {
   assert.match(provider, /founder:[\s\S]*month:\s*999[\s\S]*year:\s*11000/);
   assert.match(provider, /member:[\s\S]*month:\s*1499[\s\S]*year:\s*15000/);
   assert.match(provider, /business:[\s\S]*month:\s*4999[\s\S]*year:\s*55000/);
   assert.match(provider, /data-hh-stripe-interval="month"/);
   assert.match(provider, /data-hh-stripe-interval="year"/);
   assert.match(memberUi, /hh-subscription-interval-switcher/);
+  assert.match(referralPolicy, /plans\[1\]\.hidden\s*=\s*true/);
+  assert.match(referralPolicy, /hh-subscription-interval-switcher/);
+  assert.match(referralPolicy, /Coming Soon/);
 });
 
-test("v1.8.1 loads launch policy, engine, Stripe provider and launch bridge in safe order", () => {
+test("v1.8.1 loads referral policy before Stripe provider and preserves safe launch order", () => {
+  const referralIndex = build.indexOf("subscription-referral-policy-v1.8.1.js?v=1");
   const policyIndex = build.indexOf("subscription-launch-v1.8.1.js?v=1");
   const engineIndex = build.indexOf("subscription-engine-v1.8.0.js?v=1");
   const providerIndex = build.indexOf("subscription-stripe-provider-v1.8.0.js?v=1");
   const bridgeIndex = build.indexOf("subscription-stripe-launch-bridge-v1.8.1.js?v=1");
+  assert.ok(referralIndex >= 0 && providerIndex > referralIndex);
   assert.ok(policyIndex >= 0 && engineIndex > policyIndex && providerIndex > engineIndex && bridgeIndex > providerIndex);
   assert.match(build, /version:\s*"1\.8\.1"/);
 });
 
-test("PWA keeps live Stripe subscription assets network-first under the v1.8.1 shell", () => {
-  assert.match(sw, /herdharbor-shell-v1\.8\.1-alpha-october-subscription-launch-1/);
+test("PWA keeps referral, admin-credit and Stripe subscription assets network-first", () => {
+  assert.match(sw, /herdharbor-shell-v1\.8\.1-alpha-october-subscription-launch-referrals-credits-2/);
   for (const asset of [
+    "subscription-referral-policy-v1.8.1.js",
+    "subscription-admin-credits-v1.8.1.js",
     "subscription-member-ui-v1.8.0.css",
     "subscription-tab-visibility-v1.8.0.js",
     "subscription-header-copy-v1.8.0.js",

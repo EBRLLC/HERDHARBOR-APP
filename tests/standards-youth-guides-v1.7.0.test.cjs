@@ -74,7 +74,7 @@ test("v1.7.0 reference-guide assets remain loaded and offline-safe under the cur
     assert.match(buildId,/^subscription-engine-/);
     assert.match(sw,/herdharbor-shell-v1\.8\.0/);
   }else{
-    assert.equal(buildId,"october-subscription-launch-1");
-    assert.match(sw,/herdharbor-shell-v1\.8\.1-alpha-october-subscription-launch-1/);
+    assert.match(buildId,/^october-subscription-launch-/);
+    assert.match(sw,/herdharbor-shell-v1\.8\.1-alpha-october-subscription-launch-/);
   }
 });

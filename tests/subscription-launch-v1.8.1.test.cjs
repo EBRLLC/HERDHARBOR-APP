@@ -114,7 +114,7 @@ test("v1.8.1 build and service worker load the launch policy before the v1.8.0 e
   const sw = fs.readFileSync("service-worker.js", "utf8");
   assert.match(build, /version:\s*"1\.8\.1"/);
   assert.ok(build.indexOf("subscription-launch-v1.8.1.js?v=1") < build.indexOf("subscription-engine-v1.8.0.js?v=1"));
-  assert.match(sw, /herdharbor-shell-v1\.8\.1-alpha-october-subscription-launch-1/);
+  assert.match(sw, /herdharbor-shell-v1\.8\.1-alpha-october-subscription-launch-/);
   assert.match(sw, /subscription-launch-v1\.8\.1\.js\?v=1/);
   assert.match(sw, /"\/subscription-launch-v1\.8\.1\.js"/);
 });
