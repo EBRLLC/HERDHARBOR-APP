@@ -16,7 +16,7 @@
     "test:phase3": "node --test tests/standards-phase3.test.cjs tests/multispecies-genetics-phase3.test.cjs tests/phase3-integration.test.cjs tests/standards-v1.7.0.test.cjs",
     "test:completion": "node --test tests/completion-release-contract-v1.6.7.test.cjs tests/current-release-reference-audit-v1.7.1.test.cjs",
     "test:v1.7.1": "node --test tests/multispecies-genetics-v1.7.1.test.cjs tests/multispecies-genetics-ui-v1.7.1.test.cjs tests/species-context-hardlock-v1.7.1.test.cjs tests/health-intelligence-v1.7.1.test.cjs tests/v1.7.1-stability-hotfix.test.cjs tests/workflow-phase1-v1.7.1.test.cjs tests/phase3-integration.test.cjs tests/current-release-reference-audit-v1.7.1.test.cjs",
-    "test:v1.8.1": "node --test tests/subscription-engine-v1.8.0.test.cjs tests/subscription-launch-v1.8.1.test.cjs tests/subscription-stripe-v1.8.1.test.cjs tests/registration-safety-v1.8.1.test.cjs tests/mobile-viewport-hotfix-v1.8.0.test.cjs tests/app-script-compile.test.cjs tests/auth-signin-deadlock-v1.6.7.test.cjs"
+    "test:v1.8.1": "node --test tests/subscription-engine-v1.8.0.test.cjs tests/subscription-launch-v1.8.1.test.cjs tests/subscription-stripe-v1.8.1.test.cjs tests/registration-safety-v1.8.1.test.cjs tests/email-engine-v1.8.1.test.cjs tests/mobile-viewport-hotfix-v1.8.0.test.cjs tests/app-script-compile.test.cjs tests/auth-signin-deadlock-v1.6.7.test.cjs"
   },
   "dependencies": {
     "@sentry/browser": "10.71.0"
