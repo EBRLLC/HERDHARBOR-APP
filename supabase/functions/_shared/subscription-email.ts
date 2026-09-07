@@ -60,6 +60,19 @@ function render(eventType: string, payload: Record<string, unknown>, firstName =
     return { subject, text, html: shell(subject, paragraph(htmlEscape(hello)) + paragraph("Five of your referrals have now completed their qualifying renewal. <strong>1 free Member month</strong> has been added to your account.") + paragraph(`Available Member month credits: <strong>${creditsRemaining}</strong>. Your credit will automatically apply to an eligible future monthly renewal.`)) };
   }
 
+  if (eventType === "referral_reward_adjusted") {
+    const subject = "A HerdHarbor referral reward was adjusted";
+    const reason = String(payload.reason || "A qualifying referral renewal was later reversed.");
+    const text = `${hello}\n\nA referral reward adjustment was recorded because ${reason}\n\nHerdHarbor does not take back a free month that was already promised or used. When necessary, the adjustment is applied against a future referral reward.`;
+    return { subject, text, html: shell(subject, paragraph(htmlEscape(hello)) + paragraph(`A referral reward adjustment was recorded because ${htmlEscape(reason)}`) + paragraph("HerdHarbor does not take back a free month that was already promised or used. When necessary, the adjustment is applied against a future referral reward.")) };
+  }
+
+  if (eventType === "referral_reward_restored") {
+    const subject = "Your HerdHarbor referral reward was restored";
+    const text = `${hello}\n\nA previously reversed qualifying referral is valid again. HerdHarbor reconciled your referral reward balance automatically.\n\nAvailable Member month credits: ${creditsRemaining}.`;
+    return { subject, text, html: shell(subject, paragraph(htmlEscape(hello)) + paragraph("A previously reversed qualifying referral is valid again. HerdHarbor reconciled your referral reward balance automatically.") + paragraph(`Available Member month credits: <strong>${creditsRemaining}</strong>.`)) };
+  }
+
   if (eventType === "admin_credit_added") {
     const months = Math.max(1, Number(payload.monthsAdded || 1));
     const subject = `${months} complimentary HerdHarbor Member month${months === 1 ? "" : "s"} added`;
@@ -89,6 +102,14 @@ function render(eventType: string, payload: Record<string, unknown>, firstName =
     return { subject, text, html: shell(subject, paragraph(htmlEscape(hello)) + paragraph(`Your <strong>${htmlEscape(reason)}</strong> credit was successfully applied. This renewal was <strong>$0.00</strong>.`) + paragraph(`Remaining Member month credits: <strong>${creditsRemaining}</strong>.`)) };
   }
 
+  if (eventType === "member_credit_started") {
+    const subject = "A HerdHarbor Member credit is now active";
+    const reason = String(payload.reason || "Member month credit");
+    const accessEnds = dateLabel(payload.accessEndsAt);
+    const text = `${hello}\n\nYour paid Stripe subscription is no longer providing access, so HerdHarbor automatically activated your ${reason}. Your Member access continues through ${accessEnds}.\n\nMember month credits remaining after this period: ${creditsRemaining}.`;
+    return { subject, text, html: shell(subject, paragraph(htmlEscape(hello)) + paragraph(`HerdHarbor automatically activated your <strong>${htmlEscape(reason)}</strong>, so your Member access continues through <strong>${htmlEscape(accessEnds)}</strong>.`) + paragraph(`Member month credits remaining after this period: <strong>${creditsRemaining}</strong>.`)) };
+  }
+
   if (eventType === "payment_failed") {
     const amount = money(payload.amountCents, payload.currency);
     const subject = "HerdHarbor subscription payment failed";
@@ -103,9 +124,12 @@ function render(eventType: string, payload: Record<string, unknown>, firstName =
   }
 
   if (eventType === "subscription_ended") {
-    const subject = "Your HerdHarbor Member subscription has ended";
-    const text = `${hello}\n\nYour paid HerdHarbor Member subscription has ended. Your records are preserved. Your account will use Junior access unless another entitlement applies.`;
-    return { subject, text, html: shell(subject, paragraph(htmlEscape(hello)) + paragraph("Your paid HerdHarbor Member subscription has ended. <strong>Your records are preserved.</strong>") + paragraph("Your account will use Junior access unless another entitlement applies.")) };
+    const subject = "Your HerdHarbor paid subscription has ended";
+    const continuing = payload.continuingWithCredit === true;
+    const text = continuing
+      ? `${hello}\n\nYour paid HerdHarbor Member subscription has ended. Your records are preserved, and a Member month credit is continuing your Member access.`
+      : `${hello}\n\nYour paid HerdHarbor Member subscription has ended. Your records are preserved. Your account will use Junior access unless another entitlement applies.`;
+    return { subject, text, html: shell(subject, paragraph(htmlEscape(hello)) + paragraph("Your paid HerdHarbor Member subscription has ended. <strong>Your records are preserved.</strong>") + paragraph(continuing ? "A Member month credit is continuing your Member access." : "Your account will use Junior access unless another entitlement applies.")) };
   }
 
   if (eventType === "junior_fallback") {
