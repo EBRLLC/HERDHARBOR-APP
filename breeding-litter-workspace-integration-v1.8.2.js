@@ -4,6 +4,24 @@
   let queued=false;
   let observer=null;
 
+  function addScript(id,src,onload){
+    const target=root.document.head||root.document.documentElement;
+    const existing=root.document.getElementById(id);
+    if(existing){onload?.();return;}
+    const script=root.document.createElement("script");
+    script.id=id;
+    script.src=src;
+    script.async=false;
+    if(onload)script.addEventListener("load",onload,{once:true});
+    target.appendChild(script);
+  }
+
+  function loadLifecycleIntegrity(){
+    addScript("hh-lifecycle-integrity-core-v182","lifecycle-integrity-core-v1.8.2.js?v=1",()=>{
+      addScript("hh-lifecycle-integrity-v182","lifecycle-integrity-v1.8.2.js?v=1");
+    });
+  }
+
   function loadWeaningSafeguards(){
     const target=root.document.head||root.document.documentElement;
     if(!root.document.getElementById("hh-weaning-safeguards-v182-style")){
@@ -13,18 +31,8 @@
       style.href="weaning-safeguards-v1.8.2.css?v=1";
       target.appendChild(style);
     }
-    function addScript(id,src,onload){
-      const existing=root.document.getElementById(id);
-      if(existing){onload?.();return;}
-      const script=root.document.createElement("script");
-      script.id=id;
-      script.src=src;
-      script.async=false;
-      if(onload)script.addEventListener("load",onload,{once:true});
-      target.appendChild(script);
-    }
-    addScript("hh-weaning-safeguards-core-v182","weaning-safeguards-core-v1.8.2.js?v=1",()=>{
-      addScript("hh-weaning-safeguards-v182","weaning-safeguards-v1.8.2.js?v=1");
+    addScript("hh-weaning-safeguards-core-v182","weaning-safeguards-core-v1.8.2.js?v=2",()=>{
+      addScript("hh-weaning-safeguards-v182","weaning-safeguards-v1.8.2.js?v=2");
     });
   }
 
@@ -71,12 +79,14 @@
   function run(){queued=false;enhanceLifecycle();enhanceLitterCards();}
   function schedule(){if(queued)return;queued=true;(root.requestAnimationFrame||root.setTimeout)(run,0);}
   function install(){
+    loadLifecycleIntegrity();
     loadWeaningSafeguards();
     observer=new root.MutationObserver(schedule);
     if(root.document.body)observer.observe(root.document.body,{childList:true,subtree:true});
     root.addEventListener?.("hashchange",schedule);
     root.addEventListener?.("herdharbor:litter-workspace-changed",schedule);
     root.addEventListener?.("herdharbor:offspring-auto-created",onOffspringCreated);
+    root.addEventListener?.("herdharbor:lifecycle-integrity-repaired",schedule);
     schedule();
   }
   install();
