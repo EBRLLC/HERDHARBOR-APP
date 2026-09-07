@@ -8,8 +8,85 @@
     build: "1.8.1-alpha-october-subscription-launch-referrals-credits-4"
   });
 
+  // Keep authentication and the first cloud hydration from waiting forever while
+  // the application is intentionally hidden behind the auth lock.
+  const AUTH_FETCH_TIMEOUT_MS = 12000;
+  const SIGN_IN_WATCHDOG_MS = 15000;
+  const SUPABASE_HOST = "okynebbksifqppwicghj.supabase.co";
+  const originalFetch = typeof root.fetch === "function" ? root.fetch.bind(root) : null;
+
+  function isCriticalAuthUrl(input) {
+    try {
+      const raw = typeof input === "string" ? input : input?.url;
+      if (!raw) return false;
+      const url = new URL(raw, root.location?.href || "https://app.herdharbor.com/");
+      if (url.hostname !== SUPABASE_HOST) return false;
+      const path = url.pathname.replace(/\/+$/, "");
+      return path.startsWith("/auth/v1/")
+        || path === "/rest/v1/herdharbor_user_data"
+        || path === "/rest/v1/account_access"
+        || path === "/rest/v1/rpc/herdharbor_account_role";
+    } catch {
+      return false;
+    }
+  }
+
+  function recoverSignInForm(form) {
+    const doc = root.document;
+    if (!doc || !form || typeof form.querySelectorAll !== "function") return false;
+    if (!doc.documentElement?.classList?.contains?.("hh-auth-locked")) return false;
+    if (form.isConnected === false) return false;
+    const controls = Array.from(form.querySelectorAll("button, input"));
+    if (!controls.some((control) => control.disabled)) return false;
+    controls.forEach((control) => { control.disabled = false; });
+    const box = doc.querySelector?.("#hh-auth-message");
+    if (box) {
+      box.textContent = "Sign in is taking too long. Check your connection and try again.";
+      if (box.dataset) box.dataset.type = "error";
+      box.setAttribute?.("role", "alert");
+    }
+    return true;
+  }
+
+  root.HerdHarborAuthResilience = Object.freeze({
+    timeoutMs: AUTH_FETCH_TIMEOUT_MS,
+    watchdogMs: SIGN_IN_WATCHDOG_MS,
+    isCriticalAuthUrl,
+    recoverSignInForm
+  });
+
+  if (originalFetch && typeof root.AbortController === "function") {
+    root.fetch = function herdHarborBoundedAuthFetch(input, init) {
+      if (!isCriticalAuthUrl(input)) return originalFetch(input, init);
+      const controller = new root.AbortController();
+      const upstreamSignal = init?.signal || (input && typeof input === "object" ? input.signal : null);
+      const forwardAbort = () => controller.abort(upstreamSignal?.reason);
+      if (upstreamSignal?.aborted) forwardAbort();
+      else upstreamSignal?.addEventListener?.("abort", forwardAbort, { once: true });
+      const timer = root.setTimeout(() => controller.abort(), AUTH_FETCH_TIMEOUT_MS);
+      const nextInit = { ...(init || {}), signal: controller.signal };
+      return Promise.resolve(originalFetch(input, nextInit)).finally(() => {
+        root.clearTimeout(timer);
+        upstreamSignal?.removeEventListener?.("abort", forwardAbort);
+      });
+    };
+  }
+
   // Alpha v1.8.1 remains the release identity. v1.8.2 flow layers are additive UX architecture over the stable domain engines.
   if (!root.document) return;
+
+  root.document.addEventListener("submit", (event) => {
+    const form = event.target;
+    if (!form || form.id !== "hh-signin-form") return;
+    root.setTimeout(() => recoverSignInForm(form), SIGN_IN_WATCHDOG_MS);
+  }, true);
+
+  root.addEventListener?.("unhandledrejection", (event) => {
+    if (event?.reason?.name !== "AbortError") return;
+    const form = root.document.querySelector?.("#hh-signin-form");
+    if (form) recoverSignInForm(form);
+  });
+
   const target = document.head || document.documentElement;
   function addStyle(id, href) {
     if (document.getElementById(id)) return;
