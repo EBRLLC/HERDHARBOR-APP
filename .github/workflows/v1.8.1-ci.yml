@@ -28,11 +28,25 @@ jobs:
       - name: Run complete HerdHarbor regression suite in UTC
         env:
           TZ: UTC
-        run: npm test
+        run: |
+          failed=0
+          for test_file in tests/*.test.cjs; do
+            echo "::group::${test_file}"
+            node --test "${test_file}" || failed=1
+            echo "::endgroup::"
+          done
+          exit "${failed}"
       - name: Run complete HerdHarbor regression suite in America/New_York
         env:
           TZ: America/New_York
-        run: npm test
+        run: |
+          failed=0
+          for test_file in tests/*.test.cjs; do
+            echo "::group::${test_file}"
+            node --test "${test_file}" || failed=1
+            echo "::endgroup::"
+          done
+          exit "${failed}"
       - name: Build production monitoring bundle
         run: NODE_ENV=production npm run build:monitoring
       - name: Verify bundled monitoring architecture
