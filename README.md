@@ -1,82 +1,86 @@
-# HerdHarbor Alpha v1.3.0
+# HerdHarbor Alpha v1.8.1
 
-HerdHarbor is an installable farm and livestock recordkeeping app in alpha testing.
+HerdHarbor is an installable livestock and farm recordkeeping application in active alpha development. The current release is **Alpha v1.8.1**.
 
-## Current capabilities
+## Current platform
 
-- Protected email/password accounts and password recovery
-- Cloud synchronization with an offline device copy
-- Visible sync status, last-confirmed timestamp, and a manual **Sync now** control in Settings
-- Automatic record-by-record merging when two devices change different records or fields
-- Conflict detection when two devices change the same field or one deletes a record the other edits
-- Atomic cloud updates so a stale device cannot silently overwrite newer records
-- Automatic local recovery snapshots before material changes or conflict resolution
-- Installable PWA for Android, iPhone/iPad, Windows, macOS, and supported browsers
-- Portrait-only orientation for the installed mobile app
-- Tablet-safe responsive cards, internal table scrolling, and document-width containment
-- Theme-matched sign-in, sign-up, recovery, and password-autofill colors in light and dark mode
-- Animals, breeding, births and litters, pedigrees, health, tasks, budgeting, production and sales, photos, farm branding, breed memory, and dark mode
-- Cattle-specific ear-tag number and ear-tag color fields carried through animal search, exports, transfers, sale documents, pedigrees, and QR cards
-- A static educational symptom guide with animal and species filters, common warning signs, urgency levels, veterinary references, emergency red flags, and one-tap observation logging
-- Customer and buyer records with phone, email, address, and private farm notes
-- Multi-animal quotes, reservations, and completed sales with discounts, tax/fees, balances, and Available/Reserved/Sold status handling
-- Deposits and payments with receipts and exactly one linked Budget income record per payment
-- Printable invoices, receipts, bills of sale, and animal or cage/pen QR cards
-- Private QR deep links that open the correct animal after the farm owner signs in
-- Downloadable animal-transfer files containing the animal and a three-generation pedigree, with duplicate-safe import into another HerdHarbor account
-- Species-aware breeding schedules with pregnancy checks, expected-birth preparation, due dates, and deterministic task reminders
-- Birth outcomes for born alive, stillborn, fostered, lost, and weaned young, with expected-weaning reminders
-- One-step offspring creation with individual names, tags, sex, sire, dam, birth-record links, and automatic pedigree connections
-- Breeding success, birth survival, and dam-performance reports with year filtering and downloadable Excel reports
-- Monthly and full-year Budget views with 12-month income, operating-expense, capital-expense, net, cost-per-head, budget-versus-actual, transaction, and CSV reporting
-- Daily, weekly, every-two-weeks, monthly, and custom recurring tasks with duplicate-safe next occurrences
-- A Today workflow that keeps overdue work visible until it is completed or rescheduled
-- Task search plus status, category, and animal filters, with one-tap move-to-tomorrow and dashboard completion
-- Quantity-based egg, broiler, dairy, hay, and custom farm-product records with sold, household, feed, stored, donated, and waste allocations
-- One-tap egg, milk, broiler, hay, and custom-product entry plus safe repeat-last-entry cloning
-- Daily, weekly, monthly, and yearly production totals with product, species, animal, and date filters
-- Revenue, average unit price, on-farm use, donation, waste rate, production-drop warnings, and animal/group comparisons
-- Individual-animal production history plus printable and downloadable Excel Production & Sales reports
-- Optional flock, herd, batch, hay-field, and cutting names preserved through cloud sync and Excel import/export
-- Linked product-sale income that updates Budgeting without duplicate transactions
-- Reviewed `.xlsx`/`.xlsm` imports for Animals, Customers, Sales, Payments, Breeding, Births, Production, actual transactions, annual planned budgets, and Medical records
-- Row-by-row import corrections with a downloadable issue report
-- Downloadable Excel import template with duplicate and validation checks
-- One-click Excel export for Animals, Customers, Sales, Payments, Breeding, Births, Medical, Production, actual Budgeting, and annual planned budgets
-- JSON backup export and import
-- Coalesced search rendering so fast typing does not rebuild large animal, task, or sales views more than once per animation frame
-- No-op save suppression and device-only preference handling that avoid unnecessary full-state writes and cloud sync work
-- Bounded, duplicate-safe recovery snapshots and a Settings storage summary for active-record and total app usage
-- Smaller future animal photos and operation logos to slow storage growth on long-running accounts
+HerdHarbor combines animal records, breeding, pedigrees, genetics, health, shows, production, sales, budgeting, tasks, analytics, cloud synchronization, backups, and an installable PWA/Android experience in one account-based application.
 
-## Data-safety design
+Key capabilities include:
 
-The application state remains in `localStorage` for immediate offline operation. Each signed-in account also has:
+- Animal profiles and searchable livestock records with species-aware fields, photos, status, parentage, and history.
+- Breeding and birth/litter workflows with due dates, pregnancy checks, offspring creation, weaning, and pedigree links.
+- Rabbit genetics plus the established multi-species genetics architecture, ARBA standards/reference tooling, shows, and youth-show guidance.
+- Health records, measurements, health intelligence, and an educational symptom guide with emergency red-flag safeguards.
+- Production, sales, customer, payment, budgeting, task, and analytics workflows with spreadsheet import/export and printable records.
+- Offline-first local operation with protected cloud synchronization, conflict detection, recovery snapshots, downloadable backups, and safe update handling.
+- Installable web app support plus the Android Trusted Web Activity package.
 
-- a last-confirmed cloud base used for safe three-way merges and conflict checks;
-- the active offline working copy for the signed-in account;
-- a dirty marker retained until cloud confirmation;
-- serialized writes so older requests cannot finish after newer requests;
-- compare-and-swap updates using the cloud row's `updated_at` value;
-- duplicate-safe IndexedDB recovery snapshots retained within a fixed device-space budget.
+## Alpha v1.8.1 subscription and account release
 
-Authentication and Supabase data requests are never handled by the service-worker cache. The service worker caches only the static application shell.
+The current release adds the production subscription-launch layer around the established v1.8.0 Subscription Engine without replacing HerdHarbor authentication or membership storage.
 
-## Install
+Public account plans are:
 
-Open `https://app.herdharbor.com`, sign in, then use **Install app** or **Settings → Install HerdHarbor**. On iPhone and iPad, use Safari's **Share → Add to Home Screen**.
+- **Junior — Free**
+- **Member — $14.99/month**
+- **Business — Coming Soon**
 
-## Important tester guidance
+Founder is an internal entitlement and is not a public signup choice.
 
-- Keep periodic downloaded JSON backups for important farm records.
-- HerdHarbor automatically combines non-overlapping changes from multiple devices. If it reports a true same-field conflict, both copies are retained; open **Account** and choose which copy to keep.
-- Review every spreadsheet import before confirming it. Imports add records and never replace the current farm record.
-- Annual budget columns remain yearly planned figures. They never become dated actual transactions.
-- Do not clear browser/site data while unsynced changes are present.
-- Report issues through the in-app **Send feedback** button.
-- Use **Settings → Cloud sync** to confirm the latest cloud save before switching devices.
-- The symptom guide is not veterinary advice, a diagnosis, or treatment. Contact a licensed veterinarian for every animal-health concern and seek emergency care for red-flag signs.
+The September 2026 launch trial provides Member-level access through September 30. The subscription hard launch is October 1, 2026 at 12:00 AM Eastern. Accounts without another qualifying entitlement fall back to Junior rather than losing stored records.
 
-## Deployment
+### Referrals and Member credits
 
-The live custom domain is configured by `CNAME` and deployed from the `main` branch through GitHub Pages.
+- Referral IDs are optional during signup; leaving the field blank never blocks registration.
+- A referral is attached to the referred account at signup but does not qualify from the initial subscription payment.
+- The referral qualifies after the referred Member's first successful monthly renewal.
+- Every five qualified referrals earns one stackable Member-month subscription credit.
+- Admin-granted Member credits use the same auditable credit system and do not create fake Stripe payments.
+- Available credits can cover a future monthly renewal without shifting the Member's billing-cycle anchor.
+
+## Registration safety
+
+New account holders are required to self-report an age of 18 or older and provide the registration profile fields required by the v1.8.1 signup policy. Youth use is supported through an adult-managed account with the required parent/legal-guardian supervision or approval attestation.
+
+This is an age gate and account-holder attestation system, not government-ID identity verification. Full date of birth is used to calculate age during registration but is not retained in the server-side registration profile.
+
+## Data-safety architecture
+
+HerdHarbor keeps an offline working copy for responsive local use and protects signed-in cloud data with serialized writes, compare-and-swap conflict checks, three-way merge behavior, dirty-state tracking, and bounded IndexedDB recovery snapshots. Authentication and Supabase data requests are not cached by the service worker; only the static application shell is cached.
+
+Existing farm records are not deleted when a subscription changes. Junior limits new active-animal transitions while preserving previously stored records.
+
+## Versioned runtime modules
+
+The repository intentionally contains some runtime modules with older version numbers in their filenames. Those files are established domain engines that remain part of v1.8.1—for example the v1.6.1 analytics/rabbit-genetics layers and v1.7.x standards, health, and multi-species genetics layers. They should not be renamed or removed solely because their filename predates v1.8.1.
+
+Likewise, historical SQL files under `supabase/` are migration lineage and are retained even when their filenames contain earlier release numbers.
+
+The authoritative current release identity is defined by the v1.8.1 build, manifest, package, PWA, Android, monitoring, and CI/deployment configuration.
+
+## Development and verification
+
+Node.js 22 or newer is required for repository tooling.
+
+- `npm ci` installs the pinned monitoring/build dependencies.
+- `npm test` runs the complete regression suite.
+- `npm run test:v1.8.1` runs the current subscription/account release regressions.
+- `npm run test:release` verifies the current v1.8.1 repository identity and hardening contract.
+- `.github/workflows/v1.8.1-ci.yml` is the consolidated pull-request CI workflow.
+- `.github/workflows/v1.8.1-production-pages.yml` is the authoritative monitored GitHub Pages publisher.
+- `.github/workflows/v1.8.1-production-acceptance.yml` provides explicit manual production acceptance checks.
+
+Production secrets are supplied by the approved GitHub/Supabase environments and are never committed to source control. The checked-in monitoring configuration intentionally contains a blank DSN and is replaced during the production build.
+
+## Install and deployment
+
+The live application is served from `https://app.herdharbor.com`. The custom domain is configured by `CNAME`, and production static assets are published from the exact reviewed `main` commit through GitHub Pages.
+
+On iPhone/iPad, use Safari **Share → Add to Home Screen**. Other supported browsers can use HerdHarbor's **Install app** control or their browser installation option.
+
+## Tester guidance
+
+Keep periodic downloaded backups for important records, confirm cloud sync before switching devices, review spreadsheet imports before committing them, and do not clear browser/site data while unsynced changes are present. The Symptom Guide is educational and does not diagnose or replace licensed veterinary care.
+
+See `RELEASE_NOTES-v1.8.1.md` for the current release contract.
