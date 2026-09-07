@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v1.8.1-alpha-october-subscription-launch-referrals-credits-4-breeding-next-action-1";
+const CACHE_NAME = "herdharbor-shell-v1.8.1-alpha-october-subscription-launch-referrals-credits-4-breeding-performance-1";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -47,6 +47,9 @@ const APP_SHELL = [
   "./breeding-next-action-core-v1.8.2.js?v=1",
   "./breeding-next-action-v1.8.2.js?v=1",
   "./breeding-next-action-v1.8.2.css?v=1",
+  "./breeding-performance-core-v1.8.2.js?v=1",
+  "./breeding-performance-dashboard-v1.8.2.js?v=1",
+  "./breeding-performance-dashboard-v1.8.2.css?v=1",
   "./flow-phase2-profile-finish-v1.8.2.js?v=1",
   "./flow-phase2-profile-finish-v1.8.2.css?v=1",
   "./flow-phase1-completion-v1.8.2.js?v=1",
@@ -146,6 +149,9 @@ const NETWORK_FIRST_PATHS = [
   "/breeding-next-action-core-v1.8.2.js",
   "/breeding-next-action-v1.8.2.js",
   "/breeding-next-action-v1.8.2.css",
+  "/breeding-performance-core-v1.8.2.js",
+  "/breeding-performance-dashboard-v1.8.2.js",
+  "/breeding-performance-dashboard-v1.8.2.css",
   "/flow-phase2-profile-finish-v1.8.2.js",
   "/flow-phase2-profile-finish-v1.8.2.css",
   "/flow-phase1-completion-v1.8.2.js",
