@@ -33,6 +33,14 @@ test('current ownership state distinguishes owned, reserved and sold records',()
   assert.equal(sold.canSell,false);
 });
 
+test('an incoming direct transfer remains owned here while preserving provenance',()=>{
+  const result=Finish.currentOwnershipState({animals:[{id:'a4',status:'Active',ownershipHistory:[{type:'transfer',date:'2026-09-07',transferId:'T-99',from:'Seller Farm',to:'Buyer Farm'}]}],sales:[]},'a4');
+  assert.equal(result.label,'Owned here');
+  assert.equal(result.canSell,true);
+  assert.match(result.detail,/Received from Seller Farm/);
+  assert.equal(result.date,'2026-09-07');
+});
+
 test('salesForAnimal only returns sales containing the selected animal and newest first',()=>{
   const state={sales:[
     {id:'older',saleDate:'2026-01-01',items:[{animalId:'a1'}]},
