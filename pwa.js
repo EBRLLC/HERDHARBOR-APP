@@ -1,10 +1,10 @@
 (() => {
   "use strict";
 
-  // Current release contract: const APP_VERSION = "1.7.1";
-  // Current build contract: const BUILD_ID = "multispecies-genetics-foundation-1";
-  const APP_VERSION = window.HerdHarborBuild?.version || "1.7.1";
-  const BUILD_ID = window.HerdHarborBuild?.buildId || "multispecies-genetics-foundation-1";
+  // Current release contract: const APP_VERSION = "1.8.1";
+  // Current build contract: const BUILD_ID = "october-subscription-launch-referrals-credits-4";
+  const APP_VERSION = window.HerdHarborBuild?.version || "1.8.1";
+  const BUILD_ID = window.HerdHarborBuild?.buildId || "october-subscription-launch-referrals-credits-4";
   const PWA_BUILD = `${APP_VERSION}-alpha-${BUILD_ID}`;
   const UPDATE_CHECK_MIN_INTERVAL_MS = 60_000;
   const UPDATE_ACTIVATION_TIMEOUT_MS = 8_000;
@@ -108,9 +108,9 @@
   }
 
   function loadMonitoring(done) {
-    addOptionalScript("hh-monitoring-config", "herdharbor-monitoring-config.js?v=1.7.1", (configLoaded) => {
+    addOptionalScript("hh-monitoring-config", "herdharbor-monitoring-config.js?v=1.8.1", (configLoaded) => {
       if (!configLoaded) { done?.(); return; }
-      addOptionalScript("hh-monitoring-v151", "vendor/herdharbor-monitoring-v1.6.1.min.js?v=1.7.1", () => done?.());
+      addOptionalScript("hh-monitoring-v151", "vendor/herdharbor-monitoring-v1.6.1.min.js?v=1.8.1", () => done?.());
     });
   }
 
@@ -123,10 +123,6 @@
     addStylesheet("hh-breeding-intelligence-style", "breeding-intelligence-v1.6.1.css?v=1.7.1");
     addStylesheet("hh-rabbit-genetics-v2-style", "breeding-genetics-advanced-v1.6.1.css?v=1.7.1");
     addStylesheet("hh-phase3-style", "standards-genetics-v1.6.1.css?v=1.7.1");
-    addStylesheet("hh-multispecies-genetics-v171-style", "multispecies-genetics-v1.7.1.css?v=1.7.1");
-    addStylesheet("hh-multispecies-genetics-v171-style", "multispecies-genetics-v1.7.1.css?v=1.7.1");
-    addStylesheet("hh-multispecies-genetics-v171-style", "multispecies-genetics-v1.7.1.css?v=1.7.1");
-    addStylesheet("hh-multispecies-genetics-v171-style", "multispecies-genetics-v1.7.1.css?v=1.7.1");
     addStylesheet("hh-multispecies-genetics-v171-style", "multispecies-genetics-v1.7.1.css?v=1.7.1");
     addScript("hh-rabbit-records-v151", "rabbit-records-v1.6.1.js?v=1.7.1", () => {
       addScript("hh-breeding-intelligence-core-script", "breeding-intelligence-core-v1.6.1.js?v=1.7.1", () => {
