@@ -4,8 +4,8 @@
     product: "HerdHarbor",
     channel: "Alpha",
     version: "1.8.1",
-    buildId: "october-referrals-credits-2",
-    build: "1.8.1-alpha-october-referrals-credits-2"
+    buildId: "october-subscription-launch-referrals-credits-2",
+    build: "1.8.1-alpha-october-subscription-launch-referrals-credits-2"
   });
 
   // Alpha v1.8.1 establishes the September launch trial and October 1 subscription hard-launch policy while preserving the v1.8.0 subscription engine and stable domain engines.
