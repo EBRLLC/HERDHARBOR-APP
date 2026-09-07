@@ -54,8 +54,9 @@
 
   function saleCandidateOffspring(state={},litterId){
     return offspringForLitter(state,litterId).filter(animal=>{
-      if(lower(animal.status)!=="for sale")return false;
-      if(BLOCKED_ANIMAL_STATUSES.has(lower(animal.status)))return false;
+      const status=lower(animal.status);
+      if(status!=="for sale"&&status!=="reserved")return false;
+      if(BLOCKED_ANIMAL_STATUSES.has(status))return false;
       return !activeSaleForAnimal(state,animal.id);
     });
   }
