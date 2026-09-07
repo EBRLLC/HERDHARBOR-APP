@@ -56,7 +56,9 @@
   addScript("hh-health-intelligence-v171", "health-intelligence-v1.7.1.js?v=1.7.1", () => {
     addScript("hh-v171-stability-hotfix", "herdharbor-v1.7.1-stability-hotfix.js?v=2", () => {
       addScript("hh-phase1-workflow-v171", "workflow-phase1-v1.7.1.js?v=2", () => {
-        addScript("hh-flow-phase1-v182", "flow-phase1-v1.8.2.js?v=1");
+        addScript("hh-flow-phase1-v182", "flow-phase1-v1.8.2.js?v=1", () => {
+          addScript("hh-flow-phase1-completion-v182", "flow-phase1-completion-v1.8.2.js?v=1");
+        });
       });
     });
   });
