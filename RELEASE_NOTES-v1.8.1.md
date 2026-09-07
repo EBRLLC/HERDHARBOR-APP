@@ -31,6 +31,7 @@ Member billing is month-to-month using the Stripe billing-cycle anchor establish
 - Stripe secret keys and webhook signing secrets remain server-side.
 - The browser reuses the established HerdHarbor cloud/auth transport rather than creating a second Supabase client.
 - Webhook-synchronized paid state is recognized before browser refresh finishes so active paid users do not temporarily downgrade during launch enforcement.
+- Referral qualification is reconciled against full refunds and Stripe disputes. A won dispute can restore a previously reversed qualification.
 
 ## Registration safety and fraud controls
 
@@ -42,6 +43,7 @@ New signup collects the adult account holder's legal first and last name, date o
 - Registration profile data is written through the authenticated server function; browser roles do not receive direct table access.
 - Repeated phone use can flag an account for review without automatically blocking legitimate shared-household use.
 - Existing accounts created before the rollout cutoff are grandfathered from the new profile-completion gate.
+- Signup plan/referral intent is staged privately for a short period so email confirmation on another device does not silently lose the selected plan or valid referral ID. The staging table stores a server-derived email hash rather than the raw email address.
 
 This is a self-reported age gate and attestation system, not government-ID identity verification.
 
@@ -54,22 +56,40 @@ This is a self-reported age gate and attestation system, not government-ID ident
 - Referral attachment is captured at signup.
 - The initial Member subscription payment does not qualify the referral.
 - The referral qualifies after the referred Member's first successful monthly renewal.
-- Every five qualified referrals earns one stackable Member-month credit.
+- Every five qualified referrals earns one stackable Member-month credit, continuously with no terminal milestone.
 - Admins can add auditable Member-month credits without assigning Founder and without recording a fake Stripe charge.
 - Available credits can cover one future monthly renewal without moving the Stripe billing-cycle anchor.
+- If paid Stripe access ends and the member still owns available Member-month credits, HerdHarbor can continue Member access through auditable credit-funded entitlement periods before falling back to Junior.
+- Credit-funded access never overlaps an active Stripe subscription or an existing paid-through period.
+- If a qualifying referral renewal is later fully refunded or disputed, HerdHarbor reverses the referral qualification. Unused referral credits can be reversed; a reward month that was already reserved or used is not destructively clawed back and is instead reconciled against a future reward when necessary.
 
 ## Subscription notifications
 
-The v1.8.1 notification pipeline supports provider-neutral outbox events and the production email delivery layer for subscription lifecycle notices, including upcoming paid renewal, upcoming free renewal, referral reward earned, free month applied, and payment failure. Delivery credentials remain outside source control.
+The v1.8.1 notification pipeline supports provider-neutral outbox events and the production email delivery layer for subscription lifecycle notices, including upcoming paid renewal, upcoming free renewal, referral reward earned/adjusted/restored, free month applied, credit-funded Member access started, payment failure, cancellation, subscription end, and Junior fallback. Delivery credentials remain outside source control.
+
+A private scheduled maintenance worker retries failed transactional messages with bounded backoff, recovers stale processing claims, advances/finishes credit-funded Member periods, and removes expired signup-intent records.
+
+## Admin subscription health
+
+Owner/Admin member details include a subscription-health view covering:
+
+- effective tier and access source;
+- Stripe subscription status and paid-through date;
+- Member credit balance and active credit-funded access;
+- referral lifecycle counts;
+- pending/failed transactional email state;
+- failed/processing Stripe webhook events;
+- explicit mismatch flags when Stripe, account access, or credit entitlement state disagree;
+- a bounded manual retry action for failed transactional subscription emails.
 
 ## Member-facing subscription UI
 
-The Subscription area is presented as a normal member account center rather than exposing implementation architecture. It shows the current plan/status and billing controls while keeping internal standalone-engine/provider details out of routine member copy.
+The Subscription area is presented as a normal member account center rather than exposing implementation architecture. It shows the current plan/status and billing controls while keeping internal standalone-engine/provider details out of routine member copy. Credit-funded Member access is labeled as Member access rather than appearing as an unexplained inactive Stripe state.
 
 ## Repository and deployment hardening
 
 - Current release identity is aligned across package metadata, lockfile, web manifest, Android TWA manifest, Android Gradle versioning, PWA fallback metadata, monitoring configuration, and the shared build object.
-- The PWA shell is rotated to the current v1.8.1 build family while preserving network-first handling for release-critical assets.
+- The PWA shell is rotated within the v1.8.1 build family while preserving network-first handling for release-critical assets.
 - Duplicate legacy release-review workflows are replaced by consolidated v1.8.1 CI, production Pages, and manual production-acceptance workflows.
 - Production Pages deployment checks out the exact `main` SHA, runs the current release regressions, requires a production Sentry DSN, builds monitored assets, verifies the staged artifact, and publishes that reviewed payload.
 - Historical Supabase migrations and older-named stable runtime/domain engines remain intentionally preserved; they are not treated as obsolete merely because their filename predates v1.8.1.
