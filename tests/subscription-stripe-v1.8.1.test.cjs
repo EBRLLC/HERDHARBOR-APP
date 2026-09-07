@@ -135,7 +135,7 @@ test("v1.8.1 loads referral policy before Stripe provider and preserves safe lau
 });
 
 test("PWA keeps referral, admin-credit and Stripe subscription assets network-first", () => {
-  assert.match(sw, /herdharbor-shell-v1\.8\.1-alpha-october-referrals-credits-2/);
+  assert.match(sw, /herdharbor-shell-v1\.8\.1-alpha-october-subscription-launch-referrals-credits-2/);
   for (const asset of [
     "subscription-referral-policy-v1.8.1.js",
     "subscription-admin-credits-v1.8.1.js",
