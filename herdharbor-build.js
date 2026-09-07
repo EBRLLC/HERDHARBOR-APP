@@ -38,6 +38,7 @@
   addStyle("hh-flow-phase2-profile-finish-v182-style", "flow-phase2-profile-finish-v1.8.2.css?v=1");
   addStyle("hh-breeding-litter-workspace-v182-style", "breeding-litter-workspace-v1.8.2.css?v=1");
   addStyle("hh-litter-sale-transfer-v182-style", "litter-sale-transfer-v1.8.2.css?v=1");
+  addStyle("hh-breeding-next-action-v182-style", "breeding-next-action-v1.8.2.css?v=1");
   addStyle("hh-subscription-engine-v180-style", "subscription-engine-v1.8.0.css?v=1");
   addStyle("hh-subscription-member-ui-v180-style", "subscription-member-ui-v1.8.0.css?v=1");
   addStyle("hh-mobile-viewport-v180-style", "mobile-viewport-hotfix-v1.8.0.css?v=1");
@@ -66,8 +67,12 @@
                 addScript("hh-breeding-litter-workspace-integration-v182", "breeding-litter-workspace-integration-v1.8.2.js?v=1", () => {
                   addScript("hh-litter-sale-transfer-core-v182", "litter-sale-transfer-core-v1.8.2.js?v=1", () => {
                     addScript("hh-litter-sale-transfer-v182", "litter-sale-transfer-v1.8.2.js?v=1", () => {
-                      addScript("hh-flow-phase2-profile-finish-v182", "flow-phase2-profile-finish-v1.8.2.js?v=1", () => {
-                        addScript("hh-flow-phase1-completion-v182", "flow-phase1-completion-v1.8.2.js?v=1");
+                      addScript("hh-breeding-next-action-core-v182", "breeding-next-action-core-v1.8.2.js?v=1", () => {
+                        addScript("hh-breeding-next-action-v182", "breeding-next-action-v1.8.2.js?v=1", () => {
+                          addScript("hh-flow-phase2-profile-finish-v182", "flow-phase2-profile-finish-v1.8.2.js?v=1", () => {
+                            addScript("hh-flow-phase1-completion-v182", "flow-phase1-completion-v1.8.2.js?v=1");
+                          });
+                        });
                       });
                     });
                   });
