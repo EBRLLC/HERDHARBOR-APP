@@ -1,340 +1,105 @@
-# HerdHarbor Alpha v1.3.0 Release Checklist
+# HerdHarbor Alpha v1.8.1 Acceptance Checklist
 
-## Version and Google Play readiness
+This checklist covers the current v1.8.1 release contract. Automated checks are authoritative where available; manual checks cover browser/device behavior that CI cannot fully prove.
 
-- Confirm every user-facing app label says Alpha v1.3.0 and no earlier development-stage label remains.
-- Confirm existing testers retain their local records through the preserved legacy storage key.
-- Confirm the web app manifest reports version 1.3.0, standalone display, icons, and the expected app scope.
-- Confirm the Android wrapper uses package `com.ebrllc.herdharbor`, version code 5, version name `1.3.0-alpha`, and target SDK 36.
+## Release identity
 
-## Symptom guide and veterinary safety
+- Confirm `herdharbor-build.js`, `manifest.json`, `package.json`, `package-lock.json`, Android Gradle metadata, TWA metadata, PWA fallback metadata, monitoring metadata, README, and release notes all identify Alpha v1.8.1.
+- Confirm the service-worker cache name uses the current v1.8.1 build ID and old HerdHarbor shell caches are removed on activation.
+- Confirm the installed PWA displays Version 1.8.1 and the current build identifier in Settings/install status.
 
-- Open Health and confirm the symptom lookup, full-guide action, and veterinary disclaimer appear before health records.
-- Search from Health and confirm the same query opens in the Symptom Guide tab.
-- Select each built-in species and confirm general emergency guidance plus relevant species guidance appears.
-- Add a custom species and confirm only general guidance appears with a notice to contact a veterinarian experienced with that species.
-- Select a saved animal and confirm its species is applied automatically; changing to another species clears the animal selection.
-- Search common terms such as not eating, diarrhea, coughing, limping, bloat, seizure, poison, and birth.
-- Confirm every result says possible concerns are not a diagnosis, shows an urgency level, and links to a veterinary or government animal-health source.
-- Confirm emergency warning signs remain visible regardless of search filters.
-- Use Log observation and confirm it opens a new Observation health record for the selected animal without saving a diagnosis.
-- Confirm symptom searches are not included in local farm data, cloud sync, backups, or activity history.
-- Test light/dark mode, phone, tablet, keyboard navigation, and screen-reader labels across the guide.
-- Confirm Privacy, Terms, Support, and Delete Account links open from Settings.
-- Confirm the signed Android App Bundle is created with the private upload key outside Git before Play Console upload.
+## Authentication and registration safety
 
-## Workflow and storage efficiency
+- Sign in with an existing account and confirm no stale auth overlay or deadlock blocks the application.
+- Sign out and sign back in after a hard refresh and after service-worker activation.
+- Start a new signup and confirm legal first name, legal last name, date of birth, phone, country, region, postal code, optional organization, intended-use selection, and required attestations are present.
+- Enter an under-18 date of birth and confirm signup is blocked with adult account-holder/parent-or-guardian guidance.
+- Confirm youth use requires the adult/guardian supervision or approval attestation.
+- Confirm full date of birth is not retained in the server-side registration profile.
+- Confirm existing grandfathered accounts are not forced through the new registration-completion gate.
+- Confirm registration/profile overlays reuse `window.HerdHarborCloud` and do not create a second browser Supabase client.
 
-- Save an unchanged form twice and confirm the second save does not mark cloud sync dirty or create a duplicate recovery point.
-- Change only Theme or Sidebar and confirm the preference remains on this device without uploading a full unchanged farm record.
-- Type quickly in Animal, Task, and Sales search and confirm results remain responsive and accurate.
-- Confirm Settings → Device storage reports the active farm record, total app usage, estimated available space, and offline protection state.
-- Upload an animal photo and operation logo and confirm each remains clear while using the reduced storage targets.
-- Sign in, sync, reload, and switch accounts; confirm the active user does not retain a redundant full-state cache and other accounts still retain their signed-out fallback copy.
-- Create repeated pre-change recovery requests and confirm identical snapshots are deduplicated and old snapshots stay within the configured count and byte budget.
+## Subscription launch policy
 
-## Tablet containment and card formatting
+- Confirm public choices are Junior and Member, with Business visible only as Coming Soon when shown.
+- Confirm Founder is not a public signup or checkout option.
+- Confirm Member price is $14.99/month and the subscription renews month-to-month on the Stripe billing-cycle anchor.
+- Before October 1, 2026 at 12:00 AM Eastern, confirm qualifying September accounts receive Member-level launch-trial access through September 30.
+- At/after hard launch, confirm an account without a paid/manual/credit entitlement falls back to Junior without losing stored records.
+- Confirm owner/admin and valid protected/manual entitlements are not downgraded by the launch policy.
 
-- Test 768, 810, 834, 1024, and 1180-pixel viewports with the sidebar expanded and collapsed where available.
-- Open Dashboard, Animals, Pedigrees, Breeding, Births, Health, Tasks, Budgeting, Sales, and Settings and confirm the document never scrolls horizontally into a blank blue area.
-- Add a Recent activity message with a long spreadsheet filename and confirm it wraps inside one card without covering the next card or leaving its panel.
-- Confirm dashboard and budget panels use one content column at tablet widths and return to the intended multi-column layout on a wider desktop.
-- Confirm cards, filter controls, detail rows, task rows, sales choices, offspring rows, and modal contents stay within their parent boxes.
-- Confirm wide tables and the pedigree preview scroll only inside their own containers without widening the page.
-- Confirm tablet portrait top-bar actions remain readable, tappable, and do not cover the operation title.
+## Stripe billing
 
-## Login color consistency
+- Start Member checkout and confirm Stripe Checkout opens successfully.
+- Complete a controlled test/approved checkout and confirm webhook-synchronized paid state returns to HerdHarbor without a temporary Junior downgrade.
+- Open Customer Portal and confirm the current subscription can be managed there.
+- Cancel/reactivate in the approved test path and confirm HerdHarbor reflects the synchronized state.
+- Confirm Stripe secret keys and webhook signing secrets are never present in browser source or committed repository files.
 
-- With HerdHarbor set to Light, sign out and confirm the login page, card, labels, inputs, tabs, links, and messages all use the light palette.
-- With HerdHarbor set to Dark, sign out and confirm the complete login and recovery experience uses the dark palette without light fields or low-contrast text.
-- Test saved-email and password-manager autofill in both themes and confirm input text and fill colors remain readable.
-- Switch the device system appearance while HerdHarbor is set to System and confirm login colors follow the new appearance.
-- Confirm sign-in, sign-up, password recovery, and error/success messages all meet readable contrast in each theme.
+## Referrals and Member-month credits
 
-## Customers and animal sales
+- Leave Referral ID blank during signup and confirm signup proceeds normally.
+- Enter an invalid nonblank Referral ID and confirm it must be corrected or cleared before continuing.
+- Enter a valid Referral ID and confirm the referral attaches to the new account without revealing the referrer's private identity.
+- Confirm self-referral is rejected and a referred account cannot be attached to multiple referrers.
+- Confirm the initial Member subscription payment does not qualify the referral.
+- Confirm the first successful monthly renewal qualifies the referral exactly once.
+- Confirm cancellation before first renewal does not qualify the referral.
+- Confirm a failed first renewal remains unqualified until the renewal payment actually succeeds.
+- Confirm every five qualified referrals earns one stackable Member-month credit.
+- Grant an admin Member-month credit and confirm the audit ledger records the adjustment without creating a fake Stripe payment.
+- Confirm available credits do not get consumed while an active paid Stripe entitlement still covers the account.
 
-- Add, edit, search, and delete an unused customer; confirm a customer referenced by a sale cannot be deleted
-- Create a multi-animal sale and confirm each selected animal appears once with its asking price
-- Confirm the same animal cannot be placed on two active Draft or Reserved sales
-- Move a sale through Draft, Reserved, Completed, and Cancelled and confirm its animals move through For Sale, Reserved, Sold, and back to For Sale as appropriate
-- Confirm discount and tax/fee values cannot be negative and that the total, paid amount, and balance reconcile
-- Edit a customer or sale and confirm linked payment descriptions in Budgeting update without creating extra transactions
-- Delete a sale and confirm its payments and linked Budget income are removed only after confirmation
+## Subscription email notifications
 
-## Payments, documents, and QR cards
+- Confirm subscription lifecycle outbox events are generated for the supported notification types.
+- Confirm production delivery credentials are read only from the approved server environment.
+- Confirm synthetic/test delivery does not include unrelated member, farm, animal, customer, notes, or credential data.
 
-- Record a Deposit and a Payment with date, method, reference, and notes and confirm payment above the remaining balance is rejected
-- Confirm each payment creates exactly one linked Animal Sales income record in Budgeting and editing it opens the source Payment form
-- Edit and delete a payment and confirm the linked Budget record updates or is removed without duplication
-- Print an invoice, receipt, and bill of sale and confirm the farm, customer, animals, totals, payment history, pedigree summary, and signature lines are readable
-- Print one animal QR card, one cage/pen card, and bulk cards for the current animal filter
-- Scan a QR card while signed out, sign in to the owning account, and confirm HerdHarbor opens only the referenced animal
-- Confirm the QR library and cards work from the installed app's cached shell while offline
+## Data preservation and cloud sync
 
-## Digital animal transfers
+- Create/edit records while signed in, sync, reload, and confirm the cloud version returns intact.
+- Exercise an offline/local edit, reconnect, and confirm dirty-state synchronization completes without deleting records.
+- Confirm conflict handling does not silently overwrite a newer cloud version.
+- Confirm account/subscription downgrade changes access limits only and does not delete existing farm records.
+- Confirm downloaded backup/export still contains the expected records and can be opened by the relevant import/recovery workflow.
 
-- Download a transfer from a completed sale and confirm it contains only the subject animal, transfer identifiers, buyer/seller labels, and up to three pedigree generations
-- Import the transfer into another account and confirm the subject becomes Active while new pedigree-only ancestors become Ancestor Only
-- Confirm imported sire, dam, grandparent, and great-grandparent links point to the correct imported or matched records
-- Import the same file again and confirm the transfer is skipped instead of duplicating the animal
-- Confirm an existing ancestor is matched by registration number, tattoo, or tag rather than duplicated
-- Confirm an invalid or partially failing transfer rolls back without leaving partial animals or transfer history
+## Animal-first workflow and domain regressions
 
-## Excel customers, sales, and payments
+- Open an animal and verify operational actions still launch the correct record workflows.
+- Verify breeding lifecycle continuity from planned pairing through birth/litter and offspring handling.
+- Verify rabbit genetics, multi-species genetics, pedigree, ARBA/reference, health, show, production, sales, task, and analytics modules still load.
+- Verify carried-forward v1.6.x/v1.7.x domain modules remain functional; their older filenames alone are not a defect.
+- Run spreadsheet import/export against a controlled sample and confirm validation prevents corrupt or duplicate records.
 
-- Export records and confirm Customers, Sales, and Payments sheets contain typed dates and amounts with readable frozen headers
-- Confirm a multi-animal sale uses one row per animal and retains one sale number, customer, status, totals, and payment history after reimport
-- Confirm payment-linked Budget transactions are excluded from the Budgeting sheet and recreated exactly once from Payments during import
-- Confirm spreadsheet import rejects duplicate active animal sales, unknown customers or animals, invalid statuses, negative values, and overpayments
-- Download the template and confirm Customers, Sales, and Payments sheets and their validation lists are present
-- Edit customers, sales, and payments on separate devices and confirm record-level cloud merging preserves non-overlapping changes
+## Mobile/PWA
 
-## Animals and pedigree builder hotfix
+- Test iPhone-sized portrait viewport and confirm there is no horizontal page overflow, clipped authentication UI, or inaccessible Subscription controls.
+- Test a representative Android/desktop browser viewport and confirm navigation, dialogs, forms, and tables remain contained.
+- Install/update the PWA, confirm the update prompt appears when a new service worker is waiting, and confirm Update Now reloads into the new shell.
+- Simulate offline mode after one successful load and confirm the static shell opens while protected auth/API requests are not served from the static cache.
 
-- Open Animals and confirm the status filter defaults to Active and only exact Active-status records appear initially
-- Select Any status and confirm Active, Breeding, Growing, Retired, For Sale, Reserved, Sold, Deceased, and Ancestor Only records can still be shown
-- Select Ancestor Only and confirm ancestor records remain available without appearing in the default Active view
-- Open the Guided Pedigree Builder and confirm its header shows v1.3.0 instead of a stale development version
+## Monitoring and privacy
 
-## Cattle ear tags
+- Confirm the checked-in Sentry config has a blank DSN and production deployment injects the DSN from the protected environment.
+- Confirm a controlled synthetic production acceptance event identifies `HerdHarbor@1.8.1`.
+- Confirm monitoring events do not include credentials or full farm/member record payloads.
+- Confirm Market Analytics privacy suppression, consent deletion, minimum sample thresholds, and service-role aggregate access regressions remain green.
 
-- Add a cattle record and confirm Ear tag number and Ear tag color appear and save.
-- Change the species to a non-cattle species and confirm cattle ear-tag fields are hidden and excluded.
-- Search Animals using the ear-tag number and color.
-- Confirm the ear-tag number and color appear on the cattle record, QR card, pedigree, sale document, spreadsheet export, and transfer export.
+## Repository hardening
 
-## Breeding and pregnancy workflow
+- Run `npm ci`.
+- Run `npm run test:release`.
+- Run `npm test` in UTC.
+- Run `npm test` in `America/New_York`.
+- Run `npm run build:monitoring`.
+- Confirm the repository security audit reports no private key, provider secret, `.env`, backup/temp artifact, or duplicate browser Supabase client violation.
+- Confirm only the three current v1.8.1 GitHub Actions workflows remain active in the repository tree.
+- Confirm no obsolete open PR can be merged into current `main`.
 
-- Record rabbit, cattle, goat, sheep, pig, horse, and dog breedings and confirm species-appropriate pregnancy-check, preparation, expected-birth, and weaning dates are suggested
-- Confirm testers can override every suggested date without the app changing it back
-- Record natural, artificial insemination, embryo transfer, and other breeding methods
-- Mark pregnancy checks Pending, Positive, Negative, Inconclusive, or Not checked and confirm the breeding status follows the result
-- Confirm a negative pregnancy result closes future preparation and expected-birth reminders without deleting the breeding history
-- Confirm positive or confirmed breedings retain pregnancy-check history and keep the expected-birth reminder
-- Edit a breeding from a second device and confirm non-overlapping field changes merge automatically
-- Change the same breeding field differently on two devices and confirm normal protected conflict handling remains active
+## Production release verification
 
-## Births, litters, and offspring
-
-- Record Unassisted, Assisted, Cesarean, Induced, and Unknown birth types
-- Record born alive, stillborn, fostered in, fostered out, later lost, and weaned counts and confirm negative, fractional, or impossible totals are rejected
-- Link a birth to a breeding and confirm the breeding becomes Delivered and its pregnancy/birth reminders close
-- Confirm the expected-weaning date follows the linked animal species and can be overridden
-- Confirm one deterministic weaning task is created and saving again or merging from another device does not duplicate it
-- Create kept offspring from a birth and provide an individual name, tag, and sex for each animal
-- Confirm every created offspring receives the birth date, species, breed, location, sire, dam, and source-birth record
-- Open offspring pedigrees and confirm the linked sire and dam appear automatically
-- Run offspring creation from two devices based on the same birth and confirm deterministic IDs prevent duplicate animals
-- Delete a birth record and confirm already-created offspring animals are preserved while their source-birth links are cleared safely
-
-## Breeding reports
-
-- Filter breeding history by All years and a selected year and confirm all totals and detail rows use the same period
-- Confirm conception rate, delivery rate, live-born, stillborn, lost, weaned, and survival rate reconcile to the underlying records
-- Compare dams and confirm breedings, confirmed pregnancies, births, live-born, weaned, and average live-born counts are correct
-- Download the Breeding & Birth report and confirm Overview, Dam Performance, Breeding History, and Birth History sheets open cleanly
-- Confirm report dates are typed dates, counts are typed whole numbers, rates are typed percentages, headers are frozen/readable, and no formulas or values are clipped
-
-## Full-year budgeting
-
-- Switch Budget view between Monthly and Full year and confirm the selected mode remains active while changing species or transaction filters
-- Select 2026 in Full year and confirm only transactions dated January 1 through December 31, 2026 are included
-- Confirm Income, Operating expenses, Capital expenses, Net, and Cost per head match the sum of the twelve monthly views
-- Confirm the monthly breakdown always shows January through December, including zero-activity months
-- Confirm yearly category plans equal the sum of the monthly budgets entered in that year
-- Confirm a monthly head-count override still applies only to that month and Full year averages all available overrides in the selected year
-- Confirm the Full year transaction list includes every matching 2026 record and no 2025 or 2027 records
-- Export CSV in Monthly and Full year modes and confirm the filename and included records match the selected period
-- Switch to Full year and confirm Production & Sales automatically uses January 1 through December 31 of the selected year
-- Change years in Full year mode and confirm the annual planned budget section follows the same selected year
-
-## Hay production and sales
-
-- Confirm Hay appears beside Eggs, Milk, and Broilers in Quick entry and in the Product form
-- Confirm a new Hay entry defaults to Whole operation and bales
-- Record square bales, round bales, pounds, kilograms, and tons without combining incompatible units in reports
-- Add harvested, sold, fed, stored, donated, and spoiled quantities and confirm allocations cannot exceed total hay
-- Add a field or cutting name and confirm comparisons label it as Field / Cutting
-- Add hay sale income and confirm exactly one linked Other Income transaction is created and updated without duplication
-- Import Hay, hay bales, round hay bales, and fodder from Excel and confirm they normalize to Hay
-- Download the Excel template and confirm Hay plus bale units appear in the Production validation lists
-- Export and reimport Hay production and confirm product, unit, quantities, field/cutting name, customer, income, and notes round-trip unchanged
-
-## Recurring tasks and daily workflow
-
-- Create daily, weekly, every-two-weeks, monthly, and custom-day tasks and confirm each schedule label is correct
-- Complete each recurring task and confirm exactly one open next occurrence is created with the same title, category, animal, notes, and recurrence
-- Reopen and complete the same task again and confirm a second next occurrence is not created
-- On two devices, complete the same recurring task from the same cloud base and confirm the deterministic next occurrence merges without duplication
-- Create monthly tasks due January 29, 30, and 31 and confirm the next dates clamp to the last valid February date, including February 29 in a leap year
-- Confirm one-time tasks do not create a next occurrence
-- Complete a recurring task several intervals late and confirm HerdHarbor schedules the next future occurrence without creating missed-date backlog records
-- Confirm Today includes both tasks due today and overdue tasks
-- Confirm Upcoming excludes today and overdue tasks
-- Filter by category, linked animal, completion state, and search text
-- Select **Tomorrow** and confirm the task moves to tomorrow without changing its recurrence
-- Complete a task from the dashboard **Today’s work** panel and confirm the Task screen and cloud copy update
-- Confirm task controls remain readable and tappable on phone and desktop sizes
-
-## Faster production entry
-
-- Open Budgeting and confirm Eggs, Milk, Broilers, Hay, and Custom product quick-entry buttons open the correct form defaults
-- Add an entry, select **Repeat last entry**, and confirm quantities, assignments, customer, notes, and group/batch name are copied to a new record dated today
-- Confirm repeating an entry creates a new ID and exactly one new linked income transaction rather than changing or duplicating the source transaction
-- Use the Repeat action on a historical row and confirm the source record remains unchanged
-- Add a flock, herd, or broiler batch name and confirm it remains after reload and on a second device
-
-## Production reports
-
-- Switch between Today, This week, This month, This year, and All records
-- Enter a custom From and To range and confirm the app safely corrects a reversed range
-- Filter by product, species, and animal and confirm every total, warning, comparison, and history row updates
-- Switch **Totals by** between Day, Week, Month, and Year
-- Confirm quantities remain separated by product and unit and are never added across eggs, dozens, gallons, birds, pounds, or custom units
-- Confirm product totals show produced, sold, used on farm/stored, donated, waste amount/rate, average sale price, and revenue
-- Confirm an individual dairy cow's History action filters to that cow and Milk
-- Compare two cows, two named flocks/herds, and two named broiler batches
-- With three prior daily entries, add a newest daily quantity at least 25% lower and confirm the production-drop warning appears
-- Add 10% or more waste for a report period and confirm the waste warning appears
-- Print the report and confirm its totals, comparisons, warnings, and detailed history are readable
-- Download the Production report and confirm its Overview, Product Totals, Period Totals, Comparisons, Production History, and Warnings sheets open cleanly
-- Confirm the Excel report uses typed dates, numbers, currency, and percentages and keeps long headers readable
-- Import/export a Production record with a group/flock/herd/batch name and confirm it round-trips unchanged
-
-## Production and sales
-
-- Add an egg record with collected, sold, household, hatching, and waste quantities
-- Confirm allocated quantities cannot exceed the total collected
-- Add sale income and confirm exactly one linked **Egg Sales** transaction appears in Budgeting
-- Edit the egg quantity and sale amount and confirm the linked transaction updates instead of duplicating
-- Remove sale income and confirm only the linked income transaction is removed
-- Add a broiler batch with birds processed, birds sold, frozen or household quantities, loss/condemned quantity, and total batch weight
-- Add a milk record assigned to an individual cow with morning/evening session, sold, household, calf feed, stored, and discarded quantities
-- Confirm milk discard quantity and reason remain visible after reload and on a second device
-- Add a custom product and confirm its quantity, unit, sale income, and notes are retained
-- Filter Budgeting by month and species and confirm matching production records and summaries appear
-- Delete a production record and confirm its linked income is deleted after confirmation
-- Edit a production-linked transaction from the transaction table and confirm HerdHarbor opens the source production record
-
-## Automatic multi-device merge
-
-- Start two devices from the same confirmed cloud copy
-- Change different animals on each device and confirm both changes save automatically
-- Change different fields on the same animal and confirm both field values survive
-- Add a medical record on one device and a budgeting record on the other and confirm both survive
-- Confirm device theme and sidebar preferences do not create a farm-data conflict
-- Edit the same field differently on both devices and confirm synchronization pauses for a protected choice
-- Delete a record on one device while editing it on the other and confirm synchronization pauses
-- Confirm automatic merging creates recovery snapshots for both the local and cloud copies
-- Make another local edit while a merge is saving and confirm the newest edit is rebased and saved
-- Confirm automatic sync resumes after a successful merge
-
-## Visible cloud sync
-
-- Open Settings and confirm the cloud card shows the current status, connection, pending-change state, and last-synced timestamp
-- Add or edit a record and confirm the card moves through a pending/saving state to **Protected**
-- Select **Sync now** and confirm the newest local records reach **Saved to cloud**
-- Disconnect the device and confirm HerdHarbor says the offline copy is protected
-- Reconnect and confirm pending changes save automatically
-- Confirm the sidebar indicator matches the Settings status
-- Confirm a genuine overlapping multi-device conflict is shown as action required and neither copy is erased
-
-## Excel record export
-
-- Select **Export records to Excel** from Settings
-- Confirm the workbook opens with Overview, Animals, Customers, Sales, Payments, Breeding, Births, Medical, Production, Budgeting, and Annual Budget sheets
-- Confirm headers are readable, frozen, filtered, and date/currency columns retain their types
-- Confirm animal parent references, source-birth references, medical-to-animal links, and animal-assigned transactions use a unique record reference
-- Confirm breeding dam/sire links, pregnancy dates/results, methods, and statuses remain typed and readable
-- Confirm birth links, parent links, outcome counts, expected-weaning dates, and offspring source-birth links round-trip unchanged
-- Confirm annual planned figures remain annual plans and are not listed as actual transactions
-- Confirm production quantities, allocations, waste reasons, batch weights, and sale income remain typed values on the Production sheet
-- Confirm production-linked income is not duplicated on the Budgeting sheet and is recreated from Production during import
-- Upload the exported workbook to the reviewed importer and confirm the counts, dates, amounts, and animal links round-trip correctly
-- Confirm values beginning with `=`, `+`, `-`, or `@` are exported as text rather than executable spreadsheet formulas
-
-## Import diagnostics
-
-- Import a workbook containing invalid dates, amounts, animal references, statuses, species, and weights
-- Confirm each problem includes a specific **How to fix** explanation
-- Select **Download issue report** and confirm the CSV includes workbook, sheet, row, level, problem, and correction columns
-- Confirm the review still imports valid rows only after explicit confirmation
-
-## Excel spreadsheet import
-
-- Download the HerdHarbor Excel template from Settings and confirm it opens with Instructions, Animals, Customers, Sales, Payments, Breeding, Births, Production, Budgeting, Annual Budget, and Medical sheets
-- Import a workbook containing valid rows in every supported data sheet
-- Confirm the review screen shows correct ready, skipped, warning, and error counts
-- Confirm no records are added before **Import records** is selected
-- Confirm approved animals, customers, sales, payments, breedings, births, production, transactions, annual plans, and medical records appear in their normal app sections
-- Import the same workbook again and confirm duplicate records are skipped
-- Confirm Medical and animal-assigned Budgeting rows match animals by tag, tattoo, registration number, or unique name
-- Confirm missing or ambiguous animal references are rejected without changing existing records
-- Confirm sire and dam references connect when they match an existing or newly imported animal
-- Confirm imported breeding and birth IDs link correctly and imported offspring attach to the matching source-birth record
-- Confirm imported linked births mark the related breeding Delivered and generate no duplicate reminders
-- Confirm invalid dates, amounts, status values, and unsupported species are flagged by sheet and row
-- Confirm annual budget columns create yearly plan records and do not create actual transactions
-- Confirm annual plan expense, projected income, and projected net totals reconcile to the source workbook
-- Confirm a workbook without a Year column shows the current import year in review
-- Confirm Breeding, Growing, and Retired statuses import without excluding active livestock
-- Confirm Neutered Male imports as Male while preserving the original label in animal notes
-- Confirm medical condition, treatment, medication, dose, provider, cost, follow-up status, and notes remain readable
-- Test in a U.S. timezone and confirm Excel dates do not shift backward one day
-- Import a valid prefixed-XML `.xlsx` workbook and confirm it opens without a parser error
-- Confirm a legacy `.xls` file is rejected with instructions to resave it as `.xlsx`
-- Confirm a workbook over 10 MB and a workbook over 5,000 data rows are rejected
-- Confirm the imported records reach **Saved to cloud**, survive reload, and appear on a second device
-- Confirm the spreadsheet itself is never sent through an app network request
-- Import Egg Production, Broiler Production, and Milk Production sheets without a Product column and confirm the sheet name supplies the correct product
-- Confirm an imported milk record preserves calf-feed quantity, discarded quantity, discard reason, and optional sale income
-
-## Mobile rotation
-
-- Confirm `manifest.json` reports `"orientation": "portrait"`
-- Open Settings and confirm the Auto-rotate control is gone
-- Rotate an Android installed app and confirm HerdHarbor remains in portrait
-- Add HerdHarbor to an iPhone/iPad Home Screen, launch it from the icon, and confirm it remains in portrait
-- Confirm no portrait-warning overlay appears in either portrait or landscape browser windows
-- Confirm the regular browser page remains usable if the browser ignores installed-app orientation preferences
-
-## Existing-data protection
-
-- Sign in to an existing tester account and confirm all current records load
-- Add an animal and confirm the Account status reaches **Saved to cloud**
-- Reload and confirm the animal remains
-- Turn off the connection, edit a record, close and reopen the app, and confirm the offline copy remains
-- Reconnect and confirm the pending change reaches the cloud
-- Confirm signing out is blocked while an unsynced change cannot be saved
-- Download an Account safety backup and confirm it contains the current profile and animals
-
-## Multi-device conflict protection
-
-- Open the same test account on two devices
-- Make both devices start from the same cloud data
-- Take one device offline and edit a record
-- Edit and sync a different record on the online device
-- Reconnect the offline device
-- Confirm HerdHarbor automatically combines changes to different records
-- Repeat with both devices changing the same field and confirm HerdHarbor pauses instead of silently overwriting either copy
-- Test **Keep this device's records**
-- Repeat and test **Use cloud records**
-
-## Installation and updates
-
-- Confirm the manifest reports HerdHarbor with 192px and 512px icons
-- Install on Android or a desktop browser
-- Add to Home Screen from Safari on iPhone/iPad
-- Confirm the installed app opens in standalone mode
-- Confirm the app shell opens without a connection for a previously signed-in tester
-- Confirm cloud/auth requests are absent from Cache Storage
-- Publish a service-worker version change and confirm the update prompt appears
-- Confirm an update is paused when unsynced data cannot be protected
-
-## Regression
-
-- Test sign in, sign out, account creation, and password reset
-- Confirm no random sign-in flash appears
-- Test animals, breeding, births and litters, offspring creation, pedigrees, health, tasks, budgeting, production and sales, photos, breed memory, and dark mode
-- Test JSON export/import
-- Test on phone and desktop sizes
+- Merge only from a green reviewed PR whose head SHA has not moved.
+- Confirm the resulting `main` merge SHA is the exact SHA checked out by the monitored production Pages workflow.
+- Confirm the production Pages job completes successfully through artifact staging and deployment.
+- Reload `https://app.herdharbor.com` after deployment and confirm the application identifies v1.8.1 and the current PWA shell.

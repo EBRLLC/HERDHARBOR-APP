@@ -91,7 +91,7 @@ test("browser patch includes species API aliases, current-farm symptom filtering
 });
 
 test("production publisher is authoritative, current-SHA based, and no longer requires a manual rerun", () => {
-  const workflow = fs.readFileSync(path.resolve(__dirname, "../.github/workflows/v1.6.7-final-production-pages-closeout.yml"), "utf8");
+  const workflow = fs.readFileSync(path.resolve(__dirname, "../.github/workflows/v1.8.1-production-pages.yml"), "utf8");
   assert.match(workflow, /branches: \[main\]/);
   assert.match(workflow, /ref: \${{ github\.sha }}/);
   assert.match(workflow, /pages-build-deployment/);

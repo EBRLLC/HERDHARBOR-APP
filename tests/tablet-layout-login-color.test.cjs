@@ -14,8 +14,8 @@ const pedigreeGeneticsCss = fs.readFileSync(path.join(root, "pedigree-genetics-v
 const showsCss = fs.readFileSync(path.join(root, "shows-v1.6.1.css"), "utf8");
 const build = fs.readFileSync(path.join(root, "herdharbor-build.js"), "utf8");
 
-// HerdHarborBuild is authoritative for the current web-shell identity while the native manifest remains v1.7.1.
-assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.7\.1"/);
+// HerdHarborBuild and the native manifest identify the current v1.8.1 release.
+assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.1"/);
 assert.match(html, /html \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
 assert.match(html, /body \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
 assert.match(html, /\.app-shell \{[\s\S]*?grid-template-columns: minmax\(0, var\(--sidebar-width\)\) minmax\(0, 1fr\);[\s\S]*?overflow-x: clip;/);
@@ -30,7 +30,7 @@ assert.match(html, /\.list-item \{[\s\S]*?max-width: 100%;[\s\S]*?min-width: 0;[
 assert.match(html, /\.data-table-wrap \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: auto;[\s\S]*?overscroll-behavior-inline: contain;/);
 assert.match(html, /@media \(max-width: 820px\) \{[\s\S]*?#quick-add-button[\s\S]*?width: 42px;/);
 assert.equal(manifest.orientation, "portrait");
-assert.equal(manifest.version, "1.7.1");
+assert.equal(manifest.version, "1.8.1");
 
 assert.match(cloud, /version: "1\.7\.1"/);
 assert.match(cloud, /html\[data-theme="dark"\] #hh-auth-root/);

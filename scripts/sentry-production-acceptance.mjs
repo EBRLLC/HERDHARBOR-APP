@@ -26,11 +26,11 @@ const event = JSON.stringify({
   platform: "javascript",
   level: "info",
   message: "HerdHarbor controlled production monitoring acceptance",
-  release: "HerdHarbor@1.6.7",
+  release: "HerdHarbor@1.8.1",
   environment: "production",
   tags: {
     module: "release_acceptance",
-    build: "completion-debt-1",
+    build: "v1.8.1-production-acceptance",
     privacy: "synthetic_only"
   }
 });
@@ -40,7 +40,7 @@ const response = await fetch(endpoint, {
   method: "POST",
   headers: {
     "Content-Type": "application/x-sentry-envelope",
-    "X-Sentry-Auth": `Sentry sentry_version=7, sentry_key=${publicKey}, sentry_client=herdharbor-release-acceptance/1.6.7`
+    "X-Sentry-Auth": `Sentry sentry_version=7, sentry_key=${publicKey}, sentry_client=herdharbor-release-acceptance/1.8.1`
   },
   body: envelope
 });

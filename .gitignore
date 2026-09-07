@@ -1,17 +1,50 @@
+# Dependencies and local tooling
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+coverage/
+.nyc_output/
+_site/
+dist/
+*.log
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+keystore.properties
+credentials.json
+secrets/
+
 # Android and Google Play build output
 .gradle/
 android/.gradle/
 android/build/
 android/app/build/
+android/local.properties
 *.aab
 *.apk
 
-# Signing keys and local signing configuration must never enter Git
-*.jks
-*.keystore
-keystore.properties
-secrets/
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/
 
-# Local tooling
-node_modules/
-npm-debug.log*
+# Editor/OS and temporary files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+*.temp
+*.bak
+*.orig
+*~

@@ -21,24 +21,24 @@ const fullDescription = read("google-play/listing/en-US/full-description.txt").t
 const androidManifest = read("android/app/src/main/AndroidManifest.xml");
 
 assert.doesNotMatch(html, /pre[ -]?alpha/i);
-assert.equal(manifest.version, "1.7.1");
+assert.equal(manifest.version, "1.8.1");
 assert.equal(manifest.display, "standalone");
 assert.ok(manifest.shortcuts.some((shortcut) => shortcut.url === "./#shows"));
 assert.equal(twa.packageId, "com.ebrllc.herdharbor");
-assert.equal(twa.appVersion, "1.7.1");
-assert.equal(twa.appVersionCode, 14);
+assert.equal(twa.appVersion, "1.8.1");
+assert.equal(twa.appVersionCode, 15);
 assert.equal(twa.host, "app.herdharbor.com");
 assert.match(appGradle, /applicationId:\s*'com\.ebrllc\.herdharbor'/);
 assert.match(appGradle, /namespace "com\.ebrllc\.herdharbor"/);
 assert.match(appGradle, /applicationId "com\.ebrllc\.herdharbor"/);
 assert.match(appGradle, /compileSdkVersion 36/);
 assert.match(appGradle, /targetSdkVersion 36/);
-assert.match(appGradle, /versionCode 14/);
-assert.match(appGradle, /versionName "1\.7\.1"/);
+assert.match(appGradle, /versionCode 15/);
+assert.match(appGradle, /versionName "1\.8\.1"/);
 assert.match(appGradle, /https:\/\/app\.herdharbor\.com\/manifest\.json/);
-// The native/TWA package remains v1.7.1 while the web shell may advance independently.
-// Verify the current service worker has a valid HerdHarbor shell identity and still
-// preserves every native-facing v1.7.1 domain asset required by the installed TWA.
+// Verify the current native/TWA package and service worker share the v1.8.1
+// release identity while preserving every older-named domain asset required by
+// the installed TWA.
 assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1)-/);
 assert.match(worker, /rabbit-records-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=1\.7\.1/);
@@ -46,7 +46,7 @@ assert.match(worker, /shows-v1\.6\.1\.css\?v=1\.7\.1/);
 assert.match(worker, /shows-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /shows-v1\.6\.1-hardening\.js\?v=1\.7\.1/);
 assert.match(pwa, /\$\{APP_VERSION\}-alpha-\$\{BUILD_ID\}/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "multispecies-genetics-foundation-1"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "october-subscription-launch-referrals-credits-4"/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
 assert.match(pwa, /loadShows/);
@@ -76,4 +76,4 @@ assert.ok(fs.statSync(path.join(root, "android/store_icon.png")).size <= 1024 * 
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/app-icon-512.png")));
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/feature-graphic-1024x500.png")));
 
-console.log("Google Play Alpha v1.7.1 native readiness tests passed against current web shell");
+console.log("Google Play Alpha v1.8.1 native readiness tests passed against current web shell");

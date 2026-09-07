@@ -4,8 +4,8 @@
   window.HerdHarborMonitoringConfig = Object.freeze({
     dsn: "",
     environment: "",
-    release: "HerdHarbor@1.7.1",
-    build: "multispecies-genetics-foundation-1",
+    release: "HerdHarbor@1.8.1",
+    build: "october-subscription-launch-referrals-credits-4",
     enableTestCrash: false
   });
 })();

@@ -62,10 +62,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install pinned monitoring dependencies
+      - name: Install pinned dependencies
         run: npm ci --no-audit --no-fund
-      - name: Verify v1.8.1 subscription launch and web regression contract
+      - name: Verify v1.8.1 release and web regression contract
         run: |
+          npm run test:release
           npm run test:v1.8.1
           node --test tests/workflow-phase1-v1.7.1.test.cjs
           npm run test:health
@@ -101,17 +102,18 @@ jobs:
           test -s _site/herdharbor-monitoring-config.js
           test -s _site/vendor/herdharbor-monitoring-v1.6.1.min.js
           test -s _site/health-intelligence-v1.7.1.js
-          test -s _site/health-intelligence-v1.7.1.css
           test -s _site/herdharbor-v1.7.1-stability-hotfix.js
+          test -s _site/registration-safety-v1.8.1.js
           test -s _site/subscription-launch-v1.8.1.js
           test -s _site/subscription-engine-v1.8.0.js
-          test -s _site/subscription-engine-v1.8.0.css
-          test -s _site/mobile-viewport-hotfix-v1.8.0.css
+          test -s _site/subscription-referral-policy-v1.8.1.js
+          test -s _site/subscription-admin-credits-v1.8.1.js
+          test -s _site/subscription-stripe-launch-bridge-v1.8.1.js
           grep -q 'version: "1.8.1"' _site/herdharbor-build.js
           grep -q '2026-10-01T00:00:00-04:00' _site/subscription-launch-v1.8.1.js
           ! grep -q '"dsn": ""' _site/herdharbor-monitoring-config.js
           grep -q '"environment": "production"' _site/herdharbor-monitoring-config.js
-          grep -q '"release": "HerdHarbor@1.7.1"' _site/herdharbor-monitoring-config.js
+          grep -q '"release": "HerdHarbor@1.8.1"' _site/herdharbor-monitoring-config.js
           grep -q "\"build\": \"${RELEASE_SHA}\"" _site/herdharbor-monitoring-config.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
