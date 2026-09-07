@@ -37,9 +37,10 @@
 
   function breedingOutcome(state,record){
     const status=lower(record?.status),check=lower(record?.pregnancyCheckStatus),litter=linkedLitter(state,record);
+    if(litter||status==="delivered")return"conceived";
     if(["cancelled","canceled"].includes(status))return"cancelled";
     if(check==="negative"||status==="not pregnant")return"not-conceived";
-    if(litter||check==="positive"||["confirmed pregnant","due soon","delivered"].includes(status))return"conceived";
+    if(check==="positive"||["confirmed pregnant","due soon"].includes(status))return"conceived";
     return"pending";
   }
 
@@ -67,7 +68,7 @@
       averageBornAlive:mean(rows.map(row=>row.bornAlive)),
       largestBornAlive:rows.length?Math.max(...rows.map(row=>num(row.bornAlive)||0)):null,
       totalWeaned:sum(rows.map(row=>row.weaned)),
-      averageWeaned:mean(rows.map(row=>row.weaned)),
+      averageWeaned:mean(resolved.map(row=>row.weaned)),
       recordedPreWeaningLosses:totalLosses,
       resolvedWeaningLitters:resolved.length,
       weaningEligibleLitters:rows.filter(row=>eligibleAtBirth(row)>0).length,
