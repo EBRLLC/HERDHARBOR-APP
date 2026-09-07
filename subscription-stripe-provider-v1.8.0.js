@@ -4,7 +4,7 @@
   const INTERVAL_KEY = "herdharbor_subscription_interval_v1";
   const CALL_TIMEOUT_MS = 15000;
   const ACCESS_REFRESH_TIMEOUT_MS = 5000;
-  const ACTIVE = new Set(["active", "trialing", "founder", "free_junior", "resubscribed"]);
+  const ACTIVE = new Set(["active", "trialing", "founder", "free_junior", "resubscribed", "credit_active"]);
   const PLAN_ORDER = ["junior", "founder", "member", "business"];
   const PRICING = Object.freeze({
     junior: Object.freeze({ month: 0, year: 0 }),
@@ -22,16 +22,12 @@
   let checkoutReadyTimer = null;
   let lastMembershipSignature = "";
 
-  function appReturnUrl() {
-    return `${window.location.origin}${window.location.pathname}`;
-  }
-
+  function appReturnUrl() { return `${window.location.origin}${window.location.pathname}`; }
   function appReadyForBilling() {
     const signedIn = Boolean(window.HerdHarborCloud?.getSession?.()?.user?.id);
     const authLocked = document.documentElement.classList.contains("hh-auth-locked");
     return signedIn && !authLocked;
   }
-
   function money(cents, interval) {
     if (cents === 0) return "Free";
     return `$${(Number(cents) / 100).toFixed(2)}/${interval === "year" ? "yr" : "mo"}`;
@@ -43,15 +39,10 @@
     try {
       return await Promise.race([
         promise,
-        new Promise((resolve) => {
-          timeoutId = window.setTimeout(() => resolve(null), timeoutMs);
-        })
+        new Promise((resolve) => { timeoutId = window.setTimeout(() => resolve(null), timeoutMs); })
       ]);
-    } catch {
-      return null;
-    } finally {
-      if (timeoutId != null) window.clearTimeout(timeoutId);
-    }
+    } catch { return null; }
+    finally { if (timeoutId != null) window.clearTimeout(timeoutId); }
   }
 
   async function refreshAccessBounded() {
@@ -64,18 +55,13 @@
     const cloud = window.HerdHarborCloud;
     if (!cloud?.invokeFunction) throw new Error("HerdHarbor secure billing is still starting. Try again in a moment.");
     if (!appReadyForBilling()) throw new Error("HerdHarbor secure billing will be available after sign-in finishes.");
-
     let timeoutId = null;
     try {
       return await Promise.race([
         cloud.invokeFunction("subscription-billing", { action, ...payload }),
-        new Promise((_, reject) => {
-          timeoutId = window.setTimeout(() => reject(new Error("The billing service took too long to respond. Try again.")), CALL_TIMEOUT_MS);
-        })
+        new Promise((_, reject) => { timeoutId = window.setTimeout(() => reject(new Error("The billing service took too long to respond. Try again.")), CALL_TIMEOUT_MS); })
       ]);
-    } finally {
-      if (timeoutId != null) window.clearTimeout(timeoutId);
-    }
+    } finally { if (timeoutId != null) window.clearTimeout(timeoutId); }
   }
 
   function bridgeMembership(snapshot = {}) {
@@ -91,9 +77,6 @@
   const provider = Object.freeze({
     name: "stripe",
     async getSubscriptionSnapshot() {
-      // The subscription engine performs background stale-screen checks during
-      // auth transitions. Never make billing network calls while the auth lock
-      // is active; returning null preserves the engine's current local state.
       if (!appReadyForBilling()) return null;
       const snapshot = await call("snapshot");
       bridgeMembership(snapshot || {});
@@ -102,15 +85,9 @@
     createCheckoutSession(payload = {}) {
       const planId = String(payload.plan || payload.planId || "").toLowerCase();
       if (planId === "junior") throw new Error("HerdHarbor Junior is a free youth plan and does not use Stripe checkout.");
-      return call("checkout", {
-        planId,
-        billingInterval: selectedInterval,
-        origin: appReturnUrl()
-      });
+      return call("checkout", { planId, billingInterval: selectedInterval, origin: appReturnUrl() });
     },
-    createPortalSession() {
-      return call("portal", { origin: appReturnUrl() });
-    },
+    createPortalSession() { return call("portal", { origin: appReturnUrl() }); },
     async cancelSubscription() {
       const result = await call("cancel");
       await refreshAccessBounded();
@@ -134,7 +111,6 @@
     if (!panel || panel.hidden) return;
     const grid = panel.querySelector(".hh-subscription-plan-grid");
     if (!grid) return;
-
     let switcher = panel.querySelector("[data-hh-stripe-interval-switcher]");
     if (!switcher) {
       switcher = document.createElement("div");
@@ -149,18 +125,15 @@
       grid.parentElement?.insertBefore(switcher, grid);
       switcher.addEventListener("click", (event) => {
         const button = event.target?.closest?.("[data-hh-stripe-interval]");
-        if (!button) return;
-        setBillingInterval(button.dataset.hhStripeInterval);
+        if (button) setBillingInterval(button.dataset.hhStripeInterval);
       });
     }
-
     switcher.querySelectorAll("[data-hh-stripe-interval]").forEach((button) => {
       const active = button.dataset.hhStripeInterval === selectedInterval;
       button.classList.toggle("button-primary", active);
       button.classList.toggle("button-ghost", !active);
       button.setAttribute("aria-pressed", active ? "true" : "false");
     });
-
     panel.querySelectorAll(".hh-subscription-plan-card").forEach((card, index) => {
       const planId = PLAN_ORDER[index];
       if (!planId) return;
@@ -184,24 +157,20 @@
     configured = true;
     return true;
   }
-
   function hasCheckoutResult() {
     try { return Boolean(new URL(window.location.href).searchParams.get("subscription")); }
     catch { return false; }
   }
-
   async function refreshAfterCheckout() {
     if (successRefreshInFlight || !appReadyForBilling()) return;
     let url;
     try { url = new URL(window.location.href); } catch { return; }
     const result = url.searchParams.get("subscription");
     if (!result) return;
-
     url.searchParams.delete("subscription");
     url.searchParams.delete("session_id");
     window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
     if (result !== "success") return;
-
     successRefreshInFlight = true;
     try {
       for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -213,67 +182,36 @@
           break;
         }
       }
-    } finally {
-      successRefreshInFlight = false;
-    }
+    } finally { successRefreshInFlight = false; }
   }
-
   function stopCheckoutReadyTimer() {
-    if (checkoutReadyTimer != null) {
-      window.clearInterval(checkoutReadyTimer);
-      checkoutReadyTimer = null;
-    }
+    if (checkoutReadyTimer != null) { window.clearInterval(checkoutReadyTimer); checkoutReadyTimer = null; }
   }
-
   function refreshCheckoutWhenReady() {
-    if (!hasCheckoutResult()) {
-      stopCheckoutReadyTimer();
-      return;
-    }
+    if (!hasCheckoutResult()) { stopCheckoutReadyTimer(); return; }
     if (checkoutReadyTimer != null) return;
-
     let attempts = 0;
     checkoutReadyTimer = window.setInterval(() => {
       attempts += 1;
-      if (appReadyForBilling()) {
-        stopCheckoutReadyTimer();
-        void refreshAfterCheckout();
-      } else if (attempts >= 40) {
-        stopCheckoutReadyTimer();
-      }
+      if (appReadyForBilling()) { stopCheckoutReadyTimer(); void refreshAfterCheckout(); }
+      else if (attempts >= 40) stopCheckoutReadyTimer();
     }, 250);
   }
 
   function boot() {
     if (!configure()) {
       let attempts = 0;
-      const timer = window.setInterval(() => {
-        attempts += 1;
-        if (configure() || attempts >= 40) window.clearInterval(timer);
-      }, 250);
+      const timer = window.setInterval(() => { attempts += 1; if (configure() || attempts >= 40) window.clearInterval(timer); }, 250);
     }
-
     document.addEventListener("herdharbor:auth-session", (event) => {
-      if (event.detail?.signedIn === true) {
-        // Do not force billing refreshes during normal login. The subscription
-        // engine refreshes when opened; checkout completion is the only auth
-        // transition that needs a bounded post-login refresh here.
-        configure();
-        refreshCheckoutWhenReady();
-      } else if (event.detail?.signedIn === false) {
-        stopCheckoutReadyTimer();
-      }
+      if (event.detail?.signedIn === true) { configure(); refreshCheckoutWhenReady(); }
+      else if (event.detail?.signedIn === false) stopCheckoutReadyTimer();
     });
-
     document.addEventListener("herdharbor:subscription-engine-state", () => window.setTimeout(enhancePanel, 0));
     document.addEventListener("click", (event) => {
       if (event.target?.closest?.("[data-hh-subscription-engine-tab]")) window.setTimeout(enhancePanel, 0);
     }, true);
-
-    window.setTimeout(() => {
-      enhancePanel();
-      refreshCheckoutWhenReady();
-    }, 0);
+    window.setTimeout(() => { enhancePanel(); refreshCheckoutWhenReady(); }, 0);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
