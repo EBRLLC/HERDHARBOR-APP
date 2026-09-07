@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v1.8.1-alpha-october-subscription-launch-referrals-credits-2";
+const CACHE_NAME = "herdharbor-shell-v1.8.1-alpha-october-subscription-launch-referrals-credits-3";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -23,7 +23,7 @@ const APP_SHELL = [
   "./subscription-engine-v1.8.0.css?v=1",
   "./subscription-member-ui-v1.8.0.css?v=1",
   "./subscription-tab-visibility-v1.8.0.js?v=2",
-  "./subscription-header-copy-v1.8.0.js?v=2",
+  "./subscription-header-copy-v1.8.0.js?v=3",
   "./subscription-stripe-provider-v1.8.0.js?v=1",
   "./subscription-stripe-launch-bridge-v1.8.1.js?v=1",
   "./mobile-viewport-hotfix-v1.8.0.css?v=1",

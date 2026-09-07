@@ -1,6 +1,8 @@
 (() => {
   "use strict";
 
+  const HEADER_DESCRIPTION = "Manage your plan, billing, referral rewards, and subscription credits.";
+
   function applySubscriptionHeaderCopy() {
     const panel = document.getElementById("hh-subscription-engine-panel");
     if (!panel) return;
@@ -14,12 +16,28 @@
     }
 
     const title = header.querySelector("#hh-subscription-title");
-    if (title && title.textContent !== "Subscription") {
-      title.textContent = "Subscription";
+    if (title && title.textContent !== "Subscriptions") {
+      title.textContent = "Subscriptions";
     }
 
-    const description = header.querySelector("p");
-    if (description) description.remove();
+    let description = header.querySelector("p");
+    if (!description) {
+      description = document.createElement("p");
+      header.querySelector("div")?.appendChild(description);
+    }
+    if (description && description.textContent !== HEADER_DESCRIPTION) {
+      description.textContent = HEADER_DESCRIPTION;
+    }
+
+    const heroStatus = panel.querySelector(".hh-subscription-hero p");
+    if (heroStatus) {
+      const current = heroStatus.textContent.trim();
+      if (current === "Billing provider connected.") {
+        heroStatus.textContent = "Your subscription and billing are ready to manage.";
+      } else if (current.startsWith("Payment processing is not connected yet")) {
+        heroStatus.textContent = "Billing is not available right now. Your current access is unchanged.";
+      }
+    }
   }
 
   function scheduleApply() {
