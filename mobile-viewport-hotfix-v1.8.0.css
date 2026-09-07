@@ -1,6 +1,57 @@
 /* HerdHarbor Alpha v1.8.0 — iPhone/mobile viewport fit hotfix.
    Keeps the compact topbar and Phase 1 Today workflow inside the device viewport
-   without requiring pinch-to-zoom. */
+   without requiring pinch-to-zoom.
+
+   v1.8.1 launch hotfix: Health Intelligence forms opened from an animal profile
+   own the full viewport and scroll internally instead of inheriting page/modal
+   positioning that can place the form partially off-screen. */
+
+/* Health episode/care forms must always be viewport-owned overlays. This file is
+   loaded after the Health Intelligence stylesheet so these constraints win over
+   older generic modal positioning without changing the health-record data flow. */
+#hh-health-intelligence-modal.hh-hi-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
+  z-index: 1200;
+}
+
+#hh-health-intelligence-modal .hh-hi-modal {
+  position: relative;
+  inset: auto;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  transform: none;
+  width: min(880px, 100%);
+  max-width: 880px;
+  max-height: calc(100dvh - 40px);
+  margin: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  overscroll-behavior: contain;
+}
+
+#hh-health-intelligence-modal .hh-hi-grid,
+#hh-health-intelligence-modal .hh-hi-grid > *,
+#hh-health-intelligence-modal input,
+#hh-health-intelligence-modal select,
+#hh-health-intelligence-modal textarea {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
 
 @media (max-width: 480px) {
   html,
@@ -99,6 +150,23 @@
   .hh-p1-today-copy strong,
   .hh-p1-today-copy span {
     max-width: 100%;
+  }
+}
+
+@media (max-width: 620px) {
+  #hh-health-intelligence-modal.hh-hi-overlay {
+    align-items: stretch;
+    padding-top: max(8px, env(safe-area-inset-top));
+    padding-right: max(8px, env(safe-area-inset-right));
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    padding-left: max(8px, env(safe-area-inset-left));
+  }
+
+  #hh-health-intelligence-modal .hh-hi-modal {
+    width: 100%;
+    max-width: none;
+    max-height: 100%;
+    margin: 0;
   }
 }
 
