@@ -57,11 +57,11 @@
       if(breedingId&&breedingIds.has(breedingId))return;
       const litterUpdated=validDate(litter.updatedAt||litter.createdAt);
       if(litterUpdated==null)return;
-      const childrenWereUpdatedAfter=linked.every(animal=>{
-        const childUpdated=validDate(animal.updatedAt||animal.createdAt);
-        return childUpdated!=null&&childUpdated>=litterUpdated;
-      });
-      if(childrenWereUpdatedAfter)stale.push(String(litter.id));
+      const childTimes=linked.map(animal=>validDate(animal.updatedAt||animal.createdAt));
+      if(childTimes.some(value=>value==null))return;
+      const oneCleanupTimestamp=new Set(childTimes).size===1;
+      const cleanupHappenedAfterLitter=childTimes[0]>litterUpdated;
+      if(oneCleanupTimestamp&&cleanupHappenedAfterLitter)stale.push(String(litter.id));
     });
     return stale;
   }
