@@ -4,8 +4,8 @@
     product: "HerdHarbor",
     channel: "Alpha",
     version: "1.8.1",
-    buildId: "october-subscription-launch-referrals-credits-2",
-    build: "1.8.1-alpha-october-subscription-launch-referrals-credits-2"
+    buildId: "october-subscription-launch-referrals-credits-3",
+    build: "1.8.1-alpha-october-subscription-launch-referrals-credits-3"
   });
 
   // Alpha v1.8.1 establishes the September launch trial and October 1 subscription hard-launch policy while preserving the v1.8.0 subscription engine and stable domain engines.
@@ -55,7 +55,7 @@
   addScript("hh-subscription-launch-v181", "subscription-launch-v1.8.1.js?v=1", () => {
     addScript("hh-subscription-engine-v180", "subscription-engine-v1.8.0.js?v=1", () => {
       addScript("hh-subscription-tab-visibility-v180", "subscription-tab-visibility-v1.8.0.js?v=2", () => {
-        addScript("hh-subscription-header-copy-v180", "subscription-header-copy-v1.8.0.js?v=2", () => {
+        addScript("hh-subscription-header-copy-v180", "subscription-header-copy-v1.8.0.js?v=3", () => {
           addScript("hh-subscription-stripe-provider-v180", "subscription-stripe-provider-v1.8.0.js?v=1", () => {
             addScript("hh-subscription-stripe-launch-bridge-v181", "subscription-stripe-launch-bridge-v1.8.1.js?v=1");
           });
