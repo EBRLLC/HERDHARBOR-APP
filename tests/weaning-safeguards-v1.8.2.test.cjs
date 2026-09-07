@@ -75,6 +75,6 @@ test("litter workspace integration loads the safeguard UI and styling",()=>{
   assert.match(integration,/weaning-safeguards-v1\.8\.2\.css\?v=1/);
   assert.match(ui,/data-hh-ws-unwean/);
   assert.match(ui,/data-hh-ws-lock-date/);
-  assert.match(ui,/data-hh-bw-weaning-form/);
+  assert.match(ui,/#hh-bw-weaning-form/);
   assert.match(css,/hh-ws-age-locked/);
 });
