@@ -11,8 +11,14 @@
     return nav.getClientRects().length > 0;
   }
 
+  function signedInAppIsReady() {
+    const signedIn = Boolean(window.HerdHarborCloud?.getSession?.()?.user?.id);
+    const authLocked = document.documentElement.classList.contains("hh-auth-locked");
+    return signedIn && !authLocked && sidebarIsVisible();
+  }
+
   function revealForSignedInApp() {
-    if (!sidebarIsVisible()) return;
+    if (!signedInAppIsReady()) return;
     const tab = document.querySelector(SELECTOR);
     if (!tab) return;
     tab.hidden = false;
