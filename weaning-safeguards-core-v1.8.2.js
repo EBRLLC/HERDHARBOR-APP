@@ -80,7 +80,7 @@
     return custom||automatic||"";
   }
 
-  function weanEligibility(state,litterId,animalId,weanDate,asOfDate=""){
+  function weanEligibility(state,litterId,animalId,weanDate,asOfDate=new Date().toISOString().slice(0,10)){
     const litter=litterById(state,litterId);
     const animal=offspringForLitter(state,litter).find(row=>String(row.id)===String(animalId));
     const date=dateOnly(weanDate);
@@ -116,7 +116,7 @@
     return{allowed:true,reason:"",unlockDate:unlock,ageDays:age};
   }
 
-  function eligibleForDate(state,litterId,animalIds,weanDate,asOfDate=""){
+  function eligibleForDate(state,litterId,animalIds,weanDate,asOfDate=new Date().toISOString().slice(0,10)){
     const ids=[...new Set((Array.isArray(animalIds)?animalIds:[]).map(String).filter(Boolean))];
     const allowed=[];
     const blocked=[];
