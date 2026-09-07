@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v1.8.1-alpha-october-subscription-launch-referrals-credits-4";
+const CACHE_NAME = "herdharbor-shell-v1.8.1-alpha-october-subscription-launch-referrals-credits-5";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -18,8 +18,10 @@ const APP_SHELL = [
   "./registration-safety-v1.8.1.js?v=1",
   "./subscription-referral-policy-v1.8.1.js?v=1",
   "./subscription-admin-credits-v1.8.1.js?v=1",
+  "./subscription-admin-health-v1.8.1.js?v=1",
   "./subscription-launch-v1.8.1.js?v=1",
   "./subscription-engine-v1.8.0.js?v=1",
+  "./subscription-closeout-v1.8.1.js?v=1",
   "./subscription-engine-v1.8.0.css?v=1",
   "./subscription-member-ui-v1.8.0.css?v=1",
   "./subscription-tab-visibility-v1.8.0.js?v=2",
@@ -96,8 +98,10 @@ const NETWORK_FIRST_PATHS = [
   "/registration-safety-v1.8.1.js",
   "/subscription-referral-policy-v1.8.1.js",
   "/subscription-admin-credits-v1.8.1.js",
+  "/subscription-admin-health-v1.8.1.js",
   "/subscription-launch-v1.8.1.js",
   "/subscription-engine-v1.8.0.js",
+  "/subscription-closeout-v1.8.1.js",
   "/subscription-engine-v1.8.0.css",
   "/subscription-member-ui-v1.8.0.css",
   "/subscription-tab-visibility-v1.8.0.js",
@@ -155,86 +159,58 @@ const NETWORK_FIRST_PATHS = [
 function isNetworkFirstPath(pathname) {
   return NETWORK_FIRST_PATHS.some((path) => pathname.endsWith(path));
 }
-
 async function cacheFreshResponse(request, response) {
   if (!response?.ok || response.type !== "basic") return response;
   const cache = await caches.open(CACHE_NAME);
   await cache.put(request, response.clone());
   return response;
 }
-
 async function networkFirst(request) {
   try {
     const response = await fetch(request, { cache: "no-store" });
     return cacheFreshResponse(request, response);
-  } catch {
-    return caches.match(request);
-  }
+  } catch { return caches.match(request); }
 }
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      const requests = APP_SHELL.map((path) => new Request(new URL(path, self.location.href), { cache: "reload" }));
-      return cache.addAll(requests);
-    })
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => {
+    const requests = APP_SHELL.map((path) => new Request(new URL(path, self.location.href), { cache: "reload" }));
+    return cache.addAll(requests);
+  }));
 });
-
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(
-        keys
-          .filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
-      ))
-      .then(() => self.clients.claim())
-  );
+  event.waitUntil(caches.keys().then((keys) => Promise.all(
+    keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME).map((key) => caches.delete(key))
+  )).then(() => self.clients.claim()));
 });
-
-self.addEventListener("message", (event) => {
-  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
-});
-
+self.addEventListener("message", (event) => { if (event.data?.type === "SKIP_WAITING") self.skipWaiting(); });
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-
   if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request, { cache: "no-store" })
-        .then((response) => {
-          if (response.ok) {
-            const copy = response.clone();
-            event.waitUntil(
-              caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", copy))
-            );
-          }
-          return response;
-        })
-        .catch(async () => {
-          const cache = await caches.open(CACHE_NAME);
-          return (await cache.match("./index.html")) || cache.match("./");
-        })
-    );
+    event.respondWith(fetch(request, { cache: "no-store" }).then((response) => {
+      if (response.ok) {
+        const copy = response.clone();
+        event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", copy)));
+      }
+      return response;
+    }).catch(async () => {
+      const cache = await caches.open(CACHE_NAME);
+      return (await cache.match("./index.html")) || cache.match("./");
+    }));
     return;
   }
-
   if (isNetworkFirstPath(url.pathname)) {
     event.respondWith(networkFirst(request));
     return;
   }
-
-  event.respondWith(
-    caches.match(request).then((cached) => cached || fetch(request).then((response) => {
-      if (response.ok && response.type === "basic") {
-        const copy = response.clone();
-        event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)));
-      }
-      return response;
-    }))
-  );
+  event.respondWith(caches.match(request).then((cached) => cached || fetch(request).then((response) => {
+    if (response.ok && response.type === "basic") {
+      const copy = response.clone();
+      event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)));
+    }
+    return response;
+  })));
 });
