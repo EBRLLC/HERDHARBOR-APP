@@ -46,6 +46,76 @@
     return Math.max(0,Number(litter.bornAlive||0)+Number(litter.fosteredIn||0)-Number(litter.fosteredOut||0)-Number(litter.lostBeforeWeaning||0));
   }
 
+  function offspringAnimalId(litterId,sequence){
+    const safeId=String(litterId||"birth").replace(/[^a-zA-Z0-9_-]/g,"").slice(-72)||"birth";
+    return`animal_offspring_${safeId}_${String(sequence).padStart(3,"0")}`;
+  }
+
+  function offspringTerm(species){
+    const terms={rabbit:"Kit",goat:"Kid",sheep:"Lamb",pig:"Piglet",swine:"Piglet",cattle:"Calf",cow:"Calf",horse:"Foal",equine:"Foal"};
+    return terms[lower(species)]||"Offspring";
+  }
+
+  function autoCreateBornOffspring(state={},litter={},now=new Date().toISOString()){
+    const target=Math.max(0,Math.floor(Number(litter?.bornAlive)||0));
+    if(!clean(litter?.id)||target===0)return{state,created:[],litter};
+    const animals=array(state,"animals");
+    const existing=offspringForLitter(state,litter);
+    const needed=Math.max(0,target-existing.length);
+    if(!needed)return{state,created:[],litter};
+
+    const dam=animalById(state,litter.damId);
+    const sire=animalById(state,litter.sireId);
+    const species=dam?.species||sire?.species||"Other";
+    const breed=dam?.breed||sire?.breed||"";
+    const term=offspringTerm(species);
+    const baseName=clean(dam?.name)||term;
+    const prefix=clean(litter.offspringPrefix);
+    const usedIds=new Set(animals.map(animal=>String(animal.id)));
+    const created=[];
+    let sequence=1;
+
+    while(created.length<needed&&sequence<=999){
+      const id=offspringAnimalId(litter.id,sequence);
+      if(!usedIds.has(id)){
+        const animal={
+          id,
+          name:`${baseName} ${term} ${sequence}`,
+          tag:prefix?`${prefix}-${sequence}`:"",
+          tattoo:"",
+          registrationNumber:"",
+          breeder:state.profile?.operationName||"",
+          species,
+          breed,
+          sex:"Unknown",
+          dob:litter.birthDate||"",
+          color:"",
+          location:dam?.location||"",
+          status:"Active",
+          sireId:litter.sireId||"",
+          damId:litter.damId||"",
+          sourceBirthId:litter.id,
+          notes:`Automatically created from the ${fmt(litter.birthDate)} birth record.`,
+          createdAt:now,
+          updatedAt:now
+        };
+        created.push(animal);
+        usedIds.add(id);
+      }
+      sequence+=1;
+    }
+
+    if(!created.length)return{state,created:[],litter};
+    const offspringIds=[...new Set([...existing.map(animal=>String(animal.id)),...created.map(animal=>String(animal.id))])];
+    const nextLitter={...litter,offspringIds,updatedAt:now};
+    const nextState={
+      ...state,
+      animals:[...animals,...created],
+      litters:array(state,"litters").map(item=>String(item.id)===String(litter.id)?nextLitter:item)
+    };
+    return{state:nextState,created,litter:nextLitter};
+  }
+
   function breedingStage(record={},litter=null,today=new Date().toISOString().slice(0,10)){
     const status=lower(record.status||"Bred");
     const check=lower(record.pregnancyCheckStatus||"Not checked");
@@ -71,8 +141,7 @@
     if(litter){
       const available=liveAvailable(litter),weaned=Math.max(0,Number(litter.weaned||0));
       if(available>0&&weaned<available)return{kind:"edit-litter",label:"Update weaning"};
-      const offspring=Number(litter.bornAlive||0)>0;
-      return offspring?{kind:"create-offspring",label:"Add offspring records"}:{kind:"edit-litter",label:"View birth"};
+      return{kind:"edit-litter",label:"View birth"};
     }
     if(stage.index===2)return{kind:"edit-breeding",label:"Record pregnancy check"};
     return{kind:"edit-breeding",label:"Update breeding"};
@@ -174,6 +243,58 @@
     return true;
   }
 
+  function birthFormSnapshot(form){
+    try{
+      const data=new root.FormData(form);
+      return{
+        breedingId:clean(data.get("breedingId")),
+        damId:clean(data.get("damId")),
+        sireId:clean(data.get("sireId")),
+        birthDate:clean(data.get("birthDate")).slice(0,10)
+      };
+    }catch{return null;}
+  }
+
+  function findSubmittedLitter(state,snapshot){
+    if(!snapshot)return null;
+    const litters=array(state,"litters");
+    if(snapshot.breedingId){
+      const linked=litters.find(litter=>String(litter.breedingId||"")===String(snapshot.breedingId));
+      if(linked)return linked;
+    }
+    return litters.filter(litter=>
+      (!snapshot.damId||String(litter.damId||"")===String(snapshot.damId))&&
+      (!snapshot.sireId||String(litter.sireId||"")===String(snapshot.sireId))&&
+      (!snapshot.birthDate||String(litter.birthDate||"").slice(0,10)===snapshot.birthDate)
+    ).sort((a,b)=>String(b.updatedAt||b.createdAt||b.id||"").localeCompare(String(a.updatedAt||a.createdAt||a.id||"")))[0]||null;
+  }
+
+  function reconcileSubmittedBirth(snapshot){
+    const state=stateNow();
+    const litter=findSubmittedLitter(state,snapshot);
+    if(!litter)return false;
+    const result=autoCreateBornOffspring(state,litter);
+    if(!result.created.length)return false;
+    const count=result.created.length;
+    root.HerdHarborApp?.commitState?.(result.state,`${count} ${count===1?"animal profile":"animal profiles"} created automatically from this birth.`);
+    root.HerdHarborApp?.refresh?.();
+    try{root.dispatchEvent?.(new root.CustomEvent("herdharbor:offspring-auto-created",{detail:{litterId:litter.id,animalIds:result.created.map(animal=>animal.id)}}));}catch{}
+    root.setTimeout?.(()=>{
+      const panel=root.document?.querySelector('#view-animal-profile [data-hh-p2-panel="breeding"]');
+      if(panel)delete panel.dataset.hhP2LifecycleEnhanced;
+      schedule();
+    },0);
+    return true;
+  }
+
+  function onSubmit(event){
+    const form=event.target;
+    if(!form?.matches?.("#litter-form"))return;
+    const snapshot=birthFormSnapshot(form);
+    if(!snapshot)return;
+    root.setTimeout?.(()=>reconcileSubmittedBirth(snapshot),0);
+  }
+
   function clickRoute(route){const button=root.document?.querySelector(`.nav-item[data-route="${route}"]`);if(!button)return false;button.click();return true;}
   function waitFor(selector,callback,attempt=0,max=50){const node=root.document?.querySelector(selector);if(node){callback(node);return true;}if(attempt>=max)return false;root.setTimeout?.(()=>waitFor(selector,callback,attempt+1,max),50);return true;}
 
@@ -216,13 +337,14 @@
   function install(){
     if(installed||!root.document)return API;installed=true;
     root.addEventListener?.("click",onClick,true);
+    root.addEventListener?.("submit",onSubmit,true);
     root.addEventListener?.("hashchange",schedule);
     root.addEventListener?.("herdharbor:app-ready",schedule);
     root.addEventListener?.("herdharbor:health-intelligence-changed",schedule);
     observer=new root.MutationObserver(schedule);if(root.document.body)observer.observe(root.document.body,{childList:true,subtree:true});schedule();return API;
   }
-  function uninstall(){observer?.disconnect?.();observer=null;root.removeEventListener?.("click",onClick,true);installed=false;queued=false;pendingReturn=null;}
+  function uninstall(){observer?.disconnect?.();observer=null;root.removeEventListener?.("click",onClick,true);root.removeEventListener?.("submit",onSubmit,true);installed=false;queued=false;pendingReturn=null;}
 
-  const API=Object.freeze({VERSION,STAGES,offspringForLitter,linkedLitter,liveAvailable,breedingStage,lifecycleAction,ownershipRows,offspringDisposition,install,uninstall});
+  const API=Object.freeze({VERSION,STAGES,offspringForLitter,linkedLitter,liveAvailable,offspringAnimalId,offspringTerm,autoCreateBornOffspring,breedingStage,lifecycleAction,ownershipRows,offspringDisposition,install,uninstall});
   return API;
 });
