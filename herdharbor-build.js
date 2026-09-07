@@ -36,11 +36,10 @@
   addStyle("hh-subscription-member-ui-v180-style", "subscription-member-ui-v1.8.0.css?v=1");
   addStyle("hh-mobile-viewport-v180-style", "mobile-viewport-hotfix-v1.8.0.css?v=1");
   addScript("hh-registration-safety-v181", "registration-safety-v1.8.1.js?v=1", () => {
-    // Signup policy is layered after the identity/age fields exist and before
-    // Stripe initializes. It never creates another browser Supabase client.
     addScript("hh-subscription-referral-policy-v181", "subscription-referral-policy-v1.8.1.js?v=1");
   });
   addScript("hh-admin-subscription-credits-v181", "subscription-admin-credits-v1.8.1.js?v=1");
+  addScript("hh-admin-subscription-health-v181", "subscription-admin-health-v1.8.1.js?v=1");
   addScript("hh-arba-v170-registry", "standards-registry-v1.7.0.js?v=1.7.1", () => {
     addScript("hh-arba-v170-ui", "standards-ui-v1.7.0.js?v=1.7.1", () => {
       addScript("hh-arba-public-v170", "standards-public-reference-v1.7.0.js?v=1.7.1");
@@ -54,10 +53,12 @@
   });
   addScript("hh-subscription-launch-v181", "subscription-launch-v1.8.1.js?v=1", () => {
     addScript("hh-subscription-engine-v180", "subscription-engine-v1.8.0.js?v=1", () => {
-      addScript("hh-subscription-tab-visibility-v180", "subscription-tab-visibility-v1.8.0.js?v=2", () => {
-        addScript("hh-subscription-header-copy-v180", "subscription-header-copy-v1.8.0.js?v=3", () => {
-          addScript("hh-subscription-stripe-provider-v180", "subscription-stripe-provider-v1.8.0.js?v=1", () => {
-            addScript("hh-subscription-stripe-launch-bridge-v181", "subscription-stripe-launch-bridge-v1.8.1.js?v=1");
+      addScript("hh-subscription-closeout-v181", "subscription-closeout-v1.8.1.js?v=1", () => {
+        addScript("hh-subscription-tab-visibility-v180", "subscription-tab-visibility-v1.8.0.js?v=2", () => {
+          addScript("hh-subscription-header-copy-v180", "subscription-header-copy-v1.8.0.js?v=3", () => {
+            addScript("hh-subscription-stripe-provider-v180", "subscription-stripe-provider-v1.8.0.js?v=1", () => {
+              addScript("hh-subscription-stripe-launch-bridge-v181", "subscription-stripe-launch-bridge-v1.8.1.js?v=1");
+            });
           });
         });
       });
