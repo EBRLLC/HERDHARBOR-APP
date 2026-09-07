@@ -295,7 +295,7 @@
     activeProfile={animalId:String(animalId),tab:requestedTab,pushed:options.history==="push",openedAt:Date.now()};
     const hash=profileHash(animalId,requestedTab);
     if(options.history==="push"&&root.location?.hash!==hash)writeHistory(hash,"push");
-    else if(options.history!=="none")writeHistory(hash,"replace");
+    else writeHistory(hash,"replace");
     return renderProfile(options.label||"");
   }
 
@@ -316,7 +316,7 @@
 
   function backToAnimals(forceReplace=false){
     const pushed=Boolean(activeProfile?.pushed)&&!forceReplace;
-    if(pushed&&root.history?.length>1){deactivateProfile();root.history.back();return true;}
+    if(pushed&&root.history?.length>1){root.history.back();return true;}
     deactivateProfile();
     clickAnimalsRoute();
     if(root.history)root.history.replaceState(null,"","#animals");
