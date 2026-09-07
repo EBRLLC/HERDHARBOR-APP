@@ -18,12 +18,20 @@ function fixture(){
 
 test("rabbit offspring are locked from weaning before 28 days",()=>{
   const state=fixture();
-  const blocked=Core.weanEligibility(state,"l1","k1","2026-09-05");
+  const blocked=Core.weanEligibility(state,"l1","k1","2026-09-05","2026-09-05");
   assert.equal(blocked.allowed,false);
   assert.equal(blocked.unlockDate,"2026-09-29");
   assert.equal(blocked.ageDays,4);
-  const allowed=Core.weanEligibility(state,"l1","k1","2026-09-29");
+  const allowed=Core.weanEligibility(state,"l1","k1","2026-09-29","2026-09-29");
   assert.equal(allowed.allowed,true);
+});
+
+test("completed weaning cannot be recorded with a future date",()=>{
+  const state=fixture();
+  const result=Core.weanEligibility(state,"l1","k1","2026-10-22","2026-09-07");
+  assert.equal(result.allowed,false);
+  assert.equal(result.futureDate,true);
+  assert.match(result.reason,/future/i);
 });
 
 test("custom no-wean-before date can extend the automatic rabbit lock",()=>{
@@ -31,8 +39,8 @@ test("custom no-wean-before date can extend the automatic rabbit lock",()=>{
   const changed=Core.setWeanNotBefore(state,"l1","2026-10-05","2026-09-07T21:00:00Z");
   state=changed.state;
   assert.equal(Core.effectiveUnlockDate(state,state.litters[0],state.animals[1]),"2026-10-05");
-  assert.equal(Core.weanEligibility(state,"l1","k1","2026-09-30").allowed,false);
-  assert.equal(Core.weanEligibility(state,"l1","k1","2026-10-05").allowed,true);
+  assert.equal(Core.weanEligibility(state,"l1","k1","2026-09-30","2026-09-30").allowed,false);
+  assert.equal(Core.weanEligibility(state,"l1","k1","2026-10-05","2026-10-05").allowed,true);
 });
 
 test("clearing a custom lock restores the species safety minimum",()=>{
@@ -60,7 +68,7 @@ test("undo does not alter unrelated fields such as current location",()=>{
 
 test("deceased offspring cannot be marked weaned",()=>{
   const state=fixture();
-  const result=Core.weanEligibility(state,"l1","k3","2026-10-10");
+  const result=Core.weanEligibility(state,"l1","k3","2026-10-10","2026-10-10");
   assert.equal(result.allowed,false);
   assert.match(result.reason,/Deceased/);
 });
@@ -70,8 +78,8 @@ test("litter workspace integration loads the safeguard UI and styling",()=>{
   const integration=fs.readFileSync(path.join(root,"breeding-litter-workspace-integration-v1.8.2.js"),"utf8");
   const ui=fs.readFileSync(path.join(root,"weaning-safeguards-v1.8.2.js"),"utf8");
   const css=fs.readFileSync(path.join(root,"weaning-safeguards-v1.8.2.css"),"utf8");
-  assert.match(integration,/weaning-safeguards-core-v1\.8\.2\.js\?v=1/);
-  assert.match(integration,/weaning-safeguards-v1\.8\.2\.js\?v=1/);
+  assert.match(integration,/weaning-safeguards-core-v1\.8\.2\.js\?v=2/);
+  assert.match(integration,/weaning-safeguards-v1\.8\.2\.js\?v=2/);
   assert.match(integration,/weaning-safeguards-v1\.8\.2\.css\?v=1/);
   assert.match(ui,/data-hh-ws-unwean/);
   assert.match(ui,/data-hh-ws-lock-date/);
