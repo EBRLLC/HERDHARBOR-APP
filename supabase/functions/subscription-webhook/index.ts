@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.111.0";
 import Stripe from "https://esm.sh/stripe@18?target=denonext";
+import { deliverSubscriptionNotification } from "../_shared/subscription-email.ts";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -130,15 +131,32 @@ Deno.serve(async (req) => {
     payload?: Record<string, unknown>;
     notBefore?: string;
   }) {
-    const { error } = await admin.from("subscription_notification_outbox").insert({
+    const { data: inserted, error } = await admin.from("subscription_notification_outbox").insert({
       user_id: input.userId,
       subscription_id: input.subscriptionId || null,
       event_type: input.eventType,
       dedupe_key: input.dedupeKey,
       payload: input.payload || {},
       not_before: input.notBefore || new Date().toISOString()
-    });
+    }).select("id").maybeSingle();
     if (error && error.code !== "23505") throw error;
+
+    let outboxId = inserted?.id || null;
+    if (!outboxId && error?.code === "23505") {
+      const { data: existing, error: existingError } = await admin
+        .from("subscription_notification_outbox")
+        .select("id")
+        .eq("dedupe_key", input.dedupeKey)
+        .maybeSingle();
+      if (existingError) throw existingError;
+      outboxId = existing?.id || null;
+    }
+    if (outboxId) {
+      // Stripe will retry a failed webhook. The outbox dedupe key plus Resend's
+      // idempotency key makes those retries safe without double-emailing users.
+      await deliverSubscriptionNotification(admin, outboxId);
+    }
+    return outboxId;
   }
 
   async function accessStatus(userId: string, status: string, planId?: string | null) {
