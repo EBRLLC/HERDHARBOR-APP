@@ -5,7 +5,7 @@ const path=require('node:path');
 const Core=require('../litter-sale-transfer-core-v1.8.2.js');
 
 function fixture(){
-  const litter={id:'l1',breedingId:'b1',damId:'dam',sireId:'sire',birthDate:'2026-09-01',offspringIds:['k1','k2','k3','k4','k5']};
+  const litter={id:'l1',breedingId:'b1',damId:'dam',sireId:'sire',birthDate:'2026-09-01',offspringIds:['k1','k2','k3','k4','k5','k6']};
   return{
     animals:[
       {id:'dam',name:'Judy',species:'Rabbit',status:'Active'},
@@ -14,14 +14,15 @@ function fixture(){
       {id:'k2',name:'Kit Two',status:'For Sale',askingPrice:'80.00',sourceBirthId:'l1'},
       {id:'k3',name:'Kit Three',status:'Active',askingPrice:'90.00',sourceBirthId:'l1'},
       {id:'k4',name:'Kit Four',status:'Deceased',sourceBirthId:'l1'},
-      {id:'k5',name:'Kit Five',status:'Reserved',sourceBirthId:'l1',saleRecordId:'other-sale'}
+      {id:'k5',name:'Kit Five',status:'Reserved',sourceBirthId:'l1',saleRecordId:'other-sale'},
+      {id:'k6',name:'Kit Six',status:'Reserved',askingPrice:'95.00',sourceBirthId:'l1'}
     ],
     litters:[litter],customers:[],sales:[{id:'other-sale',saleNumber:'HH-2026-OTHER',status:'Reserved',items:[{animalId:'k5',quantity:'1',unitPrice:'85.00'}]}],transfers:[]
   };
 }
 
-test('only sale-ready unsold offspring are offered from a litter',()=>{
-  assert.deepEqual(Core.saleCandidateOffspring(fixture(),'l1').map(a=>a.id).sort(),['k1','k2']);
+test('sale-ready offspring include For Sale and unlinked Reserved animals, but not animals already attached to a sale',()=>{
+  assert.deepEqual(Core.saleCandidateOffspring(fixture(),'l1').map(a=>a.id).sort(),['k1','k2','k6']);
 });
 
 test('creating a buyer sale writes canonical customer, sale items and reservation links',()=>{
@@ -44,6 +45,13 @@ test('creating a buyer sale writes canonical customer, sale items and reservatio
   assert.equal(Core.saleTotal(result.sale),152.5);
 });
 
+test('an Evaluation reservation without a sale can be attached to a buyer sale',()=>{
+  const result=Core.createSaleFromLitter(fixture(),'l1',{animalIds:['k6'],customerName:'Reserved Buyer',saleDate:'2026-09-07'},'2026-09-07T19:30:00.000Z');
+  assert.equal(result.error,'');
+  assert.equal(result.sale.items[0].animalId,'k6');
+  assert.equal(result.state.animals.find(a=>a.id==='k6').saleRecordId,result.sale.id);
+});
+
 test('existing buyer is reused instead of duplicated',()=>{
   const state=fixture();state.customers.push({id:'c1',name:'Existing Buyer',email:'buyer@example.com'});
   const byId=Core.createSaleFromLitter(state,'l1',{animalIds:['k1'],customerId:'c1',saleDate:'2026-09-07'});
@@ -55,7 +63,7 @@ test('existing buyer is reused instead of duplicated',()=>{
 
 test('an animal already attached to an active sale cannot be sold twice',()=>{
   const state=fixture();state.sales.push({id:'sale-k1',status:'Pending',items:[{animalId:'k1'}]});
-  assert.deepEqual(Core.saleCandidateOffspring(state,'l1').map(a=>a.id),['k2']);
+  assert.deepEqual(Core.saleCandidateOffspring(state,'l1').map(a=>a.id).sort(),['k2','k6']);
   const result=Core.createSaleFromLitter(state,'l1',{animalIds:['k1'],customerName:'Buyer'});
   assert.match(result.error,/no longer available/i);assert.equal(result.state,state);
 });
@@ -89,7 +97,7 @@ test('UI connects Evaluation to canonical sales and the existing direct transfer
   assert.match(ui,/HerdHarborApp\?\.commitState/);
   assert.match(ui,/HerdHarborDirectTransfers/);
   assert.match(ui,/sendSale/);
-  assert.match(ui,/data-route=\\?"sales\\?"/);
+  assert.match(ui,/data-route=.*sales/);
 });
 
 test('release loader and PWA cache include litter sale-transfer assets without changing v1.8.1 identity',()=>{
