@@ -38,6 +38,12 @@
     });
   }
 
+  function onOffspringCreated(event){
+    const litterId=event?.detail?.litterId;
+    if(!litterId)return;
+    root.setTimeout?.(()=>root.HerdHarborBreedingWorkspace?.open?.(litterId),120);
+  }
+
   function run(){queued=false;enhanceLifecycle();enhanceLitterCards();}
   function schedule(){if(queued)return;queued=true;(root.requestAnimationFrame||root.setTimeout)(run,0);}
   function install(){
@@ -45,6 +51,7 @@
     if(root.document.body)observer.observe(root.document.body,{childList:true,subtree:true});
     root.addEventListener?.("hashchange",schedule);
     root.addEventListener?.("herdharbor:litter-workspace-changed",schedule);
+    root.addEventListener?.("herdharbor:offspring-auto-created",onOffspringCreated);
     schedule();
   }
   install();
