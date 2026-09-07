@@ -55,6 +55,15 @@
     return ACTIVE_SUBSCRIPTION_STATUSES.has(status) && PAID_TIERS.has(plan);
   }
 
+  function hasBackendPaidSubscription(base = {}) {
+    const status = normalize(base.subscriptionStatus);
+    const tier = normalize(base.membershipTier || base.effectiveMembershipTier);
+    const source = normalize(base.storedMembershipSource || base.membershipSource);
+    return source === "subscription"
+      && ACTIVE_SUBSCRIPTION_STATUSES.has(status)
+      && PAID_TIERS.has(tier);
+  }
+
   function resolveAccount(now = new Date()) {
     const base = original.getAccount();
     const policy = policyState(now);
@@ -95,15 +104,23 @@
       };
     }
 
-    // October 1, 2026 is the hard subscription launch. Active paid plans keep
-    // their paid tier. Accounts without an active paid plan safely fall back to
-    // Junior instead of losing access to their records.
-    if (hasPaidSubscription(snapshot)) {
+    // October 1, 2026 is the hard subscription launch. Prefer the live Stripe
+    // engine snapshot, but also honor the webhook-synchronized account_access
+    // subscription state while the browser provider is still settling after sign-in.
+    const livePaid = hasPaidSubscription(snapshot);
+    const backendPaid = hasBackendPaidSubscription(base);
+    if (livePaid || backendPaid) {
+      const paidTier = livePaid
+        ? normalize(snapshot.plan)
+        : normalize(base.membershipTier || base.effectiveMembershipTier);
+      const paidStatus = livePaid
+        ? normalize(snapshot.status)
+        : normalize(base.subscriptionStatus);
       return {
         ...base,
-        effectiveMembershipTier: normalize(snapshot.plan),
+        effectiveMembershipTier: paidTier,
         membershipSource: "subscription",
-        subscriptionStatus: normalize(snapshot.status),
+        subscriptionStatus: paidStatus,
         maxActiveAnimals: null,
         launchTrialActive: false,
         launchTrialEndsAt: HARD_LAUNCH_AT,
@@ -178,7 +195,7 @@
     postLaunchFreeTier: POST_LAUNCH_FREE_TIER,
     getPolicy: () => policyState(),
     getAccount: () => clone(resolveAccount()),
-    __test: Object.freeze({ policyState, hasPaidSubscription, resolveAccount })
+    __test: Object.freeze({ policyState, hasPaidSubscription, hasBackendPaidSubscription, resolveAccount })
   });
 
   document.documentElement.dataset.hhSubscriptionLaunch = VERSION;
