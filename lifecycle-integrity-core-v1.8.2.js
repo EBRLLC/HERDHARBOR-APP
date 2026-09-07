@@ -8,6 +8,7 @@
 
   const VERSION="1.8.2";
   const clean=value=>String(value==null?"":value).trim();
+  const lower=value=>clean(value).toLowerCase();
   const array=(value,key)=>Array.isArray(value?.[key])?value[key]:[];
   const dateOnly=value=>clean(value).slice(0,10);
   const validDate=value=>{const parsed=Date.parse(value);return Number.isFinite(parsed)?parsed:null;};
@@ -65,6 +66,11 @@
     return stale;
   }
 
+  function linkedOffspring(animals,litter){
+    const ids=new Set(unique(array(litter,"offspringIds")));
+    return animals.filter(animal=>ids.has(String(animal.id))||clean(animal.sourceBirthId)===String(litter.id));
+  }
+
   function reconcile(state={},now=new Date().toISOString(),asOfDate=String(now).slice(0,10)){
     const today=dateOnly(asOfDate)||String(now).slice(0,10);
     const tombstoneRows=[...lifecycleTombstones(state)];
@@ -87,7 +93,7 @@
 
     const removedLitterIds=[];
     const unlinkedLitterIds=[];
-    const litters=[];
+    let litters=[];
     array(state,"litters").forEach(litter=>{
       const id=String(litter.id);
       if(litterDeleted.has(id)){
@@ -106,13 +112,27 @@
     const clearedFutureWeaningIds=[];
     const animals=array(state,"animals").map(animal=>{
       const sourceId=clean(animal.sourceBirthId);
-      if(!removedLitterSet.has(sourceId))return animal;
-      unlinkedAnimalIds.push(String(animal.id));changed=true;
-      const patch={sourceBirthId:"",updatedAt:now};
+      const removeBirthLink=removedLitterSet.has(sourceId);
       const weaned=dateOnly(animal.weanedDate);
-      if(weaned&&today&&weaned>today){patch.weanedDate="";clearedFutureWeaningIds.push(String(animal.id));}
+      const clearFutureWeaning=Boolean(weaned&&today&&weaned>today);
+      if(!removeBirthLink&&!clearFutureWeaning)return animal;
+      const patch={updatedAt:now};
+      if(removeBirthLink){patch.sourceBirthId="";unlinkedAnimalIds.push(String(animal.id));}
+      if(clearFutureWeaning){patch.weanedDate="";clearedFutureWeaningIds.push(String(animal.id));}
+      changed=true;
       return{...animal,...patch};
     });
+
+    if(clearedFutureWeaningIds.length){
+      const cleared=new Set(clearedFutureWeaningIds);
+      litters=litters.map(litter=>{
+        const offspring=linkedOffspring(animals,litter);
+        if(!offspring.some(animal=>cleared.has(String(animal.id))))return litter;
+        const marked=offspring.filter(animal=>lower(animal.status)!=="deceased"&&Boolean(dateOnly(animal.weanedDate))).length;
+        if(String(litter.weaned||"0")===String(marked))return litter;
+        return{...litter,weaned:String(marked),updatedAt:now};
+      });
+    }
 
     const unlinkedSaleIds=[];
     const sales=array(state,"sales").map(sale=>{
@@ -136,5 +156,5 @@
     };
   }
 
-  return Object.freeze({VERSION,tombstoneId,lifecycleTombstones,tombstonedIds,recordDeletionTombstones,staleResurrectedLitterIds,reconcile});
+  return Object.freeze({VERSION,tombstoneId,lifecycleTombstones,tombstonedIds,recordDeletionTombstones,staleResurrectedLitterIds,linkedOffspring,reconcile});
 });
