@@ -38,7 +38,13 @@ test('conception rate excludes pending and cancelled breedings from the resolved
   assert.equal(Math.round(stats.coverage),67);
 });
 
-test('litter survival only uses resolved weaning outcomes',()=>{
+test('a linked litter is stronger evidence of conception than a stale negative check',()=>{
+  const state=fixture();
+  state.breedings[0]={...state.breedings[0],status:'Not Pregnant',pregnancyCheckStatus:'Negative'};
+  assert.equal(Core.breedingOutcome(state,state.breedings[0]),'conceived');
+});
+
+test('litter survival and average weaned only use resolved weaning outcomes',()=>{
   const state=fixture();
   const rabbit=Core.filteredRecords(state,{species:'Rabbit',range:'all'});
   const stats=Core.litterStats(rabbit.litters);
@@ -47,6 +53,7 @@ test('litter survival only uses resolved weaning outcomes',()=>{
   assert.equal(stats.liveBirthRate,90);
   assert.equal(stats.resolvedWeaningLitters,1);
   assert.equal(stats.survivalToWeaning,80);
+  assert.equal(stats.averageWeaned,4);
   assert.equal(stats.recordedPreWeaningLosses,1);
 });
 
@@ -88,7 +95,7 @@ test('species and date filters keep unrelated breeding data out of the dashboard
 
 test('UI injects into Analytics Breeding and links dam/sire rows back to animal profiles',()=>{
   const ui=fs.readFileSync(path.join(__dirname,'..','breeding-performance-dashboard-v1.8.2.js'),'utf8');
-  for(const token of ['data-analytics-tab="breeding"','hh-bpd-metrics','Dam performance','Sire performance','Pairing history','Recent litter outcomes'])assert.match(ui,new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+  for(const token of ['data-analytics-tab="breeding"','hh-bpd-metrics','Dam performance','Sire performance','Pairing history','Recent litter outcomes'])assert.ok(ui.includes(token),`missing ${token}`);
   assert.match(ui,/HerdHarborFlowPhase2\?\.openAnimalProfile/);
   assert.match(ui,/data-hh-bpd-animal/);
 });
