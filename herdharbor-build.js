@@ -35,6 +35,7 @@
   addStyle("hh-flow-phase1-v182-style", "flow-phase1-v1.8.2.css?v=1");
   addStyle("hh-flow-phase2-v182-style", "flow-phase2-v1.8.2.css?v=1");
   addStyle("hh-flow-phase2-lifecycle-v182-style", "flow-phase2-lifecycle-v1.8.2.css?v=1");
+  addStyle("hh-flow-phase2-profile-finish-v182-style", "flow-phase2-profile-finish-v1.8.2.css?v=1");
   addStyle("hh-subscription-engine-v180-style", "subscription-engine-v1.8.0.css?v=1");
   addStyle("hh-subscription-member-ui-v180-style", "subscription-member-ui-v1.8.0.css?v=1");
   addStyle("hh-mobile-viewport-v180-style", "mobile-viewport-hotfix-v1.8.0.css?v=1");
@@ -59,7 +60,9 @@
         addScript("hh-flow-phase1-v182", "flow-phase1-v1.8.2.js?v=1", () => {
           addScript("hh-flow-phase2-v182", "flow-phase2-v1.8.2.js?v=1", () => {
             addScript("hh-flow-phase2-lifecycle-v182", "flow-phase2-lifecycle-v1.8.2.js?v=1", () => {
-              addScript("hh-flow-phase1-completion-v182", "flow-phase1-completion-v1.8.2.js?v=1");
+              addScript("hh-flow-phase2-profile-finish-v182", "flow-phase2-profile-finish-v1.8.2.js?v=1", () => {
+                addScript("hh-flow-phase1-completion-v182", "flow-phase1-completion-v1.8.2.js?v=1");
+              });
             });
           });
         });
