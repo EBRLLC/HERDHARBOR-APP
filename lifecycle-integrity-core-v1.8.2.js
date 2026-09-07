@@ -20,49 +20,31 @@
   function reconcile(state={},now=new Date().toISOString(),asOfDate=String(now).slice(0,10)){
     const litters=array(state,"litters");
     const orphanIds=new Set(litters.filter(litter=>isOrphanLinkedLitter(state,litter)).map(litter=>String(litter.id)));
-    const nextLitters=orphanIds.size?litters.filter(litter=>!orphanIds.has(String(litter.id))):litters;
-    const validLitterIds=new Set(nextLitters.map(litter=>String(litter.id)));
+    if(!orphanIds.size)return{state,changed:false,removedLitterIds:[],unlinkedAnimalIds:[],unlinkedSaleIds:[],clearedFutureWeaningIds:[]};
+
     const today=dateOnly(asOfDate)||String(now).slice(0,10);
     const unlinkedAnimalIds=[];
     const clearedFutureWeaningIds=[];
     const unlinkedSaleIds=[];
-
-    let animals=array(state,"animals");
-    let animalsChanged=false;
-    animals=animals.map(animal=>{
+    const nextLitters=litters.filter(litter=>!orphanIds.has(String(litter.id)));
+    const animals=array(state,"animals").map(animal=>{
       const sourceId=clean(animal?.sourceBirthId);
-      if(!sourceId||validLitterIds.has(sourceId))return animal;
-      animalsChanged=true;
+      if(!orphanIds.has(sourceId))return animal;
       unlinkedAnimalIds.push(String(animal.id));
       const patch={sourceBirthId:"",updatedAt:now};
       const weaned=dateOnly(animal?.weanedDate);
-      if(weaned&&today&&weaned>today){
-        patch.weanedDate="";
-        clearedFutureWeaningIds.push(String(animal.id));
-      }
+      if(weaned&&today&&weaned>today){patch.weanedDate="";clearedFutureWeaningIds.push(String(animal.id));}
       return{...animal,...patch};
     });
-
-    let sales=array(state,"sales");
-    let salesChanged=false;
-    sales=sales.map(sale=>{
+    const sales=array(state,"sales").map(sale=>{
       const sourceId=clean(sale?.sourceLitterId);
-      if(!sourceId||validLitterIds.has(sourceId))return sale;
-      salesChanged=true;
+      if(!orphanIds.has(sourceId))return sale;
       unlinkedSaleIds.push(String(sale.id));
       return{...sale,sourceLitterId:"",updatedAt:now};
     });
 
-    const changed=orphanIds.size>0||animalsChanged||salesChanged;
-    if(!changed)return{state,changed:false,removedLitterIds:[],unlinkedAnimalIds:[],unlinkedSaleIds:[],clearedFutureWeaningIds:[]};
-
     return{
-      state:{
-        ...state,
-        litters:nextLitters,
-        ...(animalsChanged?{animals}:{}),
-        ...(salesChanged?{sales}:{})
-      },
+      state:{...state,litters:nextLitters,animals,sales},
       changed:true,
       removedLitterIds:[...orphanIds],
       unlinkedAnimalIds,
