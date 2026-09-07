@@ -20,7 +20,6 @@
   const array=(value,key)=>Array.isArray(value?.[key])?value[key]:[];
   const stateNow=()=>{try{return root.HerdHarborApp?.getState?.()||{};}catch{return{};}};
   const animalById=(state,id)=>array(state,"animals").find(row=>String(row.id)===String(id))||null;
-  const animalName=(state,id)=>animalById(state,id)?.name||"Unknown animal";
   const fmt=value=>{if(!value)return"—";const d=new Date(`${String(value).slice(0,10)}T12:00:00`);return Number.isNaN(d.getTime())?clean(value):d.toLocaleDateString();};
 
   function activeAnimalId(){
@@ -61,11 +60,18 @@
     const history=array(animal,"ownershipHistory").slice().sort((a,b)=>String(b.date||b.at||"").localeCompare(String(a.date||a.at||"")));
     const transfer=history[0]||null;
     const status=clean(animal.status)||"Unknown";
-    if(transfer)return{label:"Transferred",detail:transfer.to?`Current/next owner: ${transfer.to}`:`Transfer ${transfer.transferId||"recorded"}`,date:transfer.date||transfer.at||"",saleId:sale?.id||"",canSell:false};
-    if(lower(status)==="sold"||lower(sale?.status)==="completed")return{label:"Sold",detail:sale?.saleNumber||sale?.transferNumber||"Completed sale",date:sale?.saleDate||sale?.completedAt||"",saleId:sale?.id||"",canSell:false};
-    if(lower(status)==="reserved")return{label:"Reserved",detail:sale?.saleNumber||"Reserved for buyer",date:sale?.saleDate||"",saleId:sale?.id||"",canSell:true};
-    if(lower(status)==="for sale")return{label:"For sale",detail:animal.askingPrice?`Asking price ${animal.askingPrice}`:"Available for sale",date:"",saleId:sale?.id||"",canSell:true};
-    if(["deceased","archived","ancestor only"].includes(lower(status)))return{label:status,detail:"Historical/non-operational record",date:"",saleId:sale?.id||"",canSell:false};
+    const statusKey=lower(status);
+    if(statusKey==="sold"||lower(sale?.status)==="completed"){
+      const detail=transfer?.to?`Transferred to ${transfer.to}`:sale?.saleNumber||sale?.transferNumber||"Completed sale";
+      return{label:transfer?"Transferred":"Sold",detail,date:transfer?.date||transfer?.at||sale?.saleDate||sale?.completedAt||"",saleId:sale?.id||"",canSell:false};
+    }
+    if(statusKey==="reserved")return{label:"Reserved",detail:sale?.saleNumber||"Reserved for buyer",date:sale?.saleDate||"",saleId:sale?.id||"",canSell:true};
+    if(statusKey==="for sale")return{label:"For sale",detail:animal.askingPrice?`Asking price ${animal.askingPrice}`:"Available for sale",date:"",saleId:sale?.id||"",canSell:true};
+    if(["deceased","archived","ancestor only"].includes(statusKey))return{label:status,detail:"Historical/non-operational record",date:"",saleId:sale?.id||"",canSell:false};
+    if(transfer){
+      const received=transfer.from?`Received from ${transfer.from}`:"Received through HerdHarbor transfer";
+      return{label:"Owned here",detail:[received,transfer.transferId].filter(Boolean).join(" · "),date:transfer.date||transfer.at||"",saleId:sale?.id||"",canSell:true};
+    }
     return{label:"Owned here",detail:animal.location||"Current HerdHarbor animal",date:"",saleId:sale?.id||"",canSell:true};
   }
 
@@ -127,7 +133,7 @@
     });});return true;
   }
 
-  function openSale(saleId,animalId){
+  function openSale(saleId){
     if(!saleId||!clickRoute("sales"))return false;
     waitFor(`[data-view-sale="${cssEscape(saleId)}"]`,button=>button.click());
     return true;
@@ -141,7 +147,7 @@
   function onClick(event){
     const relation=event.target.closest?.("[data-hh-p2-open-relation]");if(relation){event.preventDefault();event.stopPropagation();root.HerdHarborFlowPhase2?.openAnimalProfile?.(relation.dataset.hhP2OpenRelation,"pedigree",{history:"push"});return;}
     const create=event.target.closest?.("[data-hh-p2-finish-create-offspring]");if(create){event.preventDefault();event.stopPropagation();openOffspringCreator(create.dataset.hhP2FinishCreateOffspring,activeAnimalId());return;}
-    const sale=event.target.closest?.("[data-hh-p2-sale-action]");if(sale){event.preventDefault();event.stopPropagation();const animalId=activeAnimalId();if(sale.dataset.hhP2SaleAction==="open-sale")openSale(sale.dataset.saleId,animalId);else openNewSale(animalId);}
+    const sale=event.target.closest?.("[data-hh-p2-sale-action]");if(sale){event.preventDefault();event.stopPropagation();const animalId=activeAnimalId();if(sale.dataset.hhP2SaleAction==="open-sale")openSale(sale.dataset.saleId);else openNewSale(animalId);}
   }
 
   function enhance(){const animalId=activeAnimalId();if(!animalId)return false;const state=stateNow();enhanceLifecycle(state);enhancePedigree(state,animalId);enhanceOwnership(state,animalId);return true;}
