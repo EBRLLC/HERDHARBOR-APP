@@ -1,0 +1,6 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const Core=require('../genetics-v2-phase1-core-v1.8.2.js');
+function record(alleles,source='breeder',status='confirmed'){return{alleles,source,status};}
+function rabbit(id,loci={},extra={}){const genetics={loci:{}};for(const locus of Core.DISPLAY_LOCI)genetics.loci[locus]=record(['_','_'],'','unknown');for(const [locus,value] of Object.entries(loci))genetics.loci[locus]=record(value);return{id,name:id,species:'Rabbit',status:'Active',genetics,...extra};}
+test('a genotype derived only from the parents cannot be reused as offspring proof against those same parents',()=>{const dam=rabbit('dam',{B:['B','B']}),sire=rabbit('sire',{B:['B','B']}),kit=rabbit('kit',{}, {damId:'dam',sireId:'sire'});const result=Core.propagateState({animals:[dam,sire,kit]},'2026-09-07T23:20:00Z');const child=result.state.animals.find(a=>a.id==='kit');assert.deepEqual(child.genetics.loci.B.alleles,['B','B']);assert.equal(child.genetics.loci.B.derivation,'parent-inheritance');for(const id of ['dam','sire']){const parent=result.state.animals.find(a=>a.id===id);assert.equal((parent.genetics.evidence||[]).some(e=>e.kind==='offspring-proof'&&e.locus==='B'),false);}});
