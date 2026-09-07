@@ -21,8 +21,11 @@ const html = read("index.html");
 const monitoringConfig = read("herdharbor-monitoring-config.js");
 const monitoringGenerator = read("scripts/build-monitoring-config.mjs");
 const sentryAcceptance = read("scripts/sentry-production-acceptance.mjs");
+const securityAudit = read("scripts/repository-security-audit.mjs");
 const readme = read("README.md");
 const releaseNotes = read("RELEASE_NOTES-v1.8.1.md");
+const checklist = read("TEST_CHECKLIST.md");
+const supabaseConfig = read("supabase/config.toml");
 
 const version = build.match(/version:\s*"([^"]+)"/)?.[1];
 const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
@@ -82,6 +85,16 @@ test("monitoring source is secret-safe and current production acceptance identif
   assert.doesNotMatch(monitoringConfig, /https:\/\/.+@.+\/\d+/);
 });
 
+test("repository security audit is a permanent release gate", () => {
+  assert.equal(pkg.scripts["audit:security"], "node scripts/repository-security-audit.mjs");
+  assert.match(pkg.scripts["test:release"], /npm run audit:security/);
+  assert.match(securityAudit, /Stripe secret\/restricted key/);
+  assert.match(securityAudit, /Stripe webhook signing secret/);
+  assert.match(securityAudit, /private key material/);
+  assert.match(securityAudit, /duplicate browser Supabase client creation/);
+  assert.match(securityAudit, /herdharbor-cloud\.js must create exactly one client/);
+});
+
 test("repository uses one current CI/deploy set and no legacy release workflow files", () => {
   const currentWorkflows = [
     ".github/workflows/v1.8.1-ci.yml",
@@ -131,14 +144,50 @@ test("stable older-named domain engines and migration lineage remain intentional
 
   for (const migration of [
     "supabase/v1.6.5-market-analytics-foundation.sql",
+    "supabase/v1.6.7-market-privacy-hardening.sql",
+    "supabase/v1.8.0-stripe-billing-hardening.sql",
     "supabase/v1.8.1-registration-safety.sql",
     "supabase/v1.8.1-referrals-credits.sql"
   ]) assert.ok(exists(migration), `migration lineage was removed: ${migration}`);
+
+  for (const fn of [
+    "market-contribution",
+    "registration-profile",
+    "registration-referral",
+    "subscription-billing",
+    "subscription-webhook",
+    "email-engine"
+  ]) {
+    assert.ok(exists(`supabase/functions/${fn}`), `current Supabase function source is missing: ${fn}`);
+    assert.ok(supabaseConfig.includes(`[functions.${fn}]`), `Supabase config is missing function policy: ${fn}`);
+  }
 });
 
-test("current repository documentation identifies v1.8.1 and obsolete auth test page is absent", () => {
+test("current documentation is v1.8.1 and stale release/debt snapshots stay out of the live tree", () => {
   assert.match(readme, /^# HerdHarbor Alpha v1\.8\.1/m);
   assert.match(releaseNotes, /^# HerdHarbor Alpha v1\.8\.1/m);
   assert.match(releaseNotes, /Referral IDs and Member-month credits/);
-  assert.equal(exists("README-AUTH-SETUP.md"), false, "obsolete standalone auth test page must not remain in the repository root");
+  assert.match(checklist, /^# HerdHarbor Alpha v1\.8\.1 Acceptance Checklist/m);
+
+  for (const obsolete of [
+    "README-AUTH-SETUP.md",
+    "DATA_NOTICE.md",
+    "HOTFIX-v1.6.7-mobile-settings-layout.md",
+    "HOTFIX-v1.7.1-stabilization.md",
+    "V1.6.7-COMPLETION-AUDIT.md",
+    "V1.6.7-PRODUCTION-ACCEPTANCE.md",
+    "V1.6.7-SIGNIN-HOTFIX.md",
+    "RELEASE_NOTES-v0.2.4.md",
+    "RELEASE_NOTES-v1.4.0.md",
+    "RELEASE_NOTES-v1.4.1.md",
+    "RELEASE_NOTES-v1.4.5.md",
+    "RELEASE_NOTES-v1.5.0.md",
+    "RELEASE_NOTES-v1.5.1.md",
+    "RELEASE_NOTES-v1.6.1.md",
+    "RELEASE_NOTES-v1.6.6.md",
+    "RELEASE_NOTES-v1.6.7.md",
+    "RELEASE_NOTES-v1.7.0.md",
+    "RELEASE_NOTES-v1.7.1.md",
+    "RELEASE_NOTES_v1.8.0.md"
+  ]) assert.equal(exists(obsolete), false, `obsolete live-tree artifact returned: ${obsolete}`);
 });
