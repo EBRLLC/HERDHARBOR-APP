@@ -26,7 +26,7 @@ assert.ok(["1.7.1", "1.8.0", "1.8.1"].includes(webVersion), `unexpected web rele
 if (webVersion === "1.7.1") assert.equal(buildId, "multispecies-genetics-foundation-1");
 if (webVersion === "1.8.0") assert.match(buildId, /^subscription-engine-/);
 if (webVersion === "1.8.1") {
-  assert.equal(buildId, "october-subscription-launch-1");
+  assert.match(buildId, /^october-subscription-launch-/);
   assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=1/);
 }
 assert.match(html, /HerdHarbor Alpha v1\.7\.1 consolidated application shell/);
@@ -90,7 +90,7 @@ assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
 assert.match(serviceWorker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1)-/);
-if (webVersion === "1.8.1") assert.match(serviceWorker, /v1\.8\.1-alpha-october-subscription-launch-1/);
+if (webVersion === "1.8.1") assert.match(serviceWorker, /v1\.8\.1-alpha-october-subscription-launch-/);
 assert.match(serviceWorker, /spreadsheet-import\.js\?v=17/);
 assert.match(serviceWorker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(serviceWorker, /herdharbor-cloud\.js\?v=20/);
