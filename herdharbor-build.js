@@ -35,6 +35,7 @@
   addStyle("hh-subscription-engine-v180-style", "subscription-engine-v1.8.0.css?v=1");
   addStyle("hh-subscription-member-ui-v180-style", "subscription-member-ui-v1.8.0.css?v=1");
   addStyle("hh-mobile-viewport-v180-style", "mobile-viewport-hotfix-v1.8.0.css?v=1");
+  addScript("hh-how-to-navigation-v181", "how-to-navigation-v1.8.1.js?v=1");
   addScript("hh-registration-safety-v181", "registration-safety-v1.8.1.js?v=1", () => {
     // Signup policy is layered after the identity/age fields exist and before
     // Stripe initializes. It never creates another browser Supabase client.
