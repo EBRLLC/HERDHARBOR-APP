@@ -4,3 +4,8 @@ project_id = "okynebbksifqppwicghj"
 # This function validates the Bearer token with Supabase Auth in code before
 # calling service-role-only RPCs. This supports current asymmetric signing keys.
 verify_jwt = false
+
+[functions.registration-profile]
+# Registration profiles contain private identity/contact details and are only
+# accepted from a signed-in HerdHarbor user.
+verify_jwt = true
