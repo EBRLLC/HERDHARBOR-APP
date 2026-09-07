@@ -6,20 +6,15 @@
   const HARD_LAUNCH_AT = "2026-10-01T00:00:00-04:00";
   const MEMBER_TRIAL_TIER = "member";
   const POST_LAUNCH_FREE_TIER = "junior";
-  const ACTIVE_SUBSCRIPTION_STATUSES = new Set(["active", "trialing", "founder", "resubscribed"]);
+  const ACTIVE_SUBSCRIPTION_STATUSES = new Set(["active", "trialing", "founder", "resubscribed", "credit_active"]);
   const PAID_TIERS = new Set(["founder", "member", "business"]);
 
   const original = window.HerdHarborMembership;
   if (!original || window.HerdHarborSubscriptionLaunch) return;
 
   const clone = (value) => {
-    try {
-      return typeof structuredClone === "function"
-        ? structuredClone(value)
-        : JSON.parse(JSON.stringify(value));
-    } catch {
-      return value;
-    }
+    try { return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value)); }
+    catch { return value; }
   };
   const normalize = (value = "") => String(value ?? "").trim().toLowerCase();
   const asTime = (value) => {
@@ -42,11 +37,8 @@
   }
 
   function subscriptionSnapshot() {
-    try {
-      return window.HerdHarborSubscriptionEngine?.getState?.() || {};
-    } catch {
-      return {};
-    }
+    try { return window.HerdHarborSubscriptionEngine?.getState?.() || {}; }
+    catch { return {}; }
   }
 
   function hasPaidSubscription(snapshot = subscriptionSnapshot()) {
@@ -59,9 +51,8 @@
     const status = normalize(base.subscriptionStatus);
     const tier = normalize(base.membershipTier || base.effectiveMembershipTier);
     const source = normalize(base.storedMembershipSource || base.membershipSource);
-    return source === "subscription"
-      && ACTIVE_SUBSCRIPTION_STATUSES.has(status)
-      && PAID_TIERS.has(tier);
+    if (source === "subscription_credit" && status === "credit_active" && tier === "member") return true;
+    return source === "subscription" && ACTIVE_SUBSCRIPTION_STATUSES.has(status) && PAID_TIERS.has(tier);
   }
 
   function resolveAccount(now = new Date()) {
@@ -72,12 +63,10 @@
     const storedSource = normalize(base.storedMembershipSource || currentSource);
     const snapshot = subscriptionSnapshot();
 
-    // Internal owner/admin accounts and live manual overrides remain untouched.
     if (role === "owner" || role === "admin" || currentSource === "manual_override") {
       return { ...base, subscriptionLaunch: policy };
     }
 
-    // Founder access is permanent and is not converted into a launch trial.
     if (currentSource === "founder" || storedSource === "founder" || normalize(base.membershipTier) === "founder") {
       return {
         ...base,
@@ -88,8 +77,6 @@
       };
     }
 
-    // Through 11:59 PM ET on September 30, every signed-up HerdHarbor member
-    // receives full Member access regardless of signup date or payment state.
     if (policy.trialActive) {
       return {
         ...base,
@@ -104,23 +91,21 @@
       };
     }
 
-    // October 1, 2026 is the hard subscription launch. Prefer the live Stripe
-    // engine snapshot, but also honor the webhook-synchronized account_access
-    // subscription state while the browser provider is still settling after sign-in.
     const livePaid = hasPaidSubscription(snapshot);
     const backendPaid = hasBackendPaidSubscription(base);
     if (livePaid || backendPaid) {
-      const paidTier = livePaid
-        ? normalize(snapshot.plan)
-        : normalize(base.membershipTier || base.effectiveMembershipTier);
-      const paidStatus = livePaid
-        ? normalize(snapshot.status)
-        : normalize(base.subscriptionStatus);
+      const effectiveTier = livePaid ? normalize(snapshot.plan) : normalize(base.membershipTier || base.effectiveMembershipTier);
+      const effectiveStatus = livePaid ? normalize(snapshot.status) : normalize(base.subscriptionStatus);
+      const snapshotSource = normalize(snapshot.membershipSource);
+      const creditFunded = effectiveStatus === "credit_active"
+        || snapshotSource === "subscription_credit"
+        || currentSource === "subscription_credit"
+        || storedSource === "subscription_credit";
       return {
         ...base,
-        effectiveMembershipTier: paidTier,
-        membershipSource: "subscription",
-        subscriptionStatus: paidStatus,
+        effectiveMembershipTier: effectiveTier,
+        membershipSource: creditFunded ? "subscription_credit" : "subscription",
+        subscriptionStatus: effectiveStatus,
         maxActiveAnimals: null,
         launchTrialActive: false,
         launchTrialEndsAt: HARD_LAUNCH_AT,
@@ -147,13 +132,7 @@
     const after = original.activeAnimalCount(afterAnimals);
     const current = resolveAccount();
     const limit = current.effectiveMembershipTier === "junior" ? 5 : null;
-    return {
-      allowed: limit === null || after <= limit || after <= before,
-      before,
-      after,
-      limit,
-      remaining: limit === null ? null : Math.max(0, limit - after)
-    };
+    return { allowed: limit === null || after <= limit || after <= before, before, after, limit, remaining: limit === null ? null : Math.max(0, limit - after) };
   }
 
   function enforceAnimalTransition(beforeAnimals, afterAnimals) {
@@ -164,11 +143,7 @@
 
   function getEffectiveEntitlements() {
     const current = resolveAccount();
-    return {
-      tier: current.effectiveMembershipTier,
-      maxActiveAnimals: current.maxActiveAnimals,
-      features: clone(current.features)
-    };
+    return { tier: current.effectiveMembershipTier, maxActiveAnimals: current.maxActiveAnimals, features: clone(current.features) };
   }
 
   const wrapped = Object.freeze({
