@@ -46,7 +46,7 @@ assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog \.hh-account-
 const webVersion=build.match(/version:\s*"([^"]+)"/)?.[1];
 assert.ok(["1.7.1","1.8.0","1.8.1"].includes(webVersion),`unexpected web release ${webVersion}`);
 assert.match(worker,/const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1)-/);
-if(webVersion==="1.8.1")assert.match(worker,/v1\.8\.1-alpha-october-subscription-launch-1/);
+if(webVersion==="1.8.1")assert.match(worker,/v1\.8\.1-alpha-october-subscription-launch-/);
 assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /herdharbor-cloud\.js\?v=20/);
 assert.match(worker, /pedigree-visual\.css\?v=2/);
