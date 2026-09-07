@@ -13,10 +13,11 @@ function rabbitFixture(){return{
   litters:[],sales:[],transfers:[]
 };}
 
-test('rabbit defaults derive day-12 pregnancy check and day-31 due date when the record omitted them',()=>{
+test('rabbit defaults derive day-12 pregnancy check, day-31 due date, and a conservative day-42 weaning target',()=>{
   const state=rabbitFixture(),breeding=state.breedings[0];
   assert.equal(Core.derivedPregnancyCheckDate(state,breeding),'2026-09-13');
   assert.equal(Core.derivedDueDate(state,breeding),'2026-10-02');
+  assert.equal(Core.RABBIT_DEFAULTS.weaningDay,42);
 });
 
 test('rabbit breeding tells the breeder the pregnancy check is due on day 12',()=>{
@@ -48,6 +49,41 @@ test('linked litter advances through offspring details and weaning',()=>{
   state.animals[2]={...state.animals[2],sex:'Male',tag:'WT1'};
   next=Core.breedingNextAction(state,state.breedings[0],'2026-11-20');
   assert.equal(next.kind,'wean-litter');
+});
+
+test('four-day-old rabbit litter cannot be evaluated for weaning from a legacy weaned count',()=>{
+  const state=rabbitFixture();
+  state.breedings[0]={...state.breedings[0],breedingDate:'2026-08-03',status:'Delivered'};
+  state.litters.push({id:'l1',breedingId:'b1',damId:'doe',sireId:'buck',birthDate:'2026-09-03',bornAlive:'2',weaned:'2',offspringIds:['k1','k2']});
+  state.animals.push(
+    {id:'k1',name:'Judy Kit 1',species:'Rabbit',sex:'Male',tag:'WT1',status:'Active',sourceBirthId:'l1'},
+    {id:'k2',name:'Judy Kit 2',species:'Rabbit',sex:'Female',tag:'WT2',status:'Active',sourceBirthId:'l1'}
+  );
+  assert.equal(Core.derivedWeanDate(state,state.litters[0]),'2026-10-15');
+  assert.equal(Core.effectiveWeanedCount(state,state.litters[0],'2026-09-07'),0);
+  assert.equal(Core.weaningComplete(state,state.litters[0],'2026-09-07'),false);
+  const next=Core.litterNextAction(state,state.litters[0],'2026-09-07');
+  assert.equal(next.kind,'manage-litter');
+  assert.equal(next.dueDate,'2026-10-15');
+  assert.match(next.label,/Weaning in 38 days/);
+  assert.equal(Core.dashboardActions(state,'2026-09-07',14).length,0);
+});
+
+test('an explicit expected wean date overrides the rabbit default',()=>{
+  const state=rabbitFixture();
+  const litter={id:'l1',damId:'doe',sireId:'buck',birthDate:'2026-09-03',expectedWeanDate:'2026-10-01'};
+  assert.equal(Core.derivedWeanDate(state,litter),'2026-10-01');
+});
+
+test('explicit offspring weaning records can advance the workflow even when earlier than the default target',()=>{
+  const state=rabbitFixture();
+  state.litters.push({id:'l1',breedingId:'b1',damId:'doe',sireId:'buck',birthDate:'2026-09-03',bornAlive:'2',weaned:'0',offspringIds:['k1','k2']});
+  state.animals.push(
+    {id:'k1',name:'Kit 1',species:'Rabbit',sex:'Male',tag:'WT1',status:'Active',sourceBirthId:'l1',weanedDate:'2026-10-01'},
+    {id:'k2',name:'Kit 2',species:'Rabbit',sex:'Female',tag:'WT2',status:'Active',sourceBirthId:'l1',weanedDate:'2026-10-01'}
+  );
+  assert.equal(Core.weaningComplete(state,state.litters[0],'2026-10-01'),true);
+  assert.equal(Core.litterNextAction(state,state.litters[0],'2026-10-01').kind,'evaluate-litter');
 });
 
 test('weaned litter asks for evaluation once, then moves to buyer sale',()=>{
@@ -93,5 +129,6 @@ test('UI surfaces next action on profile, breeding cards, litter workspace, and 
 test('release loader includes the next-action engine without changing public v1.8.1 identity',()=>{
   const build=fs.readFileSync(path.join(__dirname,'..','herdharbor-build.js'),'utf8');
   for(const asset of ['breeding-next-action-core-v1.8.2.js','breeding-next-action-v1.8.2.js','breeding-next-action-v1.8.2.css'])assert.match(build,new RegExp(asset.replace(/\./g,'\\.')));
+  assert.match(build,/breeding-next-action-core-v1\.8\.2\.js\?v=2/);
   assert.match(build,/version:\s*"1\.8\.1"/);assert.doesNotMatch(build,/version:\s*"1\.8\.2"/);
 });
