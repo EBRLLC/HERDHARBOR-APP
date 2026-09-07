@@ -1,0 +1,93 @@
+name: Alpha v1.8.1 CI
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: herdharbor-v1.8.1-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web-regression:
+    name: Web, security and regression
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install pinned dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify current v1.8.1 release contract
+        run: npm run test:release
+      - name: Run complete HerdHarbor regression suite in UTC
+        env:
+          TZ: UTC
+        run: npm test
+      - name: Run complete HerdHarbor regression suite in America/New_York
+        env:
+          TZ: America/New_York
+        run: npm test
+      - name: Build production monitoring bundle
+        run: NODE_ENV=production npm run build:monitoring
+      - name: Verify bundled monitoring architecture
+        run: |
+          test -s vendor/herdharbor-monitoring-v1.6.1.min.js
+          grep -q '@sentry/browser' monitoring/herdharbor-monitoring-browser.mjs
+          ! grep -Eqi 'browser\.sentry-cdn\.com|loader\.js' monitoring/herdharbor-monitoring-browser.mjs index.html pwa.js
+      - name: Verify environment-driven monitoring configuration
+        env:
+          HERDHARBOR_SENTRY_DSN: https://public@example.invalid/123
+          HERDHARBOR_MONITORING_ENVIRONMENT: test
+          HERDHARBOR_BUILD_ID: ci-v1.8.1
+          HERDHARBOR_ENABLE_MONITORING_TEST: "true"
+        run: |
+          npm run build:monitoring-config
+          grep -q '"environment": "test"' herdharbor-monitoring-config.js
+          grep -q '"release": "HerdHarbor@1.8.1"' herdharbor-monitoring-config.js
+          grep -q '"build": "ci-v1.8.1"' herdharbor-monitoring-config.js
+          grep -q '"enableTestCrash": true' herdharbor-monitoring-config.js
+          git checkout -- herdharbor-monitoring-config.js
+      - name: Ensure tests and build did not mutate source
+        run: git diff --exit-code -- . ':!vendor/herdharbor-monitoring-v1.6.1.min.js'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: herdharbor-v1.8.1-monitoring-bundle
+          path: vendor/herdharbor-monitoring-v1.6.1.min.js
+          if-no-files-found: error
+          retention-days: 14
+
+  android-review:
+    name: Android v1.8.1 review bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Android release identity
+        run: |
+          grep -q 'versionName "1.8.1"' android/app/build.gradle
+          grep -q 'versionCode 15' android/app/build.gradle
+          grep -q '"appVersion": "1.8.1"' twa-manifest.json
+          grep -q '"appVersionCode": 15' twa-manifest.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: Install Android 16 SDK
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Build unsigned release bundle
+        working-directory: android
+        run: ./gradlew --no-daemon bundleRelease
+      - name: Verify unsigned bundle
+        run: test -s android/app/build/outputs/bundle/release/app-release.aab
+      - uses: actions/upload-artifact@v4
+        with:
+          name: herdharbor-v1.8.1-unsigned-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
