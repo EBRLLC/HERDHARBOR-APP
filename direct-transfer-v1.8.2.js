@@ -13,6 +13,7 @@
   let lastRefreshAt = 0;
   let refreshInFlight = null;
   let observer = null;
+  let renderQueued = false;
   let chip = null;
 
   const esc = (value) => String(value == null ? "" : value).replace(/[&<>"']/g, (char) => ({
@@ -117,16 +118,14 @@
     if (!force && Date.now() - lastRefreshAt < POLL_MS) return { identity, inbox, outbox };
     refreshInFlight = (async () => {
       const [identityResult, inboxResult, outboxResult] = await Promise.all([
-        api("identity"),
-        api("inbox"),
-        api("outbox")
+        api("identity"), api("inbox"), api("outbox")
       ]);
       identity = identityResult?.identity || identityResult || null;
       inbox = Array.isArray(inboxResult?.transfers) ? inboxResult.transfers : [];
       outbox = Array.isArray(outboxResult?.transfers) ? outboxResult.transfers : [];
       lastRefreshAt = Date.now();
       updateNavBadge();
-      renderSalesEnhancements();
+      renderSalesEnhancements(true);
       return { identity, inbox, outbox };
     })();
     try {
@@ -158,7 +157,7 @@
       chip.hidden = true;
       chip.addEventListener("click", () => {
         document.querySelector('[data-route="sales"]')?.click();
-        setTimeout(() => renderSalesEnhancements(), 80);
+        setTimeout(() => renderSalesEnhancements(false), 80);
       });
       document.body.appendChild(chip);
     }
@@ -167,7 +166,9 @@
   }
 
   function transferCard(row, incoming = true) {
-    const names = Array.isArray(row.subjectNames) && row.subjectNames.length ? row.subjectNames.join(", ") : `${row.subjectCount || 1} animal${Number(row.subjectCount || 1) === 1 ? "" : "s"}`;
+    const names = Array.isArray(row.subjectNames) && row.subjectNames.length
+      ? row.subjectNames.join(", ")
+      : `${row.subjectCount || 1} animal${Number(row.subjectCount || 1) === 1 ? "" : "s"}`;
     const status = String(row.status || "pending");
     return `<article class="hh-direct-card" data-hh-transfer-id="${esc(row.id)}">
       <div class="hh-direct-card-main">
@@ -185,31 +186,22 @@
   function panelHtml() {
     const pending = inbox.filter((row) => row.status === "pending");
     const recentOut = outbox.slice(0, 5);
-    return `
-      <section class="panel hh-direct-transfer-panel" id="hh-direct-transfer-panel">
-        <div class="panel-header hh-direct-panel-header">
-          <div>
-            <h3>HerdHarbor Direct Transfer</h3>
-            <small>Send sold animals, 3-generation pedigrees, and transferable genetics directly between member accounts.</small>
-          </div>
-          <button type="button" class="button button-ghost" id="hh-direct-refresh">Refresh</button>
-        </div>
-        <div class="hh-direct-identity">
-          <span>Your member transfer code</span>
-          <strong>${esc(identity?.memberCode || "Loading…")}</strong>
-          <small>Share this code with a seller instead of your email when you prefer.</small>
-        </div>
-        <div class="hh-direct-columns">
-          <div>
-            <h4>Incoming transfers ${pending.length ? `<span class="hh-direct-count">${pending.length}</span>` : ""}</h4>
-            ${pending.length ? pending.map((row) => transferCard(row, true)).join("") : '<p class="hh-direct-empty">No pending animal transfers.</p>'}
-          </div>
-          <div>
-            <h4>Recent sent transfers</h4>
-            ${recentOut.length ? recentOut.map((row) => transferCard(row, false)).join("") : '<p class="hh-direct-empty">No direct transfers sent yet.</p>'}
-          </div>
-        </div>
-      </section>`;
+    return `<section class="panel hh-direct-transfer-panel" id="hh-direct-transfer-panel">
+      <div class="panel-header hh-direct-panel-header">
+        <div><h3>HerdHarbor Direct Transfer</h3><small>Send sold animals, 3-generation pedigrees, and transferable genetics directly between member accounts.</small></div>
+        <button type="button" class="button button-ghost" id="hh-direct-refresh">Refresh</button>
+      </div>
+      <div class="hh-direct-identity">
+        <span>Your member transfer code</span><strong>${esc(identity?.memberCode || "Loading…")}</strong>
+        <small>Share this code with a seller instead of your email when you prefer.</small>
+      </div>
+      <div class="hh-direct-columns">
+        <div><h4>Incoming transfers ${pending.length ? `<span class="hh-direct-count">${pending.length}</span>` : ""}</h4>
+          ${pending.length ? pending.map((row) => transferCard(row, true)).join("") : '<p class="hh-direct-empty">No pending animal transfers.</p>'}</div>
+        <div><h4>Recent sent transfers</h4>
+          ${recentOut.length ? recentOut.map((row) => transferCard(row, false)).join("") : '<p class="hh-direct-empty">No direct transfers sent yet.</p>'}</div>
+      </div>
+    </section>`;
   }
 
   function injectSaleButtons() {
@@ -239,27 +231,44 @@
       if (review) return openIncomingReview(review.dataset.hhReviewTransfer);
       const cancel = event.target.closest?.("[data-hh-cancel-transfer]");
       if (cancel) return cancelOutgoing(cancel.dataset.hhCancelTransfer);
-      if (event.target.closest?.("#hh-direct-refresh")) {
-        const button = event.target.closest("#hh-direct-refresh");
-        button.disabled = true;
+      const refresh = event.target.closest?.("#hh-direct-refresh");
+      if (refresh) {
+        refresh.disabled = true;
         try { await refreshTransfers(true); } catch (error) { toast(error.message, "error"); }
-        finally { button.disabled = false; }
+        finally { refresh.disabled = false; }
       }
     });
   }
 
-  function renderSalesEnhancements() {
+  function salesVisible() {
+    const host = document.querySelector("#view-sales");
+    return Boolean(host && host.offsetParent);
+  }
+
+  function renderSalesEnhancements(replacePanel = false) {
     const host = document.querySelector("#view-sales");
     if (!host || !host.offsetParent) return;
-    const existing = document.querySelector("#hh-direct-transfer-panel");
-    if (existing) existing.outerHTML = panelHtml();
-    else {
+    const existing = host.querySelector("#hh-direct-transfer-panel");
+    if (existing && replacePanel) existing.outerHTML = panelHtml();
+    else if (!existing) {
       const toolbar = host.querySelector(".toolbar");
       if (toolbar) toolbar.insertAdjacentHTML("beforebegin", panelHtml());
       else host.insertAdjacentHTML("afterbegin", panelHtml());
     }
     bindPanel();
     injectSaleButtons();
+  }
+
+  function scheduleSalesEnhancements() {
+    if (renderQueued) return;
+    renderQueued = true;
+    requestAnimationFrame(() => {
+      renderQueued = false;
+      if (!salesVisible()) return;
+      const panel = document.querySelector("#view-sales #hh-direct-transfer-panel");
+      if (!panel) renderSalesEnhancements(false);
+      else injectSaleButtons();
+    });
   }
 
   function openSendTransfer(saleId) {
@@ -302,8 +311,7 @@
           return;
         }
         resolved = response.recipient;
-        result.innerHTML = `
-          <div><strong>${esc(resolved.displayName || "HerdHarbor member")}</strong><span>${esc(resolved.maskedEmail || resolved.memberCode || "Verified member")}</span></div>
+        result.innerHTML = `<div><strong>${esc(resolved.displayName || "HerdHarbor member")}</strong><span>${esc(resolved.maskedEmail || resolved.memberCode || "Verified member")}</span></div>
           <button type="button" class="button button-primary" id="hh-direct-send-confirmed">Send transfer</button>`;
         result.querySelector("#hh-direct-send-confirmed").addEventListener("click", () => sendResolvedTransfer(sale.id, recipient, resolved));
       } catch (error) {
@@ -336,8 +344,7 @@
 
       const sale = state.sales.find((record) => String(record.id) === String(saleId));
       const now = new Date().toISOString();
-      const already = state.transfers.some((record) => record.serverTransferId === transfer.id);
-      if (!already) {
+      if (!state.transfers.some((record) => record.serverTransferId === transfer.id)) {
         const subjectIds = Array.isArray(sale?.items) ? sale.items.map((item) => item.animalId).filter(Boolean) : [];
         state.transfers.push({
           id: `transfer_sent_${transfer.id}`,
@@ -357,9 +364,7 @@
           const history = Array.isArray(animal.ownershipHistory) ? animal.ownershipHistory : [];
           if (!history.some((row) => row?.transferId === payload.transferId)) {
             history.push({
-              type: "transfer",
-              date: sale?.saleDate || now,
-              transferId: payload.transferId,
+              type: "transfer", date: sale?.saleDate || now, transferId: payload.transferId,
               sourceSaleNumber: payload.sale?.saleNumber || "",
               from: me?.displayName || state.profile?.operationName || "Seller",
               to: recipient?.displayName || transfer.recipientDisplayName || "HerdHarbor member"
@@ -414,16 +419,13 @@
       const prepared = await api("prepare_accept", { transferId });
       const transfer = prepared?.transfer;
       if (!transfer?.payload) throw new Error("The transfer payload could not be loaded.");
-      const current = readState();
-      const applied = Core.applyIncomingTransfer(current, transfer.payload, {
+      const applied = Core.applyIncomingTransfer(readState(), transfer.payload, {
         serverTransferId: transfer.id,
         senderDisplayName: transfer.senderDisplayName,
         recipientDisplayName: identity?.displayName || ""
       });
       const synced = await persistState(applied.state);
-      if (!synced) {
-        throw new Error("The animal is protected on this device, but cloud sync has not completed. The transfer will stay pending until you retry while online.");
-      }
+      if (!synced) throw new Error("The animal is protected on this device, but cloud sync has not completed. The transfer will stay pending until you retry while online.");
       await api("complete_accept", { transferId: transfer.id });
       closeModal();
       toast(applied.alreadyImported ? "Transfer confirmed." : "Animal and pedigree added to your HerdHarbor account.", "success");
@@ -441,9 +443,7 @@
       closeModal();
       toast("Transfer declined.", "success");
       await refreshTransfers(true);
-    } catch (error) {
-      toast(error.message, "error");
-    }
+    } catch (error) { toast(error.message, "error"); }
   }
 
   async function cancelOutgoing(transferId) {
@@ -452,26 +452,21 @@
       await api("cancel", { transferId });
       toast("Pending transfer cancelled.", "success");
       await refreshTransfers(true);
-    } catch (error) {
-      toast(error.message, "error");
-    }
+    } catch (error) { toast(error.message, "error"); }
   }
 
   function bindGlobalClicks() {
     document.addEventListener("click", (event) => {
       const send = event.target.closest?.("[data-hh-direct-send]");
-      if (send) {
-        event.preventDefault();
-        openSendTransfer(send.dataset.hhDirectSend);
-      }
+      if (!send) return;
+      event.preventDefault();
+      openSendTransfer(send.dataset.hhDirectSend);
     });
   }
 
   function observeApp() {
     if (observer || !document.body) return;
-    observer = new MutationObserver(() => {
-      if (document.querySelector("#view-sales")?.offsetParent) renderSalesEnhancements();
-    });
+    observer = new MutationObserver(scheduleSalesEnhancements);
     observer.observe(document.body, { childList: true, subtree: true });
   }
 
@@ -483,7 +478,7 @@
     } catch (error) {
       console.warn("HerdHarbor Direct Transfer inbox is temporarily unavailable:", error);
     }
-    renderSalesEnhancements();
+    renderSalesEnhancements(false);
     window.addEventListener("focus", () => refreshTransfers(false).catch(() => {}));
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") refreshTransfers(false).catch(() => {});
