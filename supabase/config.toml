@@ -11,17 +11,23 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.registration-referral]
-# Referral-code validation is intentionally available before sign-in and returns
-# only valid/invalid. Status/complete actions validate the Bearer token in code.
+# Referral-code validation and pre-auth signup intent staging are intentionally
+# available before sign-in and return no referring-member identity. Signed-in
+# status/complete actions validate the Bearer token in code.
 verify_jwt = false
 
 [functions.subscription-billing]
-# Member billing and Admin credit actions require an authenticated HerdHarbor user.
+# Member billing and Admin subscription actions require an authenticated HerdHarbor user.
 verify_jwt = true
 
 [functions.subscription-webhook]
 # Stripe cannot send a Supabase user JWT. The function authenticates Stripe by
 # verifying the Stripe-Signature header before any database side effects.
+verify_jwt = false
+
+[functions.subscription-maintenance]
+# The database scheduler cannot send a user JWT. This function requires the
+# private X-HerdHarbor-Maintenance token generated and stored server-side.
 verify_jwt = false
 
 [functions.email-engine]
