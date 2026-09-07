@@ -1,5 +1,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
 const Workspace=require('../breeding-litter-workspace-v1.8.2.js');
 
 function fixture(){
@@ -103,4 +105,20 @@ test('workspace summary stays tied to the canonical birth and animal records',()
   assert.equal(info.offspring.length,5);
   assert.equal(info.living,5);
   assert.equal(info.available,5);
+});
+
+test('current build loads the litter workspace after the Phase Two lifecycle engine',()=>{
+  const build=fs.readFileSync(path.join(__dirname,'..','herdharbor-build.js'),'utf8');
+  const lifecycle=build.indexOf('flow-phase2-lifecycle-v1.8.2.js');
+  const workspace=build.indexOf('breeding-litter-workspace-v1.8.2.js');
+  const integration=build.indexOf('breeding-litter-workspace-integration-v1.8.2.js');
+  assert.ok(lifecycle>=0&&workspace>lifecycle&&integration>workspace);
+  assert.ok(build.includes('breeding-litter-workspace-v1.8.2.css'));
+});
+
+test('integration replaces manual litter creation entry points with Manage litter',()=>{
+  const integration=fs.readFileSync(path.join(__dirname,'..','breeding-litter-workspace-integration-v1.8.2.js'),'utf8');
+  assert.ok(integration.includes('data-create-offspring'));
+  assert.ok(integration.includes('Manage litter'));
+  assert.ok(integration.includes('hhBwManageLitter'));
 });
