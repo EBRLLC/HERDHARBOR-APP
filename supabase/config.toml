@@ -28,3 +28,8 @@ verify_jwt = false
 # Resend audience and Admin broadcast actions require an authenticated user and
 # perform an additional Owner/Admin authorization check where appropriate.
 verify_jwt = true
+
+[functions.animal-transfer]
+# Member-to-member animal transfers require a valid signed-in HerdHarbor user.
+# The function separately verifies the user token before service-role operations.
+verify_jwt = true

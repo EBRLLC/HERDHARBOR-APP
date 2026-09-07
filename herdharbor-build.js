@@ -8,7 +8,7 @@
     build: "1.8.1-alpha-october-subscription-launch-referrals-credits-4"
   });
 
-  // Alpha v1.8.1 establishes the September launch trial and October 1 subscription hard-launch policy while preserving the v1.8.0 subscription engine and stable domain engines.
+  // Alpha v1.8.1 establishes the September launch trial and October 1 subscription hard-launch policy while preserving the v1.8.0 subscription engine and stable domain engines. Direct member animal/pedigree transfers are layered in without changing the release identity.
   if (!root.document) return;
   const target = document.head || document.documentElement;
   function addStyle(id, href) {
@@ -35,6 +35,10 @@
   addStyle("hh-subscription-engine-v180-style", "subscription-engine-v1.8.0.css?v=1");
   addStyle("hh-subscription-member-ui-v180-style", "subscription-member-ui-v1.8.0.css?v=1");
   addStyle("hh-mobile-viewport-v180-style", "mobile-viewport-hotfix-v1.8.0.css?v=1");
+  addStyle("hh-direct-transfer-v182-style", "direct-transfer-v1.8.2.css?v=1");
+  addScript("hh-direct-transfer-core-v182", "direct-transfer-core-v1.8.2.js?v=1", () => {
+    addScript("hh-direct-transfer-v182", "direct-transfer-v1.8.2.js?v=1");
+  });
   addScript("hh-how-to-navigation-v181", "how-to-navigation-v1.8.1.js?v=1");
   addScript("hh-registration-safety-v181", "registration-safety-v1.8.1.js?v=1", () => {
     // Signup policy is layered after the identity/age fields exist and before
