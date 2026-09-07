@@ -13,8 +13,6 @@
   let snapshot = null;
   let snapshotInFlight = null;
 
-  // Public v1.8.1 billing is month-to-month only. This executes before the
-  // Stripe provider so an old yearly browser preference cannot leak through.
   try { localStorage.setItem(INTERVAL_KEY, "month"); } catch {}
 
   const esc = (value = "") => String(value ?? "")
@@ -78,14 +76,15 @@
     };
   }
 
-  function fillChoice(form) {
-    const choice = readChoice();
-    if (!choice) return;
+  function fillChoice(form, supplied = null) {
+    const choice = supplied || readChoice();
+    if (!choice) return false;
     const plan = choice.requestedPlan === "member" ? "member" : "junior";
     const radio = form.querySelector(`[data-hh-signup-plan][value="${plan}"]`);
     if (radio) radio.checked = true;
     const input = form.querySelector("[data-hh-referral-input]");
     if (input) input.value = referral(choice.referralCode || "");
+    return true;
   }
 
   function message(form, text = "", tone = "") {
@@ -95,17 +94,33 @@
     node.dataset.tone = tone;
   }
 
+  async function publicCall(payload, { keepalive = false } = {}) {
+    const response = await fetch(VALIDATE_URL, {
+      method: "POST",
+      keepalive,
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_PUBLISHABLE_KEY },
+      body: JSON.stringify(payload)
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || "Registration service is temporarily unavailable.");
+    return body;
+  }
+
   async function validate(code) {
     const normalized = referral(code);
     if (!normalized) return { valid: true, blank: true };
-    const response = await fetch(VALIDATE_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", apikey: SUPABASE_PUBLISHABLE_KEY },
-      body: JSON.stringify({ action: "validate", referralCode: normalized })
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || "Referral validation is temporarily unavailable. Clear the referral field to continue without a referral.");
-    return body;
+    return publicCall({ action: "validate", referralCode: normalized });
+  }
+
+  async function stageChoice(choice, email, { keepalive = false } = {}) {
+    const normalizedEmail = String(email || "").trim();
+    if (!normalizedEmail) return null;
+    return publicCall({
+      action: "stage",
+      email: normalizedEmail,
+      requestedPlan: choice.requestedPlan,
+      referralCode: choice.referralCode || null
+    }, { keepalive });
   }
 
   function bindInput(form) {
@@ -138,13 +153,32 @@
   async function signupSubmit(event) {
     const form = event.currentTarget;
     const choice = formChoice(form);
+    const email = form.querySelector("#hh-signup-email")?.value || "";
     saveChoice(choice);
     if (form.dataset.hhReferralResume === "1") {
       delete form.dataset.hhReferralResume;
       return;
     }
-    if (!choice.referralCode) return; // Blank referral must never delay signup.
-    if (choice.referralCode === lastCode && lastCodeValid) return;
+
+    // A blank referral must never delay signup. Stage the plan opportunistically
+    // with keepalive so a cross-device email confirmation can still restore it.
+    if (!choice.referralCode) {
+      void stageChoice(choice, email, { keepalive: true }).catch(() => null);
+      return;
+    }
+    if (choice.referralCode === lastCode && lastCodeValid) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      message(form, "Saving referral choice…", "info");
+      try {
+        await stageChoice(choice, email);
+        form.dataset.hhReferralResume = "1";
+        form.requestSubmit();
+      } catch (error) {
+        message(form, error?.message || "Referral choice could not be saved. Clear the field to continue without a referral.", "error");
+      }
+      return;
+    }
 
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -159,7 +193,8 @@
         form.querySelector("[data-hh-referral-input]")?.focus?.();
         return;
       }
-      message(form, "Referral ID verified.", "success");
+      await stageChoice(choice, email);
+      message(form, "Referral ID verified and saved for email confirmation.", "success");
       form.dataset.hhReferralResume = "1";
       form.requestSubmit();
     } catch (error) {
@@ -179,6 +214,17 @@
     bindInput(form);
     form.addEventListener("submit", signupSubmit, true);
     return true;
+  }
+
+  async function hydrateRemoteChoice(form) {
+    if (!form || readChoice() || !window.HerdHarborCloud?.invokeFunction) return;
+    try {
+      const status = await window.HerdHarborCloud.invokeFunction("registration-referral", { action: "status" });
+      if (status?.complete || !status?.stagedChoice) return;
+      fillChoice(form, status.stagedChoice);
+      saveChoice(status.stagedChoice);
+      if (status.stagedChoice.referralCode) message(form, "Referral ID restored from your signup and will be attached when you continue.", "success");
+    } catch {}
   }
 
   async function gateSubmit(event) {
@@ -224,6 +270,7 @@
     fillChoice(form);
     bindInput(form);
     form.addEventListener("submit", gateSubmit, true);
+    void hydrateRemoteChoice(form);
     return true;
   }
 
@@ -240,7 +287,7 @@
     const panel = document.getElementById("hh-subscription-engine-panel");
     if (!panel || panel.hidden) return;
     const plans = [...panel.querySelectorAll(".hh-subscription-plan-card")];
-    if (plans[1]) plans[1].hidden = true; // Founder is never a public selection.
+    if (plans[1]) plans[1].hidden = true;
     if (plans[3]) {
       const button = plans[3].querySelector("[data-hh-subscription-select]");
       if (button) { button.disabled = true; button.textContent = "Coming Soon"; button.title = "HerdHarbor Business is coming soon."; }
@@ -255,9 +302,11 @@
     const pending = Math.max(0, Number(data.pendingReferrals || 0));
     const progress = qualified % 5;
     const remaining = Math.max(0, Number(data.freeMonthsRemaining || 0));
+    const creditEnd = snapshot?.creditEntitlement?.endsAt;
     card.innerHTML = `
       <span class="hh-subscription-kicker">Referral credits</span><h3>${remaining} free Member month${remaining === 1 ? "" : "s"} available</h3>
       <div class="hh-referral-code-box"><span>Your Referral ID</span><code>${esc(data.code || "Loading…")}</code>${data.code ? '<button type="button" class="button button-ghost" data-hh-copy-referral>Copy</button>' : ""}</div>
+      ${creditEnd ? `<p><strong>Member credit active through ${esc(new Date(creditEnd).toLocaleDateString())}.</strong></p>` : ""}
       <p><strong>${qualified}</strong> qualified referral${qualified === 1 ? "" : "s"}${pending ? ` · ${pending} awaiting qualification` : ""}.</p>
       <div class="hh-subscription-progress" role="progressbar" aria-valuemin="0" aria-valuemax="5" aria-valuenow="${progress}"><span style="width:${Math.min(100, progress * 20)}%"></span></div>
       <p class="hh-referral-progress-label">${progress} of 5 qualified referrals toward your next free month.</p>
@@ -286,9 +335,6 @@
     document.addEventListener("herdharbor:auth-session", (event) => {
       if (event.detail?.signedIn === false) {
         snapshot = null;
-        // Do not clear CHOICE_KEY here. Email-confirmation signups often remain
-        // signed out until the confirmation link returns, and the plan/referral
-        // choice must survive that transition for up to 24 hours.
       } else setTimeout(installGate, 0);
     });
     document.addEventListener("herdharbor:registration-profile", (event) => {
@@ -297,6 +343,12 @@
     document.addEventListener("herdharbor:subscription-engine-state", () => setTimeout(enhancePanel, 0));
   }
 
-  window.HerdHarborReferralPolicy = Object.freeze({ version: VERSION, validateReferral: validate, refresh: refreshSnapshot, getSnapshot: () => snapshot ? JSON.parse(JSON.stringify(snapshot)) : null });
+  window.HerdHarborReferralPolicy = Object.freeze({
+    version: VERSION,
+    validateReferral: validate,
+    stageChoice,
+    refresh: refreshSnapshot,
+    getSnapshot: () => snapshot ? JSON.parse(JSON.stringify(snapshot)) : null
+  });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true }); else boot();
 })();
