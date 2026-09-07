@@ -48,7 +48,7 @@ test("PWA and offline shell use the current release while preserving safe update
   assert.match(pwa, /APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.1"/);
   assert.match(pwa, /BUILD_ID = window\.HerdHarborBuild\?\.buildId \|\| "october-subscription-launch-referrals-credits-4"/);
   assert.match(pwa, /manifest\.href = `manifest\.json\?build=\$\{encodeURIComponent\(PWA_BUILD\)\}`/);
-  assert.match(worker, /herdharbor-shell-v1\.8\.1-alpha-october-subscription-launch-referrals-credits-4/);
+  assert.match(worker, /herdharbor-shell-v1\.8\.1-alpha-october-subscription-launch-referrals-credits-5/);
   assert.match(worker, /\.\/manifest\.json\?v=1\.8\.1/);
   assert.match(worker, /\.\/herdharbor-build\.js\?v=1\.8\.1/);
   assert.match(worker, /\.\/herdharbor-monitoring-config\.js\?v=1\.8\.1/);
@@ -68,6 +68,8 @@ test("v1.8.1 account, subscription, referral and registration layers remain in t
     "subscription-launch-v1.8.1.js",
     "subscription-referral-policy-v1.8.1.js",
     "subscription-admin-credits-v1.8.1.js",
+    "subscription-admin-health-v1.8.1.js",
+    "subscription-closeout-v1.8.1.js",
     "subscription-stripe-launch-bridge-v1.8.1.js"
   ]) {
     assert.ok(build.includes(asset), `build loader is missing ${asset}`);
@@ -104,7 +106,6 @@ test("repository uses one current CI/deploy set and no legacy release workflow f
     ".github/workflows/v1.8.1-production-acceptance.yml"
   ];
   for (const workflow of currentWorkflows) assert.ok(exists(workflow), `missing current workflow ${workflow}`);
-
   for (const obsolete of [
     ".github/workflows/android-alpha.yml",
     ".github/workflows/v1.6.1-monitoring-bundle.yml",
@@ -135,7 +136,7 @@ test("repository uses one current CI/deploy set and no legacy release workflow f
   assert.doesNotMatch(acceptance, /psql|supabase functions deploy/);
 });
 
-test("stable older-named domain engines and migration lineage remain intentionally preserved", () => {
+test("stable older-named domain engines and complete v1.8.1 migration lineage remain preserved", () => {
   for (const runtime of [
     "analytics-v1.6.1.js",
     "rabbit-genetics-v1.6.1.js",
@@ -149,7 +150,8 @@ test("stable older-named domain engines and migration lineage remain intentional
     "supabase/v1.6.7-market-privacy-hardening.sql",
     "supabase/v1.8.0-stripe-billing-hardening.sql",
     "supabase/v1.8.1-registration-safety.sql",
-    "supabase/v1.8.1-referrals-credits.sql"
+    "supabase/v1.8.1-referrals-credits.sql",
+    "supabase/v1.8.1-subscription-closeout.sql"
   ]) assert.ok(exists(migration), `migration lineage was removed: ${migration}`);
 
   for (const fn of [
@@ -158,6 +160,7 @@ test("stable older-named domain engines and migration lineage remain intentional
     "registration-referral",
     "subscription-billing",
     "subscription-webhook",
+    "subscription-maintenance",
     "email-engine"
   ]) {
     assert.ok(exists(`supabase/functions/${fn}`), `current Supabase function source is missing: ${fn}`);
@@ -170,26 +173,12 @@ test("current documentation is v1.8.1 and stale release/debt snapshots stay out 
   assert.match(releaseNotes, /^# HerdHarbor Alpha v1\.8\.1/m);
   assert.match(releaseNotes, /Referral IDs and Member-month credits/);
   assert.match(checklist, /^# HerdHarbor Alpha v1\.8\.1 Acceptance Checklist/m);
-
   for (const obsolete of [
-    "README-AUTH-SETUP.md",
-    "DATA_NOTICE.md",
-    "HOTFIX-v1.6.7-mobile-settings-layout.md",
-    "HOTFIX-v1.7.1-stabilization.md",
-    "V1.6.7-COMPLETION-AUDIT.md",
-    "V1.6.7-PRODUCTION-ACCEPTANCE.md",
-    "V1.6.7-SIGNIN-HOTFIX.md",
-    "RELEASE_NOTES-v0.2.4.md",
-    "RELEASE_NOTES-v1.4.0.md",
-    "RELEASE_NOTES-v1.4.1.md",
-    "RELEASE_NOTES-v1.4.5.md",
-    "RELEASE_NOTES-v1.5.0.md",
-    "RELEASE_NOTES-v1.5.1.md",
-    "RELEASE_NOTES-v1.6.1.md",
-    "RELEASE_NOTES-v1.6.6.md",
-    "RELEASE_NOTES-v1.6.7.md",
-    "RELEASE_NOTES-v1.7.0.md",
-    "RELEASE_NOTES-v1.7.1.md",
-    "RELEASE_NOTES_v1.8.0.md"
+    "README-AUTH-SETUP.md", "DATA_NOTICE.md", "HOTFIX-v1.6.7-mobile-settings-layout.md",
+    "HOTFIX-v1.7.1-stabilization.md", "V1.6.7-COMPLETION-AUDIT.md", "V1.6.7-PRODUCTION-ACCEPTANCE.md",
+    "V1.6.7-SIGNIN-HOTFIX.md", "RELEASE_NOTES-v0.2.4.md", "RELEASE_NOTES-v1.4.0.md",
+    "RELEASE_NOTES-v1.4.1.md", "RELEASE_NOTES-v1.4.5.md", "RELEASE_NOTES-v1.5.0.md",
+    "RELEASE_NOTES-v1.5.1.md", "RELEASE_NOTES-v1.6.1.md", "RELEASE_NOTES-v1.6.6.md",
+    "RELEASE_NOTES-v1.6.7.md", "RELEASE_NOTES-v1.7.0.md", "RELEASE_NOTES-v1.7.1.md", "RELEASE_NOTES_v1.8.0.md"
   ]) assert.equal(exists(obsolete), false, `obsolete live-tree artifact returned: ${obsolete}`);
 });
