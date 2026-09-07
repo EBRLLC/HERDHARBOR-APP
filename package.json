@@ -7,6 +7,7 @@
     "test": "node --test tests/*.test.cjs",
     "build:monitoring": "node scripts/build-monitoring.mjs",
     "build:monitoring-config": "node scripts/build-monitoring-config.mjs",
+    "audit:security": "node scripts/repository-security-audit.mjs",
     "test:monitoring": "node --test tests/monitoring-*.test.cjs",
     "test:analytics": "node --test tests/analytics-v1.6.1.test.cjs tests/analytics-release-contract-v1.6.5.test.cjs",
     "test:market": "node --test tests/market-analytics-foundation-v1.6.5.test.cjs tests/market-privacy-hardening-v1.6.7.test.cjs",
@@ -14,7 +15,7 @@
     "test:health": "node --test tests/symptom-guide.test.cjs tests/health-intelligence-v1.7.1.test.cjs tests/v1.7.1-stability-hotfix.test.cjs",
     "test:phase2": "node --test tests/rabbit-genetics-v1.6.1.test.cjs tests/genetics-release-contract-v1.6.5.test.cjs tests/phase2-release-v1.6.1.test.cjs",
     "test:phase3": "node --test tests/standards-phase3.test.cjs tests/multispecies-genetics-phase3.test.cjs tests/phase3-integration.test.cjs tests/standards-v1.7.0.test.cjs",
-    "test:release": "node --test tests/current-release-reference-audit-v1.8.1.test.cjs",
+    "test:release": "npm run audit:security && node --test tests/current-release-reference-audit-v1.8.1.test.cjs",
     "test:completion": "npm run test:release",
     "test:v1.7.1": "node --test tests/multispecies-genetics-v1.7.1.test.cjs tests/multispecies-genetics-ui-v1.7.1.test.cjs tests/species-context-hardlock-v1.7.1.test.cjs tests/health-intelligence-v1.7.1.test.cjs tests/v1.7.1-stability-hotfix.test.cjs tests/workflow-phase1-v1.7.1.test.cjs tests/phase3-integration.test.cjs",
     "test:v1.8.1": "node --test tests/subscription-engine-v1.8.0.test.cjs tests/subscription-launch-v1.8.1.test.cjs tests/subscription-stripe-v1.8.1.test.cjs tests/subscription-referrals-credits-v1.8.1.test.cjs tests/subscription-email-delivery-v1.8.1.test.cjs tests/registration-safety-v1.8.1.test.cjs tests/email-engine-v1.8.1.test.cjs tests/mobile-viewport-hotfix-v1.8.0.test.cjs tests/app-script-compile.test.cjs tests/auth-signin-deadlock-v1.6.7.test.cjs tests/current-release-reference-audit-v1.8.1.test.cjs"
