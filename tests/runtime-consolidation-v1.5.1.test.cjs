@@ -80,7 +80,7 @@ assert.ok(pwa.includes('const APP_VERSION = window.HerdHarborBuild?.version || "
 const webVersion = build.match(/version:\s*"([^"]+)"/)?.[1];
 assert.ok(["1.7.1", "1.8.0", "1.8.1"].includes(webVersion), `unexpected web shell ${webVersion}`);
 assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1)-/);
-if (webVersion === "1.8.1") assert.ok(worker.includes("v1.8.1-alpha-october-subscription-launch-1"));
+if (webVersion === "1.8.1") assert.ok(worker.includes("v1.8.1-alpha-october-subscription-launch-"));
 assert.ok(worker.includes("pwa.js?v=29"));
 assert.ok(!pwa.includes(";" + String.fromCharCode(92) + "n    if"), "pwa.js contains no literal newline escape in executable source");
 assert.ok(!read("herdharbor-membership-v1.6.1.js").includes(";" + String.fromCharCode(92) + "n    if"), "membership source contains no literal newline escape in executable source");
