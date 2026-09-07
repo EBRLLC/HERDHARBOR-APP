@@ -80,10 +80,11 @@
     return custom||automatic||"";
   }
 
-  function weanEligibility(state,litterId,animalId,weanDate){
+  function weanEligibility(state,litterId,animalId,weanDate,asOfDate=""){
     const litter=litterById(state,litterId);
     const animal=offspringForLitter(state,litter).find(row=>String(row.id)===String(animalId));
     const date=dateOnly(weanDate);
+    const asOf=dateOnly(asOfDate);
     if(!litter||!animal)return{allowed:false,reason:"Offspring record not found.",unlockDate:"",ageDays:null};
     if(lower(animal.status)==="deceased")return{allowed:false,reason:"Deceased offspring cannot be marked weaned.",unlockDate:"",ageDays:null};
     if(clean(animal.weanedDate))return{allowed:false,reason:"This offspring is already marked weaned.",unlockDate:"",ageDays:null};
@@ -92,6 +93,15 @@
     const dob=dateOnly(animal.dob)||dateOnly(litter.birthDate);
     const age=dob?daysOld(dob,date):null;
     const unlock=effectiveUnlockDate(state,litter,animal);
+    if(asOf&&date>asOf){
+      return{
+        allowed:false,
+        reason:`Weaning is a completed event. ${date} is in the future; use the expected-weaning date for planning instead.`,
+        unlockDate:unlock,
+        ageDays:age,
+        futureDate:true
+      };
+    }
     if(unlock&&date<unlock){
       const species=speciesForAnimal(state,litter,animal);
       const minimum=defaultMinimumDays(species);
@@ -106,12 +116,12 @@
     return{allowed:true,reason:"",unlockDate:unlock,ageDays:age};
   }
 
-  function eligibleForDate(state,litterId,animalIds,weanDate){
+  function eligibleForDate(state,litterId,animalIds,weanDate,asOfDate=""){
     const ids=[...new Set((Array.isArray(animalIds)?animalIds:[]).map(String).filter(Boolean))];
     const allowed=[];
     const blocked=[];
     ids.forEach(id=>{
-      const result=weanEligibility(state,litterId,id,weanDate);
+      const result=weanEligibility(state,litterId,id,weanDate,asOfDate);
       (result.allowed?allowed:blocked).push({animalId:id,...result});
     });
     return{allowed,blocked};
