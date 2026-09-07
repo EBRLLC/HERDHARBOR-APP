@@ -35,6 +35,7 @@
   addStyle("hh-subscription-engine-v180-style", "subscription-engine-v1.8.0.css?v=1");
   addStyle("hh-subscription-member-ui-v180-style", "subscription-member-ui-v1.8.0.css?v=1");
   addStyle("hh-mobile-viewport-v180-style", "mobile-viewport-hotfix-v1.8.0.css?v=1");
+  addScript("hh-registration-safety-v181", "registration-safety-v1.8.1.js?v=1");
   addScript("hh-arba-v170-registry", "standards-registry-v1.7.0.js?v=1.7.1", () => {
     addScript("hh-arba-v170-ui", "standards-ui-v1.7.0.js?v=1.7.1", () => {
       addScript("hh-arba-public-v170", "standards-public-reference-v1.7.0.js?v=1.7.1");
