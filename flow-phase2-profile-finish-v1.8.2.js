@@ -75,6 +75,12 @@
     return{label:"Owned here",detail:animal.location||"Current HerdHarbor animal",date:"",saleId:sale?.id||"",canSell:true};
   }
 
+  function saleActionForOwnership(ownership={}){
+    if(ownership.saleId)return{kind:"open-sale",label:"Sale / transfer",saleId:ownership.saleId};
+    if(ownership.canSell)return{kind:"new-sale",label:"Sell / transfer",saleId:""};
+    return{kind:"none",label:"",saleId:""};
+  }
+
   function enhanceLifecycle(state){
     const panel=root.document?.querySelector('#view-animal-profile.active [data-hh-p2-panel="breeding"]');if(!panel)return false;
     panel.querySelectorAll(".hh-p2-life-card").forEach(card=>{
@@ -106,9 +112,10 @@
     const view=root.document?.querySelector("#view-animal-profile.active");if(!view)return false;
     const animal=animalById(state,animalId);if(!animal)return false;
     const ownership=currentOwnershipState(state,animalId);
+    const saleAction=saleActionForOwnership(ownership);
     const actions=view.querySelector(".hh-p2-actions");
-    if(actions&&!actions.querySelector("[data-hh-p2-sale-action]")){
-      const button=root.document.createElement("button");button.type="button";button.className="button button-ghost button-small";button.dataset.hhP2SaleAction=ownership.saleId&&!ownership.canSell?"open-sale":"new-sale";button.dataset.saleId=ownership.saleId||"";button.textContent=ownership.saleId&&!ownership.canSell?"Sale / transfer":"Sell / transfer";actions.appendChild(button);
+    if(actions&&saleAction.kind!=="none"&&!actions.querySelector("[data-hh-p2-sale-action]")){
+      const button=root.document.createElement("button");button.type="button";button.className="button button-ghost button-small";button.dataset.hhP2SaleAction=saleAction.kind;button.dataset.saleId=saleAction.saleId||"";button.textContent=saleAction.label;actions.appendChild(button);
     }
     const panel=view.querySelector('[data-hh-p2-panel="overview"]');if(panel&&!panel.querySelector(".hh-p2-current-owner")){
       const card=root.document.createElement("section");card.className="panel hh-p2-current-owner";
@@ -147,7 +154,7 @@
   function onClick(event){
     const relation=event.target.closest?.("[data-hh-p2-open-relation]");if(relation){event.preventDefault();event.stopPropagation();root.HerdHarborFlowPhase2?.openAnimalProfile?.(relation.dataset.hhP2OpenRelation,"pedigree",{history:"push"});return;}
     const create=event.target.closest?.("[data-hh-p2-finish-create-offspring]");if(create){event.preventDefault();event.stopPropagation();openOffspringCreator(create.dataset.hhP2FinishCreateOffspring,activeAnimalId());return;}
-    const sale=event.target.closest?.("[data-hh-p2-sale-action]");if(sale){event.preventDefault();event.stopPropagation();const animalId=activeAnimalId();if(sale.dataset.hhP2SaleAction==="open-sale")openSale(sale.dataset.saleId);else openNewSale(animalId);}
+    const sale=event.target.closest?.("[data-hh-p2-sale-action]");if(sale){event.preventDefault();event.stopPropagation();const animalId=activeAnimalId();if(sale.dataset.hhP2SaleAction==="open-sale")openSale(sale.dataset.saleId);else if(sale.dataset.hhP2SaleAction==="new-sale")openNewSale(animalId);}
   }
 
   function enhance(){const animalId=activeAnimalId();if(!animalId)return false;const state=stateNow();enhanceLifecycle(state);enhancePedigree(state,animalId);enhanceOwnership(state,animalId);return true;}
@@ -155,6 +162,6 @@
   function install(){if(installed||!root.document)return API;installed=true;root.addEventListener?.("click",onClick,true);root.addEventListener?.("hashchange",schedule);root.addEventListener?.("herdharbor:app-ready",schedule);observer=new root.MutationObserver(schedule);if(root.document.body)observer.observe(root.document.body,{childList:true,subtree:true});schedule();return API;}
   function uninstall(){observer?.disconnect?.();observer=null;root.removeEventListener?.("click",onClick,true);installed=false;queued=false;pendingSaleReturn=null;}
 
-  const API=Object.freeze({VERSION,offspringForLitter,liveAvailable,remainingOffspringSlots,pedigreeRelations,salesForAnimal,currentOwnershipState,install,uninstall});
+  const API=Object.freeze({VERSION,offspringForLitter,liveAvailable,remainingOffspringSlots,pedigreeRelations,salesForAnimal,currentOwnershipState,saleActionForOwnership,install,uninstall});
   return API;
 });
