@@ -47,7 +47,12 @@ test('sign-in watchdog re-enables a stuck form but never removes the auth lock',
   const sandbox=loadBuild();
   let locked=true;
   const controls=[{disabled:true},{disabled:true},{disabled:false}];
-  const message={textContent:'Signing in…',dataset:{},setAttribute(name,value){this[name]=value;}};
+  const message={
+    textContent:'Signing in…',
+    className:'hh-auth-message',
+    classList:{add(...names){message.className=['hh-auth-message',...names].join(' ');}},
+    setAttribute(name,value){this[name]=value;}
+  };
   const form={id:'hh-signin-form',isConnected:true,querySelectorAll(){return controls;}};
   sandbox.document={
     documentElement:{classList:{contains(name){return name==='hh-auth-locked'&&locked;}}},
@@ -58,7 +63,8 @@ test('sign-in watchdog re-enables a stuck form but never removes the auth lock',
   assert.equal(recovered,true);
   assert.deepEqual(controls.map(row=>row.disabled),[false,false,false]);
   assert.match(message.textContent,/taking too long/i);
-  assert.equal(message.dataset.type,'error');
+  assert.match(message.className,/\berror\b/);
+  assert.equal(message.role,'alert');
   assert.equal(locked,true,'recovery must not bypass authentication by removing the lock');
 });
 
