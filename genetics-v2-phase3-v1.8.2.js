@@ -1,7 +1,7 @@
 (function(root){
   "use strict";
   if(!root?.document)return;
-  let Core=root.HerdHarborGeneticsV2Phase3Core,observer=null,queued=false;
+  let Core=root.HerdHarborGeneticsV2Phase3Core,observer=null,queued=false,activeLitterId="";
   const clean=v=>String(v==null?"":v).trim();
   const lower=v=>clean(v).toLowerCase();
   const esc=v=>String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
@@ -27,8 +27,8 @@
 
   function renderLitter(){
     Core=root.HerdHarborGeneticsV2Phase3Core||Core;if(!Core)return false;
-    const shell=root.document.querySelector('#hh-breeding-litter-workspace .hh-bw-shell[data-hh-bw-litter-id]');if(!shell)return false;
-    const litterId=clean(shell.dataset.hhBwLitterId),state=stateNow(),summary=state&&litterId?Core.litterLearningSummary(state,litterId):null;
+    const shell=root.document.querySelector('#hh-breeding-litter-workspace .hh-bw-shell');if(!shell||!activeLitterId)return false;
+    const state=stateNow(),summary=state?Core.litterLearningSummary(state,activeLitterId):null;
     const old=shell.querySelector("[data-hh-gv2p3-litter-panel]");if(!summary){old?.remove();return false;}
     const wrap=root.document.createElement("div");wrap.innerHTML=litterPanel(summary);const next=wrap.firstElementChild;if(!next)return false;
     if(old&&old.innerHTML===next.innerHTML)return true;
@@ -65,10 +65,17 @@
   function render(){renderLitter();renderProfile();}
   function schedule(){if(queued)return;queued=true;(root.requestAnimationFrame||root.setTimeout)(()=>{queued=false;render();},0);}
   function openAnimal(id){if(!id)return;root.HerdHarborBreedingWorkspace?.close?.();root.HerdHarborFlowPhase2?.openAnimalProfile?.(id,"genetics",{history:"push",label:"Offspring genetics evidence"});}
-  function onClick(event){const link=event.target.closest?.("[data-hh-gv2p3-animal]");if(!link)return;event.preventDefault();event.stopPropagation();openAnimal(link.dataset.hhGv2p3Animal);}
+  function onClick(event){
+    const manage=event.target.closest?.("[data-hh-bw-manage-litter]");if(manage?.dataset?.hhBwManageLitter){activeLitterId=clean(manage.dataset.hhBwManageLitter);schedule();}
+    const link=event.target.closest?.("[data-hh-gv2p3-animal]");if(!link)return;event.preventDefault();event.stopPropagation();openAnimal(link.dataset.hhGv2p3Animal);
+  }
+  function onOffspringCreated(event){if(event?.detail?.litterId)activeLitterId=clean(event.detail.litterId);schedule();}
+  function onWorkspaceChanged(event){if(event?.detail?.litterId)activeLitterId=clean(event.detail.litterId);schedule();}
   function install(){
     root.document.addEventListener("click",onClick,true);
-    ["herdharbor:app-ready","herdharbor:genetics-v2-updated","herdharbor:litter-workspace-changed","herdharbor:offspring-auto-created","hashchange","storage"].forEach(name=>root.addEventListener(name,schedule));
+    root.addEventListener("herdharbor:offspring-auto-created",onOffspringCreated);
+    root.addEventListener("herdharbor:litter-workspace-changed",onWorkspaceChanged);
+    ["herdharbor:app-ready","herdharbor:genetics-v2-updated","hashchange","storage"].forEach(name=>root.addEventListener(name,schedule));
     observer=new root.MutationObserver(schedule);if(root.document.body)observer.observe(root.document.body,{childList:true,subtree:true});schedule();
   }
   root.HerdHarborGeneticsV2Phase3=Object.freeze({VERSION:"2.0.0-phase3",refresh:schedule});install();
