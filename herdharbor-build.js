@@ -96,13 +96,18 @@
   addStyle("hh-breeding-next-action-v182-style", "breeding-next-action-v1.8.2.css?v=1");
   addStyle("hh-breeding-performance-v182-style", "breeding-performance-dashboard-v1.8.2.css?v=2");
   addStyle("hh-genetics-v2-phase1-v182-style", "genetics-v2-phase1-v1.8.2.css?v=1");
+  addStyle("hh-genetics-v2-phase2-v182-style", "genetics-v2-phase2-v1.8.2.css?v=1");
   addStyle("hh-subscription-engine-v180-style", "subscription-engine-v1.8.0.css?v=1");
   addStyle("hh-subscription-member-ui-v180-style", "subscription-member-ui-v1.8.0.css?v=1");
   addStyle("hh-mobile-viewport-v180-style", "mobile-viewport-hotfix-v1.8.0.css?v=1");
   addStyle("hh-direct-transfer-v182-style", "direct-transfer-v1.8.2.css?v=1");
 
   addScript("hh-direct-transfer-core-v182", "direct-transfer-core-v1.8.2.js?v=1", () => { addScript("hh-direct-transfer-v182", "direct-transfer-v1.8.2.js?v=1"); });
-  addScript("hh-genetics-v2-phase1-core-v182", "genetics-v2-phase1-core-v1.8.2.js?v=1", () => { addScript("hh-genetics-v2-phase1-v182", "genetics-v2-phase1-v1.8.2.js?v=1"); });
+  addScript("hh-genetics-v2-phase1-core-v182", "genetics-v2-phase1-core-v1.8.2.js?v=1", () => {
+    addScript("hh-genetics-v2-phase1-v182", "genetics-v2-phase1-v1.8.2.js?v=1", () => {
+      addScript("hh-genetics-v2-phase2-core-v182", "genetics-v2-phase2-core-v1.8.2.js?v=1", () => { addScript("hh-genetics-v2-phase2-v182", "genetics-v2-phase2-v1.8.2.js?v=1"); });
+    });
+  });
   addScript("hh-how-to-navigation-v181", "how-to-navigation-v1.8.1.js?v=1");
   addScript("hh-registration-safety-v181", "registration-safety-v1.8.1.js?v=1", () => { addScript("hh-subscription-referral-policy-v181", "subscription-referral-policy-v1.8.1.js?v=1"); });
   addScript("hh-admin-subscription-credits-v181", "subscription-admin-credits-v1.8.1.js?v=1");
