@@ -1,10 +1,10 @@
 (() => {
   "use strict";
 
-  // Current release contract: const APP_VERSION = "1.8.1";
-  // Current build contract: const BUILD_ID = "october-subscription-launch-referrals-credits-4";
-  const APP_VERSION = window.HerdHarborBuild?.version || "1.8.1";
-  const BUILD_ID = window.HerdHarborBuild?.buildId || "october-subscription-launch-referrals-credits-4";
+  // Current release contract: const APP_VERSION = "1.8.2";
+  // Current build contract: const BUILD_ID = "animal-first-genetics-mobile-install-1";
+  const APP_VERSION = window.HerdHarborBuild?.version || "1.8.2";
+  const BUILD_ID = window.HerdHarborBuild?.buildId || "animal-first-genetics-mobile-install-1";
   const PWA_BUILD = `${APP_VERSION}-alpha-${BUILD_ID}`;
   const UPDATE_CHECK_MIN_INTERVAL_MS = 60_000;
   const UPDATE_ACTIVATION_TIMEOUT_MS = 8_000;
@@ -24,6 +24,14 @@
   const isIos = () => {
     const nav = navigatorRef();
     return /iphone|ipad|ipod/i.test(nav.userAgent || "") || (nav.platform === "MacIntel" && nav.maxTouchPoints > 1);
+  };
+  const isMobileWeb = () => {
+    if (isStandalone()) return false;
+    const nav = navigatorRef();
+    const mobileUa = /android|iphone|ipad|ipod|mobile/i.test(nav.userAgent || "");
+    const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches === true;
+    const narrowViewport = Number(window.innerWidth || 0) > 0 && Number(window.innerWidth || 0) <= 900;
+    return mobileUa || coarsePointer || narrowViewport;
   };
 
   const pendingDynamicNodes = new Map();
@@ -108,9 +116,9 @@
   }
 
   function loadMonitoring(done) {
-    addOptionalScript("hh-monitoring-config", "herdharbor-monitoring-config.js?v=1.8.1", (configLoaded) => {
+    addOptionalScript("hh-monitoring-config", "herdharbor-monitoring-config.js?v=1.8.2", (configLoaded) => {
       if (!configLoaded) { done?.(); return; }
-      addOptionalScript("hh-monitoring-v151", "vendor/herdharbor-monitoring-v1.6.1.min.js?v=1.8.1", () => done?.());
+      addOptionalScript("hh-monitoring-v151", "vendor/herdharbor-monitoring-v1.6.1.min.js?v=1.8.2", () => done?.());
     });
   }
 
@@ -183,12 +191,49 @@
     return "Installation available from your browser menu";
   }
 
+  function ensureMobileInstallEntry() {
+    let button = document.getElementById("hh-mobile-pwa-install-entry");
+    const shouldShow = isMobileWeb();
+    if (!button && shouldShow) {
+      button = document.createElement("button");
+      button.id = "hh-mobile-pwa-install-entry";
+      button.type = "button";
+      button.dataset.pwaInstall = "true";
+      button.setAttribute("aria-label", "Install HerdHarbor on this device");
+      Object.assign(button.style, {
+        position: "fixed",
+        right: "max(12px, env(safe-area-inset-right))",
+        bottom: "max(12px, env(safe-area-inset-bottom))",
+        zIndex: "2147483000",
+        minHeight: "44px",
+        padding: "10px 14px",
+        border: "1px solid rgba(255,255,255,.22)",
+        borderRadius: "999px",
+        background: "#0D2540",
+        color: "#FFFFFF",
+        font: "600 14px/1.1 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        boxShadow: "0 8px 24px rgba(0,0,0,.24)",
+        cursor: "pointer"
+      });
+      const target = document.body || document.documentElement;
+      target?.appendChild(button);
+    }
+    if (button) {
+      button.hidden = !shouldShow;
+      button.disabled = isStandalone();
+      button.textContent = isIos() ? "Add to Home Screen" : "Install app";
+    }
+    return button;
+  }
+
   function refreshInstallUI() {
     const installed = isStandalone();
+    ensureMobileInstallEntry();
     document.querySelectorAll("[data-pwa-install]").forEach((button) => {
-      button.hidden = false;
+      button.hidden = installed || (button.id === "hh-mobile-pwa-install-entry" && !isMobileWeb());
       button.disabled = installed;
-      button.textContent = button.id === "install-app-button" && !installed ? "Install app" : installLabel();
+      if (button.id === "hh-mobile-pwa-install-entry") button.textContent = isIos() ? "Add to Home Screen" : "Install app";
+      else button.textContent = button.id === "install-app-button" && !installed ? "Install app" : installLabel();
     });
     const topButton = document.querySelector("#install-app-button");
     if (topButton) { topButton.hidden = installed || (!installPrompt && !isIos()); topButton.disabled = installed; }
@@ -216,7 +261,6 @@
     window.clearTimeout(updateActivationTimer);
     updateActivationTimer = null;
   }
-
   function reloadAfterUpdate({ cacheBust = false } = {}) {
     if (reloading) return;
     reloading = true;
@@ -358,6 +402,8 @@
 
   window.addEventListener("beforeinstallprompt", (event) => { event.preventDefault(); installPrompt = event; refreshInstallUI(); });
   window.addEventListener("appinstalled", () => { installPrompt = null; refreshInstallUI(); });
+  window.addEventListener("resize", refreshInstallUI);
+  window.addEventListener("orientationchange", refreshInstallUI);
   window.addEventListener("focus", requestForegroundUpdateCheck);
   window.addEventListener("online", () => checkForAppUpdate({ force: true }));
   window.addEventListener("pageshow", (event) => { if (event.persisted || document.visibilityState === "visible") checkForAppUpdate(); });
