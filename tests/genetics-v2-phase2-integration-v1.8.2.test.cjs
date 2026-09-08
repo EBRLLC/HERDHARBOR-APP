@@ -14,7 +14,7 @@ for(const asset of ["genetics-v2-phase2-core-v1.8.2.js","genetics-v2-phase2-v1.8
   assert.match(worker,new RegExp(asset.replace(/[.]/g,"\\.")),`${asset} must be in the PWA shell`);
 }
 assert.match(build,/genetics-v2-phase1-core-v1\.8\.2\.js[\s\S]*genetics-v2-phase2-core-v1\.8\.2\.js/,"Phase 2 loads after the Phase 1 evidence core");
-assert.match(worker,/genetics-v2-phase2-1/,"Phase 2 gets a fresh PWA cache identity");
+assert.match(worker,/CACHE_NAME\s*=\s*"[^"]*genetics-v2-phase(?:[2-9]|[1-9]\d+)-\d+"/,"Phase 2-or-later keeps a fresh Genetics V2 PWA cache identity");
 assert.match(core,/Proof breeding can answer this/);
 assert.match(core,/No test needed/);
 assert.match(core,/optional shortcut/i);
