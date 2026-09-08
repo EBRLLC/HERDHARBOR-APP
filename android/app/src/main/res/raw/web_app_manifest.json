@@ -2,8 +2,8 @@
   "id": "./",
   "name": "HerdHarbor",
   "short_name": "HerdHarbor",
-  "description": "Secure farm and livestock records with stability monitoring, centralized memberships, Junior access, and protected cloud sync.",
-  "version": "1.6.1",
+  "description": "HerdHarbor Alpha v1.8.2 provides animal-first livestock workflows, breeding and genetics tools, analytics, protected cloud sync, and subscription management.",
+  "version": "1.8.2",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -36,6 +36,11 @@
       "url": "./#animals"
     },
     {
+      "name": "Shows",
+      "short_name": "Shows",
+      "url": "./#shows"
+    },
+    {
       "name": "Tasks",
       "short_name": "Tasks",
       "url": "./#tasks"
@@ -46,7 +51,7 @@
       "url": "./#health"
     },
     {
-      "name": "Breeding and pregnancy",
+      "name": "Breeding Intelligence",
       "short_name": "Breeding",
       "url": "./#breeding"
     },
