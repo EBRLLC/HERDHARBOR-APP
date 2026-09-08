@@ -13,8 +13,9 @@
   const SUPABASE_URL = "https://okynebbksifqppwicghj.supabase.co";
   const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_jxsX6uS9nnh2FOFtlSF9TA_8v6C7C09";
   const SUPABASE_HOST = "okynebbksifqppwicghj.supabase.co";
+  const SUPABASE_PROJECT_REF = "okynebbksifqppwicghj";
+  const SUPABASE_AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
   const originalFetch = typeof root.fetch === "function" ? root.fetch.bind(root) : null;
-  let isolatedSignInClient = null;
   let isolatedSignInInFlight = false;
 
   function isCriticalAuthUrl(input) {
@@ -171,29 +172,94 @@
       });
   }
 
-  function getIsolatedSignInClient() {
-    if (isolatedSignInClient) return isolatedSignInClient;
-    const api = root.supabase;
-    if (!api || typeof api.createClient !== "function" || !originalFetch) return null;
-    isolatedSignInClient = api.createClient(
-      SUPABASE_URL,
-      SUPABASE_PUBLISHABLE_KEY,
+  function getAuthStorage() {
+    try {
+      const storage = root.localStorage;
+      if (!storage || typeof storage.setItem !== "function" || typeof storage.getItem !== "function") return null;
+      return storage;
+    } catch {
+      return null;
+    }
+  }
+
+  function normalizePasswordSession(payload) {
+    if (!payload?.access_token || !payload?.refresh_token || !payload?.user?.id) return null;
+    const expiresIn = Number(payload.expires_in);
+    const expiresAt = Number(payload.expires_at)
+      || (Number.isFinite(expiresIn) && expiresIn > 0
+        ? Math.floor(Date.now() / 1000) + expiresIn
+        : undefined);
+    const session = {
+      access_token: payload.access_token,
+      refresh_token: payload.refresh_token,
+      token_type: payload.token_type || "bearer",
+      expires_in: Number.isFinite(expiresIn) ? expiresIn : undefined,
+      expires_at: expiresAt,
+      user: payload.user
+    };
+    if (payload.provider_token) session.provider_token = payload.provider_token;
+    if (payload.provider_refresh_token) session.provider_refresh_token = payload.provider_refresh_token;
+    return session;
+  }
+
+  function persistPasswordSession(session) {
+    const storage = getAuthStorage();
+    if (!storage || !session?.access_token || !session?.refresh_token || !session?.user?.id) return false;
+    try {
+      const serialized = JSON.stringify(session);
+      storage.setItem(SUPABASE_AUTH_STORAGE_KEY, serialized);
+      const persisted = JSON.parse(storage.getItem(SUPABASE_AUTH_STORAGE_KEY) || "null");
+      return persisted?.access_token === session.access_token
+        && persisted?.refresh_token === session.refresh_token
+        && persisted?.user?.id === session.user.id;
+    } catch (error) {
+      console.error("HerdHarbor could not persist the authenticated session:", error);
+      return false;
+    }
+  }
+
+  async function requestPasswordSession(email, password) {
+    const response = await isolatedAuthFetch(
+      `${SUPABASE_URL}/auth/v1/token?grant_type=password`,
       {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: false,
-          detectSessionInUrl: false
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+          "Content-Type": "application/json"
         },
-        global: { fetch: isolatedAuthFetch }
+        body: JSON.stringify({ email, password })
       }
     );
-    return isolatedSignInClient;
+
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+
+    if (!response.ok) {
+      const error = new Error(
+        payload?.msg
+        || payload?.message
+        || payload?.error_description
+        || "Sign in failed. Check your email and password and try again."
+      );
+      error.name = "HerdHarborAuthError";
+      error.status = response.status;
+      throw error;
+    }
+
+    const session = normalizePasswordSession(payload);
+    if (!session) {
+      throw new Error("The account was verified, but HerdHarbor could not establish a secure session. Please try again.");
+    }
+    return session;
   }
 
   async function isolatedPasswordSignIn(form) {
-    if (!form || isolatedSignInInFlight) return false;
-    const client = getIsolatedSignInClient();
-    if (!client?.auth?.signInWithPassword) return false;
+    if (!form || isolatedSignInInFlight || !originalFetch || !getAuthStorage()) return false;
     const email = form.querySelector?.("#hh-signin-email")?.value?.trim?.() || "";
     const password = form.querySelector?.("#hh-signin-password")?.value || "";
     if (!email || !password) return false;
@@ -202,18 +268,16 @@
     setAuthFormBusy(form, true);
     setAuthMessage("Signing in…", "info");
 
+    let reloadScheduled = false;
     try {
-      const { data, error } = await client.auth.signInWithPassword({ email, password });
-      if (error) {
-        setAuthMessage(error.message || "Sign in failed. Check your email and password and try again.", "error");
-        return true;
-      }
-      if (!data?.session?.access_token || !data?.session?.user?.id) {
-        setAuthMessage("The account was verified, but HerdHarbor could not establish a secure session. Please try again.", "error");
+      const session = await requestPasswordSession(email, password);
+      if (!persistPasswordSession(session)) {
+        setAuthMessage("HerdHarbor signed you in, but this browser could not save the secure session. Check browser storage settings and try again.", "error");
         return true;
       }
 
       setAuthMessage("Signed in. Loading your HerdHarbor records…", "success");
+      reloadScheduled = true;
       root.setTimeout(() => {
         try {
           const url = new URL(root.location.href);
@@ -225,12 +289,12 @@
       }, 25);
       return true;
     } catch (error) {
-      console.error("HerdHarbor isolated web sign-in failed:", error);
+      console.error("HerdHarbor lock-free web sign-in failed:", error);
       setAuthMessage(error?.message || "HerdHarbor could not complete sign in. Please try again.", "error");
       return true;
     } finally {
       isolatedSignInInFlight = false;
-      setAuthFormBusy(form, false);
+      if (!reloadScheduled) setAuthFormBusy(form, false);
     }
   }
 
@@ -250,8 +314,7 @@
     doc.addEventListener("submit", (event) => {
       const form = event.target;
       if (!form || form.id !== "hh-signin-form") return;
-      const client = getIsolatedSignInClient();
-      if (!client?.auth?.signInWithPassword) {
+      if (!originalFetch || !getAuthStorage()) {
         root.setTimeout(() => recoverSignInForm(form), SIGN_IN_WATCHDOG_MS);
         return;
       }
@@ -271,7 +334,10 @@
     deferSupabaseAuthCallbacks,
     installSupabaseAuthCallbackDeferral,
     isolatedAuthFetch,
-    getIsolatedSignInClient,
+    getAuthStorage,
+    normalizePasswordSession,
+    persistPasswordSession,
+    requestPasswordSession,
     isolatedPasswordSignIn,
     installWebSignInSessionBridge
   });
@@ -311,8 +377,9 @@
   installSupabaseAuthCallbackDeferral();
 
   if (!root.document) return;
-  // Password authentication gets an isolated client with no cloud callback. It
-  // persists the valid Supabase session and reloads before normal hydration.
+  // Password authentication bypasses Supabase client auth locks entirely. The
+  // validated token response is persisted under Supabase's canonical storage
+  // key, then the page reloads into the normal getSession/hydration path.
   installWebSignInSessionBridge();
   root.addEventListener?.("unhandledrejection", (event) => {
     if (!event?.reason || !["AbortError", "TypeError"].includes(event.reason.name)) return;
