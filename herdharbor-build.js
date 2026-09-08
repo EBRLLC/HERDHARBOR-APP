@@ -27,6 +27,29 @@
     } catch { return false; }
   }
 
+  function recoverableNetworkResponse(input, error, timedOut = false) {
+    if (typeof root.Response !== "function") throw error;
+    const message = timedOut
+      ? "The secure HerdHarbor connection timed out. Please try again."
+      : "The secure HerdHarbor connection is temporarily unavailable. Please try again.";
+    const payload = {
+      message,
+      msg: message,
+      error: timedOut ? "secure_connection_timeout" : "secure_connection_unavailable",
+      error_description: message,
+      code: timedOut ? "HH_SECURE_TIMEOUT" : "HH_SECURE_NETWORK"
+    };
+    try {
+      return new root.Response(JSON.stringify(payload), {
+        status: timedOut ? 504 : 503,
+        statusText: timedOut ? "Gateway Timeout" : "Service Unavailable",
+        headers: { "Content-Type": "application/json" }
+      });
+    } catch {
+      throw error;
+    }
+  }
+
   function recoverSignInForm(form) {
     const doc = root.document;
     if (!doc || !form || typeof form.querySelectorAll !== "function") return false;
@@ -44,21 +67,41 @@
     return true;
   }
 
-  root.HerdHarborAuthResilience = Object.freeze({timeoutMs: AUTH_FETCH_TIMEOUT_MS,watchdogMs: SIGN_IN_WATCHDOG_MS,isCriticalAuthUrl,recoverSignInForm});
+  root.HerdHarborAuthResilience = Object.freeze({
+    timeoutMs: AUTH_FETCH_TIMEOUT_MS,
+    watchdogMs: SIGN_IN_WATCHDOG_MS,
+    isCriticalAuthUrl,
+    recoverableNetworkResponse,
+    recoverSignInForm
+  });
   if (originalFetch && typeof root.AbortController === "function") {
     root.fetch = function herdHarborBoundedAuthFetch(input, init) {
       if (!isCriticalAuthUrl(input)) return originalFetch(input, init);
       const controller = new root.AbortController();
       const upstreamSignal = init?.signal || (input && typeof input === "object" ? input.signal : null);
-      const forwardAbort = () => controller.abort(upstreamSignal?.reason);
+      let timedOut = false;
+      let upstreamAborted = Boolean(upstreamSignal?.aborted);
+      const forwardAbort = () => {
+        upstreamAborted = true;
+        controller.abort(upstreamSignal?.reason);
+      };
       if (upstreamSignal?.aborted) forwardAbort();
       else upstreamSignal?.addEventListener?.("abort", forwardAbort, { once: true });
-      const timer = root.setTimeout(() => controller.abort(), AUTH_FETCH_TIMEOUT_MS);
+      const timer = root.setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, AUTH_FETCH_TIMEOUT_MS);
       const nextInit = { ...(init || {}), signal: controller.signal };
-      return Promise.resolve(originalFetch(input, nextInit)).finally(() => {
-        root.clearTimeout(timer);
-        upstreamSignal?.removeEventListener?.("abort", forwardAbort);
-      });
+      return Promise.resolve()
+        .then(() => originalFetch(input, nextInit))
+        .catch((error) => {
+          if (upstreamAborted) throw error;
+          return recoverableNetworkResponse(input, error, timedOut);
+        })
+        .finally(() => {
+          root.clearTimeout(timer);
+          upstreamSignal?.removeEventListener?.("abort", forwardAbort);
+        });
     };
   }
 
@@ -69,7 +112,7 @@
     root.setTimeout(() => recoverSignInForm(form), SIGN_IN_WATCHDOG_MS);
   }, true);
   root.addEventListener?.("unhandledrejection", (event) => {
-    if (event?.reason?.name !== "AbortError") return;
+    if (!event?.reason || !["AbortError", "TypeError"].includes(event.reason.name)) return;
     const form = root.document.querySelector?.("#hh-signin-form");
     if (form) recoverSignInForm(form);
   });
