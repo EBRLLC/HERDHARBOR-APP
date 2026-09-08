@@ -74,6 +74,73 @@
     if (form) recoverSignInForm(form);
   });
 
+  function isStandaloneApp() {
+    return root.matchMedia?.("(display-mode: standalone)")?.matches === true || root.navigator?.standalone === true;
+  }
+
+  function isMobileWeb() {
+    if (isStandaloneApp()) return false;
+    const coarse = root.matchMedia?.("(pointer: coarse)")?.matches === true;
+    const narrow = root.matchMedia?.("(max-width: 900px)")?.matches === true;
+    return coarse || narrow;
+  }
+
+  function isIosDevice() {
+    const nav = root.navigator || {};
+    return /iphone|ipad|ipod/i.test(nav.userAgent || "") || (nav.platform === "MacIntel" && nav.maxTouchPoints > 1);
+  }
+
+  function ensureMobileInstallEntry() {
+    const existing = document.getElementById("hh-mobile-pwa-install-entry");
+    if (!isMobileWeb()) {
+      existing?.remove();
+      return;
+    }
+    if (existing) return;
+
+    const button = document.createElement("button");
+    button.id = "hh-mobile-pwa-install-entry";
+    button.type = "button";
+    button.dataset.pwaInstall = "";
+    button.textContent = isIosDevice() ? "Add to Home Screen" : "Install HerdHarbor";
+    button.setAttribute("aria-label", isIosDevice() ? "Add HerdHarbor to your Home Screen" : "Install the HerdHarbor app");
+    Object.assign(button.style, {
+      position: "fixed",
+      right: "14px",
+      bottom: "calc(84px + env(safe-area-inset-bottom, 0px))",
+      zIndex: "2147482000",
+      minHeight: "44px",
+      maxWidth: "calc(100vw - 28px)",
+      padding: "10px 15px",
+      border: "1px solid rgba(255,255,255,.22)",
+      borderRadius: "999px",
+      background: "#0D2540",
+      color: "#fff",
+      font: "600 14px/1.2 system-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif",
+      boxShadow: "0 6px 22px rgba(0,0,0,.24)",
+      cursor: "pointer"
+    });
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (root.HerdHarborPWA?.install) {
+        root.HerdHarborPWA.install();
+        return;
+      }
+      if (isIosDevice()) root.alert?.("To add HerdHarbor to your Home Screen: tap Share in your browser, then tap Add to Home Screen.");
+      else root.alert?.("Open your browser menu and choose Install app or Add to Home screen.");
+    });
+    (document.body || document.documentElement).appendChild(button);
+  }
+
+  const installEntryBoot = () => {
+    ensureMobileInstallEntry();
+    root.addEventListener?.("appinstalled", ensureMobileInstallEntry);
+    root.addEventListener?.("resize", ensureMobileInstallEntry);
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", installEntryBoot, { once: true });
+  else installEntryBoot();
+
   const target = document.head || document.documentElement;
   function addStyle(id, href) {
     if (document.getElementById(id)) return;
