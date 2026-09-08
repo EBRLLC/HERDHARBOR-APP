@@ -10,8 +10,12 @@
 
   const AUTH_FETCH_TIMEOUT_MS = 12000;
   const SIGN_IN_WATCHDOG_MS = 15000;
+  const SUPABASE_URL = "https://okynebbksifqppwicghj.supabase.co";
+  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_jxsX6uS9nnh2FOFtlSF9TA_8v6C7C09";
   const SUPABASE_HOST = "okynebbksifqppwicghj.supabase.co";
   const originalFetch = typeof root.fetch === "function" ? root.fetch.bind(root) : null;
+  let isolatedSignInClient = null;
+  let isolatedSignInInFlight = false;
 
   function isCriticalAuthUrl(input) {
     try {
@@ -50,6 +54,22 @@
     }
   }
 
+  function setAuthMessage(message, type = "info") {
+    const box = root.document?.querySelector?.("#hh-auth-message");
+    if (!box) return;
+    box.textContent = message || "";
+    box.className = "hh-auth-message";
+    if (message) box.classList.add("show", type);
+    if (type === "error") box.setAttribute?.("role", "alert");
+    else box.setAttribute?.("role", "status");
+  }
+
+  function setAuthFormBusy(form, busy) {
+    form?.querySelectorAll?.("button, input")?.forEach?.((control) => {
+      control.disabled = Boolean(busy);
+    });
+  }
+
   function recoverSignInForm(form) {
     const doc = root.document;
     if (!doc || !form || typeof form.querySelectorAll !== "function") return false;
@@ -58,13 +78,7 @@
     const controls = Array.from(form.querySelectorAll("button, input"));
     if (!controls.some((control) => control.disabled)) return false;
     controls.forEach((control) => { control.disabled = false; });
-    const box = doc.querySelector?.("#hh-auth-message");
-    if (box) {
-      box.textContent = "Sign in is taking too long. Check your connection and try again.";
-      box.className = "hh-auth-message show error";
-      if (box.dataset) box.dataset.type = "error";
-      box.setAttribute?.("role", "alert");
-    }
+    setAuthMessage("Sign in is taking too long. Check your connection and try again.", "error");
     return true;
   }
 
@@ -124,6 +138,130 @@
     return true;
   }
 
+  function isolatedAuthFetch(input, init = {}) {
+    if (!originalFetch) return Promise.reject(new Error("Secure network connection is unavailable."));
+    if (typeof root.AbortController !== "function") return originalFetch(input, init);
+    const controller = new root.AbortController();
+    const upstreamSignal = init?.signal || (input && typeof input === "object" ? input.signal : null);
+    let timedOut = false;
+    let upstreamAborted = Boolean(upstreamSignal?.aborted);
+    const forwardAbort = () => {
+      upstreamAborted = true;
+      controller.abort(upstreamSignal?.reason);
+    };
+    if (upstreamSignal?.aborted) forwardAbort();
+    else upstreamSignal?.addEventListener?.("abort", forwardAbort, { once: true });
+    const timer = root.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, AUTH_FETCH_TIMEOUT_MS);
+    return Promise.resolve()
+      .then(() => originalFetch(input, { ...(init || {}), signal: controller.signal }))
+      .catch((error) => {
+        if (upstreamAborted) throw error;
+        const wrapped = new Error(timedOut
+          ? "The secure HerdHarbor sign-in request timed out. Please try again."
+          : "HerdHarbor could not reach the secure sign-in service. Please try again.");
+        wrapped.name = timedOut ? "HerdHarborAuthTimeout" : "HerdHarborAuthNetworkError";
+        throw wrapped;
+      })
+      .finally(() => {
+        root.clearTimeout(timer);
+        upstreamSignal?.removeEventListener?.("abort", forwardAbort);
+      });
+  }
+
+  function getIsolatedSignInClient() {
+    if (isolatedSignInClient) return isolatedSignInClient;
+    const api = root.supabase;
+    if (!api || typeof api.createClient !== "function" || !originalFetch) return null;
+    isolatedSignInClient = api.createClient(
+      SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY,
+      {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: false,
+          detectSessionInUrl: false
+        },
+        global: { fetch: isolatedAuthFetch }
+      }
+    );
+    return isolatedSignInClient;
+  }
+
+  async function isolatedPasswordSignIn(form) {
+    if (!form || isolatedSignInInFlight) return false;
+    const client = getIsolatedSignInClient();
+    if (!client?.auth?.signInWithPassword) return false;
+    const email = form.querySelector?.("#hh-signin-email")?.value?.trim?.() || "";
+    const password = form.querySelector?.("#hh-signin-password")?.value || "";
+    if (!email || !password) return false;
+
+    isolatedSignInInFlight = true;
+    setAuthFormBusy(form, true);
+    setAuthMessage("Signing in…", "info");
+
+    try {
+      const { data, error } = await client.auth.signInWithPassword({ email, password });
+      if (error) {
+        setAuthMessage(error.message || "Sign in failed. Check your email and password and try again.", "error");
+        return true;
+      }
+      if (!data?.session?.access_token || !data?.session?.user?.id) {
+        setAuthMessage("The account was verified, but HerdHarbor could not establish a secure session. Please try again.", "error");
+        return true;
+      }
+
+      setAuthMessage("Signed in. Loading your HerdHarbor records…", "success");
+      root.setTimeout(() => {
+        try {
+          const url = new URL(root.location.href);
+          url.searchParams.set("hh_auth", Date.now().toString());
+          root.location.replace(url.toString());
+        } catch {
+          root.location.reload();
+        }
+      }, 25);
+      return true;
+    } catch (error) {
+      console.error("HerdHarbor isolated web sign-in failed:", error);
+      setAuthMessage(error?.message || "HerdHarbor could not complete sign in. Please try again.", "error");
+      return true;
+    } finally {
+      isolatedSignInInFlight = false;
+      setAuthFormBusy(form, false);
+    }
+  }
+
+  function installWebSignInSessionBridge() {
+    const doc = root.document;
+    if (!doc || doc.__hhWebSignInSessionBridge) return Boolean(doc);
+    try {
+      Object.defineProperty(doc, "__hhWebSignInSessionBridge", {
+        configurable: false,
+        enumerable: false,
+        writable: false,
+        value: true
+      });
+    } catch {
+      doc.__hhWebSignInSessionBridge = true;
+    }
+    doc.addEventListener("submit", (event) => {
+      const form = event.target;
+      if (!form || form.id !== "hh-signin-form") return;
+      const client = getIsolatedSignInClient();
+      if (!client?.auth?.signInWithPassword) {
+        root.setTimeout(() => recoverSignInForm(form), SIGN_IN_WATCHDOG_MS);
+        return;
+      }
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      void isolatedPasswordSignIn(form);
+    }, true);
+    return true;
+  }
+
   root.HerdHarborAuthResilience = Object.freeze({
     timeoutMs: AUTH_FETCH_TIMEOUT_MS,
     watchdogMs: SIGN_IN_WATCHDOG_MS,
@@ -131,7 +269,11 @@
     recoverableNetworkResponse,
     recoverSignInForm,
     deferSupabaseAuthCallbacks,
-    installSupabaseAuthCallbackDeferral
+    installSupabaseAuthCallbackDeferral,
+    isolatedAuthFetch,
+    getIsolatedSignInClient,
+    isolatedPasswordSignIn,
+    installWebSignInSessionBridge
   });
 
   if (originalFetch && typeof root.AbortController === "function") {
@@ -165,18 +307,13 @@
     };
   }
 
-  // Supabase warns against doing more Supabase work synchronously from an
-  // auth-state callback. HerdHarbor hydrates account and cloud data after
-  // SIGNED_IN, so defer those callbacks to a new task to avoid an auth-lock
-  // deadlock where signInWithPassword() never resolves on mobile Safari.
+  // Keep post-auth cloud work outside Supabase's auth notification lock.
   installSupabaseAuthCallbackDeferral();
 
   if (!root.document) return;
-  root.document.addEventListener("submit", (event) => {
-    const form = event.target;
-    if (!form || form.id !== "hh-signin-form") return;
-    root.setTimeout(() => recoverSignInForm(form), SIGN_IN_WATCHDOG_MS);
-  }, true);
+  // Password authentication gets an isolated client with no cloud callback. It
+  // persists the valid Supabase session and reloads before normal hydration.
+  installWebSignInSessionBridge();
   root.addEventListener?.("unhandledrejection", (event) => {
     if (!event?.reason || !["AbortError", "TypeError"].includes(event.reason.name)) return;
     const form = root.document.querySelector?.("#hh-signin-form");
