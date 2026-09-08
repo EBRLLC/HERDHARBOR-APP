@@ -1,23 +1,23 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v1.8.1-alpha-october-subscription-launch-referrals-credits-4-genetics-v2-phase3-1";
+const CACHE_NAME = "herdharbor-shell-v1.8.2-alpha-animal-first-genetics-mobile-install-1";
 const APP_SHELL = [
-  "./","./index.html","./manifest.json?v=1.8.1",
-  "./herdharbor-release-v1.6.1.js?v=1.7.1","./herdharbor-membership-v1.6.1.js?v=1.7.1","./herdharbor-billing-v1.6.1.js?v=1.7.1","./herdharbor-access-cache-v1.6.1.js?v=1.7.1","./herdharbor-cloud.js?v=20","./herdharbor-admin-v1.6.1.js?v=1.7.1","./herdharbor-core-v1.6.1.css?v=1.7.1","./herdharbor-v1.6.1.css?v=1.7.1","./herdharbor-build.js?v=1.8.1",
+  "./","./index.html","./manifest.json?v=1.8.2",
+  "./herdharbor-release-v1.6.1.js?v=1.7.1","./herdharbor-membership-v1.6.1.js?v=1.7.1","./herdharbor-billing-v1.6.1.js?v=1.7.1","./herdharbor-access-cache-v1.6.1.js?v=1.7.1","./herdharbor-cloud.js?v=20","./herdharbor-admin-v1.6.1.js?v=1.7.1","./herdharbor-core-v1.6.1.css?v=1.7.1","./herdharbor-v1.6.1.css?v=1.7.1","./herdharbor-build.js?v=1.8.2",
   "./direct-transfer-core-v1.8.2.js?v=1","./direct-transfer-v1.8.2.js?v=1","./direct-transfer-v1.8.2.css?v=1",
   "./registration-safety-v1.8.1.js?v=1","./subscription-referral-policy-v1.8.1.js?v=1","./subscription-admin-credits-v1.8.1.js?v=1","./subscription-launch-v1.8.1.js?v=1","./subscription-engine-v1.8.0.js?v=1","./subscription-engine-v1.8.0.css?v=1","./subscription-member-ui-v1.8.0.css?v=1","./subscription-tab-visibility-v1.8.0.js?v=2","./subscription-header-copy-v1.8.0.js?v=3","./subscription-stripe-provider-v1.8.0.js?v=1","./subscription-stripe-launch-bridge-v1.8.1.js?v=1",
   "./mobile-viewport-hotfix-v1.8.0.css?v=1","./herdharbor-v1.7.1-stability-hotfix.js?v=2","./workflow-phase1-v1.7.1.js?v=2","./workflow-phase1-v1.7.1.css?v=2",
   "./flow-phase1-v1.8.2.js?v=1","./flow-phase2-v1.8.2.js?v=1","./flow-phase2-v1.8.2.css?v=1","./flow-phase2-lifecycle-v1.8.2.js?v=1","./flow-phase2-lifecycle-v1.8.2.css?v=1",
   "./breeding-litter-workspace-v1.8.2.js?v=1","./breeding-litter-workspace-integration-v1.8.2.js?v=1","./breeding-litter-workspace-v1.8.2.css?v=1",
   "./litter-sale-transfer-core-v1.8.2.js?v=1","./litter-sale-transfer-v1.8.2.js?v=1","./litter-sale-transfer-v1.8.2.css?v=1",
-  "./breeding-next-action-core-v1.8.2.js?v=1","./breeding-next-action-v1.8.2.js?v=1","./breeding-next-action-v1.8.2.css?v=1",
-  "./breeding-performance-core-v1.8.2.js?v=1","./breeding-performance-dashboard-v1.8.2.js?v=1","./breeding-performance-dashboard-v1.8.2.css?v=1",
+  "./breeding-next-action-core-v1.8.2.js?v=2","./breeding-next-action-v1.8.2.js?v=1","./breeding-next-action-v1.8.2.css?v=1",
+  "./breeding-performance-core-v1.8.2.js?v=1","./breeding-performance-dashboard-v1.8.2.js?v=1","./breeding-performance-dashboard-v1.8.2.css?v=2",
   "./genetics-v2-phase1-core-v1.8.2.js?v=1","./genetics-v2-phase1-v1.8.2.js?v=1","./genetics-v2-phase1-v1.8.2.css?v=1",
   "./genetics-v2-phase2-core-v1.8.2.js?v=1","./genetics-v2-phase2-v1.8.2.js?v=1","./genetics-v2-phase2-v1.8.2.css?v=1",
   "./genetics-v2-phase3-core-v1.8.2.js?v=1","./genetics-v2-phase3-v1.8.2.js?v=1","./genetics-v2-phase3-v1.8.2.css?v=1",
   "./flow-phase2-profile-finish-v1.8.2.js?v=1","./flow-phase2-profile-finish-v1.8.2.css?v=1","./flow-phase1-completion-v1.8.2.js?v=1","./flow-phase1-v1.8.2.css?v=1",
-  "./analytics-v1.6.1.css?v=1.7.1","./market-analytics-v1.6.5.js?v=1.7.1","./analytics-v1.6.1.js?v=1.7.1","./herdharbor-monitoring-config.js?v=1.8.1","./vendor/herdharbor-monitoring-v1.6.1.min.js?v=1.8.1","./symptom-guide.js?v=1","./health-intelligence-v1.7.1.js?v=1.7.1","./health-intelligence-v1.7.1.css?v=1.7.1","./pwa.js?v=30",
+  "./analytics-v1.6.1.css?v=1.7.1","./market-analytics-v1.6.5.js?v=1.7.1","./analytics-v1.6.1.js?v=1.7.1","./herdharbor-monitoring-config.js?v=1.8.2","./vendor/herdharbor-monitoring-v1.6.1.min.js?v=1.8.2","./symptom-guide.js?v=1","./health-intelligence-v1.7.1.js?v=1.7.1","./health-intelligence-v1.7.1.css?v=1.7.1","./pwa.js?v=31",
   "./pedigree-visual.css?v=2","./pedigree-visual.js?v=2","./pedigree-genetics-v1.6.1.css?v=1.7.1","./pedigree-genetics-v1.6.1.js?v=1.7.1",
   "./breeding-intelligence-core-v1.6.1.js?v=1.7.1","./rabbit-genetics-v1.6.1.js?v=1.7.1","./standards-registry-v1.6.1.js?v=1.7.1","./multispecies-genetics-v1.7.1.js?v=1.7.1","./multispecies-genetics-ui-v1.7.1.js?v=1.7.1","./multispecies-genetics-v1.7.1.css?v=1.7.1","./standards-genetics-ui-v1.6.1.js?v=1.7.1","./standards-genetics-v1.6.1.css?v=1.7.1","./rabbit-records-v1.6.1.js?v=1.7.1","./rabbit-genetics-engine-advanced-v1.6.1.js?v=1.7.1","./rabbit-genetics-engine-compat-v1.6.1.js?v=1.7.1","./rabbit-genetics-runtime-v1.6.1.js?v=1.7.1","./breeding-intelligence-v1.6.1.css?v=1.7.1","./breeding-genetics-advanced-v1.6.1.css?v=1.7.1","./breeding-intelligence-v1.6.1.js?v=1.7.1","./breeding-pair-v1.6.1.js?v=1.7.1","./rabbit-genetics-ui-compat-v1.6.1.js?v=1.7.1","./rabbit-genetics-ui-advanced-v1.6.1.js?v=1.7.1","./breeding-intelligence-tools-v1.6.1.js?v=1.7.1",
   "./shows-v1.6.1.css?v=1.7.1","./shows-v1.6.1.js?v=1.7.1","./shows-v1.6.1-hardening.js?v=1.7.1","./shows-v1.6.1-performance.js?v=1.7.1","./standards-v1.7.0.css?v=1.7.1","./standards-registry-v1.7.0.js?v=1.7.1","./standards-ui-v1.7.0.js?v=1.7.1","./standards-public-reference-v1.7.0.js?v=1.7.1","./shows-youth-guides-v1.7.0.js?v=1.7.1","./reference-guides-v1.7.0.css?v=1.7.1",
