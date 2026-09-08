@@ -40,9 +40,9 @@ function loadBuild() {
   return { sandbox, timers, getRegistered: () => registeredAuthCallback };
 }
 
-test('public release identity stays v1.8.1', () => {
+test('public release identity is promoted to v1.8.2', () => {
   const { sandbox } = loadBuild();
-  assert.equal(sandbox.HerdHarborBuild.version, '1.8.1');
+  assert.equal(sandbox.HerdHarborBuild.version, '1.8.2');
 });
 
 test('Supabase auth callbacks are deferred out of the auth notification lock', async () => {
