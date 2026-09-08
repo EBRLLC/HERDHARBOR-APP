@@ -61,8 +61,65 @@
     const box = doc.querySelector?.("#hh-auth-message");
     if (box) {
       box.textContent = "Sign in is taking too long. Check your connection and try again.";
+      box.className = "hh-auth-message show error";
       if (box.dataset) box.dataset.type = "error";
       box.setAttribute?.("role", "alert");
+    }
+    return true;
+  }
+
+  function deferSupabaseAuthCallbacks(client) {
+    const auth = client?.auth;
+    if (!auth || typeof auth.onAuthStateChange !== "function" || auth.__hhDeferredAuthCallbacks) {
+      return client;
+    }
+
+    const originalOnAuthStateChange = auth.onAuthStateChange.bind(auth);
+    auth.onAuthStateChange = function herdHarborDeferredAuthStateChange(callback) {
+      return originalOnAuthStateChange((event, activeSession) => {
+        root.setTimeout(() => {
+          try {
+            Promise.resolve(callback(event, activeSession)).catch((error) => {
+              console.error("HerdHarbor deferred auth callback failed:", error);
+            });
+          } catch (error) {
+            console.error("HerdHarbor deferred auth callback failed:", error);
+          }
+        }, 0);
+      });
+    };
+
+    try {
+      Object.defineProperty(auth, "__hhDeferredAuthCallbacks", {
+        configurable: false,
+        enumerable: false,
+        writable: false,
+        value: true
+      });
+    } catch {
+      auth.__hhDeferredAuthCallbacks = true;
+    }
+    return client;
+  }
+
+  function installSupabaseAuthCallbackDeferral() {
+    const api = root.supabase;
+    if (!api || typeof api.createClient !== "function") return false;
+    if (api.__hhAuthCallbackDeferralInstalled) return true;
+
+    const originalCreateClient = api.createClient.bind(api);
+    api.createClient = function herdHarborCreateClient(...args) {
+      return deferSupabaseAuthCallbacks(originalCreateClient(...args));
+    };
+    try {
+      Object.defineProperty(api, "__hhAuthCallbackDeferralInstalled", {
+        configurable: false,
+        enumerable: false,
+        writable: false,
+        value: true
+      });
+    } catch {
+      api.__hhAuthCallbackDeferralInstalled = true;
     }
     return true;
   }
@@ -72,8 +129,11 @@
     watchdogMs: SIGN_IN_WATCHDOG_MS,
     isCriticalAuthUrl,
     recoverableNetworkResponse,
-    recoverSignInForm
+    recoverSignInForm,
+    deferSupabaseAuthCallbacks,
+    installSupabaseAuthCallbackDeferral
   });
+
   if (originalFetch && typeof root.AbortController === "function") {
     root.fetch = function herdHarborBoundedAuthFetch(input, init) {
       if (!isCriticalAuthUrl(input)) return originalFetch(input, init);
@@ -104,6 +164,12 @@
         });
     };
   }
+
+  // Supabase warns against doing more Supabase work synchronously from an
+  // auth-state callback. HerdHarbor hydrates account and cloud data after
+  // SIGNED_IN, so defer those callbacks to a new task to avoid an auth-lock
+  // deadlock where signInWithPassword() never resolves on mobile Safari.
+  installSupabaseAuthCallbackDeferral();
 
   if (!root.document) return;
   root.document.addEventListener("submit", (event) => {
