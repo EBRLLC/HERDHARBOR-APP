@@ -54,7 +54,7 @@ test("monitoring is aligned without committing a production DSN", () => {
   assert.match(acceptance, /herdharbor-release-acceptance\/1\.8\.2/);
 });
 
-test("v1.8.2 workflows are authoritative and v1.8.1 workflow copies are retired", () => {
+test("v1.8.2 workflows are authoritative while the legacy CI path may validate this transition PR", () => {
   for (const file of [
     ".github/workflows/v1.8.2-ci.yml",
     ".github/workflows/v1.8.2-production-pages.yml",
@@ -64,7 +64,12 @@ test("v1.8.2 workflows are authoritative and v1.8.1 workflow copies are retired"
     assert.match(read(file), /v1\.8\.2/);
   }
 
-  assert.equal(exists(".github/workflows/v1.8.1-ci.yml"), false);
+  if (exists(".github/workflows/v1.8.1-ci.yml")) {
+    const compatibilityGate = read(".github/workflows/v1.8.1-ci.yml");
+    assert.match(compatibilityGate, /Alpha v1\.8\.2 transition validation/);
+    assert.match(compatibilityGate, /npm run test:release/);
+    assert.match(compatibilityGate, /npm run test:v1\.8\.2/);
+  }
   assert.equal(exists(".github/workflows/v1.8.1-production-pages.yml"), false);
   assert.equal(exists(".github/workflows/v1.8.1-production-acceptance.yml"), false);
 });
