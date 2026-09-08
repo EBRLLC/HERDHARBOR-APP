@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 
 const read = (name) => fs.readFileSync(name, "utf8");
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const policy = read("subscription-referral-policy-v1.8.1.js");
 const adminCredits = read("subscription-admin-credits-v1.8.1.js");
 const registrationFn = read("supabase/functions/registration-referral/index.ts");
@@ -15,6 +16,8 @@ const readPolicy = read("supabase/v1.8.1-referral-code-read-policy.sql");
 const config = read("supabase/config.toml");
 const build = read("herdharbor-build.js");
 const sw = read("service-worker.js");
+const releaseVersion = build.match(/version:\s*"([^"]+)"/)?.[1];
+const releaseBuildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
 
 test("public signup exposes Junior, Member and Business Coming Soon but never Founder", () => {
   assert.match(policy, /<strong>Junior<\/strong>/);
@@ -156,6 +159,9 @@ test("new policy assets load in the build and remain network-first in the PWA", 
     assert.match(build, new RegExp(asset.replaceAll(".", "\\.")));
     assert.match(sw, new RegExp(asset.replaceAll(".", "\\.")));
   }
-  assert.match(sw, /herdharbor-shell-v1\.8\.1-alpha-october-subscription-launch-referrals-credits-\d+/);
+  assert.ok(releaseVersion, "authoritative HerdHarbor release version is present");
+  assert.ok(releaseBuildId, "authoritative HerdHarbor build ID is present");
+  const expectedCache = `herdharbor-shell-v${releaseVersion}-alpha-${releaseBuildId}`;
+  assert.match(sw, new RegExp(`const CACHE_NAME = "${escapeRegExp(expectedCache)}"`));
   assert.match(sw, /NETWORK_FIRST_PATHS/);
 });
