@@ -25,10 +25,11 @@ function loadBuild(){
   return sandbox;
 }
 
-test('auth resilience preserves public v1.8.1 release identity',()=>{
+test('auth resilience uses the promoted public v1.8.2 release identity',()=>{
   const sandbox=loadBuild();
-  assert.equal(sandbox.HerdHarborBuild.version,'1.8.1');
-  assert.doesNotMatch(source,/version:\s*["']1\.8\.2["']/);
+  assert.equal(sandbox.HerdHarborBuild.version,'1.8.2');
+  assert.match(source,/version:\s*["']1\.8\.2["']/);
+  assert.doesNotMatch(source,/version:\s*["']1\.8\.1["']/);
 });
 
 test('auth resilience only bounds critical Supabase auth and first-hydration requests',()=>{
