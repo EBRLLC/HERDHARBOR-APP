@@ -4,7 +4,7 @@
   "private": true,
   "description": "HerdHarbor Alpha v1.8.1 production monitoring and regression tooling",
   "scripts": {
-    "test": "node --test tests/genetics-v2-phase3*.test.cjs",
+    "test": "node --test tests/genetics-v2-phase3-integration-v1.8.2.test.cjs",
     "build:monitoring": "node scripts/build-monitoring.mjs",
     "build:monitoring-config": "node scripts/build-monitoring-config.mjs",
     "audit:security": "node scripts/repository-security-audit.mjs",
