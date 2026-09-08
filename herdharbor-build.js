@@ -3,9 +3,9 @@
   root.HerdHarborBuild = Object.freeze({
     product: "HerdHarbor",
     channel: "Alpha",
-    version: "1.8.1",
-    buildId: "october-subscription-launch-referrals-credits-4",
-    build: "1.8.1-alpha-october-subscription-launch-referrals-credits-4"
+    version: "1.8.2",
+    buildId: "animal-first-genetics-mobile-install-1",
+    build: "1.8.2-alpha-animal-first-genetics-mobile-install-1"
   });
 
   const AUTH_FETCH_TIMEOUT_MS = 12000;
@@ -217,7 +217,6 @@
       return false;
     }
   }
-
   async function requestPasswordSession(email, password) {
     const response = await isolatedAuthFetch(
       `${SUPABASE_URL}/auth/v1/token?grant_type=password`,
