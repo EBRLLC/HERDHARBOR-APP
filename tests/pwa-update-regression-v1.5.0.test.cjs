@@ -6,6 +6,7 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const pwa = read("pwa.js");
 const worker = read("service-worker.js");
@@ -14,18 +15,18 @@ const manifest = JSON.parse(read("manifest.json"));
 const html = read("index.html");
 const build = read("herdharbor-build.js");
 
-// The package manifest and HerdHarborBuild jointly identify the current v1.8.1 release.
-assert.equal(manifest.version, "1.8.1");
+// HerdHarborBuild is authoritative; the PWA shell must follow the current release instead of a historical literal.
 const webVersion = build.match(/version:\s*"([^"]+)"/)?.[1];
 const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
-assert.ok(["1.7.1", "1.8.0", "1.8.1"].includes(webVersion), `unexpected web release ${webVersion}`);
-if (webVersion === "1.7.1") assert.equal(buildId, "multispecies-genetics-foundation-1");
-if (webVersion === "1.8.0") assert.match(buildId, /^subscription-engine-/);
-if (webVersion === "1.8.1") assert.match(buildId, /^october-subscription-launch-/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "1\.8\.1"/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "october-subscription-launch-referrals-credits-4"/);
+assert.ok(webVersion, "authoritative HerdHarbor release version is present");
+assert.ok(buildId, "authoritative HerdHarbor build ID is present");
+assert.equal(String(manifest.version), webVersion, "manifest release must match HerdHarborBuild");
+const escapedVersion = escapeRegExp(webVersion);
+const escapedBuildId = escapeRegExp(buildId);
+assert.match(pwa, new RegExp(`window\\.HerdHarborBuild\\?\\.version \\|\\| "${escapedVersion}"`));
+assert.match(pwa, new RegExp(`window\\.HerdHarborBuild\\?\\.buildId \\|\\| "${escapedBuildId}"`));
 assert.match(pwa, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
-assert.match(html, /herdharbor-build\.js\?v=1\.8\.1/, "the shell bootstrap must load the authoritative build identity");
+assert.match(html, new RegExp(`herdharbor-build\\.js\\?v=${escapedVersion}`), "the shell bootstrap must load the authoritative build identity");
 
 // Service-worker discovery is explicit and independent from Cloud Sync.
 assert.match(pwa, /navigatorRef\(\)\.serviceWorker\.register\("service-worker\.js"/);
@@ -62,9 +63,13 @@ assert.match(cloud, /hasUnsyncedChanges/);
 assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
 // Browser/app shell requests favor production over stale frontend caches while retaining offline fallback.
-assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1)-/);
-if (webVersion === "1.8.1") assert.match(worker, /herdharbor-shell-v1\.8\.1-alpha-october-subscription-launch-/);
-assert.match(worker, /pwa\.js\?v=30/);
+const expectedCache = `herdharbor-shell-v${webVersion}-alpha-${buildId}`;
+assert.match(worker, new RegExp(`const CACHE_NAME = "${escapeRegExp(expectedCache)}"`));
+const htmlPwaRevision = html.match(/pwa\.js\?v=(\d+)/)?.[1];
+const workerPwaRevision = worker.match(/\.\/pwa\.js\?v=(\d+)/)?.[1];
+assert.ok(htmlPwaRevision, "HTML PWA cache-bust revision is present");
+assert.ok(workerPwaRevision, "service-worker PWA cache-bust revision is present");
+assert.equal(workerPwaRevision, htmlPwaRevision, "HTML and service worker must load the same PWA revision");
 assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
 assert.match(worker, /NETWORK_FIRST_PATHS/);
 assert.match(worker, /\/manifest\.json/);
