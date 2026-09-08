@@ -8,8 +8,6 @@
     build: "1.8.1-alpha-october-subscription-launch-referrals-credits-4"
   });
 
-  // Keep authentication and the first cloud hydration from waiting forever while
-  // the application is intentionally hidden behind the auth lock.
   const AUTH_FETCH_TIMEOUT_MS = 12000;
   const SIGN_IN_WATCHDOG_MS = 15000;
   const SUPABASE_HOST = "okynebbksifqppwicghj.supabase.co";
@@ -26,9 +24,7 @@
         || path === "/rest/v1/herdharbor_user_data"
         || path === "/rest/v1/account_access"
         || path === "/rest/v1/rpc/herdharbor_account_role";
-    } catch {
-      return false;
-    }
+    } catch { return false; }
   }
 
   function recoverSignInForm(form) {
@@ -48,13 +44,7 @@
     return true;
   }
 
-  root.HerdHarborAuthResilience = Object.freeze({
-    timeoutMs: AUTH_FETCH_TIMEOUT_MS,
-    watchdogMs: SIGN_IN_WATCHDOG_MS,
-    isCriticalAuthUrl,
-    recoverSignInForm
-  });
-
+  root.HerdHarborAuthResilience = Object.freeze({timeoutMs: AUTH_FETCH_TIMEOUT_MS,watchdogMs: SIGN_IN_WATCHDOG_MS,isCriticalAuthUrl,recoverSignInForm});
   if (originalFetch && typeof root.AbortController === "function") {
     root.fetch = function herdHarborBoundedAuthFetch(input, init) {
       if (!isCriticalAuthUrl(input)) return originalFetch(input, init);
@@ -72,15 +62,12 @@
     };
   }
 
-  // Alpha v1.8.1 remains the release identity. v1.8.2 flow layers are additive UX architecture over the stable domain engines.
   if (!root.document) return;
-
   root.document.addEventListener("submit", (event) => {
     const form = event.target;
     if (!form || form.id !== "hh-signin-form") return;
     root.setTimeout(() => recoverSignInForm(form), SIGN_IN_WATCHDOG_MS);
   }, true);
-
   root.addEventListener?.("unhandledrejection", (event) => {
     if (event?.reason?.name !== "AbortError") return;
     const form = root.document.querySelector?.("#hh-signin-form");
@@ -90,20 +77,11 @@
   const target = document.head || document.documentElement;
   function addStyle(id, href) {
     if (document.getElementById(id)) return;
-    const node = document.createElement("link");
-    node.id = id;
-    node.rel = "stylesheet";
-    node.href = href;
-    target.appendChild(node);
+    const node = document.createElement("link");node.id = id;node.rel = "stylesheet";node.href = href;target.appendChild(node);
   }
   function addScript(id, src, onload) {
     if (document.getElementById(id)) { onload?.(); return; }
-    const node = document.createElement("script");
-    node.id = id;
-    node.src = src;
-    node.async = false;
-    if (onload) node.addEventListener("load", onload, { once: true });
-    target.appendChild(node);
+    const node = document.createElement("script");node.id = id;node.src = src;node.async = false;if (onload) node.addEventListener("load", onload, { once: true });target.appendChild(node);
   }
   addStyle("hh-arba-v170-style", "standards-v1.7.0.css?v=1.7.1");
   addStyle("hh-reference-guides-v170-style", "reference-guides-v1.7.0.css?v=1.7.1");
@@ -117,22 +95,19 @@
   addStyle("hh-litter-sale-transfer-v182-style", "litter-sale-transfer-v1.8.2.css?v=1");
   addStyle("hh-breeding-next-action-v182-style", "breeding-next-action-v1.8.2.css?v=1");
   addStyle("hh-breeding-performance-v182-style", "breeding-performance-dashboard-v1.8.2.css?v=2");
+  addStyle("hh-genetics-v2-phase1-v182-style", "genetics-v2-phase1-v1.8.2.css?v=1");
   addStyle("hh-subscription-engine-v180-style", "subscription-engine-v1.8.0.css?v=1");
   addStyle("hh-subscription-member-ui-v180-style", "subscription-member-ui-v1.8.0.css?v=1");
   addStyle("hh-mobile-viewport-v180-style", "mobile-viewport-hotfix-v1.8.0.css?v=1");
   addStyle("hh-direct-transfer-v182-style", "direct-transfer-v1.8.2.css?v=1");
-  addScript("hh-direct-transfer-core-v182", "direct-transfer-core-v1.8.2.js?v=1", () => {
-    addScript("hh-direct-transfer-v182", "direct-transfer-v1.8.2.js?v=1");
-  });
+
+  addScript("hh-direct-transfer-core-v182", "direct-transfer-core-v1.8.2.js?v=1", () => { addScript("hh-direct-transfer-v182", "direct-transfer-v1.8.2.js?v=1"); });
+  addScript("hh-genetics-v2-phase1-core-v182", "genetics-v2-phase1-core-v1.8.2.js?v=1", () => { addScript("hh-genetics-v2-phase1-v182", "genetics-v2-phase1-v1.8.2.js?v=1"); });
   addScript("hh-how-to-navigation-v181", "how-to-navigation-v1.8.1.js?v=1");
-  addScript("hh-registration-safety-v181", "registration-safety-v1.8.1.js?v=1", () => {
-    addScript("hh-subscription-referral-policy-v181", "subscription-referral-policy-v1.8.1.js?v=1");
-  });
+  addScript("hh-registration-safety-v181", "registration-safety-v1.8.1.js?v=1", () => { addScript("hh-subscription-referral-policy-v181", "subscription-referral-policy-v1.8.1.js?v=1"); });
   addScript("hh-admin-subscription-credits-v181", "subscription-admin-credits-v1.8.1.js?v=1");
   addScript("hh-arba-v170-registry", "standards-registry-v1.7.0.js?v=1.7.1", () => {
-    addScript("hh-arba-v170-ui", "standards-ui-v1.7.0.js?v=1.7.1", () => {
-      addScript("hh-arba-public-v170", "standards-public-reference-v1.7.0.js?v=1.7.1");
-    });
+    addScript("hh-arba-v170-ui", "standards-ui-v1.7.0.js?v=1.7.1", () => { addScript("hh-arba-public-v170", "standards-public-reference-v1.7.0.js?v=1.7.1"); });
   });
   addScript("hh-youth-guides-v170", "shows-youth-guides-v1.7.0.js?v=1.7.1");
   addScript("hh-health-intelligence-v171", "health-intelligence-v1.7.1.js?v=1.7.1", () => {
@@ -149,9 +124,7 @@
                         addScript("hh-breeding-next-action-v182", "breeding-next-action-v1.8.2.js?v=1", () => {
                           addScript("hh-breeding-performance-core-v182", "breeding-performance-core-v1.8.2.js?v=1", () => {
                             addScript("hh-breeding-performance-dashboard-v182", "breeding-performance-dashboard-v1.8.2.js?v=1", () => {
-                              addScript("hh-flow-phase2-profile-finish-v182", "flow-phase2-profile-finish-v1.8.2.js?v=1", () => {
-                                addScript("hh-flow-phase1-completion-v182", "flow-phase1-completion-v1.8.2.js?v=1");
-                              });
+                              addScript("hh-flow-phase2-profile-finish-v182", "flow-phase2-profile-finish-v1.8.2.js?v=1", () => { addScript("hh-flow-phase1-completion-v182", "flow-phase1-completion-v1.8.2.js?v=1"); });
                             });
                           });
                         });
@@ -170,9 +143,7 @@
     addScript("hh-subscription-engine-v180", "subscription-engine-v1.8.0.js?v=1", () => {
       addScript("hh-subscription-tab-visibility-v180", "subscription-tab-visibility-v1.8.0.js?v=2", () => {
         addScript("hh-subscription-header-copy-v180", "subscription-header-copy-v1.8.0.js?v=3", () => {
-          addScript("hh-subscription-stripe-provider-v180", "subscription-stripe-provider-v1.8.0.js?v=1", () => {
-            addScript("hh-subscription-stripe-launch-bridge-v181", "subscription-stripe-launch-bridge-v1.8.1.js?v=1");
-          });
+          addScript("hh-subscription-stripe-provider-v180", "subscription-stripe-provider-v1.8.0.js?v=1", () => { addScript("hh-subscription-stripe-launch-bridge-v181", "subscription-stripe-launch-bridge-v1.8.1.js?v=1"); });
         });
       });
     });
