@@ -1,0 +1,59 @@
+name: One-shot v1.8.2 shell metadata fix
+
+on:
+  push:
+    branches:
+      - release/v1.8.2-closeout-mobile-install
+
+permissions:
+  contents: write
+
+jobs:
+  fix-shell-metadata:
+    if: github.ref == 'refs/heads/release/v1.8.2-closeout-mobile-install'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: release/v1.8.2-closeout-mobile-install
+          fetch-depth: 0
+
+      - name: Apply exactly the intended shell metadata replacements
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('index.html')
+          text = path.read_text(encoding='utf-8')
+          replacements = {
+              'manifest.json?v=1.8.1': 'manifest.json?v=1.8.2',
+              'HerdHarbor Alpha v1.8.1 current application shell': 'HerdHarbor Alpha v1.8.2 current application shell',
+          }
+
+          for old, new in replacements.items():
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected exactly one occurrence of {old!r}, found {count}')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+          grep -F 'manifest.json?v=1.8.2' index.html
+          grep -F 'HerdHarbor Alpha v1.8.2 current application shell' index.html
+          ! grep -F 'manifest.json?v=1.8.1' index.html
+          ! grep -F 'HerdHarbor Alpha v1.8.1 current application shell' index.html
+
+      - name: Commit shell fix and remove this one-shot workflow
+        shell: bash
+        run: |
+          rm .github/workflows/one-shot-v1.8.2-shell-version-fix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html .github/workflows/one-shot-v1.8.2-shell-version-fix.yml
+          git diff --cached --check
+          git diff --cached --stat
+          git commit -m 'fix: align current shell metadata with v1.8.2'
+          git push origin HEAD:release/v1.8.2-closeout-mobile-install
