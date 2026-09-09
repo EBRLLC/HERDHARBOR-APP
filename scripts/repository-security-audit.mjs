@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
 const ignoredDirectories = new Set([
   ".git",
   "node_modules",
@@ -15,6 +16,7 @@ const ignoredDirectories = new Set([
   ".idea",
   ".vscode"
 ]);
+
 const ignoredDirectoryPaths = new Set([
   "android/.gradle",
   "android/build",
@@ -23,16 +25,24 @@ const ignoredDirectoryPaths = new Set([
   "supabase/.branches",
   "vendor"
 ]);
+
+// Test fixtures intentionally contain examples of credential/token formats.
+// They should still be checked for forbidden files, but not treated as leaked
+// production secrets. Runtime/source files remain fully scanned.
+const secretScanIgnoredPaths = ["tests"];
+
 const textExtensions = new Set([
   ".cjs", ".css", ".gradle", ".html", ".js", ".json", ".md", ".mjs", ".sql", ".toml", ".txt", ".xml", ".yml", ".yaml"
 ]);
+
 const forbiddenFilePatterns = [
-  { label: "environment file", test: (rel, base) => base === ".env" || (base.startsWith(".env.") && base !== ".env.example") },
+  { label: "environment file", test: (_rel, base) => base === ".env" || (base.startsWith(".env.") && base !== ".env.example") },
   { label: "private/signing key", test: (_rel, base) => /\.(?:pem|key|p12|pfx|jks|keystore)$/i.test(base) },
   { label: "credential bundle", test: (_rel, base) => /^(?:credentials\.json|keystore\.properties|local\.properties)$/i.test(base) },
   { label: "build package", test: (_rel, base) => /\.(?:aab|apk)$/i.test(base) },
   { label: "backup/temp file", test: (_rel, base) => /(?:\.bak|\.tmp|\.temp|\.orig|~)$/i.test(base) }
 ];
+
 const secretPatterns = [
   { label: "Stripe secret/restricted key", pattern: /\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{20,}\b/g },
   { label: "Stripe webhook signing secret", pattern: /\bwhsec_[A-Za-z0-9]{20,}\b/g },
@@ -49,6 +59,14 @@ function normalize(relativePath) {
 function shouldSkipDirectory(relativePath, name) {
   const normalized = normalize(relativePath);
   return ignoredDirectories.has(name) || ignoredDirectoryPaths.has(normalized);
+}
+
+function isWithin(relativePath, directoryPath) {
+  return relativePath === directoryPath || relativePath.startsWith(`${directoryPath}/`);
+}
+
+function shouldSkipSecretScan(relativePath) {
+  return secretScanIgnoredPaths.some((directoryPath) => isWithin(relativePath, directoryPath));
 }
 
 function collectFiles(directory, relative = "") {
@@ -69,11 +87,14 @@ const violations = [];
 const files = collectFiles(root);
 
 for (const file of files) {
+  // Forbidden credential/build artifacts are checked everywhere, including tests.
   for (const rule of forbiddenFilePatterns) {
     if (rule.test(file.relative, file.base)) violations.push(`${rule.label}: ${file.relative}`);
   }
 
+  if (shouldSkipSecretScan(file.relative)) continue;
   if (!textExtensions.has(path.extname(file.base).toLowerCase())) continue;
+
   const content = fs.readFileSync(file.absolute, "utf8");
   for (const rule of secretPatterns) {
     rule.pattern.lastIndex = 0;
@@ -81,12 +102,19 @@ for (const file of files) {
   }
 }
 
-const topLevelRuntimeFiles = files.filter((file) => !file.relative.includes("/") && (file.relative.endsWith(".js") || file.relative === "index.html"));
+// HerdHarbor intentionally owns exactly one browser-side Supabase client.
+// This prevents auth/session races caused by multiple independent clients.
+const topLevelRuntimeFiles = files.filter(
+  (file) => !file.relative.includes("/") && (file.relative.endsWith(".js") || file.relative === "index.html")
+);
+
 for (const file of topLevelRuntimeFiles) {
   const content = fs.readFileSync(file.absolute, "utf8");
   const calls = content.match(/(?:window\.)?supabase\.createClient\s*\(/g) || [];
   if (file.relative === "herdharbor-cloud.js") {
-    if (calls.length !== 1) violations.push(`browser Supabase client ownership: herdharbor-cloud.js must create exactly one client (found ${calls.length})`);
+    if (calls.length !== 1) {
+      violations.push(`browser Supabase client ownership: herdharbor-cloud.js must create exactly one client (found ${calls.length})`);
+    }
   } else if (calls.length > 0) {
     violations.push(`duplicate browser Supabase client creation: ${file.relative}`);
   }
@@ -96,5 +124,6 @@ if (violations.length) {
   console.error("HerdHarbor repository security audit failed:\n- " + violations.join("\n- "));
   process.exitCode = 1;
 } else {
-  console.log(`HerdHarbor repository security audit passed (${files.length} source files checked).`);
+  const secretScanned = files.filter((file) => !shouldSkipSecretScan(file.relative)).length;
+  console.log(`HerdHarbor repository security audit passed (${files.length} files checked; ${secretScanned} scanned for embedded secrets).`);
 }
