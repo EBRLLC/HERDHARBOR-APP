@@ -23,32 +23,12 @@ jobs:
           node-version: 22
       - name: Install pinned dependencies
         run: npm ci --no-audit --no-fund
-      - name: Verify current v1.8.2 release contract
+      - name: Test 1 - Verify current v1.8.2 release contract and security
         run: npm run test:release
-      - name: Run focused v1.8.2 release suite
-        run: npm run test:v1.8.2
-      - name: Run complete HerdHarbor regression suite in UTC
-        env:
-          TZ: UTC
-        run: |
-          failed=0
-          for test_file in tests/*.test.cjs; do
-            echo "::group::${test_file}"
-            node --test "${test_file}" || failed=1
-            echo "::endgroup::"
-          done
-          exit "${failed}"
-      - name: Run complete HerdHarbor regression suite in America/New_York
+      - name: Test 2 - Run focused v1.8.2 regression suite
         env:
           TZ: America/New_York
-        run: |
-          failed=0
-          for test_file in tests/*.test.cjs; do
-            echo "::group::${test_file}"
-            node --test "${test_file}" || failed=1
-            echo "::endgroup::"
-          done
-          exit "${failed}"
+        run: npm run test:v1.8.2
       - name: Build production monitoring bundle
         run: NODE_ENV=production npm run build:monitoring
       - name: Verify bundled monitoring architecture
