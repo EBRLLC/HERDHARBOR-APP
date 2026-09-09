@@ -6,28 +6,34 @@ const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'herdharbor-build.js'), 'utf8');
 
-class FakeStorage {
-  constructor() {
-    this.map = new Map();
-  }
-  get length() {
-    return this.map.size;
-  }
-  key(index) {
-    return Array.from(this.map.keys())[index] ?? null;
-  }
-  getItem(key) {
-    return this.map.has(String(key)) ? this.map.get(String(key)) : null;
-  }
-  setItem(key, value) {
-    this.map.set(String(key), String(value));
-  }
-  removeItem(key) {
-    this.map.delete(String(key));
-  }
+function createStorageClass() {
+  return class FakeStorage {
+    constructor() {
+      this.map = new Map();
+    }
+    get length() {
+      return this.map.size;
+    }
+    key(index) {
+      return Array.from(this.map.keys())[index] ?? null;
+    }
+    getItem(key) {
+      return this.map.has(String(key)) ? this.map.get(String(key)) : null;
+    }
+    setItem(key, value) {
+      this.map.set(String(key), String(value));
+    }
+    removeItem(key) {
+      this.map.delete(String(key));
+    }
+  };
 }
 
 function loadBuild() {
+  // Each VM must get its own Storage prototype. The production shim deliberately
+  // marks Storage.prototype once, so sharing a fake prototype between tests would
+  // leak the first sandbox's local/session storage closures into later tests.
+  const FakeStorage = createStorageClass();
   const localStorage = new FakeStorage();
   const sessionStorage = new FakeStorage();
   const cloudBaseKey = 'herdharbor_user_cloud_base_user-1';
