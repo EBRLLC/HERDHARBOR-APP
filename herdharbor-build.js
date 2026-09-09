@@ -15,8 +15,88 @@
   const SUPABASE_HOST = "okynebbksifqppwicghj.supabase.co";
   const SUPABASE_PROJECT_REF = "okynebbksifqppwicghj";
   const SUPABASE_AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
+  const CLOUD_BASE_PREFIX = "herdharbor_user_cloud_base_";
   const originalFetch = typeof root.fetch === "function" ? root.fetch.bind(root) : null;
   let isolatedSignInInFlight = false;
+
+  function installCloudBaseQuotaShim() {
+    const proto = root.Storage?.prototype;
+    let local;
+    let sessionStore;
+    try {
+      local = root.localStorage;
+      sessionStore = root.sessionStorage;
+    } catch {
+      return false;
+    }
+    if (!proto || !local || !sessionStore || proto.__hhCloudBaseQuotaShimInstalled) return false;
+
+    const nativeGetItem = proto.getItem;
+    const nativeSetItem = proto.setItem;
+    const nativeRemoveItem = proto.removeItem;
+    const nativeKey = proto.key;
+
+    const isCloudBase = (storage, key) =>
+      storage === local && String(key || "").startsWith(CLOUD_BASE_PREFIX);
+
+    // Move any existing multi-megabyte merge baseline out of localStorage first.
+    // The active farm state remains in localStorage; the cloud baseline is session-only
+    // and is rehydrated from Supabase on every new browser session.
+    try {
+      const keys = [];
+      for (let index = 0; index < local.length; index += 1) {
+        const key = nativeKey.call(local, index);
+        if (String(key || "").startsWith(CLOUD_BASE_PREFIX)) keys.push(key);
+      }
+      keys.forEach((key) => {
+        const value = nativeGetItem.call(local, key);
+        if (value != null) nativeSetItem.call(sessionStore, key, value);
+        nativeRemoveItem.call(local, key);
+      });
+    } catch (error) {
+      console.warn("HerdHarbor could not migrate the cloud merge baseline out of local storage:", error);
+    }
+
+    proto.getItem = function herdHarborQuotaSafeGetItem(key) {
+      if (isCloudBase(this, key)) {
+        const sessionValue = nativeGetItem.call(sessionStore, key);
+        return sessionValue != null ? sessionValue : nativeGetItem.call(local, key);
+      }
+      return nativeGetItem.call(this, key);
+    };
+
+    proto.setItem = function herdHarborQuotaSafeSetItem(key, value) {
+      if (isCloudBase(this, key)) {
+        nativeSetItem.call(sessionStore, key, value);
+        try { nativeRemoveItem.call(local, key); } catch {}
+        return undefined;
+      }
+      return nativeSetItem.call(this, key, value);
+    };
+
+    proto.removeItem = function herdHarborQuotaSafeRemoveItem(key) {
+      if (isCloudBase(this, key)) {
+        try { nativeRemoveItem.call(sessionStore, key); } catch {}
+        return nativeRemoveItem.call(local, key);
+      }
+      return nativeRemoveItem.call(this, key);
+    };
+
+    try {
+      Object.defineProperty(proto, "__hhCloudBaseQuotaShimInstalled", {
+        configurable: false,
+        enumerable: false,
+        writable: false,
+        value: true
+      });
+    } catch {
+      proto.__hhCloudBaseQuotaShimInstalled = true;
+    }
+    return true;
+  }
+
+  // Install before herdharbor-cloud.js captures Storage.prototype methods.
+  installCloudBaseQuotaShim();
 
   function isCriticalAuthUrl(input) {
     try {
