@@ -66,15 +66,18 @@ test("v1.7.0 reference-guide assets remain loaded and offline-safe under the cur
   }
   const version=build.match(/version:\s*"([^"]+)"/)?.[1];
   const buildId=build.match(/buildId:\s*"([^"]+)"/)?.[1];
-  assert.ok(["1.7.1","1.8.0","1.8.1"].includes(version),`unexpected web release ${version}`);
+  assert.ok(["1.7.1","1.8.0","1.8.1","1.8.2"].includes(version),`unexpected web release ${version}`);
   if(version==="1.7.1"){
     assert.equal(buildId,"multispecies-genetics-foundation-1");
     assert.match(sw,/herdharbor-shell-v1\.7\.1-alpha-multispecies-genetics-foundation-1/);
   }else if(version==="1.8.0"){
     assert.match(buildId,/^subscription-engine-/);
     assert.match(sw,/herdharbor-shell-v1\.8\.0/);
-  }else{
+  }else if(version==="1.8.1"){
     assert.match(buildId,/^october-subscription-launch-/);
+    assert.match(sw,/herdharbor-shell-v1\.8\.1-alpha-october-subscription-launch-/);
+  }else{
+    assert.match(buildId,/^cloud-sync-v2-/);
     assert.match(sw,/herdharbor-shell-v1\.8\.1-alpha-october-subscription-launch-/);
   }
 });
