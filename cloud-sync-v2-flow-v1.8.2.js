@@ -11,6 +11,20 @@
     return window.HerdHarborCloud || null;
   }
 
+  function ensureLocalCache() {
+    if (window.HerdHarborLocalCacheV2) {
+      window.HerdHarborLocalCacheV2.install?.();
+      return true;
+    }
+    if (document.getElementById("hh-local-cache-v2-v182")) return false;
+    const script = document.createElement("script");
+    script.id = "hh-local-cache-v2-v182";
+    script.src = "local-cache-v2-v1.8.2.js?v=1";
+    script.async = false;
+    (document.head || document.documentElement || document.body)?.appendChild(script);
+    return false;
+  }
+
   function details() {
     try {
       return cloud()?.getSyncDetails?.() || null;
@@ -134,6 +148,7 @@
   // Do not add a beforeunload blocker. The local write is the durable first
   // save, and the dirty marker tells the cloud layer to resume on next launch.
   function boot(attempt = 0) {
+    ensureLocalCache();
     if (cloud()) {
       refresh();
       return;
@@ -147,7 +162,8 @@
     release: "1.8.2",
     refresh,
     resumeImmediately,
-    isRecoverablePending
+    isRecoverablePending,
+    ensureLocalCache
   });
 
   boot();
