@@ -103,16 +103,15 @@ test("v1.8.1 wrapper enforces the Junior 5-animal transition limit only after ha
   const before = Array.from({ length: 5 }, (_, index) => ({ id: index, status: "Active" }));
   const after = Array.from({ length: 6 }, (_, index) => ({ id: index, status: "Active" }));
   const current = window.HerdHarborMembership.validateAnimalTransition(before, after);
-  // The wrapper uses real current time; this assertion protects the rule shape rather than wall-clock state.
   assert.ok([null, 5].includes(current.limit));
   const postLaunch = window.HerdHarborSubscriptionLaunch.__test.resolveAccount(new Date("2026-10-02T12:00:00-04:00"));
   assert.equal(postLaunch.maxActiveAnimals, 5);
 });
 
-test("v1.8.1 build and service worker load the launch policy before the v1.8.0 engine", () => {
+test("v1.8.2 web build and v1.8.1 service worker load the launch policy before the v1.8.0 engine", () => {
   const build = fs.readFileSync("herdharbor-build.js", "utf8");
   const sw = fs.readFileSync("service-worker.js", "utf8");
-  assert.match(build, /version:\s*"1\.8\.1"/);
+  assert.match(build, /version:\s*"1\.8\.2"/);
   assert.ok(build.indexOf("subscription-launch-v1.8.1.js?v=1") < build.indexOf("subscription-engine-v1.8.0.js?v=1"));
   assert.match(sw, /herdharbor-shell-v1\.8\.1-alpha-october-subscription-launch-/);
   assert.match(sw, /subscription-launch-v1\.8\.1\.js\?v=1/);
