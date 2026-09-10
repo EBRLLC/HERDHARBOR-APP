@@ -101,14 +101,22 @@
       retryIndex = 0;
       return;
     }
-    if (navigator.onLine === false || document.visibilityState === "hidden") return;
+    if (
+      immediateResumePromise ||
+      navigator.onLine === false ||
+      document.visibilityState === "hidden"
+    ) return;
 
     const delay = RETRY_DELAYS_MS[Math.min(retryIndex, RETRY_DELAYS_MS.length - 1)];
     retryTimer = window.setTimeout(async () => {
       retryTimer = null;
       const current = details();
-      if (!isRecoverablePending(current) || navigator.onLine === false) {
-        retryIndex = 0;
+      if (
+        immediateResumePromise ||
+        !isRecoverablePending(current) ||
+        navigator.onLine === false
+      ) {
+        if (!isRecoverablePending(current)) retryIndex = 0;
         return;
       }
 
@@ -140,15 +148,11 @@
   }
 
   function resumeImmediately() {
+    if (immediateResumePromise) return immediateResumePromise;
     const state = details();
-    if (
-      immediateResumePromise ||
-      !isRecoverablePending(state) ||
-      state.syncing ||
-      navigator.onLine === false
-    ) {
+    if (!isRecoverablePending(state) || state.syncing || navigator.onLine === false) {
       refresh();
-      return immediateResumePromise;
+      return null;
     }
     clearRetry();
     lastAttemptAt = Date.now();
