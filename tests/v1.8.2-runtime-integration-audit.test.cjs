@@ -13,8 +13,10 @@ const syncFlow = read("cloud-sync-v2-flow-v1.8.2.js");
 const localCache = read("local-cache-v2-v1.8.2.js");
 const completion = read("flow-phase1-completion-v1.8.2.js");
 
-function runtimeVersion(source) {
-  return source.match(/(?:RELEASE|release|version)\s*[:=]\s*["']([^"']+)["']/)?.[1] || null;
+function releaseVersion(source) {
+  const constRelease = source.match(/const\s+RELEASE\s*=\s*["']([^"']+)["']/)?.[1];
+  const objectRelease = source.match(/release\s*:\s*["']([^"']+)["']/)?.[1];
+  return constRelease || objectRelease || null;
 }
 
 test("all actively modified Cloud Sync V2 runtime layers identify as v1.8.2", () => {
@@ -40,7 +42,7 @@ test("legacy 1.8.1 references are allowed only as intentionally carried-forward 
   // herdharbor-build.js still loads established 1.8.1 subscription/registration
   // assets and the packaged shell remains 1.8.1 until the release packaging pass.
   // This audit prevents those frozen references from being mistaken for the
-  // version of the Cloud Sync V2 code currently under development.
-  assert.equal(runtimeVersion(syncFlow), "1.8.2");
-  assert.equal(runtimeVersion(localCache), "1.8.2");
+  // release of the Cloud Sync V2 code currently under development.
+  assert.equal(releaseVersion(syncFlow), "1.8.2");
+  assert.equal(releaseVersion(localCache), "1.8.2");
 });
