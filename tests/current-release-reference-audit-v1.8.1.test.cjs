@@ -32,8 +32,8 @@ const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
 
 test("web runtime is Alpha v1.8.2 while packaged 1.8.1 artifacts remain unchanged", () => {
   assert.equal(version, "1.8.2");
-  assert.equal(buildId, "cloud-sync-v2-baseline-recovery-1");
-  assert.match(build, /build:\s*"1\.8\.2-alpha-cloud-sync-v2-baseline-recovery-1"/);
+  assert.equal(buildId, "cloud-sync-v2-baseline-recovery-2");
+  assert.match(build, /build:\s*"1\.8\.2-alpha-cloud-sync-v2-baseline-recovery-2"/);
   assert.equal(pkg.version, "1.8.1");
   assert.equal(lock.version, "1.8.1");
   assert.equal(lock.packages[""].version, "1.8.1");
