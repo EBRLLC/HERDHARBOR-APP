@@ -13,6 +13,7 @@
   let retryTimer = null;
   let retryIndex = 0;
   let lastAttemptAt = 0;
+  let immediateResumePromise = null;
 
   function cloud() {
     return window.HerdHarborCloud || null;
@@ -140,15 +141,24 @@
 
   function resumeImmediately() {
     const state = details();
-    if (!isRecoverablePending(state) || state.syncing || navigator.onLine === false) {
+    if (
+      immediateResumePromise ||
+      !isRecoverablePending(state) ||
+      state.syncing ||
+      navigator.onLine === false
+    ) {
       refresh();
-      return;
+      return immediateResumePromise;
     }
     clearRetry();
     lastAttemptAt = Date.now();
-    Promise.resolve(cloud()?.syncNow?.())
+    immediateResumePromise = Promise.resolve(cloud()?.syncNow?.())
       .catch(() => false)
-      .finally(refresh);
+      .finally(() => {
+        immediateResumePromise = null;
+        refresh();
+      });
+    return immediateResumePromise;
   }
 
   document.addEventListener("herdharbor:sync-status", (event) => {
