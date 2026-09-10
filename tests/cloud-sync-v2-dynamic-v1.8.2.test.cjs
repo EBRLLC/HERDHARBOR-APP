@@ -113,6 +113,7 @@ function createHarness(initialState = {}, syncImplementation = null) {
 
   return {
     state,
+    document,
     button,
     status,
     navigator,
@@ -262,19 +263,12 @@ test("v1.8.2 dynamic flow pauses retry timers while hidden without clearing pend
   const harness = createHarness({ unsynced: true, type: "working", message: "Saving to cloud…" });
   assert.equal(harness.timers.size, 1);
 
-  harness.state.unsynced = true;
-  harness.api.refresh();
-  harness.state.unsynced = true;
+  harness.document.visibilityState = "hidden";
   harness.emitDocument("visibilitychange");
 
-  harness.state.unsynced = true;
-  harness.navigator.onLine = true;
-  harness.state.online = true;
-  harness.state.type = "working";
-  harness.state.message = "Saving to cloud…";
-  // Visibility is controlled directly by the fake document to mirror a tab backgrounding.
-  // The event handler must only stop retry timing; it must not mutate canonical dirty state.
-  assert.equal(harness.state.unsynced, true);
+  assert.equal(harness.timers.size, 0, "backgrounding clears only the retry timer");
+  assert.equal(harness.syncCalls, 0, "backgrounding does not force a network save from the V2 overlay");
+  assert.equal(harness.state.unsynced, true, "pending/dirty state remains protected for the next resume");
 });
 
 test("v1.8.2 canonical cloud clears dirty state only on confirmed save paths", () => {
