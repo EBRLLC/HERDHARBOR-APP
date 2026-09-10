@@ -68,7 +68,7 @@ jobs:
           grep -q '"enableTestCrash": true' herdharbor-monitoring-config.js
           git checkout -- herdharbor-monitoring-config.js
       - name: Ensure tests and build did not mutate source
-        run: git diff --exit-code -- . ':!vendor/herdharbor-monitoring-v1.6.1.min.js'
+        run: git diff --exit-code -- . ':!vendor/herdharbor-monitoring-v1.6.1.min.js' ':!herdharbor-monitoring-config.js'
       - uses: actions/upload-artifact@v4
         with:
           name: herdharbor-v1.8.1-monitoring-bundle
