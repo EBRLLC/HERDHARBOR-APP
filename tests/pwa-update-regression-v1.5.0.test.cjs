@@ -14,18 +14,19 @@ const manifest = JSON.parse(read("manifest.json"));
 const html = read("index.html");
 const build = read("herdharbor-build.js");
 
-// The package manifest and HerdHarborBuild jointly identify the current v1.8.1 release.
+// The web runtime is v1.8.2 while the packaged/PWA shell remains on its carried-forward v1.8.1 identity.
 assert.equal(manifest.version, "1.8.1");
 const webVersion = build.match(/version:\s*"([^"]+)"/)?.[1];
 const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
-assert.ok(["1.7.1", "1.8.0", "1.8.1"].includes(webVersion), `unexpected web release ${webVersion}`);
+assert.ok(["1.7.1", "1.8.0", "1.8.1", "1.8.2"].includes(webVersion), `unexpected web release ${webVersion}`);
 if (webVersion === "1.7.1") assert.equal(buildId, "multispecies-genetics-foundation-1");
 if (webVersion === "1.8.0") assert.match(buildId, /^subscription-engine-/);
 if (webVersion === "1.8.1") assert.match(buildId, /^october-subscription-launch-/);
+if (webVersion === "1.8.2") assert.match(buildId, /^cloud-sync-v2-/);
 assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "1\.8\.1"/);
 assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "october-subscription-launch-referrals-credits-4"/);
 assert.match(pwa, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
-assert.match(html, /herdharbor-build\.js\?v=1\.8\.1/, "the shell bootstrap must load the authoritative build identity");
+assert.match(html, /herdharbor-build\.js\?v=1\.8\.1/, "the packaged shell bootstrap retains its v1.8.1 cache identity until the packaging pass");
 
 // Service-worker discovery is explicit and independent from Cloud Sync.
 assert.match(pwa, /navigatorRef\(\)\.serviceWorker\.register\("service-worker\.js"/);
