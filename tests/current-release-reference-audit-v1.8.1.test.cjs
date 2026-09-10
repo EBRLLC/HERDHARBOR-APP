@@ -30,10 +30,10 @@ const supabaseConfig = read("supabase/config.toml");
 const version = build.match(/version:\s*"([^"]+)"/)?.[1];
 const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
 
-test("authoritative release identity is Alpha v1.8.1 everywhere that owns the current release", () => {
-  assert.equal(version, "1.8.1");
-  assert.equal(buildId, "october-subscription-launch-referrals-credits-4");
-  assert.match(build, /build:\s*"1\.8\.1-alpha-october-subscription-launch-referrals-credits-4"/);
+test("web runtime is Alpha v1.8.2 while packaged 1.8.1 artifacts remain unchanged", () => {
+  assert.equal(version, "1.8.2");
+  assert.equal(buildId, "cloud-sync-v2-baseline-recovery-2");
+  assert.match(build, /build:\s*"1\.8\.2-alpha-cloud-sync-v2-baseline-recovery-2"/);
   assert.equal(pkg.version, "1.8.1");
   assert.equal(lock.version, "1.8.1");
   assert.equal(lock.packages[""].version, "1.8.1");
@@ -44,7 +44,7 @@ test("authoritative release identity is Alpha v1.8.1 everywhere that owns the cu
   assert.match(gradle, /versionCode\s+15/);
 });
 
-test("PWA and offline shell use the current release while preserving safe update behavior", () => {
+test("PWA and offline shell keep packaged release plumbing while preserving safe update behavior", () => {
   assert.match(pwa, /APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.1"/);
   assert.match(pwa, /BUILD_ID = window\.HerdHarborBuild\?\.buildId \|\| "october-subscription-launch-referrals-credits-4"/);
   assert.match(pwa, /manifest\.href = `manifest\.json\?build=\$\{encodeURIComponent\(PWA_BUILD\)\}`/);
@@ -165,7 +165,7 @@ test("stable older-named domain engines and migration lineage remain intentional
   }
 });
 
-test("current documentation is v1.8.1 and stale release/debt snapshots stay out of the live tree", () => {
+test("current documentation and packaged artifacts remain v1.8.1 while web feature work advances under v1.8.2", () => {
   assert.match(readme, /^# HerdHarbor Alpha v1\.8\.1/m);
   assert.match(releaseNotes, /^# HerdHarbor Alpha v1\.8\.1/m);
   assert.match(releaseNotes, /Referral IDs and Member-month credits/);

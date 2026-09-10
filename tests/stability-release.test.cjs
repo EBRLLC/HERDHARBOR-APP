@@ -22,11 +22,15 @@ const mobileGrowth = fs.readFileSync(path.join(root, "tests/mobile-growth-layout
 // Current release remains additive: established data/runtime contracts and mobile protections stay intact.
 const webVersion = build.match(/version:\s*"([^"]+)"/)?.[1];
 const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
-assert.ok(["1.7.1", "1.8.0", "1.8.1"].includes(webVersion), `unexpected web release ${webVersion}`);
+assert.ok(["1.7.1", "1.8.0", "1.8.1", "1.8.2"].includes(webVersion), `unexpected web release ${webVersion}`);
 if (webVersion === "1.7.1") assert.equal(buildId, "multispecies-genetics-foundation-1");
 if (webVersion === "1.8.0") assert.match(buildId, /^subscription-engine-/);
 if (webVersion === "1.8.1") {
   assert.match(buildId, /^october-subscription-launch-/);
+  assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=1/);
+}
+if (webVersion === "1.8.2") {
+  assert.match(buildId, /^cloud-sync-v2-/);
   assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=1/);
 }
 assert.match(html, /HerdHarbor Alpha v1\.8\.1 current application shell/);

@@ -22,6 +22,15 @@
   const healthNow=state=>{try{return root.HerdHarborHealthIntelligence?.readHealthState?.()||state?.healthIntelligence||{};}catch{return state?.healthIntelligence||{};}};
   const cssEscape=v=>{const s=String(v);try{return root.CSS?.escape?root.CSS.escape(s):s.replace(/["\\]/g,"\\$&");}catch{return s.replace(/["\\]/g,"\\$&");}};
 
+  function ensureCloudSyncFlow(){
+    if(!root.document||root.HerdHarborCloudSyncFlowV2||root.document.getElementById("hh-cloud-sync-v2-flow-v182"))return;
+    const script=root.document.createElement("script");
+    script.id="hh-cloud-sync-v2-flow-v182";
+    script.src="cloud-sync-v2-flow-v1.8.2.js?v=1";
+    script.async=false;
+    (root.document.head||root.document.documentElement||root.document.body)?.appendChild(script);
+  }
+
   function clickRoute(route){const button=root.document?.querySelector(`.nav-item[data-route="${route}"]`);if(!button)return false;button.click();return true;}
   function waitFor(selector,fn,attempt=0,max=45){const node=root.document?.querySelector(selector);if(node){fn(node);return true;}if(attempt>=max)return false;root.setTimeout?.(()=>waitFor(selector,fn,attempt+1,max),50);return true;}
 
@@ -126,7 +135,7 @@
   function schedule(){if(queued)return;queued=true;if(typeof root.requestAnimationFrame==="function")root.requestAnimationFrame(run);else root.setTimeout?.(run,0);}
 
   function install(){
-    if(installed||!root.document)return API;installed=true;
+    if(installed||!root.document)return API;installed=true;ensureCloudSyncFlow();
     root.addEventListener?.("click",event=>{
       rememberOrigin(event);cancelOrigin(event);
       const allTasks=event.target.closest?.("[data-hh-p1-open-tasks]");if(allTasks){event.preventDefault();event.stopImmediatePropagation();clickRoute("tasks");return;}

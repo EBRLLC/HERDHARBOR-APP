@@ -3,9 +3,9 @@
   root.HerdHarborBuild = Object.freeze({
     product: "HerdHarbor",
     channel: "Alpha",
-    version: "1.8.1",
-    buildId: "october-subscription-launch-referrals-credits-4",
-    build: "1.8.1-alpha-october-subscription-launch-referrals-credits-4"
+    version: "1.8.2",
+    buildId: "cloud-sync-v2-baseline-recovery-2",
+    build: "1.8.2-alpha-cloud-sync-v2-baseline-recovery-2"
   });
 
   // Keep authentication and the first cloud hydration from waiting forever while
@@ -14,6 +14,128 @@
   const SIGN_IN_WATCHDOG_MS = 15000;
   const SUPABASE_HOST = "okynebbksifqppwicghj.supabase.co";
   const originalFetch = typeof root.fetch === "function" ? root.fetch.bind(root) : null;
+
+  const CLOUD_STATE_KEY = "herdharbor_pre_alpha_v1";
+  const CLOUD_ACTIVE_OWNER_KEY = "herdharbor_active_user_v1";
+  const cloudBaseKey = (userId) => `herdharbor_user_cloud_base_${userId}`;
+  const cloudDirtyKey = (userId) => `herdharbor_user_dirty_${userId}`;
+  const cloudVersionKey = (userId) => `herdharbor_user_cloud_version_${userId}`;
+
+  function isReadableCloudState(rawValue) {
+    if (!rawValue) return false;
+    try {
+      const parsed = JSON.parse(rawValue);
+      return Boolean(parsed && typeof parsed === "object");
+    } catch {
+      return false;
+    }
+  }
+
+  function dispatchBaselineRestored(userId, reason) {
+    try {
+      root.dispatchEvent?.(new CustomEvent("herdharbor:cloud-baseline-restored", {
+        detail: { userId, reason }
+      }));
+    } catch {}
+  }
+
+  function restoreMissingCloudBaseline(storage, reason = "startup") {
+    if (!storage || typeof storage.getItem !== "function" || typeof storage.setItem !== "function") return false;
+    try {
+      const userId = storage.getItem(CLOUD_ACTIVE_OWNER_KEY);
+      if (!userId) return false;
+      if (storage.getItem(cloudBaseKey(userId))) return false;
+      if (storage.getItem(cloudDirtyKey(userId)) === "1") return false;
+      if (!storage.getItem(cloudVersionKey(userId))) return false;
+
+      const activeRaw = storage.getItem(CLOUD_STATE_KEY);
+      if (!isReadableCloudState(activeRaw)) return false;
+
+      storage.setItem(cloudBaseKey(userId), activeRaw);
+      dispatchBaselineRestored(userId, reason);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function captureMissingBaselineBeforeMutation(storage, originalSetItem, previousRaw, reason) {
+    try {
+      const userId = storage.getItem(CLOUD_ACTIVE_OWNER_KEY);
+      if (!userId) return false;
+      if (storage.getItem(cloudBaseKey(userId))) return false;
+      if (storage.getItem(cloudDirtyKey(userId)) === "1") return false;
+      if (!storage.getItem(cloudVersionKey(userId))) return false;
+      if (!isReadableCloudState(previousRaw)) return false;
+
+      originalSetItem.call(storage, cloudBaseKey(userId), previousRaw);
+      dispatchBaselineRestored(userId, reason);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // Cloud Sync V2 guard. The cloud runtime performs protected three-way merges
+  // using a local copy of the last confirmed cloud state. If that baseline is
+  // missing while the account is otherwise clean, the older runtime interprets
+  // the next edit as an unsafe two-device conflict. Rebuild only a provably safe
+  // baseline: there must be a known cloud version, no dirty/unsynced flag, and a
+  // readable active state owned by the signed-in account. Dirty states are never
+  // guessed or overwritten.
+  function installCloudSyncV2BaselineGuard() {
+    if (root.__HH_CLOUD_SYNC_V2_BASELINE_GUARD__) return;
+    const storage = root.localStorage;
+    const StorageCtor = root.Storage;
+    if (!storage || !StorageCtor?.prototype?.setItem) return;
+
+    root.__HH_CLOUD_SYNC_V2_BASELINE_GUARD__ = true;
+    restoreMissingCloudBaseline(storage, "startup");
+
+    const originalStorageSetItem = StorageCtor.prototype.setItem;
+    const originalStorageRemoveItem = StorageCtor.prototype.removeItem;
+
+    StorageCtor.prototype.setItem = function herdHarborCloudSyncV2SetItem(key, value) {
+      if (this === storage && key === CLOUD_STATE_KEY) {
+        try {
+          const previousRaw = storage.getItem(CLOUD_STATE_KEY);
+          if (previousRaw !== value) {
+            captureMissingBaselineBeforeMutation(
+              storage,
+              originalStorageSetItem,
+              previousRaw,
+              "before-local-edit"
+            );
+          }
+        } catch {}
+      }
+      return originalStorageSetItem.call(this, key, value);
+    };
+
+    if (typeof originalStorageRemoveItem === "function") {
+      StorageCtor.prototype.removeItem = function herdHarborCloudSyncV2RemoveItem(key) {
+        if (this === storage && key === CLOUD_STATE_KEY) {
+          try {
+            captureMissingBaselineBeforeMutation(
+              storage,
+              originalStorageSetItem,
+              storage.getItem(CLOUD_STATE_KEY),
+              "before-local-clear"
+            );
+          } catch {}
+        }
+        return originalStorageRemoveItem.call(this, key);
+      };
+    }
+
+    root.HerdHarborCloudSyncV2 = Object.freeze({
+      version: "2.0",
+      release: "1.8.2",
+      restoreMissingBaseline: () => restoreMissingCloudBaseline(storage, "manual")
+    });
+  }
+
+  installCloudSyncV2BaselineGuard();
 
   function isCriticalAuthUrl(input) {
     try {
@@ -72,7 +194,7 @@
     };
   }
 
-  // Alpha v1.8.1 remains the release identity. v1.8.2 flow layers are additive UX architecture over the stable domain engines.
+  // Alpha v1.8.2 is the release identity. All current flow layers remain additive UX architecture over the stable domain engines.
   if (!root.document) return;
 
   root.document.addEventListener("submit", (event) => {

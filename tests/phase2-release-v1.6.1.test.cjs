@@ -9,10 +9,11 @@ test('current release build identity has one authoritative source',()=>{
   const build=read('herdharbor-build.js'),html=read('index.html'),pwa=read('pwa.js');
   const version=build.match(/version:\s*"([^"]+)"/)?.[1];
   const buildId=build.match(/buildId:\s*"([^"]+)"/)?.[1];
-  assert.ok(['1.7.1','1.8.0','1.8.1'].includes(version),`unexpected web release ${version}`);
+  assert.ok(['1.7.1','1.8.0','1.8.1','1.8.2'].includes(version),`unexpected web release ${version}`);
   if(version==='1.7.1')assert.equal(buildId,'multispecies-genetics-foundation-1');
   if(version==='1.8.0')assert.match(buildId,/^subscription-engine-/);
   if(version==='1.8.1')assert.match(buildId,/^october-subscription-launch-/);
+  if(version==='1.8.2')assert.match(buildId,/^cloud-sync-v2-/);
   assert.match(html,/HerdHarborBuild\?\.version/);
   assert.match(pwa,/HerdHarborBuild\?\.version/);
 });
