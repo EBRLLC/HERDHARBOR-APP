@@ -25,10 +25,11 @@ function loadBuild(){
   return sandbox;
 }
 
-test('auth resilience preserves public v1.8.1 release identity',()=>{
+test('auth resilience stays frozen while the web runtime advances to v1.8.2',()=>{
   const sandbox=loadBuild();
-  assert.equal(sandbox.HerdHarborBuild.version,'1.8.1');
-  assert.doesNotMatch(source,/version:\s*["']1\.8\.2["']/);
+  assert.equal(sandbox.HerdHarborBuild.version,'1.8.2');
+  assert.equal(sandbox.HerdHarborBuild.buildId,'cloud-sync-v2-baseline-recovery-1');
+  assert.equal(sandbox.HerdHarborCloudSyncV2.version,'2.0');
 });
 
 test('auth resilience only bounds critical Supabase auth and first-hydration requests',()=>{
