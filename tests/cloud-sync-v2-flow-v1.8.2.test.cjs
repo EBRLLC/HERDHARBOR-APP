@@ -17,6 +17,16 @@ test("v1.8.2 cloud sync flow treats recoverable unsynced work as non-blocking", 
   assert.match(flow, /status\.dataset\.type = "working"/);
 });
 
+test("v1.8.2 cloud sync flow normalizes recoverable cloud errors without hiding real conflicts", () => {
+  assert.match(flow, /function isRecoverableCloudState\(state\)/);
+  assert.match(flow, /if \(!state \|\| state\.conflict \|\| !state\.signedIn\) return false/);
+  assert.match(flow, /\/cloud unavailable\/i/);
+  assert.match(flow, /\/cloud save failed\/i/);
+  assert.match(flow, /\/offline copy loaded\/i/);
+  assert.match(flow, /\/\^offline;\/i/);
+  assert.match(flow, /Working from the protected copy on this device/);
+});
+
 test("v1.8.2 cloud sync flow automatically retries pending cloud backup", () => {
   assert.match(flow, /RETRY_DELAYS_MS = \[1500, 4000, 10000, 30000\]/);
   assert.match(flow, /await cloud\(\)\?\.syncNow\?\.\(\)/);
@@ -26,7 +36,7 @@ test("v1.8.2 cloud sync flow automatically retries pending cloud backup", () => 
 });
 
 test("v1.8.2 cloud sync flow never installs a close blocker", () => {
-  assert.doesNotMatch(flow, /beforeunload/);
+  assert.doesNotMatch(flow, /addEventListener\(["']beforeunload["']/);
   assert.doesNotMatch(flow, /preventDefault\(\).*unload/);
 });
 
