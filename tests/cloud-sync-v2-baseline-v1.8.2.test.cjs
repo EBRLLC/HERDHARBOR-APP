@@ -6,22 +6,22 @@ const vm = require("node:vm");
 
 const buildSource = fs.readFileSync(path.join(__dirname, "..", "herdharbor-build.js"), "utf8");
 
-class TestStorage {
-  constructor(seed = {}) {
-    this.values = new Map(Object.entries(seed));
-  }
-  getItem(key) {
-    return this.values.has(String(key)) ? this.values.get(String(key)) : null;
-  }
-  setItem(key, value) {
-    this.values.set(String(key), String(value));
-  }
-  removeItem(key) {
-    this.values.delete(String(key));
-  }
-}
-
 function loadBuild(seed = {}) {
+  class TestStorage {
+    constructor(initial = {}) {
+      this.values = new Map(Object.entries(initial));
+    }
+    getItem(key) {
+      return this.values.has(String(key)) ? this.values.get(String(key)) : null;
+    }
+    setItem(key, value) {
+      this.values.set(String(key), String(value));
+    }
+    removeItem(key) {
+      this.values.delete(String(key));
+    }
+  }
+
   const localStorage = new TestStorage(seed);
   const context = {
     Storage: TestStorage,
