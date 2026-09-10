@@ -3,6 +3,13 @@
 
   const RETRY_DELAYS_MS = [1500, 4000, 10000, 30000];
   const MAX_VISIBLE_RETRY_MS = 30000;
+  const RECOVERABLE_ERROR_PATTERNS = [
+    /cloud unavailable/i,
+    /cloud save failed/i,
+    /offline copy loaded/i,
+    /^offline;/i,
+    /cloud changed during save; local copy retained/i
+  ];
   let retryTimer = null;
   let retryIndex = 0;
   let lastAttemptAt = 0;
@@ -38,6 +45,14 @@
     return Boolean(state.signedIn && state.unsynced && !state.conflict);
   }
 
+  function isRecoverableCloudState(state) {
+    if (!state || state.conflict || !state.signedIn) return false;
+    if (isRecoverablePending(state)) return true;
+    if (state.online === false) return true;
+    if (state.type !== "error") return false;
+    return RECOVERABLE_ERROR_PATTERNS.some((pattern) => pattern.test(String(state.message || "")));
+  }
+
   function pendingMessage(state) {
     if (navigator.onLine === false || state?.online === false) {
       return "Saved on this device. Cloud sync will resume when you're back online. Safe to close HerdHarbor.";
@@ -48,10 +63,18 @@
     return "Saved on this device. Cloud backup is pending and will retry automatically; you can keep working or close HerdHarbor.";
   }
 
-  function applyNonBlockingPresentation(state) {
-    if (!isRecoverablePending(state)) return false;
+  function protectedCloudMessage(state) {
+    if (isRecoverablePending(state)) return pendingMessage(state);
+    if (navigator.onLine === false || state?.online === false) {
+      return "Working from the protected copy on this device. Cloud connection is offline and will reconnect automatically.";
+    }
+    return "Working from the protected copy on this device. Cloud connection will retry automatically.";
+  }
 
-    const message = pendingMessage(state);
+  function applyNonBlockingPresentation(state) {
+    if (!isRecoverableCloudState(state)) return false;
+
+    const message = protectedCloudMessage(state);
     const button = document.querySelector(".hh-account-button");
     if (button) {
       button.dataset.state = "working";
@@ -145,8 +168,8 @@
     }
   });
 
-  // Do not add a beforeunload blocker. The local write is the durable first
-  // save, and the dirty marker tells the cloud layer to resume on next launch.
+  // Navigation is never blocked for ordinary pending cloud work. The local
+  // write is durable first, and the dirty marker resumes cloud work later.
   function boot(attempt = 0) {
     ensureLocalCache();
     if (cloud()) {
@@ -163,6 +186,7 @@
     refresh,
     resumeImmediately,
     isRecoverablePending,
+    isRecoverableCloudState,
     ensureLocalCache
   });
 
