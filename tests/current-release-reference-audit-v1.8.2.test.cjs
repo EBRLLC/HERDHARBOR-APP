@@ -129,6 +129,16 @@ test("security and auth hardening remain release gates", () => {
   assert.ok(exists("tests/auth-freeze-resilience-manifest-v1.8.2.test.cjs"));
 });
 
+test("npm test scripts do not reference missing test files", () => {
+  for (const [scriptName, command] of Object.entries(pkg.scripts)) {
+    if (!scriptName.startsWith("test")) continue;
+    const explicitTests = command.match(/tests\/[A-Za-z0-9._-]+\.test\.cjs/g) || [];
+    for (const testFile of explicitTests) {
+      assert.ok(exists(testFile), `${scriptName} references missing test file ${testFile}`);
+    }
+  }
+});
+
 test("stable older-named domain engines remain intentionally carried forward", () => {
   for (const runtime of [
     "analytics-v1.6.1.js",
