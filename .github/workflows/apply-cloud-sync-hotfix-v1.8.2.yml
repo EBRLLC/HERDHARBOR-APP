@@ -1,0 +1,43 @@
+name: Apply cloud sync v1.8.2 hotfix
+
+on:
+  push:
+    branches:
+      - hotfix/cloud-sync-v2-1.8.2
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hotfix/cloud-sync-v2-1.8.2
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install pinned dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Apply hotfix
+        run: node scripts/apply-cloud-sync-hotfix-v1.8.2.mjs
+      - name: Verify focused cloud sync tests
+        run: |
+          node --test tests/cloud-sync-hotfix-v1.8.2.test.cjs
+          node --test tests/cloud-sync-v2-flow-v1.8.2.test.cjs
+          npm run test:v1.8.2
+      - name: Remove one-time applicator
+        run: |
+          rm -f scripts/apply-cloud-sync-hotfix-v1.8.2.mjs
+          rm -f .github/workflows/apply-cloud-sync-hotfix-v1.8.2.yml
+      - name: Commit verified hotfix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "fix: harden cloud sync retries and diagnostics"
+          git push origin HEAD:hotfix/cloud-sync-v2-1.8.2
