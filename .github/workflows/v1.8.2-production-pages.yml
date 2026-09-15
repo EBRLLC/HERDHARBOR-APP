@@ -1,4 +1,4 @@
-name: Alpha v1.8.1 monitored production Pages publish
+name: Alpha v1.8.2 monitored production Pages publish
 
 on:
   push:
@@ -64,10 +64,10 @@ jobs:
           node-version: 22
       - name: Install pinned dependencies
         run: npm ci --no-audit --no-fund
-      - name: Verify v1.8.1 release and web regression contract
+      - name: Verify v1.8.2 release and web regression contract
         run: |
           npm run test:release
-          npm run test:v1.8.1
+          npm run test:v1.8.2
           node --test tests/workflow-phase1-v1.7.1.test.cjs
           npm run test:health
           npm run test:genetics
@@ -109,11 +109,11 @@ jobs:
           test -s _site/subscription-referral-policy-v1.8.1.js
           test -s _site/subscription-admin-credits-v1.8.1.js
           test -s _site/subscription-stripe-launch-bridge-v1.8.1.js
-          grep -q 'version: "1.8.1"' _site/herdharbor-build.js
+          grep -q 'version: "1.8.2"' _site/herdharbor-build.js
           grep -q '2026-10-01T00:00:00-04:00' _site/subscription-launch-v1.8.1.js
           ! grep -q '"dsn": ""' _site/herdharbor-monitoring-config.js
           grep -q '"environment": "production"' _site/herdharbor-monitoring-config.js
-          grep -q '"release": "HerdHarbor@1.8.1"' _site/herdharbor-monitoring-config.js
+          grep -q '"release": "HerdHarbor@1.8.2"' _site/herdharbor-monitoring-config.js
           grep -q "\"build\": \"${RELEASE_SHA}\"" _site/herdharbor-monitoring-config.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

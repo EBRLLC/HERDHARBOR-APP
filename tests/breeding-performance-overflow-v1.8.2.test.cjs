@@ -16,6 +16,6 @@ test('breeding performance cards contain wide tables instead of expanding the pa
 
 test('breeding analytics stylesheet cache key is bumped without changing public release identity',()=>{
   assert.match(build,/breeding-performance-dashboard-v1\.8\.2\.css\?v=2/);
-  assert.match(build,/version:\s*"1\.8\.1"/);
-  assert.doesNotMatch(build,/version:\s*"1\.8\.2"/);
+  assert.match(build,/version:\s*"1\.8\.2"/);
+  assert.match(build,/buildId:\s*"cloud-sync-v2-state-integrity-1"/);
 });

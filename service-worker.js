@@ -1,20 +1,23 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v1.8.1-alpha-october-subscription-launch-referrals-credits-4-breeding-performance-1";
+const CACHE_NAME = "herdharbor-shell-v1.8.2-alpha-cloud-sync-v2-state-integrity-1";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./manifest.json?v=1.8.1",
+  "./manifest.json?v=1.8.2",
   "./herdharbor-release-v1.6.1.js?v=1.7.1",
   "./herdharbor-membership-v1.6.1.js?v=1.7.1",
   "./herdharbor-billing-v1.6.1.js?v=1.7.1",
   "./herdharbor-access-cache-v1.6.1.js?v=1.7.1",
   "./herdharbor-cloud.js?v=20",
+  "./local-cache-v2-v1.8.2.js?v=1",
+  "./cloud-sync-v2-flow-v1.8.2.js?v=1",
+  "./cloud-sync-v2-diagnostics-v1.8.2.js?v=1",
   "./herdharbor-admin-v1.6.1.js?v=1.7.1",
   "./herdharbor-core-v1.6.1.css?v=1.7.1",
   "./herdharbor-v1.6.1.css?v=1.7.1",
-  "./herdharbor-build.js?v=1.8.1",
+  "./herdharbor-build.js?v=1.8.2",
   "./direct-transfer-core-v1.8.2.js?v=1",
   "./direct-transfer-v1.8.2.js?v=1",
   "./direct-transfer-v1.8.2.css?v=1",
@@ -57,8 +60,8 @@ const APP_SHELL = [
   "./analytics-v1.6.1.css?v=1.7.1",
   "./market-analytics-v1.6.5.js?v=1.7.1",
   "./analytics-v1.6.1.js?v=1.7.1",
-  "./herdharbor-monitoring-config.js?v=1.8.1",
-  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=1.8.1",
+  "./herdharbor-monitoring-config.js?v=1.8.2",
+  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=1.8.2",
   "./symptom-guide.js?v=1",
   "./health-intelligence-v1.7.1.js?v=1.7.1",
   "./health-intelligence-v1.7.1.css?v=1.7.1",
@@ -113,6 +116,9 @@ const NETWORK_FIRST_PATHS = [
   "/herdharbor-access-cache-v1.6.1.js",
   "/pwa.js",
   "/herdharbor-cloud.js",
+  "/local-cache-v2-v1.8.2.js",
+  "/cloud-sync-v2-flow-v1.8.2.js",
+  "/cloud-sync-v2-diagnostics-v1.8.2.js",
   "/herdharbor-admin-v1.6.1.js",
   "/herdharbor-core-v1.6.1.css",
   "/herdharbor-v1.6.1.css",
