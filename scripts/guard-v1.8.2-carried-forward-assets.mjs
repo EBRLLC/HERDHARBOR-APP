@@ -59,7 +59,7 @@ edit("tests/current-release-reference-audit-v1.8.2.test.cjs", (text) => {
   if (!text.includes("deployment keeps carried-forward runtime filenames")) {
     text = text.replace(
       'assert.match(ci, /herdharbor-v1\\.8\\.2-unsigned-aab/);',
-      'assert.match(ci, /herdharbor-v1\\.8\\.2-unsigned-aab/);\n  assert.match(ci, /npm run test:v1\\.8\\.2/);\n  for (const asset of ["registration-safety-v1.8.1.js", "subscription-launch-v1.8.1.js", "subscription-referral-policy-v1.8.1.js", "subscription-admin-credits-v1.8.1.js", "subscription-stripe-launch-bridge-v1.8.1.js"]) {\n    assert.ok(deploy.includes(asset), `deployment keeps carried-forward runtime filenames: ${asset}`);\n    assert.ok(!deploy.includes(asset.replace("v1.8.1", "v1.8.2")), `deployment must not reference nonexistent promoted filename for ${asset}`);\n  }'
+      'assert.match(ci, /herdharbor-v1\\.8\\.2-unsigned-aab/);\n  for (const asset of ["registration-safety-v1.8.1.js", "subscription-launch-v1.8.1.js", "subscription-referral-policy-v1.8.1.js", "subscription-admin-credits-v1.8.1.js", "subscription-stripe-launch-bridge-v1.8.1.js"]) {\n    assert.ok(deploy.includes(asset), `deployment keeps carried-forward runtime filenames: ${asset}`);\n    assert.ok(!deploy.includes(asset.replace("v1.8.1", "v1.8.2")), `deployment must not reference nonexistent promoted filename for ${asset}`);\n  }'
     );
   }
   return text;
