@@ -5,7 +5,7 @@ on:
     branches: [v1.8.2-formal-release]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: herdharbor-v1.8.2-formalize-once
@@ -13,6 +13,7 @@ concurrency:
 
 jobs:
   finalize:
+    if: ${{ !contains(github.event.head_commit.message, '[formalized-v1.8.2]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,54 +46,16 @@ jobs:
       - name: Run complete regression suite
         env:
           TZ: UTC
+        run: npm test
+      - name: Remove one-time release scripts
+        run: rm scripts/prepare-formalizer-v1.8.2.mjs scripts/formalize-v1.8.2.mjs scripts/migrate-v1.8.2-regression-contracts.mjs scripts/finish-v1.8.2-release-contracts.mjs scripts/finish-v1.8.2-regression-tail.mjs scripts/guard-v1.8.2-carried-forward-assets.mjs
+      - name: Preserve API-staged workflow files
+        run: git checkout HEAD -- .github/workflows
+      - name: Commit finalized non-workflow release tree
         run: |
-          set -o pipefail
-          npm test 2>&1 | tee /tmp/herdharbor-v1.8.2-regression.log
-      - name: Remove one-time finalizer
-        run: rm scripts/prepare-formalizer-v1.8.2.mjs scripts/formalize-v1.8.2.mjs scripts/migrate-v1.8.2-regression-contracts.mjs scripts/finish-v1.8.2-release-contracts.mjs scripts/finish-v1.8.2-regression-tail.mjs scripts/guard-v1.8.2-carried-forward-assets.mjs .github/workflows/v1.8.2-formalize-once.yml
-      - name: Export exact tested release tree
-        run: |
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          import { execFileSync } from 'node:child_process';
-          const git = (args) => execFileSync('git', args, {encoding:'utf8'}).trim();
-          const parent = git(['rev-parse', 'HEAD']);
-          const trackedRows = git(['diff', '--name-status', '--no-renames', 'HEAD']).split('\n').filter(Boolean);
-          const untracked = git(['ls-files', '--others', '--exclude-standard']).split('\n').filter(Boolean);
-          const changes = [];
-          const seen = new Set();
-          for (const row of trackedRows) {
-            const [status, ...parts] = row.split('\t');
-            const path = parts.at(-1);
-            seen.add(path);
-            if (status.startsWith('D')) {
-              changes.push({ path, delete: true });
-            } else {
-              const content = fs.readFileSync(path, 'utf8');
-              const modeLine = git(['ls-files', '-s', '--', path]);
-              const mode = modeLine ? modeLine.split(/\s+/)[0] : '100644';
-              changes.push({ path, mode, content });
-            }
-          }
-          for (const path of untracked) {
-            if (seen.has(path)) continue;
-            changes.push({ path, mode: '100644', content: fs.readFileSync(path, 'utf8') });
-          }
-          changes.sort((a,b) => a.path.localeCompare(b.path));
-          fs.writeFileSync('/tmp/herdharbor-v1.8.2-release-tree.json', JSON.stringify({ parent, changes }));
-          console.log(`exported ${changes.length} tested tree changes from ${parent}`);
-          NODE
-      - name: Upload exact tested release tree
-        uses: actions/upload-artifact@v4
-        with:
-          name: herdharbor-v1.8.2-tested-release-tree-${{ github.run_id }}
-          path: /tmp/herdharbor-v1.8.2-release-tree.json
-          retention-days: 3
-      - name: Upload regression diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: herdharbor-v1.8.2-regression-${{ github.run_id }}
-          path: /tmp/herdharbor-v1.8.2-regression.log
-          if-no-files-found: ignore
-          retention-days: 3
+          git config user.name "HerdHarbor Release Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "Finalize Alpha v1.8.2 release tree [formalized-v1.8.2]"
+          git push origin HEAD:v1.8.2-formal-release
