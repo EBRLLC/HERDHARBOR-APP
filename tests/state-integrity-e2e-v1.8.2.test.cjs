@@ -180,7 +180,7 @@ test("Scenario A: breeding -> pregnancy -> birth -> offspring -> weights -> wean
     "2026-10-30T12:30:00.000Z"
   );
   state = retained.state;
-  assert.equal(retained.updated.length, 3);
+  assert.equal(retained.updated.length, 0, "retaining already-Active offspring is idempotent and should not rewrite unchanged records");
   assert.ok(state.litters[0].offspringIds.every((id) => state.animals.find((animal) => animal.id === id)?.status === "Active"));
   assert.ok(state.litters[0].offspringIds.every((id) => Lifecycle.offspringDisposition(state, state.animals.find((animal) => animal.id === id)) === "Retained"));
   assert.equal(state.animals.filter((animal) => animal.sourceBirthId === "litter-1").length, 3);
@@ -244,7 +244,7 @@ test("Scenario B: litter evaluation -> completed sale -> direct member transfer 
     payload,
     { recipientDisplayName: "Buyer Rabbitry", senderDisplayName: "Waggin Tails Rabbitry" }
   );
-  assert.equal(imported.alreadyImported, undefined);
+  assert.equal(imported.alreadyImported, false, "the first accepted transfer is a new import");
   assert.equal(imported.subjectAnimalIds.length, 1);
   const received = imported.state.animals.find((animal) => imported.subjectAnimalIds.includes(animal.id));
   assert.ok(received);
