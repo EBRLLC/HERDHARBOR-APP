@@ -30,7 +30,7 @@
 
   const ui = {
     tab: "overview", range: "all", start: "", end: "", species: "", product: "",
-    growthMode: "date", agePreset: "all", ageStart: "", ageEnd: "", animalIds: [],
+    growthMode: "date", agePreset: "all", ageStart: "", ageEnd: "", animalIds: [], growthAnimalScope: "active",
     market: null, marketLoading: false, marketError: "",
     marketFilters: { breed: "", sex: "", age_bucket: "", color_variety: "", pedigree_status: "", registration_status: "", region_country: "", region_code: "", broad_region: "", sale_month: "", sale_year: "" }
   };
@@ -525,7 +525,7 @@
   }
 
   function overviewView() {
-    const active = array("animals").filter((record) => !["Sold", "Deceased", "Archived", "Ancestor Only"].includes(record.status) && (!ui.species || record.species === ui.species));
+    const active = array("animals").filter((record) => isCurrentAnalyticsAnimal(record) && (!ui.species || record.species === ui.species));
     const weights = weightRows().filter((record) => !record.isBirth);
     const breeding = breedingAnalytics(), litter = litterAnalytics(), production = productionAnalytics(), shows = showAnalytics(), sales = salesAnalytics(), revenue = revenueAnalytics(), feed = feedAnalytics();
     const cards = [stat("Current animals", active.length, ui.species || "All species")];
@@ -543,15 +543,42 @@
     return `<div class="stats-grid">${cards.join("")}</div>${speciesColors}${speciesChart}${section("Available personal analytics", `<div class="analytics-availability">${METRICS.map((metric) => `<div><strong>${esc(metric.name)}</strong><span>${esc(metric.category)} · ${esc(metric.visualizations.join(", "))} · ${esc(metric.source)}</span></div>`).join("")}</div>`, "Missing records are shown as no data, never as fabricated zero observations.")}`;
   }
 
+  const NON_CURRENT_ANALYTICS_STATUSES = new Set(["sold", "deceased", "archived", "ancestor only"]);
+  const normalizedAnimalStatus = (record = {}) => String(record.status || "").trim().toLowerCase();
+
+  function isCurrentAnalyticsAnimal(record = {}) {
+    return !NON_CURRENT_ANALYTICS_STATUSES.has(normalizedAnimalStatus(record));
+  }
+
+  function hasRecordedGrowthData(source = currentState(), animalId = "") {
+    const id = String(animalId || "");
+    if (!id) return false;
+    const animal = sourceArray(source, "animals").find((record) => String(record?.id || "") === id);
+    if (animal && birthWeightRow(animal)) return true;
+    return sourceArray(source, "health").some((record) => {
+      if (String(record?.animalId || "") !== id || !isoDate(record?.date)) return false;
+      return normalizeWeight(record?.weight, record?.weightUnit || "lb", record?.weightOunces) !== null;
+    });
+  }
+
+  function growthAnimalOptions(source = currentState(), options = {}) {
+    const species = options.species ?? ui.species;
+    const includeAncestors = options.includeAncestors ?? ui.growthAnimalScope === "active+ancestors";
+    const speciesAnimals = sourceArray(source, "animals").filter((record) => !species || record.species === species);
+    const active = speciesAnimals.filter(isCurrentAnalyticsAnimal);
+    const ancestors = speciesAnimals.filter((record) => normalizedAnimalStatus(record) === "ancestor only" && hasRecordedGrowthData(source, record.id));
+    return { active, ancestors, available: includeAncestors ? [...active, ...ancestors] : active };
+  }
+
   function selectedAnimals() {
-    const available = array("animals").filter((record) => !ui.species || record.species === ui.species);
+    const available = growthAnimalOptions().available;
     ui.animalIds = ui.animalIds.filter((id) => available.some((record) => record.id === id));
     if (!ui.animalIds.length) ui.animalIds = available.slice(0, 3).map((record) => record.id);
     return available.filter((record) => ui.animalIds.includes(record.id));
   }
 
   function growthView() {
-    const animals = selectedAnimals(), unit = preferredWeightUnit(), allRows = weightRows(currentState(), { range: "all" });
+    const scope = growthAnimalOptions(), animals = selectedAnimals(), animalChoices = scope.available, ancestorChoiceCount = scope.ancestors.length, unit = preferredWeightUnit(), allRows = weightRows(currentState(), { range: "all" });
     const ageErrors = [];
     const visibleRowsByAnimal = new Map();
     const series = animals.map((record, index) => {
@@ -568,7 +595,7 @@
     const primary = animals.length === 1 ? growthSummary(selectedRows) : null;
     const cards = primary ? `<div class="stats-grid">${stat("Birth weight", primary.birth ? displayWeight(primary.birth.grams, unit) : "Not recorded")}${stat("First recorded weight", primary.firstRecorded ? displayWeight(primary.firstRecorded.grams, unit) : "Not recorded")}${stat("Latest weight", displayWeight(primary.latest?.grams, unit))}${stat("Highest recorded", displayWeight(primary.highest?.grams, unit))}${stat("Lowest recorded", displayWeight(primary.lowest?.grams, unit))}${stat("Total gain", displayWeight(primary.gainGrams, unit), `${primary.days ?? 0} days tracked`)}${stat("Average daily gain", displayWeight(primary.dailyGainGrams, unit))}${stat("Average weekly gain", displayWeight(primary.weeklyGainGrams, unit))}${stat("Since previous", primary.previousGainGrams === null ? "Insufficient measurements" : primary.previousGainGrams === 0 ? "No change" : `${primary.previousGainGrams > 0 ? "+" : ""}${displayWeight(primary.previousGainGrams, unit)}`)}${stat("Measurements", primary.measurementCount, primary.birth ? "plus birth weight" : "birth weight not recorded")}</div>` : "";
     const historyRows = animals.length === 1 ? weightHistory(selectedRows, unit).map((row) => [esc(dateLabel(row.date)), esc(row.age), esc(row.isBirth ? `${row.recordedValue} ${row.recordedUnit}${row.recordedOunces !== null ? ` ${row.recordedOunces} oz` : ""}` : `${row.recordedValue} ${row.recordedUnit}${row.recordedOunces !== null ? ` ${row.recordedOunces} oz` : ""}`), esc(row.preferredWeight), esc(row.changeGrams === null ? "—" : row.changeGrams === 0 ? "No change" : `${row.changeGrams > 0 ? "+" : ""}${displayWeight(row.changeGrams, unit)}`)]) : [];
-    return `<div class="analytics-growth-controls"><label>Chart axis<select data-growth-mode><option value="date" ${ui.growthMode === "date" ? "selected" : ""}>Date vs. weight</option><option value="age" ${ui.growthMode === "age" ? "selected" : ""}>Age vs. weight</option></select></label><label class="${ui.growthMode === "age" ? "" : "hidden"}">Age range<select data-growth-age><option value="all">All ages</option><option value="8w">Birth → 8 weeks</option><option value="12w">Birth → 12 weeks</option><option value="6m">Birth → 6 months</option><option value="custom">Custom age range</option></select></label><label class="analytics-custom ${ui.growthMode === "age" && ui.agePreset === "custom" ? "" : "hidden"}">Start age (days)<input data-growth-age-start type="number" min="0" value="${esc(ui.ageStart)}"></label><label class="analytics-custom ${ui.growthMode === "age" && ui.agePreset === "custom" ? "" : "hidden"}">End age (days)<input data-growth-age-end type="number" min="0" value="${esc(ui.ageEnd)}"></label><fieldset><legend>Compare animals and choose stable colors</legend>${array("animals").filter((record) => !ui.species || record.species === ui.species).map((record, index) => `<label><input type="checkbox" data-growth-animal value="${esc(record.id)}" ${ui.animalIds.includes(record.id) ? "checked" : ""}>${seriesColorControl(`animal:${record.id}`, record.name || "Unnamed animal", index)}</label>`).join("")}</fieldset></div>${ageErrors.length ? `<div class="analytics-notice">${esc([...new Set(ageErrors)].join(" "))}</div>` : ""}${cards}${section(ui.growthMode === "age" ? "Age vs. Weight" : "Weight Over Time", lineChart(series, { label: "Animal weight chart", yLabel: (grams) => displayWeight(grams, unit), empty: ui.growthMode === "age" ? "Date of birth and actual weight records are required for age comparison." : "Add weight records to begin tracking growth." }), "Every point is an actual birth or Health weight record; no weights are interpolated.")}${historyRows.length ? section("Weight history", table(["Date", "Age", "Recorded Weight", `Preferred (${unit})`, "Change From Previous"], historyRows), "Editing or deleting the canonical Health record immediately changes this table.") : ""}`;
+    return `<div class="analytics-growth-controls"><label>Chart axis<select data-growth-mode><option value="date" ${ui.growthMode === "date" ? "selected" : ""}>Date vs. weight</option><option value="age" ${ui.growthMode === "age" ? "selected" : ""}>Age vs. weight</option></select></label><label class="${ui.growthMode === "age" ? "" : "hidden"}">Age range<select data-growth-age><option value="all">All ages</option><option value="8w">Birth → 8 weeks</option><option value="12w">Birth → 12 weeks</option><option value="6m">Birth → 6 months</option><option value="custom">Custom age range</option></select></label><label class="analytics-custom ${ui.growthMode === "age" && ui.agePreset === "custom" ? "" : "hidden"}">Start age (days)<input data-growth-age-start type="number" min="0" value="${esc(ui.ageStart)}"></label><label class="analytics-custom ${ui.growthMode === "age" && ui.agePreset === "custom" ? "" : "hidden"}">End age (days)<input data-growth-age-end type="number" min="0" value="${esc(ui.ageEnd)}"></label><label>Animal records<select data-growth-animal-scope><option value="active" ${ui.growthAnimalScope === "active" ? "selected" : ""}>Active / current animals</option>${ancestorChoiceCount ? `<option value="active+ancestors" ${ui.growthAnimalScope === "active+ancestors" ? "selected" : ""}>Active + ancestors with growth data (${ancestorChoiceCount})</option>` : ""}</select></label><fieldset><legend>Compare animals and choose stable colors</legend>${animalChoices.map((record, index) => `<label><input type="checkbox" data-growth-animal value="${esc(record.id)}" ${ui.animalIds.includes(record.id) ? "checked" : ""}>${seriesColorControl(`animal:${record.id}`, normalizedAnimalStatus(record) === "ancestor only" ? `${record.name || "Unnamed animal"} · Ancestor` : (record.name || "Unnamed animal"), index)}</label>`).join("")}</fieldset></div>${ageErrors.length ? `<div class="analytics-notice">${esc([...new Set(ageErrors)].join(" "))}</div>` : ""}${cards}${section(ui.growthMode === "age" ? "Age vs. Weight" : "Weight Over Time", lineChart(series, { label: "Animal weight chart", yLabel: (grams) => displayWeight(grams, unit), empty: ui.growthMode === "age" ? "Date of birth and actual weight records are required for age comparison." : "Add weight records to begin tracking growth." }), "Every point is an actual birth or Health weight record; no weights are interpolated.")}${historyRows.length ? section("Weight history", table(["Date", "Age", "Recorded Weight", `Preferred (${unit})`, "Change From Previous"], historyRows), "Editing or deleting the canonical Health record immediately changes this table.") : ""}`;
   }
 
   function breedingView() {
@@ -715,7 +742,7 @@
     if (range) range.value = ui.range;
     const age = container.querySelector("[data-growth-age]");
     if (age) age.value = ui.agePreset;
-    container.querySelector("[data-analytics-species]")?.addEventListener("change", (event) => { ui.species = event.target.value; ui.animalIds = []; invalidateMarket(); render(host); if (ui.tab === "market") loadMarketAggregate(); });
+    container.querySelector("[data-analytics-species]")?.addEventListener("change", (event) => { ui.species = event.target.value; ui.animalIds = []; ui.growthAnimalScope = "active"; invalidateMarket(); render(host); if (ui.tab === "market") loadMarketAggregate(); });
     range?.addEventListener("change", (event) => { ui.range = event.target.value; invalidateMarket(); render(host); if (ui.tab === "market") loadMarketAggregate(); });
     container.querySelector("[data-analytics-start]")?.addEventListener("change", (event) => { ui.start = event.target.value; invalidateMarket(); render(host); if (ui.tab === "market") loadMarketAggregate(); });
     container.querySelector("[data-analytics-end]")?.addEventListener("change", (event) => { ui.end = event.target.value; invalidateMarket(); render(host); if (ui.tab === "market") loadMarketAggregate(); });
@@ -724,6 +751,7 @@
     age?.addEventListener("change", (event) => { ui.agePreset = event.target.value; render(host); });
     container.querySelector("[data-growth-age-start]")?.addEventListener("change", (event) => { ui.ageStart = event.target.value; render(host); });
     container.querySelector("[data-growth-age-end]")?.addEventListener("change", (event) => { ui.ageEnd = event.target.value; render(host); });
+    container.querySelector("[data-growth-animal-scope]")?.addEventListener("change", (event) => { ui.growthAnimalScope = event.target.value; render(host); });
     container.querySelectorAll("[data-growth-animal]").forEach((input) => input.addEventListener("change", () => { ui.animalIds = [...container.querySelectorAll("[data-growth-animal]:checked")].map((item) => item.value); render(host); }));
     container.querySelector("[data-production-product]")?.addEventListener("change", (event) => { ui.product = event.target.value; render(host); });
     container.querySelectorAll("[data-market-filter]").forEach((input) => input.addEventListener("change", (event) => {
@@ -761,9 +789,11 @@
   }
 
   function openAnimal(animalId) {
+    const subject = animalFor(currentState(), animalId);
     ui.tab = "growth";
     ui.animalIds = animalId ? [animalId] : [];
-    ui.species = animalFor(currentState(), animalId)?.species || "";
+    ui.species = subject?.species || "";
+    ui.growthAnimalScope = normalizedAnimalStatus(subject) === "ancestor only" && hasRecordedGrowthData(currentState(), animalId) ? "active+ancestors" : "active";
   }
 
   return {
@@ -774,6 +804,7 @@
     paymentAllocation, revenueAnalytics, salesAnalytics, showAnalytics, productionSpecies,
     productionRows, normalizedProductionValue, productionAnalytics, eggAnalytics,
     milkAnalytics, feedAnalytics, healthAnalytics, metricAvailable, groupBy, groupByMonth,
+    isCurrentAnalyticsAnimal, hasRecordedGrowthData, growthAnimalOptions,
     colorFor, lineChart, barChart, openAnimal, render
   };
 });
