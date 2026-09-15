@@ -1,5 +1,6 @@
 import fs from "node:fs";
 
+// One-time release preparation; deleted from the finalized tree.
 const formalizer = "scripts/formalize-v1.8.2.mjs";
 let source = fs.readFileSync(formalizer, "utf8");
 const strictLine = 'html = replaceAllRequired(html, "herdharbor-monitoring-config.js?v=1.8.1", "herdharbor-monitoring-config.js?v=1.8.2", "monitoring cache version");';
