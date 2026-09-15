@@ -15,7 +15,9 @@
     "care",
     "breeding",
     "genetics",
-    "show-entry"
+    "pedigree",
+    "show-entry",
+    "analytics"
   ]);
   const DIRECT_ACTION_SET = new Set(DIRECT_ACTIONS);
 
@@ -181,6 +183,18 @@
     return true;
   }
 
+  function openPedigree(animalId) {
+    if (!nav("pedigrees")) {
+      toast("Pedigrees is not available right now.", "error");
+      return false;
+    }
+    waitFor("#import-pedigree", (button) => {
+      button.click();
+      setFormValue("#pedigree-form", "subjectAnimalId", animalId);
+    });
+    return true;
+  }
+
   function openShowEntry(animalId) {
     if (!nav("shows")) {
       toast("Shows is still loading. Try again in a moment.", "error");
@@ -190,6 +204,19 @@
       button.click();
       setFormValue("#hh-entry-form", "animalId", animalId);
     });
+    return true;
+  }
+
+  function openAnalytics(animalId) {
+    if (typeof root.HerdHarborAnalytics?.openAnimal !== "function") {
+      toast("Analytics is not available right now.", "error");
+      return false;
+    }
+    root.HerdHarborAnalytics.openAnimal(animalId);
+    if (!nav("analytics")) {
+      toast("Analytics is not available right now.", "error");
+      return false;
+    }
     return true;
   }
 
@@ -209,7 +236,9 @@
     else if (nextAction === "care") launched = openHealthIntelligence(id, "care");
     else if (nextAction === "breeding") launched = openBreeding(id);
     else if (nextAction === "genetics") launched = openGenetics(id);
+    else if (nextAction === "pedigree") launched = openPedigree(id);
     else if (nextAction === "show-entry") launched = openShowEntry(id);
+    else if (nextAction === "analytics") launched = openAnalytics(id);
 
     if (launched) announce(nextAction, id, options.returnTab || "");
     return launched;
