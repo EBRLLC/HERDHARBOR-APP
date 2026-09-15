@@ -33,6 +33,20 @@
     return false;
   }
 
+  function ensureDiagnostics() {
+    if (window.HerdHarborCloudSyncDiagnosticsV2) {
+      window.HerdHarborCloudSyncDiagnosticsV2.install?.();
+      return true;
+    }
+    if (document.getElementById("hh-cloud-sync-v2-diagnostics-v182")) return false;
+    const script = document.createElement("script");
+    script.id = "hh-cloud-sync-v2-diagnostics-v182";
+    script.src = "cloud-sync-v2-diagnostics-v1.8.2.js?v=1";
+    script.async = false;
+    (document.head || document.documentElement || document.body)?.appendChild(script);
+    return false;
+  }
+
   function details() {
     try {
       return cloud()?.getSyncDetails?.() || null;
@@ -129,21 +143,30 @@
       lastAttemptAt = now;
       retryIndex = Math.min(retryIndex + 1, RETRY_DELAYS_MS.length - 1);
       try {
-        await cloud()?.syncNow?.();
-      } catch {
+        window.HerdHarborCloudSyncDiagnosticsV2?.recordOperation?.("automatic-retry", "working", "Retrying cloud backup.");
+        const result = await cloud()?.syncNow?.();
+        const afterAttempt = details();
+        if (result === false && afterAttempt?.type === "error") {
+          window.HerdHarborCloudSyncDiagnosticsV2?.recordOperation?.("automatic-retry", "failure", afterAttempt.message || "Cloud retry failed.");
+        }
+      } catch (error) {
+        window.HerdHarborCloudSyncDiagnosticsV2?.recordOperation?.("automatic-retry", "failure", error?.message || "Cloud retry failed.");
         // The canonical cloud layer retains the dirty state. A later retry or
         // the next foreground/online event will continue without blocking UI.
       }
       const after = details();
       applyNonBlockingPresentation(after);
+      window.HerdHarborCloudSyncDiagnosticsV2?.refresh?.();
       scheduleRetry(after);
     }, Math.min(delay, MAX_VISIBLE_RETRY_MS));
   }
 
   function refresh() {
+    ensureDiagnostics();
     const state = details();
     if (!state) return;
     if (!applyNonBlockingPresentation(state) && !state.unsynced) retryIndex = 0;
+    window.HerdHarborCloudSyncDiagnosticsV2?.refresh?.();
     scheduleRetry(state);
   }
 
@@ -156,8 +179,19 @@
     }
     clearRetry();
     lastAttemptAt = Date.now();
+    window.HerdHarborCloudSyncDiagnosticsV2?.recordOperation?.("resume-sync", "working", "Resuming pending cloud backup.");
     immediateResumePromise = Promise.resolve(cloud()?.syncNow?.())
-      .catch(() => false)
+      .then((result) => {
+        const after = details();
+        if (result === false && after?.type === "error") {
+          window.HerdHarborCloudSyncDiagnosticsV2?.recordOperation?.("resume-sync", "failure", after.message || "Cloud sync did not complete.");
+        }
+        return result;
+      })
+      .catch((error) => {
+        window.HerdHarborCloudSyncDiagnosticsV2?.recordOperation?.("resume-sync", "failure", error?.message || "Cloud sync did not complete.");
+        return false;
+      })
       .finally(() => {
         immediateResumePromise = null;
         refresh();
@@ -169,6 +203,7 @@
     const state = event?.detail || details();
     if (!state) return;
     applyNonBlockingPresentation(state);
+    window.HerdHarborCloudSyncDiagnosticsV2?.refresh?.();
     scheduleRetry(state);
   });
 
@@ -179,6 +214,7 @@
     else {
       clearRetry();
       applyNonBlockingPresentation(details());
+      window.HerdHarborCloudSyncDiagnosticsV2?.refresh?.();
     }
   });
 
@@ -186,6 +222,7 @@
   // write is durable first, and the dirty marker resumes cloud work later.
   function boot(attempt = 0) {
     ensureLocalCache();
+    ensureDiagnostics();
     if (cloud()) {
       refresh();
       return;
@@ -201,7 +238,8 @@
     resumeImmediately,
     isRecoverablePending,
     isRecoverableCloudState,
-    ensureLocalCache
+    ensureLocalCache,
+    ensureDiagnostics
   });
 
   boot();
