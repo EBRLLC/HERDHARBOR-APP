@@ -72,3 +72,9 @@ The formal v1.8.2 gate now exercises complete canonical-state journeys across th
 ## Formal Alpha v1.8.2 release identity
 
 Package, PWA, Android/TWA, monitoring, CI/deployment, release documentation, and release-reference tests now identify Alpha v1.8.2 consistently. Stable older-named domain engines and historical migration files remain intentionally carried forward.
+
+## Analytics animal scope
+- Growth Analytics now defaults to current animals instead of every pedigree/profile record.
+- Sold, deceased, archived, and Ancestor Only records no longer flood the comparison selector.
+- A secondary "Active + ancestors with growth data" option appears only when Ancestor Only records have real plottable birth/Health weight data.
+- Ancestors shown through that option are labeled clearly and remain excluded by default.
