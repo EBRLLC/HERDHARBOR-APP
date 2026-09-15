@@ -35,6 +35,13 @@ test("v1.8.2 cloud sync flow automatically retries pending cloud backup", () => 
   assert.match(flow, /document\.addEventListener\("visibilitychange"/);
 });
 
+test("v1.8.2 cloud sync flow records retry failures for diagnostics without clearing protected local work", () => {
+  assert.match(flow, /recordOperation\?\.\("automatic-retry", "working"/);
+  assert.match(flow, /recordOperation\?\.\("automatic-retry", "failure"/);
+  assert.match(flow, /recordOperation\?\.\("resume-sync", "failure"/);
+  assert.doesNotMatch(flow, /removeItem\([^\n]*dirty/);
+});
+
 test("v1.8.2 cloud sync flow never installs a close blocker", () => {
   assert.doesNotMatch(flow, /addEventListener\(["']beforeunload["']/);
   assert.doesNotMatch(flow, /preventDefault\(\).*unload/);
@@ -44,6 +51,13 @@ test("v1.8.2 cloud sync flow loads the local-first device cache", () => {
   assert.match(flow, /local-cache-v2-v1\.8\.2\.js\?v=1/);
   assert.match(flow, /HerdHarborLocalCacheV2\.install/);
   assert.match(flow, /ensureLocalCache\(\)/);
+});
+
+test("v1.8.2 cloud sync flow loads the five-state diagnostics layer", () => {
+  assert.match(flow, /cloud-sync-v2-diagnostics-v1\.8\.2\.js\?v=1/);
+  assert.match(flow, /HerdHarborCloudSyncDiagnosticsV2\.install/);
+  assert.match(flow, /ensureDiagnostics\(\)/);
+  assert.match(flow, /HerdHarborCloudSyncDiagnosticsV2\?\.refresh/);
 });
 
 test("v1.8.2 completion runtime wires the background sync flow without changing auth", () => {
