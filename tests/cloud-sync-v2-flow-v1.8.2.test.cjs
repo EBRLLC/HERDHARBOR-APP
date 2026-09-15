@@ -28,7 +28,7 @@ test("v1.8.2 cloud sync flow normalizes recoverable cloud errors without hiding 
 });
 
 test("v1.8.2 cloud sync flow automatically retries pending cloud backup", () => {
-  assert.match(flow, /RETRY_DELAYS_MS = \[1500, 4000, 10000, 30000\]/);
+  assert.match(flow, /RETRY_DELAYS_MS = \[3000, 10000, 30000, 120000\]/);
   assert.match(flow, /await cloud\(\)\?\.syncNow\?\.\(\)/);
   assert.match(flow, /window\.addEventListener\("online", resumeImmediately\)/);
   assert.match(flow, /window\.addEventListener\("focus", resumeImmediately\)/);

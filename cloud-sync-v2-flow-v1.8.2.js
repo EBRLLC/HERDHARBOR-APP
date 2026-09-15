@@ -1,8 +1,8 @@
 (() => {
   "use strict";
 
-  const RETRY_DELAYS_MS = [1500, 4000, 10000, 30000];
-  const MAX_VISIBLE_RETRY_MS = 30000;
+  const RETRY_DELAYS_MS = [3000, 10000, 30000, 120000];
+  const MAX_VISIBLE_RETRY_MS = 120000;
   const RECOVERABLE_ERROR_PATTERNS = [
     /cloud unavailable/i,
     /cloud save failed/i,
