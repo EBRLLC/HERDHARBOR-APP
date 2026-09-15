@@ -31,6 +31,8 @@ jobs:
         run: node scripts/migrate-v1.8.2-regression-contracts.mjs
       - name: Close remaining release identity gaps
         run: node scripts/finish-v1.8.2-release-contracts.mjs
+      - name: Close final regression tail
+        run: node scripts/finish-v1.8.2-regression-tail.mjs
       - name: Install pinned dependencies
         run: npm ci --no-audit --no-fund
       - name: Verify formal release contract
@@ -54,7 +56,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 3
       - name: Remove one-time finalizer
-        run: rm scripts/prepare-formalizer-v1.8.2.mjs scripts/formalize-v1.8.2.mjs scripts/migrate-v1.8.2-regression-contracts.mjs scripts/finish-v1.8.2-release-contracts.mjs .github/workflows/v1.8.2-formalize-once.yml
+        run: rm scripts/prepare-formalizer-v1.8.2.mjs scripts/formalize-v1.8.2.mjs scripts/migrate-v1.8.2-regression-contracts.mjs scripts/finish-v1.8.2-release-contracts.mjs scripts/finish-v1.8.2-regression-tail.mjs .github/workflows/v1.8.2-formalize-once.yml
       - name: Commit finalized release tree
         run: |
           git config user.name "HerdHarbor Release Bot"
