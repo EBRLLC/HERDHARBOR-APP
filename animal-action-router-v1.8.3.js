@@ -190,7 +190,7 @@
     }
     waitFor("#import-pedigree", (button) => {
       button.click();
-      setFormValue("#pedigree-form", "subjectAnimalId", animalId);
+      setFormValue("#pedigree-import-form", "subjectAnimalId", animalId);
     });
     return true;
   }
