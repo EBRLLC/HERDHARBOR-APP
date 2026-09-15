@@ -33,3 +33,8 @@ verify_jwt = true
 # Member-to-member animal transfers require a valid signed-in HerdHarbor user.
 # The function separately verifies the user token before service-role operations.
 verify_jwt = true
+
+[functions.paper-pedigree-extract]
+# Paper pedigree reading sends a user-selected pedigree image to the configured
+# server-side AI provider only after Supabase has authenticated the member.
+verify_jwt = true
