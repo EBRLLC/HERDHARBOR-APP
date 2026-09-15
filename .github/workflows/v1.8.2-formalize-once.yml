@@ -55,22 +55,30 @@ jobs:
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
           import { execFileSync } from 'node:child_process';
-          const parent = execFileSync('git', ['rev-parse', 'HEAD'], {encoding:'utf8'}).trim();
-          const rows = execFileSync('git', ['diff', '--name-status', '--no-renames', 'HEAD'], {encoding:'utf8'})
-            .trim().split('\n').filter(Boolean);
+          const git = (args) => execFileSync('git', args, {encoding:'utf8'}).trim();
+          const parent = git(['rev-parse', 'HEAD']);
+          const trackedRows = git(['diff', '--name-status', '--no-renames', 'HEAD']).split('\n').filter(Boolean);
+          const untracked = git(['ls-files', '--others', '--exclude-standard']).split('\n').filter(Boolean);
           const changes = [];
-          for (const row of rows) {
+          const seen = new Set();
+          for (const row of trackedRows) {
             const [status, ...parts] = row.split('\t');
             const path = parts.at(-1);
+            seen.add(path);
             if (status.startsWith('D')) {
               changes.push({ path, delete: true });
-              continue;
+            } else {
+              const content = fs.readFileSync(path, 'utf8');
+              const modeLine = git(['ls-files', '-s', '--', path]);
+              const mode = modeLine ? modeLine.split(/\s+/)[0] : '100644';
+              changes.push({ path, mode, content });
             }
-            const content = fs.readFileSync(path, 'utf8');
-            const modeLine = execFileSync('git', ['ls-files', '-s', '--', path], {encoding:'utf8'}).trim();
-            const mode = modeLine ? modeLine.split(/\s+/)[0] : '100644';
-            changes.push({ path, mode, content });
           }
+          for (const path of untracked) {
+            if (seen.has(path)) continue;
+            changes.push({ path, mode: '100644', content: fs.readFileSync(path, 'utf8') });
+          }
+          changes.sort((a,b) => a.path.localeCompare(b.path));
           fs.writeFileSync('/tmp/herdharbor-v1.8.2-release-tree.json', JSON.stringify({ parent, changes }));
           console.log(`exported ${changes.length} tested tree changes from ${parent}`);
           NODE
