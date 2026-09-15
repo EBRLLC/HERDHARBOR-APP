@@ -267,6 +267,11 @@
       } else if (conflict.type === "field-conflict") {
         const fields = (conflict.fields || []).map((row) => row.field).join(", ");
         messages.push(`${ROLE_LABELS[conflict.role] || conflict.role}: an existing animal with the same identifier has different ${fields}. HerdHarbor will not overwrite it automatically.`);
+      } else if (conflict.type === "duplicate-pedigree-conflict") {
+        const fields = (conflict.fields || []).map((row) => row.field).join(", ");
+        messages.push(`${ROLE_LABELS[conflict.role] || conflict.role}: the same ancestor appears elsewhere on this pedigree with different ${fields}. Verify both entries before importing.`);
+      } else if (conflict.type === "missing-required-field") {
+        messages.push(`${ROLE_LABELS[conflict.role] || conflict.role}: enter a name before importing this pedigree entry.`);
       }
     }
     box.innerHTML = messages.length ? `<div class="hh-pp-conflicts"><strong>Resolve before import</strong><br>${messages.map(esc).join("<br>")}</div>` : "";
@@ -331,7 +336,7 @@
     if (!current || !core()) return setStatus("HerdHarbor is not ready to import this pedigree.", "error");
     const plan = core().buildImportPlan(current, asCoreExtraction(reviewed));
     if (renderPlanProblems(plan) || !plan.canCommit) {
-      setStatus("Resolve the highlighted pedigree conflicts before importing.", "error");
+      setStatus("Resolve the pedigree items listed above before importing.", "error");
       return;
     }
     const commitButton = root.document.querySelector(`#${DIALOG_ID} [data-pp-commit]`);
@@ -364,7 +369,7 @@
     dialog.innerHTML = `<div class="hh-pp-shell">
       <header class="hh-pp-head"><div><small class="muted">HerdHarbor paper pedigree</small><h2>Import pedigree from a photo</h2></div><button type="button" class="button button-ghost" data-pp-close>Close</button></header>
       <div class="hh-pp-body">
-        <div class="hh-pp-notice"><strong>Review required.</strong> Automatic reading can misread printed or handwritten pedigree information. HerdHarbor will show the extracted draft before anything is added to your records.</div>
+        <div class="hh-pp-notice"><strong>Review required.</strong> Automatic reading can misread printed or handwritten pedigree information. When you choose Read pedigree photo, the selected image is sent through HerdHarbor's authenticated AI processing service to prepare a draft. Nothing is added to your farm records until you review the draft and confirm the import.</div>
         <div class="hh-pp-upload">
           <div class="hh-pp-drop"><strong>Choose a clear photo of the pedigree</strong><p class="muted">JPG or PNG. Photograph the page straight-on with all names and identifiers visible.</p><input type="file" accept="image/jpeg,image/png" data-pp-file></div>
           <div class="hh-pp-preview" data-pp-preview><span class="muted">Photo preview</span></div>
