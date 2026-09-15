@@ -1,0 +1,36 @@
+name: Correct v1.8.2 state-integrity assertions once
+
+on:
+  push:
+    branches: [v1.8.2-state-integrity-e2e]
+
+permissions:
+  contents: write
+
+jobs:
+  correct-and-test:
+    if: ${{ !contains(github.event.head_commit.message, '[state-integrity-assertions-fixed]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v1.8.2-state-integrity-e2e
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply assertion corrections
+        run: node scripts/fix-state-integrity-e2e-assertions-v1.8.2.mjs
+      - name: Run lifecycle state-integrity suite
+        env:
+          TZ: America/New_York
+        run: node --test tests/state-integrity-e2e-v1.8.2.test.cjs
+      - name: Remove one-time correction tooling
+        run: rm scripts/fix-state-integrity-e2e-assertions-v1.8.2.mjs .github/workflows/v1.8.2-state-integrity-assertions-once.yml
+      - name: Commit corrected assertions
+        run: |
+          git config user.name "HerdHarbor Test Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Correct v1.8.2 state-integrity E2E assertions [state-integrity-assertions-fixed]"
+          git push origin HEAD:v1.8.2-state-integrity-e2e
