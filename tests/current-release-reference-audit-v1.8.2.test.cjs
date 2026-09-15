@@ -108,6 +108,11 @@ test("v1.8.2 CI and deployment workflows are the current release workflow set", 
   assert.match(ci, /versionName "1\.8\.2"/);
   assert.match(ci, /versionCode 16/);
   assert.match(ci, /herdharbor-v1\.8\.2-unsigned-aab/);
+  assert.match(ci, /actions\/setup-java@v5/, "Android review uses the supported Java setup action");
+  assert.match(ci, /android-actions\/setup-android@v4/, "Android review uses the Node 24 Android setup action");
+  assert.match(ci, /packages:\s*platform-tools/, "Android setup overrides the action default that still requests retired SDK tools");
+  assert.doesNotMatch(ci, /packages:\s*tools(?:\s|$)/m, "Android CI must not request the retired SDK package named tools");
+  assert.match(ci, /sdkmanager "platforms;android-36" "build-tools;36\.0\.0"/, "Android 16 platform/build tools remain explicitly pinned");
   for (const asset of ["registration-safety-v1.8.1.js", "subscription-launch-v1.8.1.js", "subscription-referral-policy-v1.8.1.js", "subscription-admin-credits-v1.8.1.js", "subscription-stripe-launch-bridge-v1.8.1.js"]) {
     assert.ok(deploy.includes(asset), `deployment keeps carried-forward runtime filenames: ${asset}`);
     assert.ok(!deploy.includes(asset.replace("v1.8.1", "v1.8.2")), `deployment must not reference nonexistent promoted filename for ${asset}`);
