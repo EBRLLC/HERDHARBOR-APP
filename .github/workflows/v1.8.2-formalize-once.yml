@@ -38,7 +38,17 @@ jobs:
       - name: Run complete regression suite
         env:
           TZ: UTC
-        run: npm test
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee /tmp/herdharbor-v1.8.2-regression.log
+      - name: Upload regression diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: herdharbor-v1.8.2-regression-${{ github.run_id }}
+          path: /tmp/herdharbor-v1.8.2-regression.log
+          if-no-files-found: ignore
+          retention-days: 3
       - name: Remove one-time finalizer
         run: rm scripts/prepare-formalizer-v1.8.2.mjs scripts/formalize-v1.8.2.mjs .github/workflows/v1.8.2-formalize-once.yml
       - name: Commit finalized release tree
