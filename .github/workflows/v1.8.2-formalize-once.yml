@@ -23,6 +23,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Prepare deterministic finalizer
+        run: node scripts/prepare-formalizer-v1.8.2.mjs
       - name: Apply deterministic release identity changes
         run: node scripts/formalize-v1.8.2.mjs
       - name: Install pinned dependencies
@@ -38,7 +40,7 @@ jobs:
           TZ: UTC
         run: npm test
       - name: Remove one-time finalizer
-        run: rm scripts/formalize-v1.8.2.mjs .github/workflows/v1.8.2-formalize-once.yml
+        run: rm scripts/prepare-formalizer-v1.8.2.mjs scripts/formalize-v1.8.2.mjs .github/workflows/v1.8.2-formalize-once.yml
       - name: Commit finalized release tree
         run: |
           git config user.name "HerdHarbor Release Bot"
