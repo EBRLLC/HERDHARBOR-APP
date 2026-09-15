@@ -522,7 +522,6 @@
     try {
       store.setItem(STATE_KEY, baseline);
       store.setItem(dirtyKey(userId), "1");
-      bumpLocalRevision("restore-last-known-good");
       recordOperation("restore-last-known-good", "success", "Last confirmed cloud snapshot restored locally; reconciliation remains pending.");
       root.setTimeout?.(() => root.location?.reload?.(), 50);
       return true;

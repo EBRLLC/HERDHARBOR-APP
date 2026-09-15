@@ -53,6 +53,8 @@ test("all packaged release identities are formally Alpha v1.8.2", () => {
 test("PWA shell and HTML use the v1.8.2 release/cache identity", () => {
   assert.match(pwa, /APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.2"/);
   assert.match(pwa, /BUILD_ID = window\.HerdHarborBuild\?\.buildId \|\| "cloud-sync-v2-state-integrity-1"/);
+  assert.match(pwa, /herdharbor-monitoring-config\.js\?v=1\.8\.2/, "PWA monitoring loader uses the v1.8.2 cache identity");
+  assert.match(pwa, /herdharbor-monitoring-v1\.6\.1\.min\.js\?v=1\.8\.2/);
   assert.match(worker, /herdharbor-shell-v1\.8\.2-alpha-cloud-sync-v2-state-integrity-1/);
   assert.match(worker, /\.\/manifest\.json\?v=1\.8\.2/);
   assert.match(worker, /\.\/herdharbor-build\.js\?v=1\.8\.2/);
@@ -106,6 +108,10 @@ test("v1.8.2 CI and deployment workflows are the current release workflow set", 
   assert.match(ci, /versionName "1\.8\.2"/);
   assert.match(ci, /versionCode 16/);
   assert.match(ci, /herdharbor-v1\.8\.2-unsigned-aab/);
+  for (const asset of ["registration-safety-v1.8.1.js", "subscription-launch-v1.8.1.js", "subscription-referral-policy-v1.8.1.js", "subscription-admin-credits-v1.8.1.js", "subscription-stripe-launch-bridge-v1.8.1.js"]) {
+    assert.ok(deploy.includes(asset), `deployment keeps carried-forward runtime filenames: ${asset}`);
+    assert.ok(!deploy.includes(asset.replace("v1.8.1", "v1.8.2")), `deployment must not reference nonexistent promoted filename for ${asset}`);
+  }
   assert.match(deploy, /HerdHarbor@1\.8\.2/);
   assert.match(deploy, /test:release/);
   assert.match(acceptance, /workflow_dispatch:/);

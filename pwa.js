@@ -1,10 +1,10 @@
 (() => {
   "use strict";
 
-  // Current release contract: const APP_VERSION = "1.8.1";
-  // Current build contract: const BUILD_ID = "october-subscription-launch-referrals-credits-4";
-  const APP_VERSION = window.HerdHarborBuild?.version || "1.8.1";
-  const BUILD_ID = window.HerdHarborBuild?.buildId || "october-subscription-launch-referrals-credits-4";
+  // Current release contract: const APP_VERSION = "1.8.2";
+  // Current build contract: const BUILD_ID = "cloud-sync-v2-state-integrity-1";
+  const APP_VERSION = window.HerdHarborBuild?.version || "1.8.2";
+  const BUILD_ID = window.HerdHarborBuild?.buildId || "cloud-sync-v2-state-integrity-1";
   const PWA_BUILD = `${APP_VERSION}-alpha-${BUILD_ID}`;
   const UPDATE_CHECK_MIN_INTERVAL_MS = 60_000;
   const UPDATE_ACTIVATION_TIMEOUT_MS = 8_000;
@@ -108,9 +108,9 @@
   }
 
   function loadMonitoring(done) {
-    addOptionalScript("hh-monitoring-config", "herdharbor-monitoring-config.js?v=1.8.1", (configLoaded) => {
+    addOptionalScript("hh-monitoring-config", "herdharbor-monitoring-config.js?v=1.8.2", (configLoaded) => {
       if (!configLoaded) { done?.(); return; }
-      addOptionalScript("hh-monitoring-v151", "vendor/herdharbor-monitoring-v1.6.1.min.js?v=1.8.1", () => done?.());
+      addOptionalScript("hh-monitoring-v151", "vendor/herdharbor-monitoring-v1.6.1.min.js?v=1.8.2", () => done?.());
     });
   }
 

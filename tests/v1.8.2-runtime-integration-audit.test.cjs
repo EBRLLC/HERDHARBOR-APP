@@ -21,7 +21,7 @@ function releaseVersion(source) {
 
 test("all actively modified Cloud Sync V2 runtime layers identify as v1.8.2", () => {
   assert.match(build, /version:\s*"1\.8\.2"/);
-  assert.match(build, /build:\s*"1\.8\.2-alpha-cloud-sync-v2-baseline-recovery-2"/);
+  assert.match(build, /build:\s*"1\.8\.2-alpha-cloud-sync-v2-state-integrity-1"/);
   assert.match(syncFlow, /release:\s*"1\.8\.2"/);
   assert.match(localCache, /const RELEASE = "1\.8\.2"/);
   assert.match(completion, /const VERSION="1\.8\.2"/);

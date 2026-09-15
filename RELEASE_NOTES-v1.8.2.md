@@ -58,3 +58,17 @@ Authentication behavior remains intentionally unchanged. Cloud Sync V2 is instal
 Coverage now includes startup baseline recovery, dirty-state protection, first-edit baseline capture, automatic retry behavior, offline/foreground recovery, five-state classification, diagnostics safety flags, local/cloud comparisons, backup-first restore behavior, v1.8.2 runtime identity, and preservation of the existing sign-in resilience contract.
 
 All subsequent v1.8.2 phases should continue under the same Alpha v1.8.2 version line unless a release-breaking reason requires a new version.
+
+
+## State-integrity regression suite
+
+The formal v1.8.2 gate now exercises complete canonical-state journeys across the actual lifecycle engines:
+
+- breeding → confirmed pregnancy → birth → automatic offspring profiles → weights → safe weaning → retained animals;
+- litter evaluation → reserved/completed sale → HerdHarbor Direct member transfer → pedigree/provenance import;
+- phone-created breeding → PC update → later phone edit with non-overlapping merge and same-field conflict protection;
+- litter deletion → tombstone sync → stale second device return without resurrection, while legitimate offspring profiles remain preserved.
+
+## Formal Alpha v1.8.2 release identity
+
+Package, PWA, Android/TWA, monitoring, CI/deployment, release documentation, and release-reference tests now identify Alpha v1.8.2 consistently. Stable older-named domain engines and historical migration files remain intentionally carried forward.

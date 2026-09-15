@@ -1,4 +1,4 @@
-# HerdHarbor Alpha v1.8.1 Acceptance Checklist
+# HerdHarbor Alpha v1.8.2 Acceptance Checklist
 
 This checklist covers the current v1.8.1 release contract. Automated checks are authoritative where available; manual checks cover browser/device behavior that CI cannot fully prove.
 
@@ -103,3 +103,12 @@ This checklist covers the current v1.8.1 release contract. Automated checks are 
 - Confirm the resulting `main` merge SHA is the exact SHA checked out by the monitored production Pages workflow.
 - Confirm the production Pages job completes successfully through artifact staging and deployment.
 - Reload `https://app.herdharbor.com` after deployment and confirm the application identifies v1.8.1 and the current PWA shell.
+
+
+## Cloud Sync V2 and lifecycle integrity
+
+- [ ] Normal record edits show Saved locally / Syncing / Synced without a permanent red failure.
+- [ ] Offline edits remain protected locally and resume sync after connectivity returns.
+- [ ] Sync Diagnostics shows last successful sync, local/cloud revisions, pending changes, and failed operation.
+- [ ] Retry Sync, Download Local Backup, Compare Local / Cloud, and Restore Last-Known-Good behave safely.
+- [ ] Run `npm run test:state-integrity` for retained-offspring, sale/transfer, cross-device breeding, and stale-device deletion scenarios.

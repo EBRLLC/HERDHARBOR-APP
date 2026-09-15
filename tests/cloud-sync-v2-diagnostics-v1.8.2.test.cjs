@@ -101,6 +101,7 @@ test("restore-last-known-good is backup-first and keeps reconciliation dirty", (
   assert.match(restoreSource, /store\.setItem\(dirtyKey\(userId\), "1"\)/);
   assert.match(restoreSource, /location\?\.reload/);
   assert.doesNotMatch(restoreSource, /removeItem\(dirtyKey/);
+  assert.doesNotMatch(restoreSource, /bumpLocalRevision\(\"restore-last-known-good\"\)/, "restore must not double-increment the diagnostic local revision");
 });
 
 test("diagnostics remain record-private and do not send livestock data to a third party", () => {

@@ -14,8 +14,8 @@ const manifest = JSON.parse(read("manifest.json"));
 const html = read("index.html");
 const build = read("herdharbor-build.js");
 
-// The web runtime is v1.8.2 while the packaged/PWA shell remains on its carried-forward v1.8.1 identity.
-assert.equal(manifest.version, "1.8.1");
+// The web runtime and packaged/PWA shell share the formal v1.8.2 identity.
+assert.equal(manifest.version, "1.8.2");
 const webVersion = build.match(/version:\s*"([^"]+)"/)?.[1];
 const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
 assert.ok(["1.7.1", "1.8.0", "1.8.1", "1.8.2"].includes(webVersion), `unexpected web release ${webVersion}`);
@@ -23,10 +23,10 @@ if (webVersion === "1.7.1") assert.equal(buildId, "multispecies-genetics-foundat
 if (webVersion === "1.8.0") assert.match(buildId, /^subscription-engine-/);
 if (webVersion === "1.8.1") assert.match(buildId, /^october-subscription-launch-/);
 if (webVersion === "1.8.2") assert.match(buildId, /^cloud-sync-v2-/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "1\.8\.1"/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "october-subscription-launch-referrals-credits-4"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "1\.8\.2"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "cloud-sync-v2-state-integrity-1"/);
 assert.match(pwa, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
-assert.match(html, /herdharbor-build\.js\?v=1\.8\.1/, "the packaged shell bootstrap retains its v1.8.1 cache identity until the packaging pass");
+assert.match(html, /herdharbor-build\.js\?v=1\.8\.2/, "the packaged shell bootstrap uses the v1.8.2 cache identity");
 
 // Service-worker discovery is explicit and independent from Cloud Sync.
 assert.match(pwa, /navigatorRef\(\)\.serviceWorker\.register\("service-worker\.js"/);
@@ -63,8 +63,8 @@ assert.match(cloud, /hasUnsyncedChanges/);
 assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
 // Browser/app shell requests favor production over stale frontend caches while retaining offline fallback.
-assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1)-/);
-if (webVersion === "1.8.1") assert.match(worker, /herdharbor-shell-v1\.8\.1-alpha-october-subscription-launch-/);
+assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1|8\.2)-/);
+if (webVersion === "1.8.1") assert.match(worker, /herdharbor-shell-v1\.8\.2-alpha-cloud-sync-v2-state-integrity-1/);
 assert.match(worker, /pwa\.js\?v=30/);
 assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
 assert.match(worker, /NETWORK_FIRST_PATHS/);

@@ -107,6 +107,6 @@ test('release loader and PWA cache include litter sale-transfer assets without c
     assert.match(build,new RegExp(asset.replace(/\./g,'\\.')));
     assert.match(sw,new RegExp(asset.replace(/\./g,'\\.')));
   }
-  assert.match(build,/version:\s*"1\.8\.1"/);
-  assert.doesNotMatch(build,/version:\s*"1\.8\.2"/);
+  assert.match(build,/version:\s*"1\.8\.2"/);
+  assert.match(build,/buildId:\s*"cloud-sync-v2-state-integrity-1"/);
 });

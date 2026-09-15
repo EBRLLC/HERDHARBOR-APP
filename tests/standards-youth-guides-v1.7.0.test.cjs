@@ -75,9 +75,9 @@ test("v1.7.0 reference-guide assets remain loaded and offline-safe under the cur
     assert.match(sw,/herdharbor-shell-v1\.8\.0/);
   }else if(version==="1.8.1"){
     assert.match(buildId,/^october-subscription-launch-/);
-    assert.match(sw,/herdharbor-shell-v1\.8\.1-alpha-october-subscription-launch-/);
+    assert.match(sw,/herdharbor-shell-v1\.8\.2-alpha-cloud-sync-v2-state-integrity-1/);
   }else{
     assert.match(buildId,/^cloud-sync-v2-/);
-    assert.match(sw,/herdharbor-shell-v1\.8\.1-alpha-october-subscription-launch-/);
+    assert.match(sw,/herdharbor-shell-v1\.8\.2-alpha-cloud-sync-v2-state-integrity-1/);
   }
 });

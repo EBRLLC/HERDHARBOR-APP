@@ -1,6 +1,6 @@
-# HerdHarbor Alpha v1.8.1
+# HerdHarbor Alpha v1.8.2
 
-HerdHarbor is an installable livestock and farm recordkeeping application in active alpha development. The current release is **Alpha v1.8.1**.
+HerdHarbor is an installable livestock and farm recordkeeping application in active alpha development. The current release is **Alpha v1.8.2**.
 
 ## Current platform
 
@@ -16,9 +16,9 @@ Key capabilities include:
 - Offline-first local operation with protected cloud synchronization, conflict detection, recovery snapshots, downloadable backups, and safe update handling.
 - Installable web app support plus the Android Trusted Web Activity package.
 
-## Alpha v1.8.1 subscription and account release
+## Alpha v1.8.2 reliability and account release
 
-The current release adds the production subscription-launch layer around the established v1.8.0 Subscription Engine without replacing HerdHarbor authentication or membership storage.
+The current release formalizes Cloud Sync V2, lifecycle state-integrity safeguards, and the production subscription/account layer without replacing HerdHarbor authentication, membership storage, or established domain engines. Cloud Sync V2 keeps normal edits protected locally first, retries recoverable cloud work automatically, and reserves the Needs attention state for true conflicts or non-recoverable failures.
 
 Public account plans are:
 
@@ -53,11 +53,11 @@ Existing farm records are not deleted when a subscription changes. Junior limits
 
 ## Versioned runtime modules
 
-The repository intentionally contains some runtime modules with older version numbers in their filenames. Those files are established domain engines that remain part of v1.8.1—for example the v1.6.1 analytics/rabbit-genetics layers and v1.7.x standards, health, and multi-species genetics layers. They should not be renamed or removed solely because their filename predates v1.8.1.
+The repository intentionally contains some runtime modules with older version numbers in their filenames. Those files are established domain engines that remain part of v1.8.2—for example the v1.6.1 analytics/rabbit-genetics layers and v1.7.x standards, health, and multi-species genetics layers. They should not be renamed or removed solely because their filename predates v1.8.2.
 
 Likewise, historical SQL files under `supabase/` are migration lineage and are retained even when their filenames contain earlier release numbers.
 
-The authoritative current release identity is defined by the v1.8.1 build, manifest, package, PWA, Android, monitoring, and CI/deployment configuration.
+The authoritative current release identity is defined by the v1.8.2 build, manifest, package, PWA, Android, monitoring, and CI/deployment configuration.
 
 ## Development and verification
 
@@ -65,9 +65,9 @@ Node.js 22 or newer is required for repository tooling.
 
 - `npm ci` installs the pinned monitoring/build dependencies.
 - `npm test` runs the complete regression suite.
-- `npm run test:v1.8.1` runs the current subscription/account release regressions.
-- `npm run test:release` verifies the current v1.8.1 repository identity and hardening contract.
-- `.github/workflows/v1.8.1-ci.yml` is the consolidated pull-request CI workflow.
+- `npm run test:v1.8.2` runs the current subscription/account release regressions.
+- `npm run test:release` verifies the current v1.8.2 repository identity and hardening contract.
+- `.github/workflows/v1.8.2-ci.yml` is the consolidated pull-request CI workflow.
 - `.github/workflows/v1.8.1-production-pages.yml` is the authoritative monitored GitHub Pages publisher.
 - `.github/workflows/v1.8.1-production-acceptance.yml` provides explicit manual production acceptance checks.
 

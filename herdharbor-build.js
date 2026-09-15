@@ -4,8 +4,8 @@
     product: "HerdHarbor",
     channel: "Alpha",
     version: "1.8.2",
-    buildId: "cloud-sync-v2-baseline-recovery-2",
-    build: "1.8.2-alpha-cloud-sync-v2-baseline-recovery-2"
+    buildId: "cloud-sync-v2-state-integrity-1",
+    build: "1.8.2-alpha-cloud-sync-v2-state-integrity-1"
   });
 
   // Keep authentication and the first cloud hydration from waiting forever while
