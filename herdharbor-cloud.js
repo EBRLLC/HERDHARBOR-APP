@@ -7,7 +7,9 @@
   const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_jxsX6uS9nnh2FOFtlSF9TA_8v6C7C09";
   const STORAGE_KEY = "herdharbor_pre_alpha_v1";
   const TABLE_NAME = "herdharbor_user_data";
-  const SYNC_DELAY_MS = 700;
+  const SYNC_DELAY_MS = 2500;
+  const LARGE_STATE_SYNC_DELAY_MS = 5000;
+  const LARGE_STATE_THRESHOLD_CHARS = 750000;
   const ACTIVE_OWNER_KEY = "herdharbor_active_user_v1";
   const RECOVERY_DB_NAME = "herdharbor_recovery_v1";
   const RECOVERY_STORE_NAME = "snapshots";
@@ -149,6 +151,32 @@
     document.dispatchEvent(new CustomEvent("herdharbor:account-operation-failure", {
       detail: { operation, result: "failure" }
     }));
+  }
+
+  function normalizeCloudFailure(error) {
+    const code = String(error?.code || error?.name || "unknown").slice(0, 80);
+    const numericStatus = Number(error?.status || error?.statusCode || 0);
+    return {
+      code,
+      status: Number.isFinite(numericStatus) && numericStatus > 0 ? numericStatus : null,
+      message: String(error?.message || "Cloud synchronization operation failed.").slice(0, 500)
+    };
+  }
+
+  function reportCloudSyncFailure(operation, error) {
+    const failure = normalizeCloudFailure(error);
+    try {
+      document.dispatchEvent(new CustomEvent("herdharbor:cloud-sync-failure", {
+        detail: {
+          operation: String(operation || "cloud-sync").slice(0, 80),
+          result: "failure",
+          error_code: failure.code,
+          status_code: failure.status,
+          message: failure.message
+        }
+      }));
+    } catch {}
+    return failure;
   }
 
   async function loadAccessProfile() {
@@ -955,7 +983,9 @@
     const { data: remoteRecord, error: loadError } = await fetchCloudRecord(userId);
 
     if (loadError) {
+      const failure = reportCloudSyncFailure("cloud-preflight", loadError);
       console.error("HerdHarbor cloud preflight failed:", loadError);
+      console.warn("HerdHarbor cloud preflight diagnostic:", failure.code, failure.status || "no-status");
       setSyncState("Cloud unavailable; changes are safe on this device and will retry.", "error");
       return false;
     }
@@ -1058,6 +1088,11 @@
       await recordRecoverySnapshot(userId, remoteRaw, "Cloud copy before manual conflict resolution");
     }
 
+    if (sequence < writeSequence && pendingSync && !options.force) {
+      setSyncState("Newer changes queued; saving the latest copy…", "working");
+      return true;
+    }
+
     const { data: savedRecord, error, raced } = await writeCloudRecord(
       userId,
       appState,
@@ -1065,7 +1100,9 @@
     );
 
     if (error) {
+      const failure = reportCloudSyncFailure("cloud-save", error);
       console.error("HerdHarbor cloud save failed:", error);
+      console.warn("HerdHarbor cloud save diagnostic:", failure.code, failure.status || "no-status");
       setSyncState("Cloud save failed; changes are safe on this device and will retry.", "error");
       return false;
     }
@@ -1164,9 +1201,12 @@
   function scheduleCloudSync(rawValue, sequence = writeSequence) {
     clearTimeout(syncTimer);
     pendingSync = { rawValue, sequence };
+    const delay = String(rawValue || "").length >= LARGE_STATE_THRESHOLD_CHARS
+      ? LARGE_STATE_SYNC_DELAY_MS
+      : SYNC_DELAY_MS;
     syncTimer = setTimeout(() => {
       drainSyncQueue();
-    }, SYNC_DELAY_MS);
+    }, delay);
   }
 
   async function syncNow() {

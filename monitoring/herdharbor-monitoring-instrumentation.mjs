@@ -151,8 +151,33 @@ export function installGeneticsMonitoring(monitoring, runtime = globalThis) {
   return true;
 }
 
+export function installCloudSyncFailureMonitoring(monitoring, runtime = globalThis) {
+  const document = runtime?.document;
+  if (!document?.addEventListener || document.__hhCloudSyncFailureMonitoring) return false;
+  Object.defineProperty(document, "__hhCloudSyncFailureMonitoring", { configurable: true, value: true });
+
+  document.addEventListener("herdharbor:cloud-sync-failure", (event) => {
+    try {
+      const detail = event?.detail || {};
+      const code = String(detail.error_code || "unknown").slice(0, 80);
+      const error = new Error(String(detail.message || "Cloud synchronization operation failed.").slice(0, 500));
+      error.name = code === "unknown" ? "CloudSyncError" : "CloudSyncError:" + code;
+      monitoring?.captureOperationalFailure?.("cloud_sync_failure", {
+        module: "sync",
+        operation: String(detail.operation || "cloud-sync").slice(0, 80),
+        result: "failure",
+        error_category: "cloud_sync_failure",
+        reason: code,
+        status_code: Number.isFinite(Number(detail.status_code)) ? Number(detail.status_code) : 0
+      }, error);
+    } catch {}
+  });
+  return true;
+}
+
 export function installMonitoringAdapters(monitoring, runtime = globalThis) {
   try { installStorageFailureMonitoring(monitoring, runtime); } catch {}
   try { installIndexedDbFailureMonitoring(monitoring, runtime); } catch {}
   try { installGeneticsMonitoring(monitoring, runtime); } catch {}
+  try { installCloudSyncFailureMonitoring(monitoring, runtime); } catch {}
 }
