@@ -9,6 +9,8 @@ const CORS = {
 
 const OPENAI_API = "https://api.openai.com/v1/responses";
 const DEFAULT_MODEL = "gpt-5.6-luna";
+const DEFAULT_DAILY_LIMIT = 10;
+const MAX_REQUEST_BYTES = 11_000_000;
 const MAX_DATA_URL_LENGTH = 10_500_000;
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png"]);
 const ROLES = [
@@ -100,6 +102,12 @@ function extractResponseText(payload: any) {
   return "";
 }
 
+function configuredDailyLimit() {
+  const value = Number(Deno.env.get("PAPER_PEDIGREE_DAILY_LIMIT") || DEFAULT_DAILY_LIMIT);
+  if (!Number.isFinite(value)) return DEFAULT_DAILY_LIMIT;
+  return Math.max(1, Math.min(1000, Math.floor(value)));
+}
+
 function normalizeResult(raw: any, fileName: string) {
   const seen = new Set<string>();
   const nodes = [];
@@ -146,10 +154,7 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-    const openAiKey = Deno.env.get("OPENAI_API_KEY") || "";
-    const model = Deno.env.get("OPENAI_PEDIGREE_MODEL") || DEFAULT_MODEL;
     if (!supabaseUrl || !serviceRoleKey) return json({ error: "Pedigree service configuration is unavailable." }, 503);
-    if (!openAiKey) return json({ error: "Paper pedigree reading is not configured yet." }, 503);
 
     const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
     if (!token) return json({ error: "Authentication is required." }, 401);
@@ -160,6 +165,15 @@ Deno.serve(async (req) => {
     const { data: authData, error: authError } = await admin.auth.getUser(token);
     if (authError || !authData?.user?.id) return json({ error: "The authentication session is invalid or expired." }, 401);
 
+    const openAiKey = Deno.env.get("OPENAI_API_KEY") || "";
+    const model = Deno.env.get("OPENAI_PEDIGREE_MODEL") || DEFAULT_MODEL;
+    if (!openAiKey) return json({ error: "Paper pedigree reading is not configured yet." }, 503);
+
+    const contentLength = Number(req.headers.get("content-length") || 0);
+    if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
+      return json({ error: "That pedigree photo is too large to read automatically. Resize it and try again." }, 413);
+    }
+
     const body = await req.json().catch(() => null);
     const mimeType = clean(body?.mimeType, 80).toLowerCase();
     const fileName = clean(body?.fileName, 240) || "paper-pedigree";
@@ -167,6 +181,19 @@ Deno.serve(async (req) => {
     if (!ALLOWED_MIME.has(mimeType)) return json({ error: "Automatic pedigree reading currently supports JPG and PNG photos." }, 400);
     if (!dataUrl.startsWith(`data:${mimeType};base64,`)) return json({ error: "The pedigree image payload is invalid." }, 400);
     if (dataUrl.length > MAX_DATA_URL_LENGTH) return json({ error: "That pedigree photo is too large to read automatically. Resize it and try again." }, 413);
+
+    const dailyLimit = configuredDailyLimit();
+    const { data: reservedCount, error: usageError } = await admin.rpc("herdharbor_reserve_paper_pedigree_ai_request", {
+      p_user_id: authData.user.id,
+      p_daily_limit: dailyLimit
+    });
+    if (usageError) {
+      console.error("Paper pedigree usage reservation failed:", usageError.message);
+      return json({ error: "Paper pedigree reading is temporarily unavailable. Your farm records were not changed." }, 503);
+    }
+    if (Number(reservedCount || 0) < 1) {
+      return json({ error: "You have reached today's paper pedigree reading limit. Try again tomorrow.", retryAfter: "next-utc-day" }, 429);
+    }
 
     const response = await fetch(OPENAI_API, {
       method: "POST",
