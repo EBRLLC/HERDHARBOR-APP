@@ -36,9 +36,9 @@ test('extractor uses structured JSON output and the defined three-generation lin
   assert.match(edge, /draft for human review/);
 });
 
-test('paper pedigree reader uses a current image-capable model with an environment override', () => {
+test('paper pedigree reader uses the current image-capable low-cost model with an environment override', () => {
   const edge = read('supabase/functions/paper-pedigree-extract/index.ts');
-  assert.match(edge, /DEFAULT_MODEL = "gpt-5\.4-mini"/);
+  assert.match(edge, /DEFAULT_MODEL = "gpt-5\.6-luna"/);
   assert.match(edge, /OPENAI_PEDIGREE_MODEL/);
   assert.match(edge, /type:\s*"input_image"/);
   assert.match(edge, /detail:\s*"high"/);
@@ -49,7 +49,7 @@ test('UI requires explicit review before any canonical state commit', () => {
   assert.match(ui, /Review required/);
   assert.match(ui, /Nothing has been added to your records yet/);
   assert.match(ui, /Review complete — import pedigree/);
-  assert.match(ui, /function commitReviewedPedigree\(\)/);
+  assert.match(ui, /async function commitReviewedPedigree\(\)/);
   const commitCalls = [...ui.matchAll(/commitState\(/g)];
   assert.equal(commitCalls.length, 1, 'paper pedigree UI should have one explicit canonical commit path');
 });
@@ -57,7 +57,7 @@ test('UI requires explicit review before any canonical state commit', () => {
 test('UI launches from Pedigrees and Quick Add without replacing the existing pedigree builder', () => {
   const ui = read('paper-pedigree-import-v1.8.2.js');
   assert.match(ui, /#import-pedigree/);
-  assert.match(ui, /data-quick=\\"pedigree\\"/);
+  assert.match(ui, /data-quick="pedigree"/);
   assert.match(ui, /Import paper pedigree photo/);
   assert.match(ui, /Paper pedigree photo/);
   assert.doesNotMatch(ui, /remove\(.*import-pedigree/);
