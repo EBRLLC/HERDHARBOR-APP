@@ -7,13 +7,13 @@ const root = path.resolve(__dirname, '..');
 const Router = require('../animal-action-router-v1.8.3.js');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 
-test('v1.8.3 router owns the high-frequency animal profile actions', () => {
+test('v1.8.3 router owns the migrated animal profile actions', () => {
   assert.equal(Router.VERSION, '1.8.3');
   assert.deepEqual([...Router.DIRECT_ACTIONS], [
-    'weight', 'health', 'episode', 'care', 'breeding', 'genetics', 'show-entry'
+    'weight', 'health', 'episode', 'care', 'breeding', 'genetics', 'pedigree', 'show-entry', 'analytics'
   ]);
   for (const action of Router.DIRECT_ACTIONS) assert.equal(Router.canHandle(action), true);
-  for (const fallback of ['pedigree', 'print-pedigree', 'analytics', 'edit']) {
+  for (const fallback of ['print-pedigree', 'edit']) {
     assert.equal(Router.canHandle(fallback), false, `${fallback} should remain on the proven compatibility path until directly migrated`);
   }
 });
@@ -46,8 +46,18 @@ test('router delegates to canonical domain entry points rather than creating rep
   assert.match(source, /#breeding-form/);
   assert.match(source, /HerdHarborAnimalGenetics\.open/);
   assert.match(source, /\[data-add-entry\]/);
+  assert.match(source, /#import-pedigree/);
+  assert.match(source, /#pedigree-import-form/);
+  assert.match(source, /HerdHarborAnalytics\?\.openAnimal/);
+  assert.doesNotMatch(source, /#pedigree-form/);
   assert.doesNotMatch(source, /commitState\(/);
   assert.doesNotMatch(source, /state\.animals\s*=/);
+});
+
+test('guided pedigree builder exposes the canonical subject selector the router targets', () => {
+  const html = read('index.html');
+  assert.match(html, /id="pedigree-import-form"/);
+  assert.match(html, /name="subjectAnimalId" id="pedigree-subject"/);
 });
 
 test('runtime loads the v1.8.3 router after the profile shell and before profile add-ons', () => {
