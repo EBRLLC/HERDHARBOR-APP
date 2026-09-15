@@ -208,10 +208,18 @@
     const conflicts = [];
     const warnings = [...(extraction.warnings || [])];
     const roleToTargetId = {};
+    const plannedAnimals = [];
+    const plannedIds = new Set();
 
     for (const node of extraction.nodes || []) {
       if (!node.present) continue;
-      const match = findExistingAnimal(animals, node);
+      if (!clean(node.name, 160)) {
+        conflicts.push({ type: "missing-required-field", role: node.role, field: "name", incoming: clone(node) });
+        actions.push({ role: node.role, mode: "blocked", incoming: clone(node), reason: "missing-required-field" });
+        continue;
+      }
+
+      const match = findExistingAnimal([...animals, ...plannedAnimals], node);
       if (match.ambiguous) {
         conflicts.push({ type: "ambiguous-match", role: node.role, incoming: clone(node), candidateIds: match.matches.map((row) => row.id) });
         actions.push({ role: node.role, mode: "blocked", incoming: clone(node), reason: "ambiguous-match" });
@@ -219,12 +227,25 @@
       }
       if (match.animal) {
         const differences = fieldConflicts(match.animal, node);
-        if (differences.length) conflicts.push({ type: "field-conflict", role: node.role, animalId: match.animal.id, fields: differences });
+        const planned = plannedIds.has(match.animal.id);
+        if (differences.length) {
+          conflicts.push({ type: planned ? "duplicate-pedigree-conflict" : "field-conflict", role: node.role, animalId: match.animal.id, fields: differences });
+        }
         roleToTargetId[node.role] = match.animal.id;
-        actions.push({ role: node.role, mode: "merge", animalId: match.animal.id, matchReason: match.reason, incoming: clone(node), conflicts: differences });
+        actions.push({
+          role: node.role,
+          mode: planned ? "link" : "merge",
+          animalId: match.animal.id,
+          matchReason: match.reason,
+          incoming: clone(node),
+          conflicts: differences
+        });
       } else {
         const targetId = `animal_pedigree_${stableKey(`${extraction.extractionId}|${node.role}|${node.name}|${node.registrationNumber}|${node.tattoo}`)}`;
         roleToTargetId[node.role] = targetId;
+        const planned = { ...clone(node), id: targetId };
+        plannedAnimals.push(planned);
+        plannedIds.add(targetId);
         actions.push({ role: node.role, mode: "create", animalId: targetId, incoming: clone(node), conflicts: [] });
       }
       if (node.reviewRequired) warnings.push(`${node.role} contains fields that should be reviewed before import.`);
@@ -236,7 +257,7 @@
       action.damId = links.damRole ? (roleToTargetId[links.damRole] || "") : "";
     }
 
-    const subject = actions.find((action) => action.role === "subject");
+    const subject = actions.find((action) => action.role === "subject" && action.mode !== "blocked");
     if (!subject) warnings.push("No subject animal is ready to import.");
     return {
       contract: CONTRACT,
@@ -258,7 +279,7 @@
 
   function applyImportPlan(inputState, plan, options = {}) {
     if (!plan || plan.contract !== CONTRACT) throw new Error("Unsupported paper pedigree import plan.");
-    if (plan.actions?.some((action) => action.mode === "blocked")) throw new Error("Resolve ambiguous pedigree matches before importing.");
+    if (plan.actions?.some((action) => action.mode === "blocked")) throw new Error("Resolve blocked pedigree entries before importing.");
     if ((plan.conflicts || []).length && options.allowConflicts !== true) throw new Error("Resolve pedigree field conflicts before importing.");
     const state = clone(inputState && typeof inputState === "object" ? inputState : {});
     state.animals = Array.isArray(state.animals) ? state.animals : [];
