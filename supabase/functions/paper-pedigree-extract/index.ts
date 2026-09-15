@@ -8,7 +8,7 @@ const CORS = {
 };
 
 const OPENAI_API = "https://api.openai.com/v1/responses";
-const DEFAULT_MODEL = "gpt-5.4-mini";
+const DEFAULT_MODEL = "gpt-5.6-luna";
 const MAX_DATA_URL_LENGTH = 10_500_000;
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png"]);
 const ROLES = [
