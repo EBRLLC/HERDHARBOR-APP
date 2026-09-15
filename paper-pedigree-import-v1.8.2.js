@@ -6,6 +6,8 @@
   const STYLE_ID = "hh-paper-pedigree-style";
   const MAX_PREVIEW_DIMENSION = 2400;
   const JPEG_QUALITY = 0.9;
+  const ATTACHMENT_DB = "herdharbor_attachments_v1";
+  const ATTACHMENT_STORE = "pedigreeDocuments";
   const ROLE_LABELS = Object.freeze({
     subject: "Animal",
     sire: "Sire",
@@ -137,6 +139,37 @@
       image.src = dataUrl;
     });
   }
+
+  function openAttachmentDb() {
+    return new Promise((resolve, reject) => {
+      if (!root.indexedDB) return reject(new Error("This browser does not support pedigree attachment storage."));
+      const request = root.indexedDB.open(ATTACHMENT_DB, 1);
+      request.onupgradeneeded = () => {
+        if (!request.result.objectStoreNames.contains(ATTACHMENT_STORE)) request.result.createObjectStore(ATTACHMENT_STORE);
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("Pedigree attachment storage could not open."));
+    });
+  }
+
+  async function attachmentRequest(mode, action) {
+    const db = await openAttachmentDb();
+    try {
+      return await new Promise((resolve, reject) => {
+        const transaction = db.transaction(ATTACHMENT_STORE, mode);
+        const store = transaction.objectStore(ATTACHMENT_STORE);
+        const request = action(store);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error("Pedigree attachment storage failed."));
+        transaction.onabort = () => reject(transaction.error || new Error("Pedigree attachment storage was interrupted."));
+      });
+    } finally {
+      db.close();
+    }
+  }
+
+  const putPedigreeAttachment = (id, document) => attachmentRequest("readwrite", (store) => store.put(document, id));
+  const deletePedigreeAttachment = (id) => attachmentRequest("readwrite", (store) => store.delete(id));
 
   async function prepareImage(file) {
     if (!file || !["image/jpeg", "image/png"].includes(file.type)) {
@@ -272,7 +305,7 @@
     }
     const importedAt = new Date().toISOString();
     const id = `pedigree_ai_${String(reviewed.extractionId || Date.now()).replace(/[^a-z0-9_-]/gi, "").slice(0, 80)}`;
-    nextState.pedigrees.push({
+    const record = {
       id,
       subjectAnimalId: result.subjectAnimalId,
       ancestorIds,
@@ -281,15 +314,17 @@
       fileName: file?.fileName || reviewed.sourceName || "Paper pedigree.jpg",
       mimeType: file?.mimeType || "image/jpeg",
       fileSize: Number(file?.size || 0),
-      sourceDataUrl: file?.dataUrl || "",
-      attachmentStored: false,
+      sourceDataUrl: "",
+      attachmentStored: Boolean(file?.dataUrl),
       importedAt,
       mode: "ai-photo-reviewed",
       builderVersion: "1.0"
-    });
+    };
+    nextState.pedigrees.push(record);
+    return record;
   }
 
-  function commitReviewedPedigree() {
+  async function commitReviewedPedigree() {
     const reviewed = collectReviewedExtraction();
     if (!reviewed) return setStatus("Read a pedigree photo before importing.", "error");
     const current = app()?.getState?.();
@@ -299,17 +334,26 @@
       setStatus("Resolve the highlighted pedigree conflicts before importing.", "error");
       return;
     }
+    const commitButton = root.document.querySelector(`#${DIALOG_ID} [data-pp-commit]`);
+    if (commitButton) commitButton.disabled = true;
+    let storedAttachmentId = "";
     try {
       const applied = core().applyImportPlan(current, plan);
       const subject = applied.state.animals.find((row) => String(row.id) === String(applied.subjectAnimalId));
       if (subject && String(subject.status || "").toLowerCase().includes("ancestor")) subject.status = "Active";
-      makePedigreeRecord(applied.state, { ...applied, plan }, reviewed, preparedImage);
+      const record = makePedigreeRecord(applied.state, { ...applied, plan }, reviewed, preparedImage);
+      if (preparedImage?.dataUrl) {
+        await putPedigreeAttachment(record.id, preparedImage);
+        storedAttachmentId = record.id;
+      }
       const saved = app().commitState(applied.state, "Paper pedigree imported.");
       if (saved === false) throw new Error("HerdHarbor could not save the reviewed pedigree.");
       setStatus("Paper pedigree imported successfully.", "success");
       root.setTimeout(() => ensureDialog().close(), 700);
     } catch (error) {
+      if (storedAttachmentId) await deletePedigreeAttachment(storedAttachmentId).catch(() => {});
       setStatus(error?.message || "The reviewed pedigree could not be imported.", "error");
+      if (commitButton) commitButton.disabled = false;
     }
   }
 
