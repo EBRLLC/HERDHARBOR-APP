@@ -59,7 +59,6 @@ Coverage now includes startup baseline recovery, dirty-state protection, first-e
 
 All subsequent v1.8.2 phases should continue under the same Alpha v1.8.2 version line unless a release-breaking reason requires a new version.
 
-
 ## State-integrity regression suite
 
 The formal v1.8.2 gate now exercises complete canonical-state journeys across the actual lifecycle engines:
@@ -74,7 +73,18 @@ The formal v1.8.2 gate now exercises complete canonical-state journeys across th
 Package, PWA, Android/TWA, monitoring, CI/deployment, release documentation, and release-reference tests now identify Alpha v1.8.2 consistently. Stable older-named domain engines and historical migration files remain intentionally carried forward.
 
 ## Analytics animal scope
+
 - Growth Analytics now defaults to current animals instead of every pedigree/profile record.
 - Sold, deceased, archived, and Ancestor Only records no longer flood the comparison selector.
 - A secondary "Active + ancestors with growth data" option appears only when Ancestor Only records have real plottable birth/Health weight data.
 - Ancestors shown through that option are labeled clearly and remain excluded by default.
+
+## Paper pedigree photo import
+
+- Members can choose a JPG or PNG photo of a paper pedigree and have HerdHarbor prepare a structured three-generation draft.
+- The draft can create the subject animal profile as well as parent, grandparent, and great-grandparent ancestry using HerdHarbor's existing `sireId` / `damId` pedigree links.
+- Every extracted field is shown for member review before any farm record is changed; low-confidence text is flagged for extra verification.
+- Existing animals are reused when strong identifiers match, while ambiguous matches and conflicting existing data block the import instead of being silently overwritten.
+- New ancestry records are created as Ancestor Only so pedigree animals do not become active herd animals by mistake.
+- Automatic reading runs through an authenticated server-side service; the AI provider key is never exposed to the browser.
+- The selected source photo is retained in HerdHarbor's local pedigree attachment storage rather than embedded in canonical cloud state.
