@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+// One-time release guard; deleted from the finalized v1.8.2 tree after export.
 const root = process.cwd();
 const target = (name) => path.join(root, name);
 const read = (name) => fs.readFileSync(target(name), "utf8");
