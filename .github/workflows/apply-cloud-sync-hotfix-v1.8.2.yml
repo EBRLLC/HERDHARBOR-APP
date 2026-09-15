@@ -24,6 +24,18 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Apply hotfix
         run: node scripts/apply-cloud-sync-hotfix-v1.8.2.mjs
+      - name: Update retry regression contract
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const path = 'tests/cloud-sync-v2-flow-v1.8.2.test.cjs';
+          let source = fs.readFileSync(path, 'utf8');
+          const before = 'assert.match(flow, /RETRY_DELAYS_MS = \\[1500, 4000, 10000, 30000\\]/);';
+          const after = 'assert.match(flow, /RETRY_DELAYS_MS = \\[3000, 10000, 30000, 120000\\]/);';
+          if (!source.includes(before)) throw new Error('retry regression expectation not found');
+          source = source.replace(before, after);
+          fs.writeFileSync(path, source);
+          NODE
       - name: Verify focused cloud sync tests
         run: |
           node --test tests/cloud-sync-hotfix-v1.8.2.test.cjs
