@@ -59,3 +59,9 @@ test('runtime loads the v1.8.3 router after the profile shell and before profile
   assert.ok(router > profile, 'animal action router must load after the profile shell API');
   assert.ok(lifecycle > router, 'lifecycle/profile add-ons must load after the router is installed');
 });
+
+test('PWA shell caches and network-refreshes the v1.8.3 router', () => {
+  const worker = read('service-worker.js');
+  assert.match(worker, /\.\/animal-action-router-v1\.8\.3\.js\?v=1/);
+  assert.match(worker, /"\/animal-action-router-v1\.8\.3\.js"/);
+});
