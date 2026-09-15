@@ -113,14 +113,16 @@
   function normalizeExtraction(input = {}) {
     const source = input && typeof input === "object" ? input : {};
     const tree = source.pedigree && typeof source.pedigree === "object" ? source.pedigree : source;
-    const flat = source.nodes && typeof source.nodes === "object" && !Array.isArray(source.nodes) ? source.nodes : {};
+    const flat = Array.isArray(source.nodes)
+      ? Object.fromEntries(source.nodes.filter((node) => node && typeof node === "object" && clean(node.role, 48)).map((node) => [clean(node.role, 48), node]))
+      : source.nodes && typeof source.nodes === "object" ? source.nodes : {};
     const nodes = ROLE_PATHS.map((meta) => {
       let raw = flat[meta.role] || null;
       if (!raw) raw = meta.role === "subject" ? (tree.subject || tree.animal || tree) : valueAtPath(tree, meta.path);
       return normalizeNode(raw || {}, meta);
     });
     const present = nodes.filter((node) => node.present);
-    const warnings = [];
+    const warnings = (Array.isArray(source.warnings) ? source.warnings : []).map((value) => clean(value, 300)).filter(Boolean);
     if (!present.find((node) => node.role === "subject")) warnings.push("The subject animal was not identified.");
     if (!present.length) warnings.push("No pedigree animals were identified.");
     return {
@@ -130,7 +132,7 @@
       sourceName: clean(source.sourceName || source.fileName, 240),
       extractionId: clean(source.extractionId, 160) || `pedigree_${stableKey(JSON.stringify(present.map((node) => [node.role, node.name, node.registrationNumber, node.tattoo])))}`,
       nodes,
-      warnings,
+      warnings: [...new Set(warnings)],
       reviewRequired: warnings.length > 0 || nodes.some((node) => node.present && node.reviewRequired)
     };
   }
@@ -201,7 +203,7 @@
   function buildImportPlan(inputState, extractionInput) {
     const state = inputState && typeof inputState === "object" ? inputState : {};
     const animals = Array.isArray(state.animals) ? state.animals : [];
-    const extraction = extractionInput?.nodes ? clone(extractionInput) : normalizeExtraction(extractionInput);
+    const extraction = normalizeExtraction(extractionInput);
     const actions = [];
     const conflicts = [];
     const warnings = [...(extraction.warnings || [])];
