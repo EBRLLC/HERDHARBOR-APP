@@ -8,7 +8,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (normalizer) {
   "use strict";
 
-  const VERSION = "0.5-header-diff";
+  const VERSION = "0.6-format-aware-fast-path";
   const RELEASE = "1.8.3";
   const DEFAULT_MAX_MUTATIONS = 10000;
   const VALID_STAGES = new Set(["legacy", "shadow", "dual_write", "normalized"]);
@@ -72,6 +72,13 @@
   function metadataCount(metadata, key) {
     const count = Number(metadata?.[key]);
     return Number.isSafeInteger(count) && count >= 0 ? count : null;
+  }
+
+  function metadataMatchesMapper(metadata) {
+    return (
+      String(metadata?.normalized_namespace || "") === String(mapper.namespace || "") &&
+      Number(metadata?.normalized_format_version) === Number(mapper.formatVersion || 1)
+    );
   }
 
   function controllerError(message, code) {
@@ -140,6 +147,7 @@
       if (!manifest) return false;
       const metadata = manifestMetadata(manifest);
       return (
+        metadataMatchesMapper(metadata) &&
         String(metadata.source_checksum || "") === mapped.checksum &&
         metadataCount(metadata, "normalized_record_count") === mapped.records.length
       );
@@ -148,7 +156,10 @@
     function manifestVerificationIsCurrent(manifest, mapped) {
       const metadata = manifestMetadata(manifest);
       return Boolean(manifest?.normalized_verified_at ?? manifest?.normalizedVerifiedAt) &&
+        metadataMatchesMapper(metadata) &&
+        String(metadata.source_checksum || "") === mapped.checksum &&
         String(metadata.verified_checksum || "") === mapped.checksum &&
+        metadataCount(metadata, "normalized_record_count") === mapped.records.length &&
         metadataCount(metadata, "verification_record_count") === mapped.records.length;
     }
 
