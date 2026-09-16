@@ -104,6 +104,18 @@ test("empty arrays, primitive arrays, and nested objects survive the round trip"
   assert.deepEqual(api.reassembleLegacySnapshot(rowsFrom(mapped)), source);
 });
 
+test("empty and prototype-sensitive JSON keys round-trip without prototype pollution", () => {
+  const source = JSON.parse('{"":{"value":1},"__proto__":{"polluted":true},"constructor":{"prototype":{"polluted":true}},"prototype":["safe"]}');
+  const mapped = api.mapLegacySnapshot(source);
+  const reconstructed = api.reassembleLegacySnapshot(rowsFrom(mapped));
+
+  assert.deepEqual(reconstructed, source);
+  assert.equal(Object.prototype.polluted, undefined);
+  assert.equal({}.polluted, undefined);
+  assert.equal(Object.prototype.hasOwnProperty.call(reconstructed, "__proto__"), true);
+  assert.equal(Object.prototype.hasOwnProperty.call(reconstructed, ""), true);
+});
+
 test("normalized record IDs remain bounded for unusually long legacy keys and identities", () => {
   const longKey = `legacy-${"x".repeat(500)}`;
   const source = { [longKey]: [{ id: `animal-${"y".repeat(600)}`, name: "Long ID" }] };
