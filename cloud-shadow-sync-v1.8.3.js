@@ -8,15 +8,15 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (normalizer) {
   "use strict";
 
-  const VERSION = "0.3-shadow-verify";
+  const VERSION = "0.4-atomic-generation";
   const RELEASE = "1.8.3";
   const DEFAULT_MAX_MUTATIONS = 10000;
   const VALID_STAGES = new Set(["legacy", "shadow", "dual_write", "normalized"]);
 
   function requiredStore(recordStore) {
-    const methods = ["list", "put", "tombstone", "getManifest", "putManifest"];
+    const methods = ["list", "getManifest", "applyBatch", "markVerified"];
     if (!recordStore || methods.some((name) => typeof recordStore[name] !== "function")) {
-      throw new TypeError("A complete normalized cloud record store is required.");
+      throw new TypeError("An atomic normalized cloud record store is required.");
     }
     return recordStore;
   }
@@ -56,6 +56,11 @@
   function manifestStage(manifest) {
     const stage = String(manifest?.cutover_stage ?? manifest?.cutoverStage ?? "legacy");
     return VALID_STAGES.has(stage) ? stage : "legacy";
+  }
+
+  function manifestGeneration(manifest) {
+    const generation = Number(manifest?.sync_generation ?? manifest?.syncGeneration ?? 0);
+    return Number.isSafeInteger(generation) && generation >= 0 ? generation : 0;
   }
 
   function manifestMetadata(manifest) {
@@ -116,7 +121,6 @@
     function versionMap(rows) {
       const versions = new Map();
       for (const row of Array.isArray(rows) ? rows : []) {
-        if (rowDeletedAt(row)) continue;
         const recordId = rowRecordId(row);
         const version = rowVersion(row);
         if (recordId && version) versions.set(recordId, version);
@@ -143,6 +147,7 @@
 
       const manifest = await store.getManifest();
       const stage = manifestStage(manifest);
+      const generation = manifestGeneration(manifest);
       if (stage === "normalized") {
         const result = {
           skipped: true,
@@ -150,7 +155,8 @@
           checksum: mapped.checksum,
           recordCount: mapped.records.length,
           puts: 0,
-          tombstones: 0
+          tombstones: 0,
+          generation
         };
         emit("shadow-skipped", result);
         return result;
@@ -166,32 +172,33 @@
         );
       }
 
-      emit("shadow-start", {
-        stage,
-        checksum: mapped.checksum,
-        recordCount: mapped.records.length,
-        puts: diff.puts.length,
-        tombstones: diff.tombstones.length
+      const versions = versionMap(previousRows);
+      const puts = diff.puts.map((record) => {
+        const expectedVersion = versions.get(record.record_id);
+        return {
+          ...record,
+          ...(expectedVersion ? { expectedVersion } : {})
+        };
+      });
+      const tombstones = diff.tombstones.map((record) => {
+        const expectedVersion = versions.get(record.record_id);
+        if (!expectedVersion) {
+          throw controllerError(
+            `Cannot tombstone ${record.record_id} without a known cloud version.`,
+            "HH_SHADOW_VERSION_REQUIRED"
+          );
+        }
+        return { ...record, expectedVersion };
       });
 
-      const versions = versionMap(previousRows);
-      for (const record of diff.puts) {
-        const expectedVersion = versions.get(record.record_id);
-        await store.put(
-          record.namespace,
-          record.record_id,
-          record.payload,
-          expectedVersion ? { expectedVersion } : {}
-        );
-      }
-      for (const record of diff.tombstones) {
-        const expectedVersion = versions.get(record.record_id);
-        await store.tombstone(
-          record.namespace,
-          record.record_id,
-          expectedVersion ? { expectedVersion } : {}
-        );
-      }
+      emit("shadow-start", {
+        stage,
+        generation,
+        checksum: mapped.checksum,
+        recordCount: mapped.records.length,
+        puts: puts.length,
+        tombstones: tombstones.length
+      });
 
       const completedAt = now();
       const nextStage = stage === "legacy" ? "shadow" : stage;
@@ -201,8 +208,8 @@
         source_checksum: mapped.checksum,
         normalized_record_count: mapped.records.length,
         last_shadow_write_at: completedAt,
-        last_shadow_puts: diff.puts.length,
-        last_shadow_tombstones: diff.tombstones.length
+        last_shadow_puts: puts.length,
+        last_shadow_tombstones: tombstones.length
       };
       if (mutationCount > 0) {
         nextMetadata.verified_checksum = null;
@@ -213,20 +220,25 @@
       const manifestPatch = {
         schemaVersion: mapper.formatVersion || 1,
         cutoverStage: nextStage,
+        expectedGeneration: generation,
         legacySnapshotUpdatedAt: syncOptions.legacySnapshotUpdatedAt || completedAt,
         lastBackfillAt: completedAt,
         metadata: nextMetadata
       };
       if (mutationCount > 0) manifestPatch.normalizedVerifiedAt = null;
-      await store.putManifest(manifestPatch);
 
+      const batch = await store.applyBatch({ puts, tombstones, manifestPatch });
+      const nextGeneration = Number(batch?.generation);
       const result = {
         skipped: false,
         stage: nextStage,
         checksum: mapped.checksum,
         recordCount: mapped.records.length,
-        puts: diff.puts.length,
-        tombstones: diff.tombstones.length,
+        puts: puts.length,
+        tombstones: tombstones.length,
+        generation: Number.isSafeInteger(nextGeneration) && nextGeneration >= 0
+          ? nextGeneration
+          : generation + (mutationCount > 0 ? 1 : 0),
         completedAt
       };
       emit("shadow-complete", result);
@@ -260,12 +272,9 @@
         return result;
       }
 
-      const rows = Array.isArray(verifyOptions.rows)
-        ? verifyOptions.rows
-        : await store.list(mapper.namespace, { includeDeleted: true });
-      const verification = await verify(snapshot, { ...verifyOptions, rows, throwOnMismatch: true });
       const manifest = await store.getManifest();
       const stage = manifestStage(manifest);
+      const generation = manifestGeneration(manifest);
       if (stage !== "shadow" && stage !== "dual_write") {
         throw controllerError(
           `Shadow verification cannot be recorded while migration stage is ${stage}.`,
@@ -273,23 +282,22 @@
         );
       }
 
-      const verifiedAt = now();
-      await store.putManifest({
-        schemaVersion: mapper.formatVersion || 1,
-        cutoverStage: stage,
-        normalizedVerifiedAt: verifiedAt,
-        metadata: {
-          ...manifestMetadata(manifest),
-          verified_checksum: verification.actualChecksum,
-          last_shadow_verified_at: verifiedAt,
-          verification_record_count: verification.recordCount
-        }
+      const rows = Array.isArray(verifyOptions.rows)
+        ? verifyOptions.rows
+        : await store.list(mapper.namespace, { includeDeleted: true });
+      const verification = await verify(snapshot, { ...verifyOptions, rows, throwOnMismatch: true });
+      const marked = await store.markVerified({
+        expectedGeneration: generation,
+        checksum: verification.actualChecksum,
+        recordCount: verification.recordCount
       });
+      const verifiedAt = marked?.verified_at || marked?.verifiedAt || now();
 
       const result = {
         ...verification,
         skipped: false,
         stage,
+        generation,
         verifiedAt
       };
       emit("shadow-verify-recorded", result);
