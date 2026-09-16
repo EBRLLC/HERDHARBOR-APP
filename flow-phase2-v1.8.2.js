@@ -184,7 +184,7 @@
 
   function healthPanel(model){
     const rows=[
-      ...(model.health?.legacy||[]).map(record=>({title:record.type||"Health record",detail:record.details||record.notes||"",meta:formatDate(record.date)})),
+      ...(model.health?.legacy||[]).map(record=>{const isWeight=record.type==="Weight"&&record.weight!=null&&clean(record.weight)!=="";const measurement=isWeight?`${clean(record.weight)} ${clean(record.weightUnit)||"lb"}`:"";return{title:isWeight?`Weight · ${measurement}`:record.type||"Health record",detail:record.details||record.notes||"",meta:formatDate(record.date)};}),
       ...(model.health?.episodes||[]).map(record=>({title:record.concern||"Health episode",detail:record.resolved?"Resolved":record.quarantined?"Quarantined":"Open",meta:`${formatDate(record.startedDate)} · ${record.assessment?.level||record.healthStatus||""}`})),
       ...(model.health?.care||[]).map(record=>({title:record.product||record.type||"Care record",detail:record.reason||record.notes||"",meta:formatDate(record.date)}))
     ].sort((a,b)=>String(b.meta).localeCompare(String(a.meta))).slice(0,30);
