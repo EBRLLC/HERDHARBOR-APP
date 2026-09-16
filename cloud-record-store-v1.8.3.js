@@ -6,13 +6,13 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const VERSION = "0.6-paged-reads";
+  const VERSION = "0.7-guarded-cutover";
   const RELEASE = "1.8.3";
   const RECORD_TABLE = "herdharbor_sync_records";
   const MANIFEST_TABLE = "herdharbor_sync_manifest";
   const BATCH_RPC = "herdharbor_sync_apply_batch";
   const VERIFY_RPC = "herdharbor_sync_mark_verified";
-  const PREPARE_WRITER_RPC = "herdharbor_sync_prepare_normalized_writer";
+  const PREPARE_WRITER_RPC = "herdharbor_sync_prepare_normalized_writer_guarded";
   const STAGE_RPC = "herdharbor_sync_set_stage";
   const NAMESPACE_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
   const RECORD_ID_MAX_LENGTH = 160;
@@ -117,6 +117,9 @@
       "HH_SYNC_INVALID_WRITER_READINESS",
       "HH_SYNC_DUAL_WRITE_STAGE_REQUIRED",
       "HH_SYNC_WRITER_FORMAT_MISMATCH",
+      "HH_SYNC_LEGACY_GUARD_REQUIRED",
+      "HH_SYNC_LEGACY_WRITE_BLOCKED_AFTER_CUTOVER",
+      "HH_SYNC_LEGACY_GUARD_USER_REQUIRED",
       "HH_SYNC_INITIAL_STAGE_MUST_BE_LEGACY",
       "HH_SYNC_MANIFEST_MISSING"
     ];
@@ -130,6 +133,8 @@
       HH_SYNC_NORMALIZED_WRITER_REQUIRED: "The normalized writer has not been prepared for cutover.",
       HH_SYNC_DUAL_WRITE_STAGE_REQUIRED: "Normalized writer preparation is only allowed during dual-write migration.",
       HH_SYNC_WRITER_FORMAT_MISMATCH: "The normalized writer does not match the verified cloud format.",
+      HH_SYNC_LEGACY_GUARD_REQUIRED: "The stale-client legacy-write guard is required before normalized cutover.",
+      HH_SYNC_LEGACY_WRITE_BLOCKED_AFTER_CUTOVER: "Legacy cloud writes are blocked because normalized sync is authoritative.",
       HH_SYNC_INVALID_STAGE_TRANSITION: "That cloud migration stage transition is not allowed.",
       HH_SYNC_MANIFEST_MISSING: "The normalized cloud migration manifest is missing.",
       HH_SYNC_RECORD_COUNT_MISMATCH: "The normalized cloud record count did not match the verified snapshot."
@@ -214,8 +219,6 @@
         const page = Array.isArray(data) ? data : [];
         rows.push(...page);
 
-        // Older test/mocked clients may not expose range(); preserve their
-        // single-page behavior while real Supabase clients page explicitly.
         if (!supportsRange || page.length < READ_PAGE_SIZE) break;
         if (rows.length >= MAX_READ_ROWS) throw readLimitError(operation);
         from += READ_PAGE_SIZE;
