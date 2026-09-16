@@ -6,7 +6,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const VERSION = "0.3-efficient-mapper";
+  const VERSION = "0.4-safe-json-keys";
   const RELEASE = "1.8.3";
   const FORMAT_VERSION = 2;
   const NAMESPACE = "legacy-state";
@@ -44,9 +44,6 @@
     return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
   }
 
-  // Two independent 32-bit lanes give record/snapshot fingerprints a 64-bit
-  // collision surface while staying much faster than BigInt hashing on large
-  // browser states. These are integrity/diff fingerprints, not security hashes.
   function checksumText(text) {
     const input = String(text == null ? "" : text);
     let left = 0x811c9dc5;
@@ -100,8 +97,6 @@
 
   function arrayItemRecordId(key, item, duplicateCounts) {
     const identity = stableIdentity(item);
-    // Content identity keeps identity-less values stable when items are inserted
-    // or reordered. Array order itself lives only in the array manifest.
     const identityBasis = identity || `content:${stableStringify(item)}`;
     const identityToken = token(identityBasis);
     const base = `item:${token(key)}:${identityToken}`;
@@ -253,12 +248,18 @@
       throw integrityError("Normalized cloud snapshot manifest entry count is invalid.");
     }
 
-    const output = {};
+    // Null-prototype assembly avoids __proto__ setter behavior. A final JSON
+    // clone restores the ordinary JSON.parse object shape without prototype
+    // pollution or loss of legal keys such as "" and "__proto__".
+    const output = Object.create(null);
     const seenKeys = new Set();
     for (const entry of manifest.entries) {
-      const key = String(entry?.key ?? "");
-      const recordId = String(entry?.record_id ?? "");
-      if (!key || !recordId) throw integrityError("Normalized cloud snapshot manifest contains an invalid entry.");
+      if (!entry || typeof entry !== "object" || !("key" in entry)) {
+        throw integrityError("Normalized cloud snapshot manifest contains an invalid entry.");
+      }
+      const key = String(entry.key);
+      const recordId = String(entry.record_id ?? "");
+      if (!recordId) throw integrityError("Normalized cloud snapshot manifest contains an invalid record reference.");
       if (seenKeys.has(key)) throw integrityError(`Normalized cloud snapshot contains duplicate key ${key}.`);
       seenKeys.add(key);
       const payload = records.get(recordId);
@@ -282,8 +283,14 @@
       if (!Number.isSafeInteger(declaredLength) || declaredLength < 0 || declaredLength !== payload.item_record_ids.length) {
         throw integrityError(`Normalized array length is invalid for ${key}.`);
       }
+      const seenItemIds = new Set();
       const values = payload.item_record_ids.map((itemRecordId, index) => {
-        const itemPayload = records.get(String(itemRecordId));
+        const safeItemRecordId = String(itemRecordId ?? "");
+        if (!safeItemRecordId || seenItemIds.has(safeItemRecordId)) {
+          throw integrityError(`Normalized array item reference ${index} is invalid for ${key}.`);
+        }
+        seenItemIds.add(safeItemRecordId);
+        const itemPayload = records.get(safeItemRecordId);
         if (!itemPayload || itemPayload.kind !== "array_item" || itemPayload.key !== key) {
           throw integrityError(`Normalized array item ${index} is missing for ${key}.`);
         }
@@ -292,13 +299,14 @@
       output[key] = values;
     }
 
+    const safeOutput = cloneJson(output, "normalized snapshot");
     if (options.verifyChecksum !== false) {
-      const actual = checksumValue(output);
+      const actual = checksumValue(safeOutput);
       if (manifest.snapshot_checksum && actual !== manifest.snapshot_checksum) {
         throw integrityError("Normalized cloud snapshot checksum does not match reconstructed state.", "HH_NORMALIZED_CHECKSUM_MISMATCH");
       }
     }
-    return output;
+    return safeOutput;
   }
 
   function recordKey(row) {
