@@ -14,9 +14,9 @@
   const VALID_STAGES = new Set(["legacy", "shadow", "dual_write", "normalized"]);
 
   function requiredStore(recordStore) {
-    const methods = ["list", "listHeaders", "getManifest", "applyBatch", "markVerified"];
+    const methods = ["list", "getManifest", "applyBatch", "markVerified"];
     if (!recordStore || methods.some((name) => typeof recordStore[name] !== "function")) {
-      throw new TypeError("An atomic normalized cloud record store with header reads is required.");
+      throw new TypeError("An atomic normalized cloud record store is required.");
     }
     return recordStore;
   }
@@ -120,7 +120,10 @@
 
     async function resolvePreviousRows(previousRows) {
       if (Array.isArray(previousRows)) return previousRows;
-      return store.listHeaders(mapper.namespace, { includeDeleted: true });
+      if (typeof store.listHeaders === "function") {
+        return store.listHeaders(mapper.namespace, { includeDeleted: true });
+      }
+      return store.list(mapper.namespace, { includeDeleted: true });
     }
 
     function versionMap(rows) {
@@ -183,10 +186,6 @@
         return result;
       }
 
-      // After a successful atomic batch, source checksum + record count are a
-      // cheap proof that this exact legacy snapshot has already been written.
-      // Direct table writes are forbidden by SQL, so repeated autosaves can skip
-      // the full record-header read entirely.
       if (stage !== "legacy" && manifestAlreadyTracksSnapshot(manifest, mapped)) {
         const result = {
           skipped: true,
