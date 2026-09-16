@@ -16,7 +16,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (recordStoreApi, normalizerApi, shadowApi) {
   "use strict";
 
-  const VERSION = "0.2-verification-retry";
+  const VERSION = "0.3-single-map-bootstrap";
   const RELEASE = "1.8.3";
 
   function requiredFunction(value, label) {
@@ -109,13 +109,10 @@
 
       try {
         const legacyRead = resolveLegacyRead(await readLegacySnapshot({ userId }));
-        const mapped = normalizerApi.mapLegacySnapshot(legacyRead.snapshot);
         const dryRun = runOptions.dryRun === true;
-        emit("shadow-bootstrap-start", {
-          checksum: mapped.checksum,
-          recordCount: mapped.records.length,
-          dryRun
-        });
+        // The controller owns normalization. Avoid pre-mapping the same multi-MB
+        // legacy snapshot here and then immediately mapping it again in sync().
+        emit("shadow-bootstrap-start", { dryRun });
 
         const recordStore = createRecordStore({ client: options.client, userId });
         const controller = createShadowSyncController({
@@ -144,8 +141,8 @@
             const result = {
               skipped: true,
               reason: "dry-run",
-              checksum: mapped.checksum,
-              recordCount: mapped.records.length
+              checksum: sync.checksum || null,
+              recordCount: Number(sync.recordCount || 0) || 0
             };
             emit("shadow-bootstrap-complete", result);
             return result;
@@ -155,8 +152,8 @@
             const result = {
               skipped: false,
               stage: verification.stage || "shadow",
-              checksum: verification.actualChecksum || mapped.checksum,
-              recordCount: verification.recordCount || mapped.records.length,
+              checksum: verification.actualChecksum || sync.checksum || null,
+              recordCount: verification.recordCount || sync.recordCount || 0,
               verified: verification.ok === true,
               verifiedAt: verification.verifiedAt || null,
               resumedVerification: true
@@ -167,8 +164,8 @@
           const result = {
             skipped: true,
             reason: sync.reason || "shadow-sync-skipped",
-            checksum: mapped.checksum,
-            recordCount: mapped.records.length,
+            checksum: sync.checksum || null,
+            recordCount: Number(sync.recordCount || 0) || 0,
             verified: sync.verified === true
           };
           emit("shadow-bootstrap-complete", result);
@@ -179,8 +176,8 @@
         const result = {
           skipped: false,
           stage: verification.stage || sync.stage || "shadow",
-          checksum: verification.actualChecksum || mapped.checksum,
-          recordCount: verification.recordCount || mapped.records.length,
+          checksum: verification.actualChecksum || sync.checksum || null,
+          recordCount: verification.recordCount || sync.recordCount || 0,
           verified: verification.ok === true,
           verifiedAt: verification.verifiedAt || null,
           resumedVerification: false
