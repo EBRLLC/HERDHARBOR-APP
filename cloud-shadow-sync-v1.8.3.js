@@ -8,7 +8,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (normalizer) {
   "use strict";
 
-  const VERSION = "0.8-single-pass-verification";
+  const VERSION = "0.9-mapper-scope-fix";
   const RELEASE = "1.8.3";
   const DEFAULT_MAX_MUTATIONS = 10000;
   const VALID_STAGES = new Set(["legacy", "shadow", "dual_write", "normalized"]);
@@ -74,10 +74,10 @@
     return Number.isSafeInteger(count) && count >= 0 ? count : null;
   }
 
-  function metadataMatchesMapper(metadata) {
+  function metadataMatchesMapper(metadata, mapper) {
     return (
-      String(metadata?.normalized_namespace || "") === String(mapper.namespace || "") &&
-      Number(metadata?.normalized_format_version) === Number(mapper.formatVersion || 1)
+      String(metadata?.normalized_namespace || "") === String(mapper?.namespace || "") &&
+      Number(metadata?.normalized_format_version) === Number(mapper?.formatVersion || 1)
     );
   }
 
@@ -147,7 +147,7 @@
       if (!manifest) return false;
       const metadata = manifestMetadata(manifest);
       return (
-        metadataMatchesMapper(metadata) &&
+        metadataMatchesMapper(metadata, mapper) &&
         String(metadata.source_checksum || "") === mapped.checksum &&
         metadataCount(metadata, "normalized_record_count") === mapped.records.length
       );
@@ -156,7 +156,7 @@
     function manifestVerificationIsCurrent(manifest, mapped) {
       const metadata = manifestMetadata(manifest);
       return Boolean(manifest?.normalized_verified_at ?? manifest?.normalizedVerifiedAt) &&
-        metadataMatchesMapper(metadata) &&
+        metadataMatchesMapper(metadata, mapper) &&
         String(metadata.source_checksum || "") === mapped.checksum &&
         String(metadata.verified_checksum || "") === mapped.checksum &&
         metadataCount(metadata, "normalized_record_count") === mapped.records.length &&
@@ -164,8 +164,6 @@
     }
 
     async function sync(snapshot, syncOptions = {}) {
-      // A disabled feature gate must be essentially free: no provider calls and
-      // no multi-megabyte JSON cloning/hashing just to discover that it is off.
       if (!enabled) {
         const result = {
           skipped: true,
@@ -179,8 +177,6 @@
         return result;
       }
 
-      // Dry-run deliberately pays the normalization cost because its purpose is
-      // to calculate an exact migration preview without touching the provider.
       if (syncOptions.dryRun === true) {
         const mapped = mapper.mapLegacySnapshot(snapshot);
         const previousRows = Array.isArray(syncOptions.previousRows) ? syncOptions.previousRows : [];
@@ -197,9 +193,6 @@
         return result;
       }
 
-      // Read the tiny manifest before normalizing. Once normalized is already
-      // authoritative, a stale/shadow caller exits without cloning and hashing
-      // the entire legacy app state.
       const manifest = await store.getManifest();
       const stage = manifestStage(manifest);
       const generation = manifestGeneration(manifest);
@@ -323,9 +316,6 @@
       const rows = Array.isArray(verifyOptions.rows)
         ? verifyOptions.rows
         : await store.list(mapper.namespace, { includeDeleted: true });
-      // Reassembly performs the authoritative normalized checksum once and
-      // returns it with the reconstructed snapshot. Do not hash that snapshot a
-      // second time just to recover a checksum we already calculated.
       const reconstruction = mapper.reassembleLegacySnapshotWithMetadata(rows);
       const expectedChecksum = verifyOptions.expectedChecksum
         ? String(verifyOptions.expectedChecksum)
