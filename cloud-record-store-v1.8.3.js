@@ -6,13 +6,16 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const VERSION = "0.1-foundation";
+  const VERSION = "0.2-atomic";
   const RELEASE = "1.8.3";
   const RECORD_TABLE = "herdharbor_sync_records";
   const MANIFEST_TABLE = "herdharbor_sync_manifest";
+  const BATCH_RPC = "herdharbor_sync_apply_batch";
+  const VERIFY_RPC = "herdharbor_sync_mark_verified";
   const NAMESPACE_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
   const RECORD_ID_MAX_LENGTH = 160;
   const CUTOVER_STAGES = new Set(["legacy", "shadow", "dual_write", "normalized"]);
+  const BATCH_STAGES = new Set(["legacy", "shadow", "dual_write"]);
 
   function requiredText(value, label, maxLength) {
     const text = String(value == null ? "" : value).trim();
@@ -53,7 +56,34 @@
     return version;
   }
 
+  function knownProviderFailure(operation, error) {
+    const message = String(error?.message || "");
+    const known = [
+      "HH_SYNC_CONFLICT",
+      "HH_SYNC_VERIFY_STALE",
+      "HH_SYNC_BATCH_LIMIT",
+      "HH_SYNC_INVALID_BATCH",
+      "HH_SYNC_AUTH_REQUIRED",
+      "HH_SYNC_NORMALIZED_REQUIRES_VERIFICATION"
+    ].find((code) => message.includes(code));
+    if (!known) return null;
+    const wrapped = new Error(
+      known === "HH_SYNC_CONFLICT"
+        ? "The normalized cloud state changed on another device."
+        : known === "HH_SYNC_VERIFY_STALE"
+          ? "The normalized cloud state changed before verification completed."
+          : "The normalized cloud operation was rejected by its safety gate."
+    );
+    wrapped.name = "HerdHarborCloudRecordError";
+    wrapped.code = known;
+    wrapped.status = Number(error?.status || error?.statusCode || 0) || null;
+    wrapped.operation = operation;
+    return wrapped;
+  }
+
   function providerError(operation, error) {
+    const known = knownProviderFailure(operation, error);
+    if (known) return known;
     const wrapped = new Error(error?.message || `Normalized cloud ${operation} failed.`);
     wrapped.name = "HerdHarborCloudRecordError";
     wrapped.code = String(error?.code || "provider_error");
@@ -72,8 +102,47 @@
     return error;
   }
 
+  function normalizeGeneration(value) {
+    const generation = Number(value);
+    if (!Number.isSafeInteger(generation) || generation < 0) {
+      throw new TypeError("expectedGeneration must be a non-negative integer.");
+    }
+    return generation;
+  }
+
+  function normalizeRecordCount(value) {
+    const count = Number(value);
+    if (!Number.isSafeInteger(count) || count < 0) {
+      throw new TypeError("recordCount must be a non-negative integer.");
+    }
+    return count;
+  }
+
+  function batchManifestPatch(patch = {}) {
+    const provider = {};
+    if (patch.schemaVersion !== undefined) {
+      const schemaVersion = Number(patch.schemaVersion);
+      if (!Number.isSafeInteger(schemaVersion) || schemaVersion < 1) {
+        throw new TypeError("schemaVersion must be a positive integer.");
+      }
+      provider.schema_version = schemaVersion;
+    }
+    if (patch.cutoverStage !== undefined) {
+      const stage = String(patch.cutoverStage || "").trim();
+      if (!BATCH_STAGES.has(stage)) throw new TypeError("Invalid batch cutoverStage.");
+      provider.cutover_stage = stage;
+    }
+    if (patch.legacySnapshotUpdatedAt !== undefined) {
+      provider.legacy_snapshot_updated_at = patch.legacySnapshotUpdatedAt || null;
+    }
+    if (patch.lastBackfillAt !== undefined) provider.last_backfill_at = patch.lastBackfillAt || null;
+    if (patch.normalizedVerifiedAt !== undefined) provider.normalized_verified_at = patch.normalizedVerifiedAt || null;
+    if (patch.metadata !== undefined) provider.metadata = normalizePayload(patch.metadata);
+    return provider;
+  }
+
   function createRecordStore({ client, userId } = {}) {
-    if (!client?.from) throw new TypeError("A Supabase client is required.");
+    if (!client?.from || !client?.rpc) throw new TypeError("A Supabase client is required.");
     const ownerId = requiredText(userId, "userId", 128);
 
     async function list(namespace, options = {}) {
@@ -171,7 +240,7 @@
     async function getManifest() {
       const { data, error } = await client
         .from(MANIFEST_TABLE)
-        .select("schema_version,cutover_stage,legacy_snapshot_updated_at,last_backfill_at,normalized_verified_at,metadata,created_at,updated_at")
+        .select("schema_version,cutover_stage,sync_generation,legacy_snapshot_updated_at,last_backfill_at,normalized_verified_at,metadata,created_at,updated_at")
         .eq("user_id", ownerId)
         .maybeSingle();
       if (error) throw providerError("manifest-read", error);
@@ -204,10 +273,61 @@
       const { data, error } = await client
         .from(MANIFEST_TABLE)
         .upsert(row, { onConflict: "user_id" })
-        .select("schema_version,cutover_stage,legacy_snapshot_updated_at,last_backfill_at,normalized_verified_at,metadata,created_at,updated_at")
+        .select("schema_version,cutover_stage,sync_generation,legacy_snapshot_updated_at,last_backfill_at,normalized_verified_at,metadata,created_at,updated_at")
         .single();
       if (error) throw providerError("manifest-write", error);
       return data;
+    }
+
+    async function applyBatch({ puts = [], tombstones = [], manifestPatch = {} } = {}) {
+      if (!Array.isArray(puts) || !Array.isArray(tombstones)) {
+        throw new TypeError("puts and tombstones must be arrays.");
+      }
+      const providerPuts = puts.map((record) => {
+        const row = {
+          namespace: normalizeNamespace(record?.namespace),
+          record_id: normalizeRecordId(record?.record_id ?? record?.recordId),
+          payload: normalizePayload(record?.payload)
+        };
+        const expectedVersion = normalizeExpectedVersion(record?.expectedVersion ?? record?.expected_version);
+        if (expectedVersion !== null) row.expected_version = expectedVersion;
+        return row;
+      });
+      const providerTombstones = tombstones.map((record) => {
+        const expectedVersion = normalizeExpectedVersion(record?.expectedVersion ?? record?.expected_version);
+        if (expectedVersion === null) throw new TypeError("Tombstones require expectedVersion.");
+        return {
+          namespace: normalizeNamespace(record?.namespace),
+          record_id: normalizeRecordId(record?.record_id ?? record?.recordId),
+          expected_version: expectedVersion
+        };
+      });
+
+      const { data, error } = await client.rpc(BATCH_RPC, {
+        p_puts: providerPuts,
+        p_tombstones: providerTombstones,
+        p_manifest_patch: batchManifestPatch(manifestPatch)
+      });
+      if (error) throw providerError("batch-write", error);
+      return data || { ok: true, puts: providerPuts.length, tombstones: providerTombstones.length };
+    }
+
+    async function markVerified({ expectedGeneration, checksum, recordCount } = {}) {
+      const generation = normalizeGeneration(expectedGeneration);
+      const safeChecksum = requiredText(checksum, "checksum", 128);
+      const safeRecordCount = normalizeRecordCount(recordCount);
+      const { data, error } = await client.rpc(VERIFY_RPC, {
+        p_expected_generation: generation,
+        p_checksum: safeChecksum,
+        p_record_count: safeRecordCount
+      });
+      if (error) throw providerError("mark-verified", error);
+      return data || {
+        ok: true,
+        generation,
+        checksum: safeChecksum,
+        record_count: safeRecordCount
+      };
     }
 
     return Object.freeze({
@@ -216,7 +336,9 @@
       put,
       tombstone,
       getManifest,
-      putManifest
+      putManifest,
+      applyBatch,
+      markVerified
     });
   }
 
@@ -225,6 +347,8 @@
     release: RELEASE,
     recordTable: RECORD_TABLE,
     manifestTable: MANIFEST_TABLE,
+    batchRpc: BATCH_RPC,
+    verifyRpc: VERIFY_RPC,
     normalizeNamespace,
     normalizeRecordId,
     normalizePayload,
