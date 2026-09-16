@@ -135,6 +135,13 @@ begin
         raise exception using errcode = '23514', message = 'HH_SYNC_STAGE_VERIFICATION_REQUIRED';
       end if;
     end if;
+
+    if old.cutover_stage = 'dual_write' and new.cutover_stage = 'normalized' then
+      if new.metadata -> 'normalized_writer_ready' is distinct from 'true'::jsonb
+         or nullif(btrim(new.metadata ->> 'normalized_writer_version'), '') is null then
+        raise exception using errcode = '23514', message = 'HH_SYNC_NORMALIZED_WRITER_REQUIRED';
+      end if;
+    end if;
   end if;
 
   if new.cutover_stage = 'normalized' then
@@ -150,6 +157,10 @@ begin
        or v_normalized_count is null
        or v_verified_count <> v_normalized_count then
       raise exception using errcode = '23514', message = 'HH_SYNC_NORMALIZED_REQUIRES_VERIFICATION';
+    end if;
+    if new.metadata -> 'normalized_writer_ready' is distinct from 'true'::jsonb
+       or nullif(btrim(new.metadata ->> 'normalized_writer_version'), '') is null then
+      raise exception using errcode = '23514', message = 'HH_SYNC_NORMALIZED_WRITER_REQUIRED';
     end if;
   end if;
 
@@ -489,6 +500,87 @@ begin
 end;
 $$;
 
+-- Preparing the normalized writer is deliberately separate from stage
+-- promotion. It invalidates the previous verification and advances generation,
+-- forcing a fresh round-trip verification before normalized can become
+-- authoritative.
+create or replace function public.herdharbor_sync_prepare_normalized_writer(
+  p_expected_generation bigint,
+  p_writer_version text,
+  p_namespace text,
+  p_format_version integer
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_stage text;
+  v_generation bigint;
+  v_metadata jsonb;
+  v_prepared_at timestamptz := now();
+begin
+  if v_user is null then
+    raise exception using errcode = '42501', message = 'HH_SYNC_AUTH_REQUIRED';
+  end if;
+  if p_expected_generation is null or p_expected_generation < 0 then
+    raise exception using errcode = '22023', message = 'HH_SYNC_INVALID_GENERATION';
+  end if;
+  if p_writer_version is null or char_length(btrim(p_writer_version)) not between 1 and 80
+     or p_namespace is null or char_length(btrim(p_namespace)) not between 1 and 64
+     or p_format_version is null or p_format_version < 1 then
+    raise exception using errcode = '22023', message = 'HH_SYNC_INVALID_WRITER_READINESS';
+  end if;
+
+  select cutover_stage, sync_generation, metadata
+  into v_stage, v_generation, v_metadata
+  from public.herdharbor_sync_manifest
+  where user_id = v_user
+  for update;
+
+  if not found then
+    raise exception using errcode = 'P0002', message = 'HH_SYNC_MANIFEST_MISSING';
+  end if;
+  if v_generation <> p_expected_generation then
+    raise exception using errcode = '40001', message = 'HH_SYNC_CONFLICT';
+  end if;
+  if v_stage <> 'dual_write' then
+    raise exception using errcode = '23514', message = 'HH_SYNC_DUAL_WRITE_STAGE_REQUIRED';
+  end if;
+  if nullif(btrim(v_metadata ->> 'normalized_namespace'), '') is distinct from btrim(p_namespace)
+     or nullif(btrim(v_metadata ->> 'normalized_format_version'), '') !~ '^[1-9][0-9]*$'
+     or (v_metadata ->> 'normalized_format_version')::integer <> p_format_version then
+    raise exception using errcode = '23514', message = 'HH_SYNC_WRITER_FORMAT_MISMATCH';
+  end if;
+
+  update public.herdharbor_sync_manifest
+  set
+    normalized_verified_at = null,
+    metadata = metadata || jsonb_build_object(
+      'verified_checksum', null,
+      'last_shadow_verified_at', null,
+      'verification_record_count', null,
+      'normalized_writer_ready', true,
+      'normalized_writer_version', btrim(p_writer_version),
+      'normalized_writer_prepared_at', v_prepared_at
+    ),
+    sync_generation = sync_generation + 1
+  where user_id = v_user
+    and sync_generation = p_expected_generation
+  returning sync_generation into v_generation;
+
+  return jsonb_build_object(
+    'ok', true,
+    'stage', v_stage,
+    'generation', v_generation,
+    'writer_version', btrim(p_writer_version),
+    'prepared_at', v_prepared_at
+  );
+end;
+$$;
+
 create or replace function public.herdharbor_sync_set_stage(
   p_target_stage text,
   p_expected_generation bigint
@@ -503,6 +595,7 @@ declare
   v_current_stage text;
   v_generation bigint;
   v_verified_at timestamptz;
+  v_is_rollback boolean := false;
 begin
   if v_user is null then
     raise exception using errcode = '42501', message = 'HH_SYNC_AUTH_REQUIRED';
@@ -528,10 +621,28 @@ begin
     raise exception using errcode = '40001', message = 'HH_SYNC_CONFLICT';
   end if;
 
+  v_is_rollback := (
+    (v_current_stage = 'normalized' and p_target_stage = 'dual_write')
+    or (v_current_stage = 'dual_write' and p_target_stage = 'shadow')
+    or (v_current_stage = 'shadow' and p_target_stage = 'legacy')
+  );
+
   if v_current_stage <> p_target_stage then
     update public.herdharbor_sync_manifest
     set
       cutover_stage = p_target_stage,
+      normalized_verified_at = case when v_is_rollback then null else normalized_verified_at end,
+      metadata = case
+        when v_is_rollback then metadata || jsonb_build_object(
+          'verified_checksum', null,
+          'last_shadow_verified_at', null,
+          'verification_record_count', null,
+          'normalized_writer_ready', false,
+          'normalized_writer_version', null,
+          'normalized_writer_prepared_at', null
+        )
+        else metadata
+      end,
       sync_generation = sync_generation + 1
     where user_id = v_user
       and sync_generation = p_expected_generation
@@ -544,16 +655,19 @@ begin
     'from_stage', v_current_stage,
     'stage', p_target_stage,
     'generation', v_generation,
-    'normalized_verified_at', v_verified_at
+    'normalized_verified_at', v_verified_at,
+    'rollback', v_is_rollback
   );
 end;
 $$;
 
 revoke all on function public.herdharbor_sync_apply_batch(jsonb, jsonb, jsonb) from public;
 revoke all on function public.herdharbor_sync_mark_verified(bigint, text, integer) from public;
+revoke all on function public.herdharbor_sync_prepare_normalized_writer(bigint, text, text, integer) from public;
 revoke all on function public.herdharbor_sync_set_stage(text, bigint) from public;
 grant execute on function public.herdharbor_sync_apply_batch(jsonb, jsonb, jsonb) to authenticated;
 grant execute on function public.herdharbor_sync_mark_verified(bigint, text, integer) to authenticated;
+grant execute on function public.herdharbor_sync_prepare_normalized_writer(bigint, text, text, integer) to authenticated;
 grant execute on function public.herdharbor_sync_set_stage(text, bigint) to authenticated;
 
 comment on table public.herdharbor_sync_records is
@@ -564,7 +678,9 @@ comment on function public.herdharbor_sync_apply_batch(jsonb, jsonb, jsonb) is
   'Atomically applies owner-scoped normalized record changes using record versions and manifest generation.';
 comment on function public.herdharbor_sync_mark_verified(bigint, text, integer) is
   'Records verification only when generation, checksum, metadata count, and actual active record count still agree.';
+comment on function public.herdharbor_sync_prepare_normalized_writer(bigint, text, text, integer) is
+  'Records normalized-writer readiness, invalidates prior verification, and advances generation before cutover.';
 comment on function public.herdharbor_sync_set_stage(text, bigint) is
-  'Generation-guarded adjacent migration stage transition. Every real stage change advances sync_generation.';
+  'Generation-guarded adjacent migration stage transition. Rollbacks clear verification and writer readiness.';
 
 commit;
