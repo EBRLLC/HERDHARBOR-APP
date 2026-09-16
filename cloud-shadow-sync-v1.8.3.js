@@ -8,15 +8,15 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (normalizer) {
   "use strict";
 
-  const VERSION = "0.4-atomic-generation";
+  const VERSION = "0.5-header-diff";
   const RELEASE = "1.8.3";
   const DEFAULT_MAX_MUTATIONS = 10000;
   const VALID_STAGES = new Set(["legacy", "shadow", "dual_write", "normalized"]);
 
   function requiredStore(recordStore) {
-    const methods = ["list", "getManifest", "applyBatch", "markVerified"];
+    const methods = ["list", "listHeaders", "getManifest", "applyBatch", "markVerified"];
     if (!recordStore || methods.some((name) => typeof recordStore[name] !== "function")) {
-      throw new TypeError("An atomic normalized cloud record store is required.");
+      throw new TypeError("An atomic normalized cloud record store with header reads is required.");
     }
     return recordStore;
   }
@@ -69,6 +69,11 @@
       : {};
   }
 
+  function metadataCount(metadata, key) {
+    const count = Number(metadata?.[key]);
+    return Number.isSafeInteger(count) && count >= 0 ? count : null;
+  }
+
   function controllerError(message, code) {
     const error = new Error(message);
     error.name = "HerdHarborCloudShadowSyncError";
@@ -115,7 +120,7 @@
 
     async function resolvePreviousRows(previousRows) {
       if (Array.isArray(previousRows)) return previousRows;
-      return store.list(mapper.namespace, { includeDeleted: true });
+      return store.listHeaders(mapper.namespace, { includeDeleted: true });
     }
 
     function versionMap(rows) {
@@ -126,6 +131,22 @@
         if (recordId && version) versions.set(recordId, version);
       }
       return versions;
+    }
+
+    function manifestAlreadyTracksSnapshot(manifest, mapped) {
+      if (!manifest) return false;
+      const metadata = manifestMetadata(manifest);
+      return (
+        String(metadata.source_checksum || "") === mapped.checksum &&
+        metadataCount(metadata, "normalized_record_count") === mapped.records.length
+      );
+    }
+
+    function manifestVerificationIsCurrent(manifest, mapped) {
+      const metadata = manifestMetadata(manifest);
+      return Boolean(manifest?.normalized_verified_at ?? manifest?.normalizedVerifiedAt) &&
+        String(metadata.verified_checksum || "") === mapped.checksum &&
+        metadataCount(metadata, "verification_record_count") === mapped.records.length;
     }
 
     async function sync(snapshot, syncOptions = {}) {
@@ -157,6 +178,25 @@
           puts: 0,
           tombstones: 0,
           generation
+        };
+        emit("shadow-skipped", result);
+        return result;
+      }
+
+      // After a successful atomic batch, source checksum + record count are a
+      // cheap proof that this exact legacy snapshot has already been written.
+      // Direct table writes are forbidden by SQL, so repeated autosaves can skip
+      // the full record-header read entirely.
+      if (stage !== "legacy" && manifestAlreadyTracksSnapshot(manifest, mapped)) {
+        const result = {
+          skipped: true,
+          reason: "already-current",
+          checksum: mapped.checksum,
+          recordCount: mapped.records.length,
+          puts: 0,
+          tombstones: 0,
+          generation,
+          verified: manifestVerificationIsCurrent(manifest, mapped)
         };
         emit("shadow-skipped", result);
         return result;
@@ -205,6 +245,8 @@
       const nextMetadata = {
         ...manifestMetadata(manifest),
         normalizer_version: mapper.version || "unknown",
+        normalized_format_version: mapper.formatVersion || 1,
+        normalized_namespace: mapper.namespace,
         source_checksum: mapped.checksum,
         normalized_record_count: mapped.records.length,
         last_shadow_write_at: completedAt,
@@ -229,6 +271,7 @@
 
       const batch = await store.applyBatch({ puts, tombstones, manifestPatch });
       const nextGeneration = Number(batch?.generation);
+      const generationAdvanced = mutationCount > 0 || nextStage !== stage;
       const result = {
         skipped: false,
         stage: nextStage,
@@ -238,7 +281,7 @@
         tombstones: tombstones.length,
         generation: Number.isSafeInteger(nextGeneration) && nextGeneration >= 0
           ? nextGeneration
-          : generation + (mutationCount > 0 ? 1 : 0),
+          : generation + (generationAdvanced ? 1 : 0),
         completedAt
       };
       emit("shadow-complete", result);
@@ -252,11 +295,12 @@
       const reconstructed = mapper.reassembleLegacySnapshot(rows);
       const expectedChecksum = mapper.snapshotChecksum(snapshot);
       const actualChecksum = mapper.snapshotChecksum(reconstructed);
+      const activeRows = rows.filter((row) => !rowDeletedAt(row));
       const result = {
         ok: expectedChecksum === actualChecksum,
         expectedChecksum,
         actualChecksum,
-        recordCount: rows.filter((row) => !rowDeletedAt(row)).length
+        recordCount: activeRows.length
       };
       if (!result.ok && verifyOptions.throwOnMismatch !== false) {
         throw controllerError("Shadow normalized state does not match the legacy snapshot.", "HH_SHADOW_VERIFY_MISMATCH");
