@@ -6,7 +6,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const VERSION = "0.4-safe-json-keys";
+  const VERSION = "0.5-efficient-reassembly";
   const RELEASE = "1.8.3";
   const FORMAT_VERSION = 2;
   const NAMESPACE = "legacy-state";
@@ -95,9 +95,14 @@
     return `array:${token(key)}`;
   }
 
-  function arrayItemRecordId(key, item, duplicateCounts) {
+  function arrayItemRecordId(key, item, identityCounts, duplicateCounts) {
     const identity = stableIdentity(item);
-    const identityBasis = identity || `content:${stableStringify(item)}`;
+    // Treat an explicit identity as stable only when it is unique inside its
+    // legacy array. Duplicate IDs can exist in old data; content-derived IDs
+    // prevent two distinct duplicate-ID items from swapping cloud rows when
+    // their order changes.
+    const uniqueIdentity = identity && identityCounts.get(identity) === 1 ? identity : null;
+    const identityBasis = uniqueIdentity || `content:${stableStringify(item)}`;
     const identityToken = token(identityBasis);
     const base = `item:${token(key)}:${identityToken}`;
     const seen = duplicateCounts.get(base) || 0;
@@ -153,9 +158,14 @@
         continue;
       }
 
+      const identityCounts = new Map();
+      for (const item of value) {
+        const identity = stableIdentity(item);
+        if (identity) identityCounts.set(identity, (identityCounts.get(identity) || 0) + 1);
+      }
       const duplicateCounts = new Map();
       const itemRecordIds = value.map((item) => {
-        const recordId = arrayItemRecordId(key, item, duplicateCounts);
+        const recordId = arrayItemRecordId(key, item, identityCounts, duplicateCounts);
         records.push(makeRecord(recordId, {
           kind: "array_item",
           key,
@@ -232,7 +242,7 @@
     return map;
   }
 
-  function reassembleLegacySnapshot(rows, options = {}) {
+  function reassembleLegacySnapshotWithMetadata(rows, options = {}) {
     const records = activeRecordMap(rows);
     const manifest = records.get(SNAPSHOT_MANIFEST_ID);
     if (!manifest || manifest.kind !== "snapshot_manifest") {
@@ -300,13 +310,20 @@
     }
 
     const safeOutput = cloneJson(output, "normalized snapshot");
-    if (options.verifyChecksum !== false) {
-      const actual = checksumValue(safeOutput);
-      if (manifest.snapshot_checksum && actual !== manifest.snapshot_checksum) {
-        throw integrityError("Normalized cloud snapshot checksum does not match reconstructed state.", "HH_NORMALIZED_CHECKSUM_MISMATCH");
-      }
+    const actualChecksum = checksumValue(safeOutput);
+    if (options.verifyChecksum !== false && manifest.snapshot_checksum && actualChecksum !== manifest.snapshot_checksum) {
+      throw integrityError("Normalized cloud snapshot checksum does not match reconstructed state.", "HH_NORMALIZED_CHECKSUM_MISMATCH");
     }
-    return safeOutput;
+    return Object.freeze({
+      snapshot: safeOutput,
+      checksum: actualChecksum,
+      manifestChecksum: String(manifest.snapshot_checksum || ""),
+      recordCount: records.size
+    });
+  }
+
+  function reassembleLegacySnapshot(rows, options = {}) {
+    return reassembleLegacySnapshotWithMetadata(rows, options).snapshot;
   }
 
   function recordKey(row) {
@@ -353,6 +370,7 @@
     snapshotChecksum,
     mapLegacySnapshot,
     reassembleLegacySnapshot,
+    reassembleLegacySnapshotWithMetadata,
     diffNormalizedRecords
   });
 });
