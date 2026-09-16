@@ -155,9 +155,17 @@ function versionedRows(mapped, version = 1) {
   }));
 }
 
-test("shadow writes are disabled by default and perform zero provider operations", async () => {
+test("shadow writes are disabled by default and perform zero provider or normalization work", async () => {
   const store = fakeAtomicStore();
-  const controller = shadow.createShadowSyncController({ recordStore: store, normalizer });
+  let mapCalls = 0;
+  const countingNormalizer = {
+    ...normalizer,
+    mapLegacySnapshot(snapshot) {
+      mapCalls += 1;
+      return normalizer.mapLegacySnapshot(snapshot);
+    }
+  };
+  const controller = shadow.createShadowSyncController({ recordStore: store, normalizer: countingNormalizer });
 
   const result = await controller.sync(fixture);
   const recordedVerification = await controller.verifyAndRecord(fixture);
@@ -165,10 +173,13 @@ test("shadow writes are disabled by default and perform zero provider operations
   assert.equal(controller.isEnabled(), false);
   assert.equal(result.skipped, true);
   assert.equal(result.reason, "disabled");
+  assert.equal(result.puts, 0);
+  assert.equal(result.tombstones, 0);
+  assert.equal(result.recordCount, 0);
   assert.equal(recordedVerification.skipped, true);
   assert.equal(recordedVerification.reason, "disabled");
   assert.equal(store.calls.length, 0);
-  assert.ok(result.puts > 0);
+  assert.equal(mapCalls, 0);
 });
 
 test("enabled shadow sync applies one atomic batch and advances legacy to shadow", async () => {
@@ -282,7 +293,7 @@ test("a changed atomic batch clears any prior verification", async () => {
   assert.equal(manifest.metadata.verification_record_count, null);
 });
 
-test("shadow sync never downgrades dual-write and refuses writes after normalized cutover", async () => {
+test("shadow sync never downgrades dual-write and normalized stage exits before full-state mapping", async () => {
   const dualStore = fakeAtomicStore([], { cutover_stage: "dual_write", sync_generation: 2, metadata: {} });
   const dualController = shadow.createShadowSyncController({
     recordStore: dualStore,
@@ -295,14 +306,25 @@ test("shadow sync never downgrades dual-write and refuses writes after normalize
   assert.equal(dualStore._manifest().cutover_stage, "dual_write");
 
   const normalizedStore = fakeAtomicStore([], { cutover_stage: "normalized", sync_generation: 11, metadata: {} });
+  let mapCalls = 0;
+  const countingNormalizer = {
+    ...normalizer,
+    mapLegacySnapshot(snapshot) {
+      mapCalls += 1;
+      return normalizer.mapLegacySnapshot(snapshot);
+    }
+  };
   const normalizedController = shadow.createShadowSyncController({
     recordStore: normalizedStore,
-    normalizer,
+    normalizer: countingNormalizer,
     enabled: true
   });
   const normalizedResult = await normalizedController.sync(fixture, { previousRows: [] });
   assert.equal(normalizedResult.skipped, true);
   assert.equal(normalizedResult.reason, "normalized-authoritative");
+  assert.equal(normalizedResult.puts, 0);
+  assert.equal(normalizedResult.tombstones, 0);
+  assert.equal(mapCalls, 0);
   assert.deepEqual(normalizedStore.calls.map((call) => call[0]), ["getManifest"]);
 });
 
