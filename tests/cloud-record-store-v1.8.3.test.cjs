@@ -19,7 +19,9 @@ test("normalized cloud record store exposes the hardened v1.8.3 RPC foundation",
   assert.equal(api.manifestTable, "herdharbor_sync_manifest");
   assert.equal(api.batchRpc, "herdharbor_sync_apply_batch");
   assert.equal(api.verifyRpc, "herdharbor_sync_mark_verified");
+  assert.equal(api.prepareWriterRpc, "herdharbor_sync_prepare_normalized_writer");
   assert.equal(api.stageRpc, "herdharbor_sync_set_stage");
+  assert.equal(api.readPageSize, 500);
 });
 
 test("record namespaces and IDs are bounded and deterministic", () => {
@@ -62,11 +64,52 @@ test("store exposes reads plus guarded RPC mutations, not unsafe direct writes",
   assert.equal(typeof store.getManifest, "function");
   assert.equal(typeof store.applyBatch, "function");
   assert.equal(typeof store.markVerified, "function");
+  assert.equal(typeof store.prepareNormalizedWriter, "function");
   assert.equal(typeof store.setStage, "function");
   assert.equal(store.put, undefined);
   assert.equal(store.tombstone, undefined);
   assert.equal(store.putManifest, undefined);
   assert.match(adapterSource, /payload_checksum/);
+});
+
+test("record reads explicitly page beyond provider row limits", async () => {
+  const sourceRows = Array.from({ length: 1201 }, (_, index) => ({
+    namespace: "legacy-state",
+    record_id: `row-${String(index).padStart(4, "0")}`,
+    payload_checksum: `hh64:${String(index).padStart(16, "0")}`,
+    record_version: 1,
+    deleted_at: null
+  }));
+  const ranges = [];
+  const client = {
+    from() {
+      let rangeStart = 0;
+      let rangeEnd = api.readPageSize - 1;
+      return {
+        select() { return this; },
+        eq() { return this; },
+        order() { return this; },
+        is() { return this; },
+        range(from, to) {
+          rangeStart = from;
+          rangeEnd = to;
+          ranges.push([from, to]);
+          return this;
+        },
+        then(resolve) {
+          return Promise.resolve({ data: sourceRows.slice(rangeStart, rangeEnd + 1), error: null }).then(resolve);
+        }
+      };
+    },
+    async rpc() { return { data: {}, error: null }; }
+  };
+  const store = api.createRecordStore({ client, userId: "11111111-1111-1111-1111-111111111111" });
+  const rows = await store.listHeaders("legacy-state", { includeDeleted: true });
+
+  assert.equal(rows.length, 1201);
+  assert.equal(rows[0].record_id, "row-0000");
+  assert.equal(rows.at(-1).record_id, "row-1200");
+  assert.deepEqual(ranges, [[0, 499], [500, 999], [1000, 1499]]);
 });
 
 test("atomic batch adapter serializes checksums, versions, generation, and stage RPC", async () => {
@@ -90,7 +133,10 @@ test("atomic batch adapter serializes checksums, versions, generation, and stage
           error: null
         };
       }
-      if (name === api.stageRpc) return { data: { ok: true, stage: args.p_target_stage, generation: 9 }, error: null };
+      if (name === api.prepareWriterRpc) {
+        return { data: { ok: true, generation: 9, writer_version: args.p_writer_version }, error: null };
+      }
+      if (name === api.stageRpc) return { data: { ok: true, stage: args.p_target_stage, generation: 10 }, error: null };
       throw new Error(`unexpected rpc ${name}`);
     }
   };
@@ -136,11 +182,20 @@ test("atomic batch adapter serializes checksums, versions, generation, and stage
   assert.equal(verified.generation, 8);
   assert.equal(calls[1][0], api.verifyRpc);
 
-  const staged = await store.setStage({ targetStage: "dual_write", expectedGeneration: 8 });
-  assert.equal(staged.generation, 9);
-  assert.deepEqual(calls[2], [api.stageRpc, {
+  const prepared = await store.prepareNormalizedWriter({
+    expectedGeneration: 8,
+    writerVersion: "writer-v1",
+    namespace: "legacy-state",
+    formatVersion: 2
+  });
+  assert.equal(prepared.writer_version, "writer-v1");
+  assert.equal(calls[2][0], api.prepareWriterRpc);
+
+  const staged = await store.setStage({ targetStage: "dual_write", expectedGeneration: 9 });
+  assert.equal(staged.generation, 10);
+  assert.deepEqual(calls[3], [api.stageRpc, {
     p_target_stage: "dual_write",
-    p_expected_generation: 8
+    p_expected_generation: 9
   }]);
 });
 
@@ -224,5 +279,6 @@ test("schema embeds the final adjacent stage guard in the base migration", () =>
   assert.match(schema, /HH_SYNC_INVALID_STAGE_TRANSITION/);
   assert.match(schema, /HH_SYNC_STAGE_VERIFICATION_REQUIRED/);
   assert.match(schema, /HH_SYNC_NORMALIZED_REQUIRES_VERIFICATION/);
+  assert.match(schema, /HH_SYNC_NORMALIZED_WRITER_REQUIRED/);
   assert.match(schema, /legacy app_state remains authoritative until cutover/i);
 });
