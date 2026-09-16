@@ -1,9 +1,9 @@
 -- HerdHarbor v1.8.3
 -- Normalized cloud-sync foundation.
 --
--- This migration is intentionally additive. It does not alter, copy, or delete
--- public.herdharbor_user_data. The current full-state cloud snapshot remains the
--- production source of truth until a later, separately reviewed cutover.
+-- This migration is additive with respect to production user data. It never
+-- reads, alters, copies, or deletes public.herdharbor_user_data. The v1.8.2
+-- legacy app_state remains authoritative until a separately reviewed cutover.
 
 begin;
 
@@ -17,6 +17,8 @@ create table if not exists public.herdharbor_sync_records (
   record_id text not null
     check (char_length(record_id) between 1 and 160),
   payload jsonb not null default '{}'::jsonb,
+  payload_checksum text not null default 'unverified'
+    check (char_length(payload_checksum) between 1 and 128),
   record_version bigint not null default 1
     check (record_version >= 1),
   deleted_at timestamptz,
@@ -25,12 +27,22 @@ create table if not exists public.herdharbor_sync_records (
   primary key (user_id, namespace, record_id)
 );
 
-create index if not exists herdharbor_sync_records_user_namespace_updated_idx
-  on public.herdharbor_sync_records (user_id, namespace, updated_at desc);
+-- Idempotent upgrade path for non-production environments that applied an
+-- earlier v1.8.3 draft before lightweight payload checksums existed.
+alter table public.herdharbor_sync_records
+  add column if not exists payload_checksum text;
+update public.herdharbor_sync_records
+set payload_checksum = 'unverified'
+where payload_checksum is null or btrim(payload_checksum) = '';
+alter table public.herdharbor_sync_records
+  alter column payload_checksum set default 'unverified';
+alter table public.herdharbor_sync_records
+  alter column payload_checksum set not null;
 
-create index if not exists herdharbor_sync_records_user_live_idx
-  on public.herdharbor_sync_records (user_id, updated_at desc)
-  where deleted_at is null;
+-- The primary key already supports (user_id, namespace, record_id) header
+-- scans. Earlier draft indexes ordered by updated_at only added write cost.
+drop index if exists public.herdharbor_sync_records_user_namespace_updated_idx;
+drop index if exists public.herdharbor_sync_records_user_live_idx;
 
 create table if not exists public.herdharbor_sync_manifest (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -48,8 +60,6 @@ create table if not exists public.herdharbor_sync_manifest (
   updated_at timestamptz not null default now()
 );
 
--- Keep the migration idempotent if an early foundation schema was applied in a
--- non-production environment before sync_generation was introduced.
 alter table public.herdharbor_sync_manifest
   add column if not exists sync_generation bigint not null default 0;
 
@@ -57,7 +67,7 @@ create or replace function public.herdharbor_touch_sync_record()
 returns trigger
 language plpgsql
 security invoker
-set search_path = public
+set search_path = pg_catalog, public
 as $$
 begin
   new.updated_at := now();
@@ -73,19 +83,76 @@ create trigger herdharbor_sync_records_touch
 before update on public.herdharbor_sync_records
 for each row execute function public.herdharbor_touch_sync_record();
 
+-- Final transition guard is installed in the base migration so accidentally
+-- omitting a later rollout script cannot permit an unsafe stage jump.
 create or replace function public.herdharbor_touch_sync_manifest()
 returns trigger
 language plpgsql
 security invoker
-set search_path = public
+set search_path = pg_catalog, public
 as $$
+declare
+  v_verified_checksum text;
+  v_source_checksum text;
+  v_verified_count text;
+  v_normalized_count text;
 begin
   new.updated_at := now();
-  if new.cutover_stage = 'normalized' and new.normalized_verified_at is null then
-    raise exception using
-      errcode = '23514',
-      message = 'HH_SYNC_NORMALIZED_REQUIRES_VERIFICATION';
+
+  if tg_op = 'INSERT' and new.cutover_stage <> 'legacy' then
+    raise exception using errcode = '23514', message = 'HH_SYNC_INITIAL_STAGE_MUST_BE_LEGACY';
   end if;
+
+  if tg_op = 'UPDATE' and new.cutover_stage is distinct from old.cutover_stage then
+    if not (
+      (old.cutover_stage = 'legacy' and new.cutover_stage = 'shadow')
+      or (old.cutover_stage = 'shadow' and new.cutover_stage = 'legacy')
+      or (old.cutover_stage = 'shadow' and new.cutover_stage = 'dual_write')
+      or (old.cutover_stage = 'dual_write' and new.cutover_stage = 'shadow')
+      or (old.cutover_stage = 'dual_write' and new.cutover_stage = 'normalized')
+      or (old.cutover_stage = 'normalized' and new.cutover_stage = 'dual_write')
+    ) then
+      raise exception using errcode = '23514', message = 'HH_SYNC_INVALID_STAGE_TRANSITION';
+    end if;
+
+    if (
+      (old.cutover_stage = 'shadow' and new.cutover_stage = 'dual_write')
+      or (old.cutover_stage = 'dual_write' and new.cutover_stage = 'normalized')
+    ) then
+      v_verified_checksum := nullif(btrim(new.metadata ->> 'verified_checksum'), '');
+      v_source_checksum := nullif(btrim(new.metadata ->> 'source_checksum'), '');
+      v_verified_count := nullif(btrim(new.metadata ->> 'verification_record_count'), '');
+      v_normalized_count := nullif(btrim(new.metadata ->> 'normalized_record_count'), '');
+      if new.normalized_verified_at is null
+         or v_verified_checksum is null
+         or v_source_checksum is null
+         or v_verified_checksum <> v_source_checksum
+         or v_verified_count is null
+         or v_verified_count !~ '^[0-9]+$'
+         or v_normalized_count is null
+         or v_normalized_count !~ '^[0-9]+$'
+         or v_verified_count <> v_normalized_count then
+        raise exception using errcode = '23514', message = 'HH_SYNC_STAGE_VERIFICATION_REQUIRED';
+      end if;
+    end if;
+  end if;
+
+  if new.cutover_stage = 'normalized' then
+    v_verified_checksum := nullif(btrim(new.metadata ->> 'verified_checksum'), '');
+    v_source_checksum := nullif(btrim(new.metadata ->> 'source_checksum'), '');
+    v_verified_count := nullif(btrim(new.metadata ->> 'verification_record_count'), '');
+    v_normalized_count := nullif(btrim(new.metadata ->> 'normalized_record_count'), '');
+    if new.normalized_verified_at is null
+       or v_verified_checksum is null
+       or v_source_checksum is null
+       or v_verified_checksum <> v_source_checksum
+       or v_verified_count is null
+       or v_normalized_count is null
+       or v_verified_count <> v_normalized_count then
+      raise exception using errcode = '23514', message = 'HH_SYNC_NORMALIZED_REQUIRES_VERIFICATION';
+    end if;
+  end if;
+
   return new;
 end;
 $$;
@@ -105,28 +172,6 @@ for select
 to authenticated
 using (user_id = auth.uid());
 
-drop policy if exists "users insert own normalized sync records" on public.herdharbor_sync_records;
-create policy "users insert own normalized sync records"
-on public.herdharbor_sync_records
-for insert
-to authenticated
-with check (user_id = auth.uid());
-
-drop policy if exists "users update own normalized sync records" on public.herdharbor_sync_records;
-create policy "users update own normalized sync records"
-on public.herdharbor_sync_records
-for update
-to authenticated
-using (user_id = auth.uid())
-with check (user_id = auth.uid());
-
-drop policy if exists "users delete own normalized sync records" on public.herdharbor_sync_records;
-create policy "users delete own normalized sync records"
-on public.herdharbor_sync_records
-for delete
-to authenticated
-using (user_id = auth.uid());
-
 drop policy if exists "users read own sync manifest" on public.herdharbor_sync_manifest;
 create policy "users read own sync manifest"
 on public.herdharbor_sync_manifest
@@ -134,29 +179,19 @@ for select
 to authenticated
 using (user_id = auth.uid());
 
+-- Remove direct browser mutation paths from earlier drafts. All writes now go
+-- through generation/version guarded SECURITY DEFINER RPCs below.
+drop policy if exists "users insert own normalized sync records" on public.herdharbor_sync_records;
+drop policy if exists "users update own normalized sync records" on public.herdharbor_sync_records;
+drop policy if exists "users delete own normalized sync records" on public.herdharbor_sync_records;
 drop policy if exists "users insert own sync manifest" on public.herdharbor_sync_manifest;
-create policy "users insert own sync manifest"
-on public.herdharbor_sync_manifest
-for insert
-to authenticated
-with check (user_id = auth.uid());
-
 drop policy if exists "users update own sync manifest" on public.herdharbor_sync_manifest;
-create policy "users update own sync manifest"
-on public.herdharbor_sync_manifest
-for update
-to authenticated
-using (user_id = auth.uid())
-with check (user_id = auth.uid());
 
-grant select, insert, update, delete on public.herdharbor_sync_records to authenticated;
-grant select, insert, update on public.herdharbor_sync_manifest to authenticated;
+revoke insert, update, delete on public.herdharbor_sync_records from authenticated;
+revoke insert, update, delete on public.herdharbor_sync_manifest from authenticated;
+grant select on public.herdharbor_sync_records to authenticated;
+grant select on public.herdharbor_sync_manifest to authenticated;
 
--- Apply one logical normalized-state change as one PostgreSQL transaction. The
--- per-user manifest row is locked first so two devices cannot interleave batch
--- application. Every existing-row mutation must provide the version that was
--- read by the client. Any stale version or stale manifest generation aborts the
--- entire function call.
 create or replace function public.herdharbor_sync_apply_batch(
   p_puts jsonb default '[]'::jsonb,
   p_tombstones jsonb default '[]'::jsonb,
@@ -164,14 +199,15 @@ create or replace function public.herdharbor_sync_apply_batch(
 )
 returns jsonb
 language plpgsql
-security invoker
-set search_path = public
+security definer
+set search_path = pg_catalog, public
 as $$
 declare
   v_user uuid := auth.uid();
   v_item jsonb;
   v_namespace text;
   v_record_id text;
+  v_checksum text;
   v_expected bigint;
   v_rows integer;
   v_put_count integer := 0;
@@ -179,7 +215,8 @@ declare
   v_generation bigint;
   v_current_generation bigint;
   v_current_stage text;
-  v_stage text;
+  v_requested_stage text;
+  v_stage_changed boolean := false;
   v_metadata jsonb;
 begin
   if v_user is null then
@@ -214,15 +251,36 @@ begin
     raise exception using errcode = '40001', message = 'HH_SYNC_ALREADY_NORMALIZED';
   end if;
 
-  if p_manifest_patch ? 'expected_generation' then
-    if (p_manifest_patch ->> 'expected_generation') !~ '^[0-9]+$' then
-      raise exception using errcode = '22023', message = 'HH_SYNC_INVALID_GENERATION';
-    end if;
-    if (p_manifest_patch ->> 'expected_generation')::bigint <> v_current_generation then
-      raise exception using errcode = '40001', message = 'HH_SYNC_CONFLICT';
-    end if;
-  else
+  if not (p_manifest_patch ? 'expected_generation')
+     or (p_manifest_patch ->> 'expected_generation') !~ '^[0-9]+$' then
     raise exception using errcode = '22023', message = 'HH_SYNC_EXPECTED_GENERATION_REQUIRED';
+  end if;
+  if (p_manifest_patch ->> 'expected_generation')::bigint <> v_current_generation then
+    raise exception using errcode = '40001', message = 'HH_SYNC_CONFLICT';
+  end if;
+
+  v_requested_stage := v_current_stage;
+  if p_manifest_patch ? 'cutover_stage' then
+    v_requested_stage := p_manifest_patch ->> 'cutover_stage';
+    if v_requested_stage not in ('legacy', 'shadow', 'dual_write') then
+      raise exception using errcode = '22023', message = 'HH_SYNC_INVALID_BATCH_STAGE';
+    end if;
+    if v_requested_stage <> v_current_stage
+       and not (v_current_stage = 'legacy' and v_requested_stage = 'shadow') then
+      raise exception using errcode = '40001', message = 'HH_SYNC_STAGE_CHANGE_REQUIRES_RPC';
+    end if;
+    v_stage_changed := v_requested_stage <> v_current_stage;
+  end if;
+
+  if p_manifest_patch ? 'schema_version'
+     and (p_manifest_patch ->> 'schema_version') !~ '^[1-9][0-9]*$' then
+    raise exception using errcode = '22023', message = 'HH_SYNC_INVALID_SCHEMA_VERSION';
+  end if;
+  if p_manifest_patch ? 'metadata' then
+    v_metadata := p_manifest_patch -> 'metadata';
+    if jsonb_typeof(v_metadata) <> 'object' then
+      raise exception using errcode = '22023', message = 'HH_SYNC_INVALID_MANIFEST_METADATA';
+    end if;
   end if;
 
   for v_item in select value from jsonb_array_elements(p_puts)
@@ -232,11 +290,14 @@ begin
     end if;
     v_namespace := nullif(btrim(v_item ->> 'namespace'), '');
     v_record_id := nullif(v_item ->> 'record_id', '');
+    v_checksum := nullif(btrim(v_item ->> 'payload_checksum'), '');
     if v_namespace is null
        or char_length(v_namespace) > 64
        or v_namespace !~ '^[a-z0-9][a-z0-9_-]*$'
        or v_record_id is null
        or char_length(v_record_id) > 160
+       or v_checksum is null
+       or char_length(v_checksum) > 128
        or jsonb_typeof(v_item -> 'payload') <> 'object' then
       raise exception using errcode = '22023', message = 'HH_SYNC_INVALID_PUT';
     end if;
@@ -251,9 +312,9 @@ begin
 
     if v_expected is null then
       insert into public.herdharbor_sync_records (
-        user_id, namespace, record_id, payload, deleted_at
+        user_id, namespace, record_id, payload, payload_checksum, deleted_at
       ) values (
-        v_user, v_namespace, v_record_id, v_item -> 'payload', null
+        v_user, v_namespace, v_record_id, v_item -> 'payload', v_checksum, null
       )
       on conflict (user_id, namespace, record_id) do nothing;
       get diagnostics v_rows = row_count;
@@ -262,7 +323,7 @@ begin
       end if;
     else
       update public.herdharbor_sync_records
-      set payload = v_item -> 'payload', deleted_at = null
+      set payload = v_item -> 'payload', payload_checksum = v_checksum, deleted_at = null
       where user_id = v_user
         and namespace = v_namespace
         and record_id = v_record_id
@@ -306,30 +367,13 @@ begin
     v_tombstone_count := v_tombstone_count + 1;
   end loop;
 
-  if p_manifest_patch ? 'cutover_stage' then
-    v_stage := p_manifest_patch ->> 'cutover_stage';
-    if v_stage not in ('legacy', 'shadow', 'dual_write') then
-      raise exception using errcode = '22023', message = 'HH_SYNC_INVALID_BATCH_STAGE';
-    end if;
-  end if;
-  if p_manifest_patch ? 'metadata' then
-    v_metadata := p_manifest_patch -> 'metadata';
-    if jsonb_typeof(v_metadata) <> 'object' then
-      raise exception using errcode = '22023', message = 'HH_SYNC_INVALID_MANIFEST_METADATA';
-    end if;
-  end if;
-
   update public.herdharbor_sync_manifest
   set
     schema_version = case
-      when p_manifest_patch ? 'schema_version'
-        then greatest(1, (p_manifest_patch ->> 'schema_version')::integer)
+      when p_manifest_patch ? 'schema_version' then (p_manifest_patch ->> 'schema_version')::integer
       else schema_version
     end,
-    cutover_stage = case
-      when p_manifest_patch ? 'cutover_stage' then p_manifest_patch ->> 'cutover_stage'
-      else cutover_stage
-    end,
+    cutover_stage = v_requested_stage,
     legacy_snapshot_updated_at = case
       when p_manifest_patch ? 'legacy_snapshot_updated_at'
         then nullif(p_manifest_patch ->> 'legacy_snapshot_updated_at', '')::timestamptz
@@ -363,7 +407,7 @@ begin
       end
     ),
     sync_generation = sync_generation + case
-      when v_put_count + v_tombstone_count > 0 then 1
+      when v_put_count + v_tombstone_count > 0 or v_stage_changed then 1
       else 0
     end
   where user_id = v_user
@@ -373,14 +417,12 @@ begin
     'ok', true,
     'generation', v_generation,
     'puts', v_put_count,
-    'tombstones', v_tombstone_count
+    'tombstones', v_tombstone_count,
+    'stage_changed', v_stage_changed
   );
 end;
 $$;
 
--- Verification is recorded only if no normalized write has advanced the user's
--- generation since the verifier began reading rows. This closes the race where
--- one device could otherwise verify stale rows while another device writes.
 create or replace function public.herdharbor_sync_mark_verified(
   p_expected_generation bigint,
   p_checksum text,
@@ -388,13 +430,14 @@ create or replace function public.herdharbor_sync_mark_verified(
 )
 returns jsonb
 language plpgsql
-security invoker
-set search_path = public
+security definer
+set search_path = pg_catalog, public
 as $$
 declare
   v_user uuid := auth.uid();
   v_verified_at timestamptz := now();
   v_rows integer;
+  v_actual_count integer;
 begin
   if v_user is null then
     raise exception using errcode = '42501', message = 'HH_SYNC_AUTH_REQUIRED';
@@ -403,6 +446,17 @@ begin
      or p_checksum is null or char_length(p_checksum) not between 1 and 128
      or p_record_count is null or p_record_count < 0 then
     raise exception using errcode = '22023', message = 'HH_SYNC_INVALID_VERIFICATION';
+  end if;
+
+  select count(*)::integer
+  into v_actual_count
+  from public.herdharbor_sync_records
+  where user_id = v_user
+    and namespace = 'legacy-state'
+    and deleted_at is null;
+
+  if v_actual_count <> p_record_count then
+    raise exception using errcode = '40001', message = 'HH_SYNC_RECORD_COUNT_MISMATCH';
   end if;
 
   update public.herdharbor_sync_manifest
@@ -415,7 +469,10 @@ begin
     )
   where user_id = v_user
     and sync_generation = p_expected_generation
-    and cutover_stage in ('shadow', 'dual_write');
+    and cutover_stage in ('shadow', 'dual_write')
+    and nullif(btrim(metadata ->> 'source_checksum'), '') = p_checksum
+    and nullif(btrim(metadata ->> 'normalized_record_count'), '') ~ '^[0-9]+$'
+    and (metadata ->> 'normalized_record_count')::integer = p_record_count;
   get diagnostics v_rows = row_count;
 
   if v_rows <> 1 then
@@ -432,18 +489,82 @@ begin
 end;
 $$;
 
+create or replace function public.herdharbor_sync_set_stage(
+  p_target_stage text,
+  p_expected_generation bigint
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_current_stage text;
+  v_generation bigint;
+  v_verified_at timestamptz;
+begin
+  if v_user is null then
+    raise exception using errcode = '42501', message = 'HH_SYNC_AUTH_REQUIRED';
+  end if;
+  if p_target_stage is null
+     or p_target_stage not in ('legacy', 'shadow', 'dual_write', 'normalized') then
+    raise exception using errcode = '22023', message = 'HH_SYNC_INVALID_STAGE';
+  end if;
+  if p_expected_generation is null or p_expected_generation < 0 then
+    raise exception using errcode = '22023', message = 'HH_SYNC_INVALID_GENERATION';
+  end if;
+
+  select cutover_stage, sync_generation, normalized_verified_at
+  into v_current_stage, v_generation, v_verified_at
+  from public.herdharbor_sync_manifest
+  where user_id = v_user
+  for update;
+
+  if not found then
+    raise exception using errcode = 'P0002', message = 'HH_SYNC_MANIFEST_MISSING';
+  end if;
+  if v_generation <> p_expected_generation then
+    raise exception using errcode = '40001', message = 'HH_SYNC_CONFLICT';
+  end if;
+
+  if v_current_stage <> p_target_stage then
+    update public.herdharbor_sync_manifest
+    set
+      cutover_stage = p_target_stage,
+      sync_generation = sync_generation + 1
+    where user_id = v_user
+      and sync_generation = p_expected_generation
+    returning sync_generation, normalized_verified_at
+      into v_generation, v_verified_at;
+  end if;
+
+  return jsonb_build_object(
+    'ok', true,
+    'from_stage', v_current_stage,
+    'stage', p_target_stage,
+    'generation', v_generation,
+    'normalized_verified_at', v_verified_at
+  );
+end;
+$$;
+
 revoke all on function public.herdharbor_sync_apply_batch(jsonb, jsonb, jsonb) from public;
 revoke all on function public.herdharbor_sync_mark_verified(bigint, text, integer) from public;
+revoke all on function public.herdharbor_sync_set_stage(text, bigint) from public;
 grant execute on function public.herdharbor_sync_apply_batch(jsonb, jsonb, jsonb) to authenticated;
 grant execute on function public.herdharbor_sync_mark_verified(bigint, text, integer) to authenticated;
+grant execute on function public.herdharbor_sync_set_stage(text, bigint) to authenticated;
 
 comment on table public.herdharbor_sync_records is
-  'Row-granular HerdHarbor cloud records. Additive v1.8.3 foundation; legacy app_state remains authoritative until cutover.';
+  'Row-granular HerdHarbor cloud records. Browser mutations are RPC-only; legacy app_state remains authoritative until cutover.';
 comment on table public.herdharbor_sync_manifest is
-  'Per-user migration/cutover state for the normalized cloud-sync record store.';
+  'Per-user migration state with generation-CAS protection for normalized cloud sync.';
 comment on function public.herdharbor_sync_apply_batch(jsonb, jsonb, jsonb) is
-  'Atomically applies one owner-scoped normalized sync batch using optimistic record versions and manifest generation.';
+  'Atomically applies owner-scoped normalized record changes using record versions and manifest generation.';
 comment on function public.herdharbor_sync_mark_verified(bigint, text, integer) is
-  'Records a normalized shadow verification only if the owner sync generation is unchanged.';
+  'Records verification only when generation, checksum, metadata count, and actual active record count still agree.';
+comment on function public.herdharbor_sync_set_stage(text, bigint) is
+  'Generation-guarded adjacent migration stage transition. Every real stage change advances sync_generation.';
 
 commit;
