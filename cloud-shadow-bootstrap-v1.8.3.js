@@ -16,7 +16,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (recordStoreApi, normalizerApi, shadowApi) {
   "use strict";
 
-  const VERSION = "0.1-internal-cohort";
+  const VERSION = "0.2-verification-retry";
   const RELEASE = "1.8.3";
 
   function requiredFunction(value, label) {
@@ -110,10 +110,11 @@
       try {
         const legacyRead = resolveLegacyRead(await readLegacySnapshot({ userId }));
         const mapped = normalizerApi.mapLegacySnapshot(legacyRead.snapshot);
+        const dryRun = runOptions.dryRun === true;
         emit("shadow-bootstrap-start", {
           checksum: mapped.checksum,
           recordCount: mapped.records.length,
-          dryRun: runOptions.dryRun === true
+          dryRun
         });
 
         const recordStore = createRecordStore({ client: options.client, userId });
@@ -134,15 +135,41 @@
         });
 
         const sync = await controller.sync(legacyRead.snapshot, {
-          dryRun: runOptions.dryRun === true,
+          dryRun,
           legacySnapshotUpdatedAt: legacyRead.updatedAt || undefined
         });
+
         if (sync.skipped) {
+          if (dryRun || sync.reason === "dry-run") {
+            const result = {
+              skipped: true,
+              reason: "dry-run",
+              checksum: mapped.checksum,
+              recordCount: mapped.records.length
+            };
+            emit("shadow-bootstrap-complete", result);
+            return result;
+          }
+          if (sync.reason === "already-current" && sync.verified !== true) {
+            const verification = await controller.verifyAndRecord(legacyRead.snapshot);
+            const result = {
+              skipped: false,
+              stage: verification.stage || "shadow",
+              checksum: verification.actualChecksum || mapped.checksum,
+              recordCount: verification.recordCount || mapped.records.length,
+              verified: verification.ok === true,
+              verifiedAt: verification.verifiedAt || null,
+              resumedVerification: true
+            };
+            emit("shadow-bootstrap-complete", result);
+            return result;
+          }
           const result = {
             skipped: true,
             reason: sync.reason || "shadow-sync-skipped",
             checksum: mapped.checksum,
-            recordCount: mapped.records.length
+            recordCount: mapped.records.length,
+            verified: sync.verified === true
           };
           emit("shadow-bootstrap-complete", result);
           return result;
@@ -155,7 +182,8 @@
           checksum: verification.actualChecksum || mapped.checksum,
           recordCount: verification.recordCount || mapped.records.length,
           verified: verification.ok === true,
-          verifiedAt: verification.verifiedAt || null
+          verifiedAt: verification.verifiedAt || null,
+          resumedVerification: false
         };
         emit("shadow-bootstrap-complete", result);
         return result;
