@@ -13,12 +13,13 @@ const schema = fs.readFileSync(
   "utf8"
 );
 
-test("normalized cloud record store exposes the additive v1.8.3 foundation", () => {
+test("normalized cloud record store exposes the hardened v1.8.3 RPC foundation", () => {
   assert.equal(api.release, "1.8.3");
   assert.equal(api.recordTable, "herdharbor_sync_records");
   assert.equal(api.manifestTable, "herdharbor_sync_manifest");
   assert.equal(api.batchRpc, "herdharbor_sync_apply_batch");
   assert.equal(api.verifyRpc, "herdharbor_sync_mark_verified");
+  assert.equal(api.stageRpc, "herdharbor_sync_set_stage");
 });
 
 test("record namespaces and IDs are bounded and deterministic", () => {
@@ -41,19 +42,34 @@ test("payload validation requires JSON objects and returns a detached copy", () 
   assert.throws(() => api.normalizePayload([]), /JSON object/);
 });
 
-test("adapter includes optimistic concurrency, tombstones, and atomic batch RPCs", () => {
-  assert.match(adapterSource, /record_version/);
-  assert.match(adapterSource, /expectedVersion/);
-  assert.match(adapterSource, /HH_SYNC_CONFLICT/);
-  assert.match(adapterSource, /deleted_at/);
-  assert.match(adapterSource, /tombstone/);
-  assert.match(adapterSource, /applyBatch/);
-  assert.match(adapterSource, /expectedGeneration/);
-  assert.match(adapterSource, /markVerified/);
-  assert.match(adapterSource, /HH_SYNC_VERIFY_STALE/);
+test("store exposes reads plus guarded RPC mutations, not unsafe direct writes", () => {
+  const client = {
+    from() {
+      return {
+        select() { return this; },
+        eq() { return this; },
+        order() { return this; },
+        is() { return this; },
+        maybeSingle: async () => ({ data: null, error: null }),
+        then(resolve) { return Promise.resolve({ data: [], error: null }).then(resolve); }
+      };
+    },
+    rpc: async () => ({ data: {}, error: null })
+  };
+  const store = api.createRecordStore({ client, userId: "11111111-1111-1111-1111-111111111111" });
+  assert.equal(typeof store.list, "function");
+  assert.equal(typeof store.listHeaders, "function");
+  assert.equal(typeof store.getManifest, "function");
+  assert.equal(typeof store.applyBatch, "function");
+  assert.equal(typeof store.markVerified, "function");
+  assert.equal(typeof store.setStage, "function");
+  assert.equal(store.put, undefined);
+  assert.equal(store.tombstone, undefined);
+  assert.equal(store.putManifest, undefined);
+  assert.match(adapterSource, /payload_checksum/);
 });
 
-test("atomic batch adapter serializes versions and manifest generation for the RPC", async () => {
+test("atomic batch adapter serializes checksums, versions, generation, and stage RPC", async () => {
   const calls = [];
   const client = {
     from() {
@@ -74,6 +90,7 @@ test("atomic batch adapter serializes versions and manifest generation for the R
           error: null
         };
       }
+      if (name === api.stageRpc) return { data: { ok: true, stage: args.p_target_stage, generation: 9 }, error: null };
       throw new Error(`unexpected rpc ${name}`);
     }
   };
@@ -84,6 +101,7 @@ test("atomic batch adapter serializes versions and manifest generation for the R
       namespace: "legacy-state",
       record_id: "root:settings",
       payload: { kind: "root_value", value: { theme: "dark" } },
+      payload_checksum: "hh64:1234567890abcdef",
       expectedVersion: 4
     }],
     tombstones: [{
@@ -93,11 +111,11 @@ test("atomic batch adapter serializes versions and manifest generation for the R
     }],
     manifestPatch: {
       expectedGeneration: 7,
-      schemaVersion: 1,
+      schemaVersion: 2,
       cutoverStage: "shadow",
       legacySnapshotUpdatedAt: "2026-09-16T03:59:00.000Z",
       normalizedVerifiedAt: null,
-      metadata: { source_checksum: "fnv1a32:12345678" }
+      metadata: { source_checksum: "hh64:1234567890abcdef" }
     }
   });
 
@@ -105,33 +123,32 @@ test("atomic batch adapter serializes versions and manifest generation for the R
   const batchCall = calls[0];
   assert.equal(batchCall[0], api.batchRpc);
   assert.equal(batchCall[1].p_manifest_patch.expected_generation, 7);
-  assert.equal(batchCall[1].p_manifest_patch.cutover_stage, "shadow");
+  assert.equal(batchCall[1].p_manifest_patch.schema_version, 2);
+  assert.equal(batchCall[1].p_puts[0].payload_checksum, "hh64:1234567890abcdef");
   assert.equal(batchCall[1].p_puts[0].expected_version, 4);
   assert.equal(batchCall[1].p_tombstones[0].expected_version, 9);
 
   const verified = await store.markVerified({
     expectedGeneration: 8,
-    checksum: "fnv1a32:12345678",
+    checksum: "hh64:1234567890abcdef",
     recordCount: 12
   });
   assert.equal(verified.generation, 8);
-  const verifyCall = calls[1];
-  assert.equal(verifyCall[0], api.verifyRpc);
-  assert.deepEqual(verifyCall[1], {
-    p_expected_generation: 8,
-    p_checksum: "fnv1a32:12345678",
-    p_record_count: 12
-  });
+  assert.equal(calls[1][0], api.verifyRpc);
+
+  const staged = await store.setStage({ targetStage: "dual_write", expectedGeneration: 8 });
+  assert.equal(staged.generation, 9);
+  assert.deepEqual(calls[2], [api.stageRpc, {
+    p_target_stage: "dual_write",
+    p_expected_generation: 8
+  }]);
 });
 
-test("atomic batch adapter requires a generation and maps server conflicts to stable codes", async () => {
+test("batch adapter rejects missing generation, duplicate records, and missing checksums before provider calls", async () => {
+  let rpcCalls = 0;
   const client = {
-    from() {
-      return {};
-    },
-    async rpc() {
-      return { data: null, error: { code: "40001", message: "HH_SYNC_CONFLICT" } };
-    }
+    from() { return {}; },
+    async rpc() { rpcCalls += 1; return { data: null, error: { code: "40001", message: "HH_SYNC_CONFLICT" } }; }
   };
   const store = api.createRecordStore({ client, userId: "11111111-1111-1111-1111-111111111111" });
 
@@ -141,17 +158,36 @@ test("atomic batch adapter requires a generation and maps server conflicts to st
   );
   await assert.rejects(
     () => store.applyBatch({
+      puts: [{ namespace: "legacy-state", record_id: "x", payload: { a: 1 } }],
+      manifestPatch: { expectedGeneration: 0 }
+    }),
+    /payload_checksum/
+  );
+  await assert.rejects(
+    () => store.applyBatch({
+      puts: [{ namespace: "legacy-state", record_id: "x", payload: { a: 1 }, payload_checksum: "hh64:a" }],
+      tombstones: [{ namespace: "legacy-state", record_id: "x", expectedVersion: 1 }],
+      manifestPatch: { expectedGeneration: 0 }
+    }),
+    /Duplicate normalized batch record/
+  );
+  assert.equal(rpcCalls, 0);
+
+  await assert.rejects(
+    () => store.applyBatch({
       puts: [],
       tombstones: [],
       manifestPatch: { expectedGeneration: 0, cutoverStage: "shadow", metadata: {} }
     }),
     (error) => error?.code === "HH_SYNC_CONFLICT"
   );
+  assert.equal(rpcCalls, 1);
 });
 
-test("normalized schema is additive and leaves the legacy full-state table untouched", () => {
+test("schema is additive to legacy data and uses payload checksums for header-only diffs", () => {
   assert.match(schema, /create table if not exists public\.herdharbor_sync_records/i);
   assert.match(schema, /create table if not exists public\.herdharbor_sync_manifest/i);
+  assert.match(schema, /payload_checksum text/i);
   assert.match(schema, /primary key \(user_id, namespace, record_id\)/i);
   assert.match(schema, /enable row level security/i);
   assert.match(schema, /user_id = auth\.uid\(\)/i);
@@ -162,20 +198,30 @@ test("normalized schema is additive and leaves the legacy full-state table untou
   );
 });
 
-test("schema makes a multi-record sync atomic and generation-guards verification", () => {
+test("schema makes browser mutations RPC-only and every real stage change advances generation", () => {
+  assert.match(schema, /revoke insert, update, delete on public\.herdharbor_sync_records from authenticated/i);
+  assert.match(schema, /revoke insert, update, delete on public\.herdharbor_sync_manifest from authenticated/i);
+  assert.match(schema, /security definer/i);
   assert.match(schema, /herdharbor_sync_apply_batch/i);
-  assert.match(schema, /for update/i);
-  assert.match(schema, /expected_generation/i);
-  assert.match(schema, /sync_generation/i);
-  assert.match(schema, /HH_SYNC_CONFLICT/);
-  assert.match(schema, /herdharbor_sync_mark_verified/i);
-  assert.match(schema, /HH_SYNC_VERIFY_STALE/);
-  assert.match(schema, /HH_SYNC_ALREADY_NORMALIZED/);
-  assert.match(schema, /normalized_verified_at = case[\s\S]*v_put_count \+ v_tombstone_count > 0 then null/i);
+  assert.match(schema, /herdharbor_sync_set_stage/i);
+  assert.match(schema, /sync_generation = sync_generation \+ 1/i);
+  assert.match(schema, /v_put_count \+ v_tombstone_count > 0 or v_stage_changed/i);
+  assert.match(schema, /HH_SYNC_STAGE_CHANGE_REQUIRES_RPC/);
 });
 
-test("schema documents a staged cutover instead of an immediate production switch", () => {
-  assert.match(schema, /'legacy', 'shadow', 'dual_write', 'normalized'/);
-  assert.match(schema, /legacy app_state remains authoritative until cutover/i);
+test("verification is generation, checksum, metadata-count, and actual-row-count guarded", () => {
+  assert.match(schema, /herdharbor_sync_mark_verified/i);
+  assert.match(schema, /sync_generation = p_expected_generation/i);
+  assert.match(schema, /normalized_record_count/i);
+  assert.match(schema, /select count\(\*\)::integer[\s\S]*namespace = 'legacy-state'/i);
+  assert.match(schema, /HH_SYNC_RECORD_COUNT_MISMATCH/);
+  assert.match(schema, /HH_SYNC_VERIFY_STALE/);
+});
+
+test("schema embeds the final adjacent stage guard in the base migration", () => {
+  assert.match(schema, /HH_SYNC_INITIAL_STAGE_MUST_BE_LEGACY/);
+  assert.match(schema, /HH_SYNC_INVALID_STAGE_TRANSITION/);
+  assert.match(schema, /HH_SYNC_STAGE_VERIFICATION_REQUIRED/);
   assert.match(schema, /HH_SYNC_NORMALIZED_REQUIRES_VERIFICATION/);
+  assert.match(schema, /legacy app_state remains authoritative until cutover/i);
 });
