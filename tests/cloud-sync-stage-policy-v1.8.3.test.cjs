@@ -12,43 +12,36 @@ const sql = fs.readFileSync(
   "utf8"
 );
 
-function manifest(stage, verified = false) {
+function manifest(stage, verified = false, writerReady = false) {
   return {
     cutover_stage: stage,
     sync_generation: 12,
     normalized_verified_at: verified ? "2026-09-16T07:00:00.000Z" : null,
-    metadata: verified
-      ? {
-          source_checksum: "hh64:1234567890abcdef",
-          verified_checksum: "hh64:1234567890abcdef",
-          normalized_record_count: 24,
-          verification_record_count: 24,
-          normalized_namespace: "legacy-state",
-          normalized_format_version: 2
-        }
-      : {
-          source_checksum: "hh64:1234567890abcdef",
-          verified_checksum: null,
-          normalized_record_count: 24,
-          verification_record_count: null,
-          normalized_namespace: "legacy-state",
-          normalized_format_version: 2
-        }
+    metadata: {
+      source_checksum: "hh64:1234567890abcdef",
+      verified_checksum: verified ? "hh64:1234567890abcdef" : null,
+      normalized_record_count: 24,
+      verification_record_count: verified ? 24 : null,
+      normalized_namespace: "legacy-state",
+      normalized_format_version: 2,
+      normalized_writer_ready: writerReady,
+      normalized_writer_version: writerReady ? "writer-v1" : null
+    }
   };
 }
 
 test("stage policy allows only adjacent promotion and rollback transitions", () => {
   const allowed = [
-    ["legacy", "shadow", false],
-    ["shadow", "legacy", false],
-    ["shadow", "dual_write", true],
-    ["dual_write", "shadow", false],
-    ["dual_write", "normalized", true],
-    ["normalized", "dual_write", false]
+    ["legacy", "shadow", false, false],
+    ["shadow", "legacy", false, false],
+    ["shadow", "dual_write", true, false],
+    ["dual_write", "shadow", false, false],
+    ["dual_write", "normalized", true, true],
+    ["normalized", "dual_write", false, false]
   ];
 
-  for (const [from, to, verified] of allowed) {
-    const decision = policy.evaluateTransition(manifest(from, verified), to);
+  for (const [from, to, verified, writerReady] of allowed) {
+    const decision = policy.evaluateTransition(manifest(from, verified, writerReady), to);
     assert.equal(decision.allowed, true, `${from} -> ${to}`);
   }
 
@@ -60,7 +53,7 @@ test("stage policy allows only adjacent promotion and rollback transitions", () 
     ["normalized", "shadow"],
     ["normalized", "legacy"]
   ]) {
-    const decision = policy.evaluateTransition(manifest(from, true), to);
+    const decision = policy.evaluateTransition(manifest(from, true, true), to);
     assert.equal(decision.allowed, false, `${from} -> ${to}`);
     assert.equal(decision.reason, "invalid-stage-transition");
   }
@@ -68,28 +61,40 @@ test("stage policy allows only adjacent promotion and rollback transitions", () 
 
 test("promotions require checksum, count, namespace, format, generation, and verification markers", () => {
   for (const [from, to] of [["shadow", "dual_write"], ["dual_write", "normalized"]]) {
-    assert.equal(policy.evaluateTransition(manifest(from, false), to).allowed, false);
+    const writerReady = to === "normalized";
+    assert.equal(policy.evaluateTransition(manifest(from, false, writerReady), to).allowed, false);
 
-    const staleChecksum = manifest(from, true);
+    const staleChecksum = manifest(from, true, writerReady);
     staleChecksum.metadata.verified_checksum = "hh64:ffffffffffffffff";
     assert.equal(policy.evaluateTransition(staleChecksum, to).allowed, false);
 
-    const staleCount = manifest(from, true);
+    const staleCount = manifest(from, true, writerReady);
     staleCount.metadata.verification_record_count += 1;
     assert.equal(policy.evaluateTransition(staleCount, to).allowed, false);
 
-    const missingGeneration = manifest(from, true);
+    const missingGeneration = manifest(from, true, writerReady);
     delete missingGeneration.sync_generation;
     assert.equal(policy.evaluateTransition(missingGeneration, to).allowed, false);
 
-    const missingNamespace = manifest(from, true);
+    const missingNamespace = manifest(from, true, writerReady);
     missingNamespace.metadata.normalized_namespace = "";
     assert.equal(policy.evaluateTransition(missingNamespace, to).allowed, false);
 
-    const current = policy.evaluateTransition(manifest(from, true), to);
+    const current = policy.evaluateTransition(manifest(from, true, writerReady), to);
     assert.equal(current.allowed, true);
     assert.equal(current.requiresVerification, true);
   }
+});
+
+test("normalized promotion additionally requires a prepared writer", () => {
+  const missing = policy.evaluateTransition(manifest("dual_write", true, false), "normalized");
+  assert.equal(missing.allowed, false);
+  assert.equal(missing.reason, "normalized-writer-required");
+  assert.equal(missing.requiresWriter, true);
+
+  const current = policy.evaluateTransition(manifest("dual_write", true, true), "normalized");
+  assert.equal(current.allowed, true);
+  assert.equal(current.requiresWriter, true);
 });
 
 test("rollback target moves exactly one stage toward legacy", () => {
@@ -104,6 +109,10 @@ test("assertTransition returns legal decisions and stable errors", () => {
   assert.throws(
     () => policy.assertTransition(manifest("shadow", false), "dual_write"),
     (error) => error?.code === "HH_SYNC_STAGE_VERIFICATION_REQUIRED"
+  );
+  assert.throws(
+    () => policy.assertTransition(manifest("dual_write", true, false), "normalized"),
+    (error) => error?.code === "HH_SYNC_NORMALIZED_WRITER_REQUIRED"
   );
   assert.throws(
     () => policy.assertTransition(manifest("legacy", true), "normalized"),
