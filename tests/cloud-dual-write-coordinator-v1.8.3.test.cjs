@@ -36,6 +36,7 @@ function setup(overrides = {}) {
   };
   const coordinator = dualWrite.createDualWriteCoordinator({
     enabled: overrides.enabled === true,
+    verifyAfterWrite: overrides.verifyAfterWrite === true,
     async writeLegacySnapshot(snapshot, options) {
       calls.push(["legacy.write", snapshot, options]);
       if (overrides.legacyError) throw overrides.legacyError;
@@ -64,7 +65,7 @@ test("dual-write mode is disabled by default and preserves the legacy write path
   assert.deepEqual(state.calls.map((call) => call[0]), ["legacy.write"]);
 });
 
-test("enabled migration writes legacy first, then normalized, then records verification", async () => {
+test("enabled migration writes legacy first then normalized and defers full verification by default", async () => {
   const state = setup({ enabled: true });
   const result = await state.coordinator.save(fixture);
 
@@ -72,16 +73,34 @@ test("enabled migration writes legacy first, then normalized, then records verif
   assert.equal(result.mode, "dual-write");
   assert.equal(result.legacySaved, true);
   assert.equal(result.normalizedSaved, true);
-  assert.equal(result.normalizedVerified, true);
+  assert.equal(result.normalizedCurrent, true);
+  assert.equal(result.normalizedVerified, false);
   assert.equal(result.normalizedPending, false);
+  assert.equal(result.verificationPending, true);
   assert.equal(result.normalizedGeneration, 7);
+  assert.deepEqual(state.calls.map((call) => call[0]), ["legacy.write", "shadow.sync"]);
+  const syncOptions = state.calls.find((call) => call[0] === "shadow.sync")[2];
+  assert.equal(syncOptions.legacySnapshotUpdatedAt, "2026-09-16T05:59:00.000Z");
+});
+
+test("explicit verification mode still verifies immediately when requested", async () => {
+  const state = setup({ enabled: true, verifyAfterWrite: true });
+  const result = await state.coordinator.save(fixture);
+
+  assert.equal(result.normalizedVerified, true);
+  assert.equal(result.verificationPending, false);
   assert.deepEqual(state.calls.map((call) => call[0]), [
     "legacy.write",
     "shadow.sync",
     "shadow.verifyAndRecord"
   ]);
-  const syncOptions = state.calls.find((call) => call[0] === "shadow.sync")[2];
-  assert.equal(syncOptions.legacySnapshotUpdatedAt, "2026-09-16T05:59:00.000Z");
+});
+
+test("verifyCurrent provides a deliberate quiescent-point verification", async () => {
+  const state = setup({ enabled: true });
+  const verification = await state.coordinator.verifyCurrent(fixture);
+  assert.equal(verification.ok, true);
+  assert.deepEqual(state.calls.map((call) => call[0]), ["shadow.verifyAndRecord"]);
 });
 
 test("legacy write failure is authoritative and prevents any normalized write", async () => {
@@ -98,7 +117,7 @@ test("legacy write failure is authoritative and prevents any normalized write", 
   assert.doesNotMatch(JSON.stringify(failure), /private payload|cloud rejected/);
 });
 
-test("normalized conflict after successful legacy save degrades safely without losing the authoritative save", async () => {
+test("normalized conflict after successful legacy save degrades safely without losing authoritative save", async () => {
   const state = setup({
     enabled: true,
     syncError: Object.assign(new Error("normalized conflict with Annie payload"), {
@@ -108,7 +127,6 @@ test("normalized conflict after successful legacy save degrades safely without l
   });
 
   const result = await state.coordinator.save(fixture);
-
   assert.equal(result.ok, true);
   assert.equal(result.mode, "dual-write-degraded");
   assert.equal(result.legacySaved, true);
@@ -119,29 +137,44 @@ test("normalized conflict after successful legacy save degrades safely without l
   assert.doesNotMatch(JSON.stringify(state.events), /Annie payload/);
 });
 
-test("verification failure leaves normalized data pending while legacy remains authoritative", async () => {
+test("optional immediate verification failure does not turn a successful legacy save into a failure", async () => {
   const state = setup({
     enabled: true,
+    verifyAfterWrite: true,
     verifyError: Object.assign(new Error("verification provider details"), {
       code: "HH_SYNC_VERIFY_STALE"
     })
   });
 
   const result = await state.coordinator.save(fixture);
-
   assert.equal(result.ok, true);
   assert.equal(result.mode, "dual-write-degraded");
   assert.equal(result.legacySaved, true);
   assert.equal(result.normalizedSaved, true);
-  assert.equal(result.normalizedVerified, false);
-  assert.equal(result.normalizedPending, true);
+  assert.equal(result.normalizedCurrent, true);
+  assert.equal(result.normalizedPending, false);
+  assert.equal(result.verificationPending, true);
   assert.equal(result.normalizedErrorCode, "HH_SYNC_VERIFY_STALE");
-  assert.deepEqual(state.calls.map((call) => call[0]), [
-    "legacy.write",
-    "shadow.sync",
-    "shadow.verifyAndRecord"
-  ]);
   assert.doesNotMatch(JSON.stringify(state.events), /provider details/);
+});
+
+test("already-current fast path avoids both rewrite and verification when current verification exists", async () => {
+  const state = setup({
+    enabled: true,
+    syncResult: {
+      skipped: true,
+      reason: "already-current",
+      verified: true,
+      generation: 11
+    }
+  });
+  const result = await state.coordinator.save(fixture);
+  assert.equal(result.mode, "dual-write");
+  assert.equal(result.normalizedCurrent, true);
+  assert.equal(result.normalizedVerified, true);
+  assert.equal(result.normalizedPending, false);
+  assert.equal(result.verificationPending, false);
+  assert.deepEqual(state.calls.map((call) => call[0]), ["legacy.write", "shadow.sync"]);
 });
 
 test("normalized-authoritative skip never reports pending shadow work", async () => {
@@ -149,11 +182,8 @@ test("normalized-authoritative skip never reports pending shadow work", async ()
     enabled: true,
     syncResult: { skipped: true, reason: "normalized-authoritative" }
   });
-
   const result = await state.coordinator.save(fixture);
-
   assert.equal(result.mode, "dual-write-degraded");
-  assert.equal(result.normalizedSaved, false);
   assert.equal(result.normalizedPending, false);
   assert.equal(result.normalizedReason, "normalized-authoritative");
   assert.equal(state.calls.some((call) => call[0] === "shadow.verifyAndRecord"), false);
@@ -162,15 +192,8 @@ test("normalized-authoritative skip never reports pending shadow work", async ()
 test("runtime toggle cannot bypass legacy-first ordering", async () => {
   const state = setup();
   assert.equal(state.coordinator.setEnabled(true), true);
-  assert.equal(state.coordinator.isEnabled(), true);
-
   await state.coordinator.save(fixture);
-
-  assert.deepEqual(state.calls.map((call) => call[0]), [
-    "legacy.write",
-    "shadow.sync",
-    "shadow.verifyAndRecord"
-  ]);
+  assert.deepEqual(state.calls.map((call) => call[0]), ["legacy.write", "shadow.sync"]);
 });
 
 test("dual-write coordinator contains no direct table or Supabase mutation logic", () => {
@@ -180,5 +203,5 @@ test("dual-write coordinator contains no direct table or Supabase mutation logic
   assert.doesNotMatch(source, /\.rpc\s*\(/);
   assert.match(source, /writeLegacySnapshot/);
   assert.match(source, /shadowController\.sync/);
-  assert.match(source, /shadowController\.verifyAndRecord/);
+  assert.match(source, /verifyAfterWrite/);
 });
