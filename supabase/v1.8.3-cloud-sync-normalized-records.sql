@@ -92,7 +92,7 @@ $$;
 
 drop trigger if exists herdharbor_sync_manifest_touch on public.herdharbor_sync_manifest;
 create trigger herdharbor_sync_manifest_touch
-before update on public.herdharbor_sync_manifest
+before insert or update on public.herdharbor_sync_manifest
 for each row execute function public.herdharbor_touch_sync_manifest();
 
 alter table public.herdharbor_sync_records enable row level security;
@@ -155,7 +155,8 @@ grant select, insert, update on public.herdharbor_sync_manifest to authenticated
 -- Apply one logical normalized-state change as one PostgreSQL transaction. The
 -- per-user manifest row is locked first so two devices cannot interleave batch
 -- application. Every existing-row mutation must provide the version that was
--- read by the client. Any stale version aborts the entire function call.
+-- read by the client. Any stale version or stale manifest generation aborts the
+-- entire function call.
 create or replace function public.herdharbor_sync_apply_batch(
   p_puts jsonb default '[]'::jsonb,
   p_tombstones jsonb default '[]'::jsonb,
@@ -176,6 +177,8 @@ declare
   v_put_count integer := 0;
   v_tombstone_count integer := 0;
   v_generation bigint;
+  v_current_generation bigint;
+  v_current_stage text;
   v_stage text;
   v_metadata jsonb;
 begin
@@ -201,10 +204,26 @@ begin
   values (v_user)
   on conflict (user_id) do nothing;
 
-  perform 1
+  select sync_generation, cutover_stage
+  into v_current_generation, v_current_stage
   from public.herdharbor_sync_manifest
   where user_id = v_user
   for update;
+
+  if v_current_stage = 'normalized' then
+    raise exception using errcode = '40001', message = 'HH_SYNC_ALREADY_NORMALIZED';
+  end if;
+
+  if p_manifest_patch ? 'expected_generation' then
+    if (p_manifest_patch ->> 'expected_generation') !~ '^[0-9]+$' then
+      raise exception using errcode = '22023', message = 'HH_SYNC_INVALID_GENERATION';
+    end if;
+    if (p_manifest_patch ->> 'expected_generation')::bigint <> v_current_generation then
+      raise exception using errcode = '40001', message = 'HH_SYNC_CONFLICT';
+    end if;
+  else
+    raise exception using errcode = '22023', message = 'HH_SYNC_EXPECTED_GENERATION_REQUIRED';
+  end if;
 
   for v_item in select value from jsonb_array_elements(p_puts)
   loop
@@ -423,7 +442,7 @@ comment on table public.herdharbor_sync_records is
 comment on table public.herdharbor_sync_manifest is
   'Per-user migration/cutover state for the normalized cloud-sync record store.';
 comment on function public.herdharbor_sync_apply_batch(jsonb, jsonb, jsonb) is
-  'Atomically applies one owner-scoped normalized sync batch using optimistic record versions.';
+  'Atomically applies one owner-scoped normalized sync batch using optimistic record versions and manifest generation.';
 comment on function public.herdharbor_sync_mark_verified(bigint, text, integer) is
   'Records a normalized shadow verification only if the owner sync generation is unchanged.';
 
