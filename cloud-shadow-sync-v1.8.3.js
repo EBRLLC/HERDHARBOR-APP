@@ -8,7 +8,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (normalizer) {
   "use strict";
 
-  const VERSION = "0.7-disabled-stage-fast-path";
+  const VERSION = "0.8-single-pass-verification";
   const RELEASE = "1.8.3";
   const DEFAULT_MAX_MUTATIONS = 10000;
   const VALID_STAGES = new Set(["legacy", "shadow", "dual_write", "normalized"]);
@@ -24,7 +24,7 @@
   function requiredNormalizer(value) {
     const methods = [
       "mapLegacySnapshot",
-      "reassembleLegacySnapshot",
+      "reassembleLegacySnapshotWithMetadata",
       "diffNormalizedRecords",
       "snapshotChecksum"
     ];
@@ -323,9 +323,14 @@
       const rows = Array.isArray(verifyOptions.rows)
         ? verifyOptions.rows
         : await store.list(mapper.namespace, { includeDeleted: true });
-      const reconstructed = mapper.reassembleLegacySnapshot(rows);
-      const expectedChecksum = mapper.snapshotChecksum(snapshot);
-      const actualChecksum = mapper.snapshotChecksum(reconstructed);
+      // Reassembly performs the authoritative normalized checksum once and
+      // returns it with the reconstructed snapshot. Do not hash that snapshot a
+      // second time just to recover a checksum we already calculated.
+      const reconstruction = mapper.reassembleLegacySnapshotWithMetadata(rows);
+      const expectedChecksum = verifyOptions.expectedChecksum
+        ? String(verifyOptions.expectedChecksum)
+        : mapper.snapshotChecksum(snapshot);
+      const actualChecksum = reconstruction.checksum;
       const activeRows = rows.filter((row) => !rowDeletedAt(row));
       const result = {
         ok: expectedChecksum === actualChecksum,
