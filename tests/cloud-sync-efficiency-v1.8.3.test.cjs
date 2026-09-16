@@ -104,6 +104,39 @@ test("unchanged snapshot skips even the header query after a committed atomic ba
   assert.deepEqual(calls, ["manifest"]);
 });
 
+test("same checksum/count from an older mapper format cannot incorrectly skip migration work", async () => {
+  const mapped = normalizer.mapLegacySnapshot(fixture);
+  const calls = [];
+  let batchInput;
+  const staleMetadata = migrationMetadata(mapped);
+  staleMetadata.normalized_format_version = normalizer.formatVersion - 1;
+  const store = {
+    async getManifest() {
+      calls.push("manifest");
+      return { cutover_stage: "shadow", sync_generation: 4, metadata: staleMetadata };
+    },
+    async listHeaders() {
+      calls.push("headers");
+      return headers(mapped, 4);
+    },
+    async list() { throw new Error("payload rows should not be needed"); },
+    async applyBatch(input) {
+      calls.push("batch");
+      batchInput = input;
+      return { ok: true, generation: 4, puts: input.puts.length, tombstones: input.tombstones.length };
+    },
+    async markVerified() { throw new Error("verification is separate"); }
+  };
+  const controller = shadow.createShadowSyncController({ recordStore: store, normalizer, enabled: true });
+  const result = await controller.sync(fixture);
+
+  assert.equal(result.skipped, false);
+  assert.deepEqual(calls, ["manifest", "headers", "batch"]);
+  assert.equal(batchInput.puts.length, 0);
+  assert.equal(batchInput.tombstones.length, 0);
+  assert.equal(batchInput.manifestPatch.metadata.normalized_format_version, normalizer.formatVersion);
+});
+
 test("reordering identified animals changes only array and snapshot manifests", async () => {
   const before = normalizer.mapLegacySnapshot({ animals: fixture.animals });
   const afterState = { animals: [...fixture.animals].reverse() };
