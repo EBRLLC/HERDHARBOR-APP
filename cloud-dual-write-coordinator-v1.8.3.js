@@ -8,7 +8,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const VERSION = "0.1-migration-coordinator";
+  const VERSION = "0.2-deferred-verification";
   const RELEASE = "1.8.3";
 
   function requiredFunction(value, label) {
@@ -35,6 +35,7 @@
     const writeLegacySnapshot = requiredFunction(options.writeLegacySnapshot, "writeLegacySnapshot");
     const shadowController = requiredShadowController(options.shadowController);
     const onEvent = typeof options.onEvent === "function" ? options.onEvent : () => {};
+    const verifyAfterWrite = options.verifyAfterWrite === true;
     let enabled = options.enabled === true;
 
     function emit(type, detail = {}) {
@@ -53,6 +54,11 @@
       return enabled;
     }
 
+    async function verifyCurrent(snapshot) {
+      if (!enabled) return Object.freeze({ skipped: true, reason: "disabled" });
+      return shadowController.verifyAndRecord(snapshot);
+    }
+
     async function save(snapshot, saveOptions = {}) {
       let legacyResult;
       try {
@@ -68,16 +74,20 @@
           mode: "legacy-only",
           legacySaved: true,
           normalizedSaved: false,
+          normalizedCurrent: false,
           normalizedVerified: false,
           normalizedPending: false,
+          verificationPending: false,
           legacyResult
         });
         emit("dual-write-complete", {
           mode: result.mode,
           legacySaved: true,
           normalizedSaved: false,
+          normalizedCurrent: false,
           normalizedVerified: false,
-          normalizedPending: false
+          normalizedPending: false,
+          verificationPending: false
         });
         return result;
       }
@@ -99,8 +109,10 @@
           mode: "dual-write-degraded",
           legacySaved: true,
           normalizedSaved: false,
+          normalizedCurrent: false,
           normalizedVerified: false,
           normalizedPending: true,
+          verificationPending: false,
           normalizedErrorCode: failure.errorCode,
           legacyResult
         });
@@ -108,13 +120,71 @@
 
       if (normalizedResult?.skipped) {
         const reason = String(normalizedResult.reason || "normalized-write-skipped").slice(0, 80);
+        if (reason === "already-current") {
+          const alreadyVerified = normalizedResult.verified === true;
+          if (verifyAfterWrite && !alreadyVerified) {
+            try {
+              const verification = await shadowController.verifyAndRecord(snapshot);
+              return Object.freeze({
+                ok: true,
+                mode: "dual-write",
+                legacySaved: true,
+                normalizedSaved: false,
+                normalizedCurrent: true,
+                normalizedVerified: verification?.ok === true,
+                normalizedPending: false,
+                verificationPending: verification?.ok !== true,
+                normalizedGeneration: normalizedResult?.generation ?? null,
+                verifiedAt: verification?.verifiedAt || null,
+                legacyResult
+              });
+            } catch (error) {
+              const failure = safeFailure(error, "normalized-verify");
+              emit("dual-write-degraded", failure);
+              return Object.freeze({
+                ok: true,
+                mode: "dual-write-degraded",
+                legacySaved: true,
+                normalizedSaved: false,
+                normalizedCurrent: true,
+                normalizedVerified: false,
+                normalizedPending: false,
+                verificationPending: true,
+                normalizedErrorCode: failure.errorCode,
+                legacyResult
+              });
+            }
+          }
+          const result = Object.freeze({
+            ok: true,
+            mode: "dual-write",
+            legacySaved: true,
+            normalizedSaved: false,
+            normalizedCurrent: true,
+            normalizedVerified: alreadyVerified,
+            normalizedPending: false,
+            verificationPending: !alreadyVerified,
+            normalizedGeneration: normalizedResult?.generation ?? null,
+            legacyResult
+          });
+          emit("dual-write-complete", {
+            mode: result.mode,
+            normalizedCurrent: true,
+            normalizedVerified: result.normalizedVerified,
+            verificationPending: result.verificationPending
+          });
+          return result;
+        }
+
         const result = Object.freeze({
           ok: true,
           mode: "dual-write-degraded",
           legacySaved: true,
           normalizedSaved: false,
+          normalizedCurrent: reason === "normalized-authoritative",
           normalizedVerified: false,
           normalizedPending: reason !== "normalized-authoritative",
+          verificationPending: false,
           normalizedReason: reason,
           legacyResult
         });
@@ -126,6 +196,36 @@
         return result;
       }
 
+      // A full normalized read/reassembly is deliberately not performed after
+      // every legacy save. Atomic generation/version guards make the write safe;
+      // explicit verification is performed at shadow bootstrap, on demand, and
+      // immediately before any stage promotion that requires it.
+      if (!verifyAfterWrite) {
+        const result = Object.freeze({
+          ok: true,
+          mode: "dual-write",
+          legacySaved: true,
+          normalizedSaved: true,
+          normalizedCurrent: true,
+          normalizedVerified: false,
+          normalizedPending: false,
+          verificationPending: true,
+          normalizedGeneration: normalizedResult?.generation ?? null,
+          legacyResult
+        });
+        emit("dual-write-complete", {
+          mode: result.mode,
+          legacySaved: true,
+          normalizedSaved: true,
+          normalizedCurrent: true,
+          normalizedVerified: false,
+          normalizedPending: false,
+          verificationPending: true,
+          normalizedGeneration: result.normalizedGeneration
+        });
+        return result;
+      }
+
       try {
         const verification = await shadowController.verifyAndRecord(snapshot);
         const result = Object.freeze({
@@ -133,8 +233,10 @@
           mode: "dual-write",
           legacySaved: true,
           normalizedSaved: true,
+          normalizedCurrent: true,
           normalizedVerified: verification?.ok === true,
-          normalizedPending: verification?.ok !== true,
+          normalizedPending: false,
+          verificationPending: verification?.ok !== true,
           normalizedGeneration: normalizedResult?.generation ?? null,
           verifiedAt: verification?.verifiedAt || null,
           legacyResult
@@ -143,8 +245,10 @@
           mode: result.mode,
           legacySaved: true,
           normalizedSaved: true,
+          normalizedCurrent: true,
           normalizedVerified: result.normalizedVerified,
-          normalizedPending: result.normalizedPending,
+          normalizedPending: false,
+          verificationPending: result.verificationPending,
           normalizedGeneration: result.normalizedGeneration
         });
         return result;
@@ -156,8 +260,10 @@
           mode: "dual-write-degraded",
           legacySaved: true,
           normalizedSaved: true,
+          normalizedCurrent: true,
           normalizedVerified: false,
-          normalizedPending: true,
+          normalizedPending: false,
+          verificationPending: true,
           normalizedGeneration: normalizedResult?.generation ?? null,
           normalizedErrorCode: failure.errorCode,
           legacyResult
@@ -168,6 +274,7 @@
     return Object.freeze({
       setEnabled,
       isEnabled,
+      verifyCurrent,
       save
     });
   }
