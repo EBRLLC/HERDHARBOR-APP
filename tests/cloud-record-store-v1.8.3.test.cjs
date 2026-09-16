@@ -19,7 +19,7 @@ test("normalized cloud record store exposes the hardened v1.8.3 RPC foundation",
   assert.equal(api.manifestTable, "herdharbor_sync_manifest");
   assert.equal(api.batchRpc, "herdharbor_sync_apply_batch");
   assert.equal(api.verifyRpc, "herdharbor_sync_mark_verified");
-  assert.equal(api.prepareWriterRpc, "herdharbor_sync_prepare_normalized_writer");
+  assert.equal(api.prepareWriterRpc, "herdharbor_sync_prepare_normalized_writer_guarded");
   assert.equal(api.stageRpc, "herdharbor_sync_set_stage");
   assert.equal(api.readPageSize, 500);
 });
