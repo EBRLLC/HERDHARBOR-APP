@@ -37,6 +37,12 @@ test("legacy snapshot mapper is deterministic and round-trips the representative
   assert.equal(first.checksum, second.checksum);
   assert.deepEqual(first.records, second.records);
   assert.deepEqual(api.reassembleLegacySnapshot(rowsFrom(first)), fixture);
+
+  const withMetadata = api.reassembleLegacySnapshotWithMetadata(rowsFrom(first));
+  assert.deepEqual(withMetadata.snapshot, fixture);
+  assert.equal(withMetadata.checksum, first.checksum);
+  assert.equal(withMetadata.manifestChecksum, first.checksum);
+  assert.equal(withMetadata.recordCount, first.records.length);
 });
 
 test("top-level object key insertion order does not change normalized output", () => {
@@ -76,6 +82,33 @@ test("array reorder changes only ordering manifests, not stable identified item 
     diff.puts.map((record) => record.payload.kind).sort(),
     ["array_manifest", "snapshot_manifest"]
   );
+});
+
+test("duplicate explicit IDs fall back to content identity so reorder does not rewrite item rows", () => {
+  const firstState = {
+    animals: [
+      { id: "legacy-duplicate", name: "Annie", weight: 3.2 },
+      { id: "legacy-duplicate", name: "Patches", weight: 3.5 }
+    ]
+  };
+  const secondState = { animals: [...firstState.animals].reverse() };
+  const first = api.mapLegacySnapshot(firstState);
+  const second = api.mapLegacySnapshot(secondState);
+
+  const firstItems = first.records
+    .filter((record) => record.payload.kind === "array_item")
+    .map((record) => [record.record_id, record.payload_checksum])
+    .sort();
+  const secondItems = second.records
+    .filter((record) => record.payload.kind === "array_item")
+    .map((record) => [record.record_id, record.payload_checksum])
+    .sort();
+  assert.deepEqual(firstItems, secondItems);
+
+  const diff = api.diffNormalizedRecords(rowsFrom(first), second.records);
+  assert.equal(diff.tombstones.length, 0);
+  assert.equal(diff.puts.some((record) => record.payload.kind === "array_item"), false);
+  assert.deepEqual(api.reassembleLegacySnapshot(rowsFrom(second)), secondState);
 });
 
 test("identity-less primitive and object items remain stable across insertions and reorder", () => {
