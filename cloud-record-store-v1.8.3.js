@@ -6,7 +6,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const VERSION = "0.2-atomic";
+  const VERSION = "0.3-generation-guard";
   const RELEASE = "1.8.3";
   const RECORD_TABLE = "herdharbor_sync_records";
   const MANIFEST_TABLE = "herdharbor_sync_manifest";
@@ -56,6 +56,22 @@
     return version;
   }
 
+  function normalizeGeneration(value) {
+    const generation = Number(value);
+    if (!Number.isSafeInteger(generation) || generation < 0) {
+      throw new TypeError("expectedGeneration must be a non-negative integer.");
+    }
+    return generation;
+  }
+
+  function normalizeRecordCount(value) {
+    const count = Number(value);
+    if (!Number.isSafeInteger(count) || count < 0) {
+      throw new TypeError("recordCount must be a non-negative integer.");
+    }
+    return count;
+  }
+
   function knownProviderFailure(operation, error) {
     const message = String(error?.message || "");
     const known = [
@@ -64,7 +80,10 @@
       "HH_SYNC_BATCH_LIMIT",
       "HH_SYNC_INVALID_BATCH",
       "HH_SYNC_AUTH_REQUIRED",
-      "HH_SYNC_NORMALIZED_REQUIRES_VERIFICATION"
+      "HH_SYNC_NORMALIZED_REQUIRES_VERIFICATION",
+      "HH_SYNC_ALREADY_NORMALIZED",
+      "HH_SYNC_EXPECTED_GENERATION_REQUIRED",
+      "HH_SYNC_INVALID_GENERATION"
     ].find((code) => message.includes(code));
     if (!known) return null;
     const wrapped = new Error(
@@ -72,7 +91,9 @@
         ? "The normalized cloud state changed on another device."
         : known === "HH_SYNC_VERIFY_STALE"
           ? "The normalized cloud state changed before verification completed."
-          : "The normalized cloud operation was rejected by its safety gate."
+          : known === "HH_SYNC_ALREADY_NORMALIZED"
+            ? "Legacy shadow writes are disabled after normalized cutover."
+            : "The normalized cloud operation was rejected by its safety gate."
     );
     wrapped.name = "HerdHarborCloudRecordError";
     wrapped.code = known;
@@ -102,24 +123,12 @@
     return error;
   }
 
-  function normalizeGeneration(value) {
-    const generation = Number(value);
-    if (!Number.isSafeInteger(generation) || generation < 0) {
-      throw new TypeError("expectedGeneration must be a non-negative integer.");
-    }
-    return generation;
-  }
-
-  function normalizeRecordCount(value) {
-    const count = Number(value);
-    if (!Number.isSafeInteger(count) || count < 0) {
-      throw new TypeError("recordCount must be a non-negative integer.");
-    }
-    return count;
-  }
-
   function batchManifestPatch(patch = {}) {
     const provider = {};
+    if (patch.expectedGeneration === undefined) {
+      throw new TypeError("Atomic batches require expectedGeneration.");
+    }
+    provider.expected_generation = normalizeGeneration(patch.expectedGeneration);
     if (patch.schemaVersion !== undefined) {
       const schemaVersion = Number(patch.schemaVersion);
       if (!Number.isSafeInteger(schemaVersion) || schemaVersion < 1) {
