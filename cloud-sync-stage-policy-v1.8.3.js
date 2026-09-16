@@ -6,7 +6,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const VERSION = "0.2-complete-verification-policy";
+  const VERSION = "0.3-writer-readiness-policy";
   const RELEASE = "1.8.3";
   const STAGES = Object.freeze(["legacy", "shadow", "dual_write", "normalized"]);
   const STAGE_SET = new Set(STAGES);
@@ -54,6 +54,12 @@
     return Boolean(namespace) && Number.isSafeInteger(formatVersion) && formatVersion >= 1;
   }
 
+  function normalizedWriterIsReady(manifest) {
+    const metadata = metadataOf(manifest);
+    return metadata.normalized_writer_ready === true &&
+      Boolean(String(metadata.normalized_writer_version || "").trim());
+  }
+
   function transitionRequiresVerification(fromStage, toStage) {
     return (
       (fromStage === "shadow" && toStage === "dual_write") ||
@@ -71,7 +77,8 @@
         fromStage,
         toStage,
         reason: "invalid-target-stage",
-        requiresVerification: false
+        requiresVerification: false,
+        requiresWriter: false
       });
     }
     if (fromStage === toStage) {
@@ -80,7 +87,8 @@
         fromStage,
         toStage,
         reason: "no-op",
-        requiresVerification: false
+        requiresVerification: false,
+        requiresWriter: false
       });
     }
 
@@ -91,7 +99,8 @@
         fromStage,
         toStage,
         reason: "invalid-stage-transition",
-        requiresVerification: false
+        requiresVerification: false,
+        requiresWriter: false
       });
     }
 
@@ -102,7 +111,20 @@
         fromStage,
         toStage,
         reason: "current-verification-required",
-        requiresVerification: true
+        requiresVerification: true,
+        requiresWriter: toStage === "normalized"
+      });
+    }
+
+    const requiresWriter = fromStage === "dual_write" && toStage === "normalized";
+    if (requiresWriter && !normalizedWriterIsReady(manifest)) {
+      return Object.freeze({
+        allowed: false,
+        fromStage,
+        toStage,
+        reason: "normalized-writer-required",
+        requiresVerification: true,
+        requiresWriter: true
       });
     }
 
@@ -113,7 +135,8 @@
       reason: (toStage === "legacy" || (toStage === "shadow" && fromStage !== "legacy"))
         ? "rollback"
         : "promotion",
-      requiresVerification
+      requiresVerification,
+      requiresWriter
     });
   }
 
@@ -124,9 +147,11 @@
     error.name = "HerdHarborCloudSyncStageError";
     error.code = decision.reason === "current-verification-required"
       ? "HH_SYNC_STAGE_VERIFICATION_REQUIRED"
-      : decision.reason === "invalid-target-stage"
-        ? "HH_SYNC_INVALID_STAGE"
-        : "HH_SYNC_INVALID_STAGE_TRANSITION";
+      : decision.reason === "normalized-writer-required"
+        ? "HH_SYNC_NORMALIZED_WRITER_REQUIRED"
+        : decision.reason === "invalid-target-stage"
+          ? "HH_SYNC_INVALID_STAGE"
+          : "HH_SYNC_INVALID_STAGE_TRANSITION";
     error.fromStage = decision.fromStage;
     error.toStage = decision.toStage;
     throw error;
@@ -149,6 +174,7 @@
     stageOf,
     generationOf,
     verificationIsCurrent,
+    normalizedWriterIsReady,
     transitionRequiresVerification,
     evaluateTransition,
     assertTransition,
