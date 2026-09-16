@@ -8,7 +8,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const policy = require(path.join(root, "cloud-sync-stage-policy-v1.8.3.js"));
 const sql = fs.readFileSync(
-  path.join(root, "supabase", "v1.8.3-cloud-sync-stage-guards.sql"),
+  path.join(root, "supabase", "v1.8.3-cloud-sync-normalized-records.sql"),
   "utf8"
 );
 
@@ -19,14 +19,20 @@ function manifest(stage, verified = false) {
     normalized_verified_at: verified ? "2026-09-16T07:00:00.000Z" : null,
     metadata: verified
       ? {
-          source_checksum: "fnv1a32:12345678",
-          verified_checksum: "fnv1a32:12345678",
-          verification_record_count: 24
+          source_checksum: "hh64:1234567890abcdef",
+          verified_checksum: "hh64:1234567890abcdef",
+          normalized_record_count: 24,
+          verification_record_count: 24,
+          normalized_namespace: "legacy-state",
+          normalized_format_version: 2
         }
       : {
-          source_checksum: "fnv1a32:12345678",
+          source_checksum: "hh64:1234567890abcdef",
           verified_checksum: null,
-          verification_record_count: null
+          normalized_record_count: 24,
+          verification_record_count: null,
+          normalized_namespace: "legacy-state",
+          normalized_format_version: 2
         }
   };
 }
@@ -60,17 +66,25 @@ test("stage policy allows only adjacent promotion and rollback transitions", () 
   }
 });
 
-test("promotions require current verification with matching source checksum", () => {
+test("promotions require checksum, count, namespace, format, generation, and verification markers", () => {
   for (const [from, to] of [["shadow", "dual_write"], ["dual_write", "normalized"]]) {
-    const missing = policy.evaluateTransition(manifest(from, false), to);
-    assert.equal(missing.allowed, false);
-    assert.equal(missing.reason, "current-verification-required");
+    assert.equal(policy.evaluateTransition(manifest(from, false), to).allowed, false);
 
-    const stale = manifest(from, true);
-    stale.metadata.verified_checksum = "fnv1a32:87654321";
-    const mismatch = policy.evaluateTransition(stale, to);
-    assert.equal(mismatch.allowed, false);
-    assert.equal(mismatch.reason, "current-verification-required");
+    const staleChecksum = manifest(from, true);
+    staleChecksum.metadata.verified_checksum = "hh64:ffffffffffffffff";
+    assert.equal(policy.evaluateTransition(staleChecksum, to).allowed, false);
+
+    const staleCount = manifest(from, true);
+    staleCount.metadata.verification_record_count += 1;
+    assert.equal(policy.evaluateTransition(staleCount, to).allowed, false);
+
+    const missingGeneration = manifest(from, true);
+    delete missingGeneration.sync_generation;
+    assert.equal(policy.evaluateTransition(missingGeneration, to).allowed, false);
+
+    const missingNamespace = manifest(from, true);
+    missingNamespace.metadata.normalized_namespace = "";
+    assert.equal(policy.evaluateTransition(missingNamespace, to).allowed, false);
 
     const current = policy.evaluateTransition(manifest(from, true), to);
     assert.equal(current.allowed, true);
@@ -85,7 +99,7 @@ test("rollback target moves exactly one stage toward legacy", () => {
   assert.equal(policy.rollbackTarget(manifest("legacy")), null);
 });
 
-test("assertTransition returns legal decisions and stable errors for unsafe promotion", () => {
+test("assertTransition returns legal decisions and stable errors", () => {
   assert.equal(policy.assertTransition(manifest("legacy"), "shadow").allowed, true);
   assert.throws(
     () => policy.assertTransition(manifest("shadow", false), "dual_write"),
@@ -101,7 +115,7 @@ test("assertTransition returns legal decisions and stable errors for unsafe prom
   );
 });
 
-test("stage guard SQL mirrors the adjacent transition graph", () => {
+test("base migration itself mirrors the adjacent transition graph", () => {
   assert.match(sql, /old\.cutover_stage = 'legacy' and new\.cutover_stage = 'shadow'/i);
   assert.match(sql, /old\.cutover_stage = 'shadow' and new\.cutover_stage = 'legacy'/i);
   assert.match(sql, /old\.cutover_stage = 'shadow' and new\.cutover_stage = 'dual_write'/i);
@@ -111,27 +125,30 @@ test("stage guard SQL mirrors the adjacent transition graph", () => {
   assert.match(sql, /HH_SYNC_INVALID_STAGE_TRANSITION/);
 });
 
-test("stage guard SQL requires fresh verification for promotions", () => {
-  assert.match(sql, /HH_SYNC_STAGE_VERIFICATION_REQUIRED/);
-  assert.match(sql, /verified_checksum/);
-  assert.match(sql, /source_checksum/);
-  assert.match(sql, /v_verified_checksum <> v_source_checksum/);
-  assert.match(sql, /verification_record_count/);
-  assert.match(sql, /HH_SYNC_NORMALIZED_REQUIRES_VERIFICATION/);
-});
-
-test("stage transition RPC is generation guarded and verification recording is source-checksum guarded", () => {
+test("stage transition RPC increments generation so stale devices cannot silently roll back a promotion", () => {
   assert.match(sql, /herdharbor_sync_set_stage/i);
   assert.match(sql, /p_expected_generation/i);
   assert.match(sql, /for update/i);
   assert.match(sql, /v_generation <> p_expected_generation/i);
+  assert.match(sql, /sync_generation = sync_generation \+ 1/i);
   assert.match(sql, /HH_SYNC_CONFLICT/);
+});
+
+test("data batches cannot perform arbitrary promotion or rollback stage changes", () => {
+  assert.match(sql, /v_current_stage = 'legacy' and v_requested_stage = 'shadow'/i);
+  assert.match(sql, /HH_SYNC_STAGE_CHANGE_REQUIRES_RPC/);
+});
+
+test("verification recording requires source checksum and actual record count", () => {
   assert.match(sql, /herdharbor_sync_mark_verified/i);
   assert.match(sql, /metadata ->> 'source_checksum'[^\n]*= p_checksum/i);
+  assert.match(sql, /metadata ->> 'normalized_record_count'/i);
+  assert.match(sql, /select count\(\*\)::integer/i);
+  assert.match(sql, /HH_SYNC_RECORD_COUNT_MISMATCH/);
   assert.match(sql, /HH_SYNC_VERIFY_STALE/);
 });
 
-test("stage guard migration never touches the legacy full-state table", () => {
+test("migration never mutates the legacy full-state table", () => {
   assert.doesNotMatch(sql, /\b(?:insert\s+into|update|delete\s+from|alter\s+table|drop\s+table|truncate\s+table)\s+public\.herdharbor_user_data\b/i);
-  assert.match(sql, /does not read, update, copy, or delete public\.herdharbor_user_data/i);
+  assert.match(sql, /never\s+reads, alters, copies, or deletes public\.herdharbor_user_data/i);
 });
