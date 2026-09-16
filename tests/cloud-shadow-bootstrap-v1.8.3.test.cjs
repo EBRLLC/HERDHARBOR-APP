@@ -148,6 +148,7 @@ test("eligible internal user runs shadow write followed by recorded verification
   assert.equal(result.verified, true);
   assert.equal(result.checksum, "verified-checksum");
   assert.equal(result.verifiedAt, "2026-09-16T04:00:00.000Z");
+  assert.equal(result.resumedVerification, false);
 
   const names = setup.calls.map((call) => call[0]);
   assert.deepEqual(names, [
@@ -188,6 +189,67 @@ test("dry run never proceeds to verification recording", async () => {
 
   assert.equal(result.skipped, true);
   assert.equal(result.reason, "dry-run");
+  assert.equal(setup.calls.some((call) => call[0] === "verifyAndRecord"), false);
+});
+
+test("already-current but unverified shadow data resumes verification instead of getting stuck", async () => {
+  const setup = dependencies({
+    createShadowSyncController(input) {
+      setup.calls.push(["createShadowSyncController", input]);
+      return {
+        async sync(snapshot, options) {
+          setup.calls.push(["sync", snapshot, options]);
+          return { skipped: true, reason: "already-current", verified: false, generation: 8 };
+        },
+        async verifyAndRecord(snapshot) {
+          setup.calls.push(["verifyAndRecord", snapshot]);
+          return {
+            skipped: false,
+            ok: true,
+            stage: "shadow",
+            actualChecksum: "retried-checksum",
+            recordCount: 12,
+            verifiedAt: "2026-09-16T04:05:00.000Z"
+          };
+        }
+      };
+    }
+  });
+  const bootstrap = bootstrapApi.createShadowBootstrap(setup.options);
+
+  const result = await bootstrap.run();
+
+  assert.equal(result.skipped, false);
+  assert.equal(result.verified, true);
+  assert.equal(result.resumedVerification, true);
+  assert.equal(result.checksum, "retried-checksum");
+  assert.deepEqual(
+    setup.calls.filter((call) => ["sync", "verifyAndRecord"].includes(call[0])).map((call) => call[0]),
+    ["sync", "verifyAndRecord"]
+  );
+});
+
+test("already-current and verified shadow data avoids redundant verification", async () => {
+  const setup = dependencies({
+    createShadowSyncController(input) {
+      setup.calls.push(["createShadowSyncController", input]);
+      return {
+        async sync(snapshot, options) {
+          setup.calls.push(["sync", snapshot, options]);
+          return { skipped: true, reason: "already-current", verified: true, generation: 8 };
+        },
+        async verifyAndRecord() {
+          setup.calls.push(["verifyAndRecord"]);
+          throw new Error("must not be called");
+        }
+      };
+    }
+  });
+  const bootstrap = bootstrapApi.createShadowBootstrap(setup.options);
+  const result = await bootstrap.run();
+  assert.equal(result.skipped, true);
+  assert.equal(result.reason, "already-current");
+  assert.equal(result.verified, true);
   assert.equal(setup.calls.some((call) => call[0] === "verifyAndRecord"), false);
 });
 
