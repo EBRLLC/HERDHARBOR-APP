@@ -8,7 +8,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (normalizer) {
   "use strict";
 
-  const VERSION = "0.1-safe-read-fallback";
+  const VERSION = "0.2-race-safe-read";
   const RELEASE = "1.8.3";
   const NORMALIZED_STAGE = "normalized";
 
@@ -29,6 +29,11 @@
     return String(manifest?.cutover_stage ?? manifest?.cutoverStage ?? "legacy") === NORMALIZED_STAGE;
   }
 
+  function manifestGeneration(manifest) {
+    const value = Number(manifest?.sync_generation ?? manifest?.syncGeneration);
+    return Number.isSafeInteger(value) && value >= 0 ? value : null;
+  }
+
   function verifiedAt(manifest) {
     return String(manifest?.normalized_verified_at ?? manifest?.normalizedVerifiedAt ?? "").trim();
   }
@@ -38,8 +43,12 @@
     return value && typeof value === "object" && !Array.isArray(value) ? value : {};
   }
 
-  function activeRecordCount(rows) {
-    return (Array.isArray(rows) ? rows : []).filter((row) => !(row?.deleted_at ?? row?.deletedAt)).length;
+  function activeRecordCount(rows, namespace) {
+    return (Array.isArray(rows) ? rows : []).filter((row) => {
+      if (row?.deleted_at ?? row?.deletedAt) return false;
+      const rowNamespace = String(row?.namespace || "");
+      return !rowNamespace || rowNamespace === namespace;
+    }).length;
   }
 
   function safeFailure(error, fallbackReason) {
@@ -87,6 +96,24 @@
       }
     }
 
+    function verificationMarkers(manifest) {
+      const details = metadata(manifest);
+      const verifiedChecksum = String(details.verified_checksum || "").trim();
+      const sourceChecksum = String(details.source_checksum || "").trim();
+      const count = Number(details.verification_record_count);
+      const normalizedCount = Number(details.normalized_record_count);
+      const formatVersion = Number(details.normalized_format_version);
+      const namespace = String(details.normalized_namespace || "").trim();
+      return {
+        verifiedChecksum,
+        sourceChecksum,
+        count: Number.isSafeInteger(count) && count >= 0 ? count : null,
+        normalizedCount: Number.isSafeInteger(normalizedCount) && normalizedCount >= 0 ? normalizedCount : null,
+        formatVersion: Number.isSafeInteger(formatVersion) && formatVersion >= 1 ? formatVersion : null,
+        namespace
+      };
+    }
+
     async function read() {
       let manifest;
       try {
@@ -99,9 +126,18 @@
       if (!normalizedStage(manifest)) return legacy("normalized-not-authoritative");
       if (!verifiedAt(manifest)) return legacy("normalized-not-verified");
 
-      const manifestMetadata = metadata(manifest);
-      const expectedChecksum = String(manifestMetadata.verified_checksum || "").trim();
-      if (!expectedChecksum) return legacy("verification-checksum-missing");
+      const initialGeneration = manifestGeneration(manifest);
+      if (initialGeneration === null) return legacy("normalized-generation-missing");
+      const markers = verificationMarkers(manifest);
+      if (!markers.verifiedChecksum) return legacy("verification-checksum-missing");
+      if (!markers.sourceChecksum || markers.sourceChecksum !== markers.verifiedChecksum) {
+        return legacy("verification-source-mismatch");
+      }
+      if (markers.count === null || markers.normalizedCount === null || markers.count !== markers.normalizedCount) {
+        return legacy("verification-record-count-missing");
+      }
+      if (markers.namespace !== mapper.namespace) return legacy("normalized-namespace-mismatch");
+      if (markers.formatVersion !== mapper.formatVersion) return legacy("normalized-format-mismatch");
 
       let rows;
       try {
@@ -118,7 +154,7 @@
       }
 
       const actualChecksum = mapper.snapshotChecksum(snapshot);
-      if (actualChecksum !== expectedChecksum) {
+      if (actualChecksum !== markers.verifiedChecksum) {
         return legacy("normalized-checksum-mismatch", {
           errorName: "HerdHarborCloudNormalizationError",
           errorCode: "HH_NORMALIZED_CHECKSUM_MISMATCH",
@@ -126,12 +162,8 @@
         });
       }
 
-      const expectedRecordCount = Number(manifestMetadata.verification_record_count);
-      if (
-        Number.isSafeInteger(expectedRecordCount) &&
-        expectedRecordCount >= 0 &&
-        activeRecordCount(rows) !== expectedRecordCount
-      ) {
+      const recordCount = activeRecordCount(rows, mapper.namespace);
+      if (recordCount !== markers.count) {
         return legacy("normalized-record-count-mismatch", {
           errorName: "HerdHarborCloudNormalizationError",
           errorCode: "HH_NORMALIZED_RECORD_COUNT_MISMATCH",
@@ -139,19 +171,41 @@
         });
       }
 
+      // Re-read the small manifest after the payload read. A concurrent rollback
+      // or generation change must not let this caller return a snapshot that is
+      // no longer authoritative by the time the read completes.
+      let finalManifest;
+      try {
+        finalManifest = await getManifest();
+      } catch (error) {
+        return legacy("manifest-recheck-failed", safeFailure(error, "manifest-recheck-failed"));
+      }
+      const finalMarkers = verificationMarkers(finalManifest);
+      if (
+        !normalizedStage(finalManifest) ||
+        manifestGeneration(finalManifest) !== initialGeneration ||
+        verifiedAt(finalManifest) !== verifiedAt(manifest) ||
+        finalMarkers.verifiedChecksum !== markers.verifiedChecksum ||
+        finalMarkers.count !== markers.count
+      ) {
+        return legacy("normalized-manifest-changed");
+      }
+
       const result = Object.freeze({
         source: "normalized",
         fallback: false,
         reason: null,
         checksum: actualChecksum,
-        recordCount: activeRecordCount(rows),
+        recordCount,
+        generation: initialGeneration,
         verifiedAt: verifiedAt(manifest),
         snapshot
       });
       emit("normalized-read-complete", {
         source: "normalized",
         checksum: result.checksum,
-        recordCount: result.recordCount
+        recordCount: result.recordCount,
+        generation: result.generation
       });
       return result;
     }
