@@ -73,15 +73,16 @@ function fakeStore(initialRows = [], initialManifest = null) {
       return manifest ? JSON.parse(JSON.stringify(manifest)) : null;
     },
     async putManifest(patch) {
-      calls.push(["putManifest", JSON.parse(JSON.stringify(patch))]);
-      manifest = {
-        ...(manifest || {}),
-        schema_version: patch.schemaVersion,
-        cutover_stage: patch.cutoverStage,
-        legacy_snapshot_updated_at: patch.legacySnapshotUpdatedAt,
-        last_backfill_at: patch.lastBackfillAt,
-        metadata: JSON.parse(JSON.stringify(patch.metadata || {}))
-      };
+      const safePatch = JSON.parse(JSON.stringify(patch));
+      calls.push(["putManifest", safePatch]);
+      const next = { ...(manifest || {}) };
+      if (Object.prototype.hasOwnProperty.call(patch, "schemaVersion")) next.schema_version = patch.schemaVersion;
+      if (Object.prototype.hasOwnProperty.call(patch, "cutoverStage")) next.cutover_stage = patch.cutoverStage;
+      if (Object.prototype.hasOwnProperty.call(patch, "legacySnapshotUpdatedAt")) next.legacy_snapshot_updated_at = patch.legacySnapshotUpdatedAt;
+      if (Object.prototype.hasOwnProperty.call(patch, "lastBackfillAt")) next.last_backfill_at = patch.lastBackfillAt;
+      if (Object.prototype.hasOwnProperty.call(patch, "normalizedVerifiedAt")) next.normalized_verified_at = patch.normalizedVerifiedAt;
+      if (Object.prototype.hasOwnProperty.call(patch, "metadata")) next.metadata = JSON.parse(JSON.stringify(patch.metadata || {}));
+      manifest = next;
       return JSON.parse(JSON.stringify(manifest));
     }
   };
@@ -102,10 +103,13 @@ test("shadow writes are disabled by default and perform zero provider operations
   const controller = shadow.createShadowSyncController({ recordStore: store, normalizer });
 
   const result = await controller.sync(fixture);
+  const recordedVerification = await controller.verifyAndRecord(fixture);
 
   assert.equal(controller.isEnabled(), false);
   assert.equal(result.skipped, true);
   assert.equal(result.reason, "disabled");
+  assert.equal(recordedVerification.skipped, true);
+  assert.equal(recordedVerification.reason, "disabled");
   assert.equal(store.calls.length, 0);
   assert.ok(result.puts > 0);
 });
@@ -137,11 +141,74 @@ test("enabled shadow sync writes only the normalized table adapter and advances 
   assert.ok(store.calls.some((call) => call[0] === "tombstone" && call[3].expectedVersion === 7));
   const manifestWrite = store.calls.find((call) => call[0] === "putManifest");
   assert.equal(manifestWrite[1].cutoverStage, "shadow");
+  assert.equal(manifestWrite[1].normalizedVerifiedAt, null);
   assert.equal(manifestWrite[1].metadata.retained, "yes");
   assert.equal(manifestWrite[1].metadata.source_checksum, normalizer.snapshotChecksum(changed));
 
   const verify = await controller.verify(changed);
   assert.equal(verify.ok, true);
+});
+
+test("verified shadow round trip is recorded only after a successful canonical comparison", async () => {
+  const store = fakeStore([], { cutover_stage: "legacy", metadata: { cohort: "internal" } });
+  const controller = shadow.createShadowSyncController({
+    recordStore: store,
+    normalizer,
+    enabled: true,
+    now: () => "2026-09-16T02:00:00.000Z"
+  });
+
+  await controller.sync(fixture, { previousRows: [] });
+  const recorded = await controller.verifyAndRecord(fixture);
+
+  assert.equal(recorded.ok, true);
+  assert.equal(recorded.skipped, false);
+  assert.equal(recorded.stage, "shadow");
+  assert.equal(recorded.verifiedAt, "2026-09-16T02:00:00.000Z");
+  const manifestWrites = store.calls.filter((call) => call[0] === "putManifest");
+  const verificationPatch = manifestWrites.at(-1)[1];
+  assert.equal(verificationPatch.normalizedVerifiedAt, "2026-09-16T02:00:00.000Z");
+  assert.equal(verificationPatch.metadata.cohort, "internal");
+  assert.equal(verificationPatch.metadata.verified_checksum, normalizer.snapshotChecksum(fixture));
+  assert.ok(verificationPatch.metadata.verification_record_count > 0);
+
+  const writesBeforeMismatch = store.calls.filter((call) => call[0] === "putManifest").length;
+  const mismatched = JSON.parse(JSON.stringify(fixture));
+  mismatched.profile.farmName = "Different Legacy State";
+  await assert.rejects(
+    () => controller.verifyAndRecord(mismatched),
+    (error) => error?.code === "HH_SHADOW_VERIFY_MISMATCH"
+  );
+  assert.equal(store.calls.filter((call) => call[0] === "putManifest").length, writesBeforeMismatch);
+});
+
+test("a changed shadow write clears any prior verification before the new state can be trusted", async () => {
+  const before = normalizer.mapLegacySnapshot(fixture);
+  const store = fakeStore(versionedRows(before, 3), {
+    cutover_stage: "shadow",
+    normalized_verified_at: "2026-09-15T20:00:00.000Z",
+    metadata: {
+      verified_checksum: normalizer.snapshotChecksum(fixture),
+      last_shadow_verified_at: "2026-09-15T20:00:00.000Z",
+      verification_record_count: before.records.length
+    }
+  });
+  const controller = shadow.createShadowSyncController({
+    recordStore: store,
+    normalizer,
+    enabled: true,
+    now: () => "2026-09-16T03:00:00.000Z"
+  });
+  const changed = JSON.parse(JSON.stringify(fixture));
+  changed.selectedAnimalId = "rabbit-patches";
+
+  await controller.sync(changed);
+
+  const patch = store.calls.filter((call) => call[0] === "putManifest").at(-1)[1];
+  assert.equal(patch.normalizedVerifiedAt, null);
+  assert.equal(patch.metadata.verified_checksum, null);
+  assert.equal(patch.metadata.last_shadow_verified_at, null);
+  assert.equal(patch.metadata.verification_record_count, null);
 });
 
 test("shadow sync never downgrades dual-write and refuses legacy shadow writes after normalized cutover", async () => {
@@ -204,4 +271,5 @@ test("shadow controller contains no legacy full-state table mutation path", () =
   assert.doesNotMatch(source, /app_state/);
   assert.match(source, /normalized-authoritative/);
   assert.match(source, /HH_SHADOW_MUTATION_LIMIT/);
+  assert.match(source, /verifyAndRecord/);
 });
