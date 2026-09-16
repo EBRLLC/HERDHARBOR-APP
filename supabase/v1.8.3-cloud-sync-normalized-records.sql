@@ -154,7 +154,9 @@ begin
        or v_source_checksum is null
        or v_verified_checksum <> v_source_checksum
        or v_verified_count is null
+       or v_verified_count !~ '^[0-9]+$'
        or v_normalized_count is null
+       or v_normalized_count !~ '^[0-9]+$'
        or v_verified_count <> v_normalized_count then
       raise exception using errcode = '23514', message = 'HH_SYNC_NORMALIZED_REQUIRES_VERIFICATION';
     end if;
@@ -550,6 +552,7 @@ begin
     raise exception using errcode = '23514', message = 'HH_SYNC_DUAL_WRITE_STAGE_REQUIRED';
   end if;
   if nullif(btrim(v_metadata ->> 'normalized_namespace'), '') is distinct from btrim(p_namespace)
+     or nullif(btrim(v_metadata ->> 'normalized_format_version'), '') is null
      or nullif(btrim(v_metadata ->> 'normalized_format_version'), '') !~ '^[1-9][0-9]*$'
      or (v_metadata ->> 'normalized_format_version')::integer <> p_format_version then
     raise exception using errcode = '23514', message = 'HH_SYNC_WRITER_FORMAT_MISMATCH';
