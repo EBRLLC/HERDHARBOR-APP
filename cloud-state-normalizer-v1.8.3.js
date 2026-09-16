@@ -6,9 +6,9 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const VERSION = "0.2-mapper";
+  const VERSION = "0.3-efficient-mapper";
   const RELEASE = "1.8.3";
-  const FORMAT_VERSION = 1;
+  const FORMAT_VERSION = 2;
   const NAMESPACE = "legacy-state";
   const SNAPSHOT_MANIFEST_ID = "snapshot-manifest";
   const IDENTITY_KEYS = ["id", "uuid", "recordId", "record_id", "key"];
@@ -44,18 +44,30 @@
     return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
   }
 
+  // Two independent 32-bit lanes give record/snapshot fingerprints a 64-bit
+  // collision surface while staying much faster than BigInt hashing on large
+  // browser states. These are integrity/diff fingerprints, not security hashes.
   function checksumText(text) {
     const input = String(text == null ? "" : text);
-    let hash = 0x811c9dc5;
+    let left = 0x811c9dc5;
+    let right = 0x9e3779b9;
     for (let index = 0; index < input.length; index += 1) {
-      hash ^= input.charCodeAt(index);
-      hash = Math.imul(hash, 0x01000193) >>> 0;
+      const code = input.charCodeAt(index);
+      left ^= code;
+      left = Math.imul(left, 0x01000193) >>> 0;
+      right ^= code + index;
+      right = Math.imul(right, 0x85ebca6b) >>> 0;
+      right ^= right >>> 13;
     }
-    return hash.toString(16).padStart(8, "0");
+    return `${left.toString(16).padStart(8, "0")}${right.toString(16).padStart(8, "0")}`;
+  }
+
+  function checksumValue(value) {
+    return `hh64:${checksumText(stableStringify(value))}`;
   }
 
   function snapshotChecksum(snapshot) {
-    return `fnv1a32:${checksumText(stableStringify(normalizeSnapshot(snapshot)))}`;
+    return checksumValue(normalizeSnapshot(snapshot));
   }
 
   function token(value) {
@@ -86,9 +98,12 @@
     return `array:${token(key)}`;
   }
 
-  function arrayItemRecordId(key, item, index, duplicateCounts) {
+  function arrayItemRecordId(key, item, duplicateCounts) {
     const identity = stableIdentity(item);
-    const identityToken = identity ? token(identity) : `idx-${String(index).padStart(8, "0")}`;
+    // Content identity keeps identity-less values stable when items are inserted
+    // or reordered. Array order itself lives only in the array manifest.
+    const identityBasis = identity || `content:${stableStringify(item)}`;
+    const identityToken = token(identityBasis);
     const base = `item:${token(key)}:${identityToken}`;
     const seen = duplicateCounts.get(base) || 0;
     duplicateCounts.set(base, seen + 1);
@@ -99,8 +114,29 @@
     return {
       namespace: NAMESPACE,
       record_id: recordId,
-      payload: cloneJson(payload, `payload for ${recordId}`)
+      payload,
+      payload_checksum: checksumValue(payload)
     };
+  }
+
+  function integrityError(message, code = "HH_NORMALIZED_INTEGRITY") {
+    const error = new Error(message);
+    error.name = "HerdHarborCloudNormalizationError";
+    error.code = code;
+    return error;
+  }
+
+  function assertUniqueRecordIds(records) {
+    const seen = new Set();
+    for (const record of records) {
+      if (seen.has(record.record_id)) {
+        throw integrityError(
+          `Normalized record ID collision detected for ${record.record_id}.`,
+          "HH_NORMALIZED_RECORD_ID_COLLISION"
+        );
+      }
+      seen.add(record.record_id);
+    }
   }
 
   function mapLegacySnapshot(snapshot) {
@@ -123,12 +159,11 @@
       }
 
       const duplicateCounts = new Map();
-      const itemRecordIds = value.map((item, index) => {
-        const recordId = arrayItemRecordId(key, item, index, duplicateCounts);
+      const itemRecordIds = value.map((item) => {
+        const recordId = arrayItemRecordId(key, item, duplicateCounts);
         records.push(makeRecord(recordId, {
           kind: "array_item",
           key,
-          index,
           value: item
         }));
         return recordId;
@@ -143,7 +178,7 @@
       entries.push({ key, kind: "array", record_id: recordId });
     }
 
-    const checksum = `fnv1a32:${checksumText(stableStringify(safeSnapshot))}`;
+    const checksum = checksumValue(safeSnapshot);
     records.push(makeRecord(SNAPSHOT_MANIFEST_ID, {
       kind: "snapshot_manifest",
       format_version: FORMAT_VERSION,
@@ -152,6 +187,7 @@
       entries
     }));
 
+    assertUniqueRecordIds(records);
     records.sort((left, right) => left.record_id.localeCompare(right.record_id));
     return Object.freeze({
       namespace: NAMESPACE,
@@ -177,11 +213,11 @@
     return row?.payload;
   }
 
-  function integrityError(message, code = "HH_NORMALIZED_INTEGRITY") {
-    const error = new Error(message);
-    error.name = "HerdHarborCloudNormalizationError";
-    error.code = code;
-    return error;
+  function rowPayloadChecksum(row) {
+    const supplied = String(row?.payload_checksum ?? row?.payloadChecksum ?? "").trim();
+    if (supplied) return supplied;
+    const payload = rowPayload(row);
+    return payload && typeof payload === "object" ? checksumValue(payload) : "";
   }
 
   function activeRecordMap(rows) {
@@ -190,6 +226,12 @@
       if (rowNamespace(row) !== NAMESPACE || rowDeletedAt(row)) continue;
       const recordId = rowRecordId(row);
       if (!recordId) continue;
+      if (map.has(recordId)) {
+        throw integrityError(
+          `Duplicate normalized cloud record ${recordId}.`,
+          "HH_NORMALIZED_DUPLICATE_RECORD"
+        );
+      }
       map.set(recordId, rowPayload(row));
     }
     return map;
@@ -207,12 +249,18 @@
     if (!Array.isArray(manifest.entries)) {
       throw integrityError("Normalized cloud snapshot manifest entries are invalid.");
     }
+    if (!Number.isSafeInteger(Number(manifest.entry_count)) || Number(manifest.entry_count) !== manifest.entries.length) {
+      throw integrityError("Normalized cloud snapshot manifest entry count is invalid.");
+    }
 
     const output = {};
+    const seenKeys = new Set();
     for (const entry of manifest.entries) {
       const key = String(entry?.key ?? "");
       const recordId = String(entry?.record_id ?? "");
       if (!key || !recordId) throw integrityError("Normalized cloud snapshot manifest contains an invalid entry.");
+      if (seenKeys.has(key)) throw integrityError(`Normalized cloud snapshot contains duplicate key ${key}.`);
+      seenKeys.add(key);
       const payload = records.get(recordId);
       if (!payload) throw integrityError(`Normalized cloud record is missing for ${key}.`);
 
@@ -230,6 +278,10 @@
       if (!Array.isArray(payload.item_record_ids)) {
         throw integrityError(`Normalized array manifest is invalid for ${key}.`);
       }
+      const declaredLength = Number(payload.length);
+      if (!Number.isSafeInteger(declaredLength) || declaredLength < 0 || declaredLength !== payload.item_record_ids.length) {
+        throw integrityError(`Normalized array length is invalid for ${key}.`);
+      }
       const values = payload.item_record_ids.map((itemRecordId, index) => {
         const itemPayload = records.get(String(itemRecordId));
         if (!itemPayload || itemPayload.kind !== "array_item" || itemPayload.key !== key) {
@@ -237,14 +289,11 @@
         }
         return cloneJson(itemPayload.value, `normalized array item ${key}[${index}]`);
       });
-      if (Number(payload.length) !== values.length) {
-        throw integrityError(`Normalized array length does not match ${key}.`);
-      }
       output[key] = values;
     }
 
     if (options.verifyChecksum !== false) {
-      const actual = `fnv1a32:${checksumText(stableStringify(output))}`;
+      const actual = checksumValue(output);
       if (manifest.snapshot_checksum && actual !== manifest.snapshot_checksum) {
         throw integrityError("Normalized cloud snapshot checksum does not match reconstructed state.", "HH_NORMALIZED_CHECKSUM_MISMATCH");
       }
@@ -254,10 +303,6 @@
 
   function recordKey(row) {
     return `${rowNamespace(row)}\u0000${rowRecordId(row)}`;
-  }
-
-  function canonicalPayload(row) {
-    return stableStringify(rowPayload(row));
   }
 
   function diffNormalizedRecords(previousRows, nextRows) {
@@ -277,7 +322,7 @@
     const tombstones = [];
     for (const [key, row] of next) {
       const prior = previous.get(key);
-      if (!prior || canonicalPayload(prior) !== canonicalPayload(row)) puts.push(row);
+      if (!prior || rowPayloadChecksum(prior) !== rowPayloadChecksum(row)) puts.push(row);
     }
     for (const [key, row] of previous) {
       if (!next.has(key)) {
