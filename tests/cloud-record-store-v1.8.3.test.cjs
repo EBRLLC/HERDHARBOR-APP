@@ -199,8 +199,9 @@ test("schema is additive to legacy data and uses payload checksums for header-on
 });
 
 test("schema makes browser mutations RPC-only and every real stage change advances generation", () => {
-  assert.match(schema, /revoke insert, update, delete on public\.herdharbor_sync_records from authenticated/i);
-  assert.match(schema, /revoke insert, update, delete on public\.herdharbor_sync_manifest from authenticated/i);
+  const lower = schema.toLowerCase();
+  assert.ok(lower.includes("revoke insert, update, delete on public.herdharbor_sync_records from authenticated;"));
+  assert.ok(lower.includes("revoke insert, update, delete on public.herdharbor_sync_manifest from authenticated;"));
   assert.match(schema, /security definer/i);
   assert.match(schema, /herdharbor_sync_apply_batch/i);
   assert.match(schema, /herdharbor_sync_set_stage/i);
