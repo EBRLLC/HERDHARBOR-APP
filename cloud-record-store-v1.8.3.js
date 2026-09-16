@@ -6,7 +6,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const VERSION = "0.5-writer-readiness";
+  const VERSION = "0.6-paged-reads";
   const RELEASE = "1.8.3";
   const RECORD_TABLE = "herdharbor_sync_records";
   const MANIFEST_TABLE = "herdharbor_sync_manifest";
@@ -18,6 +18,8 @@
   const RECORD_ID_MAX_LENGTH = 160;
   const CUTOVER_STAGES = new Set(["legacy", "shadow", "dual_write", "normalized"]);
   const BATCH_STAGES = new Set(["legacy", "shadow", "dual_write"]);
+  const READ_PAGE_SIZE = 500;
+  const MAX_READ_ROWS = 100000;
 
   function requiredText(value, label, maxLength) {
     const text = String(value == null ? "" : value).trim();
@@ -151,6 +153,14 @@
     return wrapped;
   }
 
+  function readLimitError(operation) {
+    const error = new Error(`Normalized cloud ${operation} exceeded the ${MAX_READ_ROWS} row safety limit.`);
+    error.name = "HerdHarborCloudRecordError";
+    error.code = "HH_SYNC_READ_LIMIT";
+    error.operation = operation;
+    return error;
+  }
+
   function batchManifestPatch(patch = {}) {
     const provider = {};
     if (patch.expectedGeneration === undefined) {
@@ -182,34 +192,54 @@
     if (!client?.from || !client?.rpc) throw new TypeError("A Supabase client is required.");
     const ownerId = requiredText(userId, "userId", 128);
 
-    async function list(namespace, options = {}) {
+    async function readRows(namespace, options, fields, operation) {
       const safeNamespace = normalizeNamespace(namespace);
-      let query = client
-        .from(RECORD_TABLE)
-        .select("namespace,record_id,payload,payload_checksum,record_version,deleted_at")
-        .eq("user_id", ownerId)
-        .eq("namespace", safeNamespace)
-        .order("record_id", { ascending: true });
+      const rows = [];
+      let from = 0;
 
-      if (!options.includeDeleted) query = query.is("deleted_at", null);
-      const { data, error } = await query;
-      if (error) throw providerError("list", error);
-      return Array.isArray(data) ? data : [];
+      while (true) {
+        let query = client
+          .from(RECORD_TABLE)
+          .select(fields)
+          .eq("user_id", ownerId)
+          .eq("namespace", safeNamespace)
+          .order("record_id", { ascending: true });
+
+        if (!options.includeDeleted) query = query.is("deleted_at", null);
+        const supportsRange = typeof query.range === "function";
+        if (supportsRange) query = query.range(from, from + READ_PAGE_SIZE - 1);
+
+        const { data, error } = await query;
+        if (error) throw providerError(operation, error);
+        const page = Array.isArray(data) ? data : [];
+        rows.push(...page);
+
+        // Older test/mocked clients may not expose range(); preserve their
+        // single-page behavior while real Supabase clients page explicitly.
+        if (!supportsRange || page.length < READ_PAGE_SIZE) break;
+        if (rows.length >= MAX_READ_ROWS) throw readLimitError(operation);
+        from += READ_PAGE_SIZE;
+      }
+
+      return rows;
+    }
+
+    async function list(namespace, options = {}) {
+      return readRows(
+        namespace,
+        options,
+        "namespace,record_id,payload,payload_checksum,record_version,deleted_at",
+        "list"
+      );
     }
 
     async function listHeaders(namespace, options = {}) {
-      const safeNamespace = normalizeNamespace(namespace);
-      let query = client
-        .from(RECORD_TABLE)
-        .select("namespace,record_id,payload_checksum,record_version,deleted_at")
-        .eq("user_id", ownerId)
-        .eq("namespace", safeNamespace)
-        .order("record_id", { ascending: true });
-
-      if (!options.includeDeleted) query = query.is("deleted_at", null);
-      const { data, error } = await query;
-      if (error) throw providerError("list-headers", error);
-      return Array.isArray(data) ? data : [];
+      return readRows(
+        namespace,
+        options,
+        "namespace,record_id,payload_checksum,record_version,deleted_at",
+        "list-headers"
+      );
     }
 
     async function get(namespace, recordId, options = {}) {
@@ -353,6 +383,8 @@
     verifyRpc: VERIFY_RPC,
     prepareWriterRpc: PREPARE_WRITER_RPC,
     stageRpc: STAGE_RPC,
+    readPageSize: READ_PAGE_SIZE,
+    maxReadRows: MAX_READ_ROWS,
     normalizeNamespace,
     normalizeRecordId,
     normalizePayload,
