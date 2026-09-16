@@ -8,7 +8,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (normalizer) {
   "use strict";
 
-  const VERSION = "0.6-format-aware-fast-path";
+  const VERSION = "0.7-disabled-stage-fast-path";
   const RELEASE = "1.8.3";
   const DEFAULT_MAX_MUTATIONS = 10000;
   const VALID_STAGES = new Set(["legacy", "shadow", "dual_write", "normalized"]);
@@ -164,13 +164,30 @@
     }
 
     async function sync(snapshot, syncOptions = {}) {
-      const mapped = mapper.mapLegacySnapshot(snapshot);
-      if (!enabled || syncOptions.dryRun === true) {
+      // A disabled feature gate must be essentially free: no provider calls and
+      // no multi-megabyte JSON cloning/hashing just to discover that it is off.
+      if (!enabled) {
+        const result = {
+          skipped: true,
+          reason: "disabled",
+          checksum: null,
+          recordCount: 0,
+          puts: 0,
+          tombstones: 0
+        };
+        emit("shadow-skipped", result);
+        return result;
+      }
+
+      // Dry-run deliberately pays the normalization cost because its purpose is
+      // to calculate an exact migration preview without touching the provider.
+      if (syncOptions.dryRun === true) {
+        const mapped = mapper.mapLegacySnapshot(snapshot);
         const previousRows = Array.isArray(syncOptions.previousRows) ? syncOptions.previousRows : [];
         const preview = mapper.diffNormalizedRecords(previousRows, mapped.records);
         const result = {
           skipped: true,
-          reason: !enabled ? "disabled" : "dry-run",
+          reason: "dry-run",
           checksum: mapped.checksum,
           recordCount: mapped.records.length,
           puts: preview.puts.length,
@@ -180,6 +197,9 @@
         return result;
       }
 
+      // Read the tiny manifest before normalizing. Once normalized is already
+      // authoritative, a stale/shadow caller exits without cloning and hashing
+      // the entire legacy app state.
       const manifest = await store.getManifest();
       const stage = manifestStage(manifest);
       const generation = manifestGeneration(manifest);
@@ -187,8 +207,8 @@
         const result = {
           skipped: true,
           reason: "normalized-authoritative",
-          checksum: mapped.checksum,
-          recordCount: mapped.records.length,
+          checksum: null,
+          recordCount: 0,
           puts: 0,
           tombstones: 0,
           generation
@@ -197,6 +217,7 @@
         return result;
       }
 
+      const mapped = mapper.mapLegacySnapshot(snapshot);
       if (stage !== "legacy" && manifestAlreadyTracksSnapshot(manifest, mapped)) {
         const result = {
           skipped: true,
