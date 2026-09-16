@@ -8,7 +8,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (normalizer) {
   "use strict";
 
-  const VERSION = "0.2-race-safe-read";
+  const VERSION = "0.3-single-pass-integrity";
   const RELEASE = "1.8.3";
   const NORMALIZED_STAGE = "normalized";
 
@@ -18,7 +18,7 @@
   }
 
   function requiredNormalizer(value) {
-    const methods = ["reassembleLegacySnapshot", "snapshotChecksum"];
+    const methods = ["reassembleLegacySnapshotWithMetadata"];
     if (!value || methods.some((name) => typeof value[name] !== "function")) {
       throw new TypeError("HerdHarbor cloud state normalizer is required.");
     }
@@ -146,14 +146,17 @@
         return legacy("normalized-row-read-failed", safeFailure(error, "normalized-row-read-failed"));
       }
 
-      let snapshot;
+      let reconstruction;
       try {
-        snapshot = mapper.reassembleLegacySnapshot(rows);
+        // Reassembly already performs the full snapshot checksum. Reuse that
+        // result instead of cloning/stringifying/hashing a multi-MB state a
+        // second time on every normalized read.
+        reconstruction = mapper.reassembleLegacySnapshotWithMetadata(rows);
       } catch (error) {
         return legacy("normalized-reassembly-failed", safeFailure(error, "normalized-reassembly-failed"));
       }
-
-      const actualChecksum = mapper.snapshotChecksum(snapshot);
+      const snapshot = reconstruction.snapshot;
+      const actualChecksum = reconstruction.checksum;
       if (actualChecksum !== markers.verifiedChecksum) {
         return legacy("normalized-checksum-mismatch", {
           errorName: "HerdHarborCloudNormalizationError",
