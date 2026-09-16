@@ -6,12 +6,13 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const VERSION = "0.4-rpc-only-efficient";
+  const VERSION = "0.5-writer-readiness";
   const RELEASE = "1.8.3";
   const RECORD_TABLE = "herdharbor_sync_records";
   const MANIFEST_TABLE = "herdharbor_sync_manifest";
   const BATCH_RPC = "herdharbor_sync_apply_batch";
   const VERIFY_RPC = "herdharbor_sync_mark_verified";
+  const PREPARE_WRITER_RPC = "herdharbor_sync_prepare_normalized_writer";
   const STAGE_RPC = "herdharbor_sync_set_stage";
   const NAMESPACE_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
   const RECORD_ID_MAX_LENGTH = 160;
@@ -77,6 +78,14 @@
     return count;
   }
 
+  function normalizeFormatVersion(value) {
+    const version = Number(value);
+    if (!Number.isSafeInteger(version) || version < 1) {
+      throw new TypeError("formatVersion must be a positive integer.");
+    }
+    return version;
+  }
+
   function knownProviderFailure(operation, error) {
     const message = String(error?.message || "");
     const knownCodes = [
@@ -92,12 +101,20 @@
       "HH_SYNC_RECORD_COUNT_MISMATCH",
       "HH_SYNC_AUTH_REQUIRED",
       "HH_SYNC_NORMALIZED_REQUIRES_VERIFICATION",
+      "HH_SYNC_NORMALIZED_WRITER_REQUIRED",
       "HH_SYNC_STAGE_VERIFICATION_REQUIRED",
       "HH_SYNC_ALREADY_NORMALIZED",
       "HH_SYNC_EXPECTED_GENERATION_REQUIRED",
       "HH_SYNC_INVALID_GENERATION",
       "HH_SYNC_INVALID_STAGE",
       "HH_SYNC_INVALID_STAGE_TRANSITION",
+      "HH_SYNC_INVALID_BATCH_STAGE",
+      "HH_SYNC_STAGE_CHANGE_REQUIRES_RPC",
+      "HH_SYNC_INVALID_SCHEMA_VERSION",
+      "HH_SYNC_INVALID_MANIFEST_METADATA",
+      "HH_SYNC_INVALID_WRITER_READINESS",
+      "HH_SYNC_DUAL_WRITE_STAGE_REQUIRED",
+      "HH_SYNC_WRITER_FORMAT_MISMATCH",
       "HH_SYNC_INITIAL_STAGE_MUST_BE_LEGACY",
       "HH_SYNC_MANIFEST_MISSING"
     ];
@@ -108,6 +125,9 @@
       HH_SYNC_VERIFY_STALE: "The normalized cloud state changed before verification completed.",
       HH_SYNC_ALREADY_NORMALIZED: "Legacy shadow writes are disabled after normalized cutover.",
       HH_SYNC_STAGE_VERIFICATION_REQUIRED: "A current normalized verification is required before this migration stage change.",
+      HH_SYNC_NORMALIZED_WRITER_REQUIRED: "The normalized writer has not been prepared for cutover.",
+      HH_SYNC_DUAL_WRITE_STAGE_REQUIRED: "Normalized writer preparation is only allowed during dual-write migration.",
+      HH_SYNC_WRITER_FORMAT_MISMATCH: "The normalized writer does not match the verified cloud format.",
       HH_SYNC_INVALID_STAGE_TRANSITION: "That cloud migration stage transition is not allowed.",
       HH_SYNC_MANIFEST_MISSING: "The normalized cloud migration manifest is missing.",
       HH_SYNC_RECORD_COUNT_MISMATCH: "The normalized cloud record count did not match the verified snapshot."
@@ -177,10 +197,6 @@
       return Array.isArray(data) ? data : [];
     }
 
-    // Incremental sync needs only identity/version/checksum headers. Avoiding
-    // payload download here is the main bandwidth win over v1.8.2 full-state
-    // synchronization; full payloads are fetched only for explicit verification
-    // and normalized reads.
     async function listHeaders(namespace, options = {}) {
       const safeNamespace = normalizeNamespace(namespace);
       let query = client
@@ -285,6 +301,25 @@
       };
     }
 
+    async function prepareNormalizedWriter({ expectedGeneration, writerVersion, namespace, formatVersion } = {}) {
+      const generation = normalizeGeneration(expectedGeneration);
+      const safeWriterVersion = requiredText(writerVersion, "writerVersion", 80);
+      const safeNamespace = normalizeNamespace(namespace);
+      const safeFormatVersion = normalizeFormatVersion(formatVersion);
+      const { data, error } = await client.rpc(PREPARE_WRITER_RPC, {
+        p_expected_generation: generation,
+        p_writer_version: safeWriterVersion,
+        p_namespace: safeNamespace,
+        p_format_version: safeFormatVersion
+      });
+      if (error) throw providerError("prepare-normalized-writer", error);
+      return data || {
+        ok: true,
+        generation,
+        writer_version: safeWriterVersion
+      };
+    }
+
     async function setStage({ targetStage, expectedGeneration } = {}) {
       const stage = String(targetStage || "").trim();
       if (!CUTOVER_STAGES.has(stage)) throw new TypeError("Invalid targetStage.");
@@ -304,6 +339,7 @@
       getManifest,
       applyBatch,
       markVerified,
+      prepareNormalizedWriter,
       setStage
     });
   }
@@ -315,6 +351,7 @@
     manifestTable: MANIFEST_TABLE,
     batchRpc: BATCH_RPC,
     verifyRpc: VERIFY_RPC,
+    prepareWriterRpc: PREPARE_WRITER_RPC,
     stageRpc: STAGE_RPC,
     normalizeNamespace,
     normalizeRecordId,
