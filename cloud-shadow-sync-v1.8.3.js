@@ -8,7 +8,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (normalizer) {
   "use strict";
 
-  const VERSION = "0.2-shadow";
+  const VERSION = "0.3-shadow-verify";
   const RELEASE = "1.8.3";
   const DEFAULT_MAX_MUTATIONS = 10000;
   const VALID_STAGES = new Set(["legacy", "shadow", "dual_write", "normalized"]);
@@ -22,7 +22,12 @@
   }
 
   function requiredNormalizer(value) {
-    const methods = ["mapLegacySnapshot", "reassembleLegacySnapshot", "diffNormalizedRecords"];
+    const methods = [
+      "mapLegacySnapshot",
+      "reassembleLegacySnapshot",
+      "diffNormalizedRecords",
+      "snapshotChecksum"
+    ];
     if (!value || methods.some((name) => typeof value[name] !== "function")) {
       throw new TypeError("HerdHarbor cloud state normalizer is required.");
     }
@@ -51,6 +56,12 @@
   function manifestStage(manifest) {
     const stage = String(manifest?.cutover_stage ?? manifest?.cutoverStage ?? "legacy");
     return VALID_STAGES.has(stage) ? stage : "legacy";
+  }
+
+  function manifestMetadata(manifest) {
+    return manifest?.metadata && typeof manifest.metadata === "object" && !Array.isArray(manifest.metadata)
+      ? manifest.metadata
+      : {};
   }
 
   function controllerError(message, code) {
@@ -183,25 +194,31 @@
       }
 
       const completedAt = now();
-      const existingMetadata = manifest?.metadata && typeof manifest.metadata === "object" && !Array.isArray(manifest.metadata)
-        ? manifest.metadata
-        : {};
       const nextStage = stage === "legacy" ? "shadow" : stage;
-      await store.putManifest({
+      const nextMetadata = {
+        ...manifestMetadata(manifest),
+        normalizer_version: mapper.version || "unknown",
+        source_checksum: mapped.checksum,
+        normalized_record_count: mapped.records.length,
+        last_shadow_write_at: completedAt,
+        last_shadow_puts: diff.puts.length,
+        last_shadow_tombstones: diff.tombstones.length
+      };
+      if (mutationCount > 0) {
+        nextMetadata.verified_checksum = null;
+        nextMetadata.last_shadow_verified_at = null;
+        nextMetadata.verification_record_count = null;
+      }
+
+      const manifestPatch = {
         schemaVersion: mapper.formatVersion || 1,
         cutoverStage: nextStage,
         legacySnapshotUpdatedAt: syncOptions.legacySnapshotUpdatedAt || completedAt,
         lastBackfillAt: completedAt,
-        metadata: {
-          ...existingMetadata,
-          normalizer_version: mapper.version || "unknown",
-          source_checksum: mapped.checksum,
-          normalized_record_count: mapped.records.length,
-          last_shadow_write_at: completedAt,
-          last_shadow_puts: diff.puts.length,
-          last_shadow_tombstones: diff.tombstones.length
-        }
-      });
+        metadata: nextMetadata
+      };
+      if (mutationCount > 0) manifestPatch.normalizedVerifiedAt = null;
+      await store.putManifest(manifestPatch);
 
       const result = {
         skipped: false,
@@ -236,12 +253,56 @@
       return result;
     }
 
+    async function verifyAndRecord(snapshot, verifyOptions = {}) {
+      if (!enabled) {
+        const result = { skipped: true, reason: "disabled" };
+        emit("shadow-verify-skipped", result);
+        return result;
+      }
+
+      const rows = Array.isArray(verifyOptions.rows)
+        ? verifyOptions.rows
+        : await store.list(mapper.namespace, { includeDeleted: true });
+      const verification = await verify(snapshot, { ...verifyOptions, rows, throwOnMismatch: true });
+      const manifest = await store.getManifest();
+      const stage = manifestStage(manifest);
+      if (stage !== "shadow" && stage !== "dual_write") {
+        throw controllerError(
+          `Shadow verification cannot be recorded while migration stage is ${stage}.`,
+          "HH_SHADOW_STAGE_REQUIRED"
+        );
+      }
+
+      const verifiedAt = now();
+      await store.putManifest({
+        schemaVersion: mapper.formatVersion || 1,
+        cutoverStage: stage,
+        normalizedVerifiedAt: verifiedAt,
+        metadata: {
+          ...manifestMetadata(manifest),
+          verified_checksum: verification.actualChecksum,
+          last_shadow_verified_at: verifiedAt,
+          verification_record_count: verification.recordCount
+        }
+      });
+
+      const result = {
+        ...verification,
+        skipped: false,
+        stage,
+        verifiedAt
+      };
+      emit("shadow-verify-recorded", result);
+      return result;
+    }
+
     return Object.freeze({
       setEnabled,
       isEnabled,
       plan,
       sync,
-      verify
+      verify,
+      verifyAndRecord
     });
   }
 
