@@ -6,7 +6,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const VERSION = "0.1-transition-policy";
+  const VERSION = "0.2-complete-verification-policy";
   const RELEASE = "1.8.3";
   const STAGES = Object.freeze(["legacy", "shadow", "dual_write", "normalized"]);
   const STAGE_SET = new Set(STAGES);
@@ -22,6 +22,11 @@
     return STAGE_SET.has(stage) ? stage : "legacy";
   }
 
+  function generationOf(manifest) {
+    const generation = Number(manifest?.sync_generation ?? manifest?.syncGeneration);
+    return Number.isSafeInteger(generation) && generation >= 0 ? generation : null;
+  }
+
   function metadataOf(manifest) {
     const metadata = manifest?.metadata;
     return metadata && typeof metadata === "object" && !Array.isArray(metadata) ? metadata : {};
@@ -32,13 +37,21 @@
   }
 
   function verificationIsCurrent(manifest) {
-    if (!verifiedAt(manifest)) return false;
+    if (!verifiedAt(manifest) || generationOf(manifest) === null) return false;
     const metadata = metadataOf(manifest);
     const verifiedChecksum = String(metadata.verified_checksum || "").trim();
     const sourceChecksum = String(metadata.source_checksum || "").trim();
     if (!verifiedChecksum || !sourceChecksum || verifiedChecksum !== sourceChecksum) return false;
-    const count = Number(metadata.verification_record_count);
-    return Number.isSafeInteger(count) && count >= 0;
+    const verifiedCount = Number(metadata.verification_record_count);
+    const normalizedCount = Number(metadata.normalized_record_count);
+    if (
+      !Number.isSafeInteger(verifiedCount) || verifiedCount < 0 ||
+      !Number.isSafeInteger(normalizedCount) || normalizedCount < 0 ||
+      verifiedCount !== normalizedCount
+    ) return false;
+    const namespace = String(metadata.normalized_namespace || "").trim();
+    const formatVersion = Number(metadata.normalized_format_version);
+    return Boolean(namespace) && Number.isSafeInteger(formatVersion) && formatVersion >= 1;
   }
 
   function transitionRequiresVerification(fromStage, toStage) {
@@ -97,7 +110,7 @@
       allowed: true,
       fromStage,
       toStage,
-      reason: toStage === "legacy" || toStage === "shadow" && fromStage !== "legacy"
+      reason: (toStage === "legacy" || (toStage === "shadow" && fromStage !== "legacy"))
         ? "rollback"
         : "promotion",
       requiresVerification
@@ -134,6 +147,7 @@
     stages: STAGES,
     transitions: TRANSITIONS,
     stageOf,
+    generationOf,
     verificationIsCurrent,
     transitionRequiresVerification,
     evaluateTransition,
