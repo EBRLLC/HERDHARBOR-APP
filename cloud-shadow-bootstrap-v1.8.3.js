@@ -16,7 +16,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (recordStoreApi, normalizerApi, shadowApi) {
   "use strict";
 
-  const VERSION = "0.3-single-map-bootstrap";
+  const VERSION = "0.4-checksum-handoff";
   const RELEASE = "1.8.3";
 
   function requiredFunction(value, label) {
@@ -148,7 +148,9 @@
             return result;
           }
           if (sync.reason === "already-current" && sync.verified !== true) {
-            const verification = await controller.verifyAndRecord(legacyRead.snapshot);
+            const verification = await controller.verifyAndRecord(legacyRead.snapshot, {
+              expectedChecksum: sync.checksum || undefined
+            });
             const result = {
               skipped: false,
               stage: verification.stage || "shadow",
@@ -172,7 +174,9 @@
           return result;
         }
 
-        const verification = await controller.verifyAndRecord(legacyRead.snapshot);
+        const verification = await controller.verifyAndRecord(legacyRead.snapshot, {
+          expectedChecksum: sync.checksum || undefined
+        });
         const result = {
           skipped: false,
           stage: verification.stage || sync.stage || "shadow",
