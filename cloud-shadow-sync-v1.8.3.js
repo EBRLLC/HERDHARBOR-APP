@@ -40,6 +40,17 @@
     return number;
   }
 
+  function strictNonNegativeInteger(value) {
+    if (typeof value === "number") {
+      return Number.isSafeInteger(value) && value >= 0 ? value : null;
+    }
+    if (typeof value !== "string") return null;
+    const text = value.trim();
+    if (!/^\d+$/.test(text)) return null;
+    const parsed = Number(text);
+    return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+  }
+
   function rowVersion(row) {
     const version = Number(row?.record_version ?? row?.recordVersion ?? 0);
     return Number.isSafeInteger(version) && version > 0 ? version : null;
@@ -59,8 +70,7 @@
   }
 
   function manifestGeneration(manifest) {
-    const generation = Number(manifest?.sync_generation ?? manifest?.syncGeneration ?? 0);
-    return Number.isSafeInteger(generation) && generation >= 0 ? generation : 0;
+    return strictNonNegativeInteger(manifest?.sync_generation ?? manifest?.syncGeneration);
   }
 
   function manifestMetadata(manifest) {
@@ -70,8 +80,7 @@
   }
 
   function metadataCount(metadata, key) {
-    const count = Number(metadata?.[key]);
-    return Number.isSafeInteger(count) && count >= 0 ? count : null;
+    return strictNonNegativeInteger(metadata?.[key]);
   }
 
   function metadataMatchesMapper(metadata, mapper) {
@@ -196,6 +205,12 @@
       const manifest = await store.getManifest();
       const stage = manifestStage(manifest);
       const generation = manifestGeneration(manifest);
+      if (generation === null) {
+        throw controllerError(
+          "Shadow sync requires an explicit non-negative manifest generation.",
+          "HH_SHADOW_GENERATION_REQUIRED"
+        );
+      }
       if (stage === "normalized") {
         const result = {
           skipped: true,
@@ -294,7 +309,7 @@
       if (mutationCount > 0) manifestPatch.normalizedVerifiedAt = null;
 
       const batch = await store.applyBatch({ puts, tombstones, manifestPatch });
-      const nextGeneration = Number(batch?.generation);
+      const nextGeneration = strictNonNegativeInteger(batch?.generation);
       const generationAdvanced = mutationCount > 0 || nextStage !== stage;
       const result = {
         skipped: false,
@@ -303,7 +318,7 @@
         recordCount: mapped.records.length,
         puts: puts.length,
         tombstones: tombstones.length,
-        generation: Number.isSafeInteger(nextGeneration) && nextGeneration >= 0
+        generation: nextGeneration !== null
           ? nextGeneration
           : generation + (generationAdvanced ? 1 : 0),
         completedAt
@@ -345,6 +360,12 @@
       const manifest = await store.getManifest();
       const stage = manifestStage(manifest);
       const generation = manifestGeneration(manifest);
+      if (generation === null) {
+        throw controllerError(
+          "Shadow verification requires an explicit non-negative manifest generation.",
+          "HH_SHADOW_GENERATION_REQUIRED"
+        );
+      }
       if (stage !== "shadow" && stage !== "dual_write") {
         throw controllerError(
           `Shadow verification cannot be recorded while migration stage is ${stage}.`,
