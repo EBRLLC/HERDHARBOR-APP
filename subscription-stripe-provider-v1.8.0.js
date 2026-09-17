@@ -4,7 +4,7 @@
   const INTERVAL_KEY = "herdharbor_subscription_interval_v1";
   const CALL_TIMEOUT_MS = 15000;
   const ACCESS_REFRESH_TIMEOUT_MS = 5000;
-  const ACTIVE = new Set(["active", "trialing", "founder", "free_junior", "resubscribed"]);
+  const ACTIVE = new Set(["active", "trialing", "founder", "free_junior", "free_adult", "resubscribed"]);
   const PLAN_ORDER = ["junior", "founder", "member", "business"];
   const PRICING = Object.freeze({
     junior: Object.freeze({ month: 0, year: 0 }),
@@ -105,9 +105,6 @@
   const provider = Object.freeze({
     name: "stripe",
     async getSubscriptionSnapshot() {
-      // The subscription engine performs background stale-screen checks during
-      // auth transitions. Never make billing network calls while the auth lock
-      // is active; returning null preserves the engine's current local state.
       if (!appReadyForBilling()) return null;
       const userId = sessionUserId();
       const snapshot = await call("snapshot");
@@ -161,6 +158,26 @@
     }
   }
 
+  function ensureFreeAdultCard(grid, isCurrent) {
+    let card = grid.querySelector("[data-hh-free-adult-card]");
+    if (!card) {
+      card = document.createElement("article");
+      card.className = "hh-subscription-plan-card";
+      card.dataset.hhFreeAdultCard = "true";
+      grid.insertBefore(card, grid.firstChild);
+    }
+    card.dataset.current = isCurrent ? "true" : "false";
+    card.innerHTML = `
+      <div>
+        <span class="hh-subscription-kicker">${isCurrent ? "Current access" : "Free plan"}</span>
+        <h3>Free Adult</h3>
+        <p class="hh-subscription-price">Free</p>
+        <p>Up to 5 active animals with the same app features available to the Junior plan, without youth enrollment.</p>
+      </div>
+      ${isCurrent ? '<span class="hh-subscription-current">Current</span>' : '<span class="hh-subscription-note">Automatically available after your trial or paid membership ends.</span>'}`;
+    return card;
+  }
+
   function enhancePanel() {
     const panel = document.getElementById("hh-subscription-engine-panel");
     if (!panel || panel.hidden) return;
@@ -193,7 +210,7 @@
       button.setAttribute("aria-pressed", active ? "true" : "false");
     });
 
-    panel.querySelectorAll(".hh-subscription-plan-card").forEach((card, index) => {
+    panel.querySelectorAll(".hh-subscription-plan-card:not([data-hh-free-adult-card])").forEach((card, index) => {
       const planId = PLAN_ORDER[index];
       if (!planId) return;
       card.dataset.hhStripePlan = planId;
@@ -208,25 +225,36 @@
     });
 
     const snapshot = window.HerdHarborSubscriptionEngine?.getState?.() || {};
+    const status = String(snapshot.status || "").toLowerCase();
+    const freeAdult = snapshot.freeAdult === true || status === "free_adult";
+    ensureFreeAdultCard(grid, freeAdult);
+
     const heroStatus = panel.querySelector(".hh-subscription-hero p");
     const trialDate = formatDate(snapshot.trialEndsAt || snapshot.initialTrialEndsAt);
-    if (snapshot.initialTrial === true && String(snapshot.status || "").toLowerCase() === "trialing") {
+    if (freeAdult) {
+      if (heroStatus) {
+        heroStatus.textContent = "Free Adult includes up to 5 active animals. Your existing HerdHarbor records stay available, and you can upgrade to unlimited Member access at any time.";
+      }
+    } else if (snapshot.initialTrial === true && status === "trialing") {
       if (heroStatus) {
         heroStatus.textContent = trialDate
           ? `Free Member Trial — your free Member access ends ${trialDate}. No credit card is required during your free trial.`
           : "Free Member Trial — no credit card is required during your free trial.";
       }
-    } else if (snapshot.subscriptionRequired === true || String(snapshot.status || "").toLowerCase() === "expired") {
+    } else if (snapshot.subscriptionRequired === true || status === "expired") {
       if (heroStatus) {
-        heroStatus.textContent = trialDate
-          ? `Your free Member trial ended ${trialDate}. Subscribe to Member to continue paid access; your HerdHarbor data remains preserved.`
-          : "Your free Member trial has ended. Subscribe to Member to continue paid access; your HerdHarbor data remains preserved.";
+        heroStatus.textContent = "Your paid or trial access has ended. HerdHarbor has moved the account to Free Adult with up to 5 active animals; your existing data remains preserved.";
       }
     }
 
-    const needsMemberCta = !snapshot.providerSubscriptionId
-      && (snapshot.initialTrial === true || snapshot.subscriptionRequired === true || String(snapshot.status || "").toLowerCase() === "expired");
     const memberCard = panel.querySelector('[data-hh-stripe-plan="member"]');
+    if (freeAdult && memberCard) {
+      memberCard.dataset.current = "false";
+      memberCard.querySelector(".hh-subscription-current")?.remove();
+    }
+
+    const needsMemberCta = freeAdult || (!snapshot.providerSubscriptionId
+      && (snapshot.initialTrial === true || snapshot.subscriptionRequired === true || status === "expired"));
     if (needsMemberCta && memberCard) {
       let button = memberCard.querySelector("[data-hh-trial-member-checkout]");
       if (!button) {
@@ -236,9 +264,11 @@
         button.dataset.hhTrialMemberCheckout = "true";
         memberCard.appendChild(button);
       }
-      button.textContent = snapshot.subscriptionRequired === true || String(snapshot.status || "").toLowerCase() === "expired"
-        ? "Subscribe to Member"
-        : (trialDate ? `Subscribe — billing starts ${trialDate}` : "Subscribe to Member");
+      button.textContent = freeAdult
+        ? "Upgrade to Member"
+        : (snapshot.subscriptionRequired === true || status === "expired"
+          ? "Subscribe to Member"
+          : (trialDate ? `Subscribe — billing starts ${trialDate}` : "Subscribe to Member"));
       if (button.dataset.hhTrialCheckoutBound !== "true") {
         button.dataset.hhTrialCheckoutBound = "true";
         button.addEventListener("click", () => void beginMemberCheckout(button));
@@ -327,9 +357,6 @@
       if (event.detail?.signedIn === true) {
         const currentUserId = sessionUserId();
         if (!currentUserId || verifiedSnapshotUserId !== currentUserId) verifiedSnapshotUserId = null;
-        // Do not force billing refreshes during normal login. The subscription
-        // engine refreshes when opened; checkout completion is the only auth
-        // transition that needs a bounded post-login refresh here.
         configure();
         refreshCheckoutWhenReady();
       } else if (event.detail?.signedIn === false) {
