@@ -1,0 +1,57 @@
+{
+  "animals": [
+    {
+      "id": "rabbit-annie",
+      "name": "Annie",
+      "species": "rabbit",
+      "breed": "Holland Lop",
+      "sex": "female",
+      "notes": "Foundation fixture"
+    },
+    {
+      "id": "rabbit-patches",
+      "name": "Patches",
+      "species": "rabbit",
+      "breed": "Holland Lop",
+      "sex": "female"
+    }
+  ],
+  "litters": [
+    {
+      "id": "litter-2026-08-01",
+      "damId": "rabbit-annie",
+      "sireId": "rabbit-buck-1",
+      "bornAt": "2026-08-01",
+      "kits": [
+        { "id": "kit-1", "weightOz": 1.3 },
+        { "id": "kit-2", "weightOz": 1.1 }
+      ]
+    }
+  ],
+  "healthRecords": [
+    {
+      "id": "health-1",
+      "animalId": "rabbit-annie",
+      "type": "weight",
+      "recordedAt": "2026-09-01T12:00:00.000Z",
+      "value": 3.25,
+      "unit": "lb"
+    }
+  ],
+  "settings": {
+    "theme": "dark",
+    "sidebarCollapsed": false,
+    "activeSpecies": "rabbit"
+  },
+  "profile": {
+    "farmName": "Waggin Tails Homestead",
+    "country": "US"
+  },
+  "selectedAnimalId": "rabbit-annie",
+  "dashboardCards": ["animals", "litters", "health"],
+  "emptyCollection": [],
+  "migrationFlags": {
+    "legacyImported": true,
+    "revision": 12
+  }
+}
