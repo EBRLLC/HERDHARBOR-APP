@@ -1,12 +1,10 @@
 (() => {
   "use strict";
 
-  const VERSION = "1.8.1";
-  const TRIAL_BEGINS_AT = "2026-09-06T00:00:00-04:00";
+  const VERSION = "1.8.2";
   const HARD_LAUNCH_AT = "2026-10-01T00:00:00-04:00";
   const MEMBER_TRIAL_TIER = "member";
-  const POST_LAUNCH_FREE_TIER = "junior";
-  const ACTIVE_SUBSCRIPTION_STATUSES = new Set(["active", "trialing", "founder", "resubscribed"]);
+  const ACTIVE_PAID_STATUSES = new Set(["active", "trialing", "past_due", "founder", "resubscribed"]);
   const PAID_TIERS = new Set(["founder", "member", "business"]);
 
   const original = window.HerdHarborMembership;
@@ -24,22 +22,8 @@
   const normalize = (value = "") => String(value ?? "").trim().toLowerCase();
   const asTime = (value) => {
     const date = value instanceof Date ? value : new Date(value);
-    return Number.isNaN(date.getTime()) ? Date.now() : date.getTime();
+    return Number.isNaN(date.getTime()) ? null : date.getTime();
   };
-
-  function policyState(now = new Date()) {
-    const time = asTime(now);
-    const launch = asTime(HARD_LAUNCH_AT);
-    return Object.freeze({
-      version: VERSION,
-      trialBeginsAt: TRIAL_BEGINS_AT,
-      hardLaunchAt: HARD_LAUNCH_AT,
-      trialActive: time < launch,
-      hardLaunchActive: time >= launch,
-      memberTrialTier: MEMBER_TRIAL_TIER,
-      postLaunchFreeTier: POST_LAUNCH_FREE_TIER
-    });
-  }
 
   function subscriptionSnapshot() {
     try {
@@ -49,10 +33,37 @@
     }
   }
 
+  function trustedSnapshot(snapshot = subscriptionSnapshot()) {
+    try {
+      return Boolean(snapshot) && window.HerdHarborStripeSnapshotTrust?.isVerified?.() === true;
+    } catch {
+      return false;
+    }
+  }
+
+  function policyState(now = new Date(), snapshot = subscriptionSnapshot()) {
+    const trusted = trustedSnapshot(snapshot);
+    const serverNow = trusted ? asTime(snapshot.serverNow) : null;
+    const fallbackNow = asTime(now);
+    const effectiveNow = serverNow ?? fallbackNow ?? Date.now();
+    const launch = asTime(snapshot.hardLaunchAt || HARD_LAUNCH_AT) ?? asTime(HARD_LAUNCH_AT);
+    return Object.freeze({
+      version: VERSION,
+      hardLaunchAt: HARD_LAUNCH_AT,
+      hardLaunchActive: effectiveNow >= launch,
+      preLaunchWindow: effectiveNow < launch,
+      serverAuthoritative: trusted && serverNow != null,
+      memberTrialTier: MEMBER_TRIAL_TIER
+    });
+  }
+
   function hasPaidSubscription(snapshot = subscriptionSnapshot()) {
+    if (!trustedSnapshot(snapshot) || snapshot.initialTrial === true) return false;
     const status = normalize(snapshot.status);
     const plan = normalize(snapshot.plan);
-    return ACTIVE_SUBSCRIPTION_STATUSES.has(status) && PAID_TIERS.has(plan);
+    return Boolean(snapshot.providerSubscriptionId)
+      && ACTIVE_PAID_STATUSES.has(status)
+      && PAID_TIERS.has(plan);
   }
 
   function hasBackendPaidSubscription(base = {}) {
@@ -60,25 +71,36 @@
     const tier = normalize(base.membershipTier || base.effectiveMembershipTier);
     const source = normalize(base.storedMembershipSource || base.membershipSource);
     return source === "subscription"
-      && ACTIVE_SUBSCRIPTION_STATUSES.has(status)
+      && ACTIVE_PAID_STATUSES.has(status)
       && PAID_TIERS.has(tier);
+  }
+
+  function isFounder(base = {}) {
+    const source = normalize(base.membershipSource);
+    const storedSource = normalize(base.storedMembershipSource || source);
+    return source === "founder" || storedSource === "founder" || normalize(base.membershipTier) === "founder";
+  }
+
+  function isJunior(base = {}, snapshot = subscriptionSnapshot()) {
+    const storedTier = normalize(base.membershipTier || base.effectiveMembershipTier);
+    return storedTier === "junior"
+      || (trustedSnapshot(snapshot) && normalize(snapshot.requestedPlan) === "junior")
+      || (trustedSnapshot(snapshot) && normalize(snapshot.status) === "free_junior" && normalize(snapshot.plan) === "junior");
   }
 
   function resolveAccount(now = new Date()) {
     const base = original.getAccount();
-    const policy = policyState(now);
+    const snapshot = subscriptionSnapshot();
+    const policy = policyState(now, snapshot);
     const role = normalize(base.accountRole || "user");
     const currentSource = normalize(base.membershipSource);
-    const storedSource = normalize(base.storedMembershipSource || currentSource);
-    const snapshot = subscriptionSnapshot();
 
-    // Internal owner/admin accounts and live manual overrides remain untouched.
+    // Admin authorization is deliberately not rewritten by subscription policy.
     if (role === "owner" || role === "admin" || currentSource === "manual_override") {
       return { ...base, subscriptionLaunch: policy };
     }
 
-    // Founder access is permanent and is not converted into a launch trial.
-    if (currentSource === "founder" || storedSource === "founder" || normalize(base.membershipTier) === "founder") {
+    if (isFounder(base)) {
       return {
         ...base,
         effectiveMembershipTier: "founder",
@@ -88,25 +110,21 @@
       };
     }
 
-    // Through 11:59 PM ET on September 30, every signed-up HerdHarbor member
-    // receives full Member access regardless of signup date or payment state.
-    if (policy.trialActive) {
+    // Junior is an intentional youth enrollment path, never the fallback for an
+    // expired adult trial.
+    if (isJunior(base, snapshot)) {
       return {
         ...base,
-        effectiveMembershipTier: MEMBER_TRIAL_TIER,
-        membershipSource: "launch_trial",
-        subscriptionStatus: "trialing",
-        maxActiveAnimals: null,
-        launchTrialActive: true,
-        launchTrialEndsAt: HARD_LAUNCH_AT,
-        subscriptionHardLaunchAt: HARD_LAUNCH_AT,
+        effectiveMembershipTier: "junior",
+        membershipSource: currentSource || "junior",
+        subscriptionStatus: trustedSnapshot(snapshot) ? normalize(snapshot.status || "free_junior") : base.subscriptionStatus,
+        maxActiveAnimals: 5,
+        subscriptionRequired: false,
+        readOnly: false,
         subscriptionLaunch: policy
       };
     }
 
-    // October 1, 2026 is the hard subscription launch. Prefer the live Stripe
-    // engine snapshot, but also honor the webhook-synchronized account_access
-    // subscription state while the browser provider is still settling after sign-in.
     const livePaid = hasPaidSubscription(snapshot);
     const backendPaid = hasBackendPaidSubscription(base);
     if (livePaid || backendPaid) {
@@ -118,26 +136,76 @@
         : normalize(base.subscriptionStatus);
       return {
         ...base,
-        effectiveMembershipTier: paidTier,
+        effectiveMembershipTier: paidTier || MEMBER_TRIAL_TIER,
         membershipSource: "subscription",
-        subscriptionStatus: paidStatus,
+        subscriptionStatus: paidStatus || "active",
         maxActiveAnimals: null,
-        launchTrialActive: false,
-        launchTrialEndsAt: HARD_LAUNCH_AT,
-        subscriptionHardLaunchAt: HARD_LAUNCH_AT,
+        trialEndsAt: trustedSnapshot(snapshot) ? (snapshot.initialTrialEndsAt || snapshot.trialEndsAt || null) : null,
+        subscriptionRequired: false,
+        readOnly: false,
         subscriptionLaunch: policy
       };
     }
 
+    if (trustedSnapshot(snapshot) && normalize(snapshot.status) === "trialing" && normalize(snapshot.plan) === MEMBER_TRIAL_TIER) {
+      return {
+        ...base,
+        effectiveMembershipTier: MEMBER_TRIAL_TIER,
+        membershipSource: "initial_trial",
+        subscriptionStatus: "trialing",
+        maxActiveAnimals: null,
+        trialEndsAt: snapshot.trialEndsAt || snapshot.initialTrialEndsAt || null,
+        initialTrialStartsAt: snapshot.initialTrialStartsAt || null,
+        subscriptionRequired: false,
+        readOnly: false,
+        backendTrialVerified: true,
+        subscriptionLaunch: policy
+      };
+    }
+
+    if (trustedSnapshot(snapshot) && (snapshot.subscriptionRequired === true || normalize(snapshot.status) === "expired")) {
+      return {
+        ...base,
+        // Keep the adult account a Member account. Expiration changes access
+        // state; it never converts an adult account into Junior.
+        effectiveMembershipTier: MEMBER_TRIAL_TIER,
+        membershipSource: "subscription_required",
+        subscriptionStatus: "expired",
+        maxActiveAnimals: null,
+        trialEndsAt: snapshot.trialEndsAt || snapshot.initialTrialEndsAt || null,
+        initialTrialStartsAt: snapshot.initialTrialStartsAt || null,
+        subscriptionRequired: true,
+        readOnly: true,
+        accessMode: "subscription_required",
+        backendTrialVerified: true,
+        subscriptionLaunch: policy
+      };
+    }
+
+    // Before October 1 preserve the existing launch promise even while the
+    // billing snapshot is still settling. This fallback never manufactures a
+    // rolling trial end; rolling trial dates only come from the backend.
+    if (policy.preLaunchWindow) {
+      return {
+        ...base,
+        effectiveMembershipTier: MEMBER_TRIAL_TIER,
+        membershipSource: "launch_trial_fallback",
+        subscriptionStatus: "trialing",
+        maxActiveAnimals: null,
+        trialEndsAt: HARD_LAUNCH_AT,
+        subscriptionRequired: false,
+        readOnly: false,
+        backendTrialVerified: false,
+        subscriptionLaunch: policy
+      };
+    }
+
+    // Billing is intentionally fail-open for authentication resilience. A
+    // temporary billing outage must not block sign-in or destroy access state.
+    // Once the trusted backend snapshot arrives it resolves trial/paid/expired.
     return {
       ...base,
-      effectiveMembershipTier: POST_LAUNCH_FREE_TIER,
-      membershipSource: "launch_required",
-      subscriptionStatus: normalize(snapshot.status || base.subscriptionStatus || "not_configured"),
-      maxActiveAnimals: 5,
-      launchTrialActive: false,
-      launchTrialEndsAt: HARD_LAUNCH_AT,
-      subscriptionHardLaunchAt: HARD_LAUNCH_AT,
+      backendTrialVerified: false,
       subscriptionLaunch: policy
     };
   }
@@ -167,7 +235,10 @@
     return {
       tier: current.effectiveMembershipTier,
       maxActiveAnimals: current.maxActiveAnimals,
-      features: clone(current.features)
+      features: clone(current.features),
+      subscriptionRequired: current.subscriptionRequired === true,
+      readOnly: current.readOnly === true,
+      accessMode: current.accessMode || "normal"
     };
   }
 
@@ -189,16 +260,25 @@
   window.HerdHarborMembership = wrapped;
   window.HerdHarborSubscriptionLaunch = Object.freeze({
     version: VERSION,
-    trialBeginsAt: TRIAL_BEGINS_AT,
     hardLaunchAt: HARD_LAUNCH_AT,
     memberTrialTier: MEMBER_TRIAL_TIER,
-    postLaunchFreeTier: POST_LAUNCH_FREE_TIER,
     getPolicy: () => policyState(),
     getAccount: () => clone(resolveAccount()),
-    __test: Object.freeze({ policyState, hasPaidSubscription, hasBackendPaidSubscription, resolveAccount })
+    __test: Object.freeze({
+      policyState,
+      trustedSnapshot,
+      hasPaidSubscription,
+      hasBackendPaidSubscription,
+      isFounder,
+      isJunior,
+      resolveAccount
+    })
   });
 
   document.documentElement.dataset.hhSubscriptionLaunch = VERSION;
+  document.addEventListener("herdharbor:subscription-engine-state", () => {
+    document.dispatchEvent(new CustomEvent("herdharbor:membership-change", { detail: wrapped.getAccount() }));
+  });
   document.dispatchEvent(new CustomEvent("herdharbor:membership-change", { detail: wrapped.getAccount() }));
   document.dispatchEvent(new CustomEvent("herdharbor:subscription-launch-policy", { detail: policyState() }));
 })();
