@@ -68,8 +68,8 @@ Node.js 22 or newer is required for repository tooling.
 - `npm run test:v1.8.2` runs the current subscription/account release regressions.
 - `npm run test:release` verifies the current v1.8.2 repository identity and hardening contract.
 - `.github/workflows/v1.8.2-ci.yml` is the consolidated pull-request CI workflow.
-- `.github/workflows/v1.8.1-production-pages.yml` is the authoritative monitored GitHub Pages publisher.
-- `.github/workflows/v1.8.1-production-acceptance.yml` provides explicit manual production acceptance checks.
+- `.github/workflows/v1.8.2-production-pages.yml` is the authoritative monitored GitHub Pages publisher.
+- `.github/workflows/v1.8.2-production-acceptance.yml` provides explicit manual production acceptance checks.
 
 Production secrets are supplied by the approved GitHub/Supabase environments and are never committed to source control. The checked-in monitoring configuration intentionally contains a blank DSN and is replaced during the production build.
 
@@ -83,4 +83,4 @@ On iPhone/iPad, use Safari **Share → Add to Home Screen**. Other supported bro
 
 Keep periodic downloaded backups for important records, confirm cloud sync before switching devices, review spreadsheet imports before committing them, and do not clear browser/site data while unsynced changes are present. The Symptom Guide is educational and does not diagnose or replace licensed veterinary care.
 
-See `RELEASE_NOTES-v1.8.1.md` for the current release contract.
+See `RELEASE_NOTES-v1.8.2.md` for the current release contract.

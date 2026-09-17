@@ -62,6 +62,8 @@ test("PWA shell and HTML use the v1.8.2 release/cache identity", () => {
   assert.match(html, /manifest\.json\?v=1\.8\.2/);
   assert.match(html, /herdharbor-build\.js\?v=1\.8\.2/);
   assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.2"/);
+  assert.match(html, /Version 1\.8\.2 adds Cloud Sync V2/);
+  assert.doesNotMatch(html, /Version 1\.8\.1 adds/);
 });
 
 test("Cloud Sync V2 release assets are present and covered by the offline/update shell", () => {
