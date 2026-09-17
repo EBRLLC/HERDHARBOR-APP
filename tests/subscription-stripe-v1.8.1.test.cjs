@@ -73,7 +73,12 @@ test("October 1 recognizes webhook-synchronized paid access before browser Strip
     activeAnimalCount: () => 0,
     showJuniorLimit() {}
   };
-  const document = { documentElement: { dataset: {} }, dispatchEvent() {} };
+  const document = {
+    documentElement: { dataset: {} },
+    addEventListener() {},
+    removeEventListener() {},
+    dispatchEvent() {}
+  };
   const window = { document, HerdHarborMembership: original, HerdHarborSubscriptionEngine: { getState: () => ({ status: "not_configured", plan: null }) } };
   window.window = window;
   const context = vm.createContext({
