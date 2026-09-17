@@ -159,5 +159,5 @@ test("verification recording requires source checksum and actual record count", 
 
 test("migration never mutates the legacy full-state table", () => {
   assert.doesNotMatch(sql, /\b(?:insert\s+into|update|delete\s+from|alter\s+table|drop\s+table|truncate\s+table)\s+public\.herdharbor_user_data\b/i);
-  assert.match(sql, /never\s+reads, alters, copies, or deletes public\.herdharbor_user_data/i);
+  assert.match(sql.replace(/^--\s?/gm, ""), /never\s+reads, alters, copies, or deletes public\.herdharbor_user_data/i);
 });

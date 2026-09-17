@@ -6,7 +6,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const VERSION = "0.5-efficient-reassembly";
+  const VERSION = "0.6-canonical-checksums";
   const RELEASE = "1.8.3";
   const FORMAT_VERSION = 2;
   const NAMESPACE = "legacy-state";
@@ -54,7 +54,7 @@
       left = Math.imul(left, 0x01000193) >>> 0;
       right ^= code + index;
       right = Math.imul(right, 0x85ebca6b) >>> 0;
-      right ^= right >>> 13;
+      right = (right ^ (right >>> 13)) >>> 0;
     }
     return `${left.toString(16).padStart(8, "0")}${right.toString(16).padStart(8, "0")}`;
   }

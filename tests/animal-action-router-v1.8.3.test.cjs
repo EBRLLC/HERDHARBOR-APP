@@ -41,7 +41,7 @@ test('router delegates to canonical domain entry points rather than creating rep
   const source = read('animal-action-router-v1.8.3.js');
   assert.match(source, /#add-health/);
   assert.match(source, /#health-form/);
-  assert.match(source, /data\.hiAction = action/);
+  assert.match(source, /trigger\.dataset\.hiAction = action/);
   assert.match(source, /#add-breeding/);
   assert.match(source, /#breeding-form/);
   assert.match(source, /HerdHarborAnimalGenetics\.open/);

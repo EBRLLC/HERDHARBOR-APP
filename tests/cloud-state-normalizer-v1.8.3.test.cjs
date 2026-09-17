@@ -27,6 +27,12 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+test("normalized-sync foundation keeps its identity separate from the application release", () => {
+  assert.equal(api.release, "1.8.3");
+  assert.equal(api.version, "0.6-canonical-checksums");
+  assert.equal(api.formatVersion, 2);
+});
+
 test("legacy snapshot mapper is deterministic and round-trips the representative fixture", () => {
   const first = api.mapLegacySnapshot(fixture);
   const second = api.mapLegacySnapshot(clone(fixture));
