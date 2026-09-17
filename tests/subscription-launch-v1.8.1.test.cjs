@@ -84,9 +84,32 @@ test("September 24 signup remains a trusted Member trial through October 24", ()
   assert.equal(resolved.subscriptionStatus, "trialing");
   assert.equal(resolved.trialEndsAt, "2026-10-24T14:30:00.000Z");
   assert.equal(resolved.subscriptionRequired, false);
+  assert.equal(resolved.maxActiveAnimals, null);
 });
 
-test("expired adult trial remains Member identity and never silently becomes Junior", () => {
+test("expired adult trial falls back to adult Free and never becomes Junior", () => {
+  const snapshot = {
+    status: "free_adult",
+    plan: "member",
+    initialTrial: false,
+    freeAdult: true,
+    maxActiveAnimals: 5,
+    subscriptionRequired: false,
+    trialEndsAt: "2026-10-24T14:30:00.000Z",
+    serverNow: "2026-10-25T12:00:00.000Z",
+    providerSubscriptionId: null
+  };
+  const resolved = loadPolicy({}, snapshot, true).HerdHarborSubscriptionLaunch.__test.resolveAccount();
+  assert.equal(resolved.effectiveMembershipTier, "member");
+  assert.equal(resolved.membershipSource, "free_adult");
+  assert.equal(resolved.subscriptionStatus, "free_adult");
+  assert.equal(resolved.maxActiveAnimals, 5);
+  assert.equal(resolved.subscriptionRequired, false);
+  assert.equal(resolved.readOnly, false);
+  assert.equal(resolved.accessMode, "free_adult");
+});
+
+test("legacy expired snapshot also degrades safely into adult Free", () => {
   const snapshot = {
     status: "expired",
     plan: "member",
@@ -97,40 +120,40 @@ test("expired adult trial remains Member identity and never silently becomes Jun
     providerSubscriptionId: null
   };
   const resolved = loadPolicy({}, snapshot, true).HerdHarborSubscriptionLaunch.__test.resolveAccount();
-  assert.equal(resolved.effectiveMembershipTier, "member");
-  assert.equal(resolved.membershipSource, "subscription_required");
-  assert.equal(resolved.subscriptionStatus, "expired");
-  assert.equal(resolved.maxActiveAnimals, null);
-  assert.equal(resolved.subscriptionRequired, true);
-  assert.equal(resolved.readOnly, true);
+  assert.equal(resolved.membershipSource, "free_adult");
+  assert.equal(resolved.maxActiveAnimals, 5);
+  assert.equal(resolved.readOnly, false);
 });
 
 test("legitimate Junior enrollment remains Junior", () => {
   const snapshot = { status: "free_junior", plan: "junior", requestedPlan: "junior", serverNow: "2026-11-01T12:00:00.000Z" };
   const resolved = loadPolicy({ membershipTier: "junior", effectiveMembershipTier: "junior" }, snapshot, true).HerdHarborSubscriptionLaunch.__test.resolveAccount();
   assert.equal(resolved.effectiveMembershipTier, "junior");
+  assert.equal(resolved.membershipSource, "default");
   assert.equal(resolved.maxActiveAnimals, 5);
   assert.equal(resolved.subscriptionRequired, false);
+  assert.equal(resolved.accessMode, "junior");
 });
 
-test("owner, admin, manual override and founder remain untouched by trial policy", () => {
-  const trial = { status: "expired", plan: "member", subscriptionRequired: true, serverNow: "2026-11-01T12:00:00.000Z" };
-  const owner = loadPolicy({ accountRole: "owner", membershipTier: "business", effectiveMembershipTier: "business" }, trial, true).HerdHarborSubscriptionLaunch.__test.resolveAccount();
+test("owner, admin, manual override and founder remain untouched by trial/free policy", () => {
+  const free = { status: "free_adult", plan: "member", freeAdult: true, serverNow: "2026-11-01T12:00:00.000Z" };
+  const owner = loadPolicy({ accountRole: "owner", membershipTier: "business", effectiveMembershipTier: "business" }, free, true).HerdHarborSubscriptionLaunch.__test.resolveAccount();
   assert.equal(owner.accountRole, "owner");
   assert.equal(owner.effectiveMembershipTier, "business");
-  const admin = loadPolicy({ accountRole: "admin", membershipTier: "business", effectiveMembershipTier: "business" }, trial, true).HerdHarborSubscriptionLaunch.__test.resolveAccount();
+  const admin = loadPolicy({ accountRole: "admin", membershipTier: "business", effectiveMembershipTier: "business" }, free, true).HerdHarborSubscriptionLaunch.__test.resolveAccount();
   assert.equal(admin.accountRole, "admin");
-  const manual = loadPolicy({ membershipSource: "manual_override", storedMembershipSource: "manual_override", membershipTier: "business", effectiveMembershipTier: "business" }, trial, true).HerdHarborSubscriptionLaunch.__test.resolveAccount();
+  const manual = loadPolicy({ membershipSource: "manual_override", storedMembershipSource: "manual_override", membershipTier: "business", effectiveMembershipTier: "business" }, free, true).HerdHarborSubscriptionLaunch.__test.resolveAccount();
   assert.equal(manual.effectiveMembershipTier, "business");
-  const founder = loadPolicy({ membershipSource: "founder", storedMembershipSource: "founder", membershipTier: "founder", effectiveMembershipTier: "founder" }, trial, true).HerdHarborSubscriptionLaunch.__test.resolveAccount();
+  const founder = loadPolicy({ membershipSource: "founder", storedMembershipSource: "founder", membershipTier: "founder", effectiveMembershipTier: "founder" }, free, true).HerdHarborSubscriptionLaunch.__test.resolveAccount();
   assert.equal(founder.effectiveMembershipTier, "founder");
 });
 
-test("verified paid Stripe subscription wins over initial-trial policy", () => {
+test("verified paid Stripe subscription wins over fallback policy", () => {
   const snapshot = {
     status: "active",
     plan: "member",
     initialTrial: false,
+    freeAdult: false,
     providerSubscriptionId: "sub_123",
     serverNow: "2026-10-05T12:00:00.000Z"
   };
@@ -138,6 +161,7 @@ test("verified paid Stripe subscription wins over initial-trial policy", () => {
   assert.equal(resolved.effectiveMembershipTier, "member");
   assert.equal(resolved.membershipSource, "subscription");
   assert.equal(resolved.subscriptionStatus, "active");
+  assert.equal(resolved.maxActiveAnimals, null);
 });
 
 test("webhook-synchronized backend subscription is honored before browser refresh", () => {
@@ -153,27 +177,42 @@ test("webhook-synchronized backend subscription is honored before browser refres
   assert.equal(resolved.membershipSource, "subscription");
 });
 
-test("unverified browser subscription state cannot manufacture a rolling trial", () => {
+test("unverified browser subscription state cannot manufacture a rolling trial or Free membership", () => {
   const snapshot = {
-    status: "trialing",
+    status: "free_adult",
     plan: "member",
-    initialTrial: true,
+    initialTrial: false,
+    freeAdult: true,
     trialEndsAt: "2099-01-01T00:00:00.000Z",
     serverNow: "2026-11-01T00:00:00.000Z"
   };
   const resolved = loadPolicy({}, snapshot, false).HerdHarborSubscriptionLaunch.__test.resolveAccount(new Date("2026-11-01T00:00:00-04:00"));
-  assert.notEqual(resolved.membershipSource, "initial_trial");
+  assert.notEqual(resolved.membershipSource, "free_adult");
   assert.equal(resolved.backendTrialVerified, false);
   assert.equal(resolved.trialEndsAt, undefined);
 });
 
-test("Junior animal limit applies only to legitimate Junior accounts", () => {
-  const junior = loadPolicy({ membershipTier: "junior", effectiveMembershipTier: "junior" }, { status: "free_junior", plan: "junior", requestedPlan: "junior" }, true);
+test("Junior and adult Free share the five-animal transition limit", () => {
   const before = Array.from({ length: 5 }, (_, id) => ({ id, status: "Active" }));
   const after = Array.from({ length: 6 }, (_, id) => ({ id, status: "Active" }));
-  assert.equal(junior.HerdHarborMembership.validateAnimalTransition(before, after).allowed, false);
 
-  const expired = loadPolicy({}, { status: "expired", plan: "member", subscriptionRequired: true }, true);
-  const check = expired.HerdHarborMembership.validateAnimalTransition(before, after);
-  assert.equal(check.limit, null);
+  const junior = loadPolicy({ membershipTier: "junior", effectiveMembershipTier: "junior" }, { status: "free_junior", plan: "junior", requestedPlan: "junior" }, true);
+  assert.equal(junior.HerdHarborMembership.validateAnimalTransition(before, after).allowed, false);
+  assert.equal(junior.HerdHarborMembership.validateAnimalTransition(before, after).limit, 5);
+
+  const freeAdult = loadPolicy({}, { status: "free_adult", plan: "member", freeAdult: true, maxActiveAnimals: 5 }, true);
+  const check = freeAdult.HerdHarborMembership.validateAnimalTransition(before, after);
+  assert.equal(check.limit, 5);
+  assert.equal(check.allowed, false);
+});
+
+test("adult Free preserves an existing herd above five but cannot increase it", () => {
+  const freeAdult = loadPolicy({}, { status: "free_adult", plan: "member", freeAdult: true, maxActiveAnimals: 5 }, true);
+  const eight = Array.from({ length: 8 }, (_, id) => ({ id, status: "Active" }));
+  const nine = Array.from({ length: 9 }, (_, id) => ({ id, status: "Active" }));
+  const seven = Array.from({ length: 7 }, (_, id) => ({ id, status: "Active" }));
+
+  assert.equal(freeAdult.HerdHarborMembership.validateAnimalTransition(eight, eight).allowed, true);
+  assert.equal(freeAdult.HerdHarborMembership.validateAnimalTransition(eight, seven).allowed, true);
+  assert.equal(freeAdult.HerdHarborMembership.validateAnimalTransition(eight, nine).allowed, false);
 });
