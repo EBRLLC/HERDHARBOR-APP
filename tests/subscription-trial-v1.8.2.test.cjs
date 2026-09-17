@@ -27,7 +27,6 @@ test("September 30 signup ends October 30 at same New York wall clock", () => {
 });
 
 test("October signup preserves New York wall-clock time across DST", () => {
-  // Oct 10 10:00 EDT = 14:00Z; Nov 10 10:00 EST = 15:00Z.
   assert.equal(api.initialTrialEndsAt("2026-10-10T14:00:00.000Z").toISOString(), "2026-11-10T15:00:00.000Z");
 });
 
@@ -41,7 +40,7 @@ test("trial boundary becomes inactive exactly at authoritative end", () => {
   assert.equal(api.trialSnapshot(user, new Date("2026-10-24T18:30:00.000Z")).active, false);
 });
 
-test("billing source uses authoritative auth user creation and preserves early-subscribe free time", () => {
+test("billing source uses authoritative auth creation, preserves early trial time and exposes adult Free fallback", () => {
   const billing = fs.readFileSync("supabase/functions/subscription-billing/index.ts", "utf8");
   assert.match(billing, /buildSnapshot\(admin, user\)/);
   assert.match(billing, /trialSnapshot\(user\)/);
@@ -50,7 +49,10 @@ test("billing source uses authoritative auth user creation and preserves early-s
   assert.match(billing, /billing_cycle_anchor:\s*trialEndUnix/);
   assert.match(billing, /proration_behavior:\s*"none"/);
   assert.match(billing, /herdharbor_initial_trial_end/);
-  assert.match(billing, /subscriptionRequired/);
+  assert.match(billing, /"free_adult"/);
+  assert.match(billing, /FREE_ADULT_MAX_ACTIVE_ANIMALS\s*=\s*5/);
+  assert.match(billing, /freeAdult\s*=\s*!trial\.active/);
+  assert.match(billing, /subscriptionRequired\s*=\s*false/);
   assert.match(billing, /"free_junior"/);
 });
 
@@ -62,7 +64,7 @@ test("admin authorization and audit trail remain server-side", () => {
   assert.match(billing, /subscription_credit_added/);
 });
 
-test("browser provider keeps auth lock independent and marks only live session snapshots trusted", () => {
+test("browser provider keeps auth independent and presents adult Free separately from Junior", () => {
   const provider = fs.readFileSync("subscription-stripe-provider-v1.8.0.js", "utf8");
   assert.match(provider, /classList\.contains\("hh-auth-locked"\)/);
   assert.match(provider, /verifiedSnapshotUserId/);
@@ -72,4 +74,7 @@ test("browser provider keeps auth lock independent and marks only live session s
   assert.doesNotMatch(provider, /signOut\s*\(/);
   assert.match(provider, /No credit card is required during your free trial/);
   assert.match(provider, /Subscribe — billing starts/);
+  assert.match(provider, /Free Adult/);
+  assert.match(provider, /Up to 5 active animals/);
+  assert.match(provider, /Upgrade to Member/);
 });
