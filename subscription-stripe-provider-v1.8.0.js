@@ -21,13 +21,19 @@
   let successRefreshInFlight = false;
   let checkoutReadyTimer = null;
   let lastMembershipSignature = "";
+  let verifiedSnapshotUserId = null;
+
+  function sessionUserId() {
+    try { return String(window.HerdHarborCloud?.getSession?.()?.user?.id || ""); }
+    catch { return ""; }
+  }
 
   function appReturnUrl() {
     return `${window.location.origin}${window.location.pathname}`;
   }
 
   function appReadyForBilling() {
-    const signedIn = Boolean(window.HerdHarborCloud?.getSession?.()?.user?.id);
+    const signedIn = Boolean(sessionUserId());
     const authLocked = document.documentElement.classList.contains("hh-auth-locked");
     return signedIn && !authLocked;
   }
@@ -35,6 +41,14 @@
   function money(cents, interval) {
     if (cents === 0) return "Free";
     return `$${(Number(cents) / 100).toFixed(2)}/${interval === "year" ? "yr" : "mo"}`;
+  }
+
+  function formatDate(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    try { return new Intl.DateTimeFormat(undefined, { dateStyle: "long" }).format(date); }
+    catch { return date.toLocaleDateString(); }
   }
 
   async function settleWithin(promise, timeoutMs = ACCESS_REFRESH_TIMEOUT_MS) {
@@ -91,11 +105,10 @@
   const provider = Object.freeze({
     name: "stripe",
     async getSubscriptionSnapshot() {
-      // The subscription engine performs background stale-screen checks during
-      // auth transitions. Never make billing network calls while the auth lock
-      // is active; returning null preserves the engine's current local state.
       if (!appReadyForBilling()) return null;
+      const userId = sessionUserId();
       const snapshot = await call("snapshot");
+      if (snapshot && userId && userId === sessionUserId()) verifiedSnapshotUserId = userId;
       bridgeMembership(snapshot || {});
       return snapshot;
     },
@@ -127,6 +140,42 @@
     selectedInterval = next === "year" ? "year" : "month";
     try { localStorage.setItem(INTERVAL_KEY, selectedInterval); } catch {}
     enhancePanel();
+  }
+
+  async function beginMemberCheckout(button) {
+    if (button) button.disabled = true;
+    try {
+      const result = await provider.createCheckoutSession({ plan: "member" });
+      if (!result?.url) throw new Error("Checkout did not return a secure destination.");
+      const url = new URL(result.url, window.location.href);
+      if (!/^https?:$/.test(url.protocol)) throw new Error("Billing provider returned an unsafe destination.");
+      window.location.assign(url.href);
+    } catch (error) {
+      const panel = document.getElementById("hh-subscription-engine-panel");
+      const heroStatus = panel?.querySelector?.(".hh-subscription-hero p");
+      if (heroStatus) heroStatus.textContent = error?.message || "The billing request could not be completed.";
+      if (button) button.disabled = false;
+    }
+  }
+
+  function ensureFreeAdultCard(grid, isCurrent) {
+    let card = grid.querySelector("[data-hh-free-adult-card]");
+    if (!card) {
+      card = document.createElement("article");
+      card.className = "hh-subscription-plan-card";
+      card.dataset.hhFreeAdultCard = "true";
+      grid.insertBefore(card, grid.firstChild);
+    }
+    card.dataset.current = isCurrent ? "true" : "false";
+    card.innerHTML = `
+      <div>
+        <span class="hh-subscription-kicker">${isCurrent ? "Current access" : "Free plan"}</span>
+        <h3>Free Adult</h3>
+        <p class="hh-subscription-price">Free</p>
+        <p>Up to 5 active animals with the same app features available to the Junior plan, without youth enrollment.</p>
+      </div>
+      ${isCurrent ? '<span class="hh-subscription-current">Current</span>' : '<span class="hh-subscription-note">Automatically available after your trial or paid membership ends.</span>'}`;
+    return card;
   }
 
   function enhancePanel() {
@@ -161,7 +210,7 @@
       button.setAttribute("aria-pressed", active ? "true" : "false");
     });
 
-    panel.querySelectorAll(".hh-subscription-plan-card").forEach((card, index) => {
+    panel.querySelectorAll(".hh-subscription-plan-card:not([data-hh-free-adult-card])").forEach((card, index) => {
       const planId = PLAN_ORDER[index];
       if (!planId) return;
       card.dataset.hhStripePlan = planId;
@@ -174,6 +223,57 @@
         choose.title = "The free Junior plan is managed through HerdHarbor youth enrollment, not Stripe.";
       }
     });
+
+    const snapshot = window.HerdHarborSubscriptionEngine?.getState?.() || {};
+    const status = String(snapshot.status || "").toLowerCase();
+    const freeAdult = snapshot.freeAdult === true || status === "free_adult";
+    ensureFreeAdultCard(grid, freeAdult);
+
+    const heroStatus = panel.querySelector(".hh-subscription-hero p");
+    const trialDate = formatDate(snapshot.trialEndsAt || snapshot.initialTrialEndsAt);
+    if (freeAdult) {
+      if (heroStatus) {
+        heroStatus.textContent = "Free Adult includes up to 5 active animals. Your existing HerdHarbor records stay available, and you can upgrade to unlimited Member access at any time.";
+      }
+    } else if (snapshot.initialTrial === true && status === "trialing") {
+      if (heroStatus) {
+        heroStatus.textContent = trialDate
+          ? `Free Member Trial — your free Member access ends ${trialDate}. No credit card is required during your free trial.`
+          : "Free Member Trial — no credit card is required during your free trial.";
+      }
+    } else if (snapshot.subscriptionRequired === true || status === "expired") {
+      if (heroStatus) {
+        heroStatus.textContent = "Your paid or trial access has ended. HerdHarbor has moved the account to Free Adult with up to 5 active animals; your existing data remains preserved.";
+      }
+    }
+
+    const memberCard = panel.querySelector('[data-hh-stripe-plan="member"]');
+    if (freeAdult && memberCard) {
+      memberCard.dataset.current = "false";
+      memberCard.querySelector(".hh-subscription-current")?.remove();
+    }
+
+    const needsMemberCta = freeAdult || (!snapshot.providerSubscriptionId
+      && (snapshot.initialTrial === true || snapshot.subscriptionRequired === true || status === "expired"));
+    if (needsMemberCta && memberCard) {
+      let button = memberCard.querySelector("[data-hh-trial-member-checkout]");
+      if (!button) {
+        button = document.createElement("button");
+        button.type = "button";
+        button.className = "button button-primary";
+        button.dataset.hhTrialMemberCheckout = "true";
+        memberCard.appendChild(button);
+      }
+      button.textContent = freeAdult
+        ? "Upgrade to Member"
+        : (snapshot.subscriptionRequired === true || status === "expired"
+          ? "Subscribe to Member"
+          : (trialDate ? `Subscribe — billing starts ${trialDate}` : "Subscribe to Member"));
+      if (button.dataset.hhTrialCheckoutBound !== "true") {
+        button.dataset.hhTrialCheckoutBound = "true";
+        button.addEventListener("click", () => void beginMemberCheckout(button));
+      }
+    }
   }
 
   function configure() {
@@ -255,12 +355,12 @@
 
     document.addEventListener("herdharbor:auth-session", (event) => {
       if (event.detail?.signedIn === true) {
-        // Do not force billing refreshes during normal login. The subscription
-        // engine refreshes when opened; checkout completion is the only auth
-        // transition that needs a bounded post-login refresh here.
+        const currentUserId = sessionUserId();
+        if (!currentUserId || verifiedSnapshotUserId !== currentUserId) verifiedSnapshotUserId = null;
         configure();
         refreshCheckoutWhenReady();
       } else if (event.detail?.signedIn === false) {
+        verifiedSnapshotUserId = null;
         stopCheckoutReadyTimer();
       }
     });
@@ -275,6 +375,10 @@
       refreshCheckoutWhenReady();
     }, 0);
   }
+
+  window.HerdHarborStripeSnapshotTrust = Object.freeze({
+    isVerified: () => Boolean(sessionUserId()) && verifiedSnapshotUserId === sessionUserId()
+  });
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
   else boot();

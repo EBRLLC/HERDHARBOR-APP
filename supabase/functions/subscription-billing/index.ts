@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.111.0";
 import Stripe from "https://esm.sh/stripe@18?target=denonext";
 import { deliverSubscriptionNotification } from "../_shared/subscription-email.ts";
+import { HARD_LAUNCH_AT, trialSnapshot } from "../_shared/subscription-trial.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -9,11 +10,15 @@ const CORS = {
   "Content-Type": "application/json; charset=utf-8"
 };
 const MEMBER_MONTH = { priceId: "price_1UCOjrGlRukEX5RK9my06yUP", cents: 1499 };
+const FREE_ADULT_MAX_ACTIVE_ANIMALS = 5;
 const ACTIVE_SUBSCRIPTION = new Set(["active", "trialing", "past_due"]);
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: CORS });
 const text = (value: unknown, max = 120) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const asInt = (value: unknown) => Number.isFinite(Number(value)) ? Math.trunc(Number(value)) : 0;
+const normalize = (value: unknown) => String(value ?? "").trim().toLowerCase();
+
+type AuthUser = { id: string; email?: string | null; created_at?: string | null };
 
 async function queueNotification(
   admin: ReturnType<typeof createClient>,
@@ -44,9 +49,6 @@ async function queueNotification(
     try {
       await deliverSubscriptionNotification(admin, outboxId);
     } catch (deliveryError) {
-      // Billing/account actions must not be rolled back merely because the
-      // email provider is temporarily unavailable. The durable outbox retains
-      // the failed notification for a later retry.
       console.error("subscription-notification-delivery", input.eventType, outboxId, deliveryError);
     }
   }
@@ -73,8 +75,9 @@ async function creditSummary(admin: ReturnType<typeof createClient>, userId: str
   };
 }
 
-async function buildSnapshot(admin: ReturnType<typeof createClient>, userId: string) {
-  const [subscriptionResult, referralResult, creditResult, paymentResult, codeResult, choiceResult] = await Promise.all([
+async function buildSnapshot(admin: ReturnType<typeof createClient>, user: AuthUser) {
+  const userId = user.id;
+  const [subscriptionResult, referralResult, creditResult, paymentResult, codeResult, choiceResult, accessResult] = await Promise.all([
     admin.from("subscriptions").select("*").eq("user_id", userId).maybeSingle(),
     admin.from("subscription_referrals").select("status").eq("referrer_user_id", userId),
     admin.from("subscription_credits")
@@ -83,9 +86,13 @@ async function buildSnapshot(admin: ReturnType<typeof createClient>, userId: str
       .eq("plan_id", "member"),
     admin.from("subscription_payments").select("id,occurred_at,amount_cents,currency,status,description").eq("user_id", userId).order("occurred_at", { ascending: false }).limit(25),
     admin.from("referral_codes").select("code").eq("user_id", userId).maybeSingle(),
-    admin.from("registration_choices").select("requested_plan").eq("user_id", userId).maybeSingle()
+    admin.from("registration_choices").select("requested_plan").eq("user_id", userId).maybeSingle(),
+    admin.from("account_access")
+      .select("account_role,membership_tier,membership_source,account_status,override_expires_at,subscription_status")
+      .eq("user_id", userId)
+      .maybeSingle()
   ]);
-  for (const result of [subscriptionResult, referralResult, creditResult, paymentResult, codeResult, choiceResult]) {
+  for (const result of [subscriptionResult, referralResult, creditResult, paymentResult, codeResult, choiceResult, accessResult]) {
     if (result.error) throw result.error;
   }
 
@@ -97,6 +104,11 @@ async function buildSnapshot(admin: ReturnType<typeof createClient>, userId: str
   }
 
   const sub = subscriptionResult.data;
+  const access = accessResult.data || {};
+  const requestedPlan = normalize(choiceResult.data?.requested_plan);
+  const role = normalize(access.account_role || "user");
+  const storedTier = normalize(access.membership_tier || "member");
+  const membershipSource = normalize(access.membership_source || "default");
   const referrals = referralResult.data || [];
   const credits = creditResult.data || [];
   const payments = paymentResult.data || [];
@@ -107,6 +119,14 @@ async function buildSnapshot(admin: ReturnType<typeof createClient>, userId: str
   const reserved = free
     .filter((row) => row.status === "reserved")
     .sort((a, b) => String(a.reserved_for_period_start || "").localeCompare(String(b.reserved_for_period_start || "")))[0] || null;
+  const trial = trialSnapshot(user);
+  const liveProviderSubscription = Boolean(sub?.provider_subscription_id) && ACTIVE_SUBSCRIPTION.has(normalize(sub?.status));
+  const protectedAccess = role === "owner"
+    || role === "admin"
+    || membershipSource === "manual_override"
+    || membershipSource === "founder"
+    || storedTier === "founder";
+  const juniorAccess = storedTier === "junior" || requestedPlan === "junior";
 
   const nextInvoice = sub?.current_period_end ? {
     date: sub.current_period_end,
@@ -116,23 +136,54 @@ async function buildSnapshot(admin: ReturnType<typeof createClient>, userId: str
     creditId: reserved?.id || null
   } : null;
 
+  let effectiveStatus = sub?.status || access.subscription_status || "not_configured";
+  let effectivePlan = sub?.plan_id || null;
+  let effectiveTrialEndsAt = sub?.trial_ends_at || null;
+  let initialTrial = false;
+  let freeAdult = false;
+  let subscriptionRequired = false;
+  let maxActiveAnimals: number | null = null;
+
+  if (!liveProviderSubscription && !protectedAccess && !juniorAccess) {
+    effectiveStatus = trial.active ? "trialing" : "free_adult";
+    effectivePlan = "member";
+    effectiveTrialEndsAt = trial.endsAt;
+    initialTrial = trial.active;
+    freeAdult = !trial.active;
+    subscriptionRequired = false;
+    maxActiveAnimals = freeAdult ? FREE_ADULT_MAX_ACTIVE_ANIMALS : null;
+  } else if (juniorAccess && !liveProviderSubscription) {
+    effectiveStatus = "free_junior";
+    effectivePlan = "junior";
+    effectiveTrialEndsAt = null;
+    maxActiveAnimals = 5;
+  }
+
   return {
-    status: sub?.status || "not_configured",
-    plan: sub?.plan_id || null,
+    status: effectiveStatus,
+    plan: effectivePlan,
     billingInterval: sub?.billing_interval || "month",
-    priceCents: sub?.price_cents ?? null,
+    priceCents: freeAdult ? 0 : (effectivePlan === "member" ? (sub?.price_cents ?? MEMBER_MONTH.cents) : (sub?.price_cents ?? null)),
     currency: sub?.currency || "usd",
-    currentPeriodStart: sub?.current_period_start || null,
-    currentPeriodEnd: sub?.current_period_end || null,
-    trialEndsAt: sub?.trial_ends_at || null,
-    cancelAtPeriodEnd: sub?.cancel_at_period_end === true,
+    currentPeriodStart: liveProviderSubscription ? (sub?.current_period_start || null) : null,
+    currentPeriodEnd: liveProviderSubscription ? (sub?.current_period_end || null) : null,
+    trialEndsAt: effectiveTrialEndsAt,
+    initialTrial,
+    initialTrialStartsAt: trial.startsAt,
+    initialTrialEndsAt: trial.endsAt,
+    freeAdult,
+    maxActiveAnimals,
+    subscriptionRequired,
+    hardLaunchAt: HARD_LAUNCH_AT,
+    serverNow: new Date().toISOString(),
+    cancelAtPeriodEnd: liveProviderSubscription && sub?.cancel_at_period_end === true,
     canceledAt: sub?.canceled_at || null,
     gracePeriodEndsAt: sub?.grace_period_ends_at || null,
     provider: sub?.provider || "stripe",
     providerCustomerId: sub?.provider_customer_id || null,
     providerSubscriptionId: sub?.provider_subscription_id || null,
     requestedPlan: choiceResult.data?.requested_plan || null,
-    nextInvoice,
+    nextInvoice: liveProviderSubscription ? nextInvoice : null,
     referral: {
       code,
       successfulReferrals: qualifiedReferrals,
@@ -185,14 +236,14 @@ Deno.serve(async (req) => {
     if (!token) return json({ error: "Authentication is required." }, 401);
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: authData, error: authError } = await admin.auth.getUser(token);
-    const user = authData?.user;
-    if (authError || !user?.id) return json({ error: "The authentication session is invalid or expired." }, 401);
+    const user = authData?.user as AuthUser | undefined;
+    if (authError || !user?.id || !user.created_at) return json({ error: "The authentication session is invalid or expired." }, 401);
 
     const stripe = new Stripe(stripeKey);
     const body = await req.json().catch(() => ({})) as Record<string, unknown>;
     const action = text(body.action, 40).toLowerCase();
 
-    if (action === "snapshot") return json(await buildSnapshot(admin, user.id));
+    if (action === "snapshot") return json(await buildSnapshot(admin, user));
 
     if (action === "admin_credit_snapshot") {
       await requireAdmin(admin, user.id);
@@ -273,6 +324,23 @@ Deno.serve(async (req) => {
       }
       const origin = text(body.origin, 500);
       if (!/^https:\/\//i.test(origin) && !/^http:\/\/localhost(?::\d+)?$/i.test(origin)) return json({ error: "A valid HerdHarbor return URL is required." }, 400);
+
+      const trial = trialSnapshot(user);
+      const trialEndUnix = Math.floor(new Date(trial.endsAt).getTime() / 1000);
+      const nowUnix = Math.floor(Date.now() / 1000);
+      const metadata = {
+        herdharbor_user_id: user.id,
+        herdharbor_plan: "member",
+        herdharbor_interval: "month",
+        herdharbor_initial_trial_end: trial.endsAt
+      };
+      const subscriptionData = {
+        metadata,
+        ...(trialEndUnix > nowUnix
+          ? { billing_cycle_anchor: trialEndUnix, proration_behavior: "none" as const }
+          : {})
+      };
+
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
         line_items: [{ price: MEMBER_MONTH.priceId, quantity: 1 }],
@@ -283,10 +351,10 @@ Deno.serve(async (req) => {
         client_reference_id: user.id,
         allow_promotion_codes: true,
         automatic_tax: { enabled: true },
-        metadata: { herdharbor_user_id: user.id, herdharbor_plan: "member", herdharbor_interval: "month" },
-        subscription_data: { metadata: { herdharbor_user_id: user.id, herdharbor_plan: "member", herdharbor_interval: "month" } }
+        metadata,
+        subscription_data: subscriptionData
       });
-      return json({ url: session.url });
+      return json({ url: session.url, billingStartsAt: trialEndUnix > nowUnix ? trial.endsAt : new Date().toISOString() });
     }
 
     if (!current?.provider_subscription_id && action !== "portal") return json({ error: "No Stripe subscription is connected to this account." }, 409);

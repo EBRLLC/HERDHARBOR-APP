@@ -50,9 +50,10 @@ test("transactional sends are idempotent and backed by the durable outbox", () =
 test("Stripe webhook delivery failures remain retryable while member/admin actions remain durable", () => {
   assert.match(webhook, /deliverSubscriptionNotification\(admin, outboxId\)/);
   assert.doesNotMatch(webhook, /subscription-notification-delivery/);
-  assert.match(billing, /deliverSubscriptionNotification\(admin, outboxId\)/);
-  assert.match(billing, /Billing\/account actions must not be rolled back/);
-  assert.match(billing, /subscription-notification-delivery/);
+  assert.match(
+    billing,
+    /if \(outboxId\) \{[\s\S]*?try \{[\s\S]*?await deliverSubscriptionNotification\(admin, outboxId\);[\s\S]*?\} catch \(deliveryError\) \{[\s\S]*?console\.error\("subscription-notification-delivery"[\s\S]*?\}\s*\}/
+  );
 });
 
 test("Supabase auth contract stays explicit for browser billing and external Stripe webhooks", () => {
