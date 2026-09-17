@@ -4,6 +4,7 @@
   const VERSION = "1.8.2";
   const HARD_LAUNCH_AT = "2026-10-01T00:00:00-04:00";
   const MEMBER_TRIAL_TIER = "member";
+  const FREE_ADULT_MAX_ACTIVE_ANIMALS = 5;
   const ACTIVE_PAID_STATUSES = new Set(["active", "trialing", "past_due", "founder", "resubscribed"]);
   const PAID_TIERS = new Set(["founder", "member", "business"]);
 
@@ -53,12 +54,13 @@
       hardLaunchActive: effectiveNow >= launch,
       preLaunchWindow: effectiveNow < launch,
       serverAuthoritative: trusted && serverNow != null,
-      memberTrialTier: MEMBER_TRIAL_TIER
+      memberTrialTier: MEMBER_TRIAL_TIER,
+      freeAdultMaxActiveAnimals: FREE_ADULT_MAX_ACTIVE_ANIMALS
     });
   }
 
   function hasPaidSubscription(snapshot = subscriptionSnapshot()) {
-    if (!trustedSnapshot(snapshot) || snapshot.initialTrial === true) return false;
+    if (!trustedSnapshot(snapshot) || snapshot.initialTrial === true || snapshot.freeAdult === true) return false;
     const status = normalize(snapshot.status);
     const plan = normalize(snapshot.plan);
     return Boolean(snapshot.providerSubscriptionId)
@@ -88,6 +90,32 @@
       || (trustedSnapshot(snapshot) && normalize(snapshot.status) === "free_junior" && normalize(snapshot.plan) === "junior");
   }
 
+  function isFreeAdult(snapshot = subscriptionSnapshot()) {
+    if (!trustedSnapshot(snapshot)) return false;
+    const status = normalize(snapshot.status);
+    return snapshot.freeAdult === true
+      || status === "free_adult"
+      || snapshot.subscriptionRequired === true
+      || status === "expired";
+  }
+
+  function freeAdultAccount(base = {}, snapshot = subscriptionSnapshot(), policy = policyState()) {
+    return {
+      ...base,
+      effectiveMembershipTier: MEMBER_TRIAL_TIER,
+      membershipSource: "free_adult",
+      subscriptionStatus: "free_adult",
+      maxActiveAnimals: FREE_ADULT_MAX_ACTIVE_ANIMALS,
+      trialEndsAt: snapshot.trialEndsAt || snapshot.initialTrialEndsAt || null,
+      initialTrialStartsAt: snapshot.initialTrialStartsAt || null,
+      subscriptionRequired: false,
+      readOnly: false,
+      accessMode: "free_adult",
+      backendTrialVerified: true,
+      subscriptionLaunch: policy
+    };
+  }
+
   function resolveAccount(now = new Date()) {
     const base = original.getAccount();
     const snapshot = subscriptionSnapshot();
@@ -110,8 +138,8 @@
       };
     }
 
-    // Junior is an intentional youth enrollment path, never the fallback for an
-    // expired adult trial.
+    // Junior is an intentional youth enrollment path and remains separate from
+    // the adult Free membership even though both currently share the same cap.
     if (isJunior(base, snapshot)) {
       return {
         ...base,
@@ -121,6 +149,7 @@
         maxActiveAnimals: 5,
         subscriptionRequired: false,
         readOnly: false,
+        accessMode: "junior",
         subscriptionLaunch: policy
       };
     }
@@ -143,8 +172,16 @@
         trialEndsAt: trustedSnapshot(snapshot) ? (snapshot.initialTrialEndsAt || snapshot.trialEndsAt || null) : null,
         subscriptionRequired: false,
         readOnly: false,
+        accessMode: "paid",
         subscriptionLaunch: policy
       };
+    }
+
+    // Adults whose initial trial ended, and paid members whose paid access has
+    // ended, fall back to the permanent Free adult membership. It mirrors the
+    // Junior five-animal allowance without changing the account into a youth plan.
+    if (isFreeAdult(snapshot)) {
+      return freeAdultAccount(base, snapshot, policy);
     }
 
     if (trustedSnapshot(snapshot) && normalize(snapshot.status) === "trialing" && normalize(snapshot.plan) === MEMBER_TRIAL_TIER) {
@@ -158,25 +195,7 @@
         initialTrialStartsAt: snapshot.initialTrialStartsAt || null,
         subscriptionRequired: false,
         readOnly: false,
-        backendTrialVerified: true,
-        subscriptionLaunch: policy
-      };
-    }
-
-    if (trustedSnapshot(snapshot) && (snapshot.subscriptionRequired === true || normalize(snapshot.status) === "expired")) {
-      return {
-        ...base,
-        // Keep the adult account a Member account. Expiration changes access
-        // state; it never converts an adult account into Junior.
-        effectiveMembershipTier: MEMBER_TRIAL_TIER,
-        membershipSource: "subscription_required",
-        subscriptionStatus: "expired",
-        maxActiveAnimals: null,
-        trialEndsAt: snapshot.trialEndsAt || snapshot.initialTrialEndsAt || null,
-        initialTrialStartsAt: snapshot.initialTrialStartsAt || null,
-        subscriptionRequired: true,
-        readOnly: true,
-        accessMode: "subscription_required",
+        accessMode: "trial",
         backendTrialVerified: true,
         subscriptionLaunch: policy
       };
@@ -195,6 +214,7 @@
         trialEndsAt: HARD_LAUNCH_AT,
         subscriptionRequired: false,
         readOnly: false,
+        accessMode: "trial",
         backendTrialVerified: false,
         subscriptionLaunch: policy
       };
@@ -202,7 +222,7 @@
 
     // Billing is intentionally fail-open for authentication resilience. A
     // temporary billing outage must not block sign-in or destroy access state.
-    // Once the trusted backend snapshot arrives it resolves trial/paid/expired.
+    // Once the trusted backend snapshot arrives it resolves trial/paid/free.
     return {
       ...base,
       backendTrialVerified: false,
@@ -214,7 +234,10 @@
     const before = original.activeAnimalCount(beforeAnimals);
     const after = original.activeAnimalCount(afterAnimals);
     const current = resolveAccount();
-    const limit = current.effectiveMembershipTier === "junior" ? 5 : null;
+    const configuredLimit = Number(current.maxActiveAnimals);
+    const limit = current.maxActiveAnimals == null || !Number.isFinite(configuredLimit)
+      ? null
+      : Math.max(0, configuredLimit);
     return {
       allowed: limit === null || after <= limit || after <= before,
       before,
@@ -262,6 +285,7 @@
     version: VERSION,
     hardLaunchAt: HARD_LAUNCH_AT,
     memberTrialTier: MEMBER_TRIAL_TIER,
+    freeAdultMaxActiveAnimals: FREE_ADULT_MAX_ACTIVE_ANIMALS,
     getPolicy: () => policyState(),
     getAccount: () => clone(resolveAccount()),
     __test: Object.freeze({
@@ -271,6 +295,8 @@
       hasBackendPaidSubscription,
       isFounder,
       isJunior,
+      isFreeAdult,
+      freeAdultAccount,
       resolveAccount
     })
   });
