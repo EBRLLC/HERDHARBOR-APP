@@ -17,14 +17,24 @@
     normalized: Object.freeze(["dual_write"])
   });
 
+  function strictNonNegativeInteger(value, minimum = 0) {
+    if (typeof value === "number") {
+      return Number.isSafeInteger(value) && value >= minimum ? value : null;
+    }
+    if (typeof value !== "string") return null;
+    const text = value.trim();
+    if (!/^\d+$/.test(text)) return null;
+    const parsed = Number(text);
+    return Number.isSafeInteger(parsed) && parsed >= minimum ? parsed : null;
+  }
+
   function stageOf(manifest) {
     const stage = String(manifest?.cutover_stage ?? manifest?.cutoverStage ?? "legacy");
     return STAGE_SET.has(stage) ? stage : "legacy";
   }
 
   function generationOf(manifest) {
-    const generation = Number(manifest?.sync_generation ?? manifest?.syncGeneration);
-    return Number.isSafeInteger(generation) && generation >= 0 ? generation : null;
+    return strictNonNegativeInteger(manifest?.sync_generation ?? manifest?.syncGeneration);
   }
 
   function metadataOf(manifest) {
@@ -42,16 +52,12 @@
     const verifiedChecksum = String(metadata.verified_checksum || "").trim();
     const sourceChecksum = String(metadata.source_checksum || "").trim();
     if (!verifiedChecksum || !sourceChecksum || verifiedChecksum !== sourceChecksum) return false;
-    const verifiedCount = Number(metadata.verification_record_count);
-    const normalizedCount = Number(metadata.normalized_record_count);
-    if (
-      !Number.isSafeInteger(verifiedCount) || verifiedCount < 0 ||
-      !Number.isSafeInteger(normalizedCount) || normalizedCount < 0 ||
-      verifiedCount !== normalizedCount
-    ) return false;
+    const verifiedCount = strictNonNegativeInteger(metadata.verification_record_count);
+    const normalizedCount = strictNonNegativeInteger(metadata.normalized_record_count);
+    if (verifiedCount === null || normalizedCount === null || verifiedCount !== normalizedCount) return false;
     const namespace = String(metadata.normalized_namespace || "").trim();
-    const formatVersion = Number(metadata.normalized_format_version);
-    return Boolean(namespace) && Number.isSafeInteger(formatVersion) && formatVersion >= 1;
+    const formatVersion = strictNonNegativeInteger(metadata.normalized_format_version, 1);
+    return Boolean(namespace) && formatVersion !== null;
   }
 
   function normalizedWriterIsReady(manifest) {
