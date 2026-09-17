@@ -25,13 +25,23 @@
     return value;
   }
 
+  function strictNonNegativeInteger(value, minimum = 0) {
+    if (typeof value === "number") {
+      return Number.isSafeInteger(value) && value >= minimum ? value : null;
+    }
+    if (typeof value !== "string") return null;
+    const text = value.trim();
+    if (!/^\d+$/.test(text)) return null;
+    const parsed = Number(text);
+    return Number.isSafeInteger(parsed) && parsed >= minimum ? parsed : null;
+  }
+
   function normalizedStage(manifest) {
     return String(manifest?.cutover_stage ?? manifest?.cutoverStage ?? "legacy") === NORMALIZED_STAGE;
   }
 
   function manifestGeneration(manifest) {
-    const value = Number(manifest?.sync_generation ?? manifest?.syncGeneration);
-    return Number.isSafeInteger(value) && value >= 0 ? value : null;
+    return strictNonNegativeInteger(manifest?.sync_generation ?? manifest?.syncGeneration);
   }
 
   function verifiedAt(manifest) {
@@ -100,17 +110,13 @@
       const details = metadata(manifest);
       const verifiedChecksum = String(details.verified_checksum || "").trim();
       const sourceChecksum = String(details.source_checksum || "").trim();
-      const count = Number(details.verification_record_count);
-      const normalizedCount = Number(details.normalized_record_count);
-      const formatVersion = Number(details.normalized_format_version);
-      const namespace = String(details.normalized_namespace || "").trim();
       return {
         verifiedChecksum,
         sourceChecksum,
-        count: Number.isSafeInteger(count) && count >= 0 ? count : null,
-        normalizedCount: Number.isSafeInteger(normalizedCount) && normalizedCount >= 0 ? normalizedCount : null,
-        formatVersion: Number.isSafeInteger(formatVersion) && formatVersion >= 1 ? formatVersion : null,
-        namespace
+        count: strictNonNegativeInteger(details.verification_record_count),
+        normalizedCount: strictNonNegativeInteger(details.normalized_record_count),
+        formatVersion: strictNonNegativeInteger(details.normalized_format_version, 1),
+        namespace: String(details.normalized_namespace || "").trim()
       };
     }
 
