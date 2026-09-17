@@ -10,6 +10,7 @@ const CORS = {
   "Content-Type": "application/json; charset=utf-8"
 };
 const MEMBER_MONTH = { priceId: "price_1UCOjrGlRukEX5RK9my06yUP", cents: 1499 };
+const FREE_ADULT_MAX_ACTIVE_ANIMALS = 5;
 const ACTIVE_SUBSCRIPTION = new Set(["active", "trialing", "past_due"]);
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: CORS });
@@ -48,9 +49,6 @@ async function queueNotification(
     try {
       await deliverSubscriptionNotification(admin, outboxId);
     } catch (deliveryError) {
-      // Billing/account actions must not be rolled back merely because the
-      // email provider is temporarily unavailable. The durable outbox retains
-      // the failed notification for a later retry.
       console.error("subscription-notification-delivery", input.eventType, outboxId, deliveryError);
     }
   }
@@ -142,36 +140,43 @@ async function buildSnapshot(admin: ReturnType<typeof createClient>, user: AuthU
   let effectivePlan = sub?.plan_id || null;
   let effectiveTrialEndsAt = sub?.trial_ends_at || null;
   let initialTrial = false;
+  let freeAdult = false;
   let subscriptionRequired = false;
+  let maxActiveAnimals: number | null = null;
 
   if (!liveProviderSubscription && !protectedAccess && !juniorAccess) {
-    effectiveStatus = trial.active ? "trialing" : "expired";
+    effectiveStatus = trial.active ? "trialing" : "free_adult";
     effectivePlan = "member";
     effectiveTrialEndsAt = trial.endsAt;
-    initialTrial = true;
-    subscriptionRequired = !trial.active;
+    initialTrial = trial.active;
+    freeAdult = !trial.active;
+    subscriptionRequired = false;
+    maxActiveAnimals = freeAdult ? FREE_ADULT_MAX_ACTIVE_ANIMALS : null;
   } else if (juniorAccess && !liveProviderSubscription) {
     effectiveStatus = "free_junior";
     effectivePlan = "junior";
     effectiveTrialEndsAt = null;
+    maxActiveAnimals = 5;
   }
 
   return {
     status: effectiveStatus,
     plan: effectivePlan,
     billingInterval: sub?.billing_interval || "month",
-    priceCents: effectivePlan === "member" ? (sub?.price_cents ?? MEMBER_MONTH.cents) : (sub?.price_cents ?? null),
+    priceCents: freeAdult ? 0 : (effectivePlan === "member" ? (sub?.price_cents ?? MEMBER_MONTH.cents) : (sub?.price_cents ?? null)),
     currency: sub?.currency || "usd",
-    currentPeriodStart: sub?.current_period_start || null,
-    currentPeriodEnd: sub?.current_period_end || null,
+    currentPeriodStart: liveProviderSubscription ? (sub?.current_period_start || null) : null,
+    currentPeriodEnd: liveProviderSubscription ? (sub?.current_period_end || null) : null,
     trialEndsAt: effectiveTrialEndsAt,
     initialTrial,
     initialTrialStartsAt: trial.startsAt,
     initialTrialEndsAt: trial.endsAt,
+    freeAdult,
+    maxActiveAnimals,
     subscriptionRequired,
     hardLaunchAt: HARD_LAUNCH_AT,
     serverNow: new Date().toISOString(),
-    cancelAtPeriodEnd: sub?.cancel_at_period_end === true,
+    cancelAtPeriodEnd: liveProviderSubscription && sub?.cancel_at_period_end === true,
     canceledAt: sub?.canceled_at || null,
     gracePeriodEndsAt: sub?.grace_period_ends_at || null,
     provider: sub?.provider || "stripe",
