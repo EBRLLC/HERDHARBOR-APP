@@ -52,7 +52,7 @@ test("Stripe webhook delivery failures remain retryable while member/admin actio
   assert.doesNotMatch(webhook, /subscription-notification-delivery/);
   assert.match(
     billing,
-    /if \(outboxId\) \{[\s\S]*?try \{[\s\S]*?await deliverSubscriptionNotification\(admin, outboxId\);[\s\S]*?\} catch \(deliveryError\) \{[\s\S]*?console\.error\("subscription-notification-delivery"/[\s\S]*?\}\s*\}/
+    /if \(outboxId\) \{[\s\S]*?try \{[\s\S]*?await deliverSubscriptionNotification\(admin, outboxId\);[\s\S]*?\} catch \(deliveryError\) \{[\s\S]*?console\.error\("subscription-notification-delivery"[\s\S]*?\}\s*\}/
   );
 });
 
