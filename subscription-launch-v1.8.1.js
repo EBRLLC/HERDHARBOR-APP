@@ -11,6 +11,8 @@
   const original = window.HerdHarborMembership;
   if (!original || window.HerdHarborSubscriptionLaunch) return;
 
+  let freeAdultLimitDialog = null;
+
   const clone = (value) => {
     try {
       return typeof structuredClone === "function"
@@ -123,7 +125,6 @@
     const role = normalize(base.accountRole || "user");
     const currentSource = normalize(base.membershipSource);
 
-    // Admin authorization is deliberately not rewritten by subscription policy.
     if (role === "owner" || role === "admin" || currentSource === "manual_override") {
       return { ...base, subscriptionLaunch: policy };
     }
@@ -138,8 +139,6 @@
       };
     }
 
-    // Junior is an intentional youth enrollment path and remains separate from
-    // the adult Free membership even though both currently share the same cap.
     if (isJunior(base, snapshot)) {
       return {
         ...base,
@@ -177,9 +176,6 @@
       };
     }
 
-    // Adults whose initial trial ended, and paid members whose paid access has
-    // ended, fall back to the permanent Free adult membership. It mirrors the
-    // Junior five-animal allowance without changing the account into a youth plan.
     if (isFreeAdult(snapshot)) {
       return freeAdultAccount(base, snapshot, policy);
     }
@@ -201,9 +197,6 @@
       };
     }
 
-    // Before October 1 preserve the existing launch promise even while the
-    // billing snapshot is still settling. This fallback never manufactures a
-    // rolling trial end; rolling trial dates only come from the backend.
     if (policy.preLaunchWindow) {
       return {
         ...base,
@@ -220,9 +213,6 @@
       };
     }
 
-    // Billing is intentionally fail-open for authentication resilience. A
-    // temporary billing outage must not block sign-in or destroy access state.
-    // Once the trusted backend snapshot arrives it resolves trial/paid/free.
     return {
       ...base,
       backendTrialVerified: false,
@@ -247,9 +237,46 @@
     };
   }
 
+  function closeFreeAdultLimit() {
+    freeAdultLimitDialog?.remove?.();
+    freeAdultLimitDialog = null;
+  }
+
+  function showFreeAdultLimit(details = {}) {
+    closeFreeAdultLimit();
+    if (typeof document.createElement !== "function") return;
+    freeAdultLimitDialog = document.createElement("div");
+    freeAdultLimitDialog.className = "hh-membership-backdrop";
+    freeAdultLimitDialog.innerHTML = `
+      <section class="hh-membership-dialog" role="dialog" aria-modal="true" aria-labelledby="hh-free-adult-limit-title">
+        <span class="hh-membership-kicker">HerdHarbor Free</span>
+        <h2 id="hh-free-adult-limit-title">Your free herd is full</h2>
+        <p>Free Adult includes up to 5 active animals. Your existing records stay available. Archive or mark an animal as sold when it leaves your herd, or upgrade to Member for unlimited active animals.</p>
+        ${Number.isFinite(details.before) ? `<p class="hh-membership-usage"><strong>${details.before} active animal${details.before === 1 ? "" : "s"}</strong> · 5 included</p>` : ""}
+        <div class="hh-membership-actions">
+          <button type="button" class="button button-primary" data-hh-free-upgrade-member>Upgrade to Member</button>
+          <button type="button" class="button button-ghost" data-hh-free-limit-close>Not Now</button>
+        </div>
+      </section>`;
+    freeAdultLimitDialog.addEventListener("click", (event) => {
+      if (event.target === freeAdultLimitDialog || event.target.closest?.("[data-hh-free-limit-close]")) closeFreeAdultLimit();
+      if (event.target.closest?.("[data-hh-free-upgrade-member]")) {
+        closeFreeAdultLimit();
+        document.dispatchEvent(new CustomEvent("herdharbor:request-upgrade", { detail: { tier: "member", source: "free_adult_limit" } }));
+      }
+    });
+    const target = document.body || document.documentElement;
+    target?.appendChild?.(freeAdultLimitDialog);
+    freeAdultLimitDialog.querySelector?.("[data-hh-free-limit-close]")?.focus?.();
+  }
+
   function enforceAnimalTransition(beforeAnimals, afterAnimals) {
     const result = validateAnimalTransition(beforeAnimals, afterAnimals);
-    if (!result.allowed) original.showJuniorLimit?.(result);
+    if (!result.allowed) {
+      const current = resolveAccount();
+      if (normalize(current.membershipSource) === "free_adult") showFreeAdultLimit(result);
+      else original.showJuniorLimit?.(result);
+    }
     return result.allowed;
   }
 
@@ -297,7 +324,8 @@
       isJunior,
       isFreeAdult,
       freeAdultAccount,
-      resolveAccount
+      resolveAccount,
+      validateAnimalTransition
     })
   });
 
