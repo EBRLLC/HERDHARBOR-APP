@@ -4,7 +4,7 @@
   const INTERVAL_KEY = "herdharbor_subscription_interval_v1";
   const CALL_TIMEOUT_MS = 15000;
   const ACCESS_REFRESH_TIMEOUT_MS = 5000;
-  const ACTIVE = new Set(["active", "trialing", "founder", "free_junior", "free_adult", "resubscribed"]);
+  const ACTIVE = new Set(["active", "trialing", "founder", "free_junior", "resubscribed"]);
   const PLAN_ORDER = ["junior", "founder", "member", "business"];
   const PRICING = Object.freeze({
     junior: Object.freeze({ month: 0, year: 0 }),
