@@ -188,7 +188,7 @@ test("network success without the expected API is treated as failure", async () 
 });
 
 test("spreadsheet and QR action paths await their optional tools", () => {
-  assert.match(runtime, /downloadBreedingReport[\s\S]*?await ensureSpreadsheetToolsReady\(\)/);
+  assert.match(runtime, /download-breeding-report[\s\S]*?await ensureSpreadsheetToolsReady\(\)[\s\S]*?downloadBreedingReport/);
   assert.match(runtime, /download-production-report[\s\S]*?await ensureSpreadsheetToolsReady\(\)/);
   assert.match(runtime, /export-excel[\s\S]*?await ensureSpreadsheetToolsReady\(\)/);
   assert.match(runtime, /download-spreadsheet-template[\s\S]*?await ensureSpreadsheetToolsReady\(\)/);
