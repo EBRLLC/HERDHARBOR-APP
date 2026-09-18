@@ -3,11 +3,12 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
-const start = html.indexOf("  const PEDIGREE_SLOTS =");
-const end = html.indexOf("  function renderPedigrees()", start);
+const appRuntime = fs.readFileSync(path.join(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
+const start = appRuntime.indexOf("  const PEDIGREE_SLOTS =");
+const end = appRuntime.indexOf("  function renderPedigrees()", start);
 assert.ok(start >= 0 && end > start, "pedigree ancestry source is present");
 
-const source = html.slice(start, end);
+const source = appRuntime.slice(start, end);
 const buildResolver = new Function(
   "state",
   `${source}\nreturn existingPedigreeAncestry;`
@@ -43,7 +44,7 @@ const cyclicResolve = buildResolver({
 assert.deepEqual(cyclicResolve("child"), { sire: "sire" }, "cycles stop at the repeated animal");
 
 assert.match(
-  html,
+  appRuntime,
   /if \(!ownerId \|\| !parentId\) return;/,
   "saving a pedigree does not erase an existing parent link with a blank value"
 );
