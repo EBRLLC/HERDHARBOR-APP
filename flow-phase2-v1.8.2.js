@@ -128,9 +128,9 @@
 
   function latestWeightRecord(state={},animalId=""){
     return array(state,"health")
-      .filter(record=>String(record?.animalId||"")===String(animalId)&&lower(record?.type)==="weight"&&clean(record?.weight)!==""&&normalizedWeightGrams(record)!==null&&weightRecordDateKey(record))
-      .slice()
-      .sort((left,right)=>weightRecordDateKey(right).localeCompare(weightRecordDateKey(left))||String(right.createdAt||"").localeCompare(String(left.createdAt||"")))[0]||null;
+      .map((record,index)=>({record,index,date:weightRecordDateKey(record)}))
+      .filter(({record,date})=>String(record?.animalId||"")===String(animalId)&&clean(record?.weight)!==""&&normalizedWeightGrams(record)!==null&&date)
+      .sort((left,right)=>right.date.localeCompare(left.date)||String(right.record.createdAt||"").localeCompare(String(left.record.createdAt||""))||right.index-left.index)[0]?.record||null;
   }
 
   function formatRecordedDate(value){
