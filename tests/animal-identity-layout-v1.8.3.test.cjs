@@ -134,6 +134,8 @@ test("Current Weight uses the newest valid recorded Weight row, not a duplicated
       { id: "w1", animalId: "a1", type: "Weight", date: "2026-09-01", weight: "4", weightUnit: "lb", createdAt: "2026-09-01T10:00:00Z" },
       { id: "x1", animalId: "a1", type: "Observation", date: "2026-09-18", weight: "99", weightUnit: "lb" },
       { id: "bad", animalId: "a1", type: "Weight", date: "2026-09-18", weight: "not-a-number", weightUnit: "lb" },
+      { id: "undated", animalId: "a1", type: "Weight", weight: "99", weightUnit: "lb", createdAt: "2026-09-18T14:00:00Z" },
+      { id: "bad-date", animalId: "a1", type: "Weight", date: "not-a-date", weight: "88", weightUnit: "lb", createdAt: "2026-09-18T15:00:00Z" },
       { id: "w2", animalId: "a1", type: "Weight", date: "2026-09-17", weight: "4", weightOunces: "8", weightUnit: "lb+oz", createdAt: "2026-09-17T09:00:00Z" },
       { id: "w3", animalId: "a1", type: "Weight", date: "2026-09-17", weight: "4", weightOunces: "10", weightUnit: "lb+oz", createdAt: "2026-09-17T12:00:00Z" }
     ],
