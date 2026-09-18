@@ -119,11 +119,18 @@
     return`${decimal(value/factors[chosen],2)} ${chosen}`;
   }
 
+  function weightRecordDateKey(record={}){
+    const value=clean(record?.date).slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return"";
+    const date=new Date(`${value}T12:00:00Z`);
+    return!Number.isNaN(date.getTime())&&date.toISOString().slice(0,10)===value?value:"";
+  }
+
   function latestWeightRecord(state={},animalId=""){
     return array(state,"health")
-      .filter(record=>String(record?.animalId||"")===String(animalId)&&lower(record?.type)==="weight"&&clean(record?.weight)!==""&&normalizedWeightGrams(record)!==null)
+      .filter(record=>String(record?.animalId||"")===String(animalId)&&lower(record?.type)==="weight"&&clean(record?.weight)!==""&&normalizedWeightGrams(record)!==null&&weightRecordDateKey(record))
       .slice()
-      .sort((left,right)=>String(right.date||"").localeCompare(String(left.date||""))||String(right.createdAt||"").localeCompare(String(left.createdAt||"")))[0]||null;
+      .sort((left,right)=>weightRecordDateKey(right).localeCompare(weightRecordDateKey(left))||String(right.createdAt||"").localeCompare(String(left.createdAt||"")))[0]||null;
   }
 
   function formatRecordedDate(value){
@@ -607,6 +614,6 @@
     pendingReturn=null;
   }
 
-  const API=Object.freeze({VERSION,TABS,IDENTITY_FIELD_KEYS,DEFAULT_IDENTITY_LAYOUT,MAX_IDENTITY_FIELDS,normalizeIdentityLayout,identityLayoutFor,validateIdentityLayout,stateWithIdentityLayout,stateWithoutIdentityLayout,latestWeightRecord,displayWeightGrams,identityField,identityRows,openIdentityLayoutDialog,resetIdentityLayout,normalizeTab,profileHash,parseProfileHash,lifecycleSummary,openAnimalProfile,selectTab,backToAnimals,renderProfile,install,uninstall});
+  const API=Object.freeze({VERSION,TABS,IDENTITY_FIELD_KEYS,DEFAULT_IDENTITY_LAYOUT,MAX_IDENTITY_FIELDS,normalizeIdentityLayout,identityLayoutFor,validateIdentityLayout,stateWithIdentityLayout,stateWithoutIdentityLayout,weightRecordDateKey,latestWeightRecord,displayWeightGrams,identityField,identityRows,openIdentityLayoutDialog,resetIdentityLayout,normalizeTab,profileHash,parseProfileHash,lifecycleSummary,openAnimalProfile,selectTab,backToAnimals,renderProfile,install,uninstall});
   return API;
 });
