@@ -151,8 +151,8 @@
     if(key==="breeder")return{key,label:IDENTITY_FIELD_LABELS[key],value:animal.breeder||empty};
     if(key==="status")return{key,label:IDENTITY_FIELD_LABELS[key],value:animal.status||empty};
     if(key==="location")return{key,label:IDENTITY_FIELD_LABELS[key],value:animal.location||empty};
-    if(key==="sire"){const parent=animalById(state,animal.sireId);return{key,label:IDENTITY_FIELD_LABELS[key],value:parent?.name||empty};}
-    if(key==="dam"){const parent=animalById(state,animal.damId);return{key,label:IDENTITY_FIELD_LABELS[key],value:parent?.name||empty};}
+    if(key==="sire"){const parent=animalById(state,animal.sireId);return{key,label:IDENTITY_FIELD_LABELS[key],value:parent?animalName(state,animal.sireId):empty};}
+    if(key==="dam"){const parent=animalById(state,animal.damId);return{key,label:IDENTITY_FIELD_LABELS[key],value:parent?animalName(state,animal.damId):empty};}
     if(key==="currentWeight"){
       const record=latestWeightRecord(state,animal.id);
       if(!record)return{key,label:IDENTITY_FIELD_LABELS[key],value:"No weight recorded",detail:""};
