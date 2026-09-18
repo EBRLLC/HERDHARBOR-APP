@@ -18,10 +18,10 @@ The following heavy optional assets are no longer loaded unconditionally by `ind
 
 - `vendor/exceljs-4.4.0.min.js` — 947,702 bytes
 - `vendor/jszip-3.10.1.min.js` — 97,630 bytes
-- `spreadsheet-import.js?v=17` — 151,041 bytes
-- `vendor/qrcode-generator-1.4.4.js` — 56,658 bytes
+- `spreadsheet-import.js?v=17` — 151,274 bytes
+- `vendor/qrcode-generator-1.4.4.js` — 56,694 bytes
 
-Total raw/uncompressed optional JavaScript removed from the unconditional startup path: 1,253,031 bytes, approximately 1.25 MB.
+Total raw/uncompressed optional JavaScript removed from the unconditional startup path: 1,253,300 bytes, approximately 1.25 MB.
 
 The small `herdharbor-optional-tools.js?v=1` loader is loaded normally before the application runtime.
 
