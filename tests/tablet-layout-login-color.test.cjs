@@ -26,7 +26,7 @@ assert.match(shellCss, /\.view\.active \{ width: 100%; max-width: 100%; min-widt
 assert.match(shellCss, /\.dashboard-grid > \*/);
 assert.match(shellCss, /\.dashboard-grid > \*[\s\S]*?max-width: 100%;[\s\S]*?min-width: 0;/);
 assert.match(shellCss, /@media \(max-width: 1180px\) \{[\s\S]*?\.dashboard-grid,[\s\S]*?grid-template-columns: minmax\(0, 1fr\);/);
-assert.match(html, /class="list activity-list"/);
+assert.match(appRuntime, /class="list activity-list"/);
 assert.match(shellCss, /\.list-item-main strong \{[\s\S]*?overflow-wrap: anywhere;[\s\S]*?white-space: normal;[\s\S]*?word-break: break-word;/);
 assert.match(shellCss, /\.list-item \{[\s\S]*?max-width: 100%;[\s\S]*?min-width: 0;[\s\S]*?overflow: hidden;/);
 assert.match(shellCss, /\.data-table-wrap \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: auto;[\s\S]*?overscroll-behavior-inline: contain;/);

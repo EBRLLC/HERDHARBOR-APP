@@ -3,8 +3,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
-const start = html.indexOf("  function productionSpecies(record)");
-const end = html.indexOf("  function renderBudget()", start);
+const appRuntime = fs.readFileSync(path.join(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
+const start = appRuntime.indexOf("  function productionSpecies(record)");
+const end = appRuntime.indexOf("  function renderBudget()", start);
 assert.ok(start >= 0 && end > start, "production and sales helpers are present");
 
 const state = {
@@ -16,7 +17,7 @@ const state = {
   productionRecords: []
 };
 let nextId = 1;
-const source = html.slice(start, end);
+const source = appRuntime.slice(start, end);
 const buildHelpers = new Function(
   "state",
   "animalName",
@@ -128,8 +129,8 @@ helpers.syncProductionIncome(milkRecord);
 assert.equal(state.transactions.length, 2, "removing a sale amount removes only its linked income");
 assert.equal(milkRecord.transactionId, "");
 
-assert.match(html, /"Fed to livestock \/ calves", "feedQuantity"/, "dairy milk can be assigned to calves or livestock");
-assert.match(html, /"Waste \/ discard reason", "wasteReason"/, "milk waste and discard reasons are retained");
-assert.match(html, /Allocated quantities total/, "over-allocation is blocked");
+assert.match(appRuntime, /"Fed to livestock \/ calves", "feedQuantity"/, "dairy milk can be assigned to calves or livestock");
+assert.match(appRuntime, /"Waste \/ discard reason", "wasteReason"/, "milk waste and discard reasons are retained");
+assert.match(appRuntime, /Allocated quantities total/, "over-allocation is blocked");
 
 console.log("production and sales tests passed");

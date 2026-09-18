@@ -3,8 +3,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
-const start = html.indexOf("  function normalizeTaskRecurrence(task = {})");
-const end = html.indexOf("  function renderTasks()", start);
+const appRuntime = fs.readFileSync(path.join(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
+const start = appRuntime.indexOf("  function normalizeTaskRecurrence(task = {})");
+const end = appRuntime.indexOf("  function renderTasks()", start);
 assert.ok(start >= 0 && end > start, "recurring task helpers are present");
 
 const recurrenceOptions = ["None", "Daily", "Weekly", "Every 2 weeks", "Monthly", "Custom"];
@@ -15,7 +16,7 @@ const addDays = (dateString, days) => {
 };
 
 function buildHelpers(state) {
-  const source = html.slice(start, end);
+  const source = appRuntime.slice(start, end);
   return new Function(
     "state",
     "TASK_RECURRENCE_OPTIONS",
@@ -169,10 +170,10 @@ function buildHelpers(state) {
   );
 }
 
-assert.match(html, /id="task-status-filter"/);
-assert.match(html, /id="task-category-filter"/);
-assert.match(html, /id="task-animal-filter"/);
-assert.match(html, /data-dashboard-task/);
-assert.match(html, /data-task-tomorrow/);
+assert.match(appRuntime, /id="task-status-filter"/);
+assert.match(appRuntime, /id="task-category-filter"/);
+assert.match(appRuntime, /id="task-animal-filter"/);
+assert.match(appRuntime, /data-dashboard-task/);
+assert.match(appRuntime, /data-task-tomorrow/);
 
 console.log("recurring tasks and daily workflow tests passed");

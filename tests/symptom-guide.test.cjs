@@ -7,6 +7,7 @@ const vm = require("node:vm");
 
 const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+const appRuntime = fs.readFileSync(path.join(root, "herdharbor-app-runtime.js"), "utf8");
 const source = fs.readFileSync(path.join(root, "symptom-guide.js"), "utf8");
 const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 const context = { window: {} };
@@ -45,17 +46,17 @@ assert.doesNotMatch(source, /\bfetch\s*\(/, "symptom searches do not call a remo
 
 assert.match(html, /data-route="symptoms"/);
 assert.match(html, /id="view-symptoms"/);
-assert.match(html, /symptoms: renderSymptoms/);
-assert.match(html, /id="health-symptom-search"/);
-assert.match(html, /id="symptom-animal"/);
-assert.match(html, /id="symptom-species"/);
-assert.match(html, /id="symptom-search"/);
-assert.match(html, /id="symptom-urgency"/);
-assert.match(html, /Possible concerns — not a diagnosis/);
-assert.match(html, /HerdHarbor is not a veterinary provider/);
-assert.match(html, /data-log-symptom/);
-assert.match(html, /type: "Observation"/);
-assert.match(html, /symptomView\.species = animal\?\.species/);
+assert.match(appRuntime, /symptoms: renderSymptoms/);
+assert.match(appRuntime, /id="health-symptom-search"/);
+assert.match(appRuntime, /id="symptom-animal"/);
+assert.match(appRuntime, /id="symptom-species"/);
+assert.match(appRuntime, /id="symptom-search"/);
+assert.match(appRuntime, /id="symptom-urgency"/);
+assert.match(appRuntime, /Possible concerns — not a diagnosis/);
+assert.match(appRuntime, /HerdHarbor is not a veterinary provider/);
+assert.match(appRuntime, /data-log-symptom/);
+assert.match(appRuntime, /type: "Observation"/);
+assert.match(appRuntime, /symptomView\.species = animal\?\.species/);
 assert.match(html, /symptom-guide\.js\?v=1/);
 assert.match(worker, /symptom-guide\.js\?v=1/);
 
