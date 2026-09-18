@@ -12,6 +12,7 @@ const geneticsV2 = read("rabbit-genetics-engine-advanced-v1.6.1.js");
 const pedigreeGenetics = read("pedigree-genetics-v1.6.1.js");
 const pedigreeGeneticsCss = read("pedigree-genetics-v1.6.1.css");
 const html = read("index.html");
+const appRuntime = read("herdharbor-app-runtime.js");
 const build = read("herdharbor-build.js");
 
 const activeV161 = [
@@ -69,7 +70,7 @@ for (const legacy of legacyRuntimeNames) {
 
 assert.match(pwa, /HerdHarborPedigreeGenetics\?\.start\?\.\(window\)/, "the consolidated pedigree renderer is started after loading");
 assert.match(pwa, /schemaVersion: 3/, "the final genetics-ready event advertises schema 3");
-assert.ok(html.includes("HerdHarborPedigreeGenetics?.enhanceDocument?.(popup.document, true, window)"), "sale pedigree popup renders genetics before viewing/printing");
+assert.ok(appRuntime.includes("HerdHarborPedigreeGenetics?.enhanceDocument?.(popup.document, true, window)"), "sale pedigree popup runtime renders genetics before viewing/printing");
 assert.match(pedigreeGenetics, /const target=rootWindow\.document\?\.body;/, "pedigree observer uses a resolved body target");
 assert.match(pedigreeGenetics, /target\.nodeType!==1/, "pedigree observer rejects non-Node targets");
 assert.doesNotMatch(pedigreeGenetics, /observe\(rootWindow\.document\.body/, "pedigree observer never observes a raw body lookup");
