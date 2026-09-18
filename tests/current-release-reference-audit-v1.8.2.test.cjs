@@ -18,6 +18,7 @@ const lock = JSON.parse(read("package-lock.json"));
 const pwa = read("pwa.js");
 const worker = read("service-worker.js");
 const html = read("index.html");
+const appRuntime = read("herdharbor-app-runtime.js");
 const monitoringConfig = read("herdharbor-monitoring-config.js");
 const monitoringGenerator = read("scripts/build-monitoring-config.mjs");
 const sentryAcceptance = read("scripts/sentry-production-acceptance.mjs");
@@ -61,9 +62,11 @@ test("PWA shell and HTML use the v1.8.2 release/cache identity", () => {
   assert.match(worker, /\.\/herdharbor-monitoring-config\.js\?v=1\.8\.2/);
   assert.match(html, /manifest\.json\?v=1\.8\.2/);
   assert.match(html, /herdharbor-build\.js\?v=1\.8\.2/);
-  assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.2"/);
-  assert.match(html, /Version 1\.8\.2 adds Cloud Sync V2/);
-  assert.doesNotMatch(html, /Version 1\.8\.1 adds/);
+  assert.match(html, /herdharbor-app-runtime\.js\?v=1/);
+  assert.match(worker, /\.\/herdharbor-app-runtime\.js\?v=1/);
+  assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.2"/);
+  assert.match(appRuntime, /Version 1\.8\.2 adds Cloud Sync V2/);
+  assert.doesNotMatch(appRuntime, /Version 1\.8\.1 adds/);
 });
 
 test("Cloud Sync V2 release assets are present and covered by the offline/update shell", () => {

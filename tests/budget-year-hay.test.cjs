@@ -3,8 +3,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
-const firstStart = html.indexOf("  function currentMonthKey()");
-const firstEnd = html.indexOf("  function daysFromNow", firstStart);
+const appRuntime = fs.readFileSync(path.join(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
+const firstStart = appRuntime.indexOf("  function currentMonthKey()");
+const firstEnd = appRuntime.indexOf("  function daysFromNow", firstStart);
 assert.ok(firstStart >= 0 && firstEnd > firstStart, "budget-period helpers are present");
 
 const state = {
@@ -35,7 +36,7 @@ const state = {
 const firstHelpers = new Function(
   "state",
   "todayISO",
-  `${html.slice(firstStart, firstEnd)}\nreturn {
+  `${appRuntime.slice(firstStart, firstEnd)}\nreturn {
     monthTransactions, budgetSummary, effectiveHeadCount, budgetPeriodLabel
   };`
 )(state, () => "2026-08-05");
@@ -49,15 +50,15 @@ assert.equal(firstHelpers.budgetSummary("2026").net, 250);
 assert.equal(firstHelpers.effectiveHeadCount("2026"), 12, "year view averages available monthly head-count overrides");
 assert.equal(firstHelpers.budgetPeriodLabel("2026"), "Full year 2026");
 
-const secondStart = html.indexOf("  function budgetPlansFor(");
-const secondEnd = html.indexOf("  function allocatedExpenseAmount", secondStart);
+const secondStart = appRuntime.indexOf("  function budgetPlansFor(");
+const secondEnd = appRuntime.indexOf("  function allocatedExpenseAmount", secondStart);
 assert.ok(secondStart >= 0 && secondEnd > secondStart, "yearly budget helpers are present");
 const budgetView = { year: 2026 };
 const secondHelpers = new Function(
   "state",
   "budgetView",
   "budgetSummary",
-  `${html.slice(secondStart, secondEnd)}\nreturn { budgetPlansFor, budgetYears, yearlyActualRows };`
+  `${appRuntime.slice(secondStart, secondEnd)}\nreturn { budgetPlansFor, budgetYears, yearlyActualRows };`
 )(state, budgetView, firstHelpers.budgetSummary);
 
 assert.equal(secondHelpers.budgetPlansFor("2026").length, 2, "year view combines all monthly plans in that year");
@@ -70,11 +71,11 @@ assert.equal(months[0].income, 100);
 assert.equal(months[7].income, 250);
 assert.equal(months[11].income, 0);
 
-assert.match(html, /id="budget-period"/);
-assert.match(html, />Full year</);
-assert.match(html, /id="budget-year"/);
-assert.match(html, /data-quick-production="Hay"/);
-assert.match(html, /Hay: \{ species: "", unit: "bales"/);
-assert.match(html, /"square bales", "round bales", "tons"/);
+assert.match(appRuntime, /id="budget-period"/);
+assert.match(appRuntime, />Full year</);
+assert.match(appRuntime, /id="budget-year"/);
+assert.match(appRuntime, /data-quick-production="Hay"/);
+assert.match(appRuntime, /Hay: \{ species: "", unit: "bales"/);
+assert.match(appRuntime, /"square bales", "round bales", "tons"/);
 
 console.log("full-year budget and hay product tests passed");

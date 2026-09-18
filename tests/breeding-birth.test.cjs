@@ -3,8 +3,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
-const start = html.indexOf("  function normalizeBreedingStatus");
-const end = html.indexOf("  function renderBreedings()", start);
+const appRuntime = fs.readFileSync(path.join(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
+const start = appRuntime.indexOf("  function normalizeBreedingStatus");
+const end = appRuntime.indexOf("  function renderBreedings()", start);
 assert.ok(start >= 0 && end > start, "breeding workflow helpers are present");
 
 const rules = {
@@ -20,7 +21,7 @@ const addDays = (dateString, days) => {
 
 function buildHelpers(state) {
   const animalName = (id) => state.animals.find((animal) => animal.id === id)?.name || "Unknown animal";
-  const source = html.slice(start, end);
+  const source = appRuntime.slice(start, end);
   return new Function(
     "state", "BREEDING_STATUS_OPTIONS", "GESTATION_RULES", "addDays", "animalName", "formatDate",
     `${source}\nreturn { normalizeBreedingStatus, breedingSchedule, workflowTaskId, offspringAnimalId, birthRecordIdForBreeding, birthLiveRemaining, syncBreedingReminders, syncBirthReminder, completeWorkflowTasks, breedingReportSnapshot };`
@@ -134,14 +135,14 @@ function buildHelpers(state) {
   assert.deepEqual(report.performance.map((row) => [row.name, row.attempts, row.births, row.weaned]), [["Willow", 2, 1, 5]]);
 }
 
-assert.match(html, /data-record-birth=/);
-assert.match(html, /function openOffspringCreator\(/);
-assert.match(html, /sourceBirthId: litter\.id/);
-assert.match(html, /sireId: litter\.sireId/);
-assert.match(html, /damId: litter\.damId/);
-assert.match(html, /offspringIds/);
-assert.match(html, /animal\.sourceBirthId = ""/);
-assert.match(html, /id="breeding-year-filter"/);
-assert.match(html, /id="download-breeding-report"/);
+assert.match(appRuntime, /data-record-birth=/);
+assert.match(appRuntime, /function openOffspringCreator\(/);
+assert.match(appRuntime, /sourceBirthId: litter\.id/);
+assert.match(appRuntime, /sireId: litter\.sireId/);
+assert.match(appRuntime, /damId: litter\.damId/);
+assert.match(appRuntime, /offspringIds/);
+assert.match(appRuntime, /animal\.sourceBirthId = ""/);
+assert.match(appRuntime, /id="breeding-year-filter"/);
+assert.match(appRuntime, /id="download-breeding-report"/);
 
 console.log("breeding, birth, reminder, offspring, and performance tests passed");

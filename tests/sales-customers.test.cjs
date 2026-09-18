@@ -3,8 +3,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
-const start = html.indexOf("  function customerName(customerId)");
-const end = html.indexOf("  function renderSales()", start);
+const appRuntime = fs.readFileSync(path.join(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
+const start = appRuntime.indexOf("  function customerName(customerId)");
+const end = appRuntime.indexOf("  function renderSales()", start);
 assert.ok(start >= 0 && end > start, "sales and payment helpers are present");
 
 let nextId = 1;
@@ -15,7 +16,7 @@ const state = {
   payments: [],
   transactions: []
 };
-const source = html.slice(start, end);
+const source = appRuntime.slice(start, end);
 const helpers = new Function(
   "state", "uid", "todayISO",
   `${source}\nreturn { customerName, saleItems, saleAnimals, saleSubtotal, saleTotal, salePayments, salePaid, saleBalance, saleNumberForId, syncSalePaymentIncome, applySaleAnimalStatuses };`
@@ -83,20 +84,20 @@ code.addData("https://app.herdharbor.com/?animal=animal-1");
 code.make();
 assert.match(code.createSvgTag({ scalable: true }), /<svg/);
 
-assert.match(html, /function renderSales\(\)/);
-assert.match(html, /function openCustomerForm\(/);
-assert.match(html, /function openSaleForm\(/);
-assert.match(html, /function printSaleDocument\(/);
-assert.match(html, /function exportAnimalTransfer\(/);
-assert.match(html, /function handleTransferImport\(/);
-assert.match(html, /function openAnimalQrCardForm\(/);
-assert.match(html, /function transferRecordKey\(/);
-assert.match(html, /Complete the sale before creating its animal transfer file/);
-assert.match(html, /Its total cannot be reduced below that amount/);
-assert.match(html, /popup\.opener = null/);
-const transferableSource = html.slice(html.indexOf("  function transferableAnimal("), html.indexOf("  function transferRecordKey("));
+assert.match(appRuntime, /function renderSales\(\)/);
+assert.match(appRuntime, /function openCustomerForm\(/);
+assert.match(appRuntime, /function openSaleForm\(/);
+assert.match(appRuntime, /function printSaleDocument\(/);
+assert.match(appRuntime, /function exportAnimalTransfer\(/);
+assert.match(appRuntime, /function handleTransferImport\(/);
+assert.match(appRuntime, /function openAnimalQrCardForm\(/);
+assert.match(appRuntime, /function transferRecordKey\(/);
+assert.match(appRuntime, /Complete the sale before creating its animal transfer file/);
+assert.match(appRuntime, /Its total cannot be reduced below that amount/);
+assert.match(appRuntime, /popup\.opener = null/);
+const transferableSource = appRuntime.slice(appRuntime.indexOf("  function transferableAnimal("), appRuntime.indexOf("  function transferRecordKey("));
 assert.doesNotMatch(transferableSource, /notes/, "private animal notes are excluded from transfer files");
 assert.match(html, /data-route="sales"/);
-assert.match(html, /status: "Active"/, "Animals still default to Active after the sales release");
+assert.match(appRuntime, /status: "Active"/, "Animals still default to Active after the sales release");
 
 console.log("sales, customers, payments, documents, transfers, and QR tests passed");

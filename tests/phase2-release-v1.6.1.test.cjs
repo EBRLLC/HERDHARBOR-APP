@@ -6,7 +6,7 @@ const root=path.join(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 
 test('current release build identity has one authoritative source',()=>{
-  const build=read('herdharbor-build.js'),html=read('index.html'),pwa=read('pwa.js');
+  const build=read('herdharbor-build.js'),appRuntime=read('herdharbor-app-runtime.js'),pwa=read('pwa.js');
   const version=build.match(/version:\s*"([^"]+)"/)?.[1];
   const buildId=build.match(/buildId:\s*"([^"]+)"/)?.[1];
   assert.ok(['1.7.1','1.8.0','1.8.1','1.8.2'].includes(version),`unexpected web release ${version}`);
@@ -14,15 +14,15 @@ test('current release build identity has one authoritative source',()=>{
   if(version==='1.8.0')assert.match(buildId,/^subscription-engine-/);
   if(version==='1.8.1')assert.match(buildId,/^october-subscription-launch-/);
   if(version==='1.8.2')assert.match(buildId,/^cloud-sync-v2-/);
-  assert.match(html,/HerdHarborBuild\?\.version/);
+  assert.match(appRuntime,/HerdHarborBuild\?\.version/);
   assert.match(pwa,/HerdHarborBuild\?\.version/);
 });
 
 test('sync state is pinned in the top bar and settings build details are compact',()=>{
-  const html=read('index.html');
+  const html=read('index.html'),appRuntime=read('herdharbor-app-runtime.js');
   assert.match(html,/id="topbar-sync"/);
   assert.match(html,/id="topbar-sync-label"/);
-  assert.match(html,/<details class="settings-about">/);
+  assert.match(appRuntime,/<details class="settings-about">/);
 });
 
 test('new genetics engine is loaded after compatibility runtimes and cached offline',()=>{

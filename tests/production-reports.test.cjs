@@ -3,8 +3,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
-const start = html.indexOf("  function productionSpecies(record)");
-const end = html.indexOf("  function renderBudget()", start);
+const appRuntime = fs.readFileSync(path.join(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
+const start = appRuntime.indexOf("  function productionSpecies(record)");
+const end = appRuntime.indexOf("  function renderBudget()", start);
 assert.ok(start >= 0 && end > start, "production reporting helpers are present");
 
 const state = {
@@ -83,7 +84,7 @@ const defaults = {
   Hay: { species: "", unit: "bales" },
   Other: { species: "", unit: "other" }
 };
-const source = html.slice(start, end);
+const source = appRuntime.slice(start, end);
 const buildHelpers = new Function(
   "state",
   "animalName",
@@ -168,11 +169,11 @@ assert.equal(quickHay.scope, "Operation");
 assert.equal(quickHay.species, "");
 assert.equal(quickHay.unit, "bales");
 
-assert.match(html, /data-quick-production="Eggs"/);
-assert.match(html, /data-quick-production="Milk"/);
-assert.match(html, /data-quick-production="Broilers"/);
-assert.match(html, /data-quick-production="Hay"/);
-assert.match(html, /downloadProductionReport/);
-assert.match(html, /Group \/ flock \/ herd \/ batch \/ field name/);
+assert.match(appRuntime, /data-quick-production="Eggs"/);
+assert.match(appRuntime, /data-quick-production="Milk"/);
+assert.match(appRuntime, /data-quick-production="Broilers"/);
+assert.match(appRuntime, /data-quick-production="Hay"/);
+assert.match(appRuntime, /downloadProductionReport/);
+assert.match(appRuntime, /Group \/ flock \/ herd \/ batch \/ field name/);
 
 console.log("production reports and faster-entry tests passed");

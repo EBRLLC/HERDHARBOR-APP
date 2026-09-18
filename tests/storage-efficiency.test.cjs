@@ -6,27 +6,28 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+const appRuntime = fs.readFileSync(path.join(root, "herdharbor-app-runtime.js"), "utf8");
 const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 
-assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.2"/);
-assert.match(html, /let lastSavedRaw = localStorage\.getItem\(STORAGE_KEY\) \|\| ""/);
-assert.match(html, /if \(rawValue !== lastSavedRaw\) \{[\s\S]*?localStorage\.setItem\(STORAGE_KEY, rawValue\)[\s\S]*?lastSavedRaw = rawValue/);
-assert.match(html, /function scheduleUiWork\(key, callback\)/);
-assert.match(html, /window\.requestAnimationFrame/);
-assert.match(html, /scheduleUiWork\("animal-search"/);
-assert.match(html, /scheduleUiWork\("task-search"/);
-assert.match(html, /scheduleUiWork\("sales-search"/);
-assert.match(html, /function animalById\(id\)/);
-assert.match(html, /new Map\(state\.animals\.map/);
+assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.2"/);
+assert.match(appRuntime, /let lastSavedRaw = localStorage\.getItem\(STORAGE_KEY\) \|\| ""/);
+assert.match(appRuntime, /if \(rawValue !== lastSavedRaw\) \{[\s\S]*?localStorage\.setItem\(STORAGE_KEY, rawValue\)[\s\S]*?lastSavedRaw = rawValue/);
+assert.match(appRuntime, /function scheduleUiWork\(key, callback\)/);
+assert.match(appRuntime, /window\.requestAnimationFrame/);
+assert.match(appRuntime, /scheduleUiWork\("animal-search"/);
+assert.match(appRuntime, /scheduleUiWork\("task-search"/);
+assert.match(appRuntime, /scheduleUiWork\("sales-search"/);
+assert.match(appRuntime, /function animalById\(id\)/);
+assert.match(appRuntime, /new Map\(state\.animals\.map/);
 
-assert.match(html, /id="settings-state-size"/);
-assert.match(html, /id="settings-storage-used"/);
-assert.match(html, /id="settings-storage-available"/);
-assert.match(html, /navigator\.storage\?\.estimate\?\.\(\)/);
-assert.match(html, /navigator\.storage\?\.persisted\?\.\(\)/);
+assert.match(appRuntime, /id="settings-state-size"/);
+assert.match(appRuntime, /id="settings-storage-used"/);
+assert.match(appRuntime, /id="settings-storage-available"/);
+assert.match(appRuntime, /navigator\.storage\?\.estimate\?\.\(\)/);
+assert.match(appRuntime, /navigator\.storage\?\.persisted\?\.\(\)/);
 
-assert.match(html, /maxDimension: 560,[\s\S]*?targetBytes: 65000/);
-assert.match(html, /maxDimension: 420,[\s\S]*?targetBytes: 45000/);
+assert.match(appRuntime, /maxDimension: 560,[\s\S]*?targetBytes: 65000/);
+assert.match(appRuntime, /maxDimension: 420,[\s\S]*?targetBytes: 45000/);
 
 assert.match(cloud, /const MAX_RECOVERY_SNAPSHOTS = 6/);
 assert.match(cloud, /const MAX_RECOVERY_BYTES = 8_000_000/);

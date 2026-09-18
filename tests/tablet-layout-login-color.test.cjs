@@ -6,6 +6,8 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+const shellCss = fs.readFileSync(path.join(root, "herdharbor-index-shell.css"), "utf8");
+const appRuntime = fs.readFileSync(path.join(root, "herdharbor-app-runtime.js"), "utf8");
 const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const manifest = JSON.parse(fs.readFileSync(path.join(root, "manifest.json"), "utf8"));
 const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
@@ -15,20 +17,20 @@ const showsCss = fs.readFileSync(path.join(root, "shows-v1.6.1.css"), "utf8");
 const build = fs.readFileSync(path.join(root, "herdharbor-build.js"), "utf8");
 
 // The web runtime may advance independently while the native/PWA shell shares the formal v1.8.2 identity.
-assert.match(html, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.2"/);
-assert.match(html, /html \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
-assert.match(html, /body \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
-assert.match(html, /\.app-shell \{[\s\S]*?grid-template-columns: minmax\(0, var\(--sidebar-width\)\) minmax\(0, 1fr\);[\s\S]*?overflow-x: clip;/);
-assert.match(html, /\.workspace \{[\s\S]*?max-width: 100%;[\s\S]*?min-width: 0;/);
-assert.match(html, /\.view\.active \{ width: 100%; max-width: 100%; min-width: 0;/);
-assert.match(html, /\.dashboard-grid > \*/);
-assert.match(html, /\.dashboard-grid > \*[\s\S]*?max-width: 100%;[\s\S]*?min-width: 0;/);
-assert.match(html, /@media \(max-width: 1180px\) \{[\s\S]*?\.dashboard-grid,[\s\S]*?grid-template-columns: minmax\(0, 1fr\);/);
-assert.match(html, /class="list activity-list"/);
-assert.match(html, /\.list-item-main strong \{[\s\S]*?overflow-wrap: anywhere;[\s\S]*?white-space: normal;[\s\S]*?word-break: break-word;/);
-assert.match(html, /\.list-item \{[\s\S]*?max-width: 100%;[\s\S]*?min-width: 0;[\s\S]*?overflow: hidden;/);
-assert.match(html, /\.data-table-wrap \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: auto;[\s\S]*?overscroll-behavior-inline: contain;/);
-assert.match(html, /@media \(max-width: 820px\) \{[\s\S]*?#quick-add-button[\s\S]*?width: 42px;/);
+assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.2"/);
+assert.match(shellCss, /html \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
+assert.match(shellCss, /body \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
+assert.match(shellCss, /\.app-shell \{[\s\S]*?grid-template-columns: minmax\(0, var\(--sidebar-width\)\) minmax\(0, 1fr\);[\s\S]*?overflow-x: clip;/);
+assert.match(shellCss, /\.workspace \{[\s\S]*?max-width: 100%;[\s\S]*?min-width: 0;/);
+assert.match(shellCss, /\.view\.active \{ width: 100%; max-width: 100%; min-width: 0;/);
+assert.match(shellCss, /\.dashboard-grid > \*/);
+assert.match(shellCss, /\.dashboard-grid > \*[\s\S]*?max-width: 100%;[\s\S]*?min-width: 0;/);
+assert.match(shellCss, /@media \(max-width: 1180px\) \{[\s\S]*?\.dashboard-grid,[\s\S]*?grid-template-columns: minmax\(0, 1fr\);/);
+assert.match(appRuntime, /class="list activity-list"/);
+assert.match(shellCss, /\.list-item-main strong \{[\s\S]*?overflow-wrap: anywhere;[\s\S]*?white-space: normal;[\s\S]*?word-break: break-word;/);
+assert.match(shellCss, /\.list-item \{[\s\S]*?max-width: 100%;[\s\S]*?min-width: 0;[\s\S]*?overflow: hidden;/);
+assert.match(shellCss, /\.data-table-wrap \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: auto;[\s\S]*?overscroll-behavior-inline: contain;/);
+assert.match(shellCss, /@media \(max-width: 820px\) \{[\s\S]*?#quick-add-button[\s\S]*?width: 42px;/);
 assert.equal(manifest.orientation, "portrait");
 assert.equal(manifest.version, "1.8.2");
 

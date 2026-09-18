@@ -195,6 +195,7 @@ test("v1.6.5 UI assets cover charts, colors, mobile, dark mode, and offline star
   const js = fs.readFileSync(path.join(root, "analytics-v1.6.1.js"), "utf8");
   const css = fs.readFileSync(path.join(root, "analytics-v1.6.1.css"), "utf8");
   const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+  const appRuntime = fs.readFileSync(path.join(root, "herdharbor-app-runtime.js"), "utf8");
   const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
   assert.match(js, /function lineChart/);
   assert.match(js, /function barChart/);
@@ -207,7 +208,7 @@ test("v1.6.5 UI assets cover charts, colors, mobile, dark mode, and offline star
   assert.match(css, /@media \(max-width: 700px\)/);
   assert.match(css, /html\[data-theme="dark"\]/);
   assert.match(css, /overflow-x: auto/);
-  assert.match(html, /preferredWeightDisplay/);
+  assert.match(appRuntime, /preferredWeightDisplay/);
   assert.match(worker, /market-analytics-v1\.6\.5\.js/);
   assert.match(worker, /analytics-v1\.6\.1\.js\?v=1\.7\.1/);
 });

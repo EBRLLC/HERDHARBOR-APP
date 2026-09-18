@@ -119,15 +119,15 @@ test("allowlist serializer rejects every unapproved field, including identity an
 });
 
 test("asking price, listing snapshot, and actual sale price remain distinct in the canonical app", () => {
-  const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
-  const statusStart = html.indexOf("  function applySaleAnimalStatuses(");
-  const statusEnd = html.indexOf("  function renderSales()", statusStart);
-  const statusSource = html.slice(statusStart, statusEnd);
+  const appRuntime = fs.readFileSync(path.join(root, "herdharbor-app-runtime.js"), "utf8");
+  const statusStart = appRuntime.indexOf("  function applySaleAnimalStatuses(");
+  const statusEnd = appRuntime.indexOf("  function renderSales()", statusStart);
+  const statusSource = appRuntime.slice(statusStart, statusEnd);
   assert.doesNotMatch(statusSource, /animal\.askingPrice\s*=/);
-  assert.match(html, /listedPriceAtSale/);
-  assert.match(html, /salePrice:\s*price\.toFixed/);
-  assert.match(html, /previousSale\?\.status === "Completed"/);
-  assert.match(html, /listedPriceAtSale = null/);
+  assert.match(appRuntime, /listedPriceAtSale/);
+  assert.match(appRuntime, /salePrice:\s*price\.toFixed/);
+  assert.match(appRuntime, /previousSale\?\.status === "Completed"/);
+  assert.match(appRuntime, /listedPriceAtSale = null/);
 });
 
 test("backend constructs facts from canonical state and exposes aggregates only after threshold", () => {
