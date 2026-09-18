@@ -217,3 +217,33 @@ test("service worker keeps heavy tools out of APP_SHELL and runtime-caches them"
   assert.ok(worker.includes('"/herdharbor-optional-tools.js"'));
   assert.match(worker, /return caches\.match\(request\)/);
 });
+
+
+test("transfer import cleanup remains independent from optional spreadsheet state", () => {
+  const start = runtime.indexOf("async function handleTransferImport(event)");
+  const end = runtime.indexOf("\n  function renderBudget()", start);
+  assert.ok(start >= 0 && end > start, "transfer import function is present");
+  const transferImport = runtime.slice(start, end);
+
+  assert.match(transferImport, /const file = event\.target\.files\?\.\[0\]/);
+  assert.match(transferImport, /finally\s*\{[\s\S]*?event\.target\.value = "";[\s\S]*?\}/);
+  assert.doesNotMatch(transferImport, /\binput\.(?:value|disabled)\b/, "transfer cleanup must not use an undefined spreadsheet input variable");
+  assert.doesNotMatch(transferImport, /ensureSpreadsheetToolsReady|HerdHarborOptionalTools/, "animal transfer import stays independent from spreadsheet optional-tool loading");
+});
+
+test("spreadsheet import always clears and re-enables its captured input", () => {
+  const start = runtime.indexOf("async function handleSpreadsheetImport(event)");
+  const end = runtime.indexOf("\n  function loadDemoData()", start);
+  assert.ok(start >= 0 && end > start, "spreadsheet import function is present");
+  const spreadsheetImport = runtime.slice(start, end);
+
+  assert.match(spreadsheetImport, /const input = event\.currentTarget;/);
+  assert.match(spreadsheetImport, /const file = input\.files\?\.\[0\];/);
+  assert.match(spreadsheetImport, /input\.disabled = true;[\s\S]*?await ensureSpreadsheetToolsReady\(\)/);
+  assert.match(
+    spreadsheetImport,
+    /finally\s*\{\s*input\.value = "";\s*input\.disabled = false;\s*\}/,
+    "finally must clear and re-enable the same captured file input"
+  );
+  assert.doesNotMatch(spreadsheetImport, /finally\s*\{[\s\S]*?event\.target\.value = "";/, "cleanup must consistently use the captured input reference");
+});
