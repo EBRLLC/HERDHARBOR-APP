@@ -23,7 +23,7 @@ test("index shell keeps only the early bootstrap inline", () => {
   assert.match(inlineScripts[0], /herdharbor_theme/);
   assert.equal((html.match(/<style\b/gi) || []).length, 0, "page-owned CSS is external");
   assert.match(html, /herdharbor-index-shell\.css\?v=1/);
-  assert.match(html, /herdharbor-app-runtime\.js\?v=1/);
+  assert.match(html, /herdharbor-app-runtime\.js\?v=2/);
   assert.doesNotMatch(html, /function renderSales\(\)/);
   assert.match(appRuntime, /function renderSales\(\)/);
   assert.ok(appRuntime.length > 500000);
@@ -37,9 +37,9 @@ test("classic script and stylesheet order is preserved", () => {
   assert.ok(baseCss >= 0 && shellCssIndex > baseCss && coreCss > shellCssIndex);
 
   const analyticsRuntime = html.indexOf("analytics-v1.6.1.js?v=1.7.1");
-  const appRuntimeIndex = html.indexOf("herdharbor-app-runtime.js?v=1");
+  const appRuntimeIndex = html.indexOf("herdharbor-app-runtime.js?v=2");
   assert.ok(analyticsRuntime >= 0 && appRuntimeIndex > analyticsRuntime);
-  assert.doesNotMatch(html, /<script[^>]+src="herdharbor-app-runtime\.js\?v=1"[^>]+(?:async|defer|type="module")/);
+  assert.doesNotMatch(html, /<script[^>]+src="herdharbor-app-runtime\.js\?v=2"[^>]+(?:async|defer|type="module")/);
 });
 
 test("static script and stylesheet references resolve once", () => {
