@@ -53,9 +53,12 @@ test("static script and stylesheet references resolve once", () => {
 });
 
 test("service worker covers both required extracted shell assets", () => {
-  for (const asset of ["herdharbor-app-runtime.js", "herdharbor-index-shell.css"]) {
+  for (const { asset, revision } of [
+    { asset: "herdharbor-app-runtime.js", revision: "2" },
+    { asset: "herdharbor-index-shell.css", revision: "1" }
+  ]) {
     const escaped = asset.replaceAll(".", "\\.");
-    assert.equal((worker.match(new RegExp("\\./" + escaped + "\\?v=1", "g")) || []).length, 1, asset + " has one precache entry");
+    assert.equal((worker.match(new RegExp("\\./" + escaped + "\\?v=" + revision, "g")) || []).length, 1, asset + " has one precache entry");
     assert.equal((worker.match(new RegExp('"/' + escaped + '"', "g")) || []).length, 1, asset + " has one network-first route");
     assert.ok(exists(asset), `missing extracted asset: ${asset}`);
   }
