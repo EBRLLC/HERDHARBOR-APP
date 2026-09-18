@@ -513,6 +513,10 @@ html[data-theme="dark"] .hh-p2-tabs button[aria-selected="true"],
     grid-template-columns: 1fr;
   }
 
+  .hh-p2-identity-layout-modal {
+    width: 100%;
+  }
+
   .hh-p2-identity-header {
     align-items: flex-start;
   }
@@ -550,8 +554,7 @@ html[data-theme="dark"] .hh-p2-tabs button[aria-selected="true"],
   }
 
   .hh-p2-identity-layout-modal {
-    width: calc(100vw - 16px);
-    max-height: calc(100vh - 16px);
+    width: 100%;
   }
 
   .hh-p2-identity-layout-row {
