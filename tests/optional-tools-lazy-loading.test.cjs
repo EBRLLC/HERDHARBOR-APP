@@ -146,6 +146,9 @@ test("spreadsheet loader is ordered and deduplicates concurrent calls", async ()
 
   await Promise.all([first, second]);
   assert.equal(scripts.length, 3, "concurrent callers share the same three script loads");
+
+  await api.ensureSpreadsheetTools();
+  assert.equal(scripts.length, 3, "later spreadsheet actions reuse already loaded tools");
 });
 
 test("QR loading stays separate from spreadsheet tooling", async () => {
