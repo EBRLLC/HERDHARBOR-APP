@@ -4,7 +4,7 @@
 
 - Starting `main` SHA: `1bae9f6b65c5cc1984f495ad07f1a31d8caebc6d`
 - Branch: `refactor/index-shell-decomposition`
-- Draft PR: #131
+- PR: #131 (created and validated in Draft before normal review)
 - Purpose: structural decomposition of `index.html` without intentional behavior changes.
 
 ## Protected behavior
@@ -132,7 +132,7 @@ Baseline:
 - inline JavaScript: 509,435 bytes across two executable inline scripts
 - raw `<style>` matches: 69,210 bytes, of which 59,157 bytes were the page-level shell stylesheet and the remainder were print/export style strings inside the application script
 
-Draft branch:
+PR branch:
 
 - `index.html`: 256,671 bytes
 - inline JavaScript: 344 bytes, the theme bootstrap only
@@ -160,7 +160,7 @@ None intended.
 
 ## Validation status
 
-Fresh Draft PR CI passed on the current branch head before this document-only finalization commit, including:
+The decomposition code head `435e440a9beaf6005bfaaee78acad1adacbe7058` passed Alpha v1.8.2 CI #153 completely, including:
 
 - pinned dependency installation
 - current v1.8.2 release contract and repository security audit
@@ -171,7 +171,7 @@ Fresh Draft PR CI passed on the current branch head before this document-only fi
 - source-mutation check
 - Android v1.8.2 release identity and unsigned bundle build/verification
 
-The final branch must still receive a fresh CI pass after this documentation commit and be re-compared with current `main` before it is considered ready to leave Draft.
+Acceptance rule: PR #131 must have a green CI run on its current head and remain synchronized with current `main` before leaving Draft. This documentation correction changes no runtime, auth, cloud-sync, subscription, PWA, or business-rule source.
 
 ## Decomposition rule followed
 
