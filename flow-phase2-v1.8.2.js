@@ -29,6 +29,225 @@
   const healthNow=state=>{try{return root.HerdHarborHealthIntelligence?.readHealthState?.()||state?.healthIntelligence||{};}catch{return state?.healthIntelligence||{};}};
   const animalById=(state,id)=>array(state,"animals").find(animal=>String(animal.id)===String(id))||null;
   const animalName=(state,id)=>animalById(state,id)?.name||"Unknown animal";
+  const IDENTITY_FIELD_KEYS=Object.freeze(["primaryId","registration","species","breed","sex","born","colorVariety","breeder","status","location","sire","dam","currentWeight"]);
+  const DEFAULT_IDENTITY_LAYOUT=Object.freeze(["primaryId","registration","species","breed","sex","born","colorVariety","breeder"]);
+  const MAX_IDENTITY_FIELDS=10;
+  const IDENTITY_FIELD_LABELS=Object.freeze({
+    primaryId:"Primary ID",
+    registration:"Registration",
+    species:"Species",
+    breed:"Breed",
+    sex:"Sex",
+    born:"Born",
+    colorVariety:"Color / variety",
+    breeder:"Breeder",
+    status:"Status",
+    location:"Location",
+    sire:"Sire",
+    dam:"Dam",
+    currentWeight:"Current Weight"
+  });
+
+  function identityLayoutMap(state={}){
+    const value=state?.settings?.animalIdentityLayouts;
+    return value&&typeof value==="object"&&!Array.isArray(value)?value:{};
+  }
+
+  function normalizeIdentityLayout(value){
+    if(!Array.isArray(value))return[...DEFAULT_IDENTITY_LAYOUT];
+    const supported=new Set(IDENTITY_FIELD_KEYS),seen=new Set(),normalized=[];
+    value.forEach(key=>{const field=clean(key);if(supported.has(field)&&!seen.has(field)){seen.add(field);normalized.push(field);}});
+    if(normalized.length<1||normalized.length>MAX_IDENTITY_FIELDS)return[...DEFAULT_IDENTITY_LAYOUT];
+    return normalized;
+  }
+
+  function identityLayoutFor(state={},animalId=""){
+    const layouts=identityLayoutMap(state);
+    if(!Object.prototype.hasOwnProperty.call(layouts,String(animalId)))return[...DEFAULT_IDENTITY_LAYOUT];
+    return normalizeIdentityLayout(layouts[String(animalId)]);
+  }
+
+  function validateIdentityLayout(value){
+    if(!Array.isArray(value))return{ok:false,fields:[],message:"Choose at least one Identity field."};
+    const supported=new Set(IDENTITY_FIELD_KEYS),seen=new Set(),fields=[];
+    value.forEach(key=>{const field=clean(key);if(supported.has(field)&&!seen.has(field)){seen.add(field);fields.push(field);}});
+    if(fields.length<1)return{ok:false,fields,message:"At least one Identity field must remain visible."};
+    if(fields.length>MAX_IDENTITY_FIELDS)return{ok:false,fields,message:`Choose no more than ${MAX_IDENTITY_FIELDS} Identity fields.`};
+    return{ok:true,fields,message:""};
+  }
+
+  function stateWithIdentityLayout(state={},animalId="",value=[]){
+    const validation=validateIdentityLayout(value);
+    if(!validation.ok)return{ok:false,state,message:validation.message,fields:validation.fields};
+    const layouts={...identityLayoutMap(state),[String(animalId)]:[...validation.fields]};
+    return{ok:true,state:{...state,settings:{...(state.settings||{}),animalIdentityLayouts:layouts}},message:"",fields:validation.fields};
+  }
+
+  function stateWithoutIdentityLayout(state={},animalId=""){
+    const layouts={...identityLayoutMap(state)};
+    delete layouts[String(animalId)];
+    return{...state,settings:{...(state.settings||{}),animalIdentityLayouts:layouts}};
+  }
+
+  function normalizedWeightGrams(record={}){
+    const analytics=root.HerdHarborAnalytics;
+    if(typeof analytics?.normalizeWeight==="function"){
+      const grams=analytics.normalizeWeight(record.weight,record.weightUnit||"lb",record.weightOunces);
+      return Number.isFinite(Number(grams))?Number(grams):null;
+    }
+    const amount=Number(record.weight),extra=Number(record.weightOunces||0);
+    if(!Number.isFinite(amount))return null;
+    const unit=lower(record.weightUnit||"lb").replace(/\s+/g,"");
+    if(unit==="lb+oz"||unit==="lboz")return amount*453.59237+(Number.isFinite(extra)?extra:0)*28.349523125;
+    const factors={lb:453.59237,lbs:453.59237,oz:28.349523125,kg:1000,g:1};
+    return factors[unit]?amount*factors[unit]:null;
+  }
+
+  function displayWeightGrams(grams,unit="lb"){
+    const analytics=root.HerdHarborAnalytics;
+    if(typeof analytics?.displayWeight==="function")return analytics.displayWeight(grams,unit);
+    if(!Number.isFinite(Number(grams)))return"—";
+    const value=Number(grams),canonical=lower(unit||"lb").replace(/\s+/g,"");
+    const decimal=(number,digits=2)=>String(Number(Number(number).toFixed(digits)));
+    if(canonical==="lb+oz"||canonical==="lboz"){
+      const totalOunces=Math.abs(value)/28.349523125,pounds=Math.floor(totalOunces/16);
+      let ounces=Math.round((totalOunces-pounds*16)*10)/10;
+      if(ounces>=16)return`${value<0?"−":""}${pounds+1} lb 0 oz`;
+      return`${value<0?"−":""}${pounds} lb ${decimal(ounces,1)} oz`;
+    }
+    const factors={lb:453.59237,oz:28.349523125,kg:1000,g:1},chosen=factors[canonical]?canonical:"lb";
+    return`${decimal(value/factors[chosen],2)} ${chosen}`;
+  }
+
+  function weightRecordDateKey(record={}){
+    const value=clean(record?.date).slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return"";
+    const date=new Date(`${value}T12:00:00Z`);
+    return!Number.isNaN(date.getTime())&&date.toISOString().slice(0,10)===value?value:"";
+  }
+
+  function latestWeightRecord(state={},animalId=""){
+    return array(state,"health")
+      .map((record,index)=>({record,index,date:weightRecordDateKey(record)}))
+      .filter(({record,date})=>String(record?.animalId||"")===String(animalId)&&clean(record?.weight)!==""&&normalizedWeightGrams(record)!==null&&date)
+      .sort((left,right)=>right.date.localeCompare(left.date)||String(right.record.createdAt||"").localeCompare(String(left.record.createdAt||""))||right.index-left.index)[0]?.record||null;
+  }
+
+  function formatRecordedDate(value){
+    if(!value)return"";
+    const date=new Date(`${String(value).slice(0,10)}T12:00:00`);
+    return Number.isNaN(date.getTime())?clean(value):date.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+  }
+
+  function identityField(state={},animal={},key=""){
+    const empty="—";
+    if(key==="primaryId")return{key,label:IDENTITY_FIELD_LABELS[key],value:animal.earTagNumber||animal.tag||animal.tattoo||empty};
+    if(key==="registration")return{key,label:IDENTITY_FIELD_LABELS[key],value:animal.registrationNumber||empty};
+    if(key==="species")return{key,label:IDENTITY_FIELD_LABELS[key],value:animal.species||empty};
+    if(key==="breed")return{key,label:IDENTITY_FIELD_LABELS[key],value:animal.breed||empty};
+    if(key==="sex")return{key,label:IDENTITY_FIELD_LABELS[key],value:animal.sex||empty};
+    if(key==="born")return{key,label:IDENTITY_FIELD_LABELS[key],value:formatDate(animal.dob)};
+    if(key==="colorVariety")return{key,label:IDENTITY_FIELD_LABELS[key],value:[animal.color,animal.variety].filter(Boolean).join(" · ")||empty};
+    if(key==="breeder")return{key,label:IDENTITY_FIELD_LABELS[key],value:animal.breeder||empty};
+    if(key==="status")return{key,label:IDENTITY_FIELD_LABELS[key],value:animal.status||empty};
+    if(key==="location")return{key,label:IDENTITY_FIELD_LABELS[key],value:animal.location||empty};
+    if(key==="sire"){const parent=animalById(state,animal.sireId);return{key,label:IDENTITY_FIELD_LABELS[key],value:parent?animalName(state,animal.sireId):empty};}
+    if(key==="dam"){const parent=animalById(state,animal.damId);return{key,label:IDENTITY_FIELD_LABELS[key],value:parent?animalName(state,animal.damId):empty};}
+    if(key==="currentWeight"){
+      const record=latestWeightRecord(state,animal.id);
+      if(!record)return{key,label:IDENTITY_FIELD_LABELS[key],value:"No weight recorded",detail:""};
+      const grams=normalizedWeightGrams(record),unit=state?.settings?.preferredWeightDisplay||"lb";
+      return{key,label:IDENTITY_FIELD_LABELS[key],value:displayWeightGrams(grams,unit),detail:record.date?`Recorded ${formatRecordedDate(record.date)}`:""};
+    }
+    return null;
+  }
+
+  function identityRows(state={},animal={}){
+    return identityLayoutFor(state,animal.id).map(key=>identityField(state,animal,key)).filter(Boolean);
+  }
+
+  function persistIdentityLayout(animalId,value){
+    const current=stateNow(),next=stateWithIdentityLayout(current,animalId,value);
+    if(!next.ok){root.HerdHarborApp?.toast?.(next.message,"error");return false;}
+    const committed=root.HerdHarborApp?.commitState?.(next.state,"Identity layout saved.");
+    if(committed===false)return false;
+    renderProfile();
+    return true;
+  }
+
+  function resetIdentityLayout(animalId){
+    const next=stateWithoutIdentityLayout(stateNow(),animalId);
+    const committed=root.HerdHarborApp?.commitState?.(next,"Identity layout reset to HerdHarbor default.");
+    if(committed===false)return false;
+    renderProfile();
+    return true;
+  }
+
+  function identityLayoutDialogBody(draft,error=""){
+    const selected=new Set(draft);
+    const visible=draft.map((key,index)=>`<div class="hh-p2-identity-layout-row"><label><input type="checkbox" data-hh-p2-identity-toggle="${esc(key)}" checked><span>${esc(IDENTITY_FIELD_LABELS[key]||key)}</span></label><div class="hh-p2-identity-order"><button type="button" class="button button-ghost button-small" data-hh-p2-identity-move="up" data-field="${esc(key)}" ${index===0?"disabled":""} aria-label="Move ${esc(IDENTITY_FIELD_LABELS[key]||key)} up">↑</button><button type="button" class="button button-ghost button-small" data-hh-p2-identity-move="down" data-field="${esc(key)}" ${index===draft.length-1?"disabled":""} aria-label="Move ${esc(IDENTITY_FIELD_LABELS[key]||key)} down">↓</button></div></div>`).join("");
+    const available=IDENTITY_FIELD_KEYS.filter(key=>!selected.has(key)).map(key=>`<label class="hh-p2-identity-available"><input type="checkbox" data-hh-p2-identity-toggle="${esc(key)}"><span>${esc(IDENTITY_FIELD_LABELS[key]||key)}</span></label>`).join("");
+    return`<p class="muted">Choose up to ${MAX_IDENTITY_FIELDS} fields for this animal. These controls change only the summary display; the animal record itself is not changed.</p>
+      <div class="hh-p2-identity-layout-count"><strong>${draft.length} visible</strong><span>Maximum ${MAX_IDENTITY_FIELDS}</span></div>
+      ${error?`<p class="hh-p2-identity-layout-error" role="alert">${esc(error)}</p>`:""}
+      <h4>Visible fields</h4>
+      <div class="hh-p2-identity-layout-list">${visible}</div>
+      <h4>Available fields</h4>
+      <div class="hh-p2-identity-available-grid">${available||'<span class="muted">All supported fields are already visible.</span>'}</div>
+      <div class="modal-actions"><button type="button" class="button button-ghost" data-hh-p2-identity-reset>Reset to HerdHarbor default</button><button type="button" class="button button-ghost" data-hh-p2-identity-close>Cancel</button><button type="button" class="button button-primary" data-hh-p2-identity-save>Save layout</button></div>`;
+  }
+
+  function openIdentityLayoutDialog(animalId,trigger=null){
+    const animal=animalById(stateNow(),animalId);
+    if(!animal||!root.document)return false;
+    root.document.querySelector("#hh-p2-identity-layout-modal")?.remove();
+    let draft=identityLayoutFor(stateNow(),animalId),error="";
+    const overlay=root.document.createElement("div");
+    overlay.id="hh-p2-identity-layout-modal";
+    overlay.className="modal-overlay active hh-p2-identity-layout-overlay";
+    overlay.innerHTML=`<section class="modal hh-p2-identity-layout-modal" role="dialog" aria-modal="true" aria-labelledby="hh-p2-identity-layout-title"><div class="modal-header"><strong id="hh-p2-identity-layout-title">Customize Identity · ${esc(animal.name||"Animal")}</strong><button type="button" class="icon-button" data-hh-p2-identity-close aria-label="Close Identity customization">×</button></div><div class="modal-content" data-hh-p2-identity-dialog-body></div></section>`;
+    const body=overlay.querySelector("[data-hh-p2-identity-dialog-body]");
+    const rerender=()=>{if(body)body.innerHTML=identityLayoutDialogBody(draft,error);};
+    const close=()=>{
+      overlay.remove();
+      const currentTrigger=root.document?.querySelector(`[data-hh-p2-identity-settings="${cssEscape(animalId)}"]`);
+      (currentTrigger||trigger)?.focus?.();
+    };
+    const onKeydown=event=>{if(event.key==="Escape"){event.preventDefault();close();}};
+    overlay.addEventListener("keydown",onKeydown);
+    overlay.addEventListener("click",event=>{
+      if(event.target===overlay||event.target.closest?.("[data-hh-p2-identity-close]")){event.preventDefault();close();return;}
+      const move=event.target.closest?.("[data-hh-p2-identity-move]");
+      if(move){
+        event.preventDefault();const key=move.dataset.field,index=draft.indexOf(key),offset=move.dataset.hhP2IdentityMove==="up"?-1:1,next=index+offset;
+        if(index>=0&&next>=0&&next<draft.length){[draft[index],draft[next]]=[draft[next],draft[index]];error="";rerender();}
+        return;
+      }
+      if(event.target.closest?.("[data-hh-p2-identity-reset]")){event.preventDefault();draft=[...DEFAULT_IDENTITY_LAYOUT];error="";rerender();return;}
+      if(event.target.closest?.("[data-hh-p2-identity-save]")){
+        event.preventDefault();const validation=validateIdentityLayout(draft);
+        if(!validation.ok){error=validation.message;rerender();return;}
+        if(persistIdentityLayout(animalId,validation.fields))close();
+      }
+    });
+    overlay.addEventListener("change",event=>{
+      const toggle=event.target.closest?.("[data-hh-p2-identity-toggle]");if(!toggle)return;
+      const key=toggle.dataset.hhP2IdentityToggle;
+      if(toggle.checked){
+        if(draft.includes(key))return;
+        if(draft.length>=MAX_IDENTITY_FIELDS){error=`Choose no more than ${MAX_IDENTITY_FIELDS} Identity fields.`;rerender();return;}
+        draft=[...draft,key];error="";
+      }else{
+        if(draft.length<=1){error="At least one Identity field must remain visible.";rerender();return;}
+        draft=draft.filter(item=>item!==key);error="";
+      }
+      rerender();
+    });
+    (root.document.body||root.document.documentElement).appendChild(overlay);
+    rerender();
+    body?.querySelector("input")?.focus?.();
+    return true;
+  }
 
   function normalizeTab(tab="overview"){
     const value=lower(tab);
@@ -106,6 +325,8 @@
     view.addEventListener("click",event=>{
       const back=event.target.closest?.("[data-hh-p2-back]");
       if(back){event.preventDefault();backToAnimals();return;}
+      const identitySettings=event.target.closest?.("[data-hh-p2-identity-settings]");
+      if(identitySettings){event.preventDefault();openIdentityLayoutDialog(identitySettings.dataset.hhP2IdentitySettings||activeProfile?.animalId||"",identitySettings);return;}
       const tabButton=event.target.closest?.("[data-hh-p2-tab]");
       if(tabButton){event.preventDefault();selectTab(tabButton.dataset.hhP2Tab||"overview");return;}
       const action=event.target.closest?.("[data-hh-p2-action]");
@@ -144,19 +365,6 @@
     return`<span>${esc(initials)}</span>`;
   }
 
-  function identityRows(animal={}){
-    return[
-      ["Primary ID",animal.earTagNumber||animal.tag||animal.tattoo||"—"],
-      ["Registration",animal.registrationNumber||"—"],
-      ["Species",animal.species||"—"],
-      ["Breed",animal.breed||"—"],
-      ["Sex",animal.sex||"—"],
-      ["Born",formatDate(animal.dob)],
-      ["Color / variety",[animal.color,animal.variety].filter(Boolean).join(" · ")||"—"],
-      ["Breeder",animal.breeder||"—"]
-    ];
-  }
-
   function recordList(rows=[],empty="No records yet."){
     if(!rows.length)return`<div class="hh-p2-empty"><strong>${esc(empty)}</strong></div>`;
     return`<div class="hh-p2-record-list">${rows.map(row=>`<article class="hh-p2-record"><div><strong>${esc(row.title||"Record")}</strong>${row.detail?`<small>${esc(row.detail)}</small>`:""}</div><span>${esc(row.meta||"")}</span></article>`).join("")}</div>`;
@@ -164,14 +372,14 @@
 
   function overviewPanel(state,model,lifecycle){
     const animal=model.animal;
-    const rows=identityRows(animal);
+    const rows=identityRows(state,animal);
     const recent=timelineRows(state,animal.id).slice(0,8).map(row=>({title:row.title,detail:row.detail,meta:`${formatDate(row.date)} · ${row.type}`}));
     const latestBreeding=lifecycle.latestBreeding;
     const latestSale=lifecycle.latestSale;
     const latestTransfer=lifecycle.latestTransfer;
     const healthCount=(model.health?.legacy?.length||0)+(model.health?.episodes?.length||0)+(model.health?.care?.length||0)+(model.health?.groups?.length||0);
     return`<div class="hh-p2-overview-grid">
-      <section class="panel hh-p2-summary-card"><div class="panel-header"><h3>Identity</h3><small>Canonical animal record</small></div><div class="hh-p2-detail-grid">${rows.map(([label,value])=>`<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join("")}</div></section>
+      <section class="panel hh-p2-summary-card"><div class="panel-header hh-p2-identity-header"><h3>Identity</h3><div class="hh-p2-identity-tools"><small>Canonical animal record</small><button type="button" class="icon-button hh-p2-identity-settings" data-hh-p2-identity-settings="${esc(animal.id)}" aria-label="Customize Identity" title="Customize Identity">⚙</button></div></div><div class="hh-p2-detail-grid">${rows.map(row=>`<div data-hh-p2-identity-field="${esc(row.key)}"><span>${esc(row.label)}</span><strong>${esc(row.value)}</strong>${row.detail?`<small class="hh-p2-identity-detail">${esc(row.detail)}</small>`:""}</div>`).join("")}</div></section>
       <section class="panel hh-p2-summary-card"><div class="panel-header"><h3>Lifecycle</h3><small>Live status across HerdHarbor</small></div><div class="hh-p2-lifecycle-grid">
         <div><span>Status</span><strong>${esc(lifecycle.status)}</strong><small>${lifecycle.current?"Current animal":"Historical record"}</small></div>
         <div><span>Health</span><strong>${lifecycle.quarantined?"Quarantined":`${healthCount} records`}</strong><small>${lifecycle.quarantined?"Breeding actions are blocked":"Connected health history"}</small></div>
@@ -406,6 +614,6 @@
     pendingReturn=null;
   }
 
-  const API=Object.freeze({VERSION,TABS,normalizeTab,profileHash,parseProfileHash,lifecycleSummary,openAnimalProfile,selectTab,backToAnimals,renderProfile,install,uninstall});
+  const API=Object.freeze({VERSION,TABS,IDENTITY_FIELD_KEYS,DEFAULT_IDENTITY_LAYOUT,MAX_IDENTITY_FIELDS,normalizeIdentityLayout,identityLayoutFor,validateIdentityLayout,stateWithIdentityLayout,stateWithoutIdentityLayout,weightRecordDateKey,latestWeightRecord,displayWeightGrams,identityField,identityRows,openIdentityLayoutDialog,resetIdentityLayout,normalizeTab,profileHash,parseProfileHash,lifecycleSummary,openAnimalProfile,selectTab,backToAnimals,renderProfile,install,uninstall});
   return API;
 });
