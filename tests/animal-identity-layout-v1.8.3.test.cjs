@@ -322,6 +322,7 @@ test("Identity customization uses the canonical fixed modal contract and resists
   assert.match(css, /overflow-wrap:\s*normal/);
   assert.match(css, /word-break:\s*normal/);
   assert.match(css, /grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(css, /\.hh-p2-identity-layout-overlay\s*\{[^}]*z-index:\s*11000/s);
 });
 
 test("Identity customization does not introduce a parallel storage key or animal-record persistence path", () => {
