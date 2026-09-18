@@ -119,8 +119,8 @@ test("spreadsheet loader is ordered and deduplicates concurrent calls", async ()
   const { window, scripts } = createHarness();
   const api = window.HerdHarborOptionalTools;
 
-  const first = api.ensureSpreadsheetTools();
-  const second = api.ensureSpreadsheetTools();
+  const first = api.ensureSpreadsheetTools({ importSupport: true });
+  const second = api.ensureSpreadsheetTools({ importSupport: true });
 
   assert.equal(scripts.length, 1);
   assert.match(scripts[0].src, /vendor\/jszip-3\.10\.1\.min\.js$/);
@@ -147,8 +147,35 @@ test("spreadsheet loader is ordered and deduplicates concurrent calls", async ()
   await Promise.all([first, second]);
   assert.equal(scripts.length, 3, "concurrent callers share the same three script loads");
 
-  await api.ensureSpreadsheetTools();
-  assert.equal(scripts.length, 3, "later spreadsheet actions reuse already loaded tools");
+  await api.ensureSpreadsheetTools({ importSupport: true });
+  assert.equal(scripts.length, 3, "later spreadsheet imports reuse already loaded tools");
+  assert.ok(scripts.every((script) => !/qrcode-generator/.test(script.src)), "spreadsheet import does not load QR tooling");
+});
+
+test("spreadsheet export tooling does not load import-only JSZip", async () => {
+  const { window, scripts } = createHarness();
+  const pending = window.HerdHarborOptionalTools.ensureSpreadsheetTools();
+
+  assert.equal(scripts.length, 1);
+  assert.match(scripts[0].src, /vendor\/exceljs-4\.4\.0\.min\.js$/);
+
+  window.ExcelJS = { Workbook: function Workbook() {} };
+  scripts[0].dispatch("load");
+  await waitFor(() => scripts.length === 2, "spreadsheet importer module did not begin after ExcelJS");
+  assert.match(scripts[1].src, /spreadsheet-import\.js\?v=17$/);
+
+  window.HerdHarborSpreadsheet = {
+    openImport() {},
+    downloadTemplate() {},
+    downloadExport() {},
+    downloadBreedingReport() {},
+    downloadProductionReport() {}
+  };
+  scripts[1].dispatch("load");
+  await pending;
+
+  assert.equal(scripts.length, 2);
+  assert.ok(scripts.every((script) => !/jszip|qrcode-generator/.test(script.src)), "export/report tooling loads neither JSZip nor QR");
 });
 
 test("QR loading stays separate from spreadsheet tooling", async () => {
@@ -195,7 +222,7 @@ test("spreadsheet and QR action paths await their optional tools", () => {
   assert.match(runtime, /download-production-report[\s\S]*?await ensureSpreadsheetToolsReady\(\)/);
   assert.match(runtime, /export-excel[\s\S]*?await ensureSpreadsheetToolsReady\(\)/);
   assert.match(runtime, /download-spreadsheet-template[\s\S]*?await ensureSpreadsheetToolsReady\(\)/);
-  assert.match(runtime, /async function handleSpreadsheetImport[\s\S]*?await ensureSpreadsheetToolsReady\(\)/);
+  assert.match(runtime, /async function handleSpreadsheetImport[\s\S]*?await ensureSpreadsheetToolsReady\(\{ importSupport: true \}\)/);
   assert.match(runtime, /async function openAnimalQrCardForm[\s\S]*?await ensureQrToolsReady\(\)/);
 });
 
