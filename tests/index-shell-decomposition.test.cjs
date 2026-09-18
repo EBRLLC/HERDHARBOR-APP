@@ -23,7 +23,7 @@ test("index shell keeps only the early bootstrap inline", () => {
   assert.match(inlineScripts[0], /herdharbor_theme/);
   assert.equal((html.match(/<style\b/gi) || []).length, 0, "page-owned CSS is external");
   assert.match(html, /herdharbor-index-shell\.css\?v=1/);
-  assert.match(html, /herdharbor-app-runtime\.js\?v=1/);
+  assert.match(html, /herdharbor-app-runtime\.js\?v=2/);
   assert.doesNotMatch(html, /function renderSales\(\)/);
   assert.match(appRuntime, /function renderSales\(\)/);
   assert.ok(appRuntime.length > 500000);
@@ -37,9 +37,9 @@ test("classic script and stylesheet order is preserved", () => {
   assert.ok(baseCss >= 0 && shellCssIndex > baseCss && coreCss > shellCssIndex);
 
   const analyticsRuntime = html.indexOf("analytics-v1.6.1.js?v=1.7.1");
-  const appRuntimeIndex = html.indexOf("herdharbor-app-runtime.js?v=1");
+  const appRuntimeIndex = html.indexOf("herdharbor-app-runtime.js?v=2");
   assert.ok(analyticsRuntime >= 0 && appRuntimeIndex > analyticsRuntime);
-  assert.doesNotMatch(html, /<script[^>]+src="herdharbor-app-runtime\.js\?v=1"[^>]+(?:async|defer|type="module")/);
+  assert.doesNotMatch(html, /<script[^>]+src="herdharbor-app-runtime\.js\?v=2"[^>]+(?:async|defer|type="module")/);
 });
 
 test("static script and stylesheet references resolve once", () => {
@@ -53,9 +53,12 @@ test("static script and stylesheet references resolve once", () => {
 });
 
 test("service worker covers both required extracted shell assets", () => {
-  for (const asset of ["herdharbor-app-runtime.js", "herdharbor-index-shell.css"]) {
+  for (const { asset, revision } of [
+    { asset: "herdharbor-app-runtime.js", revision: "2" },
+    { asset: "herdharbor-index-shell.css", revision: "1" }
+  ]) {
     const escaped = asset.replaceAll(".", "\\.");
-    assert.equal((worker.match(new RegExp("\\./" + escaped + "\\?v=1", "g")) || []).length, 1, asset + " has one precache entry");
+    assert.equal((worker.match(new RegExp("\\./" + escaped + "\\?v=" + revision, "g")) || []).length, 1, asset + " has one precache entry");
     assert.equal((worker.match(new RegExp('"/' + escaped + '"', "g")) || []).length, 1, asset + " has one network-first route");
     assert.ok(exists(asset), `missing extracted asset: ${asset}`);
   }
