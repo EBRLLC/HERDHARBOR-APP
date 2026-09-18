@@ -5443,8 +5443,7 @@
       if (previousState) state = previousState;
       toast(error.message || "The animal transfer could not be imported.", "error");
     } finally {
-      input.value = "";
-      input.disabled = false;
+      event.target.value = "";
     }
   }
 
@@ -7543,7 +7542,8 @@
     } catch (error) {
       toast(error.message || "The Excel workbook could not be imported.", "error");
     } finally {
-      event.target.value = "";
+      input.value = "";
+      input.disabled = false;
     }
   }
 
