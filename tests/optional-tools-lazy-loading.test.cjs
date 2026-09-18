@@ -256,6 +256,7 @@ test("service worker reuses cached optional assets offline and fails cleanly on 
     if (!online) throw new Error("offline");
     return {
       ok: true,
+      type: "basic",
       request,
       clone() {
         return this;
