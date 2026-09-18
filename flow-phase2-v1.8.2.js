@@ -29,6 +29,18 @@
   const healthNow=state=>{try{return root.HerdHarborHealthIntelligence?.readHealthState?.()||state?.healthIntelligence||{};}catch{return state?.healthIntelligence||{};}};
   const animalById=(state,id)=>array(state,"animals").find(animal=>String(animal.id)===String(id))||null;
   const animalName=(state,id)=>animalById(state,id)?.name||"Unknown animal";
+  const IDENTITY_FIELD_KEYS=Object.freeze(["primaryId","registration","species","breed","sex","born","colorVariety","breeder","status","location","sire","dam","currentWeight"]);
+  const DEFAULT_IDENTITY_LAYOUT=Object.freeze(["primaryId","registration","species","breed","sex","born","colorVariety","breeder"]);
+  const MAX_IDENTITY_FIELDS=10;
+
+  function normalizeIdentityLayout(value){
+    if(!Array.isArray(value))return[...DEFAULT_IDENTITY_LAYOUT];
+    const supported=new Set(IDENTITY_FIELD_KEYS),seen=new Set(),normalized=[];
+    value.forEach(key=>{const field=clean(key);if(supported.has(field)&&!seen.has(field)){seen.add(field);normalized.push(field);}});
+    if(normalized.length<1||normalized.length>MAX_IDENTITY_FIELDS)return[...DEFAULT_IDENTITY_LAYOUT];
+    return normalized;
+  }
+
 
   function normalizeTab(tab="overview"){
     const value=lower(tab);
@@ -406,6 +418,6 @@
     pendingReturn=null;
   }
 
-  const API=Object.freeze({VERSION,TABS,normalizeTab,profileHash,parseProfileHash,lifecycleSummary,openAnimalProfile,selectTab,backToAnimals,renderProfile,install,uninstall});
+  const API=Object.freeze({VERSION,TABS,IDENTITY_FIELD_KEYS,DEFAULT_IDENTITY_LAYOUT,MAX_IDENTITY_FIELDS,normalizeIdentityLayout,normalizeTab,profileHash,parseProfileHash,lifecycleSummary,openAnimalProfile,selectTab,backToAnimals,renderProfile,install,uninstall});
   return API;
 });
