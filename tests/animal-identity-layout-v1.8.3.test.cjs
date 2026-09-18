@@ -128,6 +128,75 @@ test("custom Identity layout survives JSON reload and normalized cloud round tri
   );
 });
 
+test("hidden fields leave canonical animal data intact and display order follows the saved layout", () => {
+  const animal = {
+    id: "a1",
+    name: "Atlas",
+    tag: "HH-1",
+    registrationNumber: "REG-22",
+    breed: "Holland Lop",
+    sex: "Male",
+    breeder: "Harbor Farm"
+  };
+  const before = JSON.parse(JSON.stringify(animal));
+  const state = {
+    animals: [animal],
+    settings: {
+      animalIdentityLayouts: {
+        a1: ["sex", "primaryId", "breed"]
+      }
+    }
+  };
+
+  const rows = Phase2.identityRows(state, animal);
+  assert.deepEqual(rows.map((row) => row.key), ["sex", "primaryId", "breed"]);
+  assert.deepEqual(rows.map((row) => row.label), ["Sex", "Primary ID", "Breed"]);
+  assert.equal(rows.some((row) => row.key === "registration"), false);
+  assert.equal(animal.registrationNumber, "REG-22");
+  assert.deepEqual(animal, before);
+});
+
+test("Current Weight recalculates from current state after another weight is recorded", () => {
+  const state = {
+    health: [
+      { id: "w1", animalId: "a1", type: "Weight", date: "2026-09-10", weight: "4", weightUnit: "lb" }
+    ],
+    settings: { preferredWeightDisplay: "lb" }
+  };
+  const animal = { id: "a1" };
+
+  const before = Phase2.identityField(state, animal, "currentWeight");
+  assert.equal(before.value, "4 lb");
+
+  state.health.push({
+    id: "w2",
+    animalId: "a1",
+    type: "Weight",
+    date: "2026-09-18",
+    weight: "4.5",
+    weightUnit: "lb"
+  });
+
+  const after = Phase2.identityField(state, animal, "currentWeight");
+  assert.equal(after.value, "4.5 lb");
+  assert.notEqual(after.value, before.value);
+});
+
+test("a stale customization entry for a deleted animal is harmless", () => {
+  const state = {
+    animals: [],
+    settings: {
+      animalIdentityLayouts: {
+        deletedAnimal: ["currentWeight", "status"]
+      }
+    }
+  };
+
+  assert.deepEqual(Phase2.identityLayoutFor(state, "deletedAnimal"), ["currentWeight", "status"]);
+  assert.equal(state.animals.length, 0);
+  assert.deepEqual(Phase2.identityLayoutFor(state, "newAnimal"), Phase2.DEFAULT_IDENTITY_LAYOUT);
+});
+
 test("Current Weight uses the newest valid recorded Weight row, not a duplicated animal value", () => {
   const state = {
     health: [
@@ -175,6 +244,39 @@ test("Sire and Dam resolve dynamically from existing animal relationships", () =
 
   const missing = Phase2.identityField(state, { id: "a2", sireId: "missing" }, "sire");
   assert.equal(missing.value, "—");
+});
+
+test("cancel path does not persist the dialog draft and rerenders do not stack profile handlers", () => {
+  const dialogStart = source.indexOf("function openIdentityLayoutDialog");
+  const dialogEnd = source.indexOf("function normalizeTab", dialogStart);
+  assert.ok(dialogStart >= 0 && dialogEnd > dialogStart);
+  const dialogSource = source.slice(dialogStart, dialogEnd);
+
+  const saveIndex = dialogSource.indexOf("[data-hh-p2-identity-save]");
+  const persistIndex = dialogSource.indexOf("persistIdentityLayout(");
+  const closeIndex = dialogSource.indexOf("[data-hh-p2-identity-close]");
+  assert.ok(saveIndex >= 0);
+  assert.ok(persistIndex > saveIndex, "persistence occurs only in the explicit Save branch");
+  assert.ok(closeIndex >= 0);
+  assert.doesNotMatch(
+    dialogSource.slice(closeIndex, saveIndex),
+    /persistIdentityLayout\(/,
+    "Cancel/close does not persist the local draft"
+  );
+
+  const ensureStart = source.indexOf("function ensureProfileView");
+  const ensureEnd = source.indexOf("function clickAnimalsRoute", ensureStart);
+  const ensureSource = source.slice(ensureStart, ensureEnd);
+  assert.ok(ensureSource.indexOf("if(view)return view;") < ensureSource.indexOf('view.addEventListener("click"'));
+  assert.match(dialogSource, /querySelector\("#hh-p2-identity-layout-modal"\)\?\.remove\(\)/);
+});
+
+test("Identity feature remains isolated from auth, billing, subscription, SQL, and cloud-sync authority", () => {
+  assert.doesNotMatch(source, /HerdHarborCloud/);
+  assert.doesNotMatch(source, /HerdHarborMembership/);
+  assert.doesNotMatch(source, /HerdHarborBilling/);
+  assert.doesNotMatch(source, /supabase/i);
+  assert.doesNotMatch(source, /stripe/i);
 });
 
 test("Identity UI exposes an accessible gear, explicit ordering controls, and responsive styling", () => {
