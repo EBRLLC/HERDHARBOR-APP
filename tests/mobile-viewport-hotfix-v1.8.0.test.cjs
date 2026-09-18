@@ -5,16 +5,17 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 
 const html = fs.readFileSync("index.html", "utf8");
+const shellCss = fs.readFileSync("herdharbor-index-shell.css", "utf8");
 const css = fs.readFileSync("mobile-viewport-hotfix-v1.8.0.css", "utf8");
 const build = fs.readFileSync("herdharbor-build.js", "utf8");
 const worker = fs.readFileSync("service-worker.js", "utf8");
 
 test("mobile viewport uses device width without forced scale", () => {
   assert.match(html, /<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">/);
-  assert.match(html, /html\s*\{[\s\S]*overflow-x:\s*hidden/);
-  assert.match(html, /body\s*\{[\s\S]*overflow-x:\s*hidden/);
-  assert.match(html, /\.app-shell\s*\{[\s\S]*min-width:\s*0/);
-  assert.match(html, /\.workspace\s*\{[\s\S]*min-width:\s*0/);
+  assert.match(shellCss, /html\s*\{[\s\S]*overflow-x:\s*hidden/);
+  assert.match(shellCss, /body\s*\{[\s\S]*overflow-x:\s*hidden/);
+  assert.match(shellCss, /\.app-shell\s*\{[\s\S]*min-width:\s*0/);
+  assert.match(shellCss, /\.workspace\s*\{[\s\S]*min-width:\s*0/);
 });
 
 test("narrow iPhone topbar cannot establish a wider layout viewport", () => {
