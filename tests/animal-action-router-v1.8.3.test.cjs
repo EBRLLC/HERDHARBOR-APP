@@ -55,9 +55,9 @@ test('router delegates to canonical domain entry points rather than creating rep
 });
 
 test('guided pedigree builder exposes the canonical subject selector the router targets', () => {
-  const html = read('index.html');
-  assert.match(html, /id="pedigree-import-form"/);
-  assert.match(html, /name="subjectAnimalId" id="pedigree-subject"/);
+  const appRuntime = read('herdharbor-app-runtime.js');
+  assert.match(appRuntime, /id="pedigree-import-form"/);
+  assert.match(appRuntime, /name="subjectAnimalId" id="pedigree-subject"/);
 });
 
 test('runtime loads the v1.8.3 router after the profile shell and before profile add-ons', () => {

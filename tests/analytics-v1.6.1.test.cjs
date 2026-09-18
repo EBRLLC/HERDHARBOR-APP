@@ -90,12 +90,13 @@ test("date ranges include exact boundaries", () => {
 test("analytics navigation, responsive assets, and offline shell are wired", () => {
   const root = path.join(__dirname, "..");
   const index = fs.readFileSync(path.join(root, "index.html"), "utf8");
+  const appRuntime = fs.readFileSync(path.join(root, "herdharbor-app-runtime.js"), "utf8");
   const css = fs.readFileSync(path.join(root, "analytics-v1.6.1.css"), "utf8");
   const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
   assert.match(index, /data-route="analytics"/);
   assert.match(index, /id="view-analytics"/);
   assert.match(index, /analytics-v1\.6\.1\.js/);
-  assert.match(index, /detail-analytics/);
+  assert.match(appRuntime, /detail-analytics/);
   assert.match(css, /@media \(max-width: 430px\)/);
   assert.match(css, /overflow-x: auto/);
   assert.match(worker, /analytics-v1\.6\.1\.js/);

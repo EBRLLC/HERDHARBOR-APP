@@ -62,13 +62,13 @@ test("pairing intelligence reports repeated standards issues without converting 
 test("1.7.0 UI integrates Standards browser, optional settings, animal evaluation, Shows, and pair intelligence",()=>{
   const ui=fs.readFileSync(path.join(__dirname,"..","standards-ui-v1.7.0.js"),"utf8");
   const build=fs.readFileSync(path.join(__dirname,"..","herdharbor-build.js"),"utf8");
-  const html=fs.readFileSync(path.join(__dirname,"..","index.html"),"utf8");
+  const appRuntime=fs.readFileSync(path.join(__dirname,"..","herdharbor-app-runtime.js"),"utf8");
   assert.match(ui,/data-route=['\"]standards/);assert.match(ui,/Evaluate Against Standard/);assert.match(ui,/arbaStandardsEnabled/);
   for(const field of ["standardEdition","arbaLeg","arbaPoints","arbaBOV","arbaBOSV","arbaBOB","arbaBOSB","arbaBIS","arbaRIS","standardsObservations"])assert.ok(ui.includes(field),`missing ${field}`);
   assert.match(ui,/HerdHarborBreedingPairHotfix/);assert.match(ui,/Standards\.pairingInsights/);assert.match(ui,/does not replace an ARBA judge/i);
   assert.match(ui,/const live=app\(\)\?\.getState\?\.\(\)/);
   assert.match(ui,/api\.commitState\(s\)/);
   assert.match(build,/standards-ui-v1\.7\.0\.js\?v=1\.7\.1/);
-  assert.match(html,/window\.HerdHarborApp = Object\.freeze/);
-  assert.match(html,/herdharbor:app-ready/);
+  assert.match(appRuntime,/window\.HerdHarborApp = Object\.freeze/);
+  assert.match(appRuntime,/herdharbor:app-ready/);
 });

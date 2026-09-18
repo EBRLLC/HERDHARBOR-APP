@@ -4,14 +4,14 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.join(__dirname, "..");
-const page = fs.readFileSync(path.join(root, "index.html"), "utf8");
+const shellCss = fs.readFileSync(path.join(root, "herdharbor-index-shell.css"), "utf8");
 const genetics = fs.readFileSync(path.join(root, "rabbit-genetics-ui-advanced-v1.6.1.js"), "utf8");
 const intelligenceCss = fs.readFileSync(path.join(root, "breeding-intelligence-v1.6.1.css"), "utf8");
 
 test("animal card photos cannot shrink when genetics adds a third action", () => {
-  assert.match(page, /\.animal-avatar\s*\{[^}]*flex:\s*0 0 52px/s);
-  assert.match(page, /\.animal-card-footer\s*\{[^}]*justify-content:\s*flex-start[^}]*flex-wrap:\s*wrap/s);
-  assert.match(page, /\.animal-card-footer \.button\s*\{\s*flex:\s*0 0 auto/);
+  assert.match(shellCss, /\.animal-avatar\s*\{[^}]*flex:\s*0 0 52px/s);
+  assert.match(shellCss, /\.animal-card-footer\s*\{[^}]*justify-content:\s*flex-start[^}]*flex-wrap:\s*wrap/s);
+  assert.match(shellCss, /\.animal-card-footer \.button\s*\{\s*flex:\s*0 0 auto/);
 });
 
 test("injected Genetics action opens the selected rabbit profile directly", () => {
