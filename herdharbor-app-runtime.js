@@ -8,6 +8,26 @@
   const ATTACHMENT_DB = "herdharbor_attachments_v1";
   const ATTACHMENT_STORE = "pedigreeDocuments";
 
+  async function ensureSpreadsheetToolsReady() {
+    const ensure = window.HerdHarborOptionalTools?.ensureSpreadsheetTools;
+    if (typeof ensure !== "function") {
+      throw new Error("The Excel tool loader is unavailable. Reload HerdHarbor and try again.");
+    }
+    const spreadsheet = await ensure();
+    if (!spreadsheet) throw new Error("The Excel tools did not finish loading. Check your connection and try again.");
+    return spreadsheet;
+  }
+
+  async function ensureQrToolsReady() {
+    const ensure = window.HerdHarborOptionalTools?.ensureQrTools;
+    if (typeof ensure !== "function") {
+      throw new Error("The QR tool loader is unavailable. Reload HerdHarbor and try again.");
+    }
+    const qrcode = await ensure();
+    if (typeof qrcode !== "function") throw new Error("The QR tool did not finish loading. Check your connection and try again.");
+    return qrcode;
+  }
+
   const defaultState = {
     profile: null,
     animals: [],
@@ -94,6 +114,7 @@
     search: ""
   };
   let deepLinkHandled = false;
+  let qrToolActionPending = false;
 
   const EXPENSE_CATEGORIES = [
     "Feed", "Hay / Fodder", "Bedding", "Veterinary", "Medication",
@@ -1084,7 +1105,7 @@
 
     $("#add-animal").addEventListener("click", () => openAnimalForm());
     $("#import-pedigree-from-animals").addEventListener("click", () => openPedigreeImport());
-    $("#print-animal-qr-cards").addEventListener("click", () => openAnimalQrCardForm());
+    $("#print-animal-qr-cards").addEventListener("click", (event) => openAnimalQrCardForm("", event.currentTarget));
     $("#animal-search").addEventListener("input", (event) => {
       animalView.search = event.currentTarget.value;
       scheduleUiWork("animal-search", () => {
@@ -1478,7 +1499,7 @@
       navigate("analytics");
     });
     $("#detail-print-pedigree").addEventListener("click", () => openPrintPedigreeForm(id));
-    $("#detail-print-qr").addEventListener("click", () => openAnimalQrCardForm(id));
+    $("#detail-print-qr").addEventListener("click", (event) => openAnimalQrCardForm(id, event.currentTarget));
     $("#detail-import-pedigree").addEventListener("click", () => openPedigreeImport(id));
     $("#detail-edit").addEventListener("click", () => openAnimalForm(id));
   }
@@ -1511,14 +1532,43 @@
     });
   }
 
-  function openAnimalQrCardForm(animalId = "") {
-    const candidates = animalId
+  async function openAnimalQrCardForm(animalId = "", triggerButton = null) {
+    if (qrToolActionPending) return;
+    let candidates = animalId
       ? state.animals.filter((animal) => animal.id === animalId)
       : qrCardCandidates();
     if (!candidates.length) {
       toast("No animals are available for QR cards with the current filters.", "error");
       return;
     }
+
+    qrToolActionPending = true;
+    const originalTriggerText = triggerButton?.textContent || "";
+    if (triggerButton) {
+      triggerButton.disabled = true;
+      triggerButton.textContent = "Loading QR…";
+    }
+    try {
+      await ensureQrToolsReady();
+    } catch (error) {
+      toast(error.message || "The QR card tool could not be loaded.", "error");
+      return;
+    } finally {
+      qrToolActionPending = false;
+      if (triggerButton) {
+        triggerButton.disabled = false;
+        triggerButton.textContent = originalTriggerText;
+      }
+    }
+
+    candidates = animalId
+      ? state.animals.filter((animal) => animal.id === animalId)
+      : qrCardCandidates();
+    if (!candidates.length) {
+      toast("No animals are available for QR cards with the current filters.", "error");
+      return;
+    }
+
     openModal("Print QR animal cards", `
       <form id="animal-qr-form">
         <div class="form-grid two">
@@ -1888,11 +1938,11 @@
     $("#add-breeding").addEventListener("click", () => openBreedingForm());
     $("#download-breeding-report").addEventListener("click", async (event) => {
       const button = event.currentTarget;
-      if (!window.HerdHarborSpreadsheet?.downloadBreedingReport) return toast("The breeding report tool did not load. Close and reopen HerdHarbor, then try again.", "error");
       button.disabled = true;
       button.textContent = "Preparing…";
       try {
-        await window.HerdHarborSpreadsheet.downloadBreedingReport({
+        const spreadsheet = await ensureSpreadsheetToolsReady();
+        await spreadsheet.downloadBreedingReport({
           breedings: rows,
           litters: reportLitters,
           animals: state.animals,
@@ -5393,7 +5443,8 @@
       if (previousState) state = previousState;
       toast(error.message || "The animal transfer could not be imported.", "error");
     } finally {
-      event.target.value = "";
+      input.value = "";
+      input.disabled = false;
     }
   }
 
@@ -5997,9 +6048,14 @@
       renderBudget();
     });
     $("#print-production-report").addEventListener("click", () => printProductionReport(productionRecords));
-    $("#download-production-report").addEventListener("click", async () => {
+    $("#download-production-report").addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = "Preparing Excel…";
       try {
-        await window.HerdHarborSpreadsheet.downloadProductionReport({
+        const spreadsheet = await ensureSpreadsheetToolsReady();
+        await spreadsheet.downloadProductionReport({
           records: productionRecords,
           summaryRows: productionRows,
           timelineRows: productionTimeline,
@@ -6019,6 +6075,9 @@
         toast("Production report downloaded.", "success");
       } catch (error) {
         toast(error?.message || "The production report could not be downloaded.", "error");
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
       }
     });
     $("#set-budget-plan").addEventListener("click", () => openBudgetPlanForm(monthKey, speciesFilter));
@@ -6915,7 +6974,8 @@
       button.disabled = true;
       button.textContent = "Preparing Excel…";
       try {
-        await window.HerdHarborSpreadsheet.downloadExport(state, {
+        const spreadsheet = await ensureSpreadsheetToolsReady();
+        await spreadsheet.downloadExport(state, {
           operationName: state.profile?.operationName || "HerdHarbor"
         });
         toast("Excel records downloaded.", "success");
@@ -6948,12 +7008,20 @@
       window.HerdHarborCloud?.downloadSafetyBackup?.();
     });
     $("#refresh-device-storage").addEventListener("click", refreshDeviceStorageSummary);
-    $("#download-spreadsheet-template").addEventListener("click", async () => {
+    $("#download-spreadsheet-template").addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = "Preparing Excel…";
       try {
-        await window.HerdHarborSpreadsheet.downloadTemplate();
+        const spreadsheet = await ensureSpreadsheetToolsReady();
+        await spreadsheet.downloadTemplate();
         toast("Excel template downloaded.", "success");
       } catch (error) {
         toast(error.message || "The Excel template could not be created.", "error");
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
       }
     });
     $("#spreadsheet-import-file").addEventListener("change", handleSpreadsheetImport);
@@ -7371,14 +7439,15 @@
   }
 
   async function handleSpreadsheetImport(event) {
-    const file = event.target.files?.[0];
+    const input = event.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
+    input.disabled = true;
     try {
-      if (!window.HerdHarborSpreadsheet) {
-        throw new Error("The Excel importer did not load. Close and reopen HerdHarbor, then try again.");
-      }
+      toast("Preparing Excel import…");
+      const spreadsheet = await ensureSpreadsheetToolsReady();
       toast("Reading Excel workbook…");
-      await window.HerdHarborSpreadsheet.openImport({
+      await spreadsheet.openImport({
         file,
         state,
         species: state.settings.species,
