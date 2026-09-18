@@ -16,7 +16,7 @@ const shows = fs.readFileSync(path.join(root, "shows-v1.6.1.js"), "utf8");
 const hardening = fs.readFileSync(path.join(root, "shows-v1.6.1-hardening.js"), "utf8");
 
 // The recovered consolidated shell remains intact; HerdHarborBuild is authoritative for the current Alpha web release.
-assert.match(html, /herdharbor-app-runtime\.js\?v=1/);
+assert.match(html, /herdharbor-app-runtime\.js\?v=2/);
 const webVersion = build.match(/version:\s*"([^"]+)"/)?.[1];
 const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
 assert.ok(["1.7.1", "1.8.0", "1.8.1", "1.8.2"].includes(webVersion), `unexpected web release ${webVersion}`);
