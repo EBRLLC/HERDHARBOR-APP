@@ -266,7 +266,8 @@ test("spreadsheet import always clears and re-enables its captured input", () =>
 
   assert.match(spreadsheetImport, /const input = event\.currentTarget;/);
   assert.match(spreadsheetImport, /const file = input\.files\?\.\[0\];/);
-  assert.match(spreadsheetImport, /input\.disabled = true;/);\n  assert.match(spreadsheetImport, /await ensureSpreadsheetToolsReady\(/);
+  assert.match(spreadsheetImport, /input\.disabled = true;/);
+  assert.match(spreadsheetImport, /await ensureSpreadsheetToolsReady\(/);
   assert.match(
     spreadsheetImport,
     /finally\s*\{\s*input\.value = "";\s*input\.disabled = false;\s*\}/,
