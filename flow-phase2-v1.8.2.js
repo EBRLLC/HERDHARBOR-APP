@@ -201,7 +201,13 @@
     overlay.innerHTML=`<section class="modal hh-p2-identity-layout-modal" role="dialog" aria-modal="true" aria-labelledby="hh-p2-identity-layout-title"><div class="modal-header"><strong id="hh-p2-identity-layout-title">Customize Identity · ${esc(animal.name||"Animal")}</strong><button type="button" class="icon-button" data-hh-p2-identity-close aria-label="Close Identity customization">×</button></div><div class="modal-content" data-hh-p2-identity-dialog-body></div></section>`;
     const body=overlay.querySelector("[data-hh-p2-identity-dialog-body]");
     const rerender=()=>{if(body)body.innerHTML=identityLayoutDialogBody(draft,error);};
-    const close=()=>{overlay.remove();trigger?.focus?.();};
+    const close=()=>{
+      overlay.remove();
+      const currentTrigger=root.document?.querySelector(`[data-hh-p2-identity-settings="${cssEscape(animalId)}"]`);
+      (currentTrigger||trigger)?.focus?.();
+    };
+    const onKeydown=event=>{if(event.key==="Escape"){event.preventDefault();close();}};
+    overlay.addEventListener("keydown",onKeydown);
     overlay.addEventListener("click",event=>{
       if(event.target===overlay||event.target.closest?.("[data-hh-p2-identity-close]")){event.preventDefault();close();return;}
       const move=event.target.closest?.("[data-hh-p2-identity-move]");
