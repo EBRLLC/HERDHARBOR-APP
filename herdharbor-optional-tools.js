@@ -85,8 +85,10 @@
     );
   }
 
-  async function ensureSpreadsheetTools() {
-    await loadScript(ASSETS.jszip, "JSZip", () => typeof window.JSZip?.loadAsync === "function");
+  async function ensureSpreadsheetTools(options = {}) {
+    if (options.importSupport) {
+      await loadScript(ASSETS.jszip, "JSZip", () => typeof window.JSZip?.loadAsync === "function");
+    }
     await loadScript(ASSETS.exceljs, "ExcelJS", () => typeof window.ExcelJS?.Workbook === "function");
     await loadScript(ASSETS.spreadsheet, "HerdHarbor spreadsheet tools", spreadsheetApiReady);
     return window.HerdHarborSpreadsheet;
