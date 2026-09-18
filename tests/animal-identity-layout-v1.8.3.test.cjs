@@ -201,7 +201,7 @@ test("Current Weight uses the newest valid recorded Weight row, not a duplicated
   const state = {
     health: [
       { id: "w1", animalId: "a1", type: "Weight", date: "2026-09-01", weight: "4", weightUnit: "lb", createdAt: "2026-09-01T10:00:00Z" },
-      { id: "x1", animalId: "a1", type: "Observation", date: "2026-09-18", weight: "99", weightUnit: "lb" },
+      { id: "x1", animalId: "a1", type: "Observation", date: "2026-09-18", weight: "4", weightOunces: "12", weightUnit: "lb+oz" },
       { id: "bad", animalId: "a1", type: "Weight", date: "2026-09-18", weight: "not-a-number", weightUnit: "lb" },
       { id: "undated", animalId: "a1", type: "Weight", weight: "99", weightUnit: "lb", createdAt: "2026-09-18T14:00:00Z" },
       { id: "bad-date", animalId: "a1", type: "Weight", date: "not-a-date", weight: "88", weightUnit: "lb", createdAt: "2026-09-18T15:00:00Z" },
@@ -211,11 +211,24 @@ test("Current Weight uses the newest valid recorded Weight row, not a duplicated
     settings: { preferredWeightDisplay: "lb+oz" }
   };
 
-  assert.equal(Phase2.latestWeightRecord(state, "a1").id, "w3");
+  assert.equal(Phase2.latestWeightRecord(state, "a1").id, "x1");
 
   const row = Phase2.identityField(state, { id: "a1" }, "currentWeight");
-  assert.equal(row.value, "4 lb 10 oz");
+  assert.equal(row.value, "4 lb 12 oz");
   assert.match(row.detail, /^Recorded /);
+});
+
+test("Current Weight follows existing weight-history semantics and uses later insertion for same-day ties", () => {
+  const state = {
+    health: [
+      { id: "first", animalId: "a1", type: "Weight", date: "2026-09-18", weight: "4", weightUnit: "lb" },
+      { id: "second", animalId: "a1", type: "Veterinary visit", date: "2026-09-18", weight: "4.25", weightUnit: "lb" }
+    ],
+    settings: { preferredWeightDisplay: "lb" }
+  };
+
+  assert.equal(Phase2.latestWeightRecord(state, "a1").id, "second");
+  assert.equal(Phase2.identityField(state, { id: "a1" }, "currentWeight").value, "4.25 lb");
 });
 
 test("Current Weight has a graceful empty state", () => {
