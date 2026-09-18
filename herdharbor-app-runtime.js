@@ -8,12 +8,12 @@
   const ATTACHMENT_DB = "herdharbor_attachments_v1";
   const ATTACHMENT_STORE = "pedigreeDocuments";
 
-  async function ensureSpreadsheetToolsReady() {
+  async function ensureSpreadsheetToolsReady(options = {}) {
     const ensure = window.HerdHarborOptionalTools?.ensureSpreadsheetTools;
     if (typeof ensure !== "function") {
       throw new Error("The Excel tool loader is unavailable. Reload HerdHarbor and try again.");
     }
-    const spreadsheet = await ensure();
+    const spreadsheet = await ensure(options);
     if (!spreadsheet) throw new Error("The Excel tools did not finish loading. Check your connection and try again.");
     return spreadsheet;
   }
@@ -7444,7 +7444,7 @@
     input.disabled = true;
     try {
       toast("Preparing Excel import…");
-      const spreadsheet = await ensureSpreadsheetToolsReady();
+      const spreadsheet = await ensureSpreadsheetToolsReady({ importSupport: true });
       toast("Reading Excel workbook…");
       await spreadsheet.openImport({
         file,
