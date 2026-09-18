@@ -292,6 +292,13 @@ test("Identity feature remains isolated from auth, billing, subscription, SQL, a
   assert.doesNotMatch(source, /stripe/i);
 });
 
+test("Identity UI uses the canonical centered HerdHarbor modal shell", () => {
+  assert.match(source, /overlay\.className="modal-backdrop hh-p2-identity-layout-overlay"/);
+  assert.match(source, /classList\.add\("modal-open"\)/);
+  assert.match(source, /classList\.remove\("modal-open"\)/);
+  assert.doesNotMatch(source, /modal-overlay active hh-p2-identity-layout-overlay/);
+});
+
 test("Identity UI exposes an accessible gear, explicit ordering controls, and responsive styling", () => {
   assert.match(source, /aria-label="Customize Identity"/);
   assert.match(source, /data-hh-p2-identity-move="up"/);
