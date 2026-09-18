@@ -305,6 +305,26 @@ test("Identity UI exposes an accessible gear, explicit ordering controls, and re
   assert.match(css, /@media \(max-width: 420px\)/);
 });
 
+test("Identity customization uses the canonical fixed modal contract and resists global checkbox sizing", () => {
+  const dialogStart = source.indexOf("function openIdentityLayoutDialog");
+  const dialogEnd = source.indexOf("function normalizeTab", dialogStart);
+  const dialogSource = source.slice(dialogStart, dialogEnd);
+
+  assert.match(dialogSource, /overlay\.className="modal-backdrop hh-p2-identity-layout-overlay"/);
+  assert.doesNotMatch(dialogSource, /modal-overlay active/);
+  assert.match(dialogSource, /classList\.add\("modal-open"\)/);
+  assert.match(dialogSource, /classList\.remove\("modal-open"\)/);
+
+  assert.match(css, /\.hh-p2-identity-layout-row input\[type="checkbox"\]/);
+  assert.match(css, /width:\s*20px/);
+  assert.match(css, /height:\s*20px/);
+  assert.match(css, /padding:\s*0/);
+  assert.match(css, /overflow-wrap:\s*normal/);
+  assert.match(css, /word-break:\s*normal/);
+  assert.match(css, /grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(css, /\.hh-p2-identity-layout-overlay\s*\{[^}]*z-index:\s*11000/s);
+});
+
 test("Identity customization does not introduce a parallel storage key or animal-record persistence path", () => {
   assert.doesNotMatch(source, /localStorage\.setItem/);
   assert.doesNotMatch(source, /sessionStorage\.setItem/);

@@ -204,12 +204,13 @@
     let draft=identityLayoutFor(stateNow(),animalId),error="";
     const overlay=root.document.createElement("div");
     overlay.id="hh-p2-identity-layout-modal";
-    overlay.className="modal-overlay active hh-p2-identity-layout-overlay";
+    overlay.className="modal-backdrop hh-p2-identity-layout-overlay";
     overlay.innerHTML=`<section class="modal hh-p2-identity-layout-modal" role="dialog" aria-modal="true" aria-labelledby="hh-p2-identity-layout-title"><div class="modal-header"><strong id="hh-p2-identity-layout-title">Customize Identity · ${esc(animal.name||"Animal")}</strong><button type="button" class="icon-button" data-hh-p2-identity-close aria-label="Close Identity customization">×</button></div><div class="modal-content" data-hh-p2-identity-dialog-body></div></section>`;
     const body=overlay.querySelector("[data-hh-p2-identity-dialog-body]");
     const rerender=()=>{if(body)body.innerHTML=identityLayoutDialogBody(draft,error);};
     const close=()=>{
       overlay.remove();
+      root.document?.body?.classList.remove("modal-open");
       const currentTrigger=root.document?.querySelector(`[data-hh-p2-identity-settings="${cssEscape(animalId)}"]`);
       (currentTrigger||trigger)?.focus?.();
     };
@@ -244,6 +245,7 @@
       rerender();
     });
     (root.document.body||root.document.documentElement).appendChild(overlay);
+    root.document?.body?.classList.add("modal-open");
     rerender();
     body?.querySelector("input")?.focus?.();
     return true;
