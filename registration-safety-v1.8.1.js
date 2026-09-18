@@ -574,6 +574,7 @@
       const node = form.querySelector(selector);
       if (node && value != null) node.value = String(value);
     }
+    const country = form.querySelector("[data-hh-reg-country]");
     const savedCountryCode = String(profile.countryCode || "US").trim().toUpperCase();
     if (country && /^[A-Z]{2}$/.test(savedCountryCode)) {
       const hasOption = Array.from(country.options || []).some((option) => option.value === savedCountryCode);
@@ -608,7 +609,6 @@
 
     const dob = form.querySelector("[data-hh-reg-dob]");
     const usage = form.querySelector("[data-hh-reg-usage]");
-    const country = form.querySelector("[data-hh-reg-country]");
     dob?.addEventListener("input", () => showAgeWarning(form));
     usage?.addEventListener("change", () => syncConditionalFields(form));
     syncConditionalFields(form);
