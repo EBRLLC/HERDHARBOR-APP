@@ -226,6 +226,68 @@ test("spreadsheet and QR action paths await their optional tools", () => {
   assert.match(runtime, /async function openAnimalQrCardForm[\s\S]*?await ensureQrToolsReady\(\)/);
 });
 
+test("service worker reuses cached optional assets offline and fails cleanly on a first-use miss", async () => {
+  const stored = new Map();
+  let online = true;
+  const cache = {
+    async put(request, response) {
+      stored.set(request.url || String(request), response);
+    }
+  };
+  const caches = {
+    async open() {
+      return cache;
+    },
+    async match(request) {
+      return stored.get(request.url || String(request));
+    },
+    async keys() {
+      return [];
+    },
+    async delete() {
+      return true;
+    }
+  };
+  const self = {
+    location: { href: "https://app.herdharbor.com/service-worker.js" },
+    addEventListener() {}
+  };
+  const fetch = async (request) => {
+    if (!online) throw new Error("offline");
+    return {
+      ok: true,
+      request,
+      clone() {
+        return this;
+      }
+    };
+  };
+  const context = vm.createContext({
+    self,
+    caches,
+    fetch,
+    Request,
+    URL,
+    Promise,
+    Error,
+    console
+  });
+  vm.runInContext(worker, context);
+
+  const networkFirst = vm.runInContext("networkFirst", context);
+  const cachedRequest = new Request("https://app.herdharbor.com/vendor/exceljs-4.4.0.min.js");
+  const onlineResponse = await networkFirst(cachedRequest);
+  assert.equal(onlineResponse.ok, true);
+  assert.ok(stored.has(cachedRequest.url), "successful optional fetch is cached");
+
+  online = false;
+  const offlineCached = await networkFirst(cachedRequest);
+  assert.equal(offlineCached, onlineResponse, "previously cached optional asset is reused offline");
+
+  const firstUseOffline = await networkFirst(new Request("https://app.herdharbor.com/vendor/qrcode-generator-1.4.4.js"));
+  assert.equal(firstUseOffline, undefined, "first-use offline miss remains unavailable without breaking the shell");
+});
+
 test("service worker keeps heavy tools out of APP_SHELL and runtime-caches them", () => {
   const shell = appShellBlock();
   for (const asset of heavyAssets) {
