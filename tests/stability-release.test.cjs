@@ -7,6 +7,7 @@ const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const appRuntime = fs.readFileSync(path.join(root, "herdharbor-app-runtime.js"), "utf8");
 const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const spreadsheet = fs.readFileSync(path.join(root, "spreadsheet-import.js"), "utf8");
+const optionalTools = fs.readFileSync(path.join(root, "herdharbor-optional-tools.js"), "utf8");
 const serviceWorker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 const pwa = fs.readFileSync(path.join(root, "pwa.js"), "utf8");
 const build = fs.readFileSync(path.join(root, "herdharbor-build.js"), "utf8");
@@ -96,7 +97,8 @@ assert.match(spreadsheet, /Download issue report/);
 
 assert.match(serviceWorker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1|8\.2)-/);
 if (webVersion === "1.8.1") assert.match(serviceWorker, /v1\.8\.1-alpha-october-subscription-launch-/);
-assert.match(serviceWorker, /spreadsheet-import\.js\?v=17/);
+assert.match(optionalTools, /spreadsheet-import\.js\?v=17/);
+assert.match(serviceWorker, /"\/spreadsheet-import\.js"/);
 assert.match(serviceWorker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(serviceWorker, /herdharbor-cloud\.js\?v=20/);
 assert.match(serviceWorker, /symptom-guide\.js\?v=1/);
