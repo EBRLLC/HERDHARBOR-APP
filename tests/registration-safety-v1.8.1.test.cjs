@@ -17,6 +17,7 @@ test("signup collects the minimum identity and contact fields for fraud review",
     "Legal last name",
     "Date of birth",
     "Phone number",
+    "Country",
     "State / province / region",
     "ZIP / postal code",
     "Farm, rabbitry, club, or business name",
@@ -24,6 +25,33 @@ test("signup collects the minimum identity and contact fields for fraud review",
   ]) assert.match(ui, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(ui, /data-hh-reg-website/);
   assert.doesNotMatch(ui, /social security|\bssn\b|driver'?s license|passport number|government id/i);
+});
+
+test("signup country selector defaults to United States while storing ISO codes", () => {
+  assert.match(ui, /const COUNTRY_OPTIONS = Object\.freeze/);
+  assert.match(ui, /\["US", "United States"\]/);
+  assert.match(ui, /\["CA", "Canada"\]/);
+  assert.match(ui, /\["GB", "United Kingdom"\]/);
+  assert.match(ui, /countryOptionsMarkup\("US"\)/);
+  assert.match(ui, /data-hh-reg-country autocomplete="country" required/);
+  assert.match(ui, /countryCode:\s*countryCodeFrom\(form\)/);
+  assert.match(ui, /return String\(form\.querySelector\("\[data-hh-reg-country\]"\)\?\.value \|\| "US"\)\.trim\(\)\.toUpperCase\(\)/);
+  assert.match(edge, /clean\(profile\.countryCode, 2\)\.toUpperCase\(\)/);
+});
+
+test("signup never asks users to type a two-letter country code", () => {
+  assert.doesNotMatch(ui, /2-letter country code/i);
+  assert.doesNotMatch(ui, /data-hh-reg-country-other/);
+  assert.doesNotMatch(ui, /value="OTHER"/);
+  assert.match(ui, /Choose a valid country\./);
+});
+
+test("country selector restores saved ISO values and remains responsive", () => {
+  assert.match(ui, /savedCountryCode = String\(profile\.countryCode \|\| "US"\)/);
+  assert.match(ui, /country\.value = savedCountryCode/);
+  assert.match(ui, /savedOption\.textContent = "Saved country"/);
+  assert.match(ui, /#hh-registration-fields select[\s\S]*max-width:\s*100%/);
+  assert.match(ui, /@media \(max-width: 620px\)[\s\S]*grid-template-columns: 1fr/);
 });
 
 test("under-18 users are blocked and directed to a parent or legal guardian", () => {

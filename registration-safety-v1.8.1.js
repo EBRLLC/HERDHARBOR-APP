@@ -3,6 +3,258 @@
 
   const VERSION = "1.8.1";
   const MINIMUM_AGE = 18;
+  const COUNTRY_OPTIONS = Object.freeze([
+    ["US", "United States"],
+    ["AF", "Afghanistan"],
+    ["AX", "Åland Islands"],
+    ["AL", "Albania"],
+    ["DZ", "Algeria"],
+    ["AS", "American Samoa"],
+    ["AD", "Andorra"],
+    ["AO", "Angola"],
+    ["AI", "Anguilla"],
+    ["AQ", "Antarctica"],
+    ["AG", "Antigua & Barbuda"],
+    ["AR", "Argentina"],
+    ["AM", "Armenia"],
+    ["AW", "Aruba"],
+    ["AU", "Australia"],
+    ["AT", "Austria"],
+    ["AZ", "Azerbaijan"],
+    ["BS", "Bahamas"],
+    ["BH", "Bahrain"],
+    ["BD", "Bangladesh"],
+    ["BB", "Barbados"],
+    ["BY", "Belarus"],
+    ["BE", "Belgium"],
+    ["BZ", "Belize"],
+    ["BJ", "Benin"],
+    ["BM", "Bermuda"],
+    ["BT", "Bhutan"],
+    ["BO", "Bolivia"],
+    ["BA", "Bosnia & Herzegovina"],
+    ["BW", "Botswana"],
+    ["BV", "Bouvet Island"],
+    ["BR", "Brazil"],
+    ["IO", "British Indian Ocean Territory"],
+    ["VG", "British Virgin Islands"],
+    ["BN", "Brunei"],
+    ["BG", "Bulgaria"],
+    ["BF", "Burkina Faso"],
+    ["BI", "Burundi"],
+    ["KH", "Cambodia"],
+    ["CM", "Cameroon"],
+    ["CA", "Canada"],
+    ["CV", "Cape Verde"],
+    ["BQ", "Caribbean Netherlands"],
+    ["KY", "Cayman Islands"],
+    ["CF", "Central African Republic"],
+    ["TD", "Chad"],
+    ["CL", "Chile"],
+    ["CN", "China"],
+    ["CX", "Christmas Island"],
+    ["CC", "Cocos (Keeling) Islands"],
+    ["CO", "Colombia"],
+    ["KM", "Comoros"],
+    ["CG", "Congo - Brazzaville"],
+    ["CD", "Congo - Kinshasa"],
+    ["CK", "Cook Islands"],
+    ["CR", "Costa Rica"],
+    ["CI", "Côte d’Ivoire"],
+    ["HR", "Croatia"],
+    ["CU", "Cuba"],
+    ["CW", "Curaçao"],
+    ["CY", "Cyprus"],
+    ["CZ", "Czechia"],
+    ["DK", "Denmark"],
+    ["DJ", "Djibouti"],
+    ["DM", "Dominica"],
+    ["DO", "Dominican Republic"],
+    ["EC", "Ecuador"],
+    ["EG", "Egypt"],
+    ["SV", "El Salvador"],
+    ["GQ", "Equatorial Guinea"],
+    ["ER", "Eritrea"],
+    ["EE", "Estonia"],
+    ["SZ", "Eswatini"],
+    ["ET", "Ethiopia"],
+    ["FK", "Falkland Islands (Islas Malvinas)"],
+    ["FO", "Faroe Islands"],
+    ["FJ", "Fiji"],
+    ["FI", "Finland"],
+    ["FR", "France"],
+    ["GF", "French Guiana"],
+    ["PF", "French Polynesia"],
+    ["TF", "French Southern Territories"],
+    ["GA", "Gabon"],
+    ["GM", "Gambia"],
+    ["GE", "Georgia"],
+    ["DE", "Germany"],
+    ["GH", "Ghana"],
+    ["GI", "Gibraltar"],
+    ["GR", "Greece"],
+    ["GL", "Greenland"],
+    ["GD", "Grenada"],
+    ["GP", "Guadeloupe"],
+    ["GU", "Guam"],
+    ["GT", "Guatemala"],
+    ["GG", "Guernsey"],
+    ["GN", "Guinea"],
+    ["GW", "Guinea-Bissau"],
+    ["GY", "Guyana"],
+    ["HT", "Haiti"],
+    ["HM", "Heard & McDonald Islands"],
+    ["HN", "Honduras"],
+    ["HK", "Hong Kong"],
+    ["HU", "Hungary"],
+    ["IS", "Iceland"],
+    ["IN", "India"],
+    ["ID", "Indonesia"],
+    ["IR", "Iran"],
+    ["IQ", "Iraq"],
+    ["IE", "Ireland"],
+    ["IM", "Isle of Man"],
+    ["IL", "Israel"],
+    ["IT", "Italy"],
+    ["JM", "Jamaica"],
+    ["JP", "Japan"],
+    ["JE", "Jersey"],
+    ["JO", "Jordan"],
+    ["KZ", "Kazakhstan"],
+    ["KE", "Kenya"],
+    ["KI", "Kiribati"],
+    ["KW", "Kuwait"],
+    ["KG", "Kyrgyzstan"],
+    ["LA", "Laos"],
+    ["LV", "Latvia"],
+    ["LB", "Lebanon"],
+    ["LS", "Lesotho"],
+    ["LR", "Liberia"],
+    ["LY", "Libya"],
+    ["LI", "Liechtenstein"],
+    ["LT", "Lithuania"],
+    ["LU", "Luxembourg"],
+    ["MO", "Macao"],
+    ["MG", "Madagascar"],
+    ["MW", "Malawi"],
+    ["MY", "Malaysia"],
+    ["MV", "Maldives"],
+    ["ML", "Mali"],
+    ["MT", "Malta"],
+    ["MH", "Marshall Islands"],
+    ["MQ", "Martinique"],
+    ["MR", "Mauritania"],
+    ["MU", "Mauritius"],
+    ["YT", "Mayotte"],
+    ["MX", "Mexico"],
+    ["FM", "Micronesia"],
+    ["MD", "Moldova"],
+    ["MC", "Monaco"],
+    ["MN", "Mongolia"],
+    ["ME", "Montenegro"],
+    ["MS", "Montserrat"],
+    ["MA", "Morocco"],
+    ["MZ", "Mozambique"],
+    ["MM", "Myanmar (Burma)"],
+    ["NA", "Namibia"],
+    ["NR", "Nauru"],
+    ["NP", "Nepal"],
+    ["NL", "Netherlands"],
+    ["NC", "New Caledonia"],
+    ["NZ", "New Zealand"],
+    ["NI", "Nicaragua"],
+    ["NE", "Niger"],
+    ["NG", "Nigeria"],
+    ["NU", "Niue"],
+    ["NF", "Norfolk Island"],
+    ["KP", "North Korea"],
+    ["MK", "North Macedonia"],
+    ["MP", "Northern Mariana Islands"],
+    ["NO", "Norway"],
+    ["OM", "Oman"],
+    ["PK", "Pakistan"],
+    ["PW", "Palau"],
+    ["PS", "Palestine"],
+    ["PA", "Panama"],
+    ["PG", "Papua New Guinea"],
+    ["PY", "Paraguay"],
+    ["PE", "Peru"],
+    ["PH", "Philippines"],
+    ["PN", "Pitcairn Islands"],
+    ["PL", "Poland"],
+    ["PT", "Portugal"],
+    ["PR", "Puerto Rico"],
+    ["QA", "Qatar"],
+    ["RE", "Réunion"],
+    ["RO", "Romania"],
+    ["RU", "Russia"],
+    ["RW", "Rwanda"],
+    ["WS", "Samoa"],
+    ["SM", "San Marino"],
+    ["ST", "São Tomé & Príncipe"],
+    ["SA", "Saudi Arabia"],
+    ["SN", "Senegal"],
+    ["RS", "Serbia"],
+    ["SC", "Seychelles"],
+    ["SL", "Sierra Leone"],
+    ["SG", "Singapore"],
+    ["SX", "Sint Maarten"],
+    ["SK", "Slovakia"],
+    ["SI", "Slovenia"],
+    ["SB", "Solomon Islands"],
+    ["SO", "Somalia"],
+    ["ZA", "South Africa"],
+    ["GS", "South Georgia & South Sandwich Islands"],
+    ["KR", "South Korea"],
+    ["SS", "South Sudan"],
+    ["ES", "Spain"],
+    ["LK", "Sri Lanka"],
+    ["BL", "St. Barthélemy"],
+    ["SH", "St. Helena"],
+    ["KN", "St. Kitts & Nevis"],
+    ["LC", "St. Lucia"],
+    ["MF", "St. Martin"],
+    ["PM", "St. Pierre & Miquelon"],
+    ["VC", "St. Vincent & Grenadines"],
+    ["SD", "Sudan"],
+    ["SR", "Suriname"],
+    ["SJ", "Svalbard & Jan Mayen"],
+    ["SE", "Sweden"],
+    ["CH", "Switzerland"],
+    ["SY", "Syria"],
+    ["TW", "Taiwan"],
+    ["TJ", "Tajikistan"],
+    ["TZ", "Tanzania"],
+    ["TH", "Thailand"],
+    ["TL", "Timor-Leste"],
+    ["TG", "Togo"],
+    ["TK", "Tokelau"],
+    ["TO", "Tonga"],
+    ["TT", "Trinidad & Tobago"],
+    ["TN", "Tunisia"],
+    ["TR", "Türkiye"],
+    ["TM", "Turkmenistan"],
+    ["TC", "Turks & Caicos Islands"],
+    ["TV", "Tuvalu"],
+    ["UM", "U.S. Outlying Islands"],
+    ["VI", "U.S. Virgin Islands"],
+    ["UG", "Uganda"],
+    ["UA", "Ukraine"],
+    ["AE", "United Arab Emirates"],
+    ["GB", "United Kingdom"],
+    ["UY", "Uruguay"],
+    ["UZ", "Uzbekistan"],
+    ["VU", "Vanuatu"],
+    ["VA", "Vatican City"],
+    ["VE", "Venezuela"],
+    ["VN", "Vietnam"],
+    ["WF", "Wallis & Futuna"],
+    ["EH", "Western Sahara"],
+    ["YE", "Yemen"],
+    ["ZM", "Zambia"],
+    ["ZW", "Zimbabwe"]
+  ]);
+  const COUNTRY_CODE_SET = new Set(COUNTRY_OPTIONS.map(([code]) => code));
   const PENDING_KEY = "herdharbor_pending_registration_v181";
   const PENDING_MAX_AGE_MS = 24 * 60 * 60 * 1000;
   const MAX_BOOT_ATTEMPTS = 80;
@@ -56,6 +308,11 @@
         line-height: 1.35;
       }
       #hh-registration-fields .hh-registration-check input { margin-top: 3px; flex: 0 0 auto; }
+      #hh-registration-fields select {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
       #hh-registration-fields .hh-registration-honeypot {
         position: absolute !important;
         left: -10000px !important;
@@ -143,9 +400,15 @@
   }
 
   function countryCodeFrom(form) {
-    const selected = String(form.querySelector("[data-hh-reg-country]")?.value || "US").toUpperCase();
-    if (selected !== "OTHER") return selected;
-    return String(form.querySelector("[data-hh-reg-country-other]")?.value || "").trim().toUpperCase();
+    return String(form.querySelector("[data-hh-reg-country]")?.value || "US").trim().toUpperCase();
+  }
+
+  function countryOptionsMarkup(selectedCode = "US") {
+    const normalized = String(selectedCode || "US").trim().toUpperCase();
+    const selected = COUNTRY_CODE_SET.has(normalized) ? normalized : "US";
+    return COUNTRY_OPTIONS
+      .map(([code, name]) => `<option value="${code}"${code === selected ? " selected" : ""}>${name}</option>`)
+      .join("");
   }
 
   function formProfile(form) {
@@ -182,17 +445,10 @@
       </div>
       <div class="hh-registration-grid">
         <label>Country
-          <select id="${prefix}-country" data-hh-reg-country required>
-            <option value="US">United States</option>
-            <option value="CA">Canada</option>
-            <option value="MX">Mexico</option>
-            <option value="GB">United Kingdom</option>
-            <option value="AU">Australia</option>
-            <option value="NZ">New Zealand</option>
-            <option value="OTHER">Other</option>
+          <select id="${prefix}-country" data-hh-reg-country autocomplete="country" required>
+            ${countryOptionsMarkup("US")}
           </select>
         </label>
-        <label data-hh-reg-country-other-wrap hidden>2-letter country code<input id="${prefix}-country-other" data-hh-reg-country-other maxlength="2" pattern="[A-Za-z]{2}"></label>
       </div>
       <div class="hh-registration-grid">
         <label>State / province / region<input id="${prefix}-region" data-hh-reg-region autocomplete="address-level1" maxlength="80" required></label>
@@ -227,17 +483,10 @@
     const usage = form.querySelector("[data-hh-reg-usage]");
     const guardianWrap = form.querySelector("[data-hh-reg-guardian-wrap]");
     const guardian = form.querySelector("[data-hh-reg-guardian]");
-    const country = form.querySelector("[data-hh-reg-country]");
-    const countryOtherWrap = form.querySelector("[data-hh-reg-country-other-wrap]");
-    const countryOther = form.querySelector("[data-hh-reg-country-other]");
 
     const guardianNeeded = usage?.value === "guardian_for_minor";
     if (guardianWrap) guardianWrap.hidden = !guardianNeeded;
     if (guardian) guardian.required = guardianNeeded;
-
-    const otherCountry = country?.value === "OTHER";
-    if (countryOtherWrap) countryOtherWrap.hidden = !otherCountry;
-    if (countryOther) countryOther.required = otherCountry;
   }
 
   function showAgeWarning(form) {
@@ -266,7 +515,7 @@
       if (!Number.isFinite(age)) return "Enter a valid date of birth.";
       if (age < MINIMUM_AGE) return `The HerdHarbor account holder must be at least ${MINIMUM_AGE}. Ask a parent or legal guardian to create and manage the account.`;
       if (!profile.phone) return "Enter a phone number for the adult account holder.";
-      if (!/^[A-Z]{2}$/.test(profile.countryCode)) return "Enter a valid 2-letter country code.";
+      if (!/^[A-Z]{2}$/.test(profile.countryCode)) return "Choose a valid country.";
       if (!profile.region || !profile.postalCode) return "Enter your state/province/region and ZIP/postal code.";
       if (profile.usageType === "guardian_for_minor" && !profile.guardianAttestation) return "The responsible adult must accept the parent/guardian supervision statement.";
       if (!profile.adultAccountHolderCertified || !profile.accuracyCertified) return "Complete both account-holder certifications.";
@@ -326,10 +575,17 @@
       if (node && value != null) node.value = String(value);
     }
     const country = form.querySelector("[data-hh-reg-country]");
-    const supported = ["US", "CA", "MX", "GB", "AU", "NZ"];
-    if (country && profile.countryCode) country.value = supported.includes(profile.countryCode) ? profile.countryCode : "OTHER";
-    const other = form.querySelector("[data-hh-reg-country-other]");
-    if (other && profile.countryCode && !supported.includes(profile.countryCode)) other.value = profile.countryCode;
+    const savedCountryCode = String(profile.countryCode || "US").trim().toUpperCase();
+    if (country && /^[A-Z]{2}$/.test(savedCountryCode)) {
+      const hasOption = Array.from(country.options || []).some((option) => option.value === savedCountryCode);
+      if (!hasOption) {
+        const savedOption = document.createElement("option");
+        savedOption.value = savedCountryCode;
+        savedOption.textContent = "Saved country";
+        country.appendChild(savedOption);
+      }
+      country.value = savedCountryCode;
+    }
     const guardian = form.querySelector("[data-hh-reg-guardian]");
     const adult = form.querySelector("[data-hh-reg-adult]");
     const accuracy = form.querySelector("[data-hh-reg-accuracy]");
@@ -353,10 +609,8 @@
 
     const dob = form.querySelector("[data-hh-reg-dob]");
     const usage = form.querySelector("[data-hh-reg-usage]");
-    const country = form.querySelector("[data-hh-reg-country]");
     dob?.addEventListener("input", () => showAgeWarning(form));
     usage?.addEventListener("change", () => syncConditionalFields(form));
-    country?.addEventListener("change", () => syncConditionalFields(form));
     syncConditionalFields(form);
 
     form.addEventListener("submit", (event) => {
@@ -398,7 +652,6 @@
     fillForm(form, readPending());
     form.querySelector("[data-hh-reg-dob]")?.addEventListener("input", () => showAgeWarning(form));
     form.querySelector("[data-hh-reg-usage]")?.addEventListener("change", () => syncConditionalFields(form));
-    form.querySelector("[data-hh-reg-country]")?.addEventListener("change", () => syncConditionalFields(form));
     form.addEventListener("submit", submitGateProfile);
     return gate;
   }
