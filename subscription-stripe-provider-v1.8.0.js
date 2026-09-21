@@ -13,10 +13,8 @@
     business: Object.freeze({ month: 4999, year: 55000 })
   });
 
-  let selectedInterval = (() => {
-    try { return localStorage.getItem(INTERVAL_KEY) === "year" ? "year" : "month"; }
-    catch { return "month"; }
-  })();
+  let selectedInterval = "month";
+  try { localStorage.setItem(INTERVAL_KEY, "month"); } catch {}
   let configured = false;
   let successRefreshInFlight = false;
   let checkoutReadyTimer = null;
@@ -272,7 +270,6 @@
       switcher.innerHTML = '<span class="hh-subscription-note">Member is currently offered month-to-month at $14.99/month.</span>';
       grid.parentElement?.insertBefore(switcher, grid);
     }
-    setBillingInterval; // keep the compatibility helper owned but do not expose unsupported annual Member checkout.
 
     panel.querySelectorAll(".hh-subscription-plan-card:not([data-hh-free-adult-card])").forEach((card, index) => {
       const planId = PLAN_ORDER[index];
