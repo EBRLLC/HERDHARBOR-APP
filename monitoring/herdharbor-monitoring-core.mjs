@@ -1,7 +1,7 @@
 "use strict";
 
 export const HERDHARBOR_MONITORING_RELEASE = "HerdHarbor@1.6.1";
-export const HERDHARBOR_MONITORING_BUILD = "phase1-monitoring-review-1";
+export const HERDHARBOR_MONITORING_BUILD = "phase1-monitoring-review-2";
 
 export const MODULES = Object.freeze([
   "dashboard",
@@ -52,7 +52,16 @@ const SAFE_METADATA_KEYS = new Set([
   "reference_id",
   "reason",
   "mode",
-  "online"
+  "online",
+  "classification",
+  "provider",
+  "sync_engine",
+  "sync_stage",
+  "app_release",
+  "component_build",
+  "serialized_state_bytes",
+  "provider_details",
+  "provider_hint"
 ]);
 
 const SENSITIVE_EXACT_KEYS = new Set([
