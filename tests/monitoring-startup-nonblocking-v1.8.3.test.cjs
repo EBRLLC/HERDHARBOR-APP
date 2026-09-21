@@ -110,12 +110,19 @@ function createHarness() {
       constructor(type, options = {}) { this.type = type; this.detail = options.detail; }
     }
   };
-  vm.runInNewContext(pwaSource, context, { filename: "pwa.js" });
+  const sandbox = vm.createContext(context);
+  vm.runInContext(pwaSource, sandbox, { filename: "pwa.js" });
 
   return {
     window,
     document,
     nodes,
+    makeError(message) {
+      sandbox.__hhTestErrorMessage = String(message);
+      const error = vm.runInContext("new Error(__hhTestErrorMessage)", sandbox);
+      delete sandbox.__hhTestErrorMessage;
+      return error;
+    },
     fireDocument(type, event = {}) {
       for (const listener of documentListeners.get(type) || []) listener(event);
     },
@@ -175,7 +182,7 @@ test("bounded early bootstrap failures flush after monitoring attaches", () => {
   const harness = createHarness();
   const captured = [];
   const breadcrumbs = [];
-  harness.fireWindow("error", { error: new Error("early bootstrap failure") });
+  harness.fireWindow("error", { error: harness.makeError("early bootstrap failure") });
 
   harness.window.HerdHarborMonitoring = {
     captureError(error, options) { captured.push({ error, options }); },
