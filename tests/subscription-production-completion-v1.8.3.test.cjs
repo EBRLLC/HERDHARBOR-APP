@@ -47,6 +47,10 @@ test("protected roles and Junior remain outside adult trial/free fallback", () =
   assert.match(launch, /role === "owner" \|\| role === "admin" \|\| currentSource === "manual_override"/);
   assert.match(launch, /isFounder\(base\)/);
   assert.match(launch, /isJunior\(base, snapshot\)/);
+  assert.match(webhook, /select\("account_role,membership_source,membership_tier"\)/);
+  assert.match(webhook, /\["owner", "admin"\]\.includes\(role\)/);
+  assert.match(webhook, /\["manual_override", "founder"\]\.includes\(source\)/);
+  assert.match(webhook, /membership_tier \|\| ""\)\.toLowerCase\(\) === "founder"/);
 });
 
 test("Free Adult is permanent non-destructive access with a five-active-animal growth ceiling", () => {
