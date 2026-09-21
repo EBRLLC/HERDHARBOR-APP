@@ -159,16 +159,34 @@ export function installCloudSyncFailureMonitoring(monitoring, runtime = globalTh
   document.addEventListener("herdharbor:cloud-sync-failure", (event) => {
     try {
       const detail = event?.detail || {};
+      const operation = String(detail.operation || "cloud-sync").slice(0, 80);
       const code = String(detail.error_code || "unknown").slice(0, 80);
-      const error = new Error(String(detail.message || "Cloud synchronization operation failed.").slice(0, 500));
-      error.name = code === "unknown" ? "CloudSyncError" : "CloudSyncError:" + code;
+      const status = Number.isFinite(Number(detail.status_code)) ? Number(detail.status_code) : 0;
+      const category = String(detail.classification || "unknown").slice(0, 40);
+      const providerMessage = String(detail.message || "Cloud provider request failed.").slice(0, 240);
+      const error = new Error(
+        `${operation} failed [${category}; code=${code}; status=${status || "none"}]: ${providerMessage}`
+      );
+      error.name = `CloudSyncProviderError:${String(detail.error_name || "Error").slice(0, 60)}`;
       monitoring?.captureOperationalFailure?.("cloud_sync_failure", {
         module: "sync",
-        operation: String(detail.operation || "cloud-sync").slice(0, 80),
+        operation,
         result: "failure",
         error_category: "cloud_sync_failure",
         reason: code,
-        status_code: Number.isFinite(Number(detail.status_code)) ? Number(detail.status_code) : 0
+        status_code: status,
+        classification: category,
+        provider: String(detail.cloud_provider || "supabase").slice(0, 40),
+        sync_engine: String(detail.sync_engine || "legacy-full-state").slice(0, 80),
+        sync_stage: String(detail.sync_stage || "legacy").slice(0, 40),
+        app_release: String(detail.app_release || "unknown").slice(0, 80),
+        component_build: String(detail.component_build || "unknown").slice(0, 80),
+        online: detail.online !== false,
+        serialized_state_bytes: Number.isFinite(Number(detail.serialized_state_bytes))
+          ? Number(detail.serialized_state_bytes)
+          : 0,
+        provider_details: String(detail.provider_details || "").slice(0, 240),
+        provider_hint: String(detail.provider_hint || "").slice(0, 240)
       }, error);
     } catch {}
   });

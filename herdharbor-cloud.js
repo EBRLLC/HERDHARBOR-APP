@@ -153,30 +153,136 @@
     }));
   }
 
-  function normalizeCloudFailure(error) {
-    const code = String(error?.code || error?.name || "unknown").slice(0, 80);
-    const numericStatus = Number(error?.status || error?.statusCode || 0);
+  const CLOUD_SYNC_ENGINE = "legacy-full-state";
+  const CLOUD_PROVIDER = "supabase";
+  const CLOUD_SYNC_COMPONENT_BUILD = "legacy-full-state-observability-2";
+  const CLOUD_SYNC_APP_RELEASE = "1.8.2";
+  const CLOUD_RETRY_DELAYS_MS = [750, 2000];
+
+  function sanitizeCloudDiagnosticText(value, maxLength = 240) {
+    return String(value ?? "")
+      .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[redacted-email]")
+      .replace(/\bBearer\s+[A-Za-z0-9._~+\/-]+=*/gi, "Bearer [redacted]")
+      .replace(/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g, "[redacted-token]")
+      .replace(/\b(password|passcode|token|access_token|refresh_token|authorization|cookie|session|secret|api[_-]?key)\s*[:=]\s*[^\s,;]+/gi, "$1=[redacted]")
+      .slice(0, maxLength);
+  }
+
+  function cloudStatus(error) {
+    const numericStatus = Number(error?.status || error?.statusCode || error?.httpStatus || 0);
+    return Number.isFinite(numericStatus) && numericStatus > 0 ? numericStatus : null;
+  }
+
+  function classifyCloudFailure(error, online = navigator?.onLine !== false) {
+    if (!online) return "offline";
+    const status = cloudStatus(error);
+    const code = String(error?.code || "").toLowerCase();
+    const name = String(error?.name || "").toLowerCase();
+    const message = String(error?.message || "").toLowerCase();
+    if (status === 401) return "auth";
+    if (status === 403 || code === "42501" || /row.level.security|permission denied|not authorized/.test(message)) return "permission";
+    if (status === 409 || code === "23505" || code === "40001" || /conflict/.test(message)) return "conflict";
+    if (status === 413) return "payload";
+    if (status === 429) return "rate_limit";
+    if (status && status >= 500 && status <= 599) return "server";
+    if (name === "aborterror" || /timeout|timed out|aborted/.test(message)) return "timeout";
+    if (/failed to fetch|networkerror|network request failed|load failed/.test(message)) return "network";
+    if (status === 400 || status === 422 || code === "22023" || /invalid input|validation/.test(message)) return "validation";
+    return "unknown";
+  }
+
+  function serializedStateBytes(rawValue) {
+    if (typeof rawValue !== "string") return null;
+    try {
+      if (typeof TextEncoder === "function") return new TextEncoder().encode(rawValue).byteLength;
+    } catch {}
+    try { return unescape(encodeURIComponent(rawValue)).length; } catch {}
+    return rawValue.length;
+  }
+
+  function normalizeCloudFailure(error, stateBytes = null) {
+    const code = sanitizeCloudDiagnosticText(error?.code || error?.name || "unknown", 80);
+    const online = navigator?.onLine !== false;
     return {
+      error_name: sanitizeCloudDiagnosticText(error?.name || "Error", 80),
       code,
-      status: Number.isFinite(numericStatus) && numericStatus > 0 ? numericStatus : null,
-      message: String(error?.message || "Cloud synchronization operation failed.").slice(0, 500)
+      status: cloudStatus(error),
+      message: sanitizeCloudDiagnosticText(error?.message || "Cloud provider request failed.", 240),
+      provider_details: sanitizeCloudDiagnosticText(error?.details || "", 240),
+      provider_hint: sanitizeCloudDiagnosticText(error?.hint || "", 240),
+      classification: classifyCloudFailure(error, online),
+      online,
+      serialized_state_bytes: Number.isFinite(Number(stateBytes)) ? Number(stateBytes) : null
     };
   }
 
-  function reportCloudSyncFailure(operation, error) {
-    const failure = normalizeCloudFailure(error);
+  function reportCloudSyncFailure(operation, error, stateBytes = null) {
+    const failure = normalizeCloudFailure(error, stateBytes);
     try {
       document.dispatchEvent(new CustomEvent("herdharbor:cloud-sync-failure", {
         detail: {
           operation: String(operation || "cloud-sync").slice(0, 80),
           result: "failure",
+          error_name: failure.error_name,
           error_code: failure.code,
           status_code: failure.status,
-          message: failure.message
+          message: failure.message,
+          provider_details: failure.provider_details,
+          provider_hint: failure.provider_hint,
+          classification: failure.classification,
+          online: failure.online,
+          sync_engine: CLOUD_SYNC_ENGINE,
+          cloud_provider: CLOUD_PROVIDER,
+          sync_stage: "legacy",
+          app_release: CLOUD_SYNC_APP_RELEASE,
+          component_build: CLOUD_SYNC_COMPONENT_BUILD,
+          serialized_state_bytes: failure.serialized_state_bytes
         }
       }));
     } catch {}
     return failure;
+  }
+
+  function isTransientCloudFailure(error) {
+    const category = classifyCloudFailure(error, navigator?.onLine !== false);
+    return ["network", "timeout", "rate_limit", "server"].includes(category);
+  }
+
+  function cloudRetryDelay(attempt) {
+    const base = CLOUD_RETRY_DELAYS_MS[Math.min(attempt, CLOUD_RETRY_DELAYS_MS.length - 1)] || 2000;
+    return base + Math.floor(Math.random() * Math.max(100, Math.floor(base * 0.25)));
+  }
+
+  async function waitForCloudRetry(attempt) {
+    await new Promise((resolve) => setTimeout(resolve, cloudRetryDelay(attempt)));
+  }
+
+  async function runCloudRequest(request, { allowAuthRefresh = true } = {}) {
+    let authRefreshed = false;
+    for (let attempt = 0; attempt <= CLOUD_RETRY_DELAYS_MS.length; attempt += 1) {
+      let result;
+      try {
+        result = await request();
+      } catch (error) {
+        result = { data: null, error };
+      }
+      const error = result?.error;
+      if (!error) return result;
+
+      const category = classifyCloudFailure(error, navigator?.onLine !== false);
+      if (category === "auth" && allowAuthRefresh && !authRefreshed && typeof client?.auth?.refreshSession === "function") {
+        authRefreshed = true;
+        try {
+          const refreshed = await client.auth.refreshSession();
+          if (!refreshed?.error) continue;
+        } catch {}
+        return result;
+      }
+
+      if (!isTransientCloudFailure(error) || attempt >= CLOUD_RETRY_DELAYS_MS.length) return result;
+      await waitForCloudRetry(attempt);
+    }
+    return { data: null, error: new Error("Cloud request retry limit reached.") };
   }
 
   async function loadAccessProfile() {
@@ -897,13 +1003,11 @@
   }
 
   async function fetchCloudRecord(userId) {
-    const { data, error } = await client
+    return runCloudRequest(() => client
       .from(TABLE_NAME)
       .select("app_state, updated_at")
       .eq("user_id", userId)
-      .maybeSingle();
-
-    return { data, error };
+      .maybeSingle());
   }
 
   async function markConflict(userId, localRaw, remoteRecord, message) {
@@ -934,7 +1038,7 @@
     const nextVersion = new Date().toISOString();
 
     if (!remoteRecord) {
-      const { data, error } = await client
+      const { data, error } = await runCloudRequest(() => client
         .from(TABLE_NAME)
         .insert({
           user_id: userId,
@@ -942,7 +1046,7 @@
           updated_at: nextVersion
         })
         .select("app_state, updated_at")
-        .single();
+        .single());
 
       return { data, error, raced: error?.code === "23505" };
     }
@@ -959,9 +1063,9 @@
       ? update.eq("updated_at", remoteRecord.updated_at)
       : update.is("updated_at", null);
 
-    const { data, error } = await update
+    const { data, error } = await runCloudRequest(() => update
       .select("app_state, updated_at")
-      .maybeSingle();
+      .maybeSingle());
 
     return { data, error, raced: !error && !data };
   }
@@ -983,7 +1087,7 @@
     const { data: remoteRecord, error: loadError } = await fetchCloudRecord(userId);
 
     if (loadError) {
-      const failure = reportCloudSyncFailure("cloud-preflight", loadError);
+      const failure = reportCloudSyncFailure("cloud-preflight", loadError, serializedStateBytes(rawValue));
       console.error("HerdHarbor cloud preflight failed:", loadError);
       console.warn("HerdHarbor cloud preflight diagnostic:", failure.code, failure.status || "no-status");
       setSyncState("Cloud unavailable; changes are safe on this device and will retry.", "error");
@@ -1100,7 +1204,7 @@
     );
 
     if (error) {
-      const failure = reportCloudSyncFailure("cloud-save", error);
+      const failure = reportCloudSyncFailure("cloud-save", error, serializedStateBytes(rawValue));
       console.error("HerdHarbor cloud save failed:", error);
       console.warn("HerdHarbor cloud save diagnostic:", failure.code, failure.status || "no-status");
       setSyncState("Cloud save failed; changes are safe on this device and will retry.", "error");
