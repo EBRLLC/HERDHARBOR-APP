@@ -8,6 +8,7 @@ const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const appRuntime = fs.readFileSync(path.join(root, "herdharbor-app-runtime.js"), "utf8");
 const animalProfileRuntime = fs.readFileSync(path.join(root, "animal-profile-runtime-v1.8.3.js"), "utf8");
+const taskRuntime = fs.readFileSync(path.join(root, "task-runtime-v1.8.3.js"), "utf8");
 const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 
 assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.2"/);
@@ -16,7 +17,7 @@ assert.match(appRuntime, /if \(rawValue !== lastSavedRaw\) \{[\s\S]*?localStorag
 assert.match(appRuntime, /function scheduleUiWork\(key, callback\)/);
 assert.match(appRuntime, /window\.requestAnimationFrame/);
 assert.match(animalProfileRuntime, /deps\.scheduleUiWork\("animal-search"/);
-assert.match(appRuntime, /scheduleUiWork\("task-search"/);
+assert.match(taskRuntime, /scheduleUiWork\("task-search"/);
 assert.match(appRuntime, /scheduleUiWork\("sales-search"/);
 assert.match(appRuntime, /function animalById\(id\)/);
 assert.match(appRuntime, /new Map\(state\.animals\.map/);
