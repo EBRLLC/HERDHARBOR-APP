@@ -114,6 +114,7 @@ jobs:
           test -s _site/health-runtime-v1.8.3.js
           test -s _site/task-runtime-v1.8.3.js
           test -s _site/sales-customer-runtime-v1.8.3.js
+          test -s _site/sales-customer-runtime-v1.8.3.js
           grep -q 'version: "1.8.2"' _site/herdharbor-build.js
           grep -q '2026-10-01T00:00:00-04:00' _site/subscription-launch-v1.8.1.js
           ! grep -q '"dsn": ""' _site/herdharbor-monitoring-config.js
