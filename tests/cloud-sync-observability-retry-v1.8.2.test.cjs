@@ -20,8 +20,8 @@ test("legacy cloud failures expose operation and sanitized provider diagnostics"
   assert.match(cloud, /sync_engine: CLOUD_SYNC_ENGINE/);
   assert.match(cloud, /cloud_provider: CLOUD_PROVIDER/);
   assert.match(cloud, /serialized_state_bytes: failure\.serialized_state_bytes/);
-  assert.match(cloud, /reportCloudSyncFailure\("cloud-preflight", loadError, rawValue\)/);
-  assert.match(cloud, /reportCloudSyncFailure\("cloud-save", error, rawValue\)/);
+  assert.match(cloud, /reportCloudSyncFailure\("cloud-preflight", loadError, serializedStateBytes\(rawValue\)\)/);
+  assert.match(cloud, /reportCloudSyncFailure\("cloud-save", error, serializedStateBytes\(rawValue\)\)/);
 });
 
 test("cloud failure classifier covers required deterministic categories", () => {
