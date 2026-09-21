@@ -29,9 +29,13 @@
     ["name", "Name"],
     ["registrationNumber", "Registration #"],
     ["tattoo", "Tattoo"],
-    ["tag", "Tag / ear #"],
+    ["tag", "Tag"],
+    ["earTagNumber", "Ear tag #"],
+    ["species", "Species"],
     ["breed", "Breed"],
-    ["color", "Color / variety"],
+    ["sex", "Sex"],
+    ["color", "Color"],
+    ["variety", "Variety"],
     ["dob", "DOB"],
     ["breeder", "Breeder"]
   ]);
@@ -39,6 +43,7 @@
   let selectedFile = null;
   let preparedImage = null;
   let extraction = null;
+  let reviewConfirmed = false;
   let observer = null;
 
   const clean = (value) => String(value == null ? "" : value).trim();
@@ -90,6 +95,8 @@
       .hh-pp-low { color:#8A5A00; font-size:.75rem; font-weight:600; }
       .hh-pp-conflicts { padding:12px 14px; border-radius:12px; border:1px solid #E6B2B2; background:#FFF2F2; color:#7A1E1E; }
       .hh-pp-generation { margin:10px 0 0; font-size:.78rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted,#657480); font-weight:800; }
+      .hh-pp-confirm { display:flex; align-items:flex-start; gap:10px; padding:12px 14px; border:1px solid var(--border,#d7dee3); border-radius:12px; line-height:1.4; }
+      .hh-pp-confirm input { width:20px; height:20px; flex:0 0 auto; margin-top:1px; }
       @media(max-width:800px){ .hh-pp-upload{grid-template-columns:1fr}.hh-pp-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.hh-pp-foot .button{flex:1 1 150px} }
       @media(max-width:520px){ .hh-pp-fields{grid-template-columns:1fr} }
       html[data-theme="dark"] .hh-pp-notice { background:#332B1D; color:#E7D2A5; border-color:rgba(231,210,165,.2); }
@@ -113,6 +120,7 @@
     selectedFile = null;
     preparedImage = null;
     extraction = null;
+    reviewConfirmed = false;
   }
 
   function setStatus(message, type = "") {
@@ -210,12 +218,24 @@
     return Number.isFinite(score) ? score : null;
   }
 
+  function updateCommitAvailability(hasSubject = null) {
+    const confirm = root.document.querySelector(`#${DIALOG_ID} [data-pp-confirm-review]`);
+    const commit = root.document.querySelector(`#${DIALOG_ID} [data-pp-commit]`);
+    if (!commit) return;
+    const subjectReady = hasSubject == null
+      ? Boolean(root.document.querySelector(`#${DIALOG_ID} [data-pp-role="subject"]`))
+      : Boolean(hasSubject);
+    reviewConfirmed = Boolean(confirm?.checked);
+    commit.disabled = !subjectReady || !reviewConfirmed;
+  }
+
   function reviewCard(node) {
     const generation = roleGeneration(node.role);
     const fields = EDITABLE_FIELDS.map(([field, label]) => {
       const score = confidenceFor(node, field);
       const low = clean(node[field]) && score != null && score < 0.72;
-      return `<label>${esc(label)}<input data-pp-field="${esc(field)}" value="${esc(node[field] || "")}">${low ? `<span class="hh-pp-low">Please verify this field</span>` : ""}</label>`;
+      const confidenceLabel = low ? `Please verify · ${Math.round(score * 100)}% extraction confidence` : "";
+      return `<label>${esc(label)}<input data-pp-field="${esc(field)}" value="${esc(node[field] || "")}">${low ? `<span class="hh-pp-low">${esc(confidenceLabel)}</span>` : ""}</label>`;
     }).join("");
     return `<article class="hh-pp-card" data-pp-role="${esc(node.role)}" data-review="${node.reviewRequired ? "true" : "false"}">
       <h3>${esc(ROLE_LABELS[node.role] || node.role)}${generation ? ` <span class="muted">· generation ${generation}</span>` : ""}</h3>
@@ -238,8 +258,19 @@
       html.push(reviewCard(node));
     }
     target.innerHTML = html.join("") || `<div class="hh-pp-notice">No pedigree animals were read from this photo.</div>`;
-    const commit = root.document.querySelector(`#${DIALOG_ID} [data-pp-commit]`);
-    if (commit) commit.disabled = !present.some((node) => node.role === "subject");
+    const hasSubject = present.some((node) => node.role === "subject");
+    const confirm = root.document.querySelector(`#${DIALOG_ID} [data-pp-confirm-review]`);
+    if (confirm) {
+      confirm.checked = false;
+      confirm.disabled = !hasSubject;
+    }
+    reviewConfirmed = false;
+    target.oninput = () => {
+      if (confirm) confirm.checked = false;
+      reviewConfirmed = false;
+      updateCommitAvailability(hasSubject);
+    };
+    updateCommitAvailability(hasSubject);
   }
 
   function collectReviewedExtraction() {
@@ -251,7 +282,6 @@
       if (!node) return;
       card.querySelectorAll("[data-pp-field]").forEach((input) => {
         node[input.dataset.ppField] = clean(input.value);
-        if (node.confidence) node.confidence[input.dataset.ppField] = 1;
       });
     });
     return base;
@@ -288,15 +318,32 @@
       preparedImage = await prepareImage(selectedFile);
       const preview = root.document.querySelector(`#${DIALOG_ID} [data-pp-preview]`);
       if (preview) preview.innerHTML = `<img src="${preparedImage.dataUrl}" alt="Selected paper pedigree">`;
-      const response = await cloud().invokeFunction("paper-pedigree-extract", preparedImage);
+      const response = typeof cloud().invokeFunctionWithDiagnostics === "function"
+        ? await cloud().invokeFunctionWithDiagnostics("paper-pedigree-extract", preparedImage)
+        : await cloud().invokeFunction("paper-pedigree-extract", preparedImage);
       if (!response?.extraction) throw new Error(response?.error || "The pedigree reader returned no draft.");
       extraction = response.extraction;
       const normalized = core().normalizeExtraction(asCoreExtraction(extraction));
       renderReview(normalized);
       const warnings = [...new Set([...(response.extraction.warnings || []), ...(normalized.warnings || [])])];
-      setStatus(warnings.length ? `Draft ready. Review every field; ${warnings.length} item${warnings.length === 1 ? "" : "s"} need extra attention.` : "Draft ready. Review every field before importing.", warnings.length ? "" : "success");
+      const diagnostics = response.extraction.diagnostics || {};
+      const ambiguous = diagnostics.ambiguousPedigree === true;
+      const lowCount = Number(diagnostics.lowConfidenceFieldCount || 0);
+      const attention = ambiguous
+        ? " Relationship/layout ambiguity was detected; verify parent and ancestor positions carefully."
+        : lowCount > 0
+          ? ` ${lowCount} extracted field${lowCount === 1 ? "" : "s"} have low confidence.`
+          : "";
+      setStatus(
+        warnings.length || ambiguous || lowCount
+          ? `Draft ready. Review every field before importing.${attention}`
+          : "Draft ready. Review every field before importing.",
+        warnings.length || ambiguous || lowCount ? "" : "success"
+      );
     } catch (error) {
-      setStatus(error?.message || "HerdHarbor could not read that pedigree photo.", "error");
+      const code = clean(error?.code || "");
+      const suffix = code && code !== "secure_service_error" ? ` [${code}]` : "";
+      setStatus((error?.message || "HerdHarbor could not read that pedigree photo.") + suffix, "error");
     } finally {
       if (button) button.disabled = false;
     }
@@ -330,6 +377,10 @@
   }
 
   async function commitReviewedPedigree() {
+    const confirm = root.document.querySelector(`#${DIALOG_ID} [data-pp-confirm-review]`);
+    if (!confirm?.checked || reviewConfirmed !== true) {
+      return setStatus("Confirm that you reviewed the extracted pedigree draft before importing.", "error");
+    }
     const reviewed = collectReviewedExtraction();
     if (!reviewed) return setStatus("Read a pedigree photo before importing.", "error");
     const current = app()?.getState?.();
@@ -378,6 +429,7 @@
         <div class="hh-pp-status" data-type=""></div>
         <div data-pp-problems></div>
         <div class="hh-pp-grid" data-pp-review></div>
+        <label class="hh-pp-confirm"><input type="checkbox" data-pp-confirm-review disabled><span>I reviewed the extracted draft against the source image and corrected any uncertain or incorrect values.</span></label>
       </div>
       <footer class="hh-pp-foot"><button type="button" class="button button-ghost" data-pp-close>Cancel</button><button type="button" class="button button-primary" data-pp-commit disabled>Review complete — import pedigree</button></footer>
     </div>`;
@@ -388,6 +440,12 @@
       preparedImage = null;
       const review = dialog.querySelector("[data-pp-review]");
       if (review) review.innerHTML = "";
+      const confirm = dialog.querySelector("[data-pp-confirm-review]");
+      if (confirm) {
+        confirm.checked = false;
+        confirm.disabled = true;
+      }
+      reviewConfirmed = false;
       const commit = dialog.querySelector("[data-pp-commit]");
       if (commit) commit.disabled = true;
       if (!selectedFile) return;
@@ -401,6 +459,7 @@
       }
     });
     dialog.querySelector("[data-pp-read]")?.addEventListener("click", readPedigree);
+    dialog.querySelector("[data-pp-confirm-review]")?.addEventListener("change", () => updateCommitAvailability());
     dialog.querySelector("[data-pp-commit]")?.addEventListener("click", commitReviewedPedigree);
     if (typeof dialog.showModal === "function") dialog.showModal();
     else dialog.setAttribute("open", "");
