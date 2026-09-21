@@ -200,7 +200,7 @@
     return rawValue.length;
   }
 
-  function normalizeCloudFailure(error, rawValue = null) {
+  function normalizeCloudFailure(error, stateBytes = null) {
     const code = sanitizeCloudDiagnosticText(error?.code || error?.name || "unknown", 80);
     const online = navigator?.onLine !== false;
     return {
@@ -212,12 +212,12 @@
       provider_hint: sanitizeCloudDiagnosticText(error?.hint || "", 240),
       classification: classifyCloudFailure(error, online),
       online,
-      serialized_state_bytes: serializedStateBytes(rawValue)
+      serialized_state_bytes: Number.isFinite(Number(stateBytes)) ? Number(stateBytes) : null
     };
   }
 
-  function reportCloudSyncFailure(operation, error, rawValue = null) {
-    const failure = normalizeCloudFailure(error, rawValue);
+  function reportCloudSyncFailure(operation, error, stateBytes = null) {
+    const failure = normalizeCloudFailure(error, stateBytes);
     try {
       document.dispatchEvent(new CustomEvent("herdharbor:cloud-sync-failure", {
         detail: {
@@ -1087,7 +1087,7 @@
     const { data: remoteRecord, error: loadError } = await fetchCloudRecord(userId);
 
     if (loadError) {
-      const failure = reportCloudSyncFailure("cloud-preflight", loadError, rawValue);
+      const failure = reportCloudSyncFailure("cloud-preflight", loadError, serializedStateBytes(rawValue));
       console.error("HerdHarbor cloud preflight failed:", loadError);
       console.warn("HerdHarbor cloud preflight diagnostic:", failure.code, failure.status || "no-status");
       setSyncState("Cloud unavailable; changes are safe on this device and will retry.", "error");
@@ -1204,7 +1204,7 @@
     );
 
     if (error) {
-      const failure = reportCloudSyncFailure("cloud-save", error, rawValue);
+      const failure = reportCloudSyncFailure("cloud-save", error, serializedStateBytes(rawValue));
       console.error("HerdHarbor cloud save failed:", error);
       console.warn("HerdHarbor cloud save diagnostic:", failure.code, failure.status || "no-status");
       setSyncState("Cloud save failed; changes are safe on this device and will retry.", "error");
