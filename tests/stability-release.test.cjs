@@ -9,7 +9,6 @@ const animalProfileRuntime = fs.readFileSync(path.join(root, "animal-profile-run
 const breedingLitterRuntime = fs.readFileSync(path.join(root, "breeding-litter-runtime-v1.8.3.js"), "utf8");
 const taskRuntime = fs.readFileSync(path.join(root, "task-runtime-v1.8.3.js"), "utf8");
 const salesCustomerRuntime = fs.readFileSync(path.join(root, "sales-customer-runtime-v1.8.3.js"), "utf8");
-const salesCustomerRuntime = fs.readFileSync(path.join(root, "sales-customer-runtime-v1.8.3.js"), "utf8");
 const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const spreadsheet = fs.readFileSync(path.join(root, "spreadsheet-import.js"), "utf8");
 const optionalTools = fs.readFileSync(path.join(root, "herdharbor-optional-tools.js"), "utf8");
