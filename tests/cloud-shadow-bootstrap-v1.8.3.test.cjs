@@ -6,7 +6,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
-const bootstrapApi = require(path.join(root, "cloud-shadow-bootstrap-v1.8.3.js"));\nconst cohortGateApi = require(path.join(root, "cloud-sync-cohort-gate-v1.8.3.js"));
+const bootstrapApi = require(path.join(root, "cloud-shadow-bootstrap-v1.8.3.js"));
+const cohortGateApi = require(path.join(root, "cloud-sync-cohort-gate-v1.8.3.js"));
 const fixture = JSON.parse(fs.readFileSync(
   path.join(__dirname, "fixtures", "cloud-state-normalization-v1.8.3.json"),
   "utf8"
