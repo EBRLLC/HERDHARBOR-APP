@@ -101,6 +101,16 @@ test("weight validation preserves existing supported units and ounces guard", ()
   assert.match(api.normalizeHealthFormData({ weight: "4", weightUnit: "lb+oz", weightOunces: "16" }).message, /less than 16/);
 });
 
+test("Current Weight continues deriving only from canonical basic health records", () => {
+  assert.match(flowSource, /function latestWeightRecord\(state=\{\},animalId=""\)\{/);
+  assert.match(flowSource, /array\(state,"health"\)/);
+  assert.match(flowSource, /normalizedWeightGrams\(record\)/);
+  assert.match(flowSource, /currentWeight:"Current Weight"/);
+  assert.match(flowSource, /const record=latestWeightRecord\(state,animal\.id\)/);
+  assert.doesNotMatch(extractedSource, /currentWeight\s*=|currentWeight:/);
+  assert.doesNotMatch(intelligenceSource, /currentWeight\s*=|currentWeight:/);
+});
+
 test("Health Intelligence remains the authoritative episode care and quarantine engine", () => {
   assert.match(intelligenceSource, /state\.healthIntelligence/);
   assert.match(intelligenceSource, /nextState\.healthIntelligence=value/);
