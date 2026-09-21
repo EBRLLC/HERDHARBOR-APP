@@ -51,7 +51,7 @@ if(webVersion==="1.8.2")assert.match(build,/buildId:\s*"cloud-sync-v2-/);
 assert.match(worker,/const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1|8\.2)-/);
 if(webVersion==="1.8.1")assert.match(worker,/v1\.8\.1-alpha-october-subscription-launch-/);
 assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
-assert.match(worker, /herdharbor-cloud\.js\?v=20/);
+assert.match(worker, /herdharbor-cloud\.js\?v=21/);
 assert.match(worker, /pedigree-visual\.css\?v=2/);
 assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.ok(worker.includes("shows-v1.6.1.css?v=1.7.1"));
