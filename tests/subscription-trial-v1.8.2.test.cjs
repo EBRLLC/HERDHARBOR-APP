@@ -78,3 +78,28 @@ test("browser provider keeps auth independent and presents adult Free separately
   assert.match(provider, /Up to 5 active animals/);
   assert.match(provider, /Upgrade to Member/);
 });
+
+test("leap-year end-of-month signup clamps to February 29", () => {
+  assert.equal(api.addCalendarMonthInZone("2028-01-31T15:00:00.000Z").toISOString(), "2028-02-29T15:00:00.000Z");
+});
+
+test("February 29 trial advances one calendar month without becoming a fixed-day duration", () => {
+  assert.equal(api.addCalendarMonthInZone("2028-02-29T15:00:00.000Z").toISOString(), "2028-03-29T14:00:00.000Z");
+});
+
+test("billing snapshot persists the authoritative computed subscription status to account access", () => {
+  const billing = fs.readFileSync("supabase/functions/subscription-billing/index.ts", "utf8");
+  assert.match(billing, /if \(String\(access\.subscription_status \|\| ""\) !== String\(effectiveStatus \|\| ""\)\)/);
+  assert.match(billing, /from\("account_access"\)[\s\S]*subscription_status:\s*effectiveStatus/);
+});
+
+test("early Member checkout is idempotent and keeps the original trusted trial boundary", () => {
+  const billing = fs.readFileSync("supabase/functions/subscription-billing/index.ts", "utf8");
+  assert.match(billing, /checkoutIdempotencyKey/);
+  assert.match(billing, /"member-checkout"/);
+  assert.match(billing, /user\.id/);
+  assert.match(billing, /String\(trialEndUnix\)/);
+  assert.match(billing, /idempotencyKey:\s*checkoutIdempotencyKey/);
+  assert.match(billing, /billing_cycle_anchor:\s*trialEndUnix/);
+  assert.match(billing, /proration_behavior:\s*"none"/);
+});
