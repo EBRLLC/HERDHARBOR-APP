@@ -116,13 +116,46 @@
 
 ---
 
-## Phase 4 — Trial / subscription production completion
+## Completed Phase 4 — Trial / subscription production completion
 
-- **Status:** in progress
+- **Roadmap phase:** Phase 4 — Trial / subscription production completion
+- **PR number:** #143
+- **PR title:** feat: complete production trial and Free Adult experience
 - **Branch:** `feat/complete-production-trial-free-adult`
 - **Base branch:** `feat/consolidate-animal-first-workflows`
 - **Base SHA:** `c5262e4650e3f22a49a75fe6acba8469879fe8d8`
+- **Final head SHA:** `3ca76a2221992c83ed9c82ffa5c6f7a0440ef15c`
 - **Parent PR:** #141
+- **Application version:** 1.8.2
+- **Component/build identities changed:** no whole-app or cloud-sync build identity changed; subscription launch/provider asset revisions advance to `?v=2` in the runtime loader and service-worker shell so the hardened client code invalidates older cached copies
+- **Production behavior changed:** initial Member trial dates are accepted only from the authenticated backend snapshot derived from Supabase Auth `user.created_at`; unverified browser/local state cannot create or extend a trial; one-calendar-month trial semantics remain New York-local with legacy pre-launch floor; Free Adult is the permanent adult fallback after trial/paid access ends; Free Adult permits five active animals while allowing an existing over-limit herd to remain managed/reduced; early Member checkout preserves remaining trial time using the authoritative trial end as Stripe billing anchor; checkout is client single-flight and server-idempotent; checkout/payment errors preserve current access; ended adult subscriptions fall back to Free Adult; protected Owner/Admin/Founder/manual-override ownership is retained through billing webhooks; Junior remains separate
+- **Production behavior intentionally NOT changed:** authentication/session architecture is unchanged; no credit card is required to begin the trial; no herd records are deleted on downgrade/cancellation; normalized-sync authority is unchanged; Owner/Admin/Founder/manual overrides are not converted to subscription ownership; Junior enrollment is not redesigned; application release remains 1.8.2
+- **Files/modules now owning the feature:** `supabase/functions/_shared/subscription-trial.ts` owns calendar-month trial calculation; `supabase/functions/subscription-billing/index.ts` owns authoritative subscription snapshot and checkout creation; `supabase/functions/subscription-webhook/index.ts` owns Stripe event reconciliation/fallback state; `subscription-launch-v1.8.1.js` owns client access-policy projection and experience state; `subscription-stripe-provider-v1.8.0.js` owns Stripe browser bridge/checkout UX; `subscription-engine-v1.8.0.js` remains subscription panel/state shell; `herdharbor-membership-v1.6.1.js` remains base membership/role policy
+- **Canonical state owner:** authenticated backend account/subscription records and Supabase Auth account creation time; browser subscription state is advisory until verified for the current authenticated user
+- **Public entry points introduced:** `HerdHarborSubscriptionLaunch.getExperienceState()` for trusted user-facing access state; existing `HerdHarborStripeSnapshotTrust.isVerified()` remains the browser trust gate
+- **Compatibility paths retained:** existing subscription engine local cache remains fail-open display state and cannot manufacture trial authority; existing membership APIs and Junior flow remain compatible; legacy pre-launch date floor remains in the server trial helper
+- **Compatibility paths removed:** client `launch_trial_fallback` no longer manufactures Member trial access from local time/unverified state; adult subscription-end fallback is no longer mislabeled as Junior
+- **Database/schema changes:** none
+- **Edge Function changes:** `subscription-billing` persists server-resolved subscription status, preserves early-trial billing anchor, and uses Stripe idempotency for checkout; `subscription-webhook` preserves Owner/Admin/Founder/manual ownership and sets ended adult paid access to Free Adult; shared subscription email copy reflects Free Adult fallback
+- **Environment variables/secrets required:** no new secrets; existing Supabase service-role configuration, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SIGNING_SECRET`, and existing Resend configuration remain required by their current server functions
+- **Monitoring changes:** no new telemetry payload fields; existing subscription-engine operational-failure reporting is retained and billing remains fail-open to base app startup
+- **Migration requirements:** no SQL migration; deploy the updated subscription billing/webhook/shared-email Edge Function code with existing secrets/configuration; existing `account_access.subscription_status` is reused
+- **Rollback procedure:** revert PR #143 client and Edge Function changes and restore prior asset revisions; no destructive herd migration is performed, and Free Adult status values are already understood by the retained launch policy
+- **Tests added:** `tests/subscription-production-completion-v1.8.3.test.cjs`
+- **Tests modified:** `tests/subscription-trial-v1.8.2.test.cjs`; `tests/subscription-launch-v1.8.1.test.cjs`; `tests/subscription-stripe-v1.8.1.test.cjs`; `tests/subscription-email-delivery-v1.8.1.test.cjs`; `tests/subscription-engine-v1.8.0.test.cjs`; `tests/stability-release.test.cjs`; `package.json` v1.8.3 gate
+- **Full CI result:** Alpha v1.8.2 CI #213 — PASS on exact final head `3ca76a2221992c83ed9c82ffa5c6f7a0440ef15c`; release/security, lifecycle/state-integrity, complete UTC and America/New_York regression discovery, monitoring build/architecture/config, source-mutation guard, and Android review bundle all passed
+- **Manual validation still required:** live/test-mode Stripe validation for early-trial checkout billing date, canceled checkout retry, cancel/reactivate, payment-failure recovery, subscription deletion -> Free Adult webhook/email, and a real over-five-animal Free Adult account; verify deployed Edge Functions have existing Stripe/Resend secrets
+- **Known risks:** Stripe/webhook delivery remains asynchronous and provider outages can temporarily leave the UI on the last verified access state; production secret/configuration and external Stripe behavior cannot be proven solely by repository CI; idempotent checkout intentionally prioritizes duplicate-session prevention
+- **Exact requirements inherited by next phase:** preserve trusted backend trial authority, protected-role precedence, non-destructive Free Adult fallback, five-active-animal growth ceiling, Junior separation, asynchronous fail-open billing, Stripe secret isolation, no auth redesign, no normalized-sync authority change, and whole-app v1.8.2 identity
+
+---
+
+## Phase 5 — Paper Pedigree AI production hardening
+
+- **Status:** pending
+- **Required base branch:** `feat/complete-production-trial-free-adult`
+- **Required base SHA:** `3ca76a2221992c83ed9c82ffa5c6f7a0440ef15c`
+- **Parent PR:** #143
 - **Application version target for this phase:** remain 1.8.2
 
-This section must be replaced with the full completed-phase record only after the exact Phase 4 head is green.
+At Phase 5 start, re-read this ledger and verify it against repository HEAD, PR #143 diff, current tests, branch ancestry, and open PR overlap before creating the child branch.
