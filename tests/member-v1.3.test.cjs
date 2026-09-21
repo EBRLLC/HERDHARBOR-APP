@@ -6,6 +6,7 @@ const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const appRuntime = fs.readFileSync(path.join(root, "herdharbor-app-runtime.js"), "utf8");
 const animalProfileRuntime = fs.readFileSync(path.join(root, "animal-profile-runtime-v1.8.3.js"), "utf8");
+const salesCustomerRuntime = fs.readFileSync(path.join(root, "sales-customer-runtime-v1.8.3.js"), "utf8");
 const spreadsheet = fs.readFileSync(path.join(root, "spreadsheet-import.js"), "utf8");
 const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 const releaseNotes = fs.readFileSync(path.join(root, "RELEASE_NOTES-v1.8.1.md"), "utf8");
@@ -16,8 +17,8 @@ assert.match(animalProfileRuntime, /name="earTagColor"/);
 assert.match(animalProfileRuntime, /cattle-ear-field/);
 assert.match(animalProfileRuntime, /toLowerCase\(\) === "cattle"/);
 assert.match(animalProfileRuntime, /animal\?\.earTagNumber, animal\?\.earTagColor/);
-assert.match(appRuntime, /earTagNumber: animal\.earTagNumber \|\| ""/);
-assert.match(appRuntime, /earTagColor: animal\.earTagColor \|\| ""/);
+assert.match(salesCustomerRuntime, /earTagNumber: animal\.earTagNumber \|\| ""/);
+assert.match(salesCustomerRuntime, /earTagColor: animal\.earTagColor \|\| ""/);
 
 assert.match(spreadsheet, /earTagNumber: \["ear tag number", "ear tag"/);
 assert.match(spreadsheet, /earTagColor: \["ear tag color", "tag color"/);
