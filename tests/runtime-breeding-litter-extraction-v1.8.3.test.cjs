@@ -11,6 +11,7 @@ const runtimeSource = read("herdharbor-app-runtime.js");
 const extractedSource = read("breeding-litter-runtime-v1.8.3.js");
 const lifecycleSource = read("flow-phase2-lifecycle-v1.8.2.js");
 const workspaceSource = read("breeding-litter-workspace-v1.8.2.js");
+const workspaceIntegrationSource = read("breeding-litter-workspace-integration-v1.8.2.js");
 const routerSource = read("animal-action-router-v1.8.3.js");
 const packageJson = JSON.parse(read("package.json"));
 const extracted = require(path.join(root, "breeding-litter-runtime-v1.8.3.js"));
@@ -192,11 +193,27 @@ test("offspring creation keeps canonical parent links and animal-limit gate", ()
 
 test("existing lifecycle/workspace engines and animal-first action routing remain authoritative", () => {
   assert.match(lifecycleSource, /function autoCreateBornOffspring\(/);
+  assert.match(lifecycleSource, /function reconcileSubmittedBirth\(/);
+  assert.match(lifecycleSource, /herdharbor:offspring-auto-created/);
   assert.match(lifecycleSource, /function breedingStage\(/);
   assert.match(workspaceSource, /function weanSelected\(/);
+  assert.match(workspaceSource, /function setDisposition\(/);
+  assert.match(workspaceIntegrationSource, /create\.removeAttribute\("data-create-offspring"\)/);
+  assert.match(workspaceIntegrationSource, /create\.dataset\.hhBwManageLitter=litterId/);
+  assert.match(workspaceIntegrationSource, /root\.HerdHarborBreedingWorkspace\?\.open\?\.\(litterId\)/);
   assert.match(routerSource, /#add-breeding/);
   assert.match(routerSource, /#breeding-form/);
-  assert.doesNotMatch(extractedSource, /function breedingStage\(|function weanSelected\(/);
+  assert.doesNotMatch(extractedSource, /function breedingStage\(|function weanSelected\(|function setDisposition\(/);
+});
+
+test("manual offspring creator remains compatibility fallback behind canonical lifecycle/workspace integration", () => {
+  assert.match(extractedSource, /function openOffspringCreator\(litterId\)/);
+  assert.match(extractedSource, /allowsAnimalTransition\(stateNow\(\)\.animals, \[\.\.\.stateNow\(\)\.animals, \.\.\.created\]\)/);
+  assert.match(extractedSource, /sireId: litter\.sireId \|\| ""/);
+  assert.match(extractedSource, /damId: litter\.damId \|\| ""/);
+  assert.match(extractedSource, /sourceBirthId: litter\.id/);
+  assert.match(workspaceIntegrationSource, /create\.removeAttribute\("data-create-offspring"\)/);
+  assert.match(lifecycleSource, /autoCreateBornOffspring\(state,litter\)/);
 });
 
 test("shell loads and caches Breeding/Litter runtime before application composition", () => {
