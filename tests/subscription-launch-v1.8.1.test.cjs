@@ -292,3 +292,23 @@ test("terminal fresh backend subscription statuses resolve to Free Adult without
     assert.equal(resolved.maxActiveAnimals, 5, status);
   }
 });
+
+
+test("upgrading from Free Adult to trusted paid Member restores unlimited active-animal allowance", () => {
+  const five = Array.from({ length: 5 }, (_, id) => ({ id, status: "Active" }));
+  const six = Array.from({ length: 6 }, (_, id) => ({ id, status: "Active" }));
+
+  const free = loadPolicy({}, { status: "free_adult", plan: "member", freeAdult: true }, true);
+  assert.equal(free.HerdHarborMembership.validateAnimalTransition(five, six).allowed, false);
+
+  const paid = loadPolicy({}, {
+    status: "active",
+    plan: "member",
+    providerSubscriptionId: "sub_paid",
+    serverNow: "2026-11-01T12:00:00.000Z"
+  }, true);
+  const account = paid.HerdHarborSubscriptionLaunch.__test.resolveAccount();
+  assert.equal(account.accessMode, "paid");
+  assert.equal(account.maxActiveAnimals, null);
+  assert.equal(paid.HerdHarborMembership.validateAnimalTransition(five, six).allowed, true);
+});
