@@ -15,6 +15,7 @@ function loadPolicy(baseAccount = {}, snapshot = {}, verified = true) {
     subscriptionStatus: "not_configured",
     maxActiveAnimals: null,
     features: { animalRecords: true },
+    backendReady: false,
     ...baseAccount
   };
   const original = {
@@ -56,14 +57,16 @@ function loadPolicy(baseAccount = {}, snapshot = {}, verified = true) {
   return window;
 }
 
-test("pre-launch fallback keeps full Member access while billing snapshot settles", () => {
+test("unverified pre-launch browser state cannot manufacture a trial while backend status settles", () => {
   const api = loadPolicy({}, {}, false).HerdHarborSubscriptionLaunch;
   const resolved = api.__test.resolveAccount(new Date("2026-09-20T12:00:00-04:00"));
   assert.equal(api.version, "1.8.2");
   assert.equal(resolved.effectiveMembershipTier, "member");
-  assert.equal(resolved.membershipSource, "launch_trial_fallback");
-  assert.equal(resolved.trialEndsAt, "2026-10-01T00:00:00-04:00");
+  assert.equal(resolved.membershipSource, "default");
+  assert.equal(resolved.accessMode, "pending");
+  assert.equal(resolved.trialEndsAt, undefined);
   assert.equal(resolved.backendTrialVerified, false);
+  assert.equal(api.getExperienceState().key, "checking");
 });
 
 test("September 24 signup remains a trusted Member trial through October 24", () => {
@@ -215,4 +218,77 @@ test("adult Free preserves an existing herd above five but cannot increase it", 
   assert.equal(freeAdult.HerdHarborMembership.validateAnimalTransition(eight, eight).allowed, true);
   assert.equal(freeAdult.HerdHarborMembership.validateAnimalTransition(eight, seven).allowed, true);
   assert.equal(freeAdult.HerdHarborMembership.validateAnimalTransition(eight, nine).allowed, false);
+});
+
+test("fresh backend Free Adult status is authoritative before the Stripe snapshot settles", () => {
+  const api = loadPolicy({
+    backendReady: true,
+    subscriptionStatus: "free_adult"
+  }, {}, false).HerdHarborSubscriptionLaunch;
+  const resolved = api.__test.resolveAccount();
+  assert.equal(resolved.membershipSource, "free_adult");
+  assert.equal(resolved.accessMode, "free_adult");
+  assert.equal(resolved.maxActiveAnimals, 5);
+  assert.equal(resolved.backendTrialVerified, true);
+  assert.equal(api.getExperienceState().key, "free_adult");
+});
+
+test("trusted trial experience reports authoritative date and rounded days remaining", () => {
+  const snapshot = {
+    status: "trialing",
+    plan: "member",
+    initialTrial: true,
+    initialTrialStartsAt: "2026-09-24T14:30:00.000Z",
+    initialTrialEndsAt: "2026-10-24T14:30:00.000Z",
+    trialEndsAt: "2026-10-24T14:30:00.000Z",
+    serverNow: "2026-10-10T12:00:00.000Z"
+  };
+  const api = loadPolicy({}, snapshot, true).HerdHarborSubscriptionLaunch;
+  const experience = api.getExperienceState();
+  assert.equal(experience.key, "trial_active");
+  assert.equal(experience.endsAt, "2026-10-24T14:30:00.000Z");
+  assert.equal(experience.daysRemaining, 15);
+  assert.equal(experience.upgradeAvailable, true);
+  assert.equal(experience.verified, true);
+});
+
+test("paid access ending remains paid through the provider period and advertises no destructive fallback", () => {
+  const snapshot = {
+    status: "active",
+    plan: "member",
+    providerSubscriptionId: "sub_ending",
+    cancelAtPeriodEnd: true,
+    currentPeriodEnd: "2026-12-01T15:00:00.000Z",
+    serverNow: "2026-11-15T12:00:00.000Z"
+  };
+  const api = loadPolicy({}, snapshot, true).HerdHarborSubscriptionLaunch;
+  const resolved = api.__test.resolveAccount();
+  const experience = api.getExperienceState();
+  assert.equal(resolved.accessMode, "paid");
+  assert.equal(resolved.maxActiveAnimals, null);
+  assert.equal(experience.key, "paid_access_ending");
+  assert.equal(experience.endsAt, "2026-12-01T15:00:00.000Z");
+});
+
+test("protected and Junior experience states remain separate from adult trial policy", () => {
+  const owner = loadPolicy({ accountRole: "owner", backendReady: true }, {}, false)
+    .HerdHarborSubscriptionLaunch.getExperienceState();
+  assert.equal(owner.key, "protected_access");
+
+  const junior = loadPolicy(
+    { membershipTier: "junior", effectiveMembershipTier: "junior", backendReady: true },
+    { status: "free_junior", plan: "junior", requestedPlan: "junior" },
+    true
+  ).HerdHarborSubscriptionLaunch.getExperienceState();
+  assert.equal(junior.key, "junior");
+  assert.equal(junior.maxActiveAnimals, 5);
+});
+
+test("terminal fresh backend subscription statuses resolve to Free Adult without browser trust", () => {
+  for (const status of ["canceled", "expired", "unpaid", "incomplete_expired"]) {
+    const api = loadPolicy({ backendReady: true, subscriptionStatus: status }, {}, false).HerdHarborSubscriptionLaunch;
+    const resolved = api.__test.resolveAccount();
+    assert.equal(resolved.membershipSource, "free_adult", status);
+    assert.equal(resolved.maxActiveAnimals, 5, status);
+  }
 });
