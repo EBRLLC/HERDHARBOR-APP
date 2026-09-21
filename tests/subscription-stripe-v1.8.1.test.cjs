@@ -116,23 +116,24 @@ test("auth-settled Stripe launch bridge performs one bounded post-login provider
   assert.doesNotMatch(bridge, /createClient\s*\(/);
 });
 
-test("legacy Stripe provider keeps the price catalog while v1.8.1 policy hides yearly/public Founder controls", () => {
+test("legacy Stripe catalog remains documented while public Member checkout is hard-locked monthly", () => {
   assert.match(provider, /founder:[\s\S]*month:\s*999[\s\S]*year:\s*11000/);
   assert.match(provider, /member:[\s\S]*month:\s*1499[\s\S]*year:\s*15000/);
   assert.match(provider, /business:[\s\S]*month:\s*4999[\s\S]*year:\s*55000/);
-  assert.match(provider, /data-hh-stripe-interval="month"/);
-  assert.match(provider, /data-hh-stripe-interval="year"/);
+  assert.match(provider, /let selectedInterval = "month"/);
+  assert.match(provider, /billingInterval:\s*planId === "member" \? "month" : selectedInterval/);
+  assert.doesNotMatch(provider, /data-hh-stripe-interval="year"/);
+  assert.match(provider, /Member is currently offered month-to-month at \$14\.99\/month/);
   assert.match(memberUi, /hh-subscription-interval-switcher/);
   assert.match(referralPolicy, /plans\[1\]\.hidden\s*=\s*true/);
-  assert.match(referralPolicy, /hh-subscription-interval-switcher/);
   assert.match(referralPolicy, /Coming Soon/);
 });
 
 test("v1.8.2 web runtime loads carried-forward v1.8.1 referral policy before Stripe provider and preserves safe launch order", () => {
   const referralIndex = build.indexOf("subscription-referral-policy-v1.8.1.js?v=1");
-  const policyIndex = build.indexOf("subscription-launch-v1.8.1.js?v=1");
+  const policyIndex = build.indexOf("subscription-launch-v1.8.1.js?v=2");
   const engineIndex = build.indexOf("subscription-engine-v1.8.0.js?v=1");
-  const providerIndex = build.indexOf("subscription-stripe-provider-v1.8.0.js?v=1");
+  const providerIndex = build.indexOf("subscription-stripe-provider-v1.8.0.js?v=2");
   const bridgeIndex = build.indexOf("subscription-stripe-launch-bridge-v1.8.1.js?v=1");
   assert.ok(referralIndex >= 0 && providerIndex > referralIndex);
   assert.ok(policyIndex >= 0 && engineIndex > policyIndex && providerIndex > engineIndex && bridgeIndex > providerIndex);
@@ -151,4 +152,47 @@ test("PWA keeps referral, admin-credit and Stripe subscription assets network-fi
     "subscription-stripe-launch-bridge-v1.8.1.js"
   ]) assert.match(sw, new RegExp(asset.replaceAll(".", "\\.")));
   assert.match(sw, /NETWORK_FIRST_PATHS/);
+});
+
+
+test("Member checkout preserves remaining trial time and deduplicates repeated server requests", () => {
+  assert.match(billing, /billing_cycle_anchor:\s*trialEndUnix/);
+  assert.match(billing, /proration_behavior:\s*"none"/);
+  assert.match(billing, /checkoutIdempotencyKey/);
+  assert.match(billing, /idempotencyKey:\s*checkoutIdempotencyKey/);
+  assert.match(billing, /herdharbor_initial_trial_end:\s*trial\.endsAt/);
+});
+
+test("client checkout is single-flight and failure leaves current access unchanged", () => {
+  assert.match(provider, /if \(checkoutState === "pending"\) return/);
+  assert.match(provider, /checkoutState = "pending"/);
+  assert.match(provider, /checkoutState = "error"/);
+  assert.match(provider, /Your current access is unchanged/);
+  assert.match(provider, /Checkout was canceled/);
+});
+
+test("ended adult Stripe access falls to Free Adult rather than Junior", () => {
+  assert.match(webhook, /accessStatus\(context\.userId, "free_adult", context\.planId\)/);
+  assert.match(webhook, /eventType:\s*"free_adult_fallback"/);
+  assert.match(webhook, /fallbackPlan:\s*"free_adult"/);
+  const deletedStart = webhook.indexOf('event.type === "customer.subscription.deleted"');
+  const deletedEnd = webhook.indexOf('} else if (event.type === "checkout.session.completed")', deletedStart);
+  const deletedBlock = webhook.slice(deletedStart, deletedEnd);
+  assert.doesNotMatch(deletedBlock, /eventType:\s*"junior_fallback"/);
+});
+
+test("payment failure remains recoverable paid access instead of destructive downgrade", () => {
+  assert.match(webhook, /invoice\.payment_failed/);
+  assert.match(webhook, /status:\s*"past_due"/);
+  assert.match(provider, /"past_due"/);
+  assert.match(launch, /ACTIVE_PAID_STATUSES = new Set\(\["active", "trialing", "past_due"/);
+});
+
+test("updated launch and provider assets are cache-busted without changing the v1.8.2 release", () => {
+  assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=2/);
+  assert.match(build, /subscription-stripe-provider-v1\.8\.0\.js\?v=2/);
+  assert.match(sw, /\.\/subscription-launch-v1\.8\.1\.js\?v=2/);
+  assert.match(sw, /\.\/subscription-stripe-provider-v1\.8\.0\.js\?v=2/);
+  assert.match(build, /version:\s*"1\.8\.2"/);
+  assert.match(sw, /herdharbor-shell-v1\.8\.2/);
 });
