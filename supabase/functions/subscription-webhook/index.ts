@@ -586,19 +586,23 @@ Deno.serve(async (req) => {
       if (event.type === "customer.subscription.deleted" && context?.userId) {
         await expireUnqualifiedReferral(context.userId);
         await releaseFutureReservedCredits(context.userId);
+        // Adult paid access degrades to the permanent Free Adult state. This
+        // changes only subscription_status; protected role/founder/manual
+        // membership ownership remains untouched by accessStatus().
+        await accessStatus(context.userId, "free_adult", context.planId);
         await queueNotification({
           userId: context.userId,
           subscriptionId: context.subscriptionRowId || null,
           eventType: "subscription_ended",
           dedupeKey: `subscription-ended:${stringId((event.data.object as Stripe.Subscription)?.id)}:${event.id}`,
-          payload: { plan: context.planId || "member", fallbackPlan: "junior" }
+          payload: { plan: context.planId || "member", fallbackPlan: "free_adult" }
         });
         await queueNotification({
           userId: context.userId,
           subscriptionId: context.subscriptionRowId || null,
-          eventType: "junior_fallback",
-          dedupeKey: `junior-fallback:${stringId((event.data.object as Stripe.Subscription)?.id)}:${event.id}`,
-          payload: { plan: "junior", reason: "subscription_ended" }
+          eventType: "free_adult_fallback",
+          dedupeKey: `free-adult-fallback:${stringId((event.data.object as Stripe.Subscription)?.id)}:${event.id}`,
+          payload: { plan: "free_adult", maxActiveAnimals: 5, reason: "subscription_ended" }
         });
       }
     } else if (event.type === "checkout.session.completed") {
