@@ -264,7 +264,7 @@
 - **Base branch:** `refactor/extract-animal-profile-runtime-domain`
 - **Base SHA:** `98a38b44ab655c1b63f6cdd98f6d55e20ea626c0`
 - **Validated implementation head SHA:** `9c999733511ec4fc63cdb59f03ef3fa539967843`
-- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after the closure commit is revalidated, because a commit cannot contain its own Git SHA
+- **Final head SHA:** `70f368d6ef12df658998b777d32c11e34fe79611`
 - **Parent PR:** #149
 - **Application version:** 1.8.2
 - **Component/build identities changed:** no whole-app, cloud-sync, monitoring, lifecycle, or existing domain component identity changed; new extracted component `breeding-litter-runtime-v1.8.3.js?v=1` is loaded before the composition runtime
@@ -284,7 +284,7 @@
 - **Rollback procedure:** revert PR #151 shell/module/runtime/test changes, restoring the prior monolithic breeding/litter implementation; no state/data migration rollback is required
 - **Tests added:** `tests/runtime-breeding-litter-extraction-v1.8.3.test.cjs`
 - **Tests modified:** breeding/birth helper regression, Junior entry-path gate, optional-tool lazy loading, stability, app compile, release-reference, Pages artifact check, and `package.json` v1.8.3 development gate
-- **Full CI result:** Alpha v1.8.2 CI #241 — PASS on validated implementation head `9c999733511ec4fc63cdb59f03ef3fa539967843`; current release/security, lifecycle/state-integrity, complete UTC and America/New_York regression discovery, monitoring build/architecture/config, source-mutation guard, and Android v1.8.2 review bundle all passed. The ledger-closure head is revalidated before Phase 6D.
+- **Full CI result:** Alpha v1.8.2 CI #243 — PASS on exact final head `70f368d6ef12df658998b777d32c11e34fe79611`; current release/security, lifecycle/state-integrity, complete UTC and America/New_York regression discovery, monitoring build/architecture/config, source-mutation guard, and Android v1.8.2 review bundle all passed.
 - **Manual validation still required:** exercise breeding add/edit/delete, species schedule recalculation, pregnancy results, birth linking/edit/delete, report download, reminder creation/completion, offspring creation/management, profile breeding return behavior, and weaning safeguards in deployed browser/PWA
 - **Known risks:** extracted UI orchestration depends on injected shared services/load order; manual offspring creation intentionally remains only as compatibility fallback behind the canonical lifecycle/workspace integration; later extractions must not duplicate lifecycle/workspace/integrity state mutation
 - **Exact requirements inherited by next phase:** preserve `HerdHarborBreedingLitterRuntime.create(deps)`, canonical lifecycle/workspace/weaning/integrity engines, shared `completeWorkflowTasks`, Phase 6B Animals/Profile contracts, Phase 6A monitoring boot contracts, prior AI/subscription/cloud contracts, and whole-app v1.8.2 identity
@@ -293,10 +293,11 @@
 
 ## Phase 6D — Runtime extraction: Health
 
-- **Status:** pending
-- **Required base branch:** `refactor/extract-breeding-litter-runtime-domain`
-- **Required base:** exact final green Phase 6C ledger-closure head
+- **Status:** in progress
+- **Branch:** `refactor/extract-health-runtime-domain`
+- **Base branch:** `refactor/extract-breeding-litter-runtime-domain`
+- **Base SHA:** `70f368d6ef12df658998b777d32c11e34fe79611`
 - **Parent PR:** #151
 - **Application version target for this phase:** remain 1.8.2
 
-At Phase 6D start, first correct the inherited Phase 6C `Final head SHA` line to the exact final green parent SHA, then inspect repository HEAD, PR #151 diff, health callers and canonical health-intelligence engines, tests, branch ancestry, and open PR overlap before extraction.
+Repository HEAD, PR #151 diff, current health/weight callers, Health Intelligence ownership, tests, branch ancestry, and open PR overlap are being re-inspected before extraction.
