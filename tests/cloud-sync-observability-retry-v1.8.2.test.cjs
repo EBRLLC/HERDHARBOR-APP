@@ -25,8 +25,8 @@ test("legacy cloud failures expose operation and sanitized provider diagnostics"
   assert.match(cloud, /session_refresh_attempted: telemetry\.session_refresh_attempted/);
   assert.match(cloud, /session_refresh_result: telemetry\.session_refresh_result/);
   assert.match(cloud, /source_error: error instanceof Error \? error : null/);
-  assert.match(cloud, /reportCloudSyncFailure\("cloud-preflight", loadError, serializedStateBytes\(rawValue\)\)/);
-  assert.match(cloud, /reportCloudSyncFailure\("cloud-save", error, serializedStateBytes\(rawValue\)\)/);
+  assert.match(cloud, /reportCloudSyncFailure\("cloud-preflight", loadError, serializedStateBytes\(rawValue\), loadTelemetry\)/);
+  assert.match(cloud, /reportCloudSyncFailure\("cloud-save", error, serializedStateBytes\(rawValue\), saveTelemetry\)/);
 });
 
 test("cloud failure classifier covers required deterministic categories", () => {
@@ -47,7 +47,7 @@ test("retry policy is bounded and permanent failures are not blindly retried", (
   assert.match(cloud, /CLOUD_RETRY_DELAYS_MS = \[750, 2000\]/);
   assert.match(cloud, /\["network", "timeout", "rate_limit", "server"\]\.includes\(category\)/);
   assert.match(cloud, /attempt <= CLOUD_RETRY_DELAYS_MS\.length/);
-  assert.match(cloud, /!isTransientCloudFailure\(error\) \|\| attempt >= CLOUD_RETRY_DELAYS_MS\.length/);
+  assert.match(cloud, /!transient \|\| attempt >= CLOUD_RETRY_DELAYS_MS\.length/);
   assert.match(cloud, /typeof client\?\.auth\?\.refreshSession === "function"/);
   assert.match(cloud, /authRefreshed = true/);
   assert.match(cloud, /telemetry\.retry_attempts \+= 1/);
