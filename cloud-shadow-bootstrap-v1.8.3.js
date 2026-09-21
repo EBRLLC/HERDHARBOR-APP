@@ -16,7 +16,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (recordStoreApi, normalizerApi, shadowApi) {
   "use strict";
 
-  const VERSION = "0.4-checksum-handoff";
+  const VERSION = "0.5-cohort-gate";
   const RELEASE = "1.8.3";
 
   function requiredFunction(value, label) {
@@ -60,7 +60,7 @@
 
   function createShadowBootstrap(options = {}) {
     const featureGate = options.featureGate === true;
-    const cohort = normalizeCohort(options.cohortUserIds);
+    const cohort = normalizeCohort(options.cohortUserIds);\n    const cohortGate = options.cohortGate;
     const getSession = requiredFunction(options.getSession, "getSession");
     const readLegacySnapshot = requiredFunction(options.readLegacySnapshot, "readLegacySnapshot");
     const createRecordStore = requiredFunction(
@@ -83,8 +83,18 @@
       } catch {}
     }
 
+    function cohortDecision(userId) {
+      const id = String(userId || "").trim();
+      if (cohortGate?.evaluate) return cohortGate.evaluate(id);
+      const eligible = cohort.has(id);
+      return Object.freeze({
+        eligible,
+        reason: eligible ? "allowlisted" : "not-allowlisted"
+      });
+    }
+
     function isEligibleUser(userId) {
-      return featureGate && cohort.has(String(userId || ""));
+      return featureGate && cohortDecision(userId).eligible === true;
     }
 
     async function run(runOptions = {}) {
@@ -101,8 +111,13 @@
         emit("shadow-bootstrap-skipped", result);
         return result;
       }
-      if (!cohort.has(userId)) {
-        const result = { skipped: true, reason: "not-in-internal-cohort" };
+      const cohortResult = cohortDecision(userId);
+      if (cohortResult.eligible !== true) {
+        const result = {
+          skipped: true,
+          reason: "not-in-internal-cohort",
+          cohortReason: String(cohortResult.reason || "not-eligible").slice(0, 80)
+        };
         emit("shadow-bootstrap-skipped", result);
         return result;
       }
@@ -198,6 +213,7 @@
     return Object.freeze({
       featureGate,
       cohortSize: cohort.size,
+      cohortMode: cohortGate?.mode || "allowlist",
       isEligibleUser,
       run
     });
