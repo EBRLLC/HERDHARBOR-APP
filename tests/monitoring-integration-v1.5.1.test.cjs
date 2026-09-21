@@ -67,8 +67,11 @@ assert.doesNotMatch(instrumentation, /JSON\.parse\(value\)|String\(value\)|JSON\
 assert.match(pwa, /herdharbor-monitoring-config\.js\?v=1\.8\.2/);
 assert.match(pwa, /vendor\/herdharbor-monitoring-v1\.6\.1\.min\.js\?v=1\.8\.2/);
 assert.match(pwa, /addOptionalScript/);
-assert.match(pwa, /loadMonitoring\(bootApplication\)/);
-assert.match(pwa, /Monitoring is optional and fail-open/);
+assert.match(pwa, /startMonitoringLoad\(\)/);
+assert.match(pwa, /bootApplication\(\);/);
+assert.doesNotMatch(pwa, /loadMonitoring\(bootApplication\)/);
+assert.match(pwa, /Application startup is authoritative and never waits for monitoring/);
+assert.match(pwa, /EARLY_MONITORING_QUEUE_LIMIT = 8/);
 assert.match(pwa, /registration\.update\(\)/, "application update regression fix remains intact");
 assert.doesNotMatch(pwa, /HerdHarborCloud.*syncNow[\s\S]*SKIP_WAITING/, "app updates remain independent of Cloud Sync");
 
