@@ -767,6 +767,8 @@
       VERSION,
       normalizeBreedingStatus,
       breedingSchedule,
+      offspringAnimalId,
+      birthRecordIdForBreeding,
       syncBreedingReminders,
       syncBirthReminder,
       breedingReportSnapshot,
