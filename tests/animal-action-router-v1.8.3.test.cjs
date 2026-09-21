@@ -85,10 +85,13 @@ test('PWA shell caches and network-refreshes the v1.8.3 router', () => {
 
 test('core runtime exposes narrow canonical edit and pedigree-print entry points for the router', () => {
   const appRuntime = read('herdharbor-app-runtime.js');
-  assert.match(appRuntime, /openAnimalEditor:\s*\(animalId\)\s*=>/);
-  assert.match(appRuntime, /openAnimalPedigreePrint:\s*\(animalId\)\s*=>/);
-  assert.match(appRuntime, /openAnimalForm\(id\)/);
-  assert.match(appRuntime, /openPrintPedigreeForm\(id\)/);
+  const animalProfileRuntime = read('animal-profile-runtime-v1.8.3.js');
+  assert.match(appRuntime, /openAnimalEditor:\s*\(animalId\)\s*=>\s*animalProfileRuntime\(\)\.openEditor\(animalId\)/);
+  assert.match(appRuntime, /openAnimalPedigreePrint:\s*\(animalId\)\s*=>\s*animalProfileRuntime\(\)\.openPedigreePrint\(animalId\)/);
+  assert.match(animalProfileRuntime, /function openEditor\(animalId\)/);
+  assert.match(animalProfileRuntime, /openAnimalForm\(id\)/);
+  assert.match(animalProfileRuntime, /function openPedigreePrint\(animalId\)/);
+  assert.match(animalProfileRuntime, /deps\.openPrintPedigreeForm\(id\)/);
 });
 
 
