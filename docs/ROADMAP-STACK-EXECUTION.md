@@ -159,7 +159,7 @@
 - **Base branch:** `feat/complete-production-trial-free-adult`
 - **Base SHA:** `7ac4a0a58dbf694242b825ae65fee883d3223a61`
 - **Validated implementation head SHA:** `c8cf37ac9b1423c7a285c34d508dedac8b4972ee`
-- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after the closure commit is revalidated, because a commit cannot contain its own Git SHA
+- **Final head SHA:** `aceff2b9de5f512907a1b0b598345a56b4bd3b3e`
 - **Parent PR:** #143
 - **Application version:** 1.8.2
 - **Component/build identities changed:** no whole-app release identity changed; `herdharbor-cloud.js` browser asset revision advances from `?v=20` to `?v=21`; `paper-pedigree-import-v1.8.2.js` asset revision advances from `?v=1` to `?v=2`; Paper Pedigree core contract/version remains v1.8.2
@@ -178,7 +178,7 @@
 - **Rollback procedure:** revert PR #145 browser/Edge Function changes and restore cloud/pedigree asset revisions; aggregate metrics table/RPC may remain inert or be separately rolled back by an authorized operator; canonical farm data requires no migration rollback because AI never directly mutates it
 - **Tests added:** `tests/paper-pedigree-production-hardening-v1.8.3.test.cjs`
 - **Tests modified:** `tests/paper-pedigree-runtime-v1.8.2.test.cjs`; `tests/stability-release.test.cjs`; `tests/current-shell-asset-identity-v1.6.7.test.cjs`; `tests/tablet-layout-login-color.test.cjs`; `tests/workflow-phase1-v1.7.1.test.cjs`; `tests/launch-hardening.test.cjs`; `package.json` v1.8.3 development gate
-- **Full CI result:** Alpha v1.8.2 CI #219 — PASS on validated implementation head `c8cf37ac9b1423c7a285c34d508dedac8b4972ee`; complete UTC and America/New_York regression discovery, release/security, lifecycle/state-integrity, monitoring build/architecture/config, source-mutation guard, and Android review bundle passed. The ledger-closure head is revalidated before Phase 6A.
+- **Full CI result:** Alpha v1.8.2 CI #220 — PASS on exact final head `aceff2b9de5f512907a1b0b598345a56b4bd3b3e`; complete UTC and America/New_York regression discovery, release/security, lifecycle/state-integrity, monitoring build/architecture/config, source-mutation guard, and Android review bundle passed.
 - **Manual validation still required:** deploy/apply the aggregate metrics migration in an authorized environment; verify production Edge Function secrets and timeout configuration; test representative clear/rotated/perspective/partial rabbit pedigree photos and confirm uncertain fields/warnings; verify provider timeout/rate-limit behavior against the deployed provider; handwriting reliability is intentionally not claimed
 - **Known risks:** provider vision quality varies by document quality/layout; low-confidence and ambiguous fields still require human judgment; aggregate metrics are unavailable until the SQL migration is applied; sanitized browser diagnostics depend on the Supabase Functions error context retaining the response body; multi-photo merge is deferred because safe deterministic per-image provenance/conflict resolution is not yet implemented
 - **Exact requirements inherited by next phase:** preserve the single reviewed AI mutation boundary, canonical matching/conflict/lineage ownership, local source-image privacy, server-only provider keys, authenticated fail-closed extraction, stable safe diagnostics, aggregate-only telemetry, no multi-photo merge without provenance design, Phase 4 subscription protections, Phase 1/2 cloud contracts, and whole-app v1.8.2 identity
@@ -187,10 +187,11 @@
 
 ## Phase 6A — Monitoring non-blocking startup
 
-- **Status:** pending
-- **Required base branch:** `feat/harden-paper-pedigree-ai-production`
-- **Required base:** exact final green Phase 5 ledger-closure head
+- **Status:** in progress
+- **Branch:** `perf/decouple-monitoring-from-application-startup`
+- **Base branch:** `feat/harden-paper-pedigree-ai-production`
+- **Base SHA:** `aceff2b9de5f512907a1b0b598345a56b4bd3b3e`
 - **Parent PR:** #145
 - **Application version target for this phase:** remain 1.8.2
 
-At Phase 6A start, first correct the inherited Phase 5 `Final head SHA` line to the exact green parent SHA, then inspect repository HEAD, PR #145 diff, current startup/monitoring tests, branch ancestry, and open PR overlap before implementation.
+Repository HEAD, PR #145 diff, startup/monitoring tests, branch ancestry, and open PR overlap were re-inspected before implementation.
