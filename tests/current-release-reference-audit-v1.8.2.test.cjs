@@ -62,7 +62,11 @@ test("PWA shell and HTML use the v1.8.2 release/cache identity", () => {
   assert.match(worker, /\.\/herdharbor-monitoring-config\.js\?v=1\.8\.2/);
   assert.match(html, /manifest\.json\?v=1\.8\.2/);
   assert.match(html, /herdharbor-build\.js\?v=1\.8\.2/);
+  assert.match(html, /animal-profile-runtime-v1\.8\.3\.js\?v=1/);
+  assert.ok(html.indexOf("animal-profile-runtime-v1.8.3.js?v=1") < html.indexOf("herdharbor-app-runtime.js?v=2"), "Animals/Profile domain module loads before the composition runtime");
   assert.match(html, /herdharbor-app-runtime\.js\?v=2/);
+  assert.match(worker, /\.\/animal-profile-runtime-v1\.8\.3\.js\?v=1/);
+  assert.match(worker, /"\/animal-profile-runtime-v1\.8\.3\.js"/);
   assert.match(worker, /\.\/herdharbor-app-runtime\.js\?v=2/);
   assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.2"/);
   assert.match(appRuntime, /Version 1\.8\.2 adds Cloud Sync V2/);
