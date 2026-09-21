@@ -10,6 +10,7 @@ const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const exists = (file) => fs.existsSync(path.join(root, file));
 const html = read("index.html");
 const appRuntime = read("herdharbor-app-runtime.js");
+const animalProfileRuntime = read("animal-profile-runtime-v1.8.3.js");
 const shellCss = read("herdharbor-index-shell.css");
 const worker = read("service-worker.js");
 const localPath = (value) => value.replace(/^\.\//, "").split("?")[0].split("#")[0].replace(/^\//, "");
@@ -23,10 +24,14 @@ test("index shell keeps only the early bootstrap inline", () => {
   assert.match(inlineScripts[0], /herdharbor_theme/);
   assert.equal((html.match(/<style\b/gi) || []).length, 0, "page-owned CSS is external");
   assert.match(html, /herdharbor-index-shell\.css\?v=1/);
+  assert.match(html, /animal-profile-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(html, /herdharbor-app-runtime\.js\?v=2/);
   assert.doesNotMatch(html, /function renderSales\(\)/);
   assert.match(appRuntime, /function renderSales\(\)/);
-  assert.ok(appRuntime.length > 500000);
+  assert.ok(appRuntime.length < 500000, "composition runtime shrinks as coherent domains are extracted");
+  assert.ok(animalProfileRuntime.length > 30000, "Animals/Profile runtime owns the extracted domain implementation");
+  assert.doesNotMatch(appRuntime, /function renderAnimalResults\(/);
+  assert.match(animalProfileRuntime, /function renderAnimalResults\(/);
   assert.ok(shellCss.length > 50000);
 });
 
@@ -37,8 +42,9 @@ test("classic script and stylesheet order is preserved", () => {
   assert.ok(baseCss >= 0 && shellCssIndex > baseCss && coreCss > shellCssIndex);
 
   const analyticsRuntime = html.indexOf("analytics-v1.6.1.js?v=1.7.1");
+  const animalProfileRuntimeIndex = html.indexOf("animal-profile-runtime-v1.8.3.js?v=1");
   const appRuntimeIndex = html.indexOf("herdharbor-app-runtime.js?v=2");
-  assert.ok(analyticsRuntime >= 0 && appRuntimeIndex > analyticsRuntime);
+  assert.ok(analyticsRuntime >= 0 && animalProfileRuntimeIndex > analyticsRuntime && appRuntimeIndex > animalProfileRuntimeIndex);
   assert.doesNotMatch(html, /<script[^>]+src="herdharbor-app-runtime\.js\?v=2"[^>]+(?:async|defer|type="module")/);
 });
 
@@ -52,8 +58,9 @@ test("static script and stylesheet references resolve once", () => {
   }
 });
 
-test("service worker covers both required extracted shell assets", () => {
+test("service worker covers required extracted shell assets", () => {
   for (const { asset, revision } of [
+    { asset: "animal-profile-runtime-v1.8.3.js", revision: "1" },
     { asset: "herdharbor-app-runtime.js", revision: "2" },
     { asset: "herdharbor-index-shell.css", revision: "1" }
   ]) {
