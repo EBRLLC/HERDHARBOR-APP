@@ -229,7 +229,7 @@
 - **Base branch:** `perf/decouple-monitoring-from-application-startup`
 - **Base SHA:** `4a79e10bb029917a892e4be466346fbe18724d95`
 - **Validated implementation head SHA:** `b94c7fb825637aa38d81e0cd2515be614c3ed977`
-- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after the closure commit is revalidated, because a commit cannot contain its own Git SHA
+- **Final head SHA:** `98a38b44ab655c1b63f6cdd98f6d55e20ea626c0`
 - **Parent PR:** #147
 - **Application version:** 1.8.2
 - **Component/build identities changed:** no whole-app, cloud-sync, monitoring, or existing domain component identity changed; new extracted component `animal-profile-runtime-v1.8.3.js?v=1` is loaded before the composition runtime
@@ -257,10 +257,11 @@
 
 ## Phase 6C — Runtime extraction: Breeding / Litters
 
-- **Status:** pending
-- **Required base branch:** `refactor/extract-animal-profile-runtime-domain`
-- **Required base:** exact final green Phase 6B ledger-closure head
+- **Status:** in progress
+- **Branch:** `refactor/extract-breeding-litter-runtime-domain`
+- **Base branch:** `refactor/extract-animal-profile-runtime-domain`
+- **Base SHA:** `98a38b44ab655c1b63f6cdd98f6d55e20ea626c0`
 - **Parent PR:** #149
 - **Application version target for this phase:** remain 1.8.2
 
-At Phase 6C start, first correct the inherited Phase 6B `Final head SHA` line to the exact final green parent SHA, then inspect repository HEAD, PR #149 diff, breeding/litter callers and canonical lifecycle engines, tests, branch ancestry, and open PR overlap before extraction.
+Repository HEAD, PR #149 diff, current breeding/litter callers, lifecycle engines, tests, branch ancestry, and open PR overlap are re-inspected before extraction.
