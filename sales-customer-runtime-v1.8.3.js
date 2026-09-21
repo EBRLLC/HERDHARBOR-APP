@@ -422,7 +422,7 @@
           replaceState(previousState);
           return;
         }
-        root.HerdHarborMarket?.recordSaleChange?.(saved, previousSale, state);
+        root.HerdHarborMarket?.recordSaleChange?.(saved, previousSale, stateNow());
         closeModal();
         openSaleDetail(saved.id);
       });
@@ -548,7 +548,7 @@
         replaceState(previousState);
         return;
       }
-      root.HerdHarborMarket?.recordSaleChange?.(cancelled, sale, state);
+      root.HerdHarborMarket?.recordSaleChange?.(cancelled, sale, stateNow());
       closeModal();
       renderSales();
     }
