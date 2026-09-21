@@ -7,13 +7,14 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const appRuntime = fs.readFileSync(path.join(root, "herdharbor-app-runtime.js"), "utf8");
+const animalProfileRuntime = fs.readFileSync(path.join(root, "animal-profile-runtime-v1.8.3.js"), "utf8");
 const spreadsheet = fs.readFileSync(path.join(root, "spreadsheet-import.js"), "utf8");
 const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 
-const gates = appRuntime.match(/allowsAnimalTransition\(/g) || [];
+const gates = (appRuntime + "\n" + animalProfileRuntime).match(/allowsAnimalTransition\(/g) || [];
 assert.ok(gates.length >= 7, "all active-animal creation/import/reactivation paths use the centralized Junior gate");
-assert.match(appRuntime, /if \(!allowsAnimalTransition\(state\.animals, \[\.\.\.state\.animals, newAnimal\]\)\) return;/, "new animal path is gated");
-assert.match(appRuntime, /if \(!allowsAnimalTransition\(state\.animals, nextAnimals\)\) return;/, "animal edit/reactivation path is gated");
+assert.match(animalProfileRuntime, /deps\.allowsAnimalTransition\(liveState\.animals \|\| \[\], \[\.\.\.\(liveState\.animals \|\| \[\]\), newAnimal\]\)/, "new animal path is gated");
+assert.match(animalProfileRuntime, /deps\.allowsAnimalTransition\(liveState\.animals, nextAnimals\)/, "animal edit/reactivation path is gated");
 assert.match(appRuntime, /openOffspringCreator[\s\S]*?allowsAnimalTransition\(state\.animals, \[\.\.\.state\.animals, \.\.\.created\]\)/, "offspring creation is gated");
 assert.match(appRuntime, /handleTransferImport[\s\S]*?allowsAnimalTransition\(state\.animals, \[\.\.\.state\.animals, \.\.\.added\]\)/, "transfer import is gated");
 assert.match(appRuntime, /handleSpreadsheetImport[\s\S]*?allowsAnimalTransition\(state\.animals, \[\.\.\.state\.animals, \.\.\.records\.animals\]\)/, "spreadsheet import is gated");
@@ -27,9 +28,9 @@ assert.match(cloud, /await loadAccessProfile\(\);[\s\S]*?const \{ data, error \}
 assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.2";/, "embedded app metadata is Alpha v1.8.2");
 assert.match(cloud, /version: "1\.7\.1"[\s\S]*?backupType: "local-safety-backup"/, "safety backups identify Alpha v1.7.1");
 assert.match(appRuntime, /\["Sold", "Deceased", "Archived", "Ancestor Only"\]/);
-assert.match(appRuntime, /<option[^>]*>Archived<\/option>|"Archived", "Ancestor Only"/);
+assert.match(animalProfileRuntime, /"Archived", "Ancestor Only"/);
 assert.match(spreadsheet, /"Archived"/);
 assert.match(spreadsheet, /Active,Breeding,Growing,Retired,For Sale,Reserved,Sold,Deceased,Archived,Ancestor Only/);
-assert.doesNotMatch(appRuntime, /slice\(0,\s*5\)|splice\([^\n]*active/i, "downgrades do not delete or hide animals");
+assert.doesNotMatch(appRuntime + "\n" + animalProfileRuntime, /slice\(0,\s*5\)|splice\([^\n]*active/i, "downgrades do not delete or hide animals");
 
 console.log("Alpha v1.7.1 Junior animal-entry and data-preservation tests passed");
