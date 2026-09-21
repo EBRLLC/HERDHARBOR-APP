@@ -79,6 +79,24 @@ test('contextual Quick Add prioritizes the current workflow without replacing ex
   assert.deepEqual(Phase1.contextualQuickTypes('sales'),['sale','customer','income']);
 });
 
+test('animal-profile Quick Add derives shortcuts from the canonical profile model',()=>{
+  const state=fixture();
+  const actions=Phase1.profileQuickActions(state,'cow1').map(item=>item.action);
+  assert.deepEqual(actions,['weight','episode','care','pedigree','show-entry']);
+  const sold=Phase1.profileQuickActions(state,'rabbit1').map(item=>item.action);
+  assert.equal(sold.includes('breeding'),false);
+  assert.equal(sold.includes('weight'),true);
+});
+
+test('animal-profile Quick Add delegates to the shared v1.8.3 action router instead of replacement forms',()=>{
+  const repo=path.resolve(__dirname,'..');
+  const source=fs.readFileSync(path.join(repo,'workflow-phase1-v1.7.1.js'),'utf8');
+  assert.match(source,/HerdHarborFlowPhase2\?\.parseProfileHash/);
+  assert.match(source,/data-hh-p1-animal-quick/);
+  assert.match(source,/HerdHarborAnimalActionRouter\?\.open\?\./);
+  assert.doesNotMatch(source,/data-hh-p1-animal-quick[\s\S]{0,1200}state\.(?:animals|health|breedings)\.(?:push|splice)/);
+});
+
 test('Phase 1 does not install its DOM observer until the core app is ready',()=>{
   const repo=path.resolve(__dirname,'..');
   const source=fs.readFileSync(path.join(repo,'workflow-phase1-v1.7.1.js'),'utf8');
