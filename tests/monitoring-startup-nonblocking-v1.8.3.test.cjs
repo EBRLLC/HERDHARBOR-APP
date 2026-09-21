@@ -103,6 +103,7 @@ function createHarness() {
     document,
     navigator,
     URL,
+    Error,
     console,
     setTimeout,
     clearTimeout,
