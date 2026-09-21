@@ -326,13 +326,47 @@
 
 ---
 
-## Phase 6E — Runtime extraction: Tasks
+## Completed Phase 6E — Runtime extraction: Tasks
 
-- **Status:** in progress
+- **Roadmap phase:** Phase 6E — Runtime extraction: Tasks
+- **PR number:** #155
+- **PR title:** refactor: extract task runtime domain
 - **Branch:** `refactor/extract-task-runtime-domain`
 - **Base branch:** `refactor/extract-health-runtime-domain`
 - **Base SHA:** `fe6f2b956ea939d03057721751928ca4b693774c`
+- **Validated implementation head SHA:** `0cabac6970fe3f012628bfaabb40fbaeefc45909`
+- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after closure revalidation
 - **Parent PR:** #153
+- **Application version:** 1.8.2
+- **Component/build identities changed:** new `task-runtime-v1.8.3.js?v=1`; no whole-app/cloud/monitoring identity changed
+- **Production behavior changed:** no intended task behavior redesign; recurrence calculation, deterministic next-occurrence generation, task filtering/list UI, create/edit/delete, complete/reopen, and tomorrow rescheduling now execute from the extracted Task runtime
+- **Production behavior intentionally NOT changed:** canonical `state.tasks` remains sole task state owner; breeding/birth reminder production remains in Breeding/Litter runtime; dashboard/Today semantics, categories, recurrence behavior, and persistence remain unchanged; no new automation rules; release remains 1.8.2
+- **Files/modules now owning the feature:** `task-runtime-v1.8.3.js` owns task-domain behavior/UI/filter state; `breeding-litter-runtime-v1.8.3.js` remains reminder producer; `herdharbor-app-runtime.js` retains composition/dashboard and thin task delegates
+- **Canonical state owner:** existing HerdHarbor `state.tasks`; extracted runtime receives canonical state/save helpers and creates no secondary persistence
+- **Public entry points introduced:** `window.HerdHarborTaskRuntime.create(deps)`; existing internal composition function names remain as thin delegates for dashboard/Quick Add callers
+- **Compatibility paths retained:** dashboard task checkbox and Quick Add task launch continue through delegates; breeding/birth reminder tasks remain compatible canonical records
+- **Compatibility paths removed:** monolithic task filter state, recurrence implementation, list/results UI, and task form implementation removed from `herdharbor-app-runtime.js`
+- **Database/schema changes:** none
+- **Edge Function changes:** none
+- **Environment variables/secrets required:** none
+- **Monitoring changes:** none
+- **Migration requirements:** none; deploy the new static Task runtime asset, verified by Pages artifact gate
+- **Rollback procedure:** revert PR #155 shell/runtime/module/test changes; canonical task records require no migration rollback
+- **Tests added:** `tests/runtime-task-extraction-v1.8.3.test.cjs`
+- **Tests modified:** recurring-task behavioral tests, storage-efficiency ownership assertion, stability, app compile, release reference, Pages artifact gate, and `package.json` v1.8.3 development gate
+- **Full CI result:** Alpha v1.8.2 CI #249 — PASS on validated implementation head `0cabac6970fe3f012628bfaabb40fbaeefc45909`; release/security, lifecycle/state-integrity, UTC and America/New_York full discovery, monitoring, source-mutation, and Android all passed. Ledger-closure head is revalidated before Phase 6F.
+- **Manual validation still required:** deployed-browser task list/filtering, add/edit/delete, Today/overdue filtering, dashboard complete, tomorrow reschedule, monthly month-end recurrence, custom recurrence, reopen/recomplete idempotency, and breeding/birth reminder coexistence
+- **Known risks:** Task runtime relies on injected composition services/load order; reminder producers remain separate intentionally; future Phase 9F automation must reuse this canonical task owner rather than mutate animal lifecycle state directly
+- **Exact requirements inherited by next phase:** preserve `HerdHarborTaskRuntime.create(deps)`, canonical `state.tasks`, recurrence/idempotency semantics, external reminder producers, Phase 6A-6D extracted-domain contracts, subscription/AI/cloud protections, and whole-app v1.8.2 identity
+
+---
+
+## Phase 6F — Runtime extraction: Sales / Customers / Transfers
+
+- **Status:** pending
+- **Required base branch:** `refactor/extract-task-runtime-domain`
+- **Required base:** exact final green Phase 6E ledger-closure head
+- **Parent PR:** #155
 - **Application version target for this phase:** remain 1.8.2
 
-Repository HEAD, PR #153 diff, task callers/reminder ownership, tests, branch ancestry, and open PR overlap are re-inspected before extraction.
+At Phase 6F start, correct the inherited Phase 6E final-head line to the exact green closure SHA, then inspect PR #155 diff, sales/customer/transfer ownership, transfer integrity/provenance tests, branch ancestry, and open PR overlap before extraction.
