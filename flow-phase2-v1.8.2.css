@@ -567,3 +567,91 @@ html[data-theme="dark"] .hh-p2-tabs button[aria-selected="true"],
     display: grid;
   }
 }
+
+
+/* v1.8.3 animal-first mobile polish; extends the existing Phase Two design tokens. */
+.hh-p2-profile-view {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.hh-p2-profile-shell,
+.hh-p2-profile-copy,
+.hh-p2-panel,
+.hh-p2-panel-head,
+.hh-p2-panel-head > div {
+  min-width: 0;
+}
+
+.hh-p2-back,
+.hh-p2-actions .button,
+.hh-p2-panel-head .button,
+.hh-p2-tabs button {
+  min-height: 44px;
+}
+
+.hh-p2-back,
+.hh-p2-actions .button,
+.hh-p2-panel-head .button {
+  overflow-wrap: anywhere;
+}
+
+.hh-p2-tabs {
+  max-width: 100%;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+}
+
+.hh-p2-tabs button {
+  scroll-snap-align: start;
+}
+
+.hh-p2-identity-layout-overlay {
+  padding:
+    max(12px, env(safe-area-inset-top))
+    max(12px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom))
+    max(12px, env(safe-area-inset-left));
+}
+
+.hh-p2-identity-layout-modal {
+  max-width: 100%;
+}
+
+@media (max-width: 620px) {
+  .hh-p2-profile-shell {
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .hh-p2-profile-copy p,
+  .hh-p2-panel-head p,
+  .hh-p2-record strong,
+  .hh-p2-record small {
+    overflow-wrap: anywhere;
+  }
+
+  .hh-p2-panel-head > div:last-child {
+    width: 100%;
+  }
+
+  .hh-p2-panel-head > div:last-child .button {
+    flex: 1 1 150px;
+    min-width: 0;
+  }
+
+  .hh-p2-tabs {
+    padding-bottom: 7px;
+  }
+}
+
+@media (max-width: 420px) {
+  .hh-p2-actions .button,
+  .hh-p2-panel-head > div:last-child .button {
+    width: 100%;
+  }
+
+  .hh-p2-tabs button {
+    padding-inline: 11px;
+  }
+}
