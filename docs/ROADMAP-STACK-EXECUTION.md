@@ -335,7 +335,7 @@
 - **Base branch:** `refactor/extract-health-runtime-domain`
 - **Base SHA:** `fe6f2b956ea939d03057721751928ca4b693774c`
 - **Validated implementation head SHA:** `0cabac6970fe3f012628bfaabb40fbaeefc45909`
-- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after closure revalidation
+- **Final head SHA:** `befd8cf3223191aacb641dacc1c897d134a332c4`
 - **Parent PR:** #153
 - **Application version:** 1.8.2
 - **Component/build identities changed:** new `task-runtime-v1.8.3.js?v=1`; no whole-app/cloud/monitoring identity changed
@@ -363,10 +363,11 @@
 
 ## Phase 6F — Runtime extraction: Sales / Customers / Transfers
 
-- **Status:** pending
-- **Required base branch:** `refactor/extract-task-runtime-domain`
-- **Required base:** exact final green Phase 6E ledger-closure head
+- **Status:** in progress
+- **Branch:** `refactor/extract-sales-customer-runtime-domain`
+- **Base branch:** `refactor/extract-task-runtime-domain`
+- **Base SHA:** `befd8cf3223191aacb641dacc1c897d134a332c4`
 - **Parent PR:** #155
 - **Application version target for this phase:** remain 1.8.2
 
-At Phase 6F start, correct the inherited Phase 6E final-head line to the exact green closure SHA, then inspect PR #155 diff, sales/customer/transfer ownership, transfer integrity/provenance tests, branch ancestry, and open PR overlap before extraction.
+Repository HEAD, PR #155 diff, sales/customer/transfer callers, transfer integrity/provenance tests, branch ancestry, and open PR overlap are re-inspected before extraction.
