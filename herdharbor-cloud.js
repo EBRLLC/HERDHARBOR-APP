@@ -1387,6 +1387,40 @@
     return data;
   }
 
+  async function invokeFunctionWithDiagnostics(name, body = {}) {
+    if (!session?.user?.id) {
+      const error = new Error("Sign in before using this secure service.");
+      error.code = "authentication_required";
+      throw error;
+    }
+    const { data, error } = await client.functions.invoke(name, { body });
+    if (!error) return data;
+
+    let diagnostic = null;
+    try {
+      const response = error?.context;
+      if (response && typeof response.clone === "function") {
+        diagnostic = await response.clone().json();
+      }
+    } catch {
+      diagnostic = null;
+    }
+
+    const safeCode = /^[a-z0-9_]{2,64}$/.test(String(diagnostic?.code || ""))
+      ? String(diagnostic.code)
+      : "secure_service_error";
+    const safeMessage = typeof diagnostic?.error === "string" && diagnostic.error.trim()
+      ? diagnostic.error.trim().slice(0, 320)
+      : (error.message || `The ${name} service could not complete the request.`);
+    const failure = new Error(safeMessage);
+    failure.code = safeCode;
+    if (diagnostic?.retryable === true) failure.retryable = true;
+    if (typeof diagnostic?.retryAfter === "string" && diagnostic.retryAfter.length <= 80) {
+      failure.retryAfter = diagnostic.retryAfter;
+    }
+    throw failure;
+  }
+
   async function requestAccountDeletion({ reason = "", confirmation = "" } = {}) {
     if (!session?.user?.id || !session?.user?.email) {
       throw new Error("Sign in before requesting account deletion.");
@@ -2434,6 +2468,7 @@
   window.HerdHarborCloud = {
     syncNow,
     invokeFunction,
+    invokeFunctionWithDiagnostics,
     getSession: () => session,
     getSyncState: () => syncState,
     getSyncDetails,
