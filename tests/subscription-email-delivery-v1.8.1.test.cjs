@@ -19,6 +19,7 @@ const EVENTS = [
   "payment_failed",
   "subscription_canceled",
   "subscription_ended",
+  "free_adult_fallback",
   "junior_fallback"
 ];
 
@@ -66,4 +67,21 @@ test("transactional subscription messages are not marketing broadcasts", () => {
   assert.doesNotMatch(helper, /RESEND_UNSUBSCRIBE_URL/);
   assert.doesNotMatch(helper, /\/broadcasts/);
   assert.match(helper, /transactional account or subscription message/);
+});
+
+
+test("adult subscription-end notifications describe Free Adult rather than Junior fallback", () => {
+  const endedStart = helper.indexOf('eventType === "subscription_ended"');
+  const endedEnd = helper.indexOf('eventType === "free_adult_fallback"', endedStart);
+  const ended = helper.slice(endedStart, endedEnd);
+  assert.match(ended, /Free Adult/);
+  assert.match(ended, /5 active animals/);
+  assert.doesNotMatch(ended, /use Junior access/);
+
+  const freeStart = helper.indexOf('eventType === "free_adult_fallback"');
+  const freeEnd = helper.indexOf('eventType === "junior_fallback"', freeStart);
+  const free = helper.slice(freeStart, freeEnd);
+  assert.match(free, /now on Free Adult/);
+  assert.match(free, /Existing records remain preserved/);
+  assert.match(free, /up to 5 active animals/);
 });
