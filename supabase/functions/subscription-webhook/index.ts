@@ -162,16 +162,20 @@ Deno.serve(async (req) => {
   async function accessStatus(userId: string, status: string, planId?: string | null) {
     const { data: access, error } = await admin
       .from("account_access")
-      .select("membership_source,membership_tier")
+      .select("account_role,membership_source,membership_tier")
       .eq("user_id", userId)
       .maybeSingle();
     if (error) throw error;
-    const protectedSource = ["manual_override", "founder"].includes(String(access?.membership_source || "").toLowerCase());
+    const role = String(access?.account_role || "user").toLowerCase();
+    const source = String(access?.membership_source || "").toLowerCase();
+    const protectedAccess = ["owner", "admin"].includes(role)
+      || ["manual_override", "founder"].includes(source)
+      || String(access?.membership_tier || "").toLowerCase() === "founder";
     const patch: Record<string, unknown> = {
       subscription_status: status,
       updated_at: new Date().toISOString()
     };
-    if (!protectedSource && planId && ACTIVE.has(status)) {
+    if (!protectedAccess && planId && ACTIVE.has(status)) {
       patch.membership_tier = planId;
       patch.membership_source = "subscription";
     }
