@@ -4,9 +4,8 @@ const path = require("node:path");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 const appRuntime = fs.readFileSync(path.join(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
-const start = appRuntime.indexOf("  function normalizeBreedingStatus");
-const end = appRuntime.indexOf("  function renderBreedings()", start);
-assert.ok(start >= 0 && end > start, "breeding workflow helpers are present");
+const breedingLitterRuntimeSource = fs.readFileSync(path.join(__dirname, "..", "breeding-litter-runtime-v1.8.3.js"), "utf8");
+const BreedingLitterRuntime = require("../breeding-litter-runtime-v1.8.3.js");
 
 const rules = {
   Rabbit: { gestationDays: 31, checkDays: 14, prepareDaysBefore: 3, weanDays: 42, birthLabel: "kindling", prepareLabel: "Place nest box" },
@@ -20,19 +19,38 @@ const addDays = (dateString, days) => {
 };
 
 function buildHelpers(state) {
-  const animalName = (id) => state.animals.find((animal) => animal.id === id)?.name || "Unknown animal";
-  const source = appRuntime.slice(start, end);
-  return new Function(
-    "state", "BREEDING_STATUS_OPTIONS", "GESTATION_RULES", "addDays", "animalName", "formatDate",
-    `${source}\nreturn { normalizeBreedingStatus, breedingSchedule, workflowTaskId, offspringAnimalId, birthRecordIdForBreeding, birthLiveRemaining, syncBreedingReminders, syncBirthReminder, completeWorkflowTasks, breedingReportSnapshot };`
-  )(
-    state,
-    statuses,
-    rules,
+  const noop = () => {};
+  const html = () => "";
+  return BreedingLitterRuntime.create({
+    getState: () => state,
+    $: () => null,
+    $$: () => [],
+    esc: (value) => String(value ?? ""),
+    headerHtml: html,
+    statCard: html,
+    emptyState: html,
+    animalName: (id) => state.animals.find((animal) => animal.id === id)?.name || "Unknown animal",
+    formatDate: (value) => value || "—",
+    daysFromNow: () => null,
+    ensureSpreadsheetToolsReady: async () => ({ downloadBreedingReport: async () => true }),
+    openModal: noop,
+    closeModal: noop,
+    selectAnimalField: html,
+    field: html,
+    selectField: html,
+    textareaField: html,
+    todayISO: () => "2026-08-05",
+    toast: noop,
+    navigate: noop,
+    uid: (prefix) => prefix + "-test",
+    recordActivity: noop,
+    saveState: () => true,
+    renderCurrentView: noop,
     addDays,
-    animalName,
-    (value) => value || "—"
-  );
+    allowsAnimalTransition: () => true,
+    rememberBreed: noop,
+    completeWorkflowTasks: noop
+  });
 }
 
 {
@@ -54,7 +72,7 @@ function buildHelpers(state) {
   assert.equal(helpers.birthLiveRemaining({ bornAlive: "6", fosteredIn: "1", fosteredOut: "1", lostBeforeWeaning: "2" }), 4);
   assert.deepEqual(helpers.breedingSchedule("doe", "2026-08-05"), {
     species: "Rabbit",
-    rule: rules.Rabbit,
+    rule: BreedingLitterRuntime.GESTATION_RULES.Rabbit,
     pregnancyCheckDate: "2026-08-19",
     preparationDate: "2026-09-02",
     dueDate: "2026-09-05"
@@ -135,14 +153,15 @@ function buildHelpers(state) {
   assert.deepEqual(report.performance.map((row) => [row.name, row.attempts, row.births, row.weaned]), [["Willow", 2, 1, 5]]);
 }
 
-assert.match(appRuntime, /data-record-birth=/);
-assert.match(appRuntime, /function openOffspringCreator\(/);
-assert.match(appRuntime, /sourceBirthId: litter\.id/);
-assert.match(appRuntime, /sireId: litter\.sireId/);
-assert.match(appRuntime, /damId: litter\.damId/);
-assert.match(appRuntime, /offspringIds/);
-assert.match(appRuntime, /animal\.sourceBirthId = ""/);
-assert.match(appRuntime, /id="breeding-year-filter"/);
-assert.match(appRuntime, /id="download-breeding-report"/);
+assert.match(breedingLitterRuntimeSource, /data-record-birth=/);
+assert.match(breedingLitterRuntimeSource, /function openOffspringCreator\(/);
+assert.match(breedingLitterRuntimeSource, /sourceBirthId: litter\.id/);
+assert.match(breedingLitterRuntimeSource, /sireId: litter\.sireId/);
+assert.match(breedingLitterRuntimeSource, /damId: litter\.damId/);
+assert.match(breedingLitterRuntimeSource, /offspringIds/);
+assert.match(breedingLitterRuntimeSource, /animal\.sourceBirthId = ""/);
+assert.match(breedingLitterRuntimeSource, /id="breeding-year-filter"/);
+assert.match(breedingLitterRuntimeSource, /id="download-breeding-report"/);
+assert.match(appRuntime, /HerdHarborBreedingLitterRuntime\?\.create/);
 
 console.log("breeding, birth, reminder, offspring, and performance tests passed");
