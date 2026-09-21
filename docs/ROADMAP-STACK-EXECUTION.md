@@ -300,7 +300,7 @@
 - **Base branch:** `refactor/extract-breeding-litter-runtime-domain`
 - **Base SHA:** `70f368d6ef12df658998b777d32c11e34fe79611`
 - **Validated implementation head SHA:** `9e62af3829db47ba3aa9c6923a1b29aaad765a9f`
-- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after the closure commit is revalidated, because a commit cannot contain its own Git SHA
+- **Final head SHA:** `fe6f2b956ea939d03057721751928ca4b693774c`
 - **Parent PR:** #151
 - **Application version:** 1.8.2
 - **Component/build identities changed:** no whole-app/cloud/monitoring/Health Intelligence identity changed; new extracted component `health-runtime-v1.8.3.js?v=1` is loaded after Breeding/Litter and before composition runtime
@@ -328,10 +328,11 @@
 
 ## Phase 6E — Runtime extraction: Tasks
 
-- **Status:** pending
-- **Required base branch:** `refactor/extract-health-runtime-domain`
-- **Required base:** exact final green Phase 6D ledger-closure head
+- **Status:** in progress
+- **Branch:** `refactor/extract-task-runtime-domain`
+- **Base branch:** `refactor/extract-health-runtime-domain`
+- **Base SHA:** `fe6f2b956ea939d03057721751928ca4b693774c`
 - **Parent PR:** #153
 - **Application version target for this phase:** remain 1.8.2
 
-At Phase 6E start, first correct the inherited Phase 6D `Final head SHA` line to the exact final green parent SHA, then inspect repository HEAD, PR #153 diff, task callers/reminder ownership, tests, branch ancestry, and open PR overlap before extraction.
+Repository HEAD, PR #153 diff, task callers/reminder ownership, tests, branch ancestry, and open PR overlap are re-inspected before extraction.
