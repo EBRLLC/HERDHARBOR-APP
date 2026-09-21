@@ -72,7 +72,7 @@ test("browser provider keeps auth independent and presents adult Free separately
   assert.match(provider, /isVerified/);
   assert.doesNotMatch(provider, /setSession\s*\(/);
   assert.doesNotMatch(provider, /signOut\s*\(/);
-  assert.match(provider, /No credit card is required during your free trial/);
+  assert.match(provider, /No credit card is required to begin or use the trial/);
   assert.match(provider, /Subscribe — billing starts/);
   assert.match(provider, /Free Adult/);
   assert.match(provider, /Up to 5 active animals/);
