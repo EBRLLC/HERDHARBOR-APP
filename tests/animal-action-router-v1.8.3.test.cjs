@@ -13,6 +13,13 @@ test('v1.8.3 router owns the migrated animal profile actions', () => {
     'weight', 'health', 'episode', 'care', 'breeding', 'genetics', 'pedigree', 'show-entry', 'analytics', 'print-pedigree', 'edit'
   ]);
   for (const action of Router.DIRECT_ACTIONS) assert.equal(Router.canHandle(action), true);
+  assert.equal(Router.returnSurfaceFor('weight'), '#health-form');
+  assert.equal(Router.returnSurfaceFor('episode'), '#hh-health-intelligence-modal');
+  assert.equal(Router.returnSurfaceFor('breeding'), '#breeding-form');
+  assert.equal(Router.returnSurfaceFor('pedigree'), '#pedigree-import-form');
+  assert.equal(Router.returnSurfaceFor('show-entry'), '#hh-entry-form');
+  assert.equal(Router.returnSurfaceFor('edit'), '#animal-form');
+  assert.equal(Router.returnSurfaceFor('analytics'), '');
 });
 
 test('breeding safeguards remain intact in the consolidated action router', () => {
@@ -82,4 +89,17 @@ test('core runtime exposes narrow canonical edit and pedigree-print entry points
   assert.match(appRuntime, /openAnimalPedigreePrint:\s*\(animalId\)\s*=>/);
   assert.match(appRuntime, /openAnimalForm\(id\)/);
   assert.match(appRuntime, /openPrintPedigreeForm\(id\)/);
+});
+
+
+test('return-to-animal watches canonical action surfaces and restores the same profile tab after close', () => {
+  const source = read('animal-action-router-v1.8.3.js');
+  assert.match(source, /function watchReturnToProfile/);
+  assert.match(source, /Date\.now\(\) \+ RETURN_TTL_MS/);
+  assert.match(source, /if \(present\) seen = true/);
+  assert.match(source, /else if \(seen\)/);
+  assert.match(source, /restoreAnimalProfile\(context\)/);
+  assert.match(source, /context\.tab \|\| "overview"/);
+  assert.match(source, /\{ history: "replace" \}/);
+  assert.match(source, /watchReturnToProfile\(nextAction, id, options\.returnTab \|\| "overview"\)/);
 });
