@@ -17,7 +17,9 @@
     "genetics",
     "pedigree",
     "show-entry",
-    "analytics"
+    "analytics",
+    "print-pedigree",
+    "edit"
   ]);
   const DIRECT_ACTION_SET = new Set(DIRECT_ACTIONS);
 
@@ -220,6 +222,22 @@
     return true;
   }
 
+  function openPedigreePrint(animalId) {
+    if (typeof root.HerdHarborApp?.openAnimalPedigreePrint !== "function") {
+      toast("Pedigree printing is not available right now.", "error");
+      return false;
+    }
+    return root.HerdHarborApp.openAnimalPedigreePrint(animalId) === true;
+  }
+
+  function openEditor(animalId) {
+    if (typeof root.HerdHarborApp?.openAnimalEditor !== "function") {
+      toast("Animal editing is not available right now.", "error");
+      return false;
+    }
+    return root.HerdHarborApp.openAnimalEditor(animalId) === true;
+  }
+
   function canHandle(action) {
     return DIRECT_ACTION_SET.has(clean(action));
   }
@@ -239,6 +257,8 @@
     else if (nextAction === "pedigree") launched = openPedigree(id);
     else if (nextAction === "show-entry") launched = openShowEntry(id);
     else if (nextAction === "analytics") launched = openAnalytics(id);
+    else if (nextAction === "print-pedigree") launched = openPedigreePrint(id);
+    else if (nextAction === "edit") launched = openEditor(id);
 
     if (launched) announce(nextAction, id, options.returnTab || "");
     return launched;
