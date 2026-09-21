@@ -67,6 +67,7 @@ test("PWA shell and HTML use the v1.8.2 release/cache identity", () => {
   assert.match(html, /health-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(html, /task-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(html, /sales-customer-runtime-v1\.8\.3\.js\?v=1/);
+  assert.match(html, /sales-customer-runtime-v1\.8\.3\.js\?v=1/);
   assert.ok(html.indexOf("animal-profile-runtime-v1.8.3.js?v=1") < html.indexOf("breeding-litter-runtime-v1.8.3.js?v=1"), "Animals/Profile runtime remains ahead of Breeding/Litter runtime");
   assert.ok(html.indexOf("breeding-litter-runtime-v1.8.3.js?v=1") < html.indexOf("health-runtime-v1.8.3.js?v=1"), "Breeding/Litter runtime remains ahead of Health runtime");
   assert.ok(html.indexOf("health-runtime-v1.8.3.js?v=1") < html.indexOf("task-runtime-v1.8.3.js?v=1"), "Health runtime remains ahead of Task runtime");
@@ -78,10 +79,12 @@ test("PWA shell and HTML use the v1.8.2 release/cache identity", () => {
   assert.match(worker, /\.\/health-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /\.\/task-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /\.\/sales-customer-runtime-v1\.8\.3\.js\?v=1/);
+  assert.match(worker, /\.\/sales-customer-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /"\/animal-profile-runtime-v1\.8\.3\.js"/);
   assert.match(worker, /"\/breeding-litter-runtime-v1\.8\.3\.js"/);
   assert.match(worker, /"\/health-runtime-v1\.8\.3\.js"/);
   assert.match(worker, /"\/task-runtime-v1\.8\.3\.js"/);
+  assert.match(worker, /"\/sales-customer-runtime-v1\.8\.3\.js"/);
   assert.match(worker, /"\/sales-customer-runtime-v1\.8\.3\.js"/);
   assert.match(worker, /\.\/herdharbor-app-runtime\.js\?v=2/);
   assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.2"/);
