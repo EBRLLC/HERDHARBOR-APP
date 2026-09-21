@@ -194,7 +194,7 @@
 - **Base branch:** `feat/harden-paper-pedigree-ai-production`
 - **Base SHA:** `aceff2b9de5f512907a1b0b598345a56b4bd3b3e`
 - **Validated implementation head SHA:** `d633808b71ebe908073cb05c13356be1a06e86de`
-- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after the closure commit is revalidated, because a commit cannot contain its own Git SHA
+- **Final head SHA:** `4a79e10bb029917a892e4be466346fbe18724d95`
 - **Parent PR:** #145
 - **Application version:** 1.8.2
 - **Component/build identities changed:** no monitoring release/build identity changed; PWA bootstrap browser/cache asset revision advances from `pwa.js?v=30` to `pwa.js?v=31`; whole-app build ID remains `cloud-sync-v2-state-integrity-1`
@@ -222,10 +222,11 @@
 
 ## Phase 6B — Runtime extraction: Animals / Profile
 
-- **Status:** pending
-- **Required base branch:** `perf/decouple-monitoring-from-application-startup`
-- **Required base:** exact final green Phase 6A ledger-closure head
+- **Status:** in progress
+- **Branch:** `refactor/extract-animal-profile-runtime-domain`
+- **Base branch:** `perf/decouple-monitoring-from-application-startup`
+- **Base SHA:** `4a79e10bb029917a892e4be466346fbe18724d95`
 - **Parent PR:** #147
 - **Application version target for this phase:** remain 1.8.2
 
-At Phase 6B start, first correct the inherited Phase 6A `Final head SHA` line to the exact final green parent SHA, then inspect repository HEAD, PR #147 diff, current animal/profile runtime tests, branch ancestry, callers, and open PR overlap before extraction.
+Repository HEAD, PR #147 diff, current animal/profile runtime tests, branch ancestry, callers, public entry points, and open PR overlap are re-inspected before extraction.
