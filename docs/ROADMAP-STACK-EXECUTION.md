@@ -124,7 +124,7 @@
 - **Branch:** `feat/complete-production-trial-free-adult`
 - **Base branch:** `feat/consolidate-animal-first-workflows`
 - **Base SHA:** `c5262e4650e3f22a49a75fe6acba8469879fe8d8`
-- **Final head SHA:** `3ca76a2221992c83ed9c82ffa5c6f7a0440ef15c`
+- **Final head SHA:** `7ac4a0a58dbf694242b825ae65fee883d3223a61`
 - **Parent PR:** #141
 - **Application version:** 1.8.2
 - **Component/build identities changed:** no whole-app or cloud-sync build identity changed; subscription launch/provider asset revisions advance to `?v=2` in the runtime loader and service-worker shell so the hardened client code invalidates older cached copies
@@ -143,7 +143,7 @@
 - **Rollback procedure:** revert PR #143 client and Edge Function changes and restore prior asset revisions; no destructive herd migration is performed, and Free Adult status values are already understood by the retained launch policy
 - **Tests added:** `tests/subscription-production-completion-v1.8.3.test.cjs`
 - **Tests modified:** `tests/subscription-trial-v1.8.2.test.cjs`; `tests/subscription-launch-v1.8.1.test.cjs`; `tests/subscription-stripe-v1.8.1.test.cjs`; `tests/subscription-email-delivery-v1.8.1.test.cjs`; `tests/subscription-engine-v1.8.0.test.cjs`; `tests/stability-release.test.cjs`; `package.json` v1.8.3 gate
-- **Full CI result:** Alpha v1.8.2 CI #213 — PASS on exact final head `3ca76a2221992c83ed9c82ffa5c6f7a0440ef15c`; release/security, lifecycle/state-integrity, complete UTC and America/New_York regression discovery, monitoring build/architecture/config, source-mutation guard, and Android review bundle all passed
+- **Full CI result:** Alpha v1.8.2 CI #215 — PASS on exact final head `7ac4a0a58dbf694242b825ae65fee883d3223a61`; release/security, lifecycle/state-integrity, complete UTC and America/New_York regression discovery, monitoring build/architecture/config, source-mutation guard, and Android review bundle all passed
 - **Manual validation still required:** live/test-mode Stripe validation for early-trial checkout billing date, canceled checkout retry, cancel/reactivate, payment-failure recovery, subscription deletion -> Free Adult webhook/email, and a real over-five-animal Free Adult account; verify deployed Edge Functions have existing Stripe/Resend secrets
 - **Known risks:** Stripe/webhook delivery remains asynchronous and provider outages can temporarily leave the UI on the last verified access state; production secret/configuration and external Stripe behavior cannot be proven solely by repository CI; idempotent checkout intentionally prioritizes duplicate-session prevention
 - **Exact requirements inherited by next phase:** preserve trusted backend trial authority, protected-role precedence, non-destructive Free Adult fallback, five-active-animal growth ceiling, Junior separation, asynchronous fail-open billing, Stripe secret isolation, no auth redesign, no normalized-sync authority change, and whole-app v1.8.2 identity
@@ -152,10 +152,11 @@
 
 ## Phase 5 — Paper Pedigree AI production hardening
 
-- **Status:** pending
-- **Required base branch:** `feat/complete-production-trial-free-adult`
-- **Required base SHA:** `3ca76a2221992c83ed9c82ffa5c6f7a0440ef15c`
+- **Status:** in progress
+- **Branch:** `feat/harden-paper-pedigree-ai-production`
+- **Base branch:** `feat/complete-production-trial-free-adult`
+- **Base SHA:** `7ac4a0a58dbf694242b825ae65fee883d3223a61`
 - **Parent PR:** #143
 - **Application version target for this phase:** remain 1.8.2
 
-At Phase 5 start, re-read this ledger and verify it against repository HEAD, PR #143 diff, current tests, branch ancestry, and open PR overlap before creating the child branch.
+Repository/ancestry/PR overlap and parent CI were re-verified before implementation. This section must be replaced by the completed Phase 5 record after the exact final Phase 5 head is green.
