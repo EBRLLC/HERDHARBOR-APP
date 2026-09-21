@@ -66,3 +66,18 @@ test("Phase 3 does not bump the whole app or activate normalized-sync rollout in
 test("v1.8.3 regression gate explicitly includes the animal-first consolidation contract", () => {
   assert.match(packageJson.scripts["test:v1.8.3"], /animal-first-consolidation-v1\.8\.3\.test\.cjs/);
 });
+
+
+test("animal profile mobile contract keeps touch targets, horizontal tabs, safe areas, and long labels usable", () => {
+  const css = read("flow-phase2-v1.8.2.css");
+  assert.match(css, /\.hh-p2-back,[\s\S]*min-height:\s*44px/);
+  assert.match(css, /\.hh-p2-tabs\s*\{[\s\S]*overscroll-behavior-x:\s*contain/);
+  assert.match(css, /-webkit-overflow-scrolling:\s*touch/);
+  assert.match(css, /scroll-snap-type:\s*x proximity/);
+  assert.match(css, /env\(safe-area-inset-top\)/);
+  assert.match(css, /env\(safe-area-inset-right\)/);
+  assert.match(css, /env\(safe-area-inset-bottom\)/);
+  assert.match(css, /env\(safe-area-inset-left\)/);
+  assert.match(css, /overflow-wrap:\s*anywhere/);
+  assert.match(css, /@media \(max-width: 420px\)/);
+});
