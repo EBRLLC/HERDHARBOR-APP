@@ -19,6 +19,7 @@
     "batchRpc",
     "verifyRpc",
     "stageRpc",
+    "guardedWriterRpc",
     "legacyGuard"
   ]);
 
