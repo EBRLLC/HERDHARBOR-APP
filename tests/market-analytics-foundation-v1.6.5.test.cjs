@@ -127,7 +127,8 @@ test("asking price, listing snapshot, and actual sale price remain distinct in t
   assert.match(salesRuntime, /listedPriceAtSale/);
   assert.match(salesRuntime, /salePrice:\s*price\.toFixed/);
   assert.match(salesRuntime, /previousSale\?\.status === "Completed"/);
-  assert.match(salesRuntime, /listedPriceAtSale = null/);
+  assert.match(salesRuntime, /prior\?\.listedPriceAtSale \?\? null/);
+  assert.match(salesRuntime, /askingPriceAtCompletion\) \? null : askingPriceAtCompletion\.toFixed\(2\)/);
 });
 
 test("backend constructs facts from canonical state and exposes aggregates only after threshold", () => {
