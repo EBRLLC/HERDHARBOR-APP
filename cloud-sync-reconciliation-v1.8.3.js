@@ -83,13 +83,31 @@
       counters[name] += nonNegative(increment);
       return true;
     }
+    function recordEvent(event = {}) {
+      const type = String(event?.type || "");
+      const code = String(event?.errorCode || event?.code || "");
+      if (type === "shadow-bootstrap-failure") record("bootstrapFailures");
+      if (type === "dual-write-failure") record("dualWriteFailures");
+      if (type === "dual-write-degraded" && (
+        event?.normalizedSaved === false ||
+        event?.normalizedErrorCode ||
+        event?.errorCode
+      )) {
+        record("dualWriteFailures");
+      }
+      if (type === "normalized-read-fallback") record("normalizedReadFallbackCount");
+      if (code === "HH_SYNC_CONFLICT" || /conflict/i.test(String(event?.reason || ""))) {
+        record("unresolvedConflicts");
+      }
+      return snapshot();
+    }
     function snapshot() {
       return Object.freeze({ ...counters });
     }
     function reset() {
       for (const key of COUNTERS) counters[key] = 0;
     }
-    return Object.freeze({ record, snapshot, reset });
+    return Object.freeze({ record, recordEvent, snapshot, reset });
   }
 
   return Object.freeze({
