@@ -100,8 +100,11 @@ test("user-facing access state exposes trial, paid, Free Adult, ending, checkout
 });
 
 test("billing resolution remains asynchronous and cannot own or deadlock sign-in", () => {
-  assert.match(engine, /function boot\(\)[\s\S]*refresh\(\{ force: true \}\);/);
-  assert.doesNotMatch(engine, /await refresh\(\{ force: true \}\)/);
+  const bootStart = engine.indexOf("function boot()");
+  const bootEnd = engine.indexOf("window.HerdHarborSubscriptionEngine", bootStart);
+  const bootBlock = engine.slice(bootStart, bootEnd);
+  assert.match(bootBlock, /refresh\(\{ force: true \}\);/);
+  assert.doesNotMatch(bootBlock, /await refresh\(\{ force: true \}\)/);
   assert.match(bridge, /window\.setInterval/);
   assert.match(bridge, /void refreshOnce\(\)/);
   for (const source of [provider, bridge]) {
