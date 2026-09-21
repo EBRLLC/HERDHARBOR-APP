@@ -33,6 +33,7 @@ const goodSchema = Object.freeze({
   batchRpc: true,
   verifyRpc: true,
   stageRpc: true,
+  guardedWriterRpc: true,
   legacyGuard: true
 });
 
