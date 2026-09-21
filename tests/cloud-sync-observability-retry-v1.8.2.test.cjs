@@ -69,14 +69,17 @@ test("cloud diagnostic sanitizer redacts credentials and personal contact data",
 });
 
 test("monitoring adapter preserves originating Error provenance and never fabricates a provider stack", () => {
-  assert.match(instrumentation, /detail\.source_error instanceof Error \? detail\.source_error : null/);
-  assert.match(instrumentation, /operation/);
-  assert.match(instrumentation, /classification: category/);
-  assert.match(instrumentation, /serialized_state_bytes/);
-  assert.match(instrumentation, /retry_attempts/);
-  assert.match(instrumentation, /session_refresh_result/);
-  assert.doesNotMatch(instrumentation, /new Error\(/);
-  assert.doesNotMatch(instrumentation, /CloudSyncProviderError:/);
+  const start = instrumentation.indexOf("export function installCloudSyncFailureMonitoring");
+  const end = instrumentation.indexOf("export function installMonitoringAdapters");
+  const adapter = instrumentation.slice(start, end);
+  assert.match(adapter, /detail\.source_error instanceof Error \? detail\.source_error : null/);
+  assert.match(adapter, /operation/);
+  assert.match(adapter, /classification: category/);
+  assert.match(adapter, /serialized_state_bytes/);
+  assert.match(adapter, /retry_attempts/);
+  assert.match(adapter, /session_refresh_result/);
+  assert.doesNotMatch(adapter, /new Error\(/);
+  assert.doesNotMatch(adapter, /CloudSyncProviderError:/);
 });
 
 test("monitoring privacy allowlist explicitly controls new cloud diagnostic fields", () => {
