@@ -291,13 +291,47 @@
 
 ---
 
-## Phase 6D — Runtime extraction: Health
+## Completed Phase 6D — Runtime extraction: Health
 
-- **Status:** in progress
+- **Roadmap phase:** Phase 6D — Runtime extraction: Health
+- **PR number:** #153
+- **PR title:** refactor: extract health record runtime domain
 - **Branch:** `refactor/extract-health-runtime-domain`
 - **Base branch:** `refactor/extract-breeding-litter-runtime-domain`
 - **Base SHA:** `70f368d6ef12df658998b777d32c11e34fe79611`
+- **Validated implementation head SHA:** `9e62af3829db47ba3aa9c6923a1b29aaad765a9f`
+- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after the closure commit is revalidated, because a commit cannot contain its own Git SHA
 - **Parent PR:** #151
+- **Application version:** 1.8.2
+- **Component/build identities changed:** no whole-app/cloud/monitoring/Health Intelligence identity changed; new extracted component `health-runtime-v1.8.3.js?v=1` is loaded after Breeding/Litter and before composition runtime
+- **Production behavior changed:** no intended health-workflow redesign; the basic Health/Weight list and basic health-record create/edit/delete form now execute from the extracted Health runtime; Health-page symptom search delegates back to the existing Symptoms route
+- **Production behavior intentionally NOT changed:** canonical basic records remain `state.health`; Weight remains a `state.health` record and no duplicate weight state exists; Phase Two Current Weight still derives from canonical `state.health` using `latestWeightRecord`; `health-intelligence-v1.7.1.js` remains authoritative for episodes, structured care, group records, quarantine, triage and withdrawal context; symptom-guide filtering/rendering remains composition-owned; profile Weight/Observation vs Episode/Care routing and return surfaces are unchanged; no auth, cloud authority, medical/dosing logic, or whole-app release change
+- **Files/modules now owning the feature:** `health-runtime-v1.8.3.js` owns basic Health/Weight list and record-form orchestration; `health-intelligence-v1.7.1.js` owns structured episode/care/group intelligence; `flow-phase2-v1.8.2.js` owns profile Current Weight derivation/display and profile health panel; `animal-action-router-v1.8.3.js` owns profile action routing/return surfaces; `herdharbor-app-runtime.js` retains Symptoms route and shared composition helpers and delegates basic Health runtime
+- **Canonical state owner:** canonical HerdHarbor application state; `state.health` is the sole basic health/weight record owner; `state.healthIntelligence` remains the existing separate structured Health Intelligence owner; the extracted module creates no browser persistence or side state
+- **Public entry points introduced:** `window.HerdHarborHealthRuntime.create(deps)`; existing route-level `renderHealth` and `openHealthForm` callers remain stable through thin composition delegates
+- **Compatibility paths retained:** symptom-guide “log observation” continues through the delegated basic `openHealthForm`; profile Weight/Observation actions continue to `#health-form`; Episode/Care actions continue to `#hh-health-intelligence-modal`; existing Health Intelligence API and storage migration compatibility remain unchanged
+- **Compatibility paths removed:** monolithic Health list rendering, basic health-record form implementation, weight-unit/ounces UI validation implementation, and Health-page symptom-search form implementation are removed from `herdharbor-app-runtime.js`
+- **Database/schema changes:** none
+- **Edge Function changes:** none
+- **Environment variables/secrets required:** none
+- **Monitoring changes:** none
+- **Migration requirements:** none; static deployment must include `health-runtime-v1.8.3.js`, now checked by the production Pages artifact gate
+- **Rollback procedure:** revert PR #153 shell/module/runtime/test changes to restore prior monolithic basic Health runtime; no health/state data migration rollback is required because canonical state shapes are unchanged
+- **Tests added:** `tests/runtime-health-extraction-v1.8.3.test.cjs`
+- **Tests modified:** symptom-guide ownership regression, application-script compile, current-release asset/reference audit, production Pages artifact check, and `package.json` v1.8.3 development gate
+- **Full CI result:** Alpha v1.8.2 CI #246 — PASS on validated implementation head `9e62af3829db47ba3aa9c6923a1b29aaad765a9f`; current release/security, lifecycle/state-integrity, complete UTC and America/New_York regression discovery, monitoring build/architecture/config, source-mutation guard, and Android v1.8.2 review bundle all passed. The ledger-closure head is revalidated before Phase 6E.
+- **Manual validation still required:** deployed-browser Health list, add/edit/delete basic record, Weight in each supported unit including lb+oz, profile Add Weight/Observation return behavior, Current Weight display after new/edit/delete weight, symptom-guide observation handoff, Health Intelligence episode/care/group/quarantine flows, and coexistence of legacy/basic and structured Health records
+- **Known risks:** two health layers intentionally coexist with different scopes—`state.health` basic records and `state.healthIntelligence` structured intelligence—so later refactors must not collapse or duplicate them casually; extracted module load order/dependency injection is contractual
+- **Exact requirements inherited by next phase:** preserve `HerdHarborHealthRuntime.create(deps)`, canonical `state.health` Weight ownership, Phase Two Current Weight derivation, Health Intelligence ownership/APIs, profile action return surfaces, symptom-guide behavior, prior Phase 6A-6C runtime contracts, subscription/AI/cloud protections, and whole-app v1.8.2 identity
+
+---
+
+## Phase 6E — Runtime extraction: Tasks
+
+- **Status:** pending
+- **Required base branch:** `refactor/extract-health-runtime-domain`
+- **Required base:** exact final green Phase 6D ledger-closure head
+- **Parent PR:** #153
 - **Application version target for this phase:** remain 1.8.2
 
-Repository HEAD, PR #151 diff, current health/weight callers, Health Intelligence ownership, tests, branch ancestry, and open PR overlap are being re-inspected before extraction.
+At Phase 6E start, first correct the inherited Phase 6D `Final head SHA` line to the exact final green parent SHA, then inspect repository HEAD, PR #153 diff, task callers/reminder ownership, tests, branch ancestry, and open PR overlap before extraction.
