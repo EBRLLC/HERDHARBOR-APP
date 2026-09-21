@@ -22,8 +22,21 @@
     "edit"
   ]);
   const DIRECT_ACTION_SET = new Set(DIRECT_ACTIONS);
+  const RETURN_TTL_MS = 5 * 60 * 1000;
+  const RETURN_SURFACES = Object.freeze({
+    weight: "#health-form",
+    health: "#health-form",
+    episode: "#hh-health-intelligence-modal",
+    care: "#hh-health-intelligence-modal",
+    breeding: "#breeding-form",
+    pedigree: "#pedigree-import-form",
+    "show-entry": "#hh-entry-form",
+    "print-pedigree": "#print-pedigree-form",
+    edit: "#animal-form"
+  });
 
   let installed = false;
+  let returnWatchToken = 0;
 
   const clean = (value) => String(value == null ? "" : value).trim();
   const lower = (value) => clean(value).toLowerCase();
@@ -242,6 +255,52 @@
     return DIRECT_ACTION_SET.has(clean(action));
   }
 
+  function returnSurfaceFor(action) {
+    return RETURN_SURFACES[clean(action)] || "";
+  }
+
+  function restoreAnimalProfile(context) {
+    const state = stateNow();
+    if (!animalById(state, context.animalId)) {
+      nav("animals");
+      return false;
+    }
+    if (typeof root.HerdHarborFlowPhase2?.openAnimalProfile !== "function") return false;
+    return root.HerdHarborFlowPhase2.openAnimalProfile(
+      context.animalId,
+      context.tab || "overview",
+      { history: "replace" }
+    ) === true;
+  }
+
+  function watchReturnToProfile(action, animalId, tab = "overview") {
+    const selector = returnSurfaceFor(action);
+    if (!selector || !root.document?.querySelector) return false;
+    const token = ++returnWatchToken;
+    const context = {
+      animalId: String(animalId),
+      tab: clean(tab) || "overview",
+      expiresAt: Date.now() + RETURN_TTL_MS
+    };
+    let seen = false;
+
+    const poll = () => {
+      if (token !== returnWatchToken) return;
+      const present = Boolean(root.document?.querySelector(selector));
+      if (present) seen = true;
+      else if (seen) {
+        returnWatchToken += 1;
+        restoreAnimalProfile(context);
+        return;
+      }
+      if (Date.now() >= context.expiresAt) return;
+      root.setTimeout?.(poll, 60);
+    };
+
+    root.setTimeout?.(poll, 0);
+    return true;
+  }
+
   function open(action, animalId, options = {}) {
     const nextAction = clean(action);
     const id = clean(animalId);
@@ -260,7 +319,10 @@
     else if (nextAction === "print-pedigree") launched = openPedigreePrint(id);
     else if (nextAction === "edit") launched = openEditor(id);
 
-    if (launched) announce(nextAction, id, options.returnTab || "");
+    if (launched) {
+      watchReturnToProfile(nextAction, id, options.returnTab || "overview");
+      announce(nextAction, id, options.returnTab || "");
+    }
     return launched;
   }
 
@@ -294,6 +356,7 @@
     VERSION,
     DIRECT_ACTIONS,
     canHandle,
+    returnSurfaceFor,
     breedingAvailability,
     activeProfileTarget,
     open,
