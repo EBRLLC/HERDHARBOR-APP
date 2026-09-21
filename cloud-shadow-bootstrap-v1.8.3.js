@@ -60,7 +60,8 @@
 
   function createShadowBootstrap(options = {}) {
     const featureGate = options.featureGate === true;
-    const cohort = normalizeCohort(options.cohortUserIds);\n    const cohortGate = options.cohortGate;
+    const cohort = normalizeCohort(options.cohortUserIds);
+    const cohortGate = options.cohortGate;
     const getSession = requiredFunction(options.getSession, "getSession");
     const readLegacySnapshot = requiredFunction(options.readLegacySnapshot, "readLegacySnapshot");
     const createRecordStore = requiredFunction(
