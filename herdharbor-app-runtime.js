@@ -7694,7 +7694,19 @@
     refresh: () => renderCurrentView(),
     toast,
     getAnimalById: animalById,
-    getCurrentRoute: () => currentRoute
+    getCurrentRoute: () => currentRoute,
+    openAnimalEditor: (animalId) => {
+      const id = String(animalId || "").trim();
+      if (!id || !state.animals.some((animal) => String(animal.id) === id)) return false;
+      openAnimalForm(id);
+      return true;
+    },
+    openAnimalPedigreePrint: (animalId) => {
+      const id = String(animalId || "").trim();
+      if (!id || !state.animals.some((animal) => String(animal.id) === id)) return false;
+      openPrintPedigreeForm(id);
+      return true;
+    }
   });
   try { window.dispatchEvent(new CustomEvent("herdharbor:app-ready")); } catch {}
 
