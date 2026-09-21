@@ -11,6 +11,7 @@ const exists = (file) => fs.existsSync(path.join(root, file));
 const html = read("index.html");
 const appRuntime = read("herdharbor-app-runtime.js");
 const animalProfileRuntime = read("animal-profile-runtime-v1.8.3.js");
+const productionReportingRuntime = read("production-reporting-runtime-v1.8.3.js");
 const shellCss = read("herdharbor-index-shell.css");
 const worker = read("service-worker.js");
 const localPath = (value) => value.replace(/^\.\//, "").split("?")[0].split("#")[0].replace(/^\//, "");
@@ -25,10 +26,12 @@ test("index shell keeps only the early bootstrap inline", () => {
   assert.equal((html.match(/<style\b/gi) || []).length, 0, "page-owned CSS is external");
   assert.match(html, /herdharbor-index-shell\.css\?v=1/);
   assert.match(html, /animal-profile-runtime-v1\.8\.3\.js\?v=1/);
+  assert.match(html, /production-reporting-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(html, /herdharbor-app-runtime\.js\?v=2/);
   assert.doesNotMatch(html, /function renderSales\(\)/);
   assert.match(appRuntime, /function renderSales\(\)/);
-  assert.ok(appRuntime.length < 500000, "composition runtime shrinks as coherent domains are extracted");
+  assert.ok(appRuntime.length < 350000, "composition runtime shrinks as coherent domains are extracted");
+  assert.ok(productionReportingRuntime.length > 80000, "Production/Reporting runtime owns the extracted report implementation");
   assert.ok(animalProfileRuntime.length > 30000, "Animals/Profile runtime owns the extracted domain implementation");
   assert.doesNotMatch(appRuntime, /function renderAnimalResults\(/);
   assert.match(animalProfileRuntime, /function renderAnimalResults\(/);
@@ -61,6 +64,7 @@ test("static script and stylesheet references resolve once", () => {
 test("service worker covers required extracted shell assets", () => {
   for (const { asset, revision } of [
     { asset: "animal-profile-runtime-v1.8.3.js", revision: "1" },
+    { asset: "production-reporting-runtime-v1.8.3.js", revision: "1" },
     { asset: "herdharbor-app-runtime.js", revision: "2" },
     { asset: "herdharbor-index-shell.css", revision: "1" }
   ]) {
