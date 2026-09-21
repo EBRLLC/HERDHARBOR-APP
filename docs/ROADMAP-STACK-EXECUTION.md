@@ -370,7 +370,7 @@
 - **Base branch:** `refactor/extract-task-runtime-domain`
 - **Base SHA:** `befd8cf3223191aacb641dacc1c897d134a332c4`
 - **Validated implementation head SHA:** `59778d92498c4024ae2e34de1a2c4f62d319805d`
-- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after the closure commit is revalidated, because a commit cannot contain its own Git SHA
+- **Final head SHA:** `d357cded77f8b138d3c5972464ea50b0dad81ab2`
 - **Parent PR:** #155
 - **Application version:** 1.8.2
 - **Component/build identities changed:** new static component `sales-customer-runtime-v1.8.3.js?v=1`; no whole-app, monitoring, cloud-sync, transfer-service, or Android release identity changed
@@ -398,10 +398,11 @@
 
 ## Phase 6G — Runtime extraction: Production / Reporting
 
-- **Status:** pending
-- **Required base branch:** `refactor/extract-sales-customer-runtime-domain`
-- **Required base:** exact final green Phase 6F ledger-closure head
+- **Status:** in progress
+- **Branch:** `refactor/extract-production-reporting-runtime-domain`
+- **Base branch:** `refactor/extract-sales-customer-runtime-domain`
+- **Base SHA:** `d357cded77f8b138d3c5972464ea50b0dad81ab2`
 - **Parent PR:** #157
 - **Application version target for this phase:** remain 1.8.2
 
-At Phase 6G start, first correct the inherited Phase 6F `Final head SHA` line to the exact final green parent SHA, then inspect repository HEAD, PR #157 diff, production/budget/reporting callers, optional spreadsheet lazy-loading contracts, tests, branch ancestry, and open PR overlap before extraction.
+Repository HEAD, PR #157 diff, production/budget/reporting callers, optional spreadsheet lazy-loading contracts, tests, branch ancestry, and open PR overlap are re-inspected before extraction.
