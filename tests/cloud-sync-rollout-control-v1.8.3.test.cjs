@@ -2,6 +2,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
@@ -191,4 +192,14 @@ test("legacy authority is preserved through shadow and dual-write policy definit
   assert.equal(controlApi.stagePolicy.shadow.authority, "legacy");
   assert.equal(controlApi.stagePolicy.dual_write.authority, "legacy");
   assert.equal(controlApi.stagePolicy.normalized.rollback, "dual_write");
+});
+
+
+test("controlled rollout remains disconnected from production runtime and does not bump the whole app", () => {
+  const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+  const indexSource = fs.readFileSync(path.join(root, "index.html"), "utf8");
+  assert.equal(packageJson.version, "1.8.2");
+  assert.doesNotMatch(indexSource, /cloud-sync-cohort-gate-v1\.8\.3\.js/);
+  assert.doesNotMatch(indexSource, /cloud-sync-reconciliation-v1\.8\.3\.js/);
+  assert.doesNotMatch(indexSource, /cloud-sync-rollout-control-v1\.8\.3\.js/);
 });
