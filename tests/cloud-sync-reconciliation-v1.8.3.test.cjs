@@ -80,3 +80,19 @@ test("operational counter accumulator accepts only the safe known metrics", () =
   metrics.reset();
   assert.equal(metrics.snapshot().dualWriteFailures, 0);
 });
+
+test("rollout event aggregation counts only safe operational outcomes", () => {
+  const metrics = reconciliation.createRolloutMetrics();
+  metrics.recordEvent({ type: "shadow-bootstrap-failure", code: "HH_SYNC_CONFLICT", message: "private payload" });
+  metrics.recordEvent({ type: "dual-write-degraded", normalizedSaved: false, normalizedErrorCode: "PGRST500" });
+  metrics.recordEvent({ type: "normalized-read-fallback", reason: "checksum-mismatch" });
+
+  assert.deepEqual(metrics.snapshot(), {
+    unresolvedConflicts: 1,
+    bootstrapFailures: 1,
+    dualWriteFailures: 1,
+    normalizedReadFallbackCount: 1
+  });
+
+  assert.doesNotMatch(JSON.stringify(metrics.snapshot()), /private payload|PGRST500|checksum-mismatch/);
+});
