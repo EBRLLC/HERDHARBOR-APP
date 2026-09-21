@@ -115,6 +115,13 @@
 
   function openAnimalTarget(target) {
     if (!target?.animalId) return false;
+    if (typeof root.HerdHarborFlowPhase2?.openAnimalProfile === "function") {
+      return root.HerdHarborFlowPhase2.openAnimalProfile(
+        String(target.animalId),
+        target.tab || "overview",
+        { history: "push", label: target.label || "" }
+      ) === true;
+    }
     if (!clickRoute("animals")) return false;
     waitFor("#view-animals #animal-results", () => {
       resetAnimalFilters();
