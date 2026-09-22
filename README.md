@@ -28,7 +28,7 @@ Public account plans are:
 
 Founder is an internal entitlement and is not a public signup choice.
 
-The September 2026 launch trial provides Member-level access through September 30. The subscription hard launch is October 1, 2026 at 12:00 AM Eastern. Accounts without another qualifying entitlement fall back to Junior rather than losing stored records.
+Eligible adult accounts receive one calendar month of Member trial access based on the authenticated backend account creation time. No credit card is required to begin the trial. If Member access later ends, eligible adult accounts fall back non-destructively to Free Adult; existing records remain available and Free Adult permits up to five active animals for new growth. Junior remains a separate account path.
 
 ### Referrals and Member credits
 
@@ -49,11 +49,11 @@ This is an age gate and account-holder attestation system, not government-ID ide
 
 HerdHarbor keeps an offline working copy for responsive local use and protects signed-in cloud data with serialized writes, compare-and-swap conflict checks, three-way merge behavior, dirty-state tracking, and bounded IndexedDB recovery snapshots. Authentication and Supabase data requests are not cached by the service worker; only the static application shell is cached.
 
-Existing farm records are not deleted when a subscription changes. Junior limits new active-animal transitions while preserving previously stored records.
+Existing farm records are not deleted when a subscription changes. Free Adult preserves existing adult records while enforcing the five-active-animal growth ceiling; Junior remains separately governed.
 
 ## Versioned runtime modules
 
-The repository intentionally contains some runtime modules with older version numbers in their filenames. Those files are established domain engines that remain part of v1.8.3—for example the v1.6.1 analytics/rabbit-genetics layers and v1.7.x standards, health, and multi-species genetics layers. They should not be renamed or removed solely because their filename predates v1.8.2.
+The repository intentionally contains some runtime modules with older version numbers in their filenames. Those files are established domain engines that remain part of v1.8.3—for example the v1.6.1 analytics/rabbit-genetics layers and v1.7.x standards, health, and multi-species genetics layers. They should not be renamed or removed solely because their filename predates v1.8.3.
 
 Likewise, historical SQL files under `supabase/` are migration lineage and are retained even when their filenames contain earlier release numbers.
 
