@@ -13,8 +13,14 @@
 
   function exactAnimalMatches(hints = {}, animals = []) {
     const records = Array.isArray(animals) ? animals : [];
-    const fields = ["registrationNumber", "tattoo", "tag", "name"];
-    for (const field of fields) {
+    const identifier = lower(hints.identifier);
+    if (identifier) {
+      const matches = records.filter((animal) =>
+        ["registrationNumber","tattoo","tag","earTagNumber"].some((field) => lower(animal?.[field]) === identifier)
+      );
+      if (matches.length) return matches;
+    }
+    for (const field of ["registrationNumber","tattoo","tag","earTagNumber","name"]) {
       const value = lower(hints[field]);
       if (!value) continue;
       const matches = records.filter((animal) => lower(animal?.[field]) === value);
@@ -23,13 +29,75 @@
     return [];
   }
 
-  function canonicalDraft(providerDraft = {}, animals = []) {
-    const classification = CLASSES.includes(providerDraft.classification) ? providerDraft.classification : "unsupported";
-    const warnings = Array.isArray(providerDraft.warnings) ? providerDraft.warnings.map(clean).filter(Boolean) : [];
-    const matches = classification === "registration_document" ? [] : exactAnimalMatches(providerDraft.animalHints || {}, animals);
-    if (classification !== "registration_document" && matches.length !== 1) {
-      warnings.push(matches.length > 1 ? "More than one existing animal matches the extracted identity. Choose the correct animal." : "No existing animal matched the extracted identity. Choose the animal.");
+  function healthDefaultsFrom(classification, providerDraft, animals, selectedWeightIndex = null) {
+    let hints = {};
+    let date = "";
+    let type = "Observation";
+    let details = "";
+    let weight = "";
+    let weightUnit = "lb";
+    let weightOunces = "";
+    let followUpDate = "";
+
+    if (classification === "vet_document") {
+      const record = providerDraft.veterinaryRecord || {};
+      hints = { name: record.animalName };
+      date = clean(record.date);
+      type = "Veterinary visit";
+      details = [clean(record.provider) ? "Provider: " + clean(record.provider) : "", clean(record.summary)].filter(Boolean).join(" · ");
+      followUpDate = clean(record.followUpDate);
     }
+
+    if (classification === "medication_label") {
+      const record = providerDraft.medicationLabel || {};
+      hints = { name: record.animalName };
+      type = "Medication";
+      details = [
+        clean(record.medicationName),
+        clean(record.strength),
+        clean(record.doseInstructions),
+        clean(record.route) ? "Route: " + clean(record.route) : "",
+        clean(record.frequency) ? "Frequency: " + clean(record.frequency) : ""
+      ].filter(Boolean).join(" · ");
+    }
+
+    if (classification === "weight_sheet" && Number.isInteger(selectedWeightIndex)) {
+      const row = Array.isArray(providerDraft.weightRows) ? providerDraft.weightRows[selectedWeightIndex] : null;
+      if (row) {
+        hints = { name: row.animalName, identifier: row.identifier };
+        date = clean(row.date);
+        type = "Weight";
+        weight = clean(row.weight);
+        weightUnit = ["lb","lb+oz","oz","kg","g"].includes(row.weightUnit) ? row.weightUnit : "lb";
+        weightOunces = clean(row.weightOunces);
+      }
+    }
+
+    const matches = exactAnimalMatches(hints, animals);
+    return {
+      defaults: {
+        animalId: matches.length === 1 ? String(matches[0].id) : "",
+        date,
+        type,
+        details,
+        weight,
+        weightUnit,
+        weightOunces,
+        followUpDate
+      },
+      matchCount: matches.length
+    };
+  }
+
+  function canonicalDraft(providerDraft = {}, animals = [], selectedWeightIndex = null) {
+    const map = {
+      registration: "registration_document",
+      veterinary_document: "vet_document",
+      weight_sheet: "weight_sheet",
+      medication_label: "medication_label"
+    };
+    const classification = map[providerDraft.documentType] || "unsupported";
+    const warnings = Array.isArray(providerDraft.warnings) ? providerDraft.warnings.map(clean).filter(Boolean) : [];
 
     if (classification === "registration_document") {
       const registration = providerDraft.registration || {};
@@ -41,34 +109,72 @@
           name: clean(registration.name),
           registrationNumber: clean(registration.registrationNumber),
           tattoo: clean(registration.tattoo),
-          tag: clean(registration.tag),
+          tag: clean(registration.tag || registration.earTagNumber),
           breeder: clean(registration.breeder),
           species: clean(registration.species) || "Rabbit",
           breed: clean(registration.breed),
           sex: ["Male","Female","Unknown"].includes(registration.sex) ? registration.sex : "Unknown",
           dob: clean(registration.dob),
-          color: clean(registration.color),
+          color: clean(registration.color || registration.variety),
           status: "Active"
-        }
+        },
+        weightRows: [],
+        selectedWeightIndex: null
       };
     }
 
-    const health = providerDraft.health || {};
+    const rows = Array.isArray(providerDraft.weightRows) ? providerDraft.weightRows.map((row) => ({
+      animalName: clean(row.animalName),
+      identifier: clean(row.identifier),
+      date: clean(row.date),
+      weight: clean(row.weight),
+      weightUnit: clean(row.weightUnit),
+      weightOunces: clean(row.weightOunces),
+      confidence: Number(row.confidence || 0)
+    })) : [];
+
+    let selected = selectedWeightIndex;
+    if (classification === "weight_sheet" && rows.length === 1 && selected == null) selected = 0;
+    if (classification === "weight_sheet" && rows.length > 1 && selected == null) {
+      warnings.push("This weight sheet contains multiple readable rows. Choose the row you want to review before continuing.");
+    }
+
+    const health = healthDefaultsFrom(classification, { ...providerDraft, weightRows: rows }, animals, selected);
+    if (classification !== "unsupported" && classification !== "registration_document") {
+      if (classification === "weight_sheet" && selected == null) {
+        // Row selection is intentionally unresolved.
+      } else if (health.matchCount !== 1) {
+        warnings.push(health.matchCount > 1
+          ? "More than one existing animal matches the extracted identity. Choose the correct animal."
+          : "No existing animal matched the extracted identity. Choose the animal.");
+      }
+    }
+
     return {
       classification,
       classificationConfidence: Number(providerDraft.classificationConfidence || 0),
       warnings: [...new Set(warnings)],
-      defaults: {
-        animalId: matches.length === 1 ? String(matches[0].id) : "",
-        date: clean(health.date),
-        type: ["Weight","Medication","Veterinary visit","Observation"].includes(health.type) ? health.type : "Observation",
-        details: clean(health.details),
-        weight: clean(health.weight),
-        weightUnit: ["lb","lb+oz","oz","kg","g"].includes(health.weightUnit) ? health.weightUnit : "lb",
-        weightOunces: clean(health.weightOunces),
-        followUpDate: clean(health.followUpDate)
-      }
+      defaults: health.defaults,
+      weightRows: rows,
+      selectedWeightIndex: selected
     };
+  }
+
+  function applyWeightRow(draft, index, animals = []) {
+    if (!draft || draft.classification !== "weight_sheet") return draft;
+    const rowIndex = Number(index);
+    if (!Number.isInteger(rowIndex) || rowIndex < 0 || rowIndex >= (draft.weightRows || []).length) {
+      return { ...draft, selectedWeightIndex: null, defaults: { ...draft.defaults, animalId: "", date: "", weight: "", weightOunces: "" } };
+    }
+    const row = draft.weightRows[rowIndex];
+    const health = healthDefaultsFrom("weight_sheet", { weightRows: draft.weightRows }, animals, rowIndex);
+    const warnings = (draft.warnings || []).filter((warning) => !/More than one existing animal matches|No existing animal matched/.test(warning));
+    if (health.matchCount !== 1) {
+      warnings.push(health.matchCount > 1
+        ? "More than one existing animal matches the selected weight row. Choose the correct animal."
+        : "No existing animal matched the selected weight row. Choose the animal.");
+    }
+    return { ...draft, selectedWeightIndex: rowIndex, defaults: health.defaults, warnings: [...new Set(warnings)] };
   }
 
   function validateReview(draft, animals = []) {
@@ -306,5 +412,5 @@
     return Object.freeze({ VERSION, open, analyze, confirmReview });
   }
 
-  return Object.freeze({ VERSION, CLASSES, exactAnimalMatches, canonicalDraft, validateReview, create });
+  return Object.freeze({ VERSION, CLASSES, exactAnimalMatches, canonicalDraft, applyWeightRow, validateReview, create });
 });
