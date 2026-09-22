@@ -165,8 +165,8 @@ test("canonical Animal and Health runtimes remain final save owners", () => {
   assert.match(app, /HerdHarborPhotoAssistedEntry\?\.create/);
   assert.match(app, /function openAnimalForm\(id = "", defaults = \{\}\)/);
   assert.match(animalRuntime, /function openAnimalForm\(id = "", defaults = \{\}\)/);
-  assert.match(animalRuntime, /\.animals\.push\(saved\)/);
-  assert.match(healthRuntime, /\.health\.push\(saved\)/);
+  assert.match(animalRuntime, /liveState\.animals\.push\(newAnimal\)/);
+  assert.match(healthRuntime, /liveState\.health\.push\(\{ id: deps\.uid\("health"\)/);
 });
 
 test("photo asset loads before composition runtime and is available in the PWA artifact", () => {
