@@ -1055,8 +1055,8 @@
     return animalProfileRuntime().renderAnimals();
   }
 
-  function openAnimalForm(id = "") {
-    return animalProfileRuntime().openAnimalForm(id);
+  function openAnimalForm(id = "", defaults = {}) {
+    return animalProfileRuntime().openAnimalForm(id, defaults);
   }
 
   function openAnimalDetail(id) {
