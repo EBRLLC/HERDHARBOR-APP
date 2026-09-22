@@ -94,7 +94,7 @@ test("existing extracted runtime public APIs remain intact", () => {
     "HerdHarborSalesCustomerRuntime",
     "HerdHarborProductionReportingRuntime",
     "HerdHarborSettingsRuntime"
-  ]) assert.match(app, new RegExp(owner.replaceAll("$", "\\$") + "\\\?\\.create"));
+  ]) assert.ok(app.includes(owner + "?.create"), owner + " factory remains composed");
 });
 
 test("Settings shell asset loads after Production/Reporting and before composition", () => {
