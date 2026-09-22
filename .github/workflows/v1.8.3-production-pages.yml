@@ -112,6 +112,7 @@ jobs:
           test -s _site/animal-profile-runtime-v1.8.3.js
           test -s _site/breeding-litter-runtime-v1.8.3.js
           test -s _site/health-runtime-v1.8.3.js
+          test -s _site/task-automation-v1.8.3.js
           test -s _site/task-runtime-v1.8.3.js
           test -s _site/sales-customer-runtime-v1.8.3.js
           test -s _site/profitability-analytics-v1.8.3.js
