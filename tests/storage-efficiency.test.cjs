@@ -7,6 +7,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const appRuntime = fs.readFileSync(path.join(root, "herdharbor-app-runtime.js"), "utf8");
+const settingsRuntime = fs.readFileSync(path.join(root, "settings-runtime-v1.8.3.js"), "utf8");
 const animalProfileRuntime = fs.readFileSync(path.join(root, "animal-profile-runtime-v1.8.3.js"), "utf8");
 const taskRuntime = fs.readFileSync(path.join(root, "task-runtime-v1.8.3.js"), "utf8");
 const salesCustomerRuntime = fs.readFileSync(path.join(root, "sales-customer-runtime-v1.8.3.js"), "utf8");
@@ -23,14 +24,14 @@ assert.match(salesCustomerRuntime, /scheduleUiWork\("sales-search"/);
 assert.match(appRuntime, /function animalById\(id\)/);
 assert.match(appRuntime, /new Map\(state\.animals\.map/);
 
-assert.match(appRuntime, /id="settings-state-size"/);
-assert.match(appRuntime, /id="settings-storage-used"/);
-assert.match(appRuntime, /id="settings-storage-available"/);
+assert.match(settingsRuntime, /id="settings-state-size"/);
+assert.match(settingsRuntime, /id="settings-storage-used"/);
+assert.match(settingsRuntime, /id="settings-storage-available"/);
 assert.match(appRuntime, /navigator\.storage\?\.estimate\?\.\(\)/);
 assert.match(appRuntime, /navigator\.storage\?\.persisted\?\.\(\)/);
 
 assert.match(animalProfileRuntime, /maxDimension: 560,[\s\S]*?targetBytes: 65000/);
-assert.match(appRuntime, /maxDimension: 420,[\s\S]*?targetBytes: 45000/);
+assert.match(settingsRuntime, /maxDimension: 420,[\s\S]*?targetBytes: 45000/);
 
 assert.match(cloud, /const MAX_RECOVERY_SNAPSHOTS = 6/);
 assert.match(cloud, /const MAX_RECOVERY_BYTES = 8_000_000/);
