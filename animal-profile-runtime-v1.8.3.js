@@ -124,9 +124,10 @@
       </article>`;
     }
 
-    function openAnimalForm(id = "") {
+    function openAnimalForm(id = "", defaults = {}) {
       const state = stateNow();
-      const animal = (state.animals || []).find((record) => record.id === id) || {};
+      const existing = (state.animals || []).find((record) => record.id === id) || null;
+      const animal = id ? { ...defaults, ...(existing || {}) } : { ...defaults };
       let pendingPhotoData = animal.photoData || "";
       let pendingPhotoFileName = animal.photoFileName || "";
 
