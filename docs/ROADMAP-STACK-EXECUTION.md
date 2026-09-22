@@ -748,17 +748,36 @@
 
 ---
 
-## Phase 9G — Offline + Mobile Capture Hardening
+## Completed Phase 9G — Offline + Mobile Capture Hardening
 
-- **Status:** in progress
+- **Roadmap phase:** Phase 9G — Offline + Mobile Capture Hardening
+- **PR number:** #179
+- **PR title:** feat: harden offline and mobile capture
 - **Branch:** `feat/harden-offline-mobile-capture`
 - **Base branch:** `feat/add-derived-task-automation`
 - **Base SHA:** `2cd75e4e766ceab2257679ae3de14c199578b291`
 - **Parent PR:** #177
 - **Application version:** 1.8.3 (unchanged)
-- **Objective:** harden mobile/offline capture and resume behavior without creating a second offline database or bypassing existing cloud/local safety contracts.
+- **Validated implementation SHA:** `d5cfcd144e7932041c2420e5d7ec62e9f901116c`
 - **New component:** `mobile-capture-v1.8.3.js` build `offline-mobile-capture-1`
-- **Canonical offline owner:** existing `local-cache-v2-v1.8.2.js` remains the only IndexedDB cache/recovery owner; canonical farm state and HerdHarborCloud remain authoritative.
-- **Photo capture boundary:** camera/file image -> orientation-safe resize/compression -> in-memory pending provider analysis -> Phase 9B review draft -> explicit canonical Animal/Health form confirmation.
-- **Retry behavior:** offline/provider-retryable photo analysis remains temporary in memory; reconnect/pageshow/foreground resume retries one in-flight analysis request and cannot directly create a farm record.
-- **Protected inherited requirements:** preserve dirty-local/conflict/tombstone/LKG/recovery snapshot behavior, legacy rollback, normalized-sync rollout guardrails, Phase 9A/9B review-before-mutation, Task-only Phase 9F automation, server-side provider keys, privacy-safe telemetry, formal v1.8.3 identity, PWA update safety, and no unrelated auth/sign-in changes.
+- **Canonical offline owner:** existing `local-cache-v2-v1.8.2.js` remains the only IndexedDB cache/recovery owner; canonical farm state and HerdHarborCloud remain authoritative
+- **Mobile image preparation:** rear-camera capture hint, orientation-aware decode, aspect-ratio resize, JPEG normalization/compression, 2048px default long edge, 3.5 MB prepared-image target
+- **Photo asset revision:** `photo-assisted-entry-v1.8.3.js?v=2`; Phase 9B review-before-mutation remains unchanged
+- **Offline/retry behavior:** prepared photo analysis remains in memory only; offline/retryable provider work resumes on online/pageshow/foreground; concurrent resume signals share one in-flight request; no canonical record is created by retry
+- **Suspend/resume behavior:** existing local cache flushes pending work on pagehide/freeze/hidden visibility and refreshes from canonical local state on foreground/pageshow
+- **Canonical cloud safeguards retained:** dirty-local state, conflict handling, tombstones, recovery snapshots/LKG behavior, legacy rollback, and normalized-sync rollout guardrails remain owned by existing cloud/lifecycle layers
+- **Compatibility retained:** Phase 9A voice review, Phase 9B photo review and server-side `record-photo-extract`, Phase 9F Task-only automation, v1.8.3 PWA update behavior, optional-tool lazy loading, monitoring privacy, auth/subscription contracts
+- **Second offline database:** none added
+- **Database/schema changes:** none
+- **Edge Function changes:** none
+- **Secrets/config required:** none
+- **Monitoring changes:** none; image contents/extracted values remain excluded from telemetry
+- **Migration/deployment requirements:** no data migration and no Supabase deployment; deploy new `mobile-capture-v1.8.3.js`, revised photo/local-cache assets, shell/service-worker, and Pages artifact after ordered stack merge
+- **Rollback method:** revert Phase 9G commits; canonical local/cloud state, recovery snapshots, Phase 9B provider integration, and prior task/analytics phases remain compatible
+- **Tests added/changed:** added `tests/offline-mobile-capture-v1.8.3.test.cjs`; updated Phase 9B asset revision assertions, app-script compile, package v1.8.3 gate, shell/service-worker load/cache references, and Pages artifact gate
+- **Documentation:** `docs/OFFLINE-MOBILE-CAPTURE-v1.8.3.md`
+- **Exact implementation CI result:** Alpha v1.8.3 CI #57 — PASS on exact implementation SHA `d5cfcd144e7932041c2420e5d7ec62e9f901116c`
+- **Manual validation still required:** physical iOS/Android rear-camera capture, rotated EXIF photos, very large phone images, offline-to-online retry while modal remains open, background/foreground resume, narrow-screen review forms, and installed-PWA resume behavior
+- **Known risks:** in-memory pending photo analysis intentionally does not survive a full browser/process termination; this avoids introducing a second persistent offline image queue. Canonical farm records remain protected by the existing local/cloud architecture.
+- **Roadmap status:** implementation Phases 9A through 9G are complete; this ledger-closure commit must pass the full v1.8.3 CI gate before the remaining roadmap is considered fully green.
+
