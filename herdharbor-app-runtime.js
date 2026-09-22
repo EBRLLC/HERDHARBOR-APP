@@ -3,7 +3,7 @@
   "use strict";
 
   // The release identity comes from herdharbor-build.js; this fallback must match the current public release.
-  const APP_VERSION = window.HerdHarborBuild?.version || "1.8.2";
+  const APP_VERSION = window.HerdHarborBuild?.version || "1.8.3";
   const STORAGE_KEY = "herdharbor_pre_alpha_v1";
   const ATTACHMENT_DB = "herdharbor_attachments_v1";
   const ATTACHMENT_STORE = "pedigreeDocuments";
