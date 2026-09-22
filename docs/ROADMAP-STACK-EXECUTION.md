@@ -632,3 +632,37 @@
 - **Manual validation still required:** representative small-screen chart/table review, long labels/tooltips, preferred-unit switching, sparse historical herds, and real mixed-status litter records
 - **Known risks:** comparisons remain only as complete as recorded Health/litter/sale outcomes; direct offspring links are preferred and partial historical parent/litter linkage can produce explicit incomplete samples rather than inferred values
 - **Requirements inherited by Phase 9D:** consume Phase 9C's read-only offspring/pair summaries instead of duplicating them; preserve missing-data/sample-size semantics, canonical pedigree `sireId`/`damId`, canonical Health weight ownership, formal v1.8.3 identity, review-before-mutation, cloud/subscription/security/PWA/runtime contracts, and normalized-sync rollout guardrails
+
+
+
+---
+
+## Completed Phase 9D — Breeding / Genetics Decision Support
+
+- **Roadmap phase:** Phase 9D — Breeding / Genetics Decision Support
+- **PR number:** #173
+- **PR title:** feat: expand breeding and genetics decision support
+- **Branch:** `feat/expand-breeding-genetics-decision-support`
+- **Parent PR:** #171
+- **Base branch:** `feat/expand-growth-litter-performance-analytics`
+- **Base SHA:** `5b699655fed3cefec2e3b4f2ef439781ee67883b`
+- **Validated implementation SHA:** `a59ba4d2cf9ec5935e0f58af63e6b534a6068dde`
+- **Final ledger-closure SHA:** pending record-only closure commit
+- **Application version:** 1.8.3 (unchanged)
+- **Component identities changed:** canonical `rabbit-genetics-v1.6.1.js` engine build advanced from 3.0.0 to 3.1.0; final Rabbit engine and advanced UI cache revisions advanced to `?v=2` while stable component filenames, schema version 3, and genetics contract 1.6.5 remain intact
+- **Canonical state owner:** the existing final Rabbit genetics engine remains the sole deterministic genetics owner; pedigree uses canonical Animal `sireId`/`damId`; Phase 9C Analytics remains the litter/growth history owner; Health, production, show, breeding, and litter state remain read-only inputs
+- **New public APIs:** `PEDIGREE_DECISION_SUPPORT_CONTRACT`, `pedigreeProfile`, `pairPedigreeContext`, `genotypeEvidenceSummary`, `recordedPairContext`, and `pairDecisionSupport`
+- **Compatibility paths retained:** existing Rabbit genotype schema/migration, deterministic locus calculators, saved prediction snapshots, advanced/compatibility UI bridges, multispecies delegation, species-context hardlock, stable component filenames, and Phase 9C sample/missing-data rules
+- **Compatibility paths removed:** none
+- **Database/schema changes:** none
+- **Edge Function changes:** none
+- **Secrets/config required:** none
+- **Monitoring changes:** none
+- **Migration/deployment requirements:** no state/data migration; deploy revised Rabbit engine/UI and service-worker cache references after ordered stack merge
+- **Rollback method:** revert the Phase 9D implementation/ledger commits; recorded genetics, pedigrees, Phase 9C Analytics, and saved prediction snapshots remain compatible with the parent head
+- **Tests added/changed:** added `tests/breeding-genetics-decision-support-v1.8.3.test.cjs`; updated package aggregates plus stable Phase 2/release asset assertions for the intentional cache revision
+- **Algorithm documentation:** `docs/BREEDING-GENETICS-DECISION-SUPPORT-v1.8.3.md` documents canonical path enumeration, ancestor deduplication, repeated-path preservation, cycle handling, depth/coverage limits, and why no numeric inbreeding coefficient is published
+- **Exact CI result:** Alpha v1.8.3 CI #45 — PASS on exact implementation SHA `a59ba4d2cf9ec5935e0f58af63e6b534a6068dde` through validation-only PR #174
+- **Manual validation still required:** representative complete/incomplete/linebred pedigrees, breeder-reviewed conflicting genotype records, long pair histories, and narrow-screen Pair Analysis on physical mobile devices
+- **Known risks:** pedigree comparison is bounded to four generations by default and cannot identify unrecorded ancestry; historical performance is limited to canonical recorded links; no numeric inbreeding coefficient is claimed; genetic possibilities remain subject to recorded-data quality and model scope
+- **Requirements inherited by Phase 9E:** preserve the final Rabbit genetics owner and read-only decision-support boundary; reuse canonical transaction/production/sale owners and Phase 9C analytics rather than creating parallel accounting; retain formal v1.8.3, canonical pedigree/Health ownership, review-before-mutation, lazy optional tooling, cloud/subscription/security/PWA/runtime contracts, and normalized-sync rollout guardrails
