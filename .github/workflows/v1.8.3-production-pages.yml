@@ -114,6 +114,7 @@ jobs:
           test -s _site/health-runtime-v1.8.3.js
           test -s _site/task-runtime-v1.8.3.js
           test -s _site/sales-customer-runtime-v1.8.3.js
+          test -s _site/profitability-analytics-v1.8.3.js
           test -s _site/production-reporting-runtime-v1.8.3.js
           test -s _site/settings-runtime-v1.8.3.js
           test -s _site/voice-assisted-entry-v1.8.3.js
