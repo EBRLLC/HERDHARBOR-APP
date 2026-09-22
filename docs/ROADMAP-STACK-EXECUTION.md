@@ -429,3 +429,37 @@
 - **Known risks:** extracted runtime depends on injected composition services and script load order; Budget/Production calculations share canonical transaction data with Sales/Customers and must not gain a parallel financial store; spreadsheet tooling must remain optional
 - **Exact requirements inherited by Phase 6H:** preserve `HerdHarborProductionReportingRuntime.create(deps)`, all Phase 6B-6F extracted runtime APIs, canonical state ownership, optional-tool lazy loading, animal-action router behavior, monitoring startup behavior, cloud/subscription/Paper Pedigree AI contracts, PWA/service-worker order, and whole-app v1.8.2 identity; remove compatibility paths only after repository-wide caller proof
 
+
+
+---
+
+## Completed Phase 6H — Runtime decomposition: Settings / final runtime cleanup
+
+- **Roadmap phase:** Phase 6H — Settings / final runtime decomposition
+- **PR number:** #161
+- **PR title:** refactor: complete application runtime domain decomposition
+- **Branch:** `refactor/complete-application-runtime-decomposition`
+- **Base branch:** `refactor/extract-production-reporting-runtime-domain`
+- **Base SHA:** `bd56f186174211b160f21f87b353e586d068fc85`
+- **Validated implementation head SHA:** `274615228d06ac99f3f045277cef127c3efc7def`
+- **Parent PR:** #159
+- **Application version:** 1.8.2
+- **Component/build identities changed:** new static component `settings-runtime-v1.8.3.js?v=1`; no whole-app, cloud-sync, monitoring, subscription, or Android release identity changed
+- **Extracted ownership:** Settings route rendering, operation-profile editing, rabbitry branding UI, feedback/account-deletion UI, Settings-owned membership/sync/storage/appearance/Market Analytics/install/demo/resources/export-import orchestration, and Settings event wiring now live in `settings-runtime-v1.8.3.js`
+- **Canonical state owners:** existing HerdHarbor application state and existing domain services remain authoritative; Settings receives canonical services and creates no secondary persistence, cloud, subscription, market, storage, import/export, or financial store
+- **Public entry points introduced:** `window.HerdHarborSettingsRuntime.create(deps)`; composition keeps narrow `renderSettings()` and feedback delegation for existing callers
+- **Compatibility paths retained:** generic theme/navigation/bootstrap helpers remain composition-owned; spreadsheet/import/export/cloud/PWA/membership/Market services remain their existing owners and are injected/delegated
+- **Compatibility paths removed:** monolithic Settings route markup/event implementation and Settings-local profile/branding/feedback/account-deletion behavior were removed from `herdharbor-app-runtime.js`
+- **Optional tooling:** ExcelJS/JSZip/spreadsheet import remain lazy-loaded through the existing optional-tool service
+- **Database/schema changes:** none
+- **Edge Function changes:** none
+- **Environment variables/secrets required:** none added
+- **Monitoring changes:** none
+- **Migration requirements:** none; deploy the new static Settings runtime asset, included in shell/service-worker/Pages artifact checks
+- **Rollback procedure:** revert PR #161 runtime/shell/test changes to restore Settings ownership to the composition runtime; no data migration rollback is required
+- **Tests added:** `tests/runtime-settings-extraction-v1.8.3.test.cjs`
+- **Tests modified:** compile, release-reference, shell-decomposition, launch-hardening, optional-tools, phase2 release, stability, storage-efficiency, Pages artifact coverage, and `package.json` v1.8.3 development gate
+- **Full CI result:** Alpha v1.8.2 CI #270 — PASS on validated implementation head `274615228d06ac99f3f045277cef127c3efc7def`; ledger-closure head must also pass before Phase 7 branches
+- **Manual validation still required:** Settings route on supported mobile/desktop widths; operation profile edit; logo upload/remove; theme/weight preference; Market Analytics consent; sync-now/status refresh; device storage summary; backup/export/import; spreadsheet lazy-load actions; feedback and account deletion launch
+- **Known risks:** Settings depends on injected composition/domain services and script load order; cross-domain services must remain authoritative outside Settings; whole-app release remains 1.8.2
+- **Exact requirements inherited by Phase 7:** preserve all Phase 6B-6H extracted runtime APIs, canonical domain ownership, optional-tool lazy loading, animal-action router behavior, monitoring startup behavior, cloud/subscription/Paper Pedigree AI contracts, PWA/service-worker order, normalized-sync default-off guardrails, and whole-app v1.8.2 identity
