@@ -131,7 +131,7 @@ test("Phase 4 subscription assets remain correct under the formal v1.8.3 release
   assert.match(build, /subscription-stripe-provider-v1\.8\.0\.js\?v=2/);
   assert.match(worker, /\.\/subscription-launch-v1\.8\.1\.js\?v=2/);
   assert.match(worker, /\.\/subscription-stripe-provider-v1\.8\.0\.js\?v=2/);
-  assert.match(worker, /herdharbor-shell-v1\.8\.2/);
+  assert.match(worker, /herdharbor-shell-v1\.8\.3/);
 });
 
 test("v1.8.3 development gate includes the production subscription completion contract", () => {
