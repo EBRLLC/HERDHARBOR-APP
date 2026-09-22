@@ -9,11 +9,13 @@ This document records the production contract for the existing Paper Pedigree AI
 - `supabase/config.toml` requires JWT verification for that function.
 - The function independently validates the bearer token with Supabase Auth before provider use.
 - Required server configuration: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `OPENAI_API_KEY`.
-- Optional server configuration: `OPENAI_PEDIGREE_MODEL`, `PAPER_PEDIGREE_DAILY_LIMIT`, and `PAPER_PEDIGREE_PROVIDER_TIMEOUT_MS`.
+- Optional server configuration: `OPENAI_PEDIGREE_MODEL`, `PAPER_PEDIGREE_DAILY_LIMIT`, `AI_IMAGE_GLOBAL_DAILY_LIMIT`, and `PAPER_PEDIGREE_PROVIDER_TIMEOUT_MS`.
+- Default Paper Pedigree allowance is **5 scans per authenticated user per UTC day**.
+- Paper Pedigree and general Photo Entry share a default **25 AI-image provider calls per UTC day** global backstop.
 - Provider response storage remains disabled with `store: false`.
 - JPG and PNG are the only automatic-reader formats currently supported.
 - Oversized/invalid requests fail before the paid provider call.
-- Per-user daily quota reservation remains service-role-only.
+- Per-user and shared-global daily quota reservation is atomic and service-role-only through `herdharbor_reserve_ai_image_request`.
 - Aggregate production metrics are service-role-only and contain counters only.
 
 ## Diagnostic contract
@@ -28,6 +30,7 @@ The Edge Function returns a sanitized stable `code` plus a user-safe message. Su
 - `image_too_large`
 - `usage_ledger_unavailable`
 - `quota_exceeded`
+- `global_quota_exceeded`
 - `provider_rate_limit`
 - `provider_timeout`
 - `provider_error`
