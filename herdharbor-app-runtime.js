@@ -2854,6 +2854,24 @@
     return voiceAssistedEntryInstance;
   }
 
+  let photoAssistedEntryInstance = null;
+
+  function photoAssistedEntry() {
+    if (photoAssistedEntryInstance) return photoAssistedEntryInstance;
+    const create = window.HerdHarborPhotoAssistedEntry?.create;
+    if (typeof create !== "function") throw new Error("The photo-assisted entry module did not load.");
+    photoAssistedEntryInstance = create({
+      getState: () => state,
+      openModal,
+      closeModal,
+      openAnimalForm,
+      openHealthForm,
+      esc,
+      toast
+    });
+    return photoAssistedEntryInstance;
+  }
+
   function openQuickAdd() {
     openModal("Quick add", `
       <div class="cards-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
@@ -2863,6 +2881,7 @@
         ${quickCard("Pedigree", "Use the guided builder, attach a source, or resume later.", "pedigree")}
         ${quickCard("Health", "Add a weight, treatment, or observation.", "health")}
         ${quickCard("Voice-assisted entry", "Speak or type a weight, medication, or breeding instruction for review.", "voice")}
+        ${quickCard("Photo-assisted entry", "Create a reviewed draft from a registration, vet, weight, or medication image.", "photo")}
         ${quickCard("Task", "Create a chore or reminder.", "task")}
         ${quickCard("Customer", "Save a buyer and contact details.", "customer")}
         ${quickCard("Animal sale", "Reserve or sell animals and prepare documents.", "sale")}
@@ -2878,6 +2897,7 @@
       if (type === "pedigree") openPedigreeImport();
       if (type === "health") openHealthForm();
       if (type === "voice") voiceAssistedEntry().open();
+      if (type === "photo") photoAssistedEntry().open();
       if (type === "task") openTaskForm();
       if (type === "customer") openCustomerForm();
       if (type === "sale") openSaleForm();
