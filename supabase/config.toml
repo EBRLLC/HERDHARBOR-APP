@@ -38,3 +38,8 @@ verify_jwt = true
 # Paper pedigree reading sends a user-selected pedigree image to the configured
 # server-side AI provider only after Supabase has authenticated the member.
 verify_jwt = true
+
+[functions.record-photo-extract]
+# Photo-assisted record entry requires an authenticated HerdHarbor member.
+# Provider secrets stay server-side; the browser receives only a review draft.
+verify_jwt = true
