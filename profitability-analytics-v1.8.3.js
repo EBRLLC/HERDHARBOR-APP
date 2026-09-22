@@ -20,16 +20,22 @@
   };
   const animalMap = (state) => new Map(array(state, "animals").map((animal) => [String(animal.id), animal]));
 
-  function operatingExpenses(state, options = {}) {
-    const animals = animalMap(state);
+  function rawOperatingExpenses(state, options = {}) {
     return array(state, "transactions").filter((row) => {
       if (String(row.type || "").toLowerCase() !== "expense") return false;
       if (String(row.classification || "Operating").toLowerCase() === "capital") return false;
-      if (!inRange(row.date, options)) return false;
+      return inRange(row.date, options);
+    });
+  }
+
+  function operatingExpenses(state, options = {}) {
+    const animals = animalMap(state);
+    return rawOperatingExpenses(state, options).filter((row) => {
       if (!options.species) return true;
+      if (row.scope === "Operation") return false;
       if (row.scope === "Species") return String(row.species || "") === String(options.species);
       if (row.scope === "Animal") return String(animals.get(String(row.animalId))?.species || row.species || "") === String(options.species);
-      return true;
+      return false;
     });
   }
 
@@ -94,6 +100,9 @@
     const expenses = operatingExpenses(state, options);
     const payments = paymentAllocations(state, options);
     const sales = completedSales(state, options);
+    const excludedOperationCosts = options.species
+      ? sum(rawOperatingExpenses(state, options).filter((row) => row.scope === "Operation").map((row) => row.amount))
+      : 0;
     const recordedCosts = sum(expenses.map((row) => row.amount));
     const receivedRevenue = sum(payments.map((row) => row.amount));
     const invoicedRevenue = sum(sales.map(saleInvoicedTotal));
@@ -112,7 +121,8 @@
       unallocatedRevenue,
       directAnimalCosts: sum(scopedCosts.map((row) => row.amount)),
       sharedCosts: sum(sharedCosts.map((row) => row.amount)),
-      allocationComplete: sharedCosts.length === 0 && unallocatedRevenue === 0,
+      excludedOperationCosts,
+      allocationComplete: sharedCosts.length === 0 && excludedOperationCosts === 0 && unallocatedRevenue === 0,
       note: "Recorded net uses recorded received payments minus recorded operating expenses. It does not assume missing costs or unpaid invoices are zero."
     };
   }
@@ -121,7 +131,8 @@
     const animals = animalMap(state);
     const expenses = operatingExpenses(state, options);
     const payments = paymentAllocations(state, options);
-    const sharedCostTotal = sum(expenses.filter((row) => row.scope !== "Animal").map((row) => row.amount));
+    const sharedCostTotal = sum(expenses.filter((row) => row.scope !== "Animal").map((row) => row.amount)) +
+      (options.species ? sum(rawOperatingExpenses(state, options).filter((row) => row.scope === "Operation").map((row) => row.amount)) : 0);
     const unallocatedRevenue = sum(payments.filter((row) => !row.animalId).map((row) => row.amount));
     const ids = new Set([
       ...expenses.filter((row) => row.scope === "Animal" && row.animalId).map((row) => String(row.animalId)),
@@ -169,7 +180,8 @@
   function litterRows(state, options = {}) {
     const byAnimal = new Map(animalRows(state, options).map((row) => [row.animalId, row]));
     const allExpenses = operatingExpenses(state, options);
-    const sharedCosts = sum(allExpenses.filter((row) => row.scope !== "Animal").map((row) => row.amount));
+    const sharedCosts = sum(allExpenses.filter((row) => row.scope !== "Animal").map((row) => row.amount)) +
+      (options.species ? sum(rawOperatingExpenses(state, options).filter((row) => row.scope === "Operation").map((row) => row.amount)) : 0);
     const allPayments = paymentAllocations(state, options);
     const unallocatedRevenue = sum(allPayments.filter((row) => !row.animalId).map((row) => row.amount));
     return array(state, "litters").filter((litter) => inRange(litter.birthDate || litter.date, options)).map((litter) => {
@@ -255,6 +267,7 @@
   return Object.freeze({
     VERSION,
     BUILD_ID,
+    rawOperatingExpenses,
     operatingExpenses,
     completedSales,
     saleItemValue,
