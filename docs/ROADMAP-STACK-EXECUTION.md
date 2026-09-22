@@ -565,3 +565,24 @@
 - **Manual validation still required:** supported mobile browser microphone permission/voice recognition; typed fallback; review editing; Health form handoff; Breeding form handoff; cancellation/provider-failure UX
 - **Exact requirements inherited by Phase 9B:** preserve formal v1.8.3 release identity, voice review-before-mutation, canonical Health/Breeding owners, Paper Pedigree provider-key isolation and confirmation boundary, all cloud/subscription/security/privacy/PWA/runtime contracts, and no unrelated auth/sign-in changes
 
+
+
+---
+
+## Phase 9B — Photo-assisted record entry
+
+- **Status:** in progress
+- **Branch:** `feat/reviewed-photo-assisted-record-entry`
+- **Base branch:** `feat/reviewed-voice-assisted-record-entry`
+- **Base SHA:** `5c85445373fa243b0326b46b71711708b5ca87ef`
+- **Parent PR:** #167
+- **Application version:** 1.8.3
+- **Objective:** classify a supported record photo into registration, veterinary document, weight sheet, or medication label; create a structured review draft; then hand the reviewed draft to the existing canonical Animal or Health form.
+- **Server owner:** authenticated Supabase Edge Function `record-photo-extract`; provider credentials stay server-side and provider response storage remains disabled.
+- **Client owner:** `photo-assisted-entry-v1.8.3.js`; it owns temporary review state only and has no canonical persistence path.
+- **Weight sheets:** multiple extracted rows remain unresolved until the member explicitly chooses one row for review; one Health record is handed off at a time.
+- **Medical boundary:** extract visible facts only; no diagnosis, treatment recommendation, medication dose calculation, unit conversion, or invented missing values.
+- **Canonical state owners:** Animal/Profile runtime remains final owner for registration-derived animal creation; Health runtime remains final owner for veterinary/weight/medication records.
+- **Database/schema changes:** none
+- **Provider/config changes:** reuses existing server-side `OPENAI_API_KEY`; optional `OPENAI_PHOTO_ENTRY_MODEL` and `PHOTO_ENTRY_PROVIDER_TIMEOUT_MS`; `verify_jwt = true`
+- **Protected inherited requirements:** preserve Phase 9A review-before-mutation, Paper Pedigree confirmation/provider-key isolation, formal v1.8.3 identity, canonical Health/Animal owners, cloud/subscription/security/privacy/PWA/runtime contracts, and no unrelated auth/sign-in changes.
