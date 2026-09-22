@@ -55,108 +55,38 @@
 
   function breedingDefinitions(state, breeding = {}) {
     if (!breeding.id) return [];
-    const status = clean(breeding.status);
-    const inactive = ["Not pregnant", "Delivered", "Cancelled"].includes(status);
-    const checkDone = inactive || (breeding.pregnancyCheckStatus && breeding.pregnancyCheckStatus !== "Not checked");
-    const female = array(state, "animals").find((animal) => String(animal.id) === String(breeding.femaleId));
-    const isRabbit = female?.species === "Rabbit";
-    const damName = animalName(state, breeding.femaleId);
-    const sireName = animalName(state, breeding.maleId);
-    return [
-      {
-        id: workflowTaskId("breeding", breeding.id, "pregnancy-check"),
-        title: "Pregnancy check: " + damName,
-        category: "Breeding",
-        dueDate: clean(breeding.pregnancyCheckDate),
-        animalId: clean(breeding.femaleId),
-        notes: "Automatically maintained from the breeding record with " + sireName + ".",
-        sourceType: "breeding",
-        sourceRecordId: String(breeding.id),
-        reminderType: "pregnancy-check",
-        recurrence: "None",
-        recurrenceDays: "",
-        completed: Boolean(checkDone)
-      },
-      {
-        id: workflowTaskId("breeding", breeding.id, "prepare-birth"),
-        title: (isRabbit ? "Place nest box" : "Prepare birth area") + ": " + damName,
-        category: isRabbit ? "Nest box" : "Breeding",
-        dueDate: clean(breeding.nestBoxDate || breeding.preparationDate),
-        animalId: clean(breeding.femaleId),
-        notes: "Automatically maintained from the expected birth schedule.",
-        sourceType: "breeding",
-        sourceRecordId: String(breeding.id),
-        reminderType: "prepare-birth",
-        recurrence: "None",
-        recurrenceDays: "",
-        completed: Boolean(inactive)
-      },
-      {
-        id: workflowTaskId("breeding", breeding.id, "expected-birth"),
-        title: "Expected birth: " + damName,
-        category: "Breeding",
-        dueDate: clean(breeding.dueDate),
-        animalId: clean(breeding.femaleId),
-        notes: "Automatically maintained from the breeding record with " + sireName + ".",
-        sourceType: "breeding",
-        sourceRecordId: String(breeding.id),
-        reminderType: "expected-birth",
-        recurrence: "None",
-        recurrenceDays: "",
-        completed: Boolean(inactive)
-      },
-      {
-        id: workflowTaskId("breeding", breeding.id, "breeding-follow-up"),
-        title: "Breeding follow-up: " + damName,
-        category: "Breeding",
-        dueDate: clean(breeding.followUpDate),
-        animalId: clean(breeding.femaleId),
-        notes: "Follow-up date recorded on the breeding record with " + sireName + ".",
-        sourceType: "breeding",
-        sourceRecordId: String(breeding.id),
-        reminderType: "breeding-follow-up",
-        recurrence: "None",
-        recurrenceDays: "",
-        completed: status === "Cancelled"
-      }
-    ];
+    return [{
+      id: workflowTaskId("breeding", breeding.id, "breeding-follow-up"),
+      title: "Breeding follow-up: " + animalName(state, breeding.femaleId),
+      category: "Breeding",
+      dueDate: clean(breeding.followUpDate),
+      animalId: clean(breeding.femaleId),
+      notes: "Follow-up date recorded on the breeding record with " + animalName(state, breeding.maleId) + ".",
+      sourceType: "breeding",
+      sourceRecordId: String(breeding.id),
+      reminderType: "breeding-follow-up",
+      recurrence: "None",
+      recurrenceDays: "",
+      completed: clean(breeding.status) === "Cancelled"
+    }];
   }
 
   function litterDefinitions(state, litter = {}) {
     if (!litter.id) return [];
-    const damName = animalName(state, litter.damId);
-    const liveAvailable = Math.max(0, birthLiveRemaining(litter));
-    const weaningComplete = liveAvailable === 0 || Number(litter.weaned || 0) >= liveAvailable;
-    return [
-      {
-        id: workflowTaskId("birth", litter.id, "weaning"),
-        title: "Wean offspring: " + damName,
-        category: "Weaning",
-        dueDate: clean(litter.expectedWeanDate),
-        animalId: clean(litter.damId),
-        notes: "Automatically maintained from this birth or litter record.",
-        sourceType: "birth",
-        sourceRecordId: String(litter.id),
-        reminderType: "weaning",
-        recurrence: "None",
-        recurrenceDays: "",
-        completed: Boolean(weaningComplete)
-      },
-      {
-        id: workflowTaskId("birth", litter.id, "litter-follow-up"),
-        title: "Litter follow-up: " + damName,
-        category: "Weaning",
-        dueDate: clean(litter.followUpDate),
-        animalId: clean(litter.damId),
-        notes: "Follow-up date recorded on this birth or litter record.",
-        sourceType: "birth",
-        sourceRecordId: String(litter.id),
-        reminderType: "litter-follow-up",
-        recurrence: "None",
-        recurrenceDays: "",
-        completed: false
-      }
-    ];
+    return [{
+      id: workflowTaskId("birth", litter.id, "litter-follow-up"),
+      title: "Litter follow-up: " + animalName(state, litter.damId),
+      category: "Weaning",
+      dueDate: clean(litter.followUpDate),
+      animalId: clean(litter.damId),
+      notes: "Follow-up date recorded on this birth or litter record.",
+      sourceType: "birth",
+      sourceRecordId: String(litter.id),
+      reminderType: "litter-follow-up",
+      recurrence: "None",
+      recurrenceDays: "",
+      completed: false
+    }];
   }
 
   function healthDefinition(state, record = {}) {
