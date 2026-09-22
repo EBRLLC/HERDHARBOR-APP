@@ -675,6 +675,15 @@
           ).length
         : 0;
       const progressPercent = plannedTotal > 0 ? Math.min(100, (summary.operating / plannedTotal) * 100) : 0;
+      const profitabilityEngine = root.HerdHarborProfitabilityAnalytics;
+      const profitabilityRange = isYearView
+        ? { start: `${annualYear}-01-01`, end: `${annualYear}-12-31`, species: speciesFilter }
+        : { ...productionPeriodRange("Month", `${monthKey}-01`), species: speciesFilter };
+      const profitabilitySummary = profitabilityEngine?.operationSummary?.(stateNow(), profitabilityRange) || null;
+      const profitabilityAnimals = profitabilityEngine?.animalRows?.(stateNow(), profitabilityRange).slice(0, 8) || [];
+      const profitabilityLitters = profitabilityEngine?.litterRows?.(stateNow(), profitabilityRange).slice(0, 8) || [];
+      const profitabilityPairs = profitabilityEngine?.pairRows?.(stateNow(), profitabilityRange).slice(0, 8) || [];
+      const profitabilityProducts = profitabilityEngine?.productMargins?.(stateNow(), profitabilityRange).slice(0, 8) || [];
     
       $("#view-budget").innerHTML = `
         ${headerHtml(
@@ -730,6 +739,82 @@
           ${statCard("Cost per head", formatMoney(costPerHead), `${headCount} ${speciesFilter ? speciesFilter.toLowerCase() : "average active"} head`)}
         </div>
     
+        ${profitabilitySummary ? `
+        <section class="panel" style="margin-bottom:18px">
+          <div class="panel-header">
+            <div>
+              <h3>Recorded profitability</h3>
+              <small>${isYearView ? annualYear : monthLabel(monthKey)}${speciesFilter ? ` · ${esc(speciesFilter)}` : ""} · recorded data only</small>
+            </div>
+          </div>
+          <div class="stats-grid">
+            ${statCard("Received revenue", formatMoney(profitabilitySummary.receivedRevenue), `${profitabilitySummary.paymentCount} recorded payment${profitabilitySummary.paymentCount === 1 ? "" : "s"}`)}
+            ${statCard("Invoiced sales", formatMoney(profitabilitySummary.invoicedRevenue), "Completed sale value; not treated as received cash")}
+            ${statCard("Recorded operating costs", formatMoney(profitabilitySummary.recordedCosts), `${profitabilitySummary.expenseCount} recorded expense${profitabilitySummary.expenseCount === 1 ? "" : "s"}`)}
+            ${statCard("Recorded net", formatMoney(profitabilitySummary.recordedNet), "Received payments minus recorded operating expenses")}
+          </div>
+          <div class="notice" style="margin-bottom:14px">
+            <strong>Coverage:</strong> ${esc(profitabilitySummary.note)}
+            ${profitabilitySummary.sharedCosts > 0 ? ` ${esc(formatMoney(profitabilitySummary.sharedCosts))} of recorded costs are shared operation/species costs and are not invented into animal or litter margins.` : ""}
+            ${profitabilitySummary.unallocatedRevenue > 0 ? ` ${esc(formatMoney(profitabilitySummary.unallocatedRevenue))} of received sale payments cannot be safely assigned to one animal.` : ""}
+          </div>
+
+          ${profitabilityProducts.length ? `
+          <h4>Product margin coverage</h4>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Product</th><th>Recorded revenue</th><th>Linked cost</th><th>Margin</th><th>Coverage</th></tr></thead>
+            <tbody>${profitabilityProducts.map((row) => `<tr>
+              <td>${esc(row.product)}</td>
+              <td>${esc(formatMoney(row.revenue))}</td>
+              <td>${row.linkedCostRecords ? esc(formatMoney(row.linkedCost)) : "—"}</td>
+              <td>${row.margin === null ? "—" : esc(formatMoney(row.margin))}</td>
+              <td>${esc(row.dataStatus)}</td>
+            </tr>`).join("")}</tbody>
+          </table></div>` : ""}
+
+          ${profitabilityAnimals.length ? `
+          <h4>Animal-level recorded allocation</h4>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Animal</th><th>Received revenue</th><th>Direct recorded cost</th><th>Margin</th><th>Coverage</th></tr></thead>
+            <tbody>${profitabilityAnimals.map((row) => `<tr>
+              <td>${esc(row.animalName)}</td>
+              <td>${esc(formatMoney(row.receivedRevenue))}</td>
+              <td>${esc(formatMoney(row.directCost))}</td>
+              <td>${row.recordedMargin === null ? "—" : esc(formatMoney(row.recordedMargin))}</td>
+              <td>${esc(row.dataStatus)}</td>
+            </tr>`).join("")}</tbody>
+          </table></div>` : ""}
+
+          ${profitabilityLitters.length ? `
+          <h4>Litter-level recorded allocation</h4>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Litter</th><th>Offspring</th><th>Received revenue</th><th>Direct recorded cost</th><th>Margin</th><th>Coverage</th></tr></thead>
+            <tbody>${profitabilityLitters.map((row) => `<tr>
+              <td>${esc(row.litterId || "—")}<br><small>${esc(formatDate(row.birthDate))}</small></td>
+              <td>${row.offspringCount}</td>
+              <td>${esc(formatMoney(row.receivedRevenue))}</td>
+              <td>${esc(formatMoney(row.directCost))}</td>
+              <td>${row.recordedMargin === null ? "—" : esc(formatMoney(row.recordedMargin))}</td>
+              <td>${esc(row.dataStatus)}</td>
+            </tr>`).join("")}</tbody>
+          </table></div>` : ""}
+
+          ${profitabilityPairs.length ? `
+          <h4>Breeding-pair recorded context</h4>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Dam / sire</th><th>Litters</th><th>Received revenue</th><th>Direct recorded cost</th><th>Margin</th><th>Coverage</th></tr></thead>
+            <tbody>${profitabilityPairs.map((row) => `<tr>
+              <td>${esc(animalName(row.damId) || "Unknown dam")} / ${esc(animalName(row.sireId) || "Unknown sire")}</td>
+              <td>${row.litterCount}</td>
+              <td>${esc(formatMoney(row.receivedRevenue))}</td>
+              <td>${esc(formatMoney(row.directCost))}</td>
+              <td>${row.recordedMargin === null ? "—" : esc(formatMoney(row.recordedMargin))}</td>
+              <td>${esc(row.dataStatus)}</td>
+            </tr>`).join("")}</tbody>
+          </table></div>` : ""}
+        </section>
+        ` : ""}
+
         <section class="panel" style="margin-bottom:18px">
           <div class="panel-header">
             <div>
