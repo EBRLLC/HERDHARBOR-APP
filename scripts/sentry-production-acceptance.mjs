@@ -26,7 +26,7 @@ const event = JSON.stringify({
   platform: "javascript",
   level: "info",
   message: "HerdHarbor controlled production monitoring acceptance",
-  release: "HerdHarbor@1.8.2",
+  release: "HerdHarbor@1.8.3",
   environment: "production",
   tags: {
     module: "release_acceptance",
