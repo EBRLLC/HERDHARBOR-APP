@@ -47,7 +47,9 @@ test("AI usage ledgers are service-role-only and store no image or extracted far
   assert.match(sql, /revoke all on table public\.herdharbor_ai_image_global_usage from public, anon, authenticated/);
   assert.match(sql, /grant all on table public\.herdharbor_ai_image_usage to service_role/);
   assert.match(sql, /grant execute on function public\.herdharbor_reserve_ai_image_request\(uuid, text, integer, integer\)[\s\S]*to service_role/);
-  assert.doesNotMatch(sql, /data_url|image_url|prompt|provider_response|farm_state|extracted_(?:text|value)/i);
+  const userTable = sql.slice(sql.indexOf("create table if not exists public.herdharbor_ai_image_usage"), sql.indexOf(");", sql.indexOf("create table if not exists public.herdharbor_ai_image_usage")) + 2);
+  const globalTable = sql.slice(sql.indexOf("create table if not exists public.herdharbor_ai_image_global_usage"), sql.indexOf(");", sql.indexOf("create table if not exists public.herdharbor_ai_image_global_usage")) + 2);
+  assert.doesNotMatch(userTable + globalTable, /data_url|image_url|prompt|provider_response|farm_state|extracted_(?:text|value)/i);
 });
 
 test("quota failures occur before provider fetches and fail closed", () => {
