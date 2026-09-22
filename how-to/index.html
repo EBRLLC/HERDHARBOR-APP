@@ -60,7 +60,7 @@
       <a class="guide-card" href="#tasks" data-search="dashboard today tasks reminder due follow up"><span class="guide-icon">09</span><strong>Dashboard & Tasks</strong><span>Use Today to see what needs attention across the operation.</span></a>
       <a class="guide-card" href="#analytics" data-search="analytics reports production show sales revenue growth"><span class="guide-icon">10</span><strong>Analytics & Production</strong><span>Turn records into useful trends without entering the same fact twice.</span></a>
       <a class="guide-card" href="#sales" data-search="sale sold customer payment transfer price"><span class="guide-icon">11</span><strong>Sales & Customers</strong><span>Record buyers, sales, payments, and animal status changes.</span></a>
-      <a class="guide-card" href="#subscription" data-search="subscription plan member junior billing stripe trial october referral free month"><span class="guide-icon">12</span><strong>Subscription & Referrals</strong><span>Understand the launch trial, plans, billing, and referral credits.</span></a>
+      <a class="guide-card" href="#subscription" data-search="subscription plan member free adult junior billing stripe trial referral calendar month"><span class="guide-icon">12</span><strong>Trial, Membership & Referrals</strong><span>Understand the launch trial, plans, billing, and referral credits.</span></a>
       <a class="guide-card" href="#sync" data-search="cloud sync offline backup data device"><span class="guide-icon">13</span><strong>Cloud Sync & Offline Use</strong><span>Know what happens online, offline, and when moving between devices.</span></a>
       <a class="guide-card" href="#youth" data-search="junior youth child parent guardian 4-h"><span class="guide-icon">14</span><strong>Youth & Junior Accounts</strong><span>Use HerdHarbor appropriately with adult-managed youth participation.</span></a>
       <a class="guide-card" href="#workflow-index" data-search="workflow quick guide add animal edit pedigree paper photo pregnancy birth weight health transfer spreadsheet export qr sync backup recovery account trial member free adult"><span class="guide-icon">15</span><strong>Workflow Guide Index</strong><span>Direct links for the core workflows used in the current app.</span></a>
@@ -183,17 +183,17 @@
       </div>
     </section>
 
-    <section class="section" id="subscription" data-guide="subscription member junior business billing stripe trial september october referral id credit free month">
-      <div class="section-header"><span class="section-number">12</span><div><h2>Subscription & Referral Program <span class="tag">v1.8.1</span></h2><p>Current launch policy, billing controls, and qualified referral credits.</p></div></div>
+    <section class="section" id="subscription" data-guide="subscription member free adult junior billing stripe trial referral id credit calendar month five active animals">
+      <div class="section-header"><span class="section-number">12</span><div><h2>Trial, Membership & Referrals <span class="tag">v1.8.2</span></h2><p>Current account access, billing, fallback, and referral behavior.</p></div></div>
       <div class="steps">
-        <div class="step"><strong>Launch trial runs through September 30, 2026.</strong> Ordinary accounts receive Member-level access during the launch window that began September 6, 2026.</div>
-        <div class="step"><strong>Paid subscriptions begin October 1, 2026.</strong> Member is $14.99/month. Junior remains free; Business is Coming Soon.</div>
-        <div class="step"><strong>Manage billing from the Subscription/Account area.</strong> Checkout and Customer Portal actions use Stripe; active paid entitlement is synchronized back to HerdHarbor.</div>
-        <div class="step"><strong>Share your public Referral ID.</strong> The Referral ID is separate from your authentication/database identifier.</div>
-        <div class="step"><strong>A referral qualifies after the referred Member’s first successful monthly renewal.</strong> The initial subscription payment does not qualify the referral.</div>
-        <div class="step"><strong>Every five qualified referrals earns one Member-month credit.</strong> Credits stack and can cover a future monthly renewal without changing the normal billing-cycle anchor.</div>
+        <div class="step"><strong>Eligible adult accounts receive one calendar month of Member trial access.</strong> Trial timing comes from the authenticated backend account record; browser storage cannot create or extend a trial.</div>
+        <div class="step"><strong>No credit card is required to begin the trial.</strong> If you subscribe during an active trial, the remaining trusted trial period is preserved before Member billing begins.</div>
+        <div class="step"><strong>Free Adult is the permanent adult fallback after trial or paid Member access ends.</strong> Existing records remain available. Free Adult allows up to five active animals for new growth while an existing over-limit herd can still be managed and reduced.</div>
+        <div class="step"><strong>Junior remains a separate account path.</strong> Adult subscription fallback does not convert an adult account into Junior.</div>
+        <div class="step"><strong>Manage billing from the account/subscription controls.</strong> Checkout and Customer Portal actions use Stripe; provider or payment errors do not erase the current herd record.</div>
+        <div class="step"><strong>Share only your public Referral ID.</strong> The Referral ID is separate from authentication/database identifiers, and qualifying referral credits follow the current referral policy shown in the subscription experience.</div>
       </div>
-      <div class="tip"><strong>If a paid plan ends:</strong> your records are preserved. Accounts without another qualifying entitlement fall back to Junior rather than having their data deleted.</div>
+      <div class="tip"><strong>If Member access ends:</strong> herd records are not deleted. The trusted account state resolves the next allowed experience, with eligible adult accounts using Free Adult.</div>
     </section>
 
     <section class="section" id="sync" data-guide="cloud sync offline backup device storage account">
@@ -251,7 +251,7 @@
         <details><summary>Why don’t I see every tab on every animal?</summary><p>Animal-profile tabs are contextual. HerdHarbor only shows actions relevant to the animal/species and the data or engines available for that record.</p></details>
         <details><summary>Should I enter the same weight in Health and Analytics?</summary><p>No. Enter the measurement once in the canonical Health/measurement workflow. Analytics should read that record.</p></details>
         <details><summary>Should I create a new litter without selecting the breeding?</summary><p>If a breeding record exists, start from or select it so sire and dam information carries forward correctly. Use a standalone birth/litter only when there truly is no applicable breeding record.</p></details>
-        <details><summary>Will I lose records if I fall back to Junior?</summary><p>No. The v1.8.1 subscription policy preserves previously stored records. Junior limits active-animal transitions rather than deleting your history.</p></details>
+        <details><summary>Will I lose records if Member access ends?</summary><p>No. HerdHarbor does not delete herd records because a trial or paid subscription ends. Eligible adult accounts fall back to Free Adult; Junior remains a separate account path.</p></details>
         <details><summary>Is the Symptom Guide veterinary advice?</summary><p>No. It is educational information for recognizing urgency and organizing observations. Veterinary diagnosis and treatment decisions belong with a veterinarian.</p></details>
       </div>
     </section>
