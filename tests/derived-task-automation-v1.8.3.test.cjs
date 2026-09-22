@@ -249,6 +249,6 @@ test("automation module is definition-only and TaskRuntime remains the state.tas
   const taskSource = read("task-runtime-v1.8.3.js");
   assert.doesNotMatch(automationSource, /\.tasks\.(?:push|splice)|state\.tasks\s*=|saveState|localStorage|indexedDB/);
   assert.match(taskSource, /function syncDerivedAutomation\(/);
-  assert.match(taskSource, /state\.tasks\.push/);
+  assert.match(taskSource, /state\.tasks\.push|stateNow\(\)\.tasks\.push/);
   assert.match(taskSource, /automationManaged/);
 });
