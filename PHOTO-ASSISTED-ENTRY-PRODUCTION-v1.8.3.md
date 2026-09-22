@@ -10,7 +10,10 @@ Phase 9B adds a review-only document-photo workflow for four supported classes: 
 - The Edge Function validates the signed-in user and reads provider credentials only from server-side environment variables.
 - Provider response storage remains disabled with `store: false`.
 - Only JPG and PNG are submitted automatically in this phase.
-- No database/schema migration is required.
+- Apply `supabase/v1.8.3-ai-image-usage-guard.sql` before deploying the updated extractor.
+- Default Photo Entry allowance is **5 scans per authenticated user per UTC day** (`PHOTO_ENTRY_DAILY_LIMIT`).
+- Paper Pedigree and general Photo Entry share a default **25 AI-image provider calls per UTC day** global backstop (`AI_IMAGE_GLOBAL_DAILY_LIMIT`).
+- The usage ledger stores only user id, feature, UTC date, count, and timestamp; it stores no image/document/farm content.
 
 ## Review and mutation boundary
 
@@ -33,7 +36,7 @@ Browser telemetry records only coarse action/result/document-class metadata. It 
 
 ## Failure behavior
 
-Authentication errors, unsupported images, oversized payloads, provider timeout/rate-limit/failure, malformed structured output, and unsupported document classes fail closed. Farm records are not changed on any provider or parsing failure.
+Authentication errors, unsupported images, oversized payloads, per-user quota exhaustion, shared-global quota exhaustion, usage-ledger failure, provider timeout/rate-limit/failure, malformed structured output, and unsupported document classes fail closed. Farm records are not changed on any provider or parsing failure.
 
 ## Deferred work
 
