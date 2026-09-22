@@ -144,8 +144,8 @@ test("shell loads and caches extracted runtime before application composition", 
   assert.match(worker, /"\/animal-profile-runtime-v1\.8\.3\.js"/);
 });
 
-test("Phase 6B does not advance whole-app release or normalized-sync authority", () => {
-  assert.equal(packageJson.version, "1.8.2");
+test("Phase 6B extraction remains compatible with formal v1.8.3 and does not activate normalized-sync authority", () => {
+  assert.equal(packageJson.version, "1.8.3");
   const build = read("herdharbor-build.js");
   assert.match(build, /version:\s*"1\.8\.2"/);
   for (const asset of [
