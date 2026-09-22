@@ -10,6 +10,7 @@ const breedingLitterRuntime = fs.readFileSync(path.join(root, "breeding-litter-r
 const taskRuntime = fs.readFileSync(path.join(root, "task-runtime-v1.8.3.js"), "utf8");
 const salesCustomerRuntime = fs.readFileSync(path.join(root, "sales-customer-runtime-v1.8.3.js"), "utf8");
 const productionReportingRuntime = fs.readFileSync(path.join(root, "production-reporting-runtime-v1.8.3.js"), "utf8");
+const settingsRuntime = fs.readFileSync(path.join(root, "settings-runtime-v1.8.3.js"), "utf8");
 const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const spreadsheet = fs.readFileSync(path.join(root, "spreadsheet-import.js"), "utf8");
 const optionalTools = fs.readFileSync(path.join(root, "herdharbor-optional-tools.js"), "utf8");
@@ -41,10 +42,11 @@ if (webVersion === "1.8.2") {
   assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=2/);
 }
 assert.match(html, /HerdHarbor Alpha v1\.8\.2 current application shell/);
-assert.match(appRuntime, /id="settings-sync-now"/);
-assert.match(appRuntime, /id="settings-last-synced"/);
-assert.match(appRuntime, /id="export-excel"/);
-assert.match(appRuntime, /HerdHarbor Alpha v\$\{APP_VERSION\}/);
+assert.doesNotMatch(appRuntime, /id="settings-sync-now"/);
+assert.match(settingsRuntime, /id="settings-sync-now"/);
+assert.match(settingsRuntime, /id="settings-last-synced"/);
+assert.match(settingsRuntime, /id="export-excel"/);
+assert.match(settingsRuntime, /HerdHarbor Alpha v\$\{appVersion\(\)\}/);
 assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.2"/);
 assert.match(appRuntime, /Guided pedigree builder · v\$\{APP_VERSION\}/);
 assert.doesNotMatch(appRuntime, /Guided pedigree builder · v0\.2\.1/);
@@ -123,6 +125,7 @@ assert.match(serviceWorker, /breeding-litter-runtime-v1\.8\.3\.js\?v=1/);
 assert.match(serviceWorker, /task-runtime-v1\.8\.3\.js\?v=1/);
 assert.match(serviceWorker, /sales-customer-runtime-v1\.8\.3\.js\?v=1/);
 assert.match(serviceWorker, /production-reporting-runtime-v1\.8\.3\.js\?v=1/);
+assert.match(serviceWorker, /settings-runtime-v1\.8\.3\.js\?v=1/);
 assert.match(serviceWorker, /pedigree-visual\.css\?v=2/);
 assert.match(serviceWorker, /pedigree-visual\.js\?v=2/);
 for (const asset of [
