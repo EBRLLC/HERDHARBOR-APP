@@ -1,4 +1,4 @@
-# HerdHarbor Alpha v1.8.2 Acceptance Checklist
+# HerdHarbor Alpha v1.8.3 Acceptance Checklist
 
 This checklist covers the current v1.8.1 release contract. Automated checks are authoritative where available; manual checks cover browser/device behavior that CI cannot fully prove.
 
