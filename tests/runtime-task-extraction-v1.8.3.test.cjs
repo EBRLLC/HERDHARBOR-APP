@@ -144,8 +144,8 @@ test("shell loads and caches Task runtime before application composition", () =>
   assert.match(worker, /"\/task-runtime-v1\.8\.3\.js"/);
 });
 
-test("Phase 6E changes no whole-app release or normalized-sync authority", () => {
-  assert.equal(packageJson.version, "1.8.2");
+test("Phase 6E extraction remains compatible with formal v1.8.3 and changes no normalized-sync authority", () => {
+  assert.equal(packageJson.version, "1.8.3");
   assert.match(read("herdharbor-build.js"), /version:\s*"1\.8\.2"/);
   assert.match(packageJson.scripts["test:v1.8.3"], /runtime-task-extraction-v1\.8\.3\.test\.cjs/);
   for (const asset of [
