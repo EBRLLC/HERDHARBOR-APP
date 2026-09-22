@@ -213,7 +213,8 @@
     }
 
     async function resume(reason = "resume") {
-      if (!pending || inFlight || !isOnline()) return false;
+      if (inFlight) return inFlight;
+      if (!pending || !isOnline()) return false;
       lastReason = reason;
       return executePending();
     }
