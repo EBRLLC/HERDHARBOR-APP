@@ -1,6 +1,6 @@
-# HerdHarbor Alpha v1.8.2
+# HerdHarbor Alpha v1.8.3
 
-HerdHarbor is an installable livestock and farm recordkeeping application in active alpha development. The current release is **Alpha v1.8.2**.
+HerdHarbor is an installable livestock and farm recordkeeping application in active alpha development. The current release is **Alpha v1.8.3**.
 
 ## Current platform
 
@@ -16,7 +16,7 @@ Key capabilities include:
 - Offline-first local operation with protected cloud synchronization, conflict detection, recovery snapshots, downloadable backups, and safe update handling.
 - Installable web app support plus the Android Trusted Web Activity package.
 
-## Alpha v1.8.2 reliability and account release
+## Alpha v1.8.3 consolidated release
 
 The current release formalizes Cloud Sync V2, lifecycle state-integrity safeguards, and the production subscription/account layer without replacing HerdHarbor authentication, membership storage, or established domain engines. Cloud Sync V2 keeps normal edits protected locally first, retries recoverable cloud work automatically, and reserves the Needs attention state for true conflicts or non-recoverable failures.
 
@@ -53,11 +53,11 @@ Existing farm records are not deleted when a subscription changes. Junior limits
 
 ## Versioned runtime modules
 
-The repository intentionally contains some runtime modules with older version numbers in their filenames. Those files are established domain engines that remain part of v1.8.2—for example the v1.6.1 analytics/rabbit-genetics layers and v1.7.x standards, health, and multi-species genetics layers. They should not be renamed or removed solely because their filename predates v1.8.2.
+The repository intentionally contains some runtime modules with older version numbers in their filenames. Those files are established domain engines that remain part of v1.8.3—for example the v1.6.1 analytics/rabbit-genetics layers and v1.7.x standards, health, and multi-species genetics layers. They should not be renamed or removed solely because their filename predates v1.8.2.
 
 Likewise, historical SQL files under `supabase/` are migration lineage and are retained even when their filenames contain earlier release numbers.
 
-The authoritative current release identity is defined by the v1.8.2 build, manifest, package, PWA, Android, monitoring, and CI/deployment configuration.
+The authoritative current release identity is defined by the v1.8.3 build, manifest, package, PWA, Android, monitoring, and CI/deployment configuration.
 
 ## Development and verification
 
@@ -65,11 +65,11 @@ Node.js 22 or newer is required for repository tooling.
 
 - `npm ci` installs the pinned monitoring/build dependencies.
 - `npm test` runs the complete regression suite.
-- `npm run test:v1.8.2` runs the current subscription/account release regressions.
-- `npm run test:release` verifies the current v1.8.2 repository identity and hardening contract.
-- `.github/workflows/v1.8.2-ci.yml` is the consolidated pull-request CI workflow.
-- `.github/workflows/v1.8.2-production-pages.yml` is the authoritative monitored GitHub Pages publisher.
-- `.github/workflows/v1.8.2-production-acceptance.yml` provides explicit manual production acceptance checks.
+- `npm run test:v1.8.3` runs the complete v1.8.3 development/release regression layer on top of the retained v1.8.2 compatibility gates.
+- `npm run test:release` verifies the current v1.8.3 repository identity and hardening contract.
+- `.github/workflows/v1.8.3-ci.yml` is the consolidated pull-request CI workflow.
+- `.github/workflows/v1.8.3-production-pages.yml` is the authoritative monitored GitHub Pages publisher.
+- `.github/workflows/v1.8.3-production-acceptance.yml` provides explicit manual production acceptance checks.
 
 Production secrets are supplied by the approved GitHub/Supabase environments and are never committed to source control. The checked-in monitoring configuration intentionally contains a blank DSN and is replaced during the production build.
 
@@ -83,4 +83,4 @@ On iPhone/iPad, use Safari **Share → Add to Home Screen**. Other supported bro
 
 Keep periodic downloaded backups for important records, confirm cloud sync before switching devices, review spreadsheet imports before committing them, and do not clear browser/site data while unsynced changes are present. The Symptom Guide is educational and does not diagnose or replace licensed veterinary care.
 
-See `RELEASE_NOTES-v1.8.2.md` for the current release contract.
+See `RELEASE_NOTES-v1.8.3.md` for the current release contract.
