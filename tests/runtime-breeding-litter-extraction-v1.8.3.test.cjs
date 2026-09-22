@@ -74,7 +74,7 @@ test("Breeding/Litter domain has one extracted runtime owner", () => {
   assert.equal(typeof extracted.create, "function");
   assert.match(extractedSource, /root\.HerdHarborBreedingLitterRuntime = api/);
   assert.match(extractedSource, /function renderBreedings\(\)/);
-  assert.match(extractedSource, /function openBreedingForm\(id = ""\)/);
+  assert.match(extractedSource, /function openBreedingForm\(id = "", defaults = \{\}\)/);
   assert.match(extractedSource, /function renderLitters\(\)/);
   assert.match(extractedSource, /function openLitterForm\(id = "", breedingId = ""\)/);
   assert.match(extractedSource, /function openOffspringCreator\(litterId\)/);
@@ -87,7 +87,7 @@ test("composition runtime delegates breeding and litter behavior instead of reta
   assert.match(runtimeSource, /HerdHarborBreedingLitterRuntime\?\.create/);
   assert.match(runtimeSource, /function renderBreedings\(\) \{\s*return breedingLitterRuntime\(\)\.renderBreedings\(\);\s*\}/);
   assert.match(runtimeSource, /function renderLitters\(\) \{\s*return breedingLitterRuntime\(\)\.renderLitters\(\);\s*\}/);
-  assert.match(runtimeSource, /function openBreedingForm\(id = ""\) \{\s*return breedingLitterRuntime\(\)\.openBreedingForm\(id\);\s*\}/);
+  assert.match(runtimeSource, /function openBreedingForm\(id = "", defaults = \{\}\) \{\s*return breedingLitterRuntime\(\)\.openBreedingForm\(id\);\s*\}/);
   assert.match(runtimeSource, /function openLitterForm\(id = "", breedingId = ""\) \{\s*return breedingLitterRuntime\(\)\.openLitterForm\(id, breedingId\);\s*\}/);
   assert.doesNotMatch(runtimeSource, /let breedingViewYear =/);
   assert.doesNotMatch(runtimeSource, /const GESTATION_RULES =/);
