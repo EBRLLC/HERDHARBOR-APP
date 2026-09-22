@@ -534,18 +534,34 @@
 
 ---
 
-## Phase 9A — Voice-assisted record entry
+## Completed Phase 9A — Voice-assisted record entry
 
-- **Status:** in progress
+- **Roadmap phase:** Phase 9A — Voice-assisted record entry
+- **PR number:** #167
+- **PR title:** feat: add reviewed voice-assisted record entry
 - **Branch:** `feat/reviewed-voice-assisted-record-entry`
 - **Base branch:** `release/alpha-v1.8.3`
 - **Base SHA:** `5ffdd3da4e52d5de67065ce0ada5935960ecf44e`
+- **Validated implementation head SHA:** `fe9f2adf6cbeed9f642d2ecfa21c5a5134b570b1`
 - **Parent PR:** #165
 - **Application version:** 1.8.3
-- **Objective:** accept typed or browser-transcribed natural instructions and create a structured review draft for supported weight, medication, and breeding records.
-- **Safety architecture:** transcript -> deterministic structured interpretation -> ambiguity/missing-field review -> explicit user review -> canonical Health/Breeding form -> normal canonical validation/save.
-- **Mutation boundary:** voice interpretation and review do not write canonical state; Health and Breeding runtimes remain the only final save owners for these records.
-- **Animal resolution:** exact recorded-name matching with ambiguity surfaced for review; breeding requires one recorded female/dam and one recorded male/sire of the same species.
-- **Dates/units:** supports today/yesterday/explicit ISO or US dates, lb/lb+oz/oz/kg/g weights, and common medication dose units.
-- **Provider/privacy behavior:** browser SpeechRecognition is optional and fail-safe; typed entry remains available; telemetry records only coarse action/result/record_type metadata and never transcript or farm-record contents.
-- **Protected inherited requirements:** preserve v1.8.3 release identity, canonical state owners, Health weight ownership, breeding validation/reminders, privacy-safe monitoring, normalized-sync guardrails, subscription/auth contracts, and no AI/voice mutation before explicit confirmation.
+- **Feature owner:** `voice-assisted-entry-v1.8.3.js`
+- **Supported review drafts:** weight, medication, breeding
+- **Input path:** typed instruction or optional browser SpeechRecognition transcript
+- **Safety architecture:** transcript -> deterministic interpretation -> ambiguity/missing-field review -> editable review draft -> explicit user action -> canonical Health/Breeding form -> canonical form validation/save
+- **Canonical state owners:** Health runtime remains authoritative for weight/medication; Breeding/Litter runtime remains authoritative for breeding records and reminders
+- **Canonical persistence boundary:** voice engine contains no localStorage/sessionStorage/IndexedDB/commitState/saveState or direct health/breeding mutations
+- **Animal resolution:** exact recorded-name resolution; duplicate/missing matches remain unresolved for user review; breeding requires one recorded female/dam and one recorded male/sire of the same species
+- **Dates/units:** today, yesterday, explicit ISO/US dates; lb/lb+oz/oz/kg/g weights; common medication dose units
+- **Provider/failure behavior:** browser voice capture is optional and fail-safe; typed input remains available; cancellation/provider failure does not change farm records
+- **Telemetry:** coarse action/result/record_type breadcrumbs only; transcript and farm-record values are not sent as telemetry metadata
+- **PWA/deployment:** voice asset loads before composition runtime, is cached/network-first, and is required in the Pages artifact
+- **Tests added:** `tests/voice-assisted-entry-v1.8.3.test.cjs`
+- **Compatibility test updated:** Breeding/Litter extraction contract now explicitly allows reviewed defaults to pass through the composition wrapper while retaining one canonical save owner
+- **Database/schema changes:** none
+- **Edge Function changes:** none
+- **Secrets/provider keys:** none added
+- **Full CI result:** Alpha v1.8.3 CI #36 — PASS on validated implementation head `fe9f2adf6cbeed9f642d2ecfa21c5a5134b570b1`; ledger-closure head must also pass before Phase 9B branches
+- **Manual validation still required:** supported mobile browser microphone permission/voice recognition; typed fallback; review editing; Health form handoff; Breeding form handoff; cancellation/provider-failure UX
+- **Exact requirements inherited by Phase 9B:** preserve formal v1.8.3 release identity, voice review-before-mutation, canonical Health/Breeding owners, Paper Pedigree provider-key isolation and confirmation boundary, all cloud/subscription/security/privacy/PWA/runtime contracts, and no unrelated auth/sign-in changes
+
