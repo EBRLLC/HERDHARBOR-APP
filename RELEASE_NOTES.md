@@ -1,5 +1,5 @@
-# HerdHarbor Alpha v1.8.2
+# HerdHarbor Alpha v1.8.3
 
-Current release: **Alpha v1.8.2**.
+Current release: **Alpha v1.8.3**.
 
-See `RELEASE_NOTES-v1.8.2.md` for Cloud Sync V2, lifecycle state-integrity, direct transfer, breeding workflow, subscription/account, and formal release details.
+See `RELEASE_NOTES-v1.8.3.md` for controlled normalized-sync rollout safeguards, animal-first workflow consolidation, Trial / Free Adult production behavior, Paper Pedigree AI hardening, startup/performance work, runtime decomposition, Help Center completion, compatibility details, and intentionally gated normalized authority.
