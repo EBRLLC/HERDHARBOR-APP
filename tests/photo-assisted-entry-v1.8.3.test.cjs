@@ -170,10 +170,10 @@ test("canonical Animal and Health runtimes remain final save owners", () => {
 });
 
 test("photo asset loads before composition runtime and is available in the PWA artifact", () => {
-  const photoIndex = html.indexOf("photo-assisted-entry-v1.8.3.js?v=1");
+  const photoIndex = html.indexOf("photo-assisted-entry-v1.8.3.js?v=2");
   const appIndex = html.indexOf("herdharbor-app-runtime.js?v=2");
   assert.ok(photoIndex >= 0 && appIndex > photoIndex);
-  assert.match(worker, /\.\/photo-assisted-entry-v1\.8\.3\.js\?v=1/);
+  assert.match(worker, /\.\/photo-assisted-entry-v1\.8\.3\.js\?v=2/);
   assert.match(worker, /"\/photo-assisted-entry-v1\.8\.3\.js"/);
   assert.match(pkg.scripts["test:v1.8.3"], /photo-assisted-entry-v1\.8\.3\.test\.cjs/);
 });
