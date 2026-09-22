@@ -95,6 +95,17 @@
         return { ok: false, message: "Weight ounces must be between 0 and less than 16." };
       }
       next.weightOunces = next.weight !== "" && next.weightUnit === "lb+oz" ? String(ounces) : "";
+      const recurrence = root.HerdHarborTaskAutomation?.normalizeRecurrence?.(next.followUpRecurrence) || "None";
+      next.followUpRecurrence = next.followUpDate ? recurrence : "None";
+      if (next.followUpRecurrence === "Custom") {
+        const repeatDays = Math.round(Number(next.followUpRecurrenceDays || 0));
+        if (!Number.isFinite(repeatDays) || repeatDays < 1 || repeatDays > 365) {
+          return { ok: false, message: "Custom follow-up repeat days must be between 1 and 365." };
+        }
+        next.followUpRecurrenceDays = String(repeatDays);
+      } else {
+        next.followUpRecurrenceDays = "";
+      }
       return { ok: true, data: next };
     }
 
@@ -120,7 +131,10 @@
             ${deps.selectField("Weight unit", "weightUnit", WEIGHT_UNITS, health.weightUnit || "lb")}
             <label id="health-weight-ounces-field" class="${health.weightUnit === "lb+oz" ? "" : "hidden"}">Weight ounces<input name="weightOunces" type="number" min="0" max="15.9" step="0.1" value="${esc(health.weightOunces || "")}" ${health.weightUnit === "lb+oz" ? "" : "disabled"}></label>
             ${deps.field("Follow-up date", "followUpDate", health.followUpDate, false, "date")}
+            ${deps.selectField("Repeat follow-up", "followUpRecurrence", root.HerdHarborTaskAutomation?.RECURRENCE_OPTIONS || ["None", "Daily", "Weekly", "Every 2 weeks", "Monthly", "Custom"], health.followUpRecurrence || "None")}
+            ${deps.field("Custom repeat days", "followUpRecurrenceDays", health.followUpRecurrenceDays || "", false, "number")}
           </div>
+          <p class="task-repeat-note">A follow-up date creates a canonical Health reminder. Repeat options create the next task occurrence only after the current reminder is completed.</p>
           ${deps.textareaField("Details", "details", health.details, true)}
           <div class="modal-actions">
             ${id ? '<button type="button" class="button button-danger" id="delete-health">Delete</button>' : ""}
