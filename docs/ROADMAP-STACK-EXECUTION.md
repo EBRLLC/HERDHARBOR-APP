@@ -647,7 +647,7 @@
 - **Base branch:** `feat/expand-growth-litter-performance-analytics`
 - **Base SHA:** `5b699655fed3cefec2e3b4f2ef439781ee67883b`
 - **Validated implementation SHA:** `a59ba4d2cf9ec5935e0f58af63e6b534a6068dde`
-- **Final ledger-closure SHA:** pending record-only closure commit
+- **Final ledger-closure SHA:** `ac4aece7f89d893bd3a8ecfc860f8a26665804bc`
 - **Application version:** 1.8.3 (unchanged)
 - **Component identities changed:** canonical `rabbit-genetics-v1.6.1.js` engine build advanced from 3.0.0 to 3.1.0; final Rabbit engine and advanced UI cache revisions advanced to `?v=2` while stable component filenames, schema version 3, and genetics contract 1.6.5 remain intact
 - **Canonical state owner:** the existing final Rabbit genetics engine remains the sole deterministic genetics owner; pedigree uses canonical Animal `sireId`/`damId`; Phase 9C Analytics remains the litter/growth history owner; Health, production, show, breeding, and litter state remain read-only inputs
