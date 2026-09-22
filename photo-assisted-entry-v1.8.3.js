@@ -462,7 +462,7 @@
       } catch (error) {
         telemetry("photo_extraction_failed", "failure", reviewed?.classification || "");
         const code = clean(error?.code);
-        const retryable = error?.retryable === true || ensureRetryController()?.getState?.().pending;
+        const retryable = error?.retryable === true || Boolean(retryController?.getState?.().pending);
         if (!retryable) {
           const suffix = code && code !== "secure_service_error" ? " [" + code + "]" : "";
           deps.toast((error?.message || "HerdHarbor could not read that image.") + suffix, "error");
