@@ -184,10 +184,12 @@
       (options.species ? sum(rawOperatingExpenses(state, options).filter((row) => row.scope === "Operation").map((row) => row.amount)) : 0);
     const allPayments = paymentAllocations(state, options);
     const unallocatedRevenue = sum(allPayments.filter((row) => !row.animalId).map((row) => row.amount));
-    return array(state, "litters").filter((litter) => inRange(litter.birthDate || litter.date, options)).map((litter) => {
+    return array(state, "litters").map((litter) => {
       const offspring = litterAnimals(state, litter);
       if (options.species && offspring.length && !offspring.some((animal) => animal.species === options.species)) return null;
       const childRows = offspring.map((animal) => byAnimal.get(String(animal.id))).filter(Boolean);
+      const bornInPeriod = inRange(litter.birthDate || litter.date, options);
+      if (!childRows.length && !bornInPeriod) return null;
       const parents = litterParents(state, litter);
       const directCost = sum(childRows.map((row) => row.directCost));
       const receivedRevenue = sum(childRows.map((row) => row.receivedRevenue));
