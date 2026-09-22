@@ -15,8 +15,8 @@ if (!allowedEnvironments.has(environment)) {
 const config = {
   dsn: String(process.env.HERDHARBOR_SENTRY_DSN || "").trim(),
   environment,
-  release: "HerdHarbor@1.8.2",
-  build: String(process.env.HERDHARBOR_BUILD_ID || "cloud-sync-v2-state-integrity-1").trim().slice(0, 80),
+  release: "HerdHarbor@1.8.3",
+  build: String(process.env.HERDHARBOR_BUILD_ID || "formal-release-1").trim().slice(0, 80),
   enableTestCrash: /^(1|true|yes)$/i.test(String(process.env.HERDHARBOR_ENABLE_MONITORING_TEST || "")) && environment !== "production"
 };
 
