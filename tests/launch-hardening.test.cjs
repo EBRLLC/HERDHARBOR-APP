@@ -7,6 +7,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const appRuntime = fs.readFileSync(path.join(root, "herdharbor-app-runtime.js"), "utf8");
+const settingsRuntime = fs.readFileSync(path.join(root, "settings-runtime-v1.8.3.js"), "utf8");
 const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 const pwa = fs.readFileSync(path.join(root, "pwa.js"), "utf8");
@@ -28,14 +29,14 @@ if (webVersion === "1.8.1") {
 }
 if (webVersion === "1.8.2") assert.equal(buildId, "cloud-sync-v2-state-integrity-1");
 assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.2"/);
-assert.match(appRuntime, /id="request-account-deletion"/);
-assert.match(appRuntime, /Type DELETE to confirm/);
-assert.match(appRuntime, /herdharbor\.com\/delete-account\//);
-assert.match(appRuntime, /herdharbor\.com\/privacy\//);
-assert.match(appRuntime, /herdharbor\.com\/terms\//);
-assert.match(appRuntime, /herdharbor\.com\/support\//);
-assert.match(appRuntime, /Clear local data/);
-assert.doesNotMatch(appRuntime, />Clear all data</);
+assert.match(settingsRuntime, /id="request-account-deletion"/);
+assert.match(settingsRuntime, /Type DELETE to confirm/);
+assert.match(settingsRuntime, /herdharbor\.com\/delete-account\//);
+assert.match(settingsRuntime, /herdharbor\.com\/privacy\//);
+assert.match(settingsRuntime, /herdharbor\.com\/terms\//);
+assert.match(settingsRuntime, /herdharbor\.com\/support\//);
+assert.match(settingsRuntime, /Clear local data/);
+assert.doesNotMatch(settingsRuntime, />Clear all data</);
 
 assert.match(cloud, /const STORAGE_KEY = "herdharbor_pre_alpha_v1"/);
 assert.match(cloud, /async function requestAccountDeletion/);
