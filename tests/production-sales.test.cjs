@@ -22,7 +22,7 @@ const helpers = ProductionReporting.create({
   getState: () => state,
   replaceState: () => {},
   $: () => null,
-  "$": () => [],
+  "$$": () => [],
   esc: (value) => String(value ?? ""),
   headerHtml: htmlStub,
   statCard: htmlStub,
