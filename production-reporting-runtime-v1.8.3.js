@@ -755,7 +755,7 @@
           </div>
           <div class="notice" style="margin-bottom:14px">
             <strong>Coverage:</strong> ${esc(profitabilitySummary.note)}
-            ${profitabilitySummary.sharedCosts > 0 ? ` ${esc(formatMoney(profitabilitySummary.sharedCosts))} of recorded costs are shared operation/species costs and are not invented into animal or litter margins.` : ""}
+            ${profitabilitySummary.sharedCosts > 0 ? ` ${esc(formatMoney(profitabilitySummary.sharedCosts))} of recorded costs are shared species/operation costs and are not invented into animal or litter margins.` : ""}${profitabilitySummary.excludedOperationCosts > 0 ? ` ${esc(formatMoney(profitabilitySummary.excludedOperationCosts))} of operation-wide cost is excluded from this species-filtered total rather than assigned without evidence.` : ""}
             ${profitabilitySummary.unallocatedRevenue > 0 ? ` ${esc(formatMoney(profitabilitySummary.unallocatedRevenue))} of received sale payments cannot be safely assigned to one animal.` : ""}
           </div>
 
