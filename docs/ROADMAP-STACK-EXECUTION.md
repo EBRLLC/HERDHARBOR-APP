@@ -614,7 +614,7 @@
 - **Base branch:** `feat/reviewed-photo-assisted-record-entry`
 - **Base SHA:** `0fe8715345d5400e543f9042704a2b2174d6072b`
 - **Validated implementation SHA:** `061c2e5d7729a3ee07d2880eb87ee526bebb86fe`
-- **Final ledger-closure SHA:** pending record-only closure commit
+- **Final ledger-closure SHA:** `a9adee0502b1544122bf78602319fcce7e00061e`
 - **Application version:** 1.8.3 (unchanged)
 - **Component identities changed:** `analytics-v1.6.1.js` build `analytics-growth-litter-performance-1`; Analytics JS/CSS shell and service-worker cache revisions advanced to `?v=2` without renaming the stable component files
 - **Canonical state owner:** Analytics remains read-only over canonical Animal, Health, Breeding, Litter, Sale, and Transfer records; dated Health weight records remain the sole weight owner
