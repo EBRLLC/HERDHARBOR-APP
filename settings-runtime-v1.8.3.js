@@ -31,7 +31,7 @@
     const stateNow = () => deps.getState() || {};
     const defaultSettings = () => deps.getDefaultSettings() || {};
     const currentRoute = () => deps.getCurrentRoute() || "dashboard";
-    const appVersion = () => deps.getAppVersion() || "1.8.2";
+    const appVersion = () => deps.getAppVersion() || "1.8.3";
     const confirm = typeof root?.confirm === "function" ? root.confirm.bind(root) : () => false;
 
     function renderSettings() {
@@ -189,7 +189,7 @@
               <a class="button button-ghost" href="https://herdharbor.com/terms/" target="_blank" rel="noopener">Terms</a>
               <a class="button button-ghost" href="https://herdharbor.com/delete-account/" target="_blank" rel="noopener">Account deletion</a>
             </div>
-            <p class="brand-file-note">Version 1.8.2 adds Cloud Sync V2, lifecycle state-integrity safeguards, direct member transfers, guided breeding workflows, paper pedigree photo import, and release hardening while preserving the completed rabbit genetics engine, ARBA references, youth-show tools, pedigrees, Shows, production, health, and privacy-safe Market Analytics.</p>
+            <p class="brand-file-note">Version 1.8.3 adds controlled normalized-sync rollout guardrails, animal-first workflows, production Trial / Free Adult behavior, hardened paper-pedigree review, non-blocking monitoring startup, decomposed domain runtimes, and the current Help Center while preserving established genetics, pedigrees, Shows, production, health, sales, and privacy-safe Market Analytics.</p>
           </article>
 
           <article class="settings-card">
