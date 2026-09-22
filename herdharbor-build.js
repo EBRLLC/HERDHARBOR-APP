@@ -3,9 +3,9 @@
   root.HerdHarborBuild = Object.freeze({
     product: "HerdHarbor",
     channel: "Alpha",
-    version: "1.8.2",
-    buildId: "cloud-sync-v2-state-integrity-1",
-    build: "1.8.2-alpha-cloud-sync-v2-state-integrity-1"
+    version: "1.8.3",
+    buildId: "alpha-v1.8.3-release-1",
+    build: "1.8.3-alpha-v1.8.3-release-1"
   });
 
   // Keep authentication and the first cloud hydration from waiting forever while
@@ -130,7 +130,7 @@
 
     root.HerdHarborCloudSyncV2 = Object.freeze({
       version: "2.0",
-      release: "1.8.2",
+      release: "1.8.3",
       restoreMissingBaseline: () => restoreMissingCloudBaseline(storage, "manual")
     });
   }
@@ -194,7 +194,7 @@
     };
   }
 
-  // Alpha v1.8.2 is the release identity. All current flow layers remain additive UX architecture over the stable domain engines.
+  // Alpha v1.8.3 is the release identity. All current flow layers remain additive UX architecture over the stable domain engines.
   if (!root.document) return;
 
   root.document.addEventListener("submit", (event) => {
