@@ -95,16 +95,21 @@
         return { ok: false, message: "Weight ounces must be between 0 and less than 16." };
       }
       next.weightOunces = next.weight !== "" && next.weightUnit === "lb+oz" ? String(ounces) : "";
-      const recurrence = root.HerdHarborTaskAutomation?.normalizeRecurrence?.(next.followUpRecurrence) || "None";
-      next.followUpRecurrence = next.followUpDate ? recurrence : "None";
-      if (next.followUpRecurrence === "Custom") {
-        const repeatDays = Math.round(Number(next.followUpRecurrenceDays || 0));
-        if (!Number.isFinite(repeatDays) || repeatDays < 1 || repeatDays > 365) {
-          return { ok: false, message: "Custom follow-up repeat days must be between 1 and 365." };
+      const hasFollowUpMetadata = Object.prototype.hasOwnProperty.call(next, "followUpDate")
+        || Object.prototype.hasOwnProperty.call(next, "followUpRecurrence")
+        || Object.prototype.hasOwnProperty.call(next, "followUpRecurrenceDays");
+      if (hasFollowUpMetadata) {
+        const recurrence = root.HerdHarborTaskAutomation?.normalizeRecurrence?.(next.followUpRecurrence) || "None";
+        next.followUpRecurrence = next.followUpDate ? recurrence : "None";
+        if (next.followUpRecurrence === "Custom") {
+          const repeatDays = Math.round(Number(next.followUpRecurrenceDays || 0));
+          if (!Number.isFinite(repeatDays) || repeatDays < 1 || repeatDays > 365) {
+            return { ok: false, message: "Custom follow-up repeat days must be between 1 and 365." };
+          }
+          next.followUpRecurrenceDays = String(repeatDays);
+        } else {
+          next.followUpRecurrenceDays = "";
         }
-        next.followUpRecurrenceDays = String(repeatDays);
-      } else {
-        next.followUpRecurrenceDays = "";
       }
       return { ok: true, data: next };
     }
