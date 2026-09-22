@@ -670,21 +670,38 @@
 
 ---
 
-## Phase 9E — Profitability + Production Analytics
+## Completed Phase 9E — Profitability + Production Analytics
 
-- **Status:** in progress
+- **Roadmap phase:** Phase 9E — Profitability + Production Analytics
+- **PR number:** #175
+- **PR title:** feat: add profitability and production analytics
 - **Branch:** `feat/add-production-profitability-analytics`
 - **Base branch:** `feat/expand-breeding-genetics-decision-support`
 - **Base SHA:** `f9082b76bab0e86c758fb8755099207cc721084c`
+- **Validated implementation SHA:** `13d27e2ccd44da024128cbac107ce535f97f1cfc`
 - **Parent PR:** #173
-- **Application version:** 1.8.3
-- **Objective:** add read-only recorded profitability context to the existing Production/Reporting surface without creating parallel accounting state.
-- **Calculation owner:** `profitability-analytics-v1.8.3.js` is a pure derived calculator over canonical Transactions, Sales, Payments, Production, Animals, Breedings, and Litters.
-- **Visible owner:** `production-reporting-runtime-v1.8.3.js` remains the reporting UI owner.
-- **Revenue rule:** received payments and completed-sale invoiced value stay separate; mixed payments without safe item allocation remain unallocated.
-- **Cost rule:** lower-level animal/litter/pair margins use explicit direct costs only; shared species/operation costs remain visible as incomplete coverage rather than being invented into allocations.
-- **Product margin rule:** margin is calculated only when recorded costs are explicitly linked by product/source; otherwise margin is unavailable, not zero-cost.
+- **Application version:** 1.8.3 (unchanged)
+- **New component:** `profitability-analytics-v1.8.3.js` build `profitability-production-analytics-1`
+- **Visible owner:** existing `production-reporting-runtime-v1.8.3.js` remains the Production/Reporting UI owner
+- **Canonical accounting owners:** existing Transactions/Budget own costs; Sales and Payments own sale/revenue records; Production records own production; Litters/Breedings/Animals provide read-only grouping context
+- **Revenue semantics:** received payments are separate from completed-sale invoiced value; multi-item payments without safe item allocation remain unallocated; single-item completed sales may safely allocate an unscoped payment to that one animal
+- **Cost semantics:** whole-operation recorded net uses recorded operating expenses; animal/litter/pair rows use explicitly animal-assigned costs only; shared species/operation costs remain incomplete coverage instead of being invented into lower-level margins
+- **Species filtering:** operation-wide expenses are excluded from species-specific recorded-cost totals and explicitly reported as unallocated rather than charged wholesale to one species
+- **Product margin semantics:** margin is calculated only when a recorded cost is explicitly linked by product/source; otherwise margin is intentionally unavailable rather than treating cost as zero
+- **Period semantics:** financial activity is filtered by transaction/payment/production dates; litter grouping is retained when offspring have financial activity in-period even if the litter birth predates the selected financial window
+- **Public APIs introduced:** `rawOperatingExpenses`, `operatingExpenses`, `completedSales`, `saleItemValue`, `saleInvoicedTotal`, `saleItems`, `paymentAllocations`, `operationSummary`, `animalRows`, `litterRows`, `pairRows`, and `productMargins`
+- **Compatibility retained:** existing Budget cost-per-head, production report, sales/payment synchronization, Phase 9C/9D analytics, stable v1.8.3 whole-app identity, optional-tool lazy loading, PWA/service-worker behavior
+- **Compatibility removed:** none
 - **Database/schema changes:** none
 - **Edge Function changes:** none
 - **Secrets/config required:** none
-- **Protected inherited requirements:** preserve canonical accounting owners, Phase 9C/9D read-only analytics, formal v1.8.3 identity, review-before-mutation, lazy optional tooling, cloud/subscription/security/PWA/runtime contracts, and normalized-sync rollout guardrails.
+- **Monitoring changes:** none
+- **Migration/deployment requirements:** no data migration; deploy the new static profitability module plus revised Production/Reporting, shell, service-worker, and Pages artifact after ordered stack merge
+- **Rollback method:** revert Phase 9E commits; canonical transactions, payments, sales, production, litters, breedings, and animals remain unchanged
+- **Tests added/changed:** added `tests/profitability-production-analytics-v1.8.3.test.cjs`; updated app-script compile, package v1.8.3 gate, PWA shell, HTML load order, and Pages artifact requirements
+- **Documentation:** `docs/PROFITABILITY-PRODUCTION-ANALYTICS-v1.8.3.md`
+- **Exact CI result:** Alpha v1.8.3 CI #50 — PASS on implementation SHA `13d27e2ccd44da024128cbac107ce535f97f1cfc` through validation-only PR #176; ledger-closure head must also pass before Phase 9F branches
+- **Manual validation still required:** narrow-screen profitability tables, mixed-payment sales, species-filtered cost coverage, real shared-cost herds, and representative production records with/without explicit product-linked costs
+- **Known risks:** profitability is only as complete as recorded costs/payments and explicit allocation metadata; partial margins are intentionally withheld instead of inferred
+- **Requirements inherited by Phase 9F:** preserve canonical accounting owners and read-only profitability boundaries; reuse existing TaskRuntime and existing breeding reminder IDs; preserve v1.8.3 identity, review-before-mutation, cloud/subscription/security/PWA/runtime contracts, recurrence/idempotency, and normalized-sync rollout guardrails
+
