@@ -577,7 +577,7 @@
 - **Branch:** `feat/reviewed-photo-assisted-record-entry`
 - **Base branch:** `feat/reviewed-voice-assisted-record-entry`
 - **Base SHA:** `5c85445373fa243b0326b46b71711708b5ca87ef`
-- **Validated implementation head SHA:** `cf2640ca5498656e1e7e750b8b7bd494f95972c4`
+- **Validated implementation head SHA:** `83f76ad374671e9a9daa46120d1244bde4c305dd`
 - **Parent PR:** #167
 - **Application version:** 1.8.3
 - **Server owner:** authenticated Supabase Edge Function `record-photo-extract`
@@ -595,7 +595,7 @@
 - **New production contract:** `PHOTO-ASSISTED-ENTRY-PRODUCTION-v1.8.3.md`
 - **Tests added:** `tests/photo-assisted-entry-v1.8.3.test.cjs`
 - **Compatibility tests updated:** Animal/Profile extraction contract now permits reviewed defaults to pass through to the canonical Animal form
-- **Full CI result:** Alpha v1.8.3 CI #39 — PASS on validated implementation head `cf2640ca5498656e1e7e750b8b7bd494f95972c4`; ledger-closure head must also pass before Phase 9C branches
+- **Full CI result:** Alpha v1.8.3 CI #40 — PASS on validated implementation head `83f76ad374671e9a9daa46120d1244bde4c305dd`; this record-only closure commit must also pass before Phase 9C branches
 - **Manual validation still required:** deployed Edge Function invocation with production secrets; representative registration/vet/weight/medication photos; multi-row selector; mobile upload UX; provider timeout/rate-limit UX
 - **Deployment note:** the Edge Function code/config are committed in the stack; production deployment must follow the normal controlled release path and is not performed by this stacked PR
 - **Exact requirements inherited by Phase 9C:** preserve formal v1.8.3 identity, 9A/9B review-before-mutation, canonical Animal/Health ownership, provider-key isolation, Paper Pedigree confirmation boundary, cloud/subscription/security/privacy/PWA/runtime contracts, and no unrelated auth/sign-in changes
