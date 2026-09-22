@@ -530,3 +530,22 @@
 - **Manual validation still required:** production deployment after eventual merge; protected production acceptance inputs/secrets; Android signed Play release outside review CI; controlled normalized-sync production promotion remains a separate operational decision
 - **Exact requirements inherited by Phase 9:** preserve formal v1.8.3 whole-app identity, all Phase 6-8 runtime/help/release contracts, canonical record ownership, legacy sync rollback and normalized-sync rollout guardrails, account/subscription authority, Paper Pedigree confirmation-before-mutation, privacy/security gates, PWA ordering, and no unrelated auth/sign-in changes
 
+
+
+---
+
+## Phase 9A — Voice-assisted record entry
+
+- **Status:** in progress
+- **Branch:** `feat/reviewed-voice-assisted-record-entry`
+- **Base branch:** `release/alpha-v1.8.3`
+- **Base SHA:** `5ffdd3da4e52d5de67065ce0ada5935960ecf44e`
+- **Parent PR:** #165
+- **Application version:** 1.8.3
+- **Objective:** accept typed or browser-transcribed natural instructions and create a structured review draft for supported weight, medication, and breeding records.
+- **Safety architecture:** transcript -> deterministic structured interpretation -> ambiguity/missing-field review -> explicit user review -> canonical Health/Breeding form -> normal canonical validation/save.
+- **Mutation boundary:** voice interpretation and review do not write canonical state; Health and Breeding runtimes remain the only final save owners for these records.
+- **Animal resolution:** exact recorded-name matching with ambiguity surfaced for review; breeding requires one recorded female/dam and one recorded male/sire of the same species.
+- **Dates/units:** supports today/yesterday/explicit ISO or US dates, lb/lb+oz/oz/kg/g weights, and common medication dose units.
+- **Provider/privacy behavior:** browser SpeechRecognition is optional and fail-safe; typed entry remains available; telemetry records only coarse action/result/record_type metadata and never transcript or farm-record contents.
+- **Protected inherited requirements:** preserve v1.8.3 release identity, canonical state owners, Health weight ownership, breeding validation/reminders, privacy-safe monitoring, normalized-sync guardrails, subscription/auth contracts, and no AI/voice mutation before explicit confirmation.
