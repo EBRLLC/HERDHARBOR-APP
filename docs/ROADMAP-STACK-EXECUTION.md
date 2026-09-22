@@ -666,3 +666,25 @@
 - **Manual validation still required:** representative complete/incomplete/linebred pedigrees, breeder-reviewed conflicting genotype records, long pair histories, and narrow-screen Pair Analysis on physical mobile devices
 - **Known risks:** pedigree comparison is bounded to four generations by default and cannot identify unrecorded ancestry; historical performance is limited to canonical recorded links; no numeric inbreeding coefficient is claimed; genetic possibilities remain subject to recorded-data quality and model scope
 - **Requirements inherited by Phase 9E:** preserve the final Rabbit genetics owner and read-only decision-support boundary; reuse canonical transaction/production/sale owners and Phase 9C analytics rather than creating parallel accounting; retain formal v1.8.3, canonical pedigree/Health ownership, review-before-mutation, lazy optional tooling, cloud/subscription/security/PWA/runtime contracts, and normalized-sync rollout guardrails
+
+
+---
+
+## Phase 9E — Profitability + Production Analytics
+
+- **Status:** in progress
+- **Branch:** `feat/add-production-profitability-analytics`
+- **Base branch:** `feat/expand-breeding-genetics-decision-support`
+- **Base SHA:** `f9082b76bab0e86c758fb8755099207cc721084c`
+- **Parent PR:** #173
+- **Application version:** 1.8.3
+- **Objective:** add read-only recorded profitability context to the existing Production/Reporting surface without creating parallel accounting state.
+- **Calculation owner:** `profitability-analytics-v1.8.3.js` is a pure derived calculator over canonical Transactions, Sales, Payments, Production, Animals, Breedings, and Litters.
+- **Visible owner:** `production-reporting-runtime-v1.8.3.js` remains the reporting UI owner.
+- **Revenue rule:** received payments and completed-sale invoiced value stay separate; mixed payments without safe item allocation remain unallocated.
+- **Cost rule:** lower-level animal/litter/pair margins use explicit direct costs only; shared species/operation costs remain visible as incomplete coverage rather than being invented into allocations.
+- **Product margin rule:** margin is calculated only when recorded costs are explicitly linked by product/source; otherwise margin is unavailable, not zero-cost.
+- **Database/schema changes:** none
+- **Edge Function changes:** none
+- **Secrets/config required:** none
+- **Protected inherited requirements:** preserve canonical accounting owners, Phase 9C/9D read-only analytics, formal v1.8.3 identity, review-before-mutation, lazy optional tooling, cloud/subscription/security/PWA/runtime contracts, and normalized-sync rollout guardrails.
