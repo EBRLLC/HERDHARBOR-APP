@@ -87,7 +87,7 @@ test("composition runtime delegates breeding and litter behavior instead of reta
   assert.match(runtimeSource, /HerdHarborBreedingLitterRuntime\?\.create/);
   assert.match(runtimeSource, /function renderBreedings\(\) \{\s*return breedingLitterRuntime\(\)\.renderBreedings\(\);\s*\}/);
   assert.match(runtimeSource, /function renderLitters\(\) \{\s*return breedingLitterRuntime\(\)\.renderLitters\(\);\s*\}/);
-  assert.match(runtimeSource, /function openBreedingForm\(id = "", defaults = \{\}\) \{\s*return breedingLitterRuntime\(\)\.openBreedingForm\(id\);\s*\}/);
+  assert.match(runtimeSource, /function openBreedingForm\(id = "", defaults = \{\}\) \{\s*return breedingLitterRuntime\(\)\.openBreedingForm\(id, defaults\);\s*\}/);
   assert.match(runtimeSource, /function openLitterForm\(id = "", breedingId = ""\) \{\s*return breedingLitterRuntime\(\)\.openLitterForm\(id, breedingId\);\s*\}/);
   assert.doesNotMatch(runtimeSource, /let breedingViewYear =/);
   assert.doesNotMatch(runtimeSource, /const GESTATION_RULES =/);
