@@ -268,6 +268,16 @@
         '<label style="grid-column:1/-1">Details<textarea id="photo-review-details" rows="4">' + deps.esc(values.details || "") + '</textarea></label>';
     }
 
+    function weightRowSelector(draft) {
+      if (draft?.classification !== "weight_sheet" || (draft.weightRows || []).length <= 1) return "";
+      const options = (draft.weightRows || []).map((row, index) => {
+        const label = [row.animalName || row.identifier || "Unidentified animal", row.date, row.weight ? row.weight + " " + (row.weightUnit || "") : ""]
+          .filter(Boolean).join(" · ");
+        return '<option value="' + index + '"' + (index === draft.selectedWeightIndex ? " selected" : "") + '>' + deps.esc(label || ("Row " + (index + 1))) + '</option>';
+      }).join("");
+      return '<label style="grid-column:1/-1">Weight-sheet row<select id="photo-review-weight-row"><option value="">Choose a row</option>' + options + '</select></label>';
+    }
+
     function renderReview() {
       const host = byId("photo-entry-review");
       if (!host || !reviewed) return;
@@ -282,7 +292,7 @@
         medication_label: "Medication label"
       }[reviewed.classification] || "Unsupported image";
       const fields = reviewed.classification === "registration_document" ? registrationFields(reviewed.defaults) :
-        (supported ? healthFields(reviewed.defaults) : "");
+        (supported ? weightRowSelector(reviewed) + healthFields(reviewed.defaults) : "");
       host.innerHTML =
         '<div class="panel" style="margin-top:14px"><div class="panel-header"><div><h3>Review photo draft</h3><small>' +
         deps.esc(label) + ' · ' + Math.round(Number(reviewed.classificationConfidence || 0) * 100) + '% classification confidence</small></div></div>' +
@@ -293,6 +303,11 @@
       byId("photo-review-cancel")?.addEventListener("click", () => {
         telemetry("photo_draft_cancelled", "cancelled", reviewed.classification);
         deps.closeModal();
+      });
+      byId("photo-review-weight-row")?.addEventListener("change", (event) => {
+        const value = event.target?.value;
+        reviewed = value === "" ? applyWeightRow(reviewed, -1, animals()) : applyWeightRow(reviewed, Number(value), animals());
+        renderReview();
       });
       byId("photo-review-confirm")?.addEventListener("click", confirmReview);
     }
@@ -364,8 +379,8 @@
         if (dataUrl.length > 10_500_000) throw new Error("That image is too large. Resize it and try again.");
         const payload = { dataUrl, mimeType: selectedFile.type, fileName: selectedFile.name };
         const response = typeof cloud().invokeFunctionWithDiagnostics === "function"
-          ? await cloud().invokeFunctionWithDiagnostics("photo-record-extract", payload)
-          : await cloud().invokeFunction("photo-record-extract", payload);
+          ? await cloud().invokeFunctionWithDiagnostics("record-photo-extract", payload)
+          : await cloud().invokeFunction("record-photo-extract", payload);
         if (!response?.draft) throw new Error(response?.error || "The photo reader returned no review draft.");
         reviewed = canonicalDraft(response.draft, animals());
         telemetry("photo_draft_created", reviewed.classification === "unsupported" ? "failure" : "success", reviewed.classification);
