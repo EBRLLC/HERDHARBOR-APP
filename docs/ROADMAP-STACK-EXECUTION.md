@@ -500,3 +500,20 @@
 - **Known risks:** Help text can drift if future domain behavior changes without updating documentation; the Help Center intentionally describes existing workflows rather than owning their rules
 - **Exact requirements inherited by Phase 8:** preserve all Phase 6B-6H runtime APIs, current Help Center routes/anchors, backend subscription authority and Free Adult fallback, Paper Pedigree confirmation-before-mutation, canonical state owners, optional-tool lazy loading, cloud safety/normalized-sync default-off guardrails, monitoring startup behavior, and PWA/service-worker ordering; Phase 8 is the first remaining phase authorized to change whole-app identity to v1.8.3
 
+
+
+---
+
+## Phase 8 — Formal Alpha v1.8.3 release
+
+- **Status:** in progress
+- **Branch:** `release/alpha-v1.8.3`
+- **Base branch:** `docs/complete-herdharbor-help-center`
+- **Base SHA:** `fed60dbe5117975f969bf7c6c34d4f5d53764f8d`
+- **Parent PR:** #163
+- **Application version:** 1.8.3
+- **Release build ID:** `alpha-v1.8.3-release-1`
+- **Android/TWA identity:** 1.8.3 / versionCode 17
+- **Objective:** formalize the complete green stack as Alpha v1.8.3 across true whole-app release surfaces without renaming stable component files or enabling unrestricted normalized-sync authority.
+- **Release scope:** package/build/PWA/manifest; Android/TWA; monitoring release; release notes/docs; CI/Pages/production-acceptance workflows; release-reference acceptance tests.
+- **Protected inherited requirements:** legacy sync remains production authority unless separately promoted through the controlled rollout; preserve rollback, conflict/dirty-state/tombstone safeguards, canonical domain owners, Free Adult/Junior separation, Paper Pedigree confirmation-before-mutation, non-blocking monitoring startup, optional-tool lazy loading, runtime APIs, Help Center, and security/privacy contracts.
