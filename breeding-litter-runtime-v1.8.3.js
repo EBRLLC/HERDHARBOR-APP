@@ -363,13 +363,13 @@
         button.addEventListener("click", () => openLitterForm("", button.dataset.recordBirth)));
     }
   
-    function openBreedingForm(id = "") {
+    function openBreedingForm(id = "", defaults = {}) {
       if (!stateNow().animals.length) {
         toast("Add animals before creating a breeding record.", "error");
         navigate("animals");
         return;
       }
-      const breeding = stateNow().breedings.find((record) => record.id === id) || {};
+      const breeding = id ? (stateNow().breedings.find((record) => record.id === id) || {}) : { ...defaults };
       openModal(id ? "Edit breeding" : "Add breeding", `
         <form id="breeding-form">
           <div class="form-grid two">
