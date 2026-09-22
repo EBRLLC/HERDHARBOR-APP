@@ -9,6 +9,8 @@ const CORS = {
 
 const OPENAI_API = "https://api.openai.com/v1/responses";
 const DEFAULT_MODEL = "gpt-5.6-luna";
+const DEFAULT_DAILY_LIMIT = 5;
+const DEFAULT_GLOBAL_DAILY_LIMIT = 25;
 const DEFAULT_PROVIDER_TIMEOUT_MS = 30_000;
 const MAX_REQUEST_BYTES = 11_000_000;
 const MAX_DATA_URL_LENGTH = 10_500_000;
@@ -18,6 +20,18 @@ const DOCUMENT_TYPES = new Set(["registration", "veterinary_document", "weight_s
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: CORS });
 const clean = (value: unknown, max = 500) => typeof value === "string" ? value.trim().replace(/\s+/g, " ").slice(0, max) : "";
 const fail = (code: string, error: string, status: number, retryable = false) => json({ error, code, retryable }, status);
+
+function configuredDailyLimit() {
+  const value = Number(Deno.env.get("PHOTO_ENTRY_DAILY_LIMIT") || DEFAULT_DAILY_LIMIT);
+  if (!Number.isFinite(value)) return DEFAULT_DAILY_LIMIT;
+  return Math.max(1, Math.min(1000, Math.floor(value)));
+}
+
+function configuredGlobalDailyLimit() {
+  const value = Number(Deno.env.get("AI_IMAGE_GLOBAL_DAILY_LIMIT") || DEFAULT_GLOBAL_DAILY_LIMIT);
+  if (!Number.isFinite(value)) return DEFAULT_GLOBAL_DAILY_LIMIT;
+  return Math.max(1, Math.min(100000, Math.floor(value)));
+}
 
 function configuredProviderTimeoutMs() {
   const value = Number(Deno.env.get("PHOTO_ENTRY_PROVIDER_TIMEOUT_MS") || DEFAULT_PROVIDER_TIMEOUT_MS);
@@ -228,6 +242,29 @@ Deno.serve(async (req) => {
     const openAiKey = Deno.env.get("OPENAI_API_KEY") || "";
     const model = Deno.env.get("OPENAI_PHOTO_ENTRY_MODEL") || DEFAULT_MODEL;
     if (!openAiKey) return fail("configuration_unavailable", "Photo-assisted entry is not configured yet.", 503, true);
+
+    const { data: reservation, error: usageError } = await admin.rpc("herdharbor_reserve_ai_image_request", {
+      p_user_id: authData.user.id,
+      p_feature: "record_photo",
+      p_user_daily_limit: configuredDailyLimit(),
+      p_global_daily_limit: configuredGlobalDailyLimit()
+    });
+    if (usageError) {
+      console.error("record_photo_usage_reservation_failed");
+      return fail("usage_ledger_unavailable", "Photo-assisted entry is temporarily unavailable. Farm records were not changed.", 503, true);
+    }
+    if (reservation !== "reserved") {
+      const globalLimitReached = reservation === "global_quota";
+      return fail(
+        globalLimitReached ? "global_quota_exceeded" : "quota_exceeded",
+        globalLimitReached
+          ? "HerdHarbor has reached today's AI image-reading budget. Try again tomorrow."
+          : "You have reached today's photo-reading limit. Try again tomorrow.",
+        429,
+        true
+      );
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), configuredProviderTimeoutMs());
     let response: Response;
