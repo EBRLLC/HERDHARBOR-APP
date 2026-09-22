@@ -27,7 +27,7 @@ assert.match(cloud, /syncValueToCloud[\s\S]*?allowAnimalStateTransition\(/, "clo
 assert.match(cloud, /checkForCloudChanges[\s\S]*?allowAnimalStateTransition\(/, "multi-device cloud updates are gated");
 assert.match(cloud, /resolveConflict[\s\S]*?allowAnimalStateTransition\(/, "manual cloud conflict resolution is gated");
 assert.match(cloud, /await loadAccessProfile\(\);[\s\S]*?const \{ data, error \} = await fetchCloudRecord/, "cloud hydration verifies entitlement before applying records");
-assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.2";/, "embedded app metadata is Alpha v1.8.2");
+assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.3";/, "embedded app metadata is Alpha v1.8.3");
 assert.match(cloud, /version: "1\.7\.1"[\s\S]*?backupType: "local-safety-backup"/, "safety backups identify Alpha v1.7.1");
 assert.match(appRuntime, /\["Sold", "Deceased", "Archived", "Ancestor Only"\]/);
 assert.match(animalProfileRuntime, /"Archived", "Ancestor Only"/);
