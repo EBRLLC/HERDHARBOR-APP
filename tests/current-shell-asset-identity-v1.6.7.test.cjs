@@ -15,8 +15,7 @@ for (const asset of [
   "herdharbor-release-v1.6.1.js",
   "herdharbor-membership-v1.6.1.js",
   "herdharbor-access-cache-v1.6.1.js",
-  "market-analytics-v1.6.5.js",
-  "analytics-v1.6.1.js"
+  "market-analytics-v1.6.5.js"
 ]) {
   assert.ok(worker.includes(`/${asset}`), `${asset} must remain network-first`);
 }
@@ -25,9 +24,10 @@ for (const asset of [
   "herdharbor-release-v1.6.1.js",
   "herdharbor-membership-v1.6.1.js",
   "herdharbor-access-cache-v1.6.1.js",
-  "market-analytics-v1.6.5.js",
-  "analytics-v1.6.1.js"
+  "market-analytics-v1.6.5.js"
 ]) assert.match(html, new RegExp(`${asset.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}\\?v=1\\.7\\.1`));
+assert.ok(worker.includes("/analytics-v1.6.1.js"), "analytics-v1.6.1.js must remain network-first");
+assert.match(html, /analytics-v1\.6\.1\.js\?v=2/);
 assert.match(html, /herdharbor-build\.js\?v=1\.8\.3/);
 assert.match(html, /herdharbor-cloud\.js\?v=21/);
 assert.match(html, /pwa\.js\?v=31/);

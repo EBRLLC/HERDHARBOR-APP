@@ -7,6 +7,8 @@
 
   // The filename is intentionally stable for the consolidated runtime. VERSION is authoritative.
   const VERSION = "1.6.5";
+  const BUILD_ID = "analytics-growth-litter-performance-1";
+  const MIN_COMPARISON_SAMPLE = 2;
   const DAY_MS = 86400000;
   const LB_GRAMS = 453.59237;
   const OZ_GRAMS = 28.349523125;
@@ -31,6 +33,7 @@
   const ui = {
     tab: "overview", range: "all", start: "", end: "", species: "", product: "",
     growthMode: "date", agePreset: "all", ageStart: "", ageEnd: "", animalIds: [], growthAnimalScope: "active",
+    litterId: "", sireId: "", damId: "", offspringScope: "all",
     market: null, marketLoading: false, marketError: "",
     marketFilters: { breed: "", sex: "", age_bucket: "", color_variety: "", pedigree_status: "", registration_status: "", region_country: "", region_code: "", broad_region: "", sale_month: "", sale_year: "" }
   };
@@ -148,19 +151,20 @@
         if (birth && (!filters.species || birth.species === filters.species) && dateInRange(birth.date, options)) rows.push(birth);
       }
     }
-    for (const record of sourceArray(source, "health")) {
+    sourceArray(source, "health").forEach((record, sourceIndex) => {
       const subject = animals.get(record.animalId) || {};
       const date = isoDate(record.date);
       const grams = normalizeWeight(record.weight, record.weightUnit || "lb", record.weightOunces);
-      if (!date || grams === null || (filters.species && subject.species !== filters.species) || !dateInRange(date, options)) continue;
+      if (!date || grams === null || (filters.species && subject.species !== filters.species) || !dateInRange(date, options)) return;
       rows.push({
         id: record.id, animalId: record.animalId, animalName: subject.name || "Unknown animal",
         species: subject.species || "", breed: subject.breed || "", dob: isoDate(subject.dob), date, grams,
         recordedValue: num(record.weight) ?? String(record.weight).trim(), recordedOunces: num(record.weightOunces),
         recordedUnit: record.weightUnit || "lb", isBirth: false,
-        ageDays: subject.dob ? daysBetween(subject.dob, date) : null
+        ageDays: subject.dob ? daysBetween(subject.dob, date) : null,
+        createdAt: String(record.createdAt || ""), updatedAt: String(record.updatedAt || ""), sourceIndex
       });
-    }
+    });
     return rows.sort((left, right) => left.date.localeCompare(right.date) || Number(right.isBirth) - Number(left.isBirth));
   }
 
@@ -212,6 +216,242 @@
     });
   }
 
+  function latestSameDayWeightRows(rows = []) {
+    const winners = new Map();
+    (Array.isArray(rows) ? rows : []).forEach((row, index) => {
+      if (!row?.animalId || !isoDate(row.date) || !Number.isFinite(Number(row.grams))) return;
+      const key = `${row.animalId}|${isoDate(row.date)}`;
+      const candidate = { row, index, stamp: String(row.updatedAt || row.createdAt || ""), sourceIndex: Number.isFinite(Number(row.sourceIndex)) ? Number(row.sourceIndex) : index };
+      const current = winners.get(key);
+      if (!current || candidate.stamp > current.stamp || (candidate.stamp === current.stamp && candidate.sourceIndex > current.sourceIndex)) winners.set(key, candidate);
+    });
+    return [...winners.values()].map((entry) => entry.row).sort((left, right) => left.date.localeCompare(right.date) || String(left.animalId).localeCompare(String(right.animalId)));
+  }
+
+  function latestWeightRowsByAnimal(rows = []) {
+    const latest = new Map();
+    latestSameDayWeightRows(rows).forEach((row, index) => {
+      const current = latest.get(String(row.animalId));
+      const stamp = String(row.updatedAt || row.createdAt || "");
+      const currentStamp = String(current?.updatedAt || current?.createdAt || "");
+      if (!current || row.date > current.date || (row.date === current.date && (stamp > currentStamp || (stamp === currentStamp && (row.sourceIndex ?? index) > (current.sourceIndex ?? -1))))) latest.set(String(row.animalId), row);
+    });
+    return [...latest.values()];
+  }
+
+  function litterParents(source, litter = {}) {
+    const breeding = sourceArray(source, "breedings").find((record) => String(record.id) === String(litter.breedingId || ""));
+    return {
+      damId: String(litter.damId || breeding?.femaleId || ""),
+      sireId: String(litter.sireId || breeding?.maleId || "")
+    };
+  }
+
+  function offspringForLitter(source, litterOrId) {
+    const litter = typeof litterOrId === "object" ? litterOrId : sourceArray(source, "litters").find((record) => String(record.id) === String(litterOrId || ""));
+    if (!litter) return [];
+    const linked = new Set(sourceArray(litter, "offspringIds").map(String));
+    const unique = new Map();
+    sourceArray(source, "animals").forEach((animal) => {
+      const id = String(animal?.id || "");
+      if (!id || (!linked.has(id) && String(animal.sourceBirthId || "") !== String(litter.id))) return;
+      if (!unique.has(id)) unique.set(id, animal);
+    });
+    return [...unique.values()];
+  }
+
+  function completedSaleAnimalIds(source) {
+    const ids = new Set();
+    sourceArray(source, "sales").filter((sale) => String(sale.status || "").toLowerCase() === "completed").forEach((sale) => {
+      sourceArray(sale, "items").forEach((item) => { if (item?.animalId) ids.add(String(item.animalId)); });
+    });
+    return ids;
+  }
+
+  function offspringOutcome(animal = {}, soldIds = new Set()) {
+    const status = String(animal.status || "").trim().toLowerCase();
+    if (status === "deceased") return "deceased";
+    if (status === "sold" || soldIds.has(String(animal.id || ""))) return "sold";
+    if (["active", "breeding", "for sale", "reserved", "quarantined", ""].includes(status)) return "retained";
+    return "other";
+  }
+
+  function litterMatchesFilters(source, litter, options = {}) {
+    const filters = context(options);
+    const parents = litterParents(source, litter);
+    if (filters.species && litterSpecies(source, litter) !== filters.species) return false;
+    if (options.litterId && String(litter.id) !== String(options.litterId)) return false;
+    if (options.sireId && parents.sireId !== String(options.sireId)) return false;
+    if (options.damId && parents.damId !== String(options.damId)) return false;
+    return dateInRange(litter.birthDate || litter.date, options);
+  }
+
+  function scopedOffspring(rows, scope = "all") {
+    if (scope === "current") return rows.filter(isCurrentAnalyticsAnimal);
+    if (scope === "historical") return rows.filter((record) => !isCurrentAnalyticsAnimal(record));
+    return rows;
+  }
+
+  function litterOutcomeAnalytics(source = currentState(), options = {}) {
+    const soldIds = completedSaleAnimalIds(source);
+    const litters = sourceArray(source, "litters").filter((litter) => litterMatchesFilters(source, litter, options));
+    const rows = litters.map((litter) => {
+      const parents = litterParents(source, litter);
+      const offspring = scopedOffspring(offspringForLitter(source, litter), options.offspringScope || "all");
+      const bornAlive = num(litter.bornAlive), stillborn = num(litter.stillborn), fosteredIn = num(litter.fosteredIn), fosteredOut = num(litter.fosteredOut);
+      const lost = num(litter.lostBeforeWeaning), weaned = num(litter.weaned);
+      const eligible = bornAlive === null ? null : Math.max(0, bornAlive + (fosteredIn || 0) - (fosteredOut || 0));
+      const resolved = eligible !== null && eligible > 0 && lost !== null && weaned !== null && weaned + lost >= eligible;
+      const outcomes = { retained: 0, sold: 0, deceased: 0, other: 0 };
+      offspring.forEach((animal) => { outcomes[offspringOutcome(animal, soldIds)] += 1; });
+      return {
+        id: String(litter.id), litter, parents, offspring, offspringSampleSize: offspring.length,
+        born: bornAlive === null && stillborn === null ? null : (bornAlive || 0) + (stillborn || 0),
+        bornAlive, stillborn, weaned, eligible, lost, resolved,
+        survivalToWeaning: resolved && eligible > 0 ? weaned / eligible * 100 : null,
+        outcomes,
+        dataStatus: bornAlive === null ? "insufficient data" : resolved ? "complete" : "partial"
+      };
+    });
+    return { litters, rows, sampleSize: rows.length };
+  }
+
+  function litterWeightPerformance(source = currentState(), options = {}) {
+    const minimumSample = Math.max(2, Number(options.minimumSample || MIN_COMPARISON_SAMPLE));
+    const basis = options.basis === "date" ? "date" : "age";
+    const outcomes = litterOutcomeAnalytics(source, options);
+    const allWeights = latestSameDayWeightRows(weightRows(source, { ...options, includeBirth: false }));
+    const rows = outcomes.rows.map((litterRow) => {
+      const offspringIds = new Set(litterRow.offspring.map((animal) => String(animal.id)));
+      const weights = allWeights.filter((row) => offspringIds.has(String(row.animalId)));
+      const groups = new Map();
+      weights.forEach((row) => {
+        const key = basis === "age" ? (row.ageDays === null ? "" : String(row.ageDays)) : row.date;
+        if (!key) return;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(row);
+      });
+      const comparable = [...groups].map(([key, groupRows]) => ({
+        key, basis, ageDays: basis === "age" ? Number(key) : null, date: basis === "date" ? key : "",
+        sampleSize: groupRows.length, rows: groupRows,
+        averageGrams: groupRows.length >= minimumSample ? mean(groupRows.map((row) => row.grams)) : null,
+        dataStatus: groupRows.length >= minimumSample ? "available" : "insufficient data"
+      })).sort((left, right) => basis === "age" ? left.ageDays - right.ageDays : left.date.localeCompare(right.date));
+      return { ...litterRow, weights, comparable, minimumSample };
+    });
+    return { basis, minimumSample, rows, sampleSize: rows.length };
+  }
+
+  function parentOffspringPerformance(source = currentState(), role = "sire", options = {}) {
+    const parentKey = role === "dam" ? "damId" : "sireId";
+    const requestedId = options[parentKey] || options.parentId || "";
+    const minimumSample = Math.max(2, Number(options.minimumSample || MIN_COMPARISON_SAMPLE));
+    const litterRows = litterOutcomeAnalytics(source, options).rows;
+    const weights = latestWeightRowsByAnimal(weightRows(source, { ...options, includeBirth: false }));
+    const weightByAnimal = new Map(weights.map((row) => [String(row.animalId), row]));
+    const groups = new Map();
+    litterRows.forEach((litterRow) => {
+      const parentId = litterRow.parents[parentKey];
+      if (!parentId || (requestedId && parentId !== String(requestedId))) return;
+      if (!groups.has(parentId)) groups.set(parentId, { parentId, litterIds: new Set(), offspring: new Map() });
+      const group = groups.get(parentId);
+      group.litterIds.add(litterRow.id);
+      litterRow.offspring.forEach((animal) => { if (!group.offspring.has(String(animal.id))) group.offspring.set(String(animal.id), animal); });
+    });
+    const soldIds = completedSaleAnimalIds(source);
+    return [...groups.values()].map((group) => {
+      const offspring = [...group.offspring.values()];
+      const measured = offspring.map((animal) => weightByAnimal.get(String(animal.id))).filter(Boolean);
+      const outcomes = { retained: 0, sold: 0, deceased: 0, other: 0 };
+      offspring.forEach((animal) => { outcomes[offspringOutcome(animal, soldIds)] += 1; });
+      return {
+        role, parentId: group.parentId, parentName: animalName(source, group.parentId),
+        litterCount: group.litterIds.size, offspringCount: offspring.length, offspringIds: offspring.map((animal) => String(animal.id)),
+        weightSampleSize: measured.length, averageLatestWeightGrams: measured.length >= minimumSample ? mean(measured.map((row) => row.grams)) : null,
+        dataStatus: measured.length >= minimumSample ? "available" : "insufficient data", outcomes
+      };
+    }).sort((left, right) => right.offspringCount - left.offspringCount || left.parentName.localeCompare(right.parentName));
+  }
+
+  function pairingOffspringPerformance(source = currentState(), options = {}) {
+    const minimumSample = Math.max(2, Number(options.minimumSample || MIN_COMPARISON_SAMPLE));
+    const litterRows = litterOutcomeAnalytics(source, options).rows;
+    const latestWeights = new Map(latestWeightRowsByAnimal(weightRows(source, { ...options, includeBirth: false })).map((row) => [String(row.animalId), row]));
+    const groups = new Map();
+    litterRows.forEach((litterRow) => {
+      const { damId, sireId } = litterRow.parents;
+      if (!damId && !sireId) return;
+      const key = `${damId}|${sireId}`;
+      if (!groups.has(key)) groups.set(key, { key, damId, sireId, litterIds: new Set(), offspring: new Map(), bornAlive: [] });
+      const group = groups.get(key);
+      group.litterIds.add(litterRow.id);
+      if (litterRow.bornAlive !== null) group.bornAlive.push(litterRow.bornAlive);
+      litterRow.offspring.forEach((animal) => { if (!group.offspring.has(String(animal.id))) group.offspring.set(String(animal.id), animal); });
+    });
+    return [...groups.values()].map((group) => {
+      const offspring = [...group.offspring.values()];
+      const measured = offspring.map((animal) => latestWeights.get(String(animal.id))).filter(Boolean);
+      return {
+        key: group.key, damId: group.damId, sireId: group.sireId,
+        damName: animalName(source, group.damId), sireName: animalName(source, group.sireId),
+        litterCount: group.litterIds.size, offspringCount: offspring.length, offspringIds: offspring.map((animal) => String(animal.id)),
+        averageBornAlive: group.bornAlive.length ? mean(group.bornAlive) : null,
+        weightSampleSize: measured.length, averageLatestWeightGrams: measured.length >= minimumSample ? mean(measured.map((row) => row.grams)) : null,
+        dataStatus: measured.length >= minimumSample ? "available" : "insufficient data"
+      };
+    }).sort((left, right) => right.litterCount - left.litterCount || right.offspringCount - left.offspringCount || left.key.localeCompare(right.key));
+  }
+
+  function retainedSoldComparison(source = currentState(), options = {}) {
+    const minimumSample = Math.max(2, Number(options.minimumSample || MIN_COMPARISON_SAMPLE));
+    const soldIds = completedSaleAnimalIds(source);
+    const unique = new Map();
+    litterOutcomeAnalytics(source, options).rows.forEach((row) => row.offspring.forEach((animal) => {
+      if (!unique.has(String(animal.id))) unique.set(String(animal.id), animal);
+    }));
+    const latestWeights = new Map(latestWeightRowsByAnimal(weightRows(source, { ...options, includeBirth: false })).map((row) => [String(row.animalId), row]));
+    const groups = ["retained", "sold"].map((outcome) => {
+      const animals = [...unique.values()].filter((animal) => offspringOutcome(animal, soldIds) === outcome);
+      const measured = animals.map((animal) => latestWeights.get(String(animal.id))).filter(Boolean);
+      return {
+        outcome, animalCount: animals.length, weightSampleSize: measured.length,
+        averageLatestWeightGrams: measured.length >= minimumSample ? mean(measured.map((row) => row.grams)) : null,
+        dataStatus: measured.length >= minimumSample ? "available" : "insufficient data"
+      };
+    });
+    return { groups, minimumSample, note: "Descriptive recorded outcomes only; differences do not establish causation." };
+  }
+
+  function weaningPerformance(source = currentState(), options = {}) {
+    const minimumSample = Math.max(2, Number(options.minimumSample || MIN_COMPARISON_SAMPLE));
+    const litterRows = litterOutcomeAnalytics(source, options).rows;
+    const exactWeights = latestSameDayWeightRows(weightRows(source, { ...options, includeBirth: false }));
+    const rows = [];
+    litterRows.forEach((litterRow) => litterRow.offspring.forEach((animal) => {
+      const weanedDate = isoDate(animal.weanedDate);
+      if (!weanedDate) return;
+      const birthDate = isoDate(animal.dob || litterRow.litter.birthDate);
+      const ageDays = birthDate ? daysBetween(birthDate, weanedDate) : null;
+      const rabbit = String(animal.species || litterSpecies(source, litterRow.litter)).toLowerCase() === "rabbit";
+      const safeguardValid = !rabbit || (ageDays !== null && ageDays >= 28);
+      const weight = exactWeights.find((record) => String(record.animalId) === String(animal.id) && record.date === weanedDate) || null;
+      rows.push({
+        animalId: String(animal.id), animalName: animal.name || "Unknown animal", litterId: litterRow.id,
+        weanedDate, ageDays, weight, safeguardValid,
+        dataStatus: safeguardValid ? (weight ? "recorded date and weight" : "recorded date; weight not recorded") : "invalid rabbit weaning record"
+      });
+    }));
+    const validRows = rows.filter((row) => row.safeguardValid);
+    const weighted = validRows.filter((row) => row.weight);
+    return {
+      rows, validRows, sampleSize: validRows.length, weightSampleSize: weighted.length,
+      averageWeaningWeightGrams: weighted.length >= minimumSample ? mean(weighted.map((row) => row.weight.grams)) : null,
+      dataStatus: weighted.length >= minimumSample ? "available" : "insufficient data",
+      invalidRabbitRecords: rows.filter((row) => !row.safeguardValid).length,
+      minimumSample
+    };
+  }
+
   function recordSpecies(source, record, parentKeys = ["animalId"]) {
     if (record?.species) return record.species;
     for (const key of parentKeys) {
@@ -222,19 +462,25 @@
   }
 
   function breedingSpecies(source, record) {
-    return recordSpecies(source, record, ["damId", "sireId", "animalId"]);
+    return recordSpecies(source, record, ["damId", "femaleId", "sireId", "maleId", "animalId"]);
   }
 
   function litterSpecies(source, record) {
     if (record.species) return record.species;
     const breeding = sourceArray(source, "breedings").find((item) => item.id === record.breedingId);
-    return breeding ? breedingSpecies(source, breeding) : recordSpecies(source, record, ["damId", "sireId"]);
+    return (breeding ? breedingSpecies(source, breeding) : "") || recordSpecies(source, record, ["damId", "sireId"]);
   }
 
   function breedingAnalytics(source = currentState(), options = {}) {
     const filters = context(options);
-    const rows = sourceArray(source, "breedings").filter((record) => (!filters.species || breedingSpecies(source, record) === filters.species) && dateInRange(record.breedingDate || record.date, options));
     const litters = sourceArray(source, "litters");
+    const rows = sourceArray(source, "breedings").filter((record) => {
+      if (filters.species && breedingSpecies(source, record) !== filters.species) return false;
+      if (options.sireId && String(record.maleId || "") !== String(options.sireId)) return false;
+      if (options.damId && String(record.femaleId || "") !== String(options.damId)) return false;
+      if (options.litterId && !litters.some((litter) => String(litter.id) === String(options.litterId) && String(litter.breedingId || "") === String(record.id))) return false;
+      return dateInRange(record.breedingDate || record.date, options);
+    });
     const status = (record) => String(record.status || "").trim().toLowerCase();
     const success = rows.filter((record) => status(record) === "delivered" || litters.some((litter) => litter.breedingId === record.id));
     const failed = rows.filter((record) => ["not pregnant", "cancelled"].includes(status(record)));
@@ -246,8 +492,7 @@
   }
 
   function litterAnalytics(source = currentState(), options = {}) {
-    const filters = context(options);
-    const litters = sourceArray(source, "litters").filter((record) => (!filters.species || litterSpecies(source, record) === filters.species) && dateInRange(record.birthDate || record.date, options));
+    const litters = sourceArray(source, "litters").filter((record) => litterMatchesFilters(source, record, options));
     const values = (key) => litters.map((record) => num(record[key])).filter((value) => value !== null);
     const born = values("bornAlive"), stillborn = values("stillborn"), weaned = values("weaned");
     const totalBorn = sum(born), totalWeaned = sum(weaned);
@@ -598,31 +843,61 @@
     return `<div class="analytics-growth-controls"><label>Chart axis<select data-growth-mode><option value="date" ${ui.growthMode === "date" ? "selected" : ""}>Date vs. weight</option><option value="age" ${ui.growthMode === "age" ? "selected" : ""}>Age vs. weight</option></select></label><label class="${ui.growthMode === "age" ? "" : "hidden"}">Age range<select data-growth-age><option value="all">All ages</option><option value="8w">Birth → 8 weeks</option><option value="12w">Birth → 12 weeks</option><option value="6m">Birth → 6 months</option><option value="custom">Custom age range</option></select></label><label class="analytics-custom ${ui.growthMode === "age" && ui.agePreset === "custom" ? "" : "hidden"}">Start age (days)<input data-growth-age-start type="number" min="0" value="${esc(ui.ageStart)}"></label><label class="analytics-custom ${ui.growthMode === "age" && ui.agePreset === "custom" ? "" : "hidden"}">End age (days)<input data-growth-age-end type="number" min="0" value="${esc(ui.ageEnd)}"></label><label>Animal records<select data-growth-animal-scope><option value="active" ${ui.growthAnimalScope === "active" ? "selected" : ""}>Active / current animals</option>${ancestorChoiceCount ? `<option value="active+ancestors" ${ui.growthAnimalScope === "active+ancestors" ? "selected" : ""}>Active + ancestors with growth data (${ancestorChoiceCount})</option>` : ""}</select></label><fieldset><legend>Compare animals and choose stable colors</legend>${animalChoices.map((record, index) => `<label><input type="checkbox" data-growth-animal value="${esc(record.id)}" ${ui.animalIds.includes(record.id) ? "checked" : ""}>${seriesColorControl(`animal:${record.id}`, normalizedAnimalStatus(record) === "ancestor only" ? `${record.name || "Unnamed animal"} · Ancestor` : (record.name || "Unnamed animal"), index)}</label>`).join("")}</fieldset></div>${ageErrors.length ? `<div class="analytics-notice">${esc([...new Set(ageErrors)].join(" "))}</div>` : ""}${cards}${section(ui.growthMode === "age" ? "Age vs. Weight" : "Weight Over Time", lineChart(series, { label: "Animal weight chart", yLabel: (grams) => displayWeight(grams, unit), empty: ui.growthMode === "age" ? "Date of birth and actual weight records are required for age comparison." : "Add weight records to begin tracking growth." }), "Every point is an actual birth or Health weight record; no weights are interpolated.")}${historyRows.length ? section("Weight history", table(["Date", "Age", "Recorded Weight", `Preferred (${unit})`, "Change From Previous"], historyRows), "Editing or deleting the canonical Health record immediately changes this table.") : ""}`;
   }
 
+  function performanceOptions(extra = {}) {
+    return { litterId: ui.litterId, sireId: ui.sireId, damId: ui.damId, offspringScope: ui.offspringScope, ...extra };
+  }
+
+  function performanceFilterControls() {
+    const source = currentState();
+    const litters = sourceArray(source, "litters").filter((record) => !ui.species || litterSpecies(source, record) === ui.species);
+    const sires = new Map(), dams = new Map();
+    litters.forEach((litter) => {
+      const parents = litterParents(source, litter);
+      if (parents.sireId) sires.set(parents.sireId, animalName(source, parents.sireId));
+      if (parents.damId) dams.set(parents.damId, animalName(source, parents.damId));
+    });
+    const parentOptions = (rows, selected) => [...rows].sort((left, right) => left[1].localeCompare(right[1])).map(([id, name]) => `<option value="${esc(id)}" ${String(selected) === String(id) ? "selected" : ""}>${esc(name)}</option>`).join("");
+    return `<div class="analytics-module-controls analytics-performance-filters">
+      <label>Litter<select data-performance-litter><option value="">All litters</option>${litters.slice().sort((left, right) => String(right.birthDate || "").localeCompare(String(left.birthDate || ""))).map((litter) => `<option value="${esc(litter.id)}" ${String(ui.litterId) === String(litter.id) ? "selected" : ""}>${esc(`${dateLabel(litter.birthDate)} · ${animalName(source, litterParents(source, litter).damId)} × ${animalName(source, litterParents(source, litter).sireId)}`)}</option>`).join("")}</select></label>
+      <label>Sire<select data-performance-sire><option value="">All sires</option>${parentOptions(sires, ui.sireId)}</select></label>
+      <label>Dam<select data-performance-dam><option value="">All dams</option>${parentOptions(dams, ui.damId)}</select></label>
+      <label>Offspring records<select data-performance-scope><option value="all" ${ui.offspringScope === "all" ? "selected" : ""}>Current + historical</option><option value="current" ${ui.offspringScope === "current" ? "selected" : ""}>Current only</option><option value="historical" ${ui.offspringScope === "historical" ? "selected" : ""}>Historical only</option></select></label>
+      <button type="button" class="button button-ghost" data-performance-clear>Clear performance filters</button>
+    </div>`;
+  }
+
+  function sampleValue(value, sampleSize, unit = "") {
+    if (value === null || value === undefined) return `Insufficient data (n=${sampleSize})`;
+    return `${unit === "weight" ? displayWeight(value, preferredWeightUnit()) : decimal(value, 1)}${unit && unit !== "weight" ? unit : ""} (n=${sampleSize})`;
+  }
+
   function breedingView() {
-    const breeding = breedingAnalytics(), litter = litterAnalytics();
-    if (!breeding.rows.length && !litter.litters.length) return empty(ui.species ? `No breeding records for ${ui.species}` : "No breeding data recorded yet", "Record breedings and litters to track reproductive performance.");
+    const options = performanceOptions(), breeding = breedingAnalytics(currentState(), options), litter = litterAnalytics(currentState(), options);
+    const sires = parentOffspringPerformance(currentState(), "sire", options), dams = parentOffspringPerformance(currentState(), "dam", options), pairings = pairingOffspringPerformance(currentState(), options);
+    const controls = performanceFilterControls();
+    if (!breeding.rows.length && !litter.litters.length) return `${controls}${empty(ui.species ? `No breeding records for ${ui.species}` : "No breeding data recorded yet", "Record breedings and litters or widen the current filters.")}`;
     const outcome = [{ x: "Successful", y: breeding.success.length, colorKey: "metric:breeding-success" }, { x: "Failed", y: breeding.failed.length, colorKey: "metric:breeding-failed" }, { x: "Pending", y: breeding.pending.length, colorKey: "metric:breeding-pending" }];
     const trends = litter.litters.sort((a, b) => String(a.birthDate).localeCompare(String(b.birthDate))).map((record, index) => ({ xValue: index, y: num(record.bornAlive) || 0, label: dateLabel(record.birthDate), detail: `${num(record.bornAlive) || 0} born alive` }));
-    const pairs = new Map();
-    litter.litters.forEach((record) => {
-      const key = `${record.sireId || "unknown"}|${record.damId || "unknown"}`;
-      if (!pairs.has(key)) pairs.set(key, []);
-      pairs.get(key).push(record);
-    });
-    const pairBars = [...pairs].map(([key, rows], index) => {
-      const [sireId, damId] = key.split("|");
-      return { x: `${animalName(currentState(), sireId)} × ${animalName(currentState(), damId)}`, y: mean(rows.map((record) => record.bornAlive)), detail: `${rows.length} litters`, color: colorFor(`metric:pair:${key}`, index) };
-    });
-    return `<div class="stats-grid">${stat("Recorded breedings", breeding.rows.length)}${stat("Successful", breeding.success.length)}${stat("Pending / incomplete", breeding.pending.length)}${stat("Failed / cancelled", breeding.failed.length)}${stat("Success rate", breeding.rate === null ? "—" : `${decimal(breeding.rate, 1)}%`, "Resolved outcomes only")}</div>${seriesColorControls([{ key: "metric:breeding-success", label: "Successful", index: 0 }, { key: "metric:breeding-failed", label: "Failed", index: 4 }, { key: "metric:breeding-pending", label: "Pending", index: 2 }, { key: "metric:born-alive", label: "Born alive", index: 0 }])}<div class="analytics-two-column">${section("Breeding outcomes", barChart(outcome, { label: "Breeding outcomes" }), "Pending records are not counted as failures.")}${section("Litter size trend", lineChart([{ name: "Born alive", color: colorFor("metric:born-alive", 0), points: trends }], { label: "Litter size over time" }), "Historical reproductive performance, separate from Genetics Pair Analysis.")}</div>${pairBars.length ? section("Pairing-history comparison", barChart(pairBars, { label: "Average litter size by historical pairing" }), "Actual historical litters only; this is not a Genetics Pair Analysis prediction.") : ""}`;
+    const pairBars = pairings.filter((row) => row.averageBornAlive !== null).map((row, index) => ({ x: `${row.damName} × ${row.sireName}`, y: row.averageBornAlive, detail: `${row.litterCount} litter${row.litterCount === 1 ? "" : "s"}`, color: colorFor(`metric:pair:${row.key}`, index) }));
+    const parentRows = (rows) => rows.map((row) => [esc(row.parentName), esc(row.litterCount), esc(row.offspringCount), esc(sampleValue(row.averageLatestWeightGrams, row.weightSampleSize, "weight")), esc(`${row.outcomes.retained}/${row.outcomes.sold}/${row.outcomes.deceased}`)]);
+    const pairRows = pairings.map((row) => [esc(`${row.damName} × ${row.sireName}`), esc(row.litterCount), esc(row.offspringCount), esc(row.averageBornAlive === null ? "Not recorded" : decimal(row.averageBornAlive, 1)), esc(sampleValue(row.averageLatestWeightGrams, row.weightSampleSize, "weight"))]);
+    return `${controls}<div class="stats-grid">${stat("Recorded breedings", breeding.rows.length)}${stat("Successful", breeding.success.length)}${stat("Pending / incomplete", breeding.pending.length)}${stat("Failed / cancelled", breeding.failed.length)}${stat("Success rate", breeding.rate === null ? "—" : `${decimal(breeding.rate, 1)}%`, "Resolved outcomes only")}</div>${seriesColorControls([{ key: "metric:breeding-success", label: "Successful", index: 0 }, { key: "metric:breeding-failed", label: "Failed", index: 4 }, { key: "metric:breeding-pending", label: "Pending", index: 2 }, { key: "metric:born-alive", label: "Born alive", index: 0 }])}<div class="analytics-two-column">${section("Breeding outcomes", barChart(outcome, { label: "Breeding outcomes" }), "Pending records are not counted as failures.")}${section("Litter size trend", lineChart([{ name: "Born alive", color: colorFor("metric:born-alive", 0), points: trends }], { label: "Litter size over time" }), "Historical reproductive performance, separate from Genetics Pair Analysis.")}</div>${pairBars.length ? section("Pairing-history comparison", barChart(pairBars, { label: "Average recorded litter size by historical pairing" }), "Actual historical litters only; this is descriptive and not a genetics prediction.") : ""}${dams.length ? section("Dam offspring performance", table(["Dam", "Litters", "Offspring", "Average latest weight", "Retained / sold / deceased"], parentRows(dams)), "Direct recorded offspring only. A minimum of two measured offspring is required for a weight average.") : ""}${sires.length ? section("Sire offspring performance", table(["Sire", "Litters", "Offspring", "Average latest weight", "Retained / sold / deceased"], parentRows(sires)), "Repeated ancestors and linebreeding do not duplicate canonical offspring records.") : ""}${pairRows.length ? section("Breeding-pair history", table(["Pair", "Litters", "Offspring", "Average born alive", "Average latest weight"], pairRows), "Only recorded direct pairings and offspring are compared; unknown values stay unknown.") : ""}`;
   }
 
   function litterView() {
-    const values = litterAnalytics();
-    if (!values.litters.length) return empty(ui.species ? `No litter records for ${ui.species}` : "No litters recorded yet", "Record a litter to begin litter analytics.");
+    const options = performanceOptions(), values = litterAnalytics(currentState(), options), outcomes = litterOutcomeAnalytics(currentState(), options), weights = litterWeightPerformance(currentState(), options), weaning = weaningPerformance(currentState(), options), disposition = retainedSoldComparison(currentState(), options), unit = preferredWeightUnit();
+    const controls = performanceFilterControls();
+    if (!values.litters.length) return `${controls}${empty(ui.species ? `No litter records for ${ui.species}` : "No litters recorded yet", "Record a litter or widen the current filters.")}`;
     const ordered = values.litters.sort((a, b) => String(a.birthDate).localeCompare(String(b.birthDate)));
     const born = ordered.map((record, index) => ({ xValue: index, y: num(record.bornAlive) || 0, label: dateLabel(record.birthDate), detail: `${num(record.bornAlive) || 0} born` }));
     const weaned = ordered.flatMap((record, index) => num(record.weaned) === null ? [] : [{ xValue: index, y: num(record.weaned), label: dateLabel(record.birthDate), detail: `${num(record.weaned)} weaned` }]);
-    return `<div class="stats-grid">${stat("Total litters", values.totalLitters)}${stat("Born alive", values.totalBorn)}${stat("Stillborn", values.stillborn)}${stat("Total weaned", values.weaned)}${stat("Average litter", decimal(values.averageLitter, 1))}${stat("Largest litter", values.largestLitter ?? "—")}${stat("Survival to weaning", values.survival === null ? "—" : `${decimal(values.survival, 1)}%`, "Only litters with weaned counts")}</div>${seriesColorControls([{ key: "metric:born-alive", label: "Born alive" }, { key: "metric:weaned", label: "Weaned" }])}${section("Born vs. weaned", lineChart([{ name: "Born alive", color: colorFor("metric:born-alive", 0), points: born }, { name: "Weaned", color: colorFor("metric:weaned", 1), points: weaned }], { label: "Born alive and weaned over time" }), "Incomplete weaning records are omitted, not treated as losses.")}`;
+    const outcomeRows = outcomes.rows.map((row) => [esc(dateLabel(row.litter.birthDate)), esc(`${animalName(currentState(), row.parents.damId)} × ${animalName(currentState(), row.parents.sireId)}`), esc(row.born ?? "Not recorded"), esc(row.bornAlive ?? "Not recorded"), esc(row.weaned ?? "Not recorded"), esc(`${row.outcomes.retained}/${row.outcomes.sold}/${row.outcomes.deceased}`), esc(row.survivalToWeaning === null ? `Insufficient data · ${row.dataStatus}` : `${decimal(row.survivalToWeaning, 1)}%`)]);
+    const comparableRows = weights.rows.flatMap((litterRow) => litterRow.comparable.map((row) => [esc(dateLabel(litterRow.litter.birthDate)), esc(row.basis === "age" ? `${row.ageDays} days` : dateLabel(row.date)), esc(row.sampleSize), esc(row.averageGrams === null ? "Insufficient data" : displayWeight(row.averageGrams, unit))]));
+    const comparableSeries = weights.rows.map((litterRow, index) => ({ name: `${dateLabel(litterRow.litter.birthDate)} · ${animalName(currentState(), litterRow.parents.damId)}`, color: colorFor(`metric:litter:${litterRow.id}`, index), points: litterRow.comparable.filter((row) => row.averageGrams !== null).map((row) => ({ xValue: row.ageDays, y: row.averageGrams, label: `${row.ageDays} days`, detail: `${displayWeight(row.averageGrams, unit)} · n=${row.sampleSize}` })) }));
+    const dispositionRows = disposition.groups.map((row) => [esc(row.outcome === "retained" ? "Retained" : "Sold"), esc(row.animalCount), esc(row.weightSampleSize), esc(row.averageLatestWeightGrams === null ? "Insufficient data" : displayWeight(row.averageLatestWeightGrams, unit))]);
+    const weaningRows = weaning.rows.map((row) => [esc(row.animalName), esc(dateLabel(row.weanedDate)), esc(row.ageDays === null ? "Birth date missing" : `${row.ageDays} days`), esc(row.weight ? displayWeight(row.weight.grams, unit) : "Not recorded"), esc(row.dataStatus)]);
+    const resolvedRows = outcomes.rows.filter((row) => row.survivalToWeaning !== null);
+    return `${controls}<div class="stats-grid">${stat("Total litters", values.totalLitters)}${stat("Born alive", values.totalBorn)}${stat("Stillborn", values.stillborn)}${stat("Total weaned", values.weaned)}${stat("Average litter", decimal(values.averageLitter, 1))}${stat("Largest litter", values.largestLitter ?? "—")}${stat("Resolved survival samples", resolvedRows.length, `${outcomes.rows.length - resolvedRows.length} incomplete`)}</div>${seriesColorControls([{ key: "metric:born-alive", label: "Born alive" }, { key: "metric:weaned", label: "Weaned" }])}${section("Born vs. weaned", lineChart([{ name: "Born alive", color: colorFor("metric:born-alive", 0), points: born }, { name: "Weaned", color: colorFor("metric:weaned", 1), points: weaned }], { label: "Born alive and weaned over time" }), "Incomplete weaning records are omitted, not treated as losses.")}${section("Litter outcomes", table(["Birth date", "Pair", "Born", "Live born", "Weaned", "Retained / sold / deceased", "Resolved survival"], outcomeRows), "Missing counts remain missing. Survival is shown only when the recorded denominator and outcome are resolved.")}${comparableRows.length ? section("Comparable-age litter weights", `${lineChart(comparableSeries, { label: "Average litter weight by comparable age", yLabel: (grams) => displayWeight(grams, unit), empty: "At least two offspring need actual Health weights at the same recorded age." })}${table(["Litter", "Comparable age", "Sample", `Average (${unit})`], comparableRows)}`, "Canonical dated Health weight records only. Same-day records use the existing latest-record rule; no values are interpolated.") : section("Comparable-age litter weights", empty("Insufficient data", "Record actual dated Health weights for at least two offspring at the same age."))}${section("Retained vs. sold — descriptive only", table(["Outcome", "Animals", "Measured", `Average latest weight (${unit})`], dispositionRows), `${disposition.note} Sample sizes are shown and no causal claim is made.`)}${weaningRows.length ? section("Recorded weaning performance", table(["Animal", "Recorded weaning date", "Age", `Same-day weight (${unit})`, "Quality"], weaningRows), `Actual recorded weaning dates and same-day Health weights only. Rabbit records under 28 days are flagged, not averaged. Weight average: ${sampleValue(weaning.averageWeaningWeightGrams, weaning.weightSampleSize, "weight")}.`) : section("Recorded weaning performance", empty("No recorded weaning events", "Age alone never creates a weaning event."))}`;
   }
 
   function productionView() {
@@ -742,7 +1017,7 @@
     if (range) range.value = ui.range;
     const age = container.querySelector("[data-growth-age]");
     if (age) age.value = ui.agePreset;
-    container.querySelector("[data-analytics-species]")?.addEventListener("change", (event) => { ui.species = event.target.value; ui.animalIds = []; ui.growthAnimalScope = "active"; invalidateMarket(); render(host); if (ui.tab === "market") loadMarketAggregate(); });
+    container.querySelector("[data-analytics-species]")?.addEventListener("change", (event) => { ui.species = event.target.value; ui.animalIds = []; ui.growthAnimalScope = "active"; ui.litterId = ""; ui.sireId = ""; ui.damId = ""; invalidateMarket(); render(host); if (ui.tab === "market") loadMarketAggregate(); });
     range?.addEventListener("change", (event) => { ui.range = event.target.value; invalidateMarket(); render(host); if (ui.tab === "market") loadMarketAggregate(); });
     container.querySelector("[data-analytics-start]")?.addEventListener("change", (event) => { ui.start = event.target.value; invalidateMarket(); render(host); if (ui.tab === "market") loadMarketAggregate(); });
     container.querySelector("[data-analytics-end]")?.addEventListener("change", (event) => { ui.end = event.target.value; invalidateMarket(); render(host); if (ui.tab === "market") loadMarketAggregate(); });
@@ -753,6 +1028,11 @@
     container.querySelector("[data-growth-age-end]")?.addEventListener("change", (event) => { ui.ageEnd = event.target.value; render(host); });
     container.querySelector("[data-growth-animal-scope]")?.addEventListener("change", (event) => { ui.growthAnimalScope = event.target.value; render(host); });
     container.querySelectorAll("[data-growth-animal]").forEach((input) => input.addEventListener("change", () => { ui.animalIds = [...container.querySelectorAll("[data-growth-animal]:checked")].map((item) => item.value); render(host); }));
+    container.querySelector("[data-performance-litter]")?.addEventListener("change", (event) => { ui.litterId = event.target.value; render(host); });
+    container.querySelector("[data-performance-sire]")?.addEventListener("change", (event) => { ui.sireId = event.target.value; render(host); });
+    container.querySelector("[data-performance-dam]")?.addEventListener("change", (event) => { ui.damId = event.target.value; render(host); });
+    container.querySelector("[data-performance-scope]")?.addEventListener("change", (event) => { ui.offspringScope = event.target.value; render(host); });
+    container.querySelector("[data-performance-clear]")?.addEventListener("click", () => { ui.litterId = ""; ui.sireId = ""; ui.damId = ""; ui.offspringScope = "all"; render(host); });
     container.querySelector("[data-production-product]")?.addEventListener("change", (event) => { ui.product = event.target.value; render(host); });
     container.querySelectorAll("[data-market-filter]").forEach((input) => input.addEventListener("change", (event) => {
       ui.marketFilters[event.target.dataset.marketFilter] = event.target.value;
@@ -797,9 +1077,12 @@
   }
 
   return {
-    VERSION, METRICS, TABS, normalizeWeight, displayWeight, preferredWeightUnit,
+    VERSION, BUILD_ID, MIN_COMPARISON_SAMPLE, METRICS, TABS, normalizeWeight, displayWeight, preferredWeightUnit,
     rangeBounds, dateInRange, daysBetween, weightRows, birthWeightRow, growthSummary,
-    ageRangeBounds, filterGrowthByAge, weightHistory, breedingSpecies, litterSpecies,
+    ageRangeBounds, filterGrowthByAge, weightHistory, latestSameDayWeightRows, latestWeightRowsByAnimal,
+    litterParents, offspringForLitter, offspringOutcome, litterOutcomeAnalytics, litterWeightPerformance,
+    parentOffspringPerformance, pairingOffspringPerformance, retainedSoldComparison, weaningPerformance,
+    breedingSpecies, litterSpecies,
     litterAnalytics, breedingAnalytics, saleItemPrice, saleTotal, saleItemRows,
     paymentAllocation, revenueAnalytics, salesAnalytics, showAnalytics, productionSpecies,
     productionRows, normalizedProductionValue, productionAnalytics, eggAnalytics,

@@ -68,7 +68,10 @@
 .analytics-module-controls select,
 .analytics-module-controls input { display: block; width: 100%; margin-top: 5px; }
 .analytics-market-filters { padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--white); }
+.analytics-performance-filters { padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--white); }
+.analytics-performance-filters label { flex: 1 1 190px; min-width: 0; }
 html[data-theme="dark"] .analytics-market-filters { background: #172738; }
+html[data-theme="dark"] .analytics-performance-filters { background: #172738; }
 .analytics-color-control { display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 5px 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--cream); color: var(--navy); font-size: .78rem; font-weight: 800; }
 .analytics-color-control input[type="color"] { flex: 0 0 auto; width: 26px; height: 26px; padding: 1px; border: 0; border-radius: 50%; background: transparent; }
 .analytics-color-control span { min-width: 0; overflow-wrap: break-word; word-break: normal; line-height: 1.2; }
@@ -169,12 +172,14 @@ html[data-theme="dark"] .analytics-bar-label { fill: #c9d4df; }
   }
   .analytics-two-column { grid-template-columns: 1fr; }
   .analytics-market-filters label { flex: 1 1 42%; min-width: 150px; }
+  .analytics-performance-filters label { flex: 1 1 42%; min-width: 150px; }
   .analytics-table-wrap { max-width: 100%; overflow-x: auto; }
 }
 @media (max-width: 430px) {
   .analytics-toolbar label { flex-basis: 100%; }
   .analytics-tabs .button { min-height: 44px; }
   .analytics-market-filters label { flex-basis: 100%; }
+  .analytics-performance-filters label { flex-basis: 100%; }
   .analytics-chart svg { width: 660px; }
   .analytics-growth-controls fieldset { padding-inline: 8px; }
 }
