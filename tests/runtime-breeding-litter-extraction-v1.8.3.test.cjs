@@ -227,8 +227,8 @@ test("shell loads and caches Breeding/Litter runtime before application composit
   assert.match(worker, /"\/breeding-litter-runtime-v1\.8\.3\.js"/);
 });
 
-test("Phase 6C does not advance whole-app release or normalized-sync authority", () => {
-  assert.equal(packageJson.version, "1.8.2");
+test("Phase 6C extraction remains compatible with formal v1.8.3 and does not activate normalized-sync authority", () => {
+  assert.equal(packageJson.version, "1.8.3");
   assert.match(read("herdharbor-build.js"), /version:\s*"1\.8\.2"/);
   for (const asset of [
     "cloud-sync-cohort-gate-v1.8.3.js",
