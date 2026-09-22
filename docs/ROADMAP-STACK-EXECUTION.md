@@ -463,3 +463,19 @@
 - **Manual validation still required:** Settings route on supported mobile/desktop widths; operation profile edit; logo upload/remove; theme/weight preference; Market Analytics consent; sync-now/status refresh; device storage summary; backup/export/import; spreadsheet lazy-load actions; feedback and account deletion launch
 - **Known risks:** Settings depends on injected composition/domain services and script load order; cross-domain services must remain authoritative outside Settings; whole-app release remains 1.8.2
 - **Exact requirements inherited by Phase 7:** preserve all Phase 6B-6H extracted runtime APIs, canonical domain ownership, optional-tool lazy loading, animal-action router behavior, monitoring startup behavior, cloud/subscription/Paper Pedigree AI contracts, PWA/service-worker order, normalized-sync default-off guardrails, and whole-app v1.8.2 identity
+
+
+---
+
+## Phase 7 — Complete How-To / Help Center
+
+- **Status:** in progress
+- **Branch:** `docs/complete-herdharbor-help-center`
+- **Base branch:** `refactor/complete-application-runtime-decomposition`
+- **Base SHA:** `21d2368a42bd9d689666e2a58cc76ef65f6e7af7`
+- **Parent PR:** #161
+- **Application version:** 1.8.2
+- **Objective:** make the existing `/how-to/` center the coherent current in-app documentation surface without creating a second application or duplicating domain business rules.
+- **Current integration:** the existing `how-to-navigation-v1.8.1.js` remains the navigation component loaded by `herdharbor-build.js`; Phase 7 adds it and `/how-to/` to the offline shell, links Settings to the Help Center, and adds stable workflow anchors.
+- **Required workflow coverage:** add/edit animal; manual/paper pedigree; breeding/pregnancy/birth/litter; weights/basic and structured Health; sale/transfer; spreadsheet import/export; QR; sync states/retry; local backup/local-cloud comparison/recovery; Trial/Member/Free Adult; account basics.
+- **Protected inherited requirements:** preserve canonical domain owners, confirmation-before-mutation for Paper Pedigree AI, transfer provenance/deduplication, Health weight ownership, cloud conflict/dirty-local/tombstone semantics, subscription backend authority and Free Adult fallback, optional-tool lazy loading, normalized-sync default-off guardrails, and whole-app v1.8.2 identity.
