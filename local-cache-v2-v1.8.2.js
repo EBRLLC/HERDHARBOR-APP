@@ -310,6 +310,17 @@
     });
     root.document?.addEventListener?.("visibilitychange", () => {
       if (root.document.visibilityState === "hidden" && pendingRaw) void flush();
+      if (root.document.visibilityState === "visible") {
+        const latest = root.localStorage.getItem(STATE_KEY);
+        if (safeParse(latest)) schedule(latest, "foreground-refresh");
+      }
+    });
+    root.document?.addEventListener?.("freeze", () => {
+      if (pendingRaw) void flush();
+    });
+    root.addEventListener?.("pageshow", () => {
+      const latest = root.localStorage.getItem(STATE_KEY);
+      if (safeParse(latest)) schedule(latest, "resume-refresh");
     });
 
     return API;
