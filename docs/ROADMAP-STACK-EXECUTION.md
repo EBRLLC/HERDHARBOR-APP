@@ -744,3 +744,21 @@
 - **Known risks:** automatic reminders depend on explicit canonical follow-up dates; no due date is invented; existing historical breeding reminders remain owned by their established producer
 - **Requirements inherited by Phase 9G:** preserve Task-only mutation boundary, recurrence/idempotency, all cloud dirty/conflict/tombstone/LKG/backup guardrails, Phase 9B photo review-before-mutation and server-side key isolation, formal v1.8.3 identity, canonical local cache, and no second offline database
 
+
+
+---
+
+## Phase 9G — Offline + Mobile Capture Hardening
+
+- **Status:** in progress
+- **Branch:** `feat/harden-offline-mobile-capture`
+- **Base branch:** `feat/add-derived-task-automation`
+- **Base SHA:** `2cd75e4e766ceab2257679ae3de14c199578b291`
+- **Parent PR:** #177
+- **Application version:** 1.8.3 (unchanged)
+- **Objective:** harden mobile/offline capture and resume behavior without creating a second offline database or bypassing existing cloud/local safety contracts.
+- **New component:** `mobile-capture-v1.8.3.js` build `offline-mobile-capture-1`
+- **Canonical offline owner:** existing `local-cache-v2-v1.8.2.js` remains the only IndexedDB cache/recovery owner; canonical farm state and HerdHarborCloud remain authoritative.
+- **Photo capture boundary:** camera/file image -> orientation-safe resize/compression -> in-memory pending provider analysis -> Phase 9B review draft -> explicit canonical Animal/Health form confirmation.
+- **Retry behavior:** offline/provider-retryable photo analysis remains temporary in memory; reconnect/pageshow/foreground resume retries one in-flight analysis request and cannot directly create a farm record.
+- **Protected inherited requirements:** preserve dirty-local/conflict/tombstone/LKG/recovery snapshot behavior, legacy rollback, normalized-sync rollout guardrails, Phase 9A/9B review-before-mutation, Task-only Phase 9F automation, server-side provider keys, privacy-safe telemetry, formal v1.8.3 identity, PWA update safety, and no unrelated auth/sign-in changes.
