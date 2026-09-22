@@ -14,6 +14,7 @@ const photo = read("photo-assisted-entry-v1.8.3.js");
 const cache = read("local-cache-v2-v1.8.2.js");
 const cloudFlow = read("cloud-sync-v2-flow-v1.8.2.js");
 const cloud = read("herdharbor-cloud.js");
+const lifecycle = read("lifecycle-integrity-core-v1.8.2.js");
 const html = read("index.html");
 const worker = read("service-worker.js");
 const pkg = JSON.parse(read("package.json"));
@@ -115,7 +116,7 @@ test("canonical cloud retry safeguards remain untouched", () => {
   assert.match(cloudFlow, /state\.unsynced && !state\.conflict/);
   assert.match(cloudFlow, /navigator\.onLine === false/);
   assert.match(cloud, /hasUnsyncedChanges/);
-  assert.match(cloud, /lifecycleTombstones/);
+  assert.match(lifecycle, /lifecycleTombstones/);
   assert.match(cloud, /recordRecoverySnapshot/);
   assert.match(cloud, /syncConflict/);
   assert.doesNotMatch(mobile, /dirtyKey|baseKey|lifecycleTombstones|syncConflict/);
