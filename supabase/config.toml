@@ -44,7 +44,3 @@ verify_jwt = true
 # Provider secrets stay server-side; the browser receives only a review draft.
 verify_jwt = true
 
-[functions.photo-record-extract]
-# Photo-assisted record extraction is authenticated by Supabase before the
-# server-side AI provider is called. Provider secrets never enter browser code.
-verify_jwt = true
