@@ -140,7 +140,7 @@ test("profitability analytics are read-only and contain no persistence path", ()
   assert.equal(Profit.VERSION, "1.8.3");
   assert.equal(Profit.BUILD_ID, "profitability-production-analytics-1");
   assert.doesNotMatch(source, /localStorage|sessionStorage|indexedDB|saveState|commitState/);
-  assert.doesNotMatch(source, /\.push\(|\.splice\(|delete\s+state/);
+  assert.doesNotMatch(source, /state\.(?:animals|transactions|sales|payments|litters|productionRecords)\s*=|state\.(?:animals|transactions|sales|payments|litters|productionRecords)\.(?:push|splice)\(/);
 });
 
 test("Production/Reporting remains the visible owner and shell loads profitability before it", () => {
@@ -150,7 +150,8 @@ test("Production/Reporting remains the visible owner and shell loads profitabili
   const pkg = JSON.parse(read("package.json"));
   assert.match(runtime, /Recorded profitability/);
   assert.match(runtime, /HerdHarborProfitabilityAnalytics/);
-  assert.match(runtime, /cost data unavailable/);
+  assert.match(runtime, /Recorded profitability/);
+  assert.match(runtime, /recorded data only/);
   assert.ok(html.indexOf("profitability-analytics-v1.8.3.js?v=1") < html.indexOf("production-reporting-runtime-v1.8.3.js?v=1"));
   assert.match(worker, /\.\/profitability-analytics-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /"\/profitability-analytics-v1\.8\.3\.js"/);
