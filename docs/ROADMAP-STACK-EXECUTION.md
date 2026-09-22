@@ -705,3 +705,26 @@
 - **Known risks:** profitability is only as complete as recorded costs/payments and explicit allocation metadata; partial margins are intentionally withheld instead of inferred
 - **Requirements inherited by Phase 9F:** preserve canonical accounting owners and read-only profitability boundaries; reuse existing TaskRuntime and existing breeding reminder IDs; preserve v1.8.3 identity, review-before-mutation, cloud/subscription/security/PWA/runtime contracts, recurrence/idempotency, and normalized-sync rollout guardrails
 
+
+
+---
+
+## Phase 9F — Reminders + Automation
+
+- **Status:** in progress
+- **Branch:** `feat/add-derived-task-automation`
+- **Base branch:** `feat/add-production-profitability-analytics`
+- **Base SHA:** `c60cb51f6b5f94ecd0742b7d0d6b17c0d584c109`
+- **Parent PR:** #175
+- **Application version:** 1.8.3
+- **Objective:** extend the canonical TaskRuntime with deterministic, idempotent reminder reconciliation without creating a second reminder store or allowing task state to mutate source domain records.
+- **Existing producers retained:** Breeding/Litter runtime remains authoritative for pregnancy-check, birth-preparation, expected-birth, and weaning reminders using its existing deterministic IDs.
+- **New derived sources:** explicit breeding follow-up, explicit litter follow-up, Health follow-up, medication follow-up, vaccination follow-up, and recurring Health care.
+- **Canonical task owner:** `task-runtime-v1.8.3.js` reconciles definitions into `state.tasks`; `task-automation-v1.8.3.js` is definition-only.
+- **Idempotency:** deterministic root IDs, sourceRecordId/reminderType provenance, fingerprint-based source-change detection, no duplicate regeneration, and existing Task recurrence for subsequent occurrences.
+- **Completion rule:** unchanged source does not reopen completed automation roots; a non-recurring root can reopen only when its canonical source schedule changes; missing/deleted sources close automation-managed roots.
+- **Domain mutation rule:** reminder synchronization/completion changes Tasks only and never Health, Breeding, Litter, Animal, Sales, Production, or other source state.
+- **Database/schema changes:** none
+- **Edge Function changes:** none
+- **Secrets/config required:** none
+- **Protected inherited requirements:** preserve existing breeding reminder IDs/logic, Task recurrence semantics, canonical domain ownership, all Phase 9C-9E read-only analytics, formal v1.8.3 identity, review-before-mutation, cloud/subscription/security/PWA/runtime contracts, and normalized-sync rollout guardrails.
