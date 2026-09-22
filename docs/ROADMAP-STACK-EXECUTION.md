@@ -781,3 +781,75 @@
 - **Known risks:** in-memory pending photo analysis intentionally does not survive a full browser/process termination; this avoids introducing a second persistent offline image queue. Canonical farm records remain protected by the existing local/cloud architecture.
 - **Roadmap status:** implementation Phases 9A through 9G are complete; this ledger-closure commit must pass the full v1.8.3 CI gate before the remaining roadmap is considered fully green.
 
+
+
+---
+
+## Final production hardening — AI image usage limits
+
+- **PR number:** #181
+- **PR title:** fix: bound AI image usage before release
+- **Branch:** `fix/ai-image-usage-limits`
+- **Base branch:** `feat/harden-offline-mobile-capture`
+- **Base SHA:** `35d9e3affad4eab52692c8331000b31fdcd0186d`
+- **Validated implementation SHA:** `f3b779a6ab1f292791ca432dc3b43c97876181fb`
+- **Application version:** 1.8.3 (unchanged)
+- **Policy defaults:** Paper Pedigree = 5 scans per authenticated user per UTC day; general Photo Entry = 5 scans per authenticated user per UTC day; shared global AI-image backstop = 25 provider calls per UTC day
+- **Environment overrides:** `PAPER_PEDIGREE_DAILY_LIMIT`, `PHOTO_ENTRY_DAILY_LIMIT`, and `AI_IMAGE_GLOBAL_DAILY_LIMIT`
+- **Canonical quota owner:** `public.herdharbor_reserve_ai_image_request(uuid, text, integer, integer)`
+- **Database/schema changes:** add `supabase/v1.8.3-ai-image-usage-guard.sql`, containing service-role-only per-user/per-feature and shared-global UTC-day ledgers
+- **Privacy boundary:** quota ledgers store only authenticated user id, feature, UTC usage date, request count, and timestamp; they store no image/document content, extracted values, prompts, provider responses, or farm state
+- **Edge Function changes:** both `paper-pedigree-extract` and `record-photo-extract` reserve quota atomically before provider fetch; usage-ledger failure and quota exhaustion fail closed
+- **Compatibility retained:** review-before-mutation, server-side provider keys, `store:false`, canonical Animal/Health/Pedigree owners, Phase 9G offline behavior, and formal v1.8.3 identity
+- **Legacy compatibility:** the older Paper Pedigree-only v1.8.2 usage ledger remains in repository history for existing deployments, but the v1.8.3 shared guard is authoritative after its migration is applied
+- **Tests added/updated:** `tests/ai-image-usage-limits-v1.8.3.test.cjs`; `tests/paper-pedigree-rate-limit-v1.8.2.test.cjs`; v1.8.3 aggregate gate
+- **Exact CI result:** Alpha v1.8.3 CI #60 — PASS on implementation SHA `f3b779a6ab1f292791ca432dc3b43c97876181fb`; Web/security/regression and Android v1.8.3 review bundle passed
+- **Deployment order:** apply `supabase/v1.8.3-ai-image-usage-guard.sql` first, then deploy updated `paper-pedigree-extract` and `record-photo-extract`
+- **Manual validation still required:** live authenticated quota exhaustion, UTC-day reset, production AI secret/config, representative real documents, and provider-budget monitoring
+- **Known risk:** these application limits bound HerdHarbor request counts but do not create or guarantee a provider free tier; provider-side spending/billing controls remain the final cost backstop
+
+---
+
+# ROADMAP COMPLETION
+
+The planned HerdHarbor development roadmap through Phase 9G is implemented and the final pre-release AI usage hardening is complete in the stacked development chain.
+
+## Final implementation stack
+
+`main`
+→ #138 telemetry
+→ #139 normalized-sync rollout guardrails
+→ #141 animal-first workflows
+→ #143 trial / Free Adult
+→ #145 Paper Pedigree AI hardening
+→ #147 non-blocking monitoring startup
+→ #149 Animals/Profile extraction
+→ #151 Breeding/Litters extraction
+→ #153 Health extraction
+→ #155 Tasks extraction
+→ #157 Sales/Customers/Transfers extraction
+→ #159 Production/Reporting extraction
+→ #161 Settings/final runtime decomposition
+→ #163 Help Center
+→ #165 Alpha v1.8.3 release
+→ #167 reviewed voice-assisted entry
+→ #169 reviewed photo-assisted entry
+→ #171 growth/litter analytics
+→ #173 breeding/genetics decision support
+→ #175 profitability/production analytics
+→ #177 derived task automation
+→ #179 offline/mobile capture hardening
+→ #181 AI image usage limits / final production hardening
+
+## Release state
+
+- **Whole-app release identity:** Alpha v1.8.3
+- **Normalized-sync authority:** still gated; unrestricted normalized authoritative production operation has NOT been enabled
+- **Canonical legacy rollback:** retained
+- **AI review-before-mutation:** retained for Paper Pedigree, Voice Entry, and Photo Entry
+- **Android:** v1.8.3 review bundle passes CI; signed Play release remains external/manual
+- **Production deployment:** not yet performed by this development stack
+- **Database deployment required:** apply the v1.8.3 AI image usage guard migration; previously documented normalized-sync migrations remain separate controlled operational work
+- **Edge Function deployment required:** updated Paper Pedigree and Photo Entry extractors with existing provider/Supabase secrets
+- **Production/manual validation still required:** Stripe/webhooks, Free Adult edge cases, production Sentry event quality, real photo/pedigree documents, voice capture on supported devices, iOS/Android camera/PWA behavior, and controlled normalized-sync preflight/cohort rollout
+- **Auto-merge status:** no implementation PR in this stack has been auto-merged
