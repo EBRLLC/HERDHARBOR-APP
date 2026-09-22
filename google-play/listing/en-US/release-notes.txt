@@ -1,1 +1,1 @@
-Alpha v1.8.2 improves Cloud Sync reliability with protected local-first saves, automatic recovery, sync diagnostics, and stronger lifecycle integrity across breeding, litters, weaning, sales, and animal transfers.
+Alpha v1.8.3 adds animal-first workflows, hardened paper-pedigree photo import, improved account and Free Adult behavior, faster non-blocking startup monitoring, a decomposed app runtime, an updated How To Center, and guarded normalized-sync rollout infrastructure while keeping legacy sync recovery available.
