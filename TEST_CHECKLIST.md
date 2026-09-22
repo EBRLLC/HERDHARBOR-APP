@@ -1,4 +1,4 @@
-# HerdHarbor Alpha v1.8.2 Acceptance Checklist
+# HerdHarbor Alpha v1.8.3 Acceptance Checklist
 
 This checklist covers the current v1.8.1 release contract. Automated checks are authoritative where available; manual checks cover browser/device behavior that CI cannot fully prove.
 
@@ -82,7 +82,7 @@ This checklist covers the current v1.8.1 release contract. Automated checks are 
 ## Monitoring and privacy
 
 - Confirm the checked-in Sentry config has a blank DSN and production deployment injects the DSN from the protected environment.
-- Confirm a controlled synthetic production acceptance event identifies `HerdHarbor@1.8.1`.
+- Confirm a controlled synthetic production acceptance event identifies `HerdHarbor@1.8.3`.
 - Confirm monitoring events do not include credentials or full farm/member record payloads.
 - Confirm Market Analytics privacy suppression, consent deletion, minimum sample thresholds, and service-role aggregate access regressions remain green.
 
