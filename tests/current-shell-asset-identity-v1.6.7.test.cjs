@@ -35,4 +35,4 @@ assert.doesNotMatch(html, /(?:herdharbor-release-v1\.6\.1|herdharbor-membership-
 assert.match(worker, /"\/herdharbor-release-v1\.6\.1\.js"/);
 assert.match(worker, /"\/herdharbor-cloud\.js"/);
 
-console.log("Alpha v1.8.3 current shell asset identity guard passed");
+console.log("Alpha v1.8.4 current shell asset identity guard passed");
