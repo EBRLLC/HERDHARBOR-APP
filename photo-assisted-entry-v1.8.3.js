@@ -196,14 +196,6 @@
     return { ok: issues.length === 0, issues };
   }
 
-  function readFileAsDataUrl(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ""));
-      reader.onerror = () => reject(reader.error || new Error("The image could not be read."));
-      reader.readAsDataURL(file);
-    });
-  }
 
   function create(deps = {}) {
     const required = ["getState","openModal","closeModal","openAnimalForm","openHealthForm","esc","toast"];
@@ -213,12 +205,76 @@
 
     let selectedFile = null;
     let reviewed = null;
+    let retryController = null;
+    let lastPreparedPayload = null;
     const byId = (id) => root.document?.getElementById(id);
     const animals = () => {
       const state = deps.getState() || {};
       return Array.isArray(state.animals) ? state.animals : [];
     };
     const cloud = () => root.HerdHarborCloud || null;
+    const mobileCapture = () => root.HerdHarborMobileCapture || null;
+
+    function setCaptureStatus(state = "idle", message = "") {
+      const host = byId("photo-entry-status");
+      if (!host) return;
+      host.dataset.state = state;
+      host.textContent = message;
+      host.classList.toggle("hidden", !message);
+    }
+
+    async function invokePhotoService(payload) {
+      const service = cloud();
+      if (!service?.getSession?.()?.user?.id) {
+        const error = new Error("Sign in before using photo-assisted entry.");
+        error.code = "authentication_required";
+        throw error;
+      }
+      return typeof service.invokeFunctionWithDiagnostics === "function"
+        ? service.invokeFunctionWithDiagnostics("record-photo-extract", payload)
+        : service.invokeFunction("record-photo-extract", payload);
+    }
+
+    function ensureRetryController() {
+      if (retryController) return retryController;
+      const helper = mobileCapture();
+      if (!helper?.createRetryController) throw new Error("Mobile capture support did not load.");
+      retryController = helper.createRetryController({
+        isOnline: () => root.navigator?.onLine !== false,
+        execute: invokePhotoService,
+        onStatus: ({ state, message }) => setCaptureStatus(state, message)
+      });
+      return retryController;
+    }
+
+    function acceptProviderResponse(response) {
+      if (!response?.draft) {
+        const error = new Error(response?.error || "The photo reader returned no review draft.");
+        error.code = "empty_extraction";
+        throw error;
+      }
+      reviewed = canonicalDraft(response.draft, animals());
+      telemetry("photo_draft_created", reviewed.classification === "unsupported" ? "failure" : "success", reviewed.classification);
+      renderReview();
+      return reviewed;
+    }
+
+    async function resumePendingAnalysis(reason = "resume") {
+      if (!retryController?.getState?.().pending || root.navigator?.onLine === false) return false;
+      try {
+        const response = await retryController.resume(reason);
+        if (response?.draft) return acceptProviderResponse(response);
+        return response;
+      } catch (error) {
+        const code = clean(error?.code);
+        if (!error?.retryable && code !== "secure_service_error") {
+          const suffix = code && code !== "secure_service_error" ? " [" + code + "]" : "";
+          deps.toast((error?.message || "HerdHarbor could not read that image.") + suffix, "error");
+        }
+        return false;
+      }
+    }
+
 
     function telemetry(action, result, classification = "") {
       try {
@@ -361,7 +417,7 @@
 
     async function analyze() {
       if (!selectedFile) {
-        deps.toast("Choose a JPG or PNG image first.", "error");
+        deps.toast("Choose or take a JPG or PNG image first.", "error");
         return false;
       }
       if (!["image/jpeg","image/png"].includes(selectedFile.type)) {
@@ -372,25 +428,45 @@
         deps.toast("Sign in before using photo-assisted entry.", "error");
         return false;
       }
+
+      const helper = mobileCapture();
+      if (!helper?.prepareImage) {
+        deps.toast("Mobile photo preparation did not load. Reload HerdHarbor and try again.", "error");
+        return false;
+      }
+
       const button = byId("photo-entry-analyze");
       if (button) button.disabled = true;
+      setCaptureStatus("working", "Preparing photo…");
       try {
-        const dataUrl = await readFileAsDataUrl(selectedFile);
-        if (dataUrl.length > 10_500_000) throw new Error("That image is too large. Resize it and try again.");
-        const payload = { dataUrl, mimeType: selectedFile.type, fileName: selectedFile.name };
-        const response = typeof cloud().invokeFunctionWithDiagnostics === "function"
-          ? await cloud().invokeFunctionWithDiagnostics("record-photo-extract", payload)
-          : await cloud().invokeFunction("record-photo-extract", payload);
-        if (!response?.draft) throw new Error(response?.error || "The photo reader returned no review draft.");
-        reviewed = canonicalDraft(response.draft, animals());
-        telemetry("photo_draft_created", reviewed.classification === "unsupported" ? "failure" : "success", reviewed.classification);
-        renderReview();
-        return reviewed;
+        const prepared = await helper.prepareImage(selectedFile);
+        lastPreparedPayload = {
+          dataUrl: prepared.dataUrl,
+          mimeType: prepared.mimeType,
+          fileName: prepared.fileName
+        };
+        const sizeText = prepared.compressed
+          ? "Photo prepared for reliable upload."
+          : "Photo ready for upload.";
+        setCaptureStatus(root.navigator?.onLine === false ? "offline" : "ready",
+          root.navigator?.onLine === false
+            ? sizeText + " You are offline; analysis will retry when connection returns."
+            : sizeText);
+
+        const response = await ensureRetryController().run(lastPreparedPayload);
+        if (response?.queued) {
+          telemetry("photo_analysis_queued", "pending", "");
+          return response;
+        }
+        return acceptProviderResponse(response);
       } catch (error) {
         telemetry("photo_extraction_failed", "failure", reviewed?.classification || "");
         const code = clean(error?.code);
-        const suffix = code && code !== "secure_service_error" ? " [" + code + "]" : "";
-        deps.toast((error?.message || "HerdHarbor could not read that image.") + suffix, "error");
+        const retryable = error?.retryable === true || Boolean(retryController?.getState?.().pending);
+        if (!retryable) {
+          const suffix = code && code !== "secure_service_error" ? " [" + code + "]" : "";
+          deps.toast((error?.message || "HerdHarbor could not read that image.") + suffix, "error");
+        }
         return false;
       } finally {
         if (button) button.disabled = false;
@@ -400,9 +476,12 @@
     function open() {
       selectedFile = null;
       reviewed = null;
+      lastPreparedPayload = null;
+      retryController?.clear?.();
       deps.openModal("Photo-assisted entry",
-        '<form id="photo-entry-form"><label>Record photo<input id="photo-entry-file" type="file" accept="image/jpeg,image/png"></label>' +
-        '<p class="muted">Supported now: registration documents, veterinary documents, weight sheets, and medication labels. The image creates a review draft only.</p>' +
+        '<form id="photo-entry-form"><label>Record photo<input id="photo-entry-file" type="file" accept="image/jpeg,image/png" capture="environment"></label>' +
+        '<p class="muted">Take a clear photo or choose an existing JPG/PNG. HerdHarbor prepares large phone images for upload and creates a review draft only.</p>' +
+        '<div id="photo-entry-status" class="notice hidden" aria-live="polite"></div>' +
         '<div class="modal-actions"><button type="button" class="button button-ghost" id="photo-entry-cancel">Cancel</button><button type="submit" class="button button-primary" id="photo-entry-analyze">Analyze photo</button></div></form>' +
         '<div id="photo-entry-review"></div>',
         "Reviewed assistant"
@@ -410,10 +489,18 @@
       byId("photo-entry-file")?.addEventListener("change", (event) => {
         selectedFile = event.target?.files?.[0] || null;
         reviewed = null;
+        lastPreparedPayload = null;
+        retryController?.clear?.();
         const reviewHost = byId("photo-entry-review");
         if (reviewHost) reviewHost.innerHTML = "";
+        setCaptureStatus(selectedFile ? "ready" : "idle",
+          selectedFile ? (root.navigator?.onLine === false
+            ? "Photo selected. You are offline; prepare it now and HerdHarbor will retry analysis when connection returns."
+            : "Photo selected and ready to prepare.") : "");
       });
       byId("photo-entry-cancel")?.addEventListener("click", () => {
+        retryController?.clear?.();
+        lastPreparedPayload = null;
         telemetry("photo_entry_cancelled", "cancelled", "");
         deps.closeModal();
       });
@@ -423,6 +510,12 @@
       });
       return true;
     }
+
+    root.addEventListener?.("online", () => { void resumePendingAnalysis("online"); });
+    root.addEventListener?.("pageshow", () => { void resumePendingAnalysis("pageshow"); });
+    root.document?.addEventListener?.("visibilitychange", () => {
+      if (root.document.visibilityState === "visible") void resumePendingAnalysis("foreground");
+    });
 
     return Object.freeze({ VERSION, open, analyze, confirmReview });
   }
