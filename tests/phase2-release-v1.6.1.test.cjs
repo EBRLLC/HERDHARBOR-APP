@@ -14,7 +14,7 @@ test('current release build identity has one authoritative source',()=>{
   if(version==='1.8.0')assert.match(buildId,/^subscription-engine-/);
   if(version==='1.8.1')assert.match(buildId,/^october-subscription-launch-/);
   if(version==='1.8.2')assert.match(buildId,/^cloud-sync-v2-/);
-  if(version==='1.8.3')assert.equal(buildId,'alpha-v1.8.3-release-1');
+  if(version==='1.8.4')assert.equal(buildId,'alpha-v1.8.4-release-1');
   assert.match(appRuntime,/HerdHarborBuild\?\.version/);
   assert.match(pwa,/HerdHarborBuild\?\.version/);
 });
