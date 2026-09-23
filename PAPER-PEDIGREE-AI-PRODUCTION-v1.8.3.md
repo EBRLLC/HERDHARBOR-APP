@@ -11,7 +11,7 @@ This document records the production contract for the existing Paper Pedigree AI
 - Required server configuration: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `OPENAI_API_KEY`.
 - Optional server configuration: `OPENAI_PEDIGREE_MODEL`, `PAPER_PEDIGREE_DAILY_LIMIT`, `AI_IMAGE_GLOBAL_DAILY_LIMIT`, and `PAPER_PEDIGREE_PROVIDER_TIMEOUT_MS`.
 - Default Paper Pedigree allowance is **10 scans per authenticated user per UTC day**.
-- Paper Pedigree and general Photo Entry share a default **25 AI-image provider calls per UTC day** global backstop.
+- Paper Pedigree and general Photo Entry share a default **50 AI-image provider calls per UTC day** global backstop.
 - Provider response storage remains disabled with `store: false`.
 - JPG and PNG are the only automatic-reader formats currently supported.
 - Oversized/invalid requests fail before the paid provider call.
