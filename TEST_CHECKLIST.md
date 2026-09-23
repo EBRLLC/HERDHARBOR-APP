@@ -1,12 +1,12 @@
 # HerdHarbor Alpha v1.8.3 Acceptance Checklist
 
-This checklist covers the current v1.8.1 release contract. Automated checks are authoritative where available; manual checks cover browser/device behavior that CI cannot fully prove.
+This checklist covers the current v1.8.3 production baseline while v1.8.4 stability work is developed as a stacked candidate. Automated checks are authoritative where available; manual checks cover browser/device behavior that CI cannot fully prove.
 
 ## Release identity
 
-- Confirm `herdharbor-build.js`, `manifest.json`, `package.json`, `package-lock.json`, Android Gradle metadata, TWA metadata, PWA fallback metadata, monitoring metadata, README, and release notes all identify Alpha v1.8.1.
-- Confirm the service-worker cache name uses the current v1.8.1 build ID and old HerdHarbor shell caches are removed on activation.
-- Confirm the installed PWA displays Version 1.8.1 and the current build identifier in Settings/install status.
+- Confirm `herdharbor-build.js`, `manifest.json`, `package.json`, `package-lock.json`, Android Gradle metadata, TWA metadata, PWA fallback metadata, monitoring metadata, README, and release notes all identify Alpha v1.8.3.
+- Confirm the service-worker cache name uses the current v1.8.3 build ID and old HerdHarbor shell caches are removed on activation.
+- Confirm the installed PWA displays Version 1.8.3 and the current build identifier in Settings/install status.
 
 ## Authentication and registration safety
 
@@ -94,7 +94,7 @@ This checklist covers the current v1.8.1 release contract. Automated checks are 
 - Run `npm test` in `America/New_York`.
 - Run `npm run build:monitoring`.
 - Confirm the repository security audit reports no private key, provider secret, `.env`, backup/temp artifact, or duplicate browser Supabase client violation.
-- Confirm only the three current v1.8.1 GitHub Actions workflows remain active in the repository tree.
+- Confirm only the three current v1.8.3 GitHub Actions workflows remain active in the repository tree.
 - Confirm no obsolete open PR can be merged into current `main`.
 
 ## Production release verification
@@ -102,7 +102,7 @@ This checklist covers the current v1.8.1 release contract. Automated checks are 
 - Merge only from a green reviewed PR whose head SHA has not moved.
 - Confirm the resulting `main` merge SHA is the exact SHA checked out by the monitored production Pages workflow.
 - Confirm the production Pages job completes successfully through artifact staging and deployment.
-- Reload `https://app.herdharbor.com` after deployment and confirm the application identifies v1.8.1 and the current PWA shell.
+- Reload `https://app.herdharbor.com` after deployment and confirm the application identifies v1.8.3 and the current PWA shell.
 
 
 ## Cloud Sync V2 and lifecycle integrity
