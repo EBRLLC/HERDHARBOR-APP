@@ -4,6 +4,8 @@ const path = require("node:path");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 const appRuntime = fs.readFileSync(path.join(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
+const productionRuntimeSource = fs.readFileSync(path.join(__dirname, "..", "production-reporting-runtime-v1.8.3.js"), "utf8");
+const ProductionReporting = require("../production-reporting-runtime-v1.8.3.js");
 const firstStart = appRuntime.indexOf("  function currentMonthKey()");
 const firstEnd = appRuntime.indexOf("  function daysFromNow", firstStart);
 assert.ok(firstStart >= 0 && firstEnd > firstStart, "budget-period helpers are present");
@@ -50,16 +52,45 @@ assert.equal(firstHelpers.budgetSummary("2026").net, 250);
 assert.equal(firstHelpers.effectiveHeadCount("2026"), 12, "year view averages available monthly head-count overrides");
 assert.equal(firstHelpers.budgetPeriodLabel("2026"), "Full year 2026");
 
-const secondStart = appRuntime.indexOf("  function budgetPlansFor(");
-const secondEnd = appRuntime.indexOf("  function allocatedExpenseAmount", secondStart);
-assert.ok(secondStart >= 0 && secondEnd > secondStart, "yearly budget helpers are present");
-const budgetView = { year: 2026 };
-const secondHelpers = new Function(
-  "state",
-  "budgetView",
-  "budgetSummary",
-  `${appRuntime.slice(secondStart, secondEnd)}\nreturn { budgetPlansFor, budgetYears, yearlyActualRows };`
-)(state, budgetView, firstHelpers.budgetSummary);
+const noop = () => {};
+const htmlStub = () => "";
+const secondHelpers = ProductionReporting.create({
+  getState: () => state,
+  replaceState: () => {},
+  $: () => null,
+  ["$" + "$"]: () => [],
+  esc: (value) => String(value ?? ""),
+  headerHtml: htmlStub,
+  statCard: htmlStub,
+  emptyState: htmlStub,
+  field: htmlStub,
+  textareaField: htmlStub,
+  selectField: htmlStub,
+  formatDate: (value) => String(value || ""),
+  formatMoney: (value) => String(value || ""),
+  toast: noop,
+  currentMonthKey: () => "2026-08",
+  budgetPeriodLabel: firstHelpers.budgetPeriodLabel,
+  budgetSummary: firstHelpers.budgetSummary,
+  activeAnimals: () => state.animals.filter((animal) => animal.status === "Active"),
+  effectiveHeadCount: firstHelpers.effectiveHeadCount,
+  monthLabel: (value) => value,
+  monthTransactions: firstHelpers.monthTransactions,
+  operatingExpenseTransactions: () => [],
+  transactionSpecies: (transaction) => transaction.species || "",
+  transactionScopeLabel: (transaction) => transaction.scope || "Operation",
+  animalName: (id) => state.animals.find((animal) => animal.id === id)?.name || "Unknown animal",
+  todayISO: () => "2026-08-05",
+  uid: (prefix) => prefix + "-test",
+  recordActivity: noop,
+  saveState: () => true,
+  openModal: noop,
+  closeModal: noop,
+  renderCurrentView: noop,
+  ensureSpreadsheetToolsReady: async () => ({ downloadProductionReport: async () => true }),
+  openPaymentForm: noop
+});
+secondHelpers.getBudgetView().year = 2026;
 
 assert.equal(secondHelpers.budgetPlansFor("2026").length, 2, "year view combines all monthly plans in that year");
 assert.ok(secondHelpers.budgetYears().includes(2026));
@@ -71,11 +102,11 @@ assert.equal(months[0].income, 100);
 assert.equal(months[7].income, 250);
 assert.equal(months[11].income, 0);
 
-assert.match(appRuntime, /id="budget-period"/);
-assert.match(appRuntime, />Full year</);
-assert.match(appRuntime, /id="budget-year"/);
-assert.match(appRuntime, /data-quick-production="Hay"/);
-assert.match(appRuntime, /Hay: \{ species: "", unit: "bales"/);
-assert.match(appRuntime, /"square bales", "round bales", "tons"/);
+assert.match(productionRuntimeSource, /id="budget-period"/);
+assert.match(productionRuntimeSource, />Full year</);
+assert.match(productionRuntimeSource, /id="budget-year"/);
+assert.match(productionRuntimeSource, /data-quick-production="Hay"/);
+assert.match(productionRuntimeSource, /Hay: \{ species: "", unit: "bales"/);
+assert.match(productionRuntimeSource, /"square bales", "round bales", "tons"/);
 
 console.log("full-year budget and hay product tests passed");

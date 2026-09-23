@@ -4,9 +4,8 @@ const path = require("node:path");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 const appRuntime = fs.readFileSync(path.join(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
-const start = appRuntime.indexOf("  function productionSpecies(record)");
-const end = appRuntime.indexOf("  function renderBudget()", start);
-assert.ok(start >= 0 && end > start, "production and sales helpers are present");
+const productionRuntimeSource = fs.readFileSync(path.join(__dirname, "..", "production-reporting-runtime-v1.8.3.js"), "utf8");
+const ProductionReporting = require("../production-reporting-runtime-v1.8.3.js");
 
 const state = {
   animals: [
@@ -17,18 +16,44 @@ const state = {
   productionRecords: []
 };
 let nextId = 1;
-const source = appRuntime.slice(start, end);
-const buildHelpers = new Function(
-  "state",
-  "animalName",
-  "uid",
-  `${source}\nreturn { productionSpecies, productionFarmUse, productionSummaryRows, productionIncomeCategory, syncProductionIncome };`
-);
-const helpers = buildHelpers(
-  state,
-  (id) => state.animals.find((animal) => animal.id === id)?.name || "Unknown animal",
-  (prefix) => `${prefix}-${nextId++}`
-);
+const noop = () => {};
+const htmlStub = () => "";
+const helpers = ProductionReporting.create({
+  getState: () => state,
+  replaceState: () => {},
+  $: () => null,
+  "$$": () => [],
+  esc: (value) => String(value ?? ""),
+  headerHtml: htmlStub,
+  statCard: htmlStub,
+  emptyState: htmlStub,
+  field: htmlStub,
+  textareaField: htmlStub,
+  selectField: htmlStub,
+  formatDate: (value) => String(value || ""),
+  formatMoney: (value) => String(value || ""),
+  toast: noop,
+  currentMonthKey: () => "2026-08",
+  budgetPeriodLabel: (value) => value,
+  budgetSummary: () => ({ income: 0, operating: 0, capital: 0, net: 0 }),
+  activeAnimals: () => state.animals,
+  effectiveHeadCount: () => state.animals.length,
+  monthLabel: (value) => value,
+  monthTransactions: () => [],
+  operatingExpenseTransactions: () => [],
+  transactionSpecies: (transaction) => transaction.species || "",
+  transactionScopeLabel: (transaction) => transaction.scope || "Operation",
+  animalName: (id) => state.animals.find((animal) => animal.id === id)?.name || "Unknown animal",
+  todayISO: () => "2026-08-05",
+  uid: (prefix) => `${prefix}-${nextId++}`,
+  recordActivity: noop,
+  saveState: () => true,
+  openModal: noop,
+  closeModal: noop,
+  renderCurrentView: noop,
+  ensureSpreadsheetToolsReady: async () => ({ downloadProductionReport: async () => true }),
+  openPaymentForm: noop
+});
 
 const eggRecord = {
   id: "production-eggs",
@@ -129,8 +154,9 @@ helpers.syncProductionIncome(milkRecord);
 assert.equal(state.transactions.length, 2, "removing a sale amount removes only its linked income");
 assert.equal(milkRecord.transactionId, "");
 
-assert.match(appRuntime, /"Fed to livestock \/ calves", "feedQuantity"/, "dairy milk can be assigned to calves or livestock");
-assert.match(appRuntime, /"Waste \/ discard reason", "wasteReason"/, "milk waste and discard reasons are retained");
-assert.match(appRuntime, /Allocated quantities total/, "over-allocation is blocked");
+assert.match(productionRuntimeSource, /"Fed to livestock \/ calves", "feedQuantity"/, "dairy milk can be assigned to calves or livestock");
+assert.match(productionRuntimeSource, /"Waste \/ discard reason", "wasteReason"/, "milk waste and discard reasons are retained");
+assert.match(productionRuntimeSource, /Allocated quantities total/, "over-allocation is blocked");
+assert.match(appRuntime, /HerdHarborProductionReportingRuntime\?\.create/);
 
 console.log("production and sales tests passed");

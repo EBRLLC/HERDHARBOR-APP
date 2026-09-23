@@ -4,9 +4,8 @@ const path = require("node:path");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 const appRuntime = fs.readFileSync(path.join(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
-const start = appRuntime.indexOf("  function productionSpecies(record)");
-const end = appRuntime.indexOf("  function renderBudget()", start);
-assert.ok(start >= 0 && end > start, "production reporting helpers are present");
+const productionRuntimeSource = fs.readFileSync(path.join(__dirname, "..", "production-reporting-runtime-v1.8.3.js"), "utf8");
+const ProductionReporting = require("../production-reporting-runtime-v1.8.3.js");
 
 const state = {
   animals: [
@@ -84,30 +83,44 @@ const defaults = {
   Hay: { species: "", unit: "bales" },
   Other: { species: "", unit: "other" }
 };
-const source = appRuntime.slice(start, end);
-const buildHelpers = new Function(
-  "state",
-  "animalName",
-  "formatDate",
-  "monthLabel",
-  "formatQuantity",
-  "todayISO",
-  "PRODUCTION_DEFAULTS",
-  `${source}\nreturn {
-    productionPeriodRange, filterProductionRecords, productionSummaryRows,
-    productionTimelineRows, productionComparisonRows, productionWarnings,
-    latestProductionRecord, productionDraft, productionFarmUse
-  };`
-);
-const helpers = buildHelpers(
-  state,
-  (id) => state.animals.find((animal) => animal.id === id)?.name || "Unknown animal",
-  (date) => date,
-  (month) => month,
-  (value, unit) => `${Number(value)} ${unit}`,
-  () => "2026-08-05",
-  defaults
-);
+const noop = () => {};
+const htmlStub = () => "";
+const helpers = ProductionReporting.create({
+  getState: () => state,
+  replaceState: () => {},
+  $: () => null,
+  ["$" + "$"]: () => [],
+  esc: (value) => String(value ?? ""),
+  headerHtml: htmlStub,
+  statCard: htmlStub,
+  emptyState: htmlStub,
+  field: htmlStub,
+  textareaField: htmlStub,
+  selectField: htmlStub,
+  formatDate: (date) => date,
+  formatMoney: (value) => String(value ?? ""),
+  toast: noop,
+  currentMonthKey: () => "2026-08",
+  budgetPeriodLabel: (value) => value,
+  budgetSummary: () => ({ income: 0, operating: 0, capital: 0, net: 0 }),
+  activeAnimals: () => state.animals,
+  effectiveHeadCount: () => state.animals.length,
+  monthLabel: (month) => month,
+  monthTransactions: () => [],
+  operatingExpenseTransactions: () => [],
+  transactionSpecies: (transaction) => transaction.species || "",
+  transactionScopeLabel: (transaction) => transaction.scope || "Operation",
+  animalName: (id) => state.animals.find((animal) => animal.id === id)?.name || "Unknown animal",
+  todayISO: () => "2026-08-05",
+  uid: (prefix) => prefix + "-test",
+  recordActivity: noop,
+  saveState: () => true,
+  openModal: noop,
+  closeModal: noop,
+  renderCurrentView: noop,
+  ensureSpreadsheetToolsReady: async () => ({ downloadProductionReport: async () => true }),
+  openPaymentForm: noop
+});
 
 assert.deepEqual(helpers.productionPeriodRange("Day", "2026-08-04"), { start: "2026-08-04", end: "2026-08-04" });
 assert.deepEqual(helpers.productionPeriodRange("Week", "2026-08-04"), { start: "2026-08-03", end: "2026-08-09" });
@@ -169,11 +182,12 @@ assert.equal(quickHay.scope, "Operation");
 assert.equal(quickHay.species, "");
 assert.equal(quickHay.unit, "bales");
 
-assert.match(appRuntime, /data-quick-production="Eggs"/);
-assert.match(appRuntime, /data-quick-production="Milk"/);
-assert.match(appRuntime, /data-quick-production="Broilers"/);
-assert.match(appRuntime, /data-quick-production="Hay"/);
-assert.match(appRuntime, /downloadProductionReport/);
-assert.match(appRuntime, /Group \/ flock \/ herd \/ batch \/ field name/);
+assert.match(productionRuntimeSource, /data-quick-production="Eggs"/);
+assert.match(productionRuntimeSource, /data-quick-production="Milk"/);
+assert.match(productionRuntimeSource, /data-quick-production="Broilers"/);
+assert.match(productionRuntimeSource, /data-quick-production="Hay"/);
+assert.match(productionRuntimeSource, /downloadProductionReport/);
+assert.match(productionRuntimeSource, /Group \/ flock \/ herd \/ batch \/ field name/);
+assert.match(appRuntime, /HerdHarborProductionReportingRuntime\?\.create/);
 
 console.log("production reports and faster-entry tests passed");

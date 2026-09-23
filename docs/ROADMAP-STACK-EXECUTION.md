@@ -370,7 +370,7 @@
 - **Base branch:** `refactor/extract-task-runtime-domain`
 - **Base SHA:** `befd8cf3223191aacb641dacc1c897d134a332c4`
 - **Validated implementation head SHA:** `59778d92498c4024ae2e34de1a2c4f62d319805d`
-- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after the closure commit is revalidated, because a commit cannot contain its own Git SHA
+- **Final head SHA:** `d357cded77f8b138d3c5972464ea50b0dad81ab2`
 - **Parent PR:** #155
 - **Application version:** 1.8.2
 - **Component/build identities changed:** new static component `sales-customer-runtime-v1.8.3.js?v=1`; no whole-app, monitoring, cloud-sync, transfer-service, or Android release identity changed
@@ -396,12 +396,36 @@
 
 ---
 
-## Phase 6G — Runtime extraction: Production / Reporting
+## Completed Phase 6G — Runtime extraction: Production / Reporting
 
-- **Status:** pending
-- **Required base branch:** `refactor/extract-sales-customer-runtime-domain`
-- **Required base:** exact final green Phase 6F ledger-closure head
+- **Roadmap phase:** Phase 6G — Runtime extraction: Production / Reporting
+- **PR number:** #159
+- **PR title:** refactor: extract production and reporting runtime domain
+- **Branch:** `refactor/extract-production-reporting-runtime-domain`
+- **Base branch:** `refactor/extract-sales-customer-runtime-domain`
+- **Base SHA:** `d357cded77f8b138d3c5972464ea50b0dad81ab2`
+- **Validated implementation head SHA:** `c73fbd8a7a1b20cf197eb8c91bb79de1ace8864d`
+- **Final implementation head SHA:** `c73fbd8a7a1b20cf197eb8c91bb79de1ace8864d`
 - **Parent PR:** #157
-- **Application version target for this phase:** remain 1.8.2
+- **Application version:** 1.8.2
+- **Component/build identities changed:** new static component `production-reporting-runtime-v1.8.3.js`; no whole-app, monitoring, cloud-sync, subscription, or Android release identity changed
+- **Extracted ownership:** Budget route/filter state; monthly and annual budget plan UI helpers; Production record CRUD; linked Production-sale income synchronization; expense/income transaction forms; Production timeline/comparison/warning calculations; printable Production reporting; Budget CSV export; and Excel Production report launch wiring now live in `production-reporting-runtime-v1.8.3.js`
+- **Canonical state owners:** existing HerdHarbor application state remains authoritative for `state.productionRecords`, `state.transactions`, `state.budgetPlans`, `state.annualBudgetPlans`, `state.budgetMonthSettings`, and `state.animals`; the extracted runtime receives canonical services and creates no secondary persistence
+- **Public entry points introduced:** `window.HerdHarborProductionReportingRuntime.create(deps)`; existing composition delegates remain stable for current callers
+- **Compatibility paths retained:** dashboard-level finance summary/composition helpers remain injected; payment-linked transaction edits continue through the Sales/Customer runtime; existing CSV/printable report behavior remains compatible
+- **Compatibility paths removed:** monolithic Production/Budget/reporting route state, record CRUD, linked-income synchronization, report calculations, and report-launch implementation were removed from `herdharbor-app-runtime.js` where ownership moved to the extracted runtime
+- **Optional tooling:** ExcelJS, JSZip, and spreadsheet-import remain lazy-loaded; the extracted runtime calls `ensureSpreadsheetToolsReady()` only when an Excel report is requested
+- **Database/schema changes:** none
+- **Edge Function changes:** none
+- **Environment variables/secrets required:** none
+- **Monitoring changes:** none
+- **Migration requirements:** none; deploy the extracted static runtime asset, which is included in shell/service-worker/Pages artifact ownership checks
+- **Rollback procedure:** revert PR #159 shell/module/runtime/test changes to restore prior monolithic Production/Reporting ownership; no data migration rollback is required because canonical state shapes were not changed
+- **Tests added:** `tests/runtime-production-reporting-extraction-v1.8.3.test.cjs`
+- **Tests modified:** Production/Sales, Production reports, budget-year/hay, optional-tool lazy-loading, app compile, shell decomposition, stability/release reference, service-worker/Pages artifact coverage, and `package.json` v1.8.3 development gate
+- **Regression repair:** `tests/production-sales.test.cjs` now injects the required `$$` selector dependency; the runtime contract was not weakened
+- **Full CI result:** Alpha v1.8.2 CI #266 — PASS on validated implementation head `c73fbd8a7a1b20cf197eb8c91bb79de1ace8864d`; release/security, lifecycle/state-integrity, complete UTC and America/New_York discovery, monitoring build/architecture/configuration, source-mutation guard, and Android v1.8.2 review bundle all passed
+- **Manual validation still required:** deployed-browser Budget filters/month/year behavior; Production add/edit/delete/repeat-entry; linked income creation/update/removal; printable Production report; CSV export; Excel report lazy-load/launch; production allocation/waste warnings; and responsive route behavior
+- **Known risks:** extracted runtime depends on injected composition services and script load order; Budget/Production calculations share canonical transaction data with Sales/Customers and must not gain a parallel financial store; spreadsheet tooling must remain optional
+- **Exact requirements inherited by Phase 6H:** preserve `HerdHarborProductionReportingRuntime.create(deps)`, all Phase 6B-6F extracted runtime APIs, canonical state ownership, optional-tool lazy loading, animal-action router behavior, monitoring startup behavior, cloud/subscription/Paper Pedigree AI contracts, PWA/service-worker order, and whole-app v1.8.2 identity; remove compatibility paths only after repository-wide caller proof
 
-At Phase 6G start, first correct the inherited Phase 6F `Final head SHA` line to the exact final green parent SHA, then inspect repository HEAD, PR #157 diff, production/budget/reporting callers, optional spreadsheet lazy-loading contracts, tests, branch ancestry, and open PR overlap before extraction.

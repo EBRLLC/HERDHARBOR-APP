@@ -15,6 +15,7 @@ const runtime = read("herdharbor-app-runtime.js");
 const animalProfileRuntime = read("animal-profile-runtime-v1.8.3.js");
 const breedingLitterRuntime = read("breeding-litter-runtime-v1.8.3.js");
 const salesCustomerRuntime = read("sales-customer-runtime-v1.8.3.js");
+const productionReportingRuntime = read("production-reporting-runtime-v1.8.3.js");
 const worker = read("service-worker.js");
 
 const heavyAssets = [
@@ -222,7 +223,7 @@ test("network success without the expected API is treated as failure", async () 
 
 test("spreadsheet and QR action paths await their optional tools", () => {
   assert.match(breedingLitterRuntime, /download-breeding-report[\s\S]*?await ensureSpreadsheetToolsReady\(\)[\s\S]*?downloadBreedingReport/);
-  assert.match(runtime, /download-production-report[\s\S]*?await ensureSpreadsheetToolsReady\(\)/);
+  assert.match(productionReportingRuntime, /download-production-report[\s\S]*?await ensureSpreadsheetToolsReady\(\)/);
   assert.match(runtime, /export-excel[\s\S]*?await ensureSpreadsheetToolsReady\(\)/);
   assert.match(runtime, /download-spreadsheet-template[\s\S]*?await ensureSpreadsheetToolsReady\(\)/);
   assert.match(runtime, /async function handleSpreadsheetImport[\s\S]*?await ensureSpreadsheetToolsReady\(\{ importSupport: true \}\)/);
