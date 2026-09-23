@@ -848,7 +848,7 @@
     return `
       <div class="page-header">
         <div>
-          <p class="eyebrow">HerdHarbor alpha</p>
+          <p class="eyebrow">HerdHarbor Alpha · v${APP_VERSION}</p>
           <h2>${esc(title)}</h2>
           <p>${esc(description)}</p>
         </div>
@@ -907,6 +907,23 @@
         `<button class="button button-ghost" data-action="add-task">+ Add task</button>
          <button class="button button-primary" data-action="add-animal">+ Add animal</button>`
       )}
+      <section class="dashboard-release-panel" aria-label="HerdHarbor Alpha v1.8.3 release highlights">
+        <div class="dashboard-release-copy">
+          <p class="eyebrow">What’s new · v${APP_VERSION}</p>
+          <h3>One connected workflow across HerdHarbor</h3>
+          <p>Animal profiles, breeding and litters, Health, tasks, sales, reporting, and analytics now work together through their individual engines to create a smoother stream from one record to the next.</p>
+        </div>
+        <div class="dashboard-release-points">
+          <span>Animal-first workflows</span>
+          <span>Smarter tasks &amp; reminders</span>
+          <span>Growth, litter &amp; profitability analytics</span>
+          <span>Improved mobile &amp; offline use</span>
+        </div>
+        <div class="dashboard-ai-soon">
+          <strong>AI-assisted tools · Coming Soon</strong>
+          <span>Paper Pedigree scanning, voice entry, and photo entry are in testing and will be included with HerdHarbor membership at no extra AI charge.</span>
+        </div>
+      </section>
       <div class="stats-grid">
         ${statCard("Animals", activeAnimalCount, `${state.animals.length} total records`)}
         ${statCard("Active breedings", openBreedings, `${dueSoon} due within 14 days`)}
@@ -2317,7 +2334,7 @@
       </section>
 
       <section class="certification"><p>I certify that this pedigree reflects the records entered for this animal to the best of my knowledge.</p><div class="signature">Seller signature / date</div><div class="signature">Buyer signature / date</div></section>
-      <footer class="footer"><span>Created with HerdHarbor · Livestock records without limits.</span><span>HerdHarbor v${APP_VERSION} tester build</span></footer>
+      <footer class="footer"><span>Created with HerdHarbor · Livestock records without limits.</span><span>HerdHarbor Alpha v${APP_VERSION}</span></footer>
       <button class="no-print" onclick="window.print()">Print / Save PDF</button>
     </div></body></html>`;
     const mobilePrint = window.matchMedia("(max-width: 760px)").matches ||
