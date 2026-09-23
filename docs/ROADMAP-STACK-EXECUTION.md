@@ -794,7 +794,7 @@
 - **Base SHA:** `35d9e3affad4eab52692c8331000b31fdcd0186d`
 - **Validated implementation SHA:** `f3b779a6ab1f292791ca432dc3b43c97876181fb`
 - **Application version:** 1.8.3 (unchanged)
-- **Policy defaults:** Paper Pedigree = 5 scans per authenticated user per UTC day; general Photo Entry = 5 scans per authenticated user per UTC day; shared global AI-image backstop = 25 provider calls per UTC day
+- **Policy defaults:** Paper Pedigree = 10 scans per authenticated user per UTC day; general Photo Entry = 10 scans per authenticated user per UTC day; shared global AI-image backstop = 25 provider calls per UTC day
 - **Environment overrides:** `PAPER_PEDIGREE_DAILY_LIMIT`, `PHOTO_ENTRY_DAILY_LIMIT`, and `AI_IMAGE_GLOBAL_DAILY_LIMIT`
 - **Canonical quota owner:** `public.herdharbor_reserve_ai_image_request(uuid, text, integer, integer)`
 - **Database/schema changes:** add `supabase/v1.8.3-ai-image-usage-guard.sql`, containing service-role-only per-user/per-feature and shared-global UTC-day ledgers
