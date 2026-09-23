@@ -42,7 +42,7 @@ if (webVersion === "1.8.2") {
   assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=2/);
 }
 if (webVersion === "1.8.3") {
-  assert.equal(buildId, "alpha-v1.8.3-release-1");
+  assert.equal(buildId, "alpha-v1.8.4-release-1");
   assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=2/);
 }
 assert.match(html, /HerdHarbor Alpha v1\.8\.3 current application shell/);
@@ -51,7 +51,7 @@ assert.match(settingsRuntime, /id="settings-sync-now"/);
 assert.match(settingsRuntime, /id="settings-last-synced"/);
 assert.match(settingsRuntime, /id="export-excel"/);
 assert.match(settingsRuntime, /HerdHarbor Alpha v\$\{appVersion\(\)\}/);
-assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.3"/);
+assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.4"/);
 assert.match(appRuntime, /Guided pedigree builder · v\$\{APP_VERSION\}/);
 assert.doesNotMatch(appRuntime, /Guided pedigree builder · v0\.2\.1/);
 assert.doesNotMatch(appRuntime, /let animalView =/);
@@ -144,7 +144,7 @@ assert.match(serviceWorker, /rabbit-genetics-ui-advanced-v1\.6\.1\.js\?v=2/);
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);
 assert.match(serviceWorker, /NETWORK_FIRST_PATHS/);
 assert.match(serviceWorker, /fetch\(request, \{ cache: "no-store" \}\)/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "alpha-v1.8.3-release-1"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "alpha-v1.8.4-release-1"/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
 assert.match(pwa, /loadShows/);
