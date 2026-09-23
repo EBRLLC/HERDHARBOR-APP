@@ -19,10 +19,10 @@ test('current release build identity has one authoritative source',()=>{
 });
 
 test('sync state is pinned in the top bar and settings build details are compact',()=>{
-  const html=read('index.html'),appRuntime=read('herdharbor-app-runtime.js');
+  const html=read('index.html'),settingsRuntime=read('settings-runtime-v1.8.3.js');
   assert.match(html,/id="topbar-sync"/);
   assert.match(html,/id="topbar-sync-label"/);
-  assert.match(appRuntime,/<details class="settings-about">/);
+  assert.match(settingsRuntime,/<details class="settings-about">/);
 });
 
 test('new genetics engine is loaded after compatibility runtimes and cached offline',()=>{
