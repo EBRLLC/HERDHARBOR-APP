@@ -21,11 +21,11 @@ const fullDescription = read("google-play/listing/en-US/full-description.txt").t
 const androidManifest = read("android/app/src/main/AndroidManifest.xml");
 
 assert.doesNotMatch(html, /pre[ -]?alpha/i);
-assert.equal(manifest.version, "1.8.3");
+assert.equal(manifest.version, "1.8.4");
 assert.equal(manifest.display, "standalone");
 assert.ok(manifest.shortcuts.some((shortcut) => shortcut.url === "./#shows"));
 assert.equal(twa.packageId, "com.ebrllc.herdharbor");
-assert.equal(twa.appVersion, "1.8.3");
+assert.equal(twa.appVersion, "1.8.4");
 assert.equal(twa.appVersionCode, 17);
 assert.equal(twa.host, "app.herdharbor.com");
 assert.match(appGradle, /applicationId:\s*'com\.ebrllc\.herdharbor'/);
@@ -34,7 +34,7 @@ assert.match(appGradle, /applicationId "com\.ebrllc\.herdharbor"/);
 assert.match(appGradle, /compileSdkVersion 36/);
 assert.match(appGradle, /targetSdkVersion 36/);
 assert.match(appGradle, /versionCode 17/);
-assert.match(appGradle, /versionName "1\.8\.3"/);
+assert.match(appGradle, /versionName "1\.8\.4"/);
 assert.match(appGradle, /https:\/\/app\.herdharbor\.com\/manifest\.json/);
 // Verify the current native/TWA package and service worker share the v1.8.3
 // release identity while preserving every older-named domain asset required by
@@ -46,7 +46,7 @@ assert.match(worker, /shows-v1\.6\.1\.css\?v=1\.7\.1/);
 assert.match(worker, /shows-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /shows-v1\.6\.1-hardening\.js\?v=1\.7\.1/);
 assert.match(pwa, /\$\{APP_VERSION\}-alpha-\$\{BUILD_ID\}/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "alpha-v1.8.3-release-1"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "alpha-v1.8.4-release-1"/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
 assert.match(pwa, /loadShows/);
