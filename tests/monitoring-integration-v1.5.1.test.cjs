@@ -64,8 +64,8 @@ assert.match(instrumentation, /local_storage_remove/);
 assert.doesNotMatch(instrumentation, /localStorage\.getItem/);
 assert.doesNotMatch(instrumentation, /JSON\.parse\(value\)|String\(value\)|JSON\.stringify\(value\)/, "storage instrumentation never inspects stored values");
 
-assert.match(pwa, /herdharbor-monitoring-config\.js\?v=1\.8\.3/);
-assert.match(pwa, /vendor\/herdharbor-monitoring-v1\.6\.1\.min\.js\?v=1\.8\.3/);
+assert.match(pwa, /herdharbor-monitoring-config\.js\?v=1\.8\.4/);
+assert.match(pwa, /vendor\/herdharbor-monitoring-v1\.6\.1\.min\.js\?v=1\.8\.4/);
 assert.match(pwa, /addOptionalScript/);
 assert.match(pwa, /startMonitoringLoad\(\)/);
 assert.match(pwa, /bootApplication\(\);/);
@@ -79,8 +79,8 @@ assert.doesNotMatch(pwa, /HerdHarborCloud.*syncNow[\s\S]*SKIP_WAITING/, "app upd
 // advance independently. Guard the shell identity shape plus the exact monitoring
 // assets instead of pinning this integration test to the retired v1.7.1 shell.
 assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1|8\.2|8\.3)-/);
-assert.match(worker, /herdharbor-monitoring-config\.js\?v=1\.8\.3/);
-assert.match(worker, /herdharbor-monitoring-v1\.6\.1\.min\.js\?v=1\.8\.3/);
+assert.match(worker, /herdharbor-monitoring-config\.js\?v=1\.8\.4/);
+assert.match(worker, /herdharbor-monitoring-v1\.6\.1\.min\.js\?v=1\.8\.4/);
 assert.match(worker, /cache: "no-store"/);
 assert.doesNotMatch(worker, /install[\s\S]{0,500}skipWaiting\(\)/, "waiting-worker update UX remains intact");
 assert.match(worker, /event\.data\?\.type === "SKIP_WAITING"/);
