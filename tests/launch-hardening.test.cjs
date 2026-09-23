@@ -28,8 +28,8 @@ if (webVersion === "1.8.1") {
   assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=1/);
 }
 if (webVersion === "1.8.2") assert.equal(buildId, "cloud-sync-v2-state-integrity-1");
-if (webVersion === "1.8.3") assert.equal(buildId, "alpha-v1.8.3-release-1");
-assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.3"/);
+if (webVersion === "1.8.4") assert.equal(buildId, "alpha-v1.8.4-release-1");
+assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.4"/);
 assert.match(settingsRuntime, /id="request-account-deletion"/);
 assert.match(settingsRuntime, /Type DELETE to confirm/);
 assert.match(settingsRuntime, /herdharbor\.com\/delete-account\//);
@@ -55,7 +55,7 @@ assert.match(worker, /rabbit-genetics-runtime-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /shows-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /shows-v1\.6\.1-hardening\.js\?v=1\.7\.1/);
 assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "alpha-v1.8.3-release-1"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "alpha-v1.8.4-release-1"/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
 assert.match(pwa, /loadShows/);
