@@ -155,7 +155,7 @@
 
   const CLOUD_SYNC_ENGINE = "legacy-full-state";
   const CLOUD_PROVIDER = "supabase";
-  const CLOUD_SYNC_COMPONENT_BUILD = "legacy-full-state-observability-2";
+  const CLOUD_SYNC_COMPONENT_BUILD = "legacy-full-state-observability-3";
   const CLOUD_SYNC_APP_RELEASE = "1.8.2";
   const CLOUD_RETRY_DELAYS_MS = [750, 2000];
 
@@ -216,8 +216,24 @@
     };
   }
 
-  function reportCloudSyncFailure(operation, error, stateBytes = null) {
+  function normalizeCloudAttemptTelemetry(telemetry = {}) {
+    const retryAttempts = Number(telemetry?.retry_attempts);
+    return {
+      retry_attempts: Number.isFinite(retryAttempts) && retryAttempts > 0 ? Math.floor(retryAttempts) : 0,
+      retry_result: sanitizeCloudDiagnosticText(telemetry?.retry_result || "not_attempted", 40),
+      session_refresh_attempted: telemetry?.session_refresh_attempted === true,
+      session_refresh_result: sanitizeCloudDiagnosticText(telemetry?.session_refresh_result || "not_attempted", 40)
+    };
+  }
+
+  function withCloudRequestTelemetry(result, telemetry = {}) {
+    const base = result && typeof result === "object" ? result : { data: null, error: null };
+    return { ...base, __hhTelemetry: normalizeCloudAttemptTelemetry(telemetry) };
+  }
+
+  function reportCloudSyncFailure(operation, error, stateBytes = null, attemptTelemetry = {}) {
     const failure = normalizeCloudFailure(error, stateBytes);
+    const telemetry = normalizeCloudAttemptTelemetry(attemptTelemetry);
     try {
       document.dispatchEvent(new CustomEvent("herdharbor:cloud-sync-failure", {
         detail: {
@@ -236,7 +252,12 @@
           sync_stage: "legacy",
           app_release: CLOUD_SYNC_APP_RELEASE,
           component_build: CLOUD_SYNC_COMPONENT_BUILD,
-          serialized_state_bytes: failure.serialized_state_bytes
+          serialized_state_bytes: failure.serialized_state_bytes,
+          retry_attempts: telemetry.retry_attempts,
+          retry_result: telemetry.retry_result,
+          session_refresh_attempted: telemetry.session_refresh_attempted,
+          session_refresh_result: telemetry.session_refresh_result,
+          source_error: error instanceof Error ? error : null
         }
       }));
     } catch {}
@@ -259,6 +280,13 @@
 
   async function runCloudRequest(request, { allowAuthRefresh = true } = {}) {
     let authRefreshed = false;
+    const telemetry = {
+      retry_attempts: 0,
+      retry_result: "not_needed",
+      session_refresh_attempted: false,
+      session_refresh_result: "not_attempted"
+    };
+
     for (let attempt = 0; attempt <= CLOUD_RETRY_DELAYS_MS.length; attempt += 1) {
       let result;
       try {
@@ -267,22 +295,44 @@
         result = { data: null, error };
       }
       const error = result?.error;
-      if (!error) return result;
+      if (!error) {
+        if (telemetry.retry_attempts > 0) telemetry.retry_result = "recovered";
+        return withCloudRequestTelemetry(result, telemetry);
+      }
 
       const category = classifyCloudFailure(error, navigator?.onLine !== false);
       if (category === "auth" && allowAuthRefresh && !authRefreshed && typeof client?.auth?.refreshSession === "function") {
         authRefreshed = true;
+        telemetry.session_refresh_attempted = true;
         try {
           const refreshed = await client.auth.refreshSession();
-          if (!refreshed?.error) continue;
-        } catch {}
-        return result;
+          if (!refreshed?.error) {
+            telemetry.session_refresh_result = "success";
+            continue;
+          }
+          telemetry.session_refresh_result = "failure";
+        } catch {
+          telemetry.session_refresh_result = "exception";
+        }
+        return withCloudRequestTelemetry(result, telemetry);
       }
 
-      if (!isTransientCloudFailure(error) || attempt >= CLOUD_RETRY_DELAYS_MS.length) return result;
+      const transient = isTransientCloudFailure(error);
+      if (!transient || attempt >= CLOUD_RETRY_DELAYS_MS.length) {
+        telemetry.retry_result = transient ? "exhausted" : "not_retryable";
+        return withCloudRequestTelemetry(result, telemetry);
+      }
+
+      telemetry.retry_attempts += 1;
+      telemetry.retry_result = "retrying";
       await waitForCloudRetry(attempt);
     }
-    return { data: null, error: new Error("Cloud request retry limit reached.") };
+
+    telemetry.retry_result = "exhausted";
+    return withCloudRequestTelemetry(
+      { data: null, error: new Error("Cloud request retry limit reached.") },
+      telemetry
+    );
   }
 
   async function loadAccessProfile() {
@@ -1038,7 +1088,7 @@
     const nextVersion = new Date().toISOString();
 
     if (!remoteRecord) {
-      const { data, error } = await runCloudRequest(() => client
+      const result = await runCloudRequest(() => client
         .from(TABLE_NAME)
         .insert({
           user_id: userId,
@@ -1048,7 +1098,7 @@
         .select("app_state, updated_at")
         .single());
 
-      return { data, error, raced: error?.code === "23505" };
+      return { ...result, raced: result?.error?.code === "23505" };
     }
 
     let update = client
@@ -1063,11 +1113,11 @@
       ? update.eq("updated_at", remoteRecord.updated_at)
       : update.is("updated_at", null);
 
-    const { data, error } = await runCloudRequest(() => update
+    const result = await runCloudRequest(() => update
       .select("app_state, updated_at")
       .maybeSingle());
 
-    return { data, error, raced: !error && !data };
+    return { ...result, raced: !result?.error && !result?.data };
   }
 
   async function syncValueToCloud(rawValue, sequence = writeSequence, options = {}) {
@@ -1084,10 +1134,10 @@
     let autoMerged = false;
     setSyncState("Saving to cloud…", "working");
 
-    const { data: remoteRecord, error: loadError } = await fetchCloudRecord(userId);
+    const { data: remoteRecord, error: loadError, __hhTelemetry: loadTelemetry } = await fetchCloudRecord(userId);
 
     if (loadError) {
-      const failure = reportCloudSyncFailure("cloud-preflight", loadError, serializedStateBytes(rawValue));
+      const failure = reportCloudSyncFailure("cloud-preflight", loadError, serializedStateBytes(rawValue), loadTelemetry);
       console.error("HerdHarbor cloud preflight failed:", loadError);
       console.warn("HerdHarbor cloud preflight diagnostic:", failure.code, failure.status || "no-status");
       setSyncState("Cloud unavailable; changes are safe on this device and will retry.", "error");
@@ -1197,14 +1247,14 @@
       return true;
     }
 
-    const { data: savedRecord, error, raced } = await writeCloudRecord(
+    const { data: savedRecord, error, raced, __hhTelemetry: saveTelemetry } = await writeCloudRecord(
       userId,
       appState,
       remoteRecord || null
     );
 
     if (error) {
-      const failure = reportCloudSyncFailure("cloud-save", error, serializedStateBytes(rawValue));
+      const failure = reportCloudSyncFailure("cloud-save", error, serializedStateBytes(rawValue), saveTelemetry);
       console.error("HerdHarbor cloud save failed:", error);
       console.warn("HerdHarbor cloud save diagnostic:", failure.code, failure.status || "no-status");
       setSyncState("Cloud save failed; changes are safe on this device and will retry.", "error");
@@ -1214,6 +1264,12 @@
     if (raced) {
       const latest = await fetchCloudRecord(userId);
       if (latest.error) {
+        reportCloudSyncFailure(
+          "cloud-race-reload",
+          latest.error,
+          serializedStateBytes(rawValue),
+          latest.__hhTelemetry
+        );
         setSyncState("Cloud changed during save; local copy retained.", "error");
         return false;
       }

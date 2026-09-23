@@ -20,8 +20,13 @@ test("legacy cloud failures expose operation and sanitized provider diagnostics"
   assert.match(cloud, /sync_engine: CLOUD_SYNC_ENGINE/);
   assert.match(cloud, /cloud_provider: CLOUD_PROVIDER/);
   assert.match(cloud, /serialized_state_bytes: failure\.serialized_state_bytes/);
-  assert.match(cloud, /reportCloudSyncFailure\("cloud-preflight", loadError, serializedStateBytes\(rawValue\)\)/);
-  assert.match(cloud, /reportCloudSyncFailure\("cloud-save", error, serializedStateBytes\(rawValue\)\)/);
+  assert.match(cloud, /retry_attempts: telemetry\.retry_attempts/);
+  assert.match(cloud, /retry_result: telemetry\.retry_result/);
+  assert.match(cloud, /session_refresh_attempted: telemetry\.session_refresh_attempted/);
+  assert.match(cloud, /session_refresh_result: telemetry\.session_refresh_result/);
+  assert.match(cloud, /source_error: error instanceof Error \? error : null/);
+  assert.match(cloud, /reportCloudSyncFailure\("cloud-preflight", loadError, serializedStateBytes\(rawValue\), loadTelemetry\)/);
+  assert.match(cloud, /reportCloudSyncFailure\("cloud-save", error, serializedStateBytes\(rawValue\), saveTelemetry\)/);
 });
 
 test("cloud failure classifier covers required deterministic categories", () => {
@@ -42,9 +47,15 @@ test("retry policy is bounded and permanent failures are not blindly retried", (
   assert.match(cloud, /CLOUD_RETRY_DELAYS_MS = \[750, 2000\]/);
   assert.match(cloud, /\["network", "timeout", "rate_limit", "server"\]\.includes\(category\)/);
   assert.match(cloud, /attempt <= CLOUD_RETRY_DELAYS_MS\.length/);
-  assert.match(cloud, /!isTransientCloudFailure\(error\) \|\| attempt >= CLOUD_RETRY_DELAYS_MS\.length/);
+  assert.match(cloud, /!transient \|\| attempt >= CLOUD_RETRY_DELAYS_MS\.length/);
   assert.match(cloud, /typeof client\?\.auth\?\.refreshSession === "function"/);
   assert.match(cloud, /authRefreshed = true/);
+  assert.match(cloud, /telemetry\.retry_attempts \+= 1/);
+  assert.match(cloud, /telemetry\.retry_result = "recovered"/);
+  assert.match(cloud, /telemetry\.retry_result = transient \? "exhausted" : "not_retryable"/);
+  assert.match(cloud, /telemetry\.session_refresh_attempted = true/);
+  assert.match(cloud, /telemetry\.session_refresh_result = "success"/);
+  assert.match(cloud, /telemetry\.session_refresh_result = "failure"/);
 });
 
 test("cloud diagnostic sanitizer redacts credentials and personal contact data", () => {
@@ -57,22 +68,34 @@ test("cloud diagnostic sanitizer redacts credentials and personal contact data",
   assert.doesNotMatch(reporter, /refresh_token\s*:/);
 });
 
-test("monitoring event identifies provider operation instead of generic synthetic failure", () => {
-  assert.match(instrumentation, /CloudSyncProviderError:/);
-  assert.match(instrumentation, /operation/);
-  assert.match(instrumentation, /classification: category/);
-  assert.match(instrumentation, /serialized_state_bytes/);
-  assert.doesNotMatch(instrumentation, /new Error\(String\(detail\.message \|\| "Cloud synchronization operation failed\."/);
+test("monitoring adapter preserves originating Error provenance and never fabricates a provider stack", () => {
+  const start = instrumentation.indexOf("export function installCloudSyncFailureMonitoring");
+  const end = instrumentation.indexOf("export function installMonitoringAdapters");
+  const adapter = instrumentation.slice(start, end);
+  assert.match(adapter, /detail\.source_error instanceof Error \? detail\.source_error : null/);
+  assert.match(adapter, /operation/);
+  assert.match(adapter, /classification: category/);
+  assert.match(adapter, /serialized_state_bytes/);
+  assert.match(adapter, /retry_attempts/);
+  assert.match(adapter, /session_refresh_result/);
+  assert.doesNotMatch(adapter, /new Error\(/);
+  assert.doesNotMatch(adapter, /CloudSyncProviderError:/);
 });
 
 test("monitoring privacy allowlist explicitly controls new cloud diagnostic fields", () => {
   for (const key of [
     "classification", "provider", "sync_engine", "sync_stage", "app_release",
-    "component_build", "serialized_state_bytes", "provider_details", "provider_hint"
+    "component_build", "serialized_state_bytes", "provider_details", "provider_hint",
+    "retry_attempts", "retry_result", "session_refresh_attempted", "session_refresh_result"
   ]) {
     assert.match(core, new RegExp('"' + key + '"'));
   }
-  assert.match(core, /HERDHARBOR_MONITORING_BUILD = "phase1-monitoring-review-2"/);
+  assert.match(core, /HERDHARBOR_MONITORING_BUILD = "phase1-monitoring-review-3"/);
+});
+
+test("race-reload provider failures also use the telemetry contract", () => {
+  assert.match(cloud, /reportCloudSyncFailure\([\s\S]*"cloud-race-reload"/);
+  assert.match(cloud, /latest\.__hhTelemetry/);
 });
 
 test("existing dirty-state, merge, conflict and recovery protections remain present", () => {

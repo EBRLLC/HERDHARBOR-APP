@@ -163,11 +163,7 @@ export function installCloudSyncFailureMonitoring(monitoring, runtime = globalTh
       const code = String(detail.error_code || "unknown").slice(0, 80);
       const status = Number.isFinite(Number(detail.status_code)) ? Number(detail.status_code) : 0;
       const category = String(detail.classification || "unknown").slice(0, 40);
-      const providerMessage = String(detail.message || "Cloud provider request failed.").slice(0, 240);
-      const error = new Error(
-        `${operation} failed [${category}; code=${code}; status=${status || "none"}]: ${providerMessage}`
-      );
-      error.name = `CloudSyncProviderError:${String(detail.error_name || "Error").slice(0, 60)}`;
+      const sourceError = detail.source_error instanceof Error ? detail.source_error : null;
       monitoring?.captureOperationalFailure?.("cloud_sync_failure", {
         module: "sync",
         operation,
@@ -186,8 +182,12 @@ export function installCloudSyncFailureMonitoring(monitoring, runtime = globalTh
           ? Number(detail.serialized_state_bytes)
           : 0,
         provider_details: String(detail.provider_details || "").slice(0, 240),
-        provider_hint: String(detail.provider_hint || "").slice(0, 240)
-      }, error);
+        provider_hint: String(detail.provider_hint || "").slice(0, 240),
+        retry_attempts: Number.isFinite(Number(detail.retry_attempts)) ? Number(detail.retry_attempts) : 0,
+        retry_result: String(detail.retry_result || "not_attempted").slice(0, 40),
+        session_refresh_attempted: detail.session_refresh_attempted === true,
+        session_refresh_result: String(detail.session_refresh_result || "not_attempted").slice(0, 40)
+      }, sourceError);
     } catch {}
   });
   return true;
