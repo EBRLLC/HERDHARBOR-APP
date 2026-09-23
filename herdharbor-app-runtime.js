@@ -3,7 +3,7 @@
   "use strict";
 
   // The release identity comes from herdharbor-build.js; this fallback must match the current public release.
-  const APP_VERSION = window.HerdHarborBuild?.version || "1.8.3";
+  const APP_VERSION = window.HerdHarborBuild?.version || "1.8.4";
   const STORAGE_KEY = "herdharbor_pre_alpha_v1";
   const ATTACHMENT_DB = "herdharbor_attachments_v1";
   const ATTACHMENT_STORE = "pedigreeDocuments";
@@ -907,7 +907,7 @@
         `<button class="button button-ghost" data-action="add-task">+ Add task</button>
          <button class="button button-primary" data-action="add-animal">+ Add animal</button>`
       )}
-      <section class="dashboard-release-panel" aria-label="HerdHarbor Alpha v1.8.3 release highlights">
+      <section class="dashboard-release-panel" aria-label="HerdHarbor Alpha v1.8.4 release highlights">
         <div class="dashboard-release-copy">
           <p class="eyebrow">What’s new · v${APP_VERSION}</p>
           <h3>One connected workflow across HerdHarbor</h3>
