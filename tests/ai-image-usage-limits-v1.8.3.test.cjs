@@ -13,9 +13,9 @@ const photo = read("supabase/functions/record-photo-extract/index.ts");
 const sql = read("supabase/v1.8.3-ai-image-usage-guard.sql");
 const pkg = JSON.parse(read("package.json"));
 
-test("AI image readers default to five scans per user per UTC day", () => {
-  assert.match(paper, /const DEFAULT_DAILY_LIMIT = 5;/);
-  assert.match(photo, /const DEFAULT_DAILY_LIMIT = 5;/);
+test("AI image readers default to ten scans per user per UTC day", () => {
+  assert.match(paper, /const DEFAULT_DAILY_LIMIT = 10;/);
+  assert.match(photo, /const DEFAULT_DAILY_LIMIT = 10;/);
   assert.match(paper, /PAPER_PEDIGREE_DAILY_LIMIT/);
   assert.match(photo, /PHOTO_ENTRY_DAILY_LIMIT/);
 });
