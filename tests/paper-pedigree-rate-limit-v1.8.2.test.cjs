@@ -23,7 +23,7 @@ test('paper pedigree usage ledger is service-role only with an atomic daily rese
 test('Edge Function validates the image before reserving a bounded daily AI request', () => {
   const edge = read('supabase/functions/paper-pedigree-extract/index.ts');
   assert.match(edge, /DEFAULT_DAILY_LIMIT = 10/);
-  assert.match(edge, /DEFAULT_GLOBAL_DAILY_LIMIT = 25/);
+  assert.match(edge, /DEFAULT_GLOBAL_DAILY_LIMIT = 50/);
   assert.match(edge, /PAPER_PEDIGREE_DAILY_LIMIT/);
   assert.match(edge, /AI_IMAGE_GLOBAL_DAILY_LIMIT/);
   assert.match(edge, /MAX_REQUEST_BYTES/);
