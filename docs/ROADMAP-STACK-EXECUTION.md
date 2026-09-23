@@ -229,7 +229,7 @@
 - **Base branch:** `perf/decouple-monitoring-from-application-startup`
 - **Base SHA:** `4a79e10bb029917a892e4be466346fbe18724d95`
 - **Validated implementation head SHA:** `b94c7fb825637aa38d81e0cd2515be614c3ed977`
-- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after the closure commit is revalidated, because a commit cannot contain its own Git SHA
+- **Final head SHA:** `98a38b44ab655c1b63f6cdd98f6d55e20ea626c0`
 - **Parent PR:** #147
 - **Application version:** 1.8.2
 - **Component/build identities changed:** no whole-app, cloud-sync, monitoring, or existing domain component identity changed; new extracted component `animal-profile-runtime-v1.8.3.js?v=1` is loaded before the composition runtime
@@ -248,19 +248,55 @@
 - **Rollback procedure:** revert PR #149 shell/module/runtime/test changes, restoring the prior monolithic Animals/Profile implementation; no state/data migration rollback is required because canonical state shape and persistence were unchanged
 - **Tests added:** `tests/runtime-animal-profile-extraction-v1.8.3.test.cjs`
 - **Tests modified:** animal-first/router, app compile, release-reference, shell-decomposition, stability, analytics, Junior entry paths, Member cattle workflow, mobile pedigree, optional-tool lazy-loading, sales/customers, storage-efficiency, Pages artifact check, and `package.json` v1.8.3 development gate
-- **Full CI result:** Alpha v1.8.2 CI #235 — PASS on validated implementation head `b94c7fb825637aa38d81e0cd2515be614c3ed977`; current release/security, lifecycle/state-integrity, complete UTC and America/New_York regression discovery, monitoring build/architecture/config, source-mutation guard, and Android v1.8.2 review bundle all passed. The ledger-closure head is revalidated before Phase 6C.
+- **Full CI result:** Alpha v1.8.2 CI #236 — PASS on exact final head `98a38b44ab655c1b63f6cdd98f6d55e20ea626c0`; current release/security, lifecycle/state-integrity, complete UTC and America/New_York regression discovery, monitoring build/architecture/config, source-mutation guard, and Android v1.8.2 review bundle all passed.
 - **Manual validation still required:** exercise Animals filtering, add/edit/reactivate/delete, modern profile navigation/actions/returns, legacy direct detail fallback, cattle fields, photo upload, QR printing/deep links, and sale-linked delete refusal in a deployed browser/PWA
 - **Known risks:** the extracted module intentionally depends on injected composition helpers, so load order is contractually important; legacy detail fallback remains temporarily alongside the modern profile by design; later extraction phases must not pull shared helpers into multiple modules or create competing state owners
 - **Exact requirements inherited by next phase:** preserve `HerdHarborAnimalProfileRuntime.create(deps)`, modern Phase Two profile authority, `HerdHarborAnimalActionRouter`, narrow `HerdHarborApp.openAnimalEditor/openAnimalPedigreePrint` contracts, canonical single state ownership, animal-limit/state-integrity protections, Phase 6A non-blocking monitoring boot, prior AI/subscription/cloud contracts, and whole-app v1.8.2 identity
 
 ---
 
-## Phase 6C — Runtime extraction: Breeding / Litters
+## Completed Phase 6C — Runtime extraction: Breeding / Litters
+
+- **Roadmap phase:** Phase 6C — Runtime extraction: Breeding / Litters
+- **PR number:** #151
+- **PR title:** refactor: extract breeding and litter runtime domain
+- **Branch:** `refactor/extract-breeding-litter-runtime-domain`
+- **Base branch:** `refactor/extract-animal-profile-runtime-domain`
+- **Base SHA:** `98a38b44ab655c1b63f6cdd98f6d55e20ea626c0`
+- **Validated implementation head SHA:** `9c999733511ec4fc63cdb59f03ef3fa539967843`
+- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after the closure commit is revalidated, because a commit cannot contain its own Git SHA
+- **Parent PR:** #149
+- **Application version:** 1.8.2
+- **Component/build identities changed:** no whole-app, cloud-sync, monitoring, lifecycle, or existing domain component identity changed; new extracted component `breeding-litter-runtime-v1.8.3.js?v=1` is loaded before the composition runtime
+- **Production behavior changed:** no intended workflow redesign; breeding/litter list UI, breeding and birth forms, gestation schedule calculations, automatic reminder synchronization, report snapshot UI helper, birth validation, and legacy offspring-creation compatibility flow now execute from the extracted Breeding/Litter runtime
+- **Production behavior intentionally NOT changed:** canonical `state.breedings`, `state.litters`, and `state.animals` remain unchanged; `flow-phase2-lifecycle-v1.8.2.js`, `breeding-litter-workspace-v1.8.2.js`, weaning safeguards, lifecycle integrity, profile action routing/return behavior, Free Adult/Junior animal limits, deterministic IDs, parent/source links, report semantics, and reminder semantics remain authoritative/preserved; no auth or normalized-sync authority change; release remains 1.8.2
+- **Files/modules now owning the feature:** `breeding-litter-runtime-v1.8.3.js` owns breeding/litter UI orchestration and legacy offspring compatibility flow; canonical lifecycle/workspace/weaning/integrity engines remain separate unchanged owners; `herdharbor-app-runtime.js` retains composition/shared services and delegates
+- **Canonical state owner:** unchanged canonical HerdHarbor application state; extracted module receives `getState` and shared save/integrity helpers and creates no browser persistence or cloud state owner
+- **Public entry points introduced:** `window.HerdHarborBreedingLitterRuntime.create(deps)`; existing route/form callers continue through narrow composition delegates
+- **Compatibility paths retained:** manual `openOffspringCreator()` remains a compatibility fallback only; the authoritative path is `flow-phase2-lifecycle-v1.8.2.js` automatic born-offspring creation followed by `breeding-litter-workspace-integration-v1.8.2.js` / `HerdHarborBreedingWorkspace` for litter management. Profile breeding actions still route through the existing animal-action router. **Exact removal condition:** remove the manual fallback only after repository search proves there are no direct/un-enhanced litter-card callers and the deployed shell/load-order contract guarantees lifecycle + workspace integration before any litter interaction.
+- **Compatibility paths removed:** monolithic breeding report-year state, gestation constants, breeding/litter UI implementations, reminder synchronization implementation, birth validation implementation, and legacy offspring creator are removed from `herdharbor-app-runtime.js`
+- **Shared compatibility path intentionally retained:** `completeWorkflowTasks` remains composition-owned because Animals and Breeding/Litters both use it
+- **Database/schema changes:** none
+- **Edge Function changes:** none
+- **Environment variables/secrets required:** none
+- **Monitoring changes:** none
+- **Migration requirements:** none; static deployment must include `breeding-litter-runtime-v1.8.3.js`, which the Pages artifact gate now verifies
+- **Rollback procedure:** revert PR #151 shell/module/runtime/test changes, restoring the prior monolithic breeding/litter implementation; no state/data migration rollback is required
+- **Tests added:** `tests/runtime-breeding-litter-extraction-v1.8.3.test.cjs`
+- **Tests modified:** breeding/birth helper regression, Junior entry-path gate, optional-tool lazy loading, stability, app compile, release-reference, Pages artifact check, and `package.json` v1.8.3 development gate
+- **Full CI result:** Alpha v1.8.2 CI #241 — PASS on validated implementation head `9c999733511ec4fc63cdb59f03ef3fa539967843`; current release/security, lifecycle/state-integrity, complete UTC and America/New_York regression discovery, monitoring build/architecture/config, source-mutation guard, and Android v1.8.2 review bundle all passed. The ledger-closure head is revalidated before Phase 6D.
+- **Manual validation still required:** exercise breeding add/edit/delete, species schedule recalculation, pregnancy results, birth linking/edit/delete, report download, reminder creation/completion, offspring creation/management, profile breeding return behavior, and weaning safeguards in deployed browser/PWA
+- **Known risks:** extracted UI orchestration depends on injected shared services/load order; manual offspring creation intentionally remains only as compatibility fallback behind the canonical lifecycle/workspace integration; later extractions must not duplicate lifecycle/workspace/integrity state mutation
+- **Exact requirements inherited by next phase:** preserve `HerdHarborBreedingLitterRuntime.create(deps)`, canonical lifecycle/workspace/weaning/integrity engines, shared `completeWorkflowTasks`, Phase 6B Animals/Profile contracts, Phase 6A monitoring boot contracts, prior AI/subscription/cloud contracts, and whole-app v1.8.2 identity
+
+---
+
+## Phase 6D — Runtime extraction: Health
 
 - **Status:** pending
-- **Required base branch:** `refactor/extract-animal-profile-runtime-domain`
-- **Required base:** exact final green Phase 6B ledger-closure head
-- **Parent PR:** #149
+- **Required base branch:** `refactor/extract-breeding-litter-runtime-domain`
+- **Required base:** exact final green Phase 6C ledger-closure head
+- **Parent PR:** #151
 - **Application version target for this phase:** remain 1.8.2
 
-At Phase 6C start, first correct the inherited Phase 6B `Final head SHA` line to the exact final green parent SHA, then inspect repository HEAD, PR #149 diff, breeding/litter callers and canonical lifecycle engines, tests, branch ancestry, and open PR overlap before extraction.
+At Phase 6D start, first correct the inherited Phase 6C `Final head SHA` line to the exact final green parent SHA, then inspect repository HEAD, PR #151 diff, health callers and canonical health-intelligence engines, tests, branch ancestry, and open PR overlap before extraction.
