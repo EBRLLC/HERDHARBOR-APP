@@ -1,6 +1,6 @@
 # Paper Pedigree AI Production Contract — v1.8.3 Development Stack
 
-This document records the production contract for the existing Paper Pedigree AI feature. It does not enable a new AI mutation path and does not change the whole-app release from v1.8.2.
+This document records the production contract for the existing Paper Pedigree AI feature. It does not enable a new AI mutation path. The whole-app release is Alpha v1.8.3.
 
 ## Security and configuration
 

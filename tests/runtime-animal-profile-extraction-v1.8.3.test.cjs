@@ -62,7 +62,7 @@ test("Animals/Profile domain has one extracted runtime owner", () => {
   assert.match(extractedSource, /root\.HerdHarborAnimalProfileRuntime = api/);
   assert.match(extractedSource, /function renderAnimals\(\)/);
   assert.match(extractedSource, /function renderAnimalResults\(\)/);
-  assert.match(extractedSource, /function openAnimalForm\(id = ""\)/);
+  assert.match(extractedSource, /function openAnimalForm\(id = "", defaults = \{\}\)/);
   assert.match(extractedSource, /function openAnimalDetail\(id\)/);
   assert.match(extractedSource, /function openAnimalQrCardForm\(/);
   assert.match(extractedSource, /function printAnimalQrCards\(/);
@@ -73,7 +73,7 @@ test("composition runtime delegates animal behavior instead of retaining a secon
   assert.match(runtimeSource, /function animalProfileRuntime\(\)/);
   assert.match(runtimeSource, /HerdHarborAnimalProfileRuntime\?\.create/);
   assert.match(runtimeSource, /function renderAnimals\(\) \{\s*return animalProfileRuntime\(\)\.renderAnimals\(\);\s*\}/);
-  assert.match(runtimeSource, /function openAnimalForm\(id = ""\) \{\s*return animalProfileRuntime\(\)\.openAnimalForm\(id\);\s*\}/);
+  assert.match(runtimeSource, /function openAnimalForm\(id = "", defaults = \{\}\) \{\s*return animalProfileRuntime\(\)\.openAnimalForm\(id, defaults\);\s*\}/);
   assert.match(runtimeSource, /function openAnimalDetail\(id\) \{\s*return animalProfileRuntime\(\)\.openAnimalDetail\(id\);\s*\}/);
   assert.match(runtimeSource, /function pedigreeRecordPreviewHtml\(subject, record = null\) \{\s*return animalProfileRuntime\(\)\.pedigreeRecordPreviewHtml\(subject, record\);\s*\}/);
   assert.doesNotMatch(runtimeSource, /let animalView =/);

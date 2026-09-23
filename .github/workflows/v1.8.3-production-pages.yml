@@ -117,6 +117,7 @@ jobs:
           test -s _site/production-reporting-runtime-v1.8.3.js
           test -s _site/settings-runtime-v1.8.3.js
           test -s _site/voice-assisted-entry-v1.8.3.js
+          test -s _site/photo-assisted-entry-v1.8.3.js
           test -s _site/how-to-navigation-v1.8.1.js
           test -s _site/how-to/index.html
           grep -q 'version: "1.8.3"' _site/herdharbor-build.js

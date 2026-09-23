@@ -565,3 +565,38 @@
 - **Manual validation still required:** supported mobile browser microphone permission/voice recognition; typed fallback; review editing; Health form handoff; Breeding form handoff; cancellation/provider-failure UX
 - **Exact requirements inherited by Phase 9B:** preserve formal v1.8.3 release identity, voice review-before-mutation, canonical Health/Breeding owners, Paper Pedigree provider-key isolation and confirmation boundary, all cloud/subscription/security/privacy/PWA/runtime contracts, and no unrelated auth/sign-in changes
 
+
+
+---
+
+## Completed Phase 9B — Photo-assisted record entry
+
+- **Roadmap phase:** Phase 9B — Photo-assisted record entry
+- **PR number:** #169
+- **PR title:** feat: add reviewed photo-assisted record entry
+- **Branch:** `feat/reviewed-photo-assisted-record-entry`
+- **Base branch:** `feat/reviewed-voice-assisted-record-entry`
+- **Base SHA:** `5c85445373fa243b0326b46b71711708b5ca87ef`
+- **Validated implementation head SHA:** `83f76ad374671e9a9daa46120d1244bde4c305dd`
+- **Parent PR:** #167
+- **Application version:** 1.8.3
+- **Server owner:** authenticated Supabase Edge Function `record-photo-extract`
+- **Client owner:** `photo-assisted-entry-v1.8.3.js`
+- **Supported document classes:** registration, veterinary document, weight sheet, medication label
+- **Single-owner cleanup:** duplicate `photo-record-extract` endpoint/config removed; `record-photo-extract` is the only canonical Phase 9B provider entry point
+- **Provider isolation:** `OPENAI_API_KEY` remains server-side; function supports current Supabase secret-key fallback plus service-role compatibility; provider storage remains `store: false`
+- **Review/mutation boundary:** provider output is always a draft; registration opens canonical Animal form; vet/weight/medication opens canonical Health form; client/Edge Function perform no canonical persistence
+- **Weight sheets:** up to 25 extracted rows may be returned; multi-row sheets require explicit row selection before one Health draft can continue
+- **Animal matching:** exact strong identifiers are tried before name; ambiguous/missing matches remain unresolved for user review
+- **Medical boundary:** no diagnosis, treatment recommendation, dose calculation, unit conversion, or invention of missing values
+- **PWA/deployment:** client asset loads before composition runtime, is cached/network-first, and is required in the Pages artifact
+- **Supabase config:** `verify_jwt = true` for `record-photo-extract`
+- **Database/schema changes:** none
+- **New production contract:** `PHOTO-ASSISTED-ENTRY-PRODUCTION-v1.8.3.md`
+- **Tests added:** `tests/photo-assisted-entry-v1.8.3.test.cjs`
+- **Compatibility tests updated:** Animal/Profile extraction contract now permits reviewed defaults to pass through to the canonical Animal form
+- **Full CI result:** Alpha v1.8.3 CI #40 — PASS on validated implementation head `83f76ad374671e9a9daa46120d1244bde4c305dd`; this record-only closure commit must also pass before Phase 9C branches
+- **Manual validation still required:** deployed Edge Function invocation with production secrets; representative registration/vet/weight/medication photos; multi-row selector; mobile upload UX; provider timeout/rate-limit UX
+- **Deployment note:** the Edge Function code/config are committed in the stack; production deployment must follow the normal controlled release path and is not performed by this stacked PR
+- **Exact requirements inherited by Phase 9C:** preserve formal v1.8.3 identity, 9A/9B review-before-mutation, canonical Animal/Health ownership, provider-key isolation, Paper Pedigree confirmation boundary, cloud/subscription/security/privacy/PWA/runtime contracts, and no unrelated auth/sign-in changes
+
