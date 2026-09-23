@@ -211,7 +211,7 @@
         addScript("hh-rabbit-genetics-v2-engine", "rabbit-genetics-engine-advanced-v1.6.1.js?v=1.7.1", () => {
           addScript("hh-rabbit-genetics-v151-engine", "rabbit-genetics-engine-compat-v1.6.1.js?v=1.7.1", () => {
             addScript("hh-rabbit-genetics-v151-runtime", "rabbit-genetics-runtime-v1.6.1.js?v=1.7.1", () => {
-              addScript("hh-rabbit-genetics-v161", "rabbit-genetics-v1.6.1.js?v=1.7.1", () => {
+              addScript("hh-rabbit-genetics-v161", "rabbit-genetics-v1.6.1.js?v=2", () => {
                 addScript("hh-standards-phase3", "standards-registry-v1.6.1.js?v=1.7.1", () => {
                   addScript("hh-multispecies-genetics-v1.7.1", "multispecies-genetics-v1.7.1.js?v=1.7.1", () => {
                     addScript("hh-standards-genetics-ui-v1.6.1", "standards-genetics-ui-v1.6.1.js?v=1.7.1", () => {
@@ -226,7 +226,7 @@
                   addScript("hh-breeding-intelligence-script", "breeding-intelligence-v1.6.1.js?v=1.7.1", () => {
                     addScript("hh-breeding-pair-hotfix-script", "breeding-pair-v1.6.1.js?v=1.7.1", () => {
                       addScript("hh-rabbit-genetics-v151-ui", "rabbit-genetics-ui-compat-v1.6.1.js?v=1.7.1", () => {
-                        addScript("hh-rabbit-genetics-v2-ui", "rabbit-genetics-ui-advanced-v1.6.1.js?v=1.7.1", () => {
+                        addScript("hh-rabbit-genetics-v2-ui", "rabbit-genetics-ui-advanced-v1.6.1.js?v=2", () => {
                           addScript("hh-breeding-intelligence-tools-script", "breeding-intelligence-tools-v1.6.1.js?v=1.7.1", () => {
                             addScript("hh-v151-release-script", "herdharbor-release-v1.6.1.js?v=1.7.1");
                           });

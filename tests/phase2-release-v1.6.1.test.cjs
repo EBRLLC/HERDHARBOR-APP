@@ -29,5 +29,5 @@ test('sync state is pinned in the top bar and settings build details are compact
 test('new genetics engine is loaded after compatibility runtimes and cached offline',()=>{
   const pwa=read('pwa.js'),worker=read('service-worker.js');
   assert.ok(pwa.indexOf('rabbit-genetics-v1.6.1.js')>pwa.indexOf('rabbit-genetics-runtime-v1.6.1.js'));
-  assert.match(worker,/rabbit-genetics-v1\.6\.1\.js\?v=1\.7\.1/);
+  assert.match(worker,/rabbit-genetics-v1\.6\.1\.js\?v=2/);
 });
