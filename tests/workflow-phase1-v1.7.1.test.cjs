@@ -123,7 +123,7 @@ test('sign-in bootstrap keeps the Supabase callback deadlock guard ahead of clou
   const release=fs.readFileSync(path.join(repo,'herdharbor-release-v1.6.1.js'),'utf8');
   const cloud=fs.readFileSync(path.join(repo,'herdharbor-cloud.js'),'utf8');
   assert.ok(html.indexOf('herdharbor-release-v1.6.1.js?v=1.7.1')>=0);
-  assert.ok(html.indexOf('herdharbor-cloud.js?v=20')>html.indexOf('herdharbor-release-v1.6.1.js?v=1.7.1'));
+  assert.ok(html.indexOf('herdharbor-cloud.js?v=21')>html.indexOf('herdharbor-release-v1.6.1.js?v=1.7.1'));
   assert.match(release,/installSupabaseAuthDeadlockGuard\(\);/);
   assert.match(release,/setTimeout\.bind\(window\)|window\.setTimeout/);
   assert.match(cloud,/client\.auth\.onAuthStateChange/);

@@ -124,7 +124,7 @@
 - **Branch:** `feat/complete-production-trial-free-adult`
 - **Base branch:** `feat/consolidate-animal-first-workflows`
 - **Base SHA:** `c5262e4650e3f22a49a75fe6acba8469879fe8d8`
-- **Final head SHA:** `3ca76a2221992c83ed9c82ffa5c6f7a0440ef15c`
+- **Final head SHA:** `7ac4a0a58dbf694242b825ae65fee883d3223a61`
 - **Parent PR:** #141
 - **Application version:** 1.8.2
 - **Component/build identities changed:** no whole-app or cloud-sync build identity changed; subscription launch/provider asset revisions advance to `?v=2` in the runtime loader and service-worker shell so the hardened client code invalidates older cached copies
@@ -143,19 +143,54 @@
 - **Rollback procedure:** revert PR #143 client and Edge Function changes and restore prior asset revisions; no destructive herd migration is performed, and Free Adult status values are already understood by the retained launch policy
 - **Tests added:** `tests/subscription-production-completion-v1.8.3.test.cjs`
 - **Tests modified:** `tests/subscription-trial-v1.8.2.test.cjs`; `tests/subscription-launch-v1.8.1.test.cjs`; `tests/subscription-stripe-v1.8.1.test.cjs`; `tests/subscription-email-delivery-v1.8.1.test.cjs`; `tests/subscription-engine-v1.8.0.test.cjs`; `tests/stability-release.test.cjs`; `package.json` v1.8.3 gate
-- **Full CI result:** Alpha v1.8.2 CI #213 — PASS on exact final head `3ca76a2221992c83ed9c82ffa5c6f7a0440ef15c`; release/security, lifecycle/state-integrity, complete UTC and America/New_York regression discovery, monitoring build/architecture/config, source-mutation guard, and Android review bundle all passed
+- **Full CI result:** Alpha v1.8.2 CI #215 — PASS on exact final head `7ac4a0a58dbf694242b825ae65fee883d3223a61`; release/security, lifecycle/state-integrity, complete UTC and America/New_York regression discovery, monitoring build/architecture/config, source-mutation guard, and Android review bundle all passed
 - **Manual validation still required:** live/test-mode Stripe validation for early-trial checkout billing date, canceled checkout retry, cancel/reactivate, payment-failure recovery, subscription deletion -> Free Adult webhook/email, and a real over-five-animal Free Adult account; verify deployed Edge Functions have existing Stripe/Resend secrets
 - **Known risks:** Stripe/webhook delivery remains asynchronous and provider outages can temporarily leave the UI on the last verified access state; production secret/configuration and external Stripe behavior cannot be proven solely by repository CI; idempotent checkout intentionally prioritizes duplicate-session prevention
 - **Exact requirements inherited by next phase:** preserve trusted backend trial authority, protected-role precedence, non-destructive Free Adult fallback, five-active-animal growth ceiling, Junior separation, asynchronous fail-open billing, Stripe secret isolation, no auth redesign, no normalized-sync authority change, and whole-app v1.8.2 identity
 
 ---
 
-## Phase 5 — Paper Pedigree AI production hardening
+## Completed Phase 5 — Paper Pedigree AI production hardening
+
+- **Roadmap phase:** Phase 5 — Paper Pedigree AI production hardening
+- **PR number:** #145
+- **PR title:** feat: harden paper pedigree AI for production
+- **Branch:** `feat/harden-paper-pedigree-ai-production`
+- **Base branch:** `feat/complete-production-trial-free-adult`
+- **Base SHA:** `7ac4a0a58dbf694242b825ae65fee883d3223a61`
+- **Validated implementation head SHA:** `c8cf37ac9b1423c7a285c34d508dedac8b4972ee`
+- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after the closure commit is revalidated, because a commit cannot contain its own Git SHA
+- **Parent PR:** #143
+- **Application version:** 1.8.2
+- **Component/build identities changed:** no whole-app release identity changed; `herdharbor-cloud.js` browser asset revision advances from `?v=20` to `?v=21`; `paper-pedigree-import-v1.8.2.js` asset revision advances from `?v=1` to `?v=2`; Paper Pedigree core contract/version remains v1.8.2
+- **Production behavior changed:** the existing authenticated Paper Pedigree AI Edge Function now returns stable sanitized failure codes, has a bounded configurable provider timeout, rejects malformed/duplicate-role structured output, avoids document/provider response content in logs, adds layout/partial-document/handwriting-safe extraction instructions, returns aggregate extraction diagnostics, and records best-effort privacy-safe aggregate outcome metrics; the browser preserves extraction confidence provenance, exposes all supported extracted fields for correction, highlights low-confidence values, requires explicit reviewed-against-source confirmation before canonical mutation, and uses a narrow sanitized secure-function diagnostic bridge
+- **Production behavior intentionally NOT changed:** the AI still cannot mutate farm state directly; user review remains mandatory; the existing paper-pedigree import core remains authoritative for matching/conflict handling/lineage; source images remain local attachment data rather than canonical cloud farm state; no auth redesign; no normalized-sync authority change; no multi-photo merge; application release remains 1.8.2
+- **Files/modules now owning the feature:** `paper-pedigree-import-core-v1.8.2.js` remains canonical import/matching/planning owner; `paper-pedigree-import-v1.8.2.js` owns capture/review/confirmation UI and the single explicit commit path; `supabase/functions/paper-pedigree-extract/index.ts` owns authenticated provider extraction, validation, diagnostics, timeout, and metric emission; `herdharbor-cloud.js` owns the narrow sanitized Edge Function diagnostic transport; `supabase/v1.8.3-paper-pedigree-ai-metrics.sql` defines aggregate production metrics
+- **Canonical state owner:** existing HerdHarbor animal/pedigree state through the current import core and `HerdHarborApp.commitState`; canonical parent relationships remain `sireId` / `damId`
+- **Public entry points introduced:** `HerdHarborCloud.invokeFunctionWithDiagnostics(name, body)` exposes only sanitized `code`, user-safe message, optional `retryable`, and bounded `retryAfter`; existing `HerdHarborPaperPedigreeImport.open/start` and core APIs remain the feature entry points
+- **Compatibility paths retained:** existing `HerdHarborCloud.invokeFunction` remains available; Paper Pedigree UI falls back to it if the diagnostic bridge is unavailable; existing manual pedigree builder and Quick Add launch paths remain; single-photo reviewed workflow remains authoritative
+- **Compatibility paths removed:** reviewed fields no longer rewrite AI extraction confidence to 1.0; malformed structured provider output is no longer allowed to fall into generic parsing/normalization behavior
+- **Database/schema changes:** added `supabase/v1.8.3-paper-pedigree-ai-metrics.sql` defining a service-role-only daily aggregate table and allowlisted metric-increment RPC; no migration is auto-applied
+- **Edge Function changes:** `paper-pedigree-extract` adds stable diagnostic taxonomy, provider timeout, fail-closed structured validation, safer logging, layout tolerance instructions, aggregate diagnostics, and best-effort aggregate metric calls
+- **Environment variables/secrets required:** existing `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `OPENAI_API_KEY`; existing optional `OPENAI_PEDIGREE_MODEL` and `PAPER_PEDIGREE_DAILY_LIMIT`; new optional `PAPER_PEDIGREE_PROVIDER_TIMEOUT_MS` bounded to 5–60 seconds with a 30-second default
+- **Monitoring changes:** no complete pedigree/farm/image/provider content is sent to monitoring; added database aggregate counters for extraction requests, structured drafts, correction-required drafts, rejected outputs, rate-limit hits, and provider failures; correction-required rate is derived from aggregate counters
+- **Migration requirements:** apply `supabase/v1.8.3-paper-pedigree-ai-metrics.sql` before expecting production aggregate metrics; deploy the updated `paper-pedigree-extract` Edge Function with existing provider/Supabase secrets; metric recording is best-effort so a staggered migration does not block extraction
+- **Rollback procedure:** revert PR #145 browser/Edge Function changes and restore cloud/pedigree asset revisions; aggregate metrics table/RPC may remain inert or be separately rolled back by an authorized operator; canonical farm data requires no migration rollback because AI never directly mutates it
+- **Tests added:** `tests/paper-pedigree-production-hardening-v1.8.3.test.cjs`
+- **Tests modified:** `tests/paper-pedigree-runtime-v1.8.2.test.cjs`; `tests/stability-release.test.cjs`; `tests/current-shell-asset-identity-v1.6.7.test.cjs`; `tests/tablet-layout-login-color.test.cjs`; `tests/workflow-phase1-v1.7.1.test.cjs`; `tests/launch-hardening.test.cjs`; `package.json` v1.8.3 development gate
+- **Full CI result:** Alpha v1.8.2 CI #219 — PASS on validated implementation head `c8cf37ac9b1423c7a285c34d508dedac8b4972ee`; complete UTC and America/New_York regression discovery, release/security, lifecycle/state-integrity, monitoring build/architecture/config, source-mutation guard, and Android review bundle passed. The ledger-closure head is revalidated before Phase 6A.
+- **Manual validation still required:** deploy/apply the aggregate metrics migration in an authorized environment; verify production Edge Function secrets and timeout configuration; test representative clear/rotated/perspective/partial rabbit pedigree photos and confirm uncertain fields/warnings; verify provider timeout/rate-limit behavior against the deployed provider; handwriting reliability is intentionally not claimed
+- **Known risks:** provider vision quality varies by document quality/layout; low-confidence and ambiguous fields still require human judgment; aggregate metrics are unavailable until the SQL migration is applied; sanitized browser diagnostics depend on the Supabase Functions error context retaining the response body; multi-photo merge is deferred because safe deterministic per-image provenance/conflict resolution is not yet implemented
+- **Exact requirements inherited by next phase:** preserve the single reviewed AI mutation boundary, canonical matching/conflict/lineage ownership, local source-image privacy, server-only provider keys, authenticated fail-closed extraction, stable safe diagnostics, aggregate-only telemetry, no multi-photo merge without provenance design, Phase 4 subscription protections, Phase 1/2 cloud contracts, and whole-app v1.8.2 identity
+
+---
+
+## Phase 6A — Monitoring non-blocking startup
 
 - **Status:** pending
-- **Required base branch:** `feat/complete-production-trial-free-adult`
-- **Required base SHA:** `3ca76a2221992c83ed9c82ffa5c6f7a0440ef15c`
-- **Parent PR:** #143
+- **Required base branch:** `feat/harden-paper-pedigree-ai-production`
+- **Required base:** exact final green Phase 5 ledger-closure head
+- **Parent PR:** #145
 - **Application version target for this phase:** remain 1.8.2
 
-At Phase 5 start, re-read this ledger and verify it against repository HEAD, PR #143 diff, current tests, branch ancestry, and open PR overlap before creating the child branch.
+At Phase 6A start, first correct the inherited Phase 5 `Final head SHA` line to the exact green parent SHA, then inspect repository HEAD, PR #145 diff, current startup/monitoring tests, branch ancestry, and open PR overlap before implementation.

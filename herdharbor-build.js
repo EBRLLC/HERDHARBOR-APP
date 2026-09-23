@@ -247,7 +247,7 @@
     addScript("hh-direct-transfer-v182", "direct-transfer-v1.8.2.js?v=1");
   });
   addScript("hh-paper-pedigree-core-v182", "paper-pedigree-import-core-v1.8.2.js?v=1", () => {
-    addScript("hh-paper-pedigree-v182", "paper-pedigree-import-v1.8.2.js?v=1");
+    addScript("hh-paper-pedigree-v182", "paper-pedigree-import-v1.8.2.js?v=2");
   });
   addScript("hh-how-to-navigation-v181", "how-to-navigation-v1.8.1.js?v=1");
   addScript("hh-registration-safety-v181", "registration-safety-v1.8.1.js?v=1", () => {

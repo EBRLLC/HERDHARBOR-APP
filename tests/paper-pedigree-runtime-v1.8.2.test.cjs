@@ -27,7 +27,7 @@ test('core accepts the extractor node-array shape directly', () => {
 test('runtime loader installs the paper pedigree core before the UI', () => {
   const build = read('herdharbor-build.js');
   const coreIndex = build.indexOf('paper-pedigree-import-core-v1.8.2.js?v=1');
-  const uiIndex = build.indexOf('paper-pedigree-import-v1.8.2.js?v=1');
+  const uiIndex = build.indexOf('paper-pedigree-import-v1.8.2.js?v=2');
   assert.ok(coreIndex >= 0, 'paper pedigree core must be loaded');
   assert.ok(uiIndex > coreIndex, 'paper pedigree UI must load after the core');
 });
@@ -35,7 +35,7 @@ test('runtime loader installs the paper pedigree core before the UI', () => {
 test('service worker includes paper pedigree runtime in shell and network-first policy', () => {
   const worker = read('service-worker.js');
   assert.match(worker, /\.\/paper-pedigree-import-core-v1\.8\.2\.js\?v=1/);
-  assert.match(worker, /\.\/paper-pedigree-import-v1\.8\.2\.js\?v=1/);
+  assert.match(worker, /\.\/paper-pedigree-import-v1\.8\.2\.js\?v=2/);
   assert.match(worker, /"\/paper-pedigree-import-core-v1\.8\.2\.js"/);
   assert.match(worker, /"\/paper-pedigree-import-v1\.8\.2\.js"/);
 });
