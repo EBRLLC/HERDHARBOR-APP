@@ -183,7 +183,8 @@
             <h3>HerdHarbor resources</h3>
             <p>Get help using HerdHarbor, review account and privacy information, or contact support without leaving your records workflow.</p>
             <div class="action-row">
-              <a class="button button-primary" href="https://herdharbor.com/support/" target="_blank" rel="noopener">Help and support</a>
+              <a class="button button-primary" href="/how-to/">How To Center</a>
+            <a class="button button-ghost" href="https://herdharbor.com/support/" target="_blank" rel="noopener">Support</a>
               <a class="button button-ghost" href="https://herdharbor.com/privacy/" target="_blank" rel="noopener">Privacy</a>
               <a class="button button-ghost" href="https://herdharbor.com/terms/" target="_blank" rel="noopener">Terms</a>
               <a class="button button-ghost" href="https://herdharbor.com/delete-account/" target="_blank" rel="noopener">Account deletion</a>

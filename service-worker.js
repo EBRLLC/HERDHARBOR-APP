@@ -27,6 +27,8 @@ const APP_SHELL = [
   "./sales-customer-runtime-v1.8.3.js?v=1",
   "./production-reporting-runtime-v1.8.3.js?v=1",
   "./settings-runtime-v1.8.3.js?v=1",
+  "./how-to-navigation-v1.8.1.js?v=1",
+  "./how-to/",
   "./direct-transfer-core-v1.8.2.js?v=1",
   "./direct-transfer-v1.8.2.js?v=1",
   "./direct-transfer-v1.8.2.css?v=1",

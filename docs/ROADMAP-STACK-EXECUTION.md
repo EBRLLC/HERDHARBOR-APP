@@ -463,3 +463,40 @@
 - **Manual validation still required:** Settings route on supported mobile/desktop widths; operation profile edit; logo upload/remove; theme/weight preference; Market Analytics consent; sync-now/status refresh; device storage summary; backup/export/import; spreadsheet lazy-load actions; feedback and account deletion launch
 - **Known risks:** Settings depends on injected composition/domain services and script load order; cross-domain services must remain authoritative outside Settings; whole-app release remains 1.8.2
 - **Exact requirements inherited by Phase 7:** preserve all Phase 6B-6H extracted runtime APIs, canonical domain ownership, optional-tool lazy loading, animal-action router behavior, monitoring startup behavior, cloud/subscription/Paper Pedigree AI contracts, PWA/service-worker order, normalized-sync default-off guardrails, and whole-app v1.8.2 identity
+
+
+---
+
+## Completed Phase 7 — Complete How-To / Help Center
+
+- **Roadmap phase:** Phase 7 — Complete How-To / Help Center
+- **PR number:** #163
+- **PR title:** docs: complete HerdHarbor in-app help center
+- **Branch:** `docs/complete-herdharbor-help-center`
+- **Base branch:** `refactor/complete-application-runtime-decomposition`
+- **Base SHA:** `21d2368a42bd9d689666e2a58cc76ef65f6e7af7`
+- **Validated implementation head SHA:** `919bfd289ab04e0484002e0ef1108c8553a07b88`
+- **Parent PR:** #161
+- **Application version:** 1.8.2
+- **Component/build identities changed:** no whole-app, cloud-sync, monitoring, subscription, or Android release identity changed; existing `how-to-navigation-v1.8.1.js` component remains stable and is now included in the offline shell
+- **Documentation ownership:** existing `/how-to/` remains the single Help Center; no disconnected second documentation site or duplicate business-rule engine was created
+- **Guide coverage added/current:** add/edit animal; manual pedigree; reviewed paper-pedigree photo import; breeding; pregnancy; birth/litter; weights; basic and structured Health; animal sale; member transfer; spreadsheet import/export; QR; Cloud Sync states; retry sync; local backup; local/cloud comparison; recovery/last-known-good; Trial/Member/Free Adult; account basics
+- **Current access wording:** replaced stale fixed September/October launch copy and incorrect adult->Junior fallback with trusted one-calendar-month Member trial, non-destructive Free Adult adult fallback, five-active-animal growth ceiling, and separate Junior path
+- **Navigation/integration:** existing build-loaded How To sidebar/dashboard navigation retained; Settings now links directly to `/how-to/`; service-worker shell caches the navigation asset and `/how-to/` for offline-capable access
+- **Canonical state owners:** unchanged; Help content links users to existing Animals, Pedigrees, Breeding, Litters, Health, Sales, and Settings routes and does not persist or mutate farm state
+- **Compatibility paths retained:** existing Help navigation filename/component, existing support/privacy/terms/account-deletion links, current app routes, current optional-tool loading
+- **Compatibility paths removed:** stale v1.8.1 Help test and stale fixed launch/fallback documentation
+- **Database/schema changes:** none
+- **Edge Function changes:** none
+- **Environment variables/secrets required:** none added
+- **Monitoring changes:** none
+- **Migration requirements:** none; deploy the updated static Help page/Settings/service-worker assets
+- **Rollback procedure:** revert PR #163 static documentation/integration/test changes; no data migration rollback is required
+- **Tests added:** `tests/help-center-v1.8.3.test.cjs`
+- **Tests removed:** `tests/how-to-center-v1.8.1.test.cjs`
+- **Tests/CI changed:** v1.8.3 development gate includes Help Center contract; production Pages artifact gate requires How To navigation and `how-to/index.html`
+- **Full CI result:** Alpha v1.8.2 CI #272 — PASS on validated implementation head `919bfd289ab04e0484002e0ef1108c8553a07b88`; ledger-closure head must also pass before Phase 8 branches
+- **Manual validation still required:** physical-device Help navigation/sidebar shortcut, search/filter behavior, deep-anchor scrolling, Settings Help link, offline Help load after service-worker update, and mobile layout
+- **Known risks:** Help text can drift if future domain behavior changes without updating documentation; the Help Center intentionally describes existing workflows rather than owning their rules
+- **Exact requirements inherited by Phase 8:** preserve all Phase 6B-6H runtime APIs, current Help Center routes/anchors, backend subscription authority and Free Adult fallback, Paper Pedigree confirmation-before-mutation, canonical state owners, optional-tool lazy loading, cloud safety/normalized-sync default-off guardrails, monitoring startup behavior, and PWA/service-worker ordering; Phase 8 is the first remaining phase authorized to change whole-app identity to v1.8.3
+
