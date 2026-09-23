@@ -6,7 +6,7 @@ This checklist covers the Alpha v1.8.4 release candidate and its production-stab
 
 - Confirm `herdharbor-build.js`, `manifest.json`, `package.json`, `package-lock.json`, Android Gradle metadata, TWA metadata, PWA fallback metadata, monitoring metadata, README, and release notes all identify Alpha v1.8.4.
 - Confirm the service-worker cache name uses the current v1.8.4 build ID and old HerdHarbor shell caches are removed on activation.
-- Confirm the installed PWA displays Version 1.8.3 and the current build identifier in Settings/install status.
+- Confirm the installed PWA displays Version 1.8.4 and the current build identifier in Settings/install status.
 
 ## Authentication and registration safety
 
@@ -82,7 +82,7 @@ This checklist covers the Alpha v1.8.4 release candidate and its production-stab
 ## Monitoring and privacy
 
 - Confirm the checked-in Sentry config has a blank DSN and production deployment injects the DSN from the protected environment.
-- Confirm a controlled synthetic production acceptance event identifies `HerdHarbor@1.8.3`.
+- Confirm a controlled synthetic production acceptance event identifies `HerdHarbor@1.8.4`.
 - Confirm monitoring events do not include credentials or full farm/member record payloads.
 - Confirm Market Analytics privacy suppression, consent deletion, minimum sample thresholds, and service-role aggregate access regressions remain green.
 
