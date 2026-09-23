@@ -80,7 +80,7 @@ test("v1.7.0 reference-guide assets remain loaded and offline-safe under the cur
     assert.match(buildId,/^cloud-sync-v2-/);
     assert.match(sw,/herdharbor-shell-v1\.8\.2-alpha-cloud-sync-v2-state-integrity-1/);
   }else{
-    assert.equal(buildId,"alpha-v1.8.3-release-1");
-    assert.match(sw,/herdharbor-shell-v1\.8\.3-alpha-v1\.8\.3-release-1/);
+    assert.equal(buildId,"alpha-v1.8.4-release-1");
+    assert.match(sw,/herdharbor-shell-v1\.8\.4-alpha-v1\.8\.4-release-1/);
   }
 });
