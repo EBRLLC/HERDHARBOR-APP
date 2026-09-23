@@ -49,8 +49,8 @@ android {
         applicationId "com.ebrllc.herdharbor"
         minSdkVersion 23
         targetSdkVersion 36
-        versionCode 16
-        versionName "1.8.2"
+        versionCode 17
+        versionName "1.8.3"
 
         resValue "string", "appName", twaManifest.name
         resValue "string", "launcherName", twaManifest.launcherName

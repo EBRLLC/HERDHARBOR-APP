@@ -62,8 +62,8 @@ test("v1.8.2 restores a missing confirmed baseline only for a clean known cloud 
     [VERSION_KEY]: "2026-09-10T04:00:00.000Z"
   });
 
-  assert.equal(context.HerdHarborBuild.version, "1.8.2");
-  assert.equal(context.HerdHarborBuild.buildId, "cloud-sync-v2-state-integrity-1");
+  assert.equal(context.HerdHarborBuild.version, "1.8.3");
+  assert.equal(context.HerdHarborBuild.buildId, "alpha-v1.8.3-release-1");
   assert.equal(context.HerdHarborCloudSyncV2.version, "2.0");
   assert.equal(localStorage.getItem(BASE_KEY), baseState);
 });

@@ -106,10 +106,10 @@ test("Settings shell asset loads after Production/Reporting and before compositi
   assert.match(worker, /"\/settings-runtime-v1\.8\.3\.js"/);
 });
 
-test("Phase 6H preserves lazy optional tools and whole-app v1.8.2 identity", () => {
+test("Phase 6H preserves lazy optional tools under the formal v1.8.3 identity", () => {
   assert.match(settings, /await ensureSpreadsheetToolsReady\(\)/);
   assert.doesNotMatch(html, /<script[^>]+(?:exceljs|jszip|spreadsheet-import)/i);
-  assert.equal(pkg.version, "1.8.2");
-  assert.match(read("herdharbor-build.js"), /version:\s*"1\.8\.2"/);
+  assert.equal(pkg.version, "1.8.3");
+  assert.match(read("herdharbor-build.js"), /version:\s*"1\.8\.3"/);
   assert.doesNotMatch(html, /cloud-sync-rollout-control-v1\.8\.3\.js/);
 });

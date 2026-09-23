@@ -19,9 +19,9 @@ function releaseVersion(source) {
   return constRelease || objectRelease || null;
 }
 
-test("all actively modified Cloud Sync V2 runtime layers identify as v1.8.2", () => {
-  assert.match(build, /version:\s*"1\.8\.2"/);
-  assert.match(build, /build:\s*"1\.8\.2-alpha-cloud-sync-v2-state-integrity-1"/);
+test("formal v1.8.3 app release preserves v1.8.2 Cloud Sync V2 component identities", () => {
+  assert.match(build, /version:\s*"1\.8\.3"/);
+  assert.match(build, /build:\s*"1\.8\.3-alpha-v1\.8\.3-release-1"/);
   assert.match(syncFlow, /release:\s*"1\.8\.2"/);
   assert.match(localCache, /const RELEASE = "1\.8\.2"/);
   assert.match(completion, /const VERSION="1\.8\.2"/);
@@ -40,7 +40,7 @@ test("V2-only modules do not carry stale v1.8.1 release assertions", () => {
 
 test("legacy 1.8.1 references are allowed only as intentionally carried-forward packaged/runtime dependencies", () => {
   // herdharbor-build.js still loads established 1.8.1 subscription/registration
-  // assets and the packaged shell remains 1.8.1 until the release packaging pass.
+  // assets while the whole application release may advance independently.
   // This audit prevents those frozen references from being mistaken for the
   // release of the Cloud Sync V2 code currently under development.
   assert.equal(releaseVersion(syncFlow), "1.8.2");

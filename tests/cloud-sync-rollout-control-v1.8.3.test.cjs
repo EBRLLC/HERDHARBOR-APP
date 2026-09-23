@@ -195,10 +195,10 @@ test("legacy authority is preserved through shadow and dual-write policy definit
 });
 
 
-test("controlled rollout remains disconnected from production runtime and does not bump the whole app", () => {
+test("controlled rollout remains disconnected from production authority after the formal v1.8.3 release", () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
   const indexSource = fs.readFileSync(path.join(root, "index.html"), "utf8");
-  assert.equal(packageJson.version, "1.8.2");
+  assert.equal(packageJson.version, "1.8.3");
   assert.doesNotMatch(indexSource, /cloud-sync-cohort-gate-v1\.8\.3\.js/);
   assert.doesNotMatch(indexSource, /cloud-sync-reconciliation-v1\.8\.3\.js/);
   assert.doesNotMatch(indexSource, /cloud-sync-rollout-control-v1\.8\.3\.js/);

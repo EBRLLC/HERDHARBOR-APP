@@ -500,3 +500,33 @@
 - **Known risks:** Help text can drift if future domain behavior changes without updating documentation; the Help Center intentionally describes existing workflows rather than owning their rules
 - **Exact requirements inherited by Phase 8:** preserve all Phase 6B-6H runtime APIs, current Help Center routes/anchors, backend subscription authority and Free Adult fallback, Paper Pedigree confirmation-before-mutation, canonical state owners, optional-tool lazy loading, cloud safety/normalized-sync default-off guardrails, monitoring startup behavior, and PWA/service-worker ordering; Phase 8 is the first remaining phase authorized to change whole-app identity to v1.8.3
 
+
+
+---
+
+## Completed Phase 8 — Formal Alpha v1.8.3 release
+
+- **Roadmap phase:** Phase 8 — Formal Alpha v1.8.3 release
+- **PR number:** #165
+- **PR title:** release: HerdHarbor Alpha v1.8.3
+- **Branch:** `release/alpha-v1.8.3`
+- **Base branch:** `docs/complete-herdharbor-help-center`
+- **Base SHA:** `fed60dbe5117975f969bf7c6c34d4f5d53764f8d`
+- **Validated implementation head SHA:** `94a3a2140bc4fa1346de0db9717b538004df5502`
+- **Parent PR:** #163
+- **Application version:** 1.8.3
+- **Release build ID:** `alpha-v1.8.3-release-1`
+- **Android/TWA identity:** 1.8.3 / versionCode 17
+- **Monitoring release:** `HerdHarbor@1.8.3`
+- **Whole-app release surfaces promoted:** package/lockfile, build identity, manifest/PWA/service-worker cache identity, HTML shell cache keys, Android/TWA, monitoring config/generator/acceptance metadata, README/checklist/release notes/Play notes, CI/Pages/production-acceptance workflows, and current-release audit
+- **Stable component identities retained:** established v1.6.x/v1.7.x/v1.8.1/v1.8.2 engine/runtime filenames remain unchanged where they identify carried-forward components rather than the whole app
+- **Normalized-sync authority:** unrestricted normalized production authority remains intentionally deferred; legacy sync remains authoritative unless separately promoted through the controlled rollout gates
+- **Compatibility/safety preserved:** lifecycle state-integrity, dirty-local/conflict/tombstone behavior, legacy rollback, canonical domain ownership, Free Adult/Junior separation, Paper Pedigree review-before-mutation, non-blocking monitoring startup, optional-tool lazy loading, extracted runtime APIs, Help Center, security/privacy gates
+- **Release tests migrated:** stale regression assertions that incorrectly required whole-app v1.8.2 were updated to v1.8.3 while preserving component-version and behavioral assertions
+- **Current release audit:** `tests/current-release-reference-audit-v1.8.3.test.cjs`
+- **Retired current-release audit:** `tests/current-release-reference-audit-v1.8.2.test.cjs` (v1.8.2 component/state-integrity compatibility tests remain)
+- **Release workflows:** `.github/workflows/v1.8.3-ci.yml`, `.github/workflows/v1.8.3-production-pages.yml`, `.github/workflows/v1.8.3-production-acceptance.yml`
+- **Full CI result:** Alpha v1.8.3 CI #32 — PASS on validated implementation head `94a3a2140bc4fa1346de0db9717b538004df5502`; ledger-closure head must also pass before Phase 9 branches
+- **Manual validation still required:** production deployment after eventual merge; protected production acceptance inputs/secrets; Android signed Play release outside review CI; controlled normalized-sync production promotion remains a separate operational decision
+- **Exact requirements inherited by Phase 9:** preserve formal v1.8.3 whole-app identity, all Phase 6-8 runtime/help/release contracts, canonical record ownership, legacy sync rollback and normalized-sync rollout guardrails, account/subscription authority, Paper Pedigree confirmation-before-mutation, privacy/security gates, PWA ordering, and no unrelated auth/sign-in changes
+
