@@ -7,6 +7,7 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const bootstrapApi = require(path.join(root, "cloud-shadow-bootstrap-v1.8.3.js"));
+const cohortGateApi = require(path.join(root, "cloud-sync-cohort-gate-v1.8.3.js"));
 const fixture = JSON.parse(fs.readFileSync(
   path.join(__dirname, "fixtures", "cloud-state-normalization-v1.8.3.json"),
   "utf8"
@@ -133,6 +134,24 @@ test("feature gate alone is insufficient; user must be explicitly allowlisted", 
   assert.equal(result.reason, "not-in-internal-cohort");
   assert.equal(legacyReads, 0);
   assert.equal(storeCreates, 0);
+});
+
+test("shadow bootstrap accepts the shared deterministic cohort gate without bypassing the feature gate", async () => {
+  const setup = dependencies({
+    cohortUserIds: [],
+    cohortGate: cohortGateApi.createCohortGate({
+      enabled: true,
+      mode: "allowlist",
+      allowlistUserIds: ["internal-user-1"]
+    })
+  });
+  const bootstrap = bootstrapApi.createShadowBootstrap(setup.options);
+
+  assert.equal(bootstrap.cohortMode, "allowlist");
+  assert.equal(bootstrap.isEligibleUser("internal-user-1"), true);
+  const result = await bootstrap.run();
+  assert.equal(result.skipped, false);
+  assert.equal(result.verified, true);
 });
 
 test("eligible internal user runs shadow write followed by recorded verification", async () => {
@@ -287,4 +306,7 @@ test("v1.8.3 shadow modules remain disconnected from the production page", () =>
   assert.doesNotMatch(indexSource, /cloud-state-normalizer-v1\.8\.3\.js/);
   assert.doesNotMatch(indexSource, /cloud-shadow-sync-v1\.8\.3\.js/);
   assert.doesNotMatch(indexSource, /cloud-shadow-bootstrap-v1\.8\.3\.js/);
+  assert.doesNotMatch(indexSource, /cloud-sync-cohort-gate-v1\.8\.3\.js/);
+  assert.doesNotMatch(indexSource, /cloud-sync-reconciliation-v1\.8\.3\.js/);
+  assert.doesNotMatch(indexSource, /cloud-sync-rollout-control-v1\.8\.3\.js/);
 });
