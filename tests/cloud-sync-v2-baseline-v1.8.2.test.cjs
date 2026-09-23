@@ -63,7 +63,7 @@ test("v1.8.2 restores a missing confirmed baseline only for a clean known cloud 
   });
 
   assert.equal(context.HerdHarborBuild.version, "1.8.3");
-  assert.equal(context.HerdHarborBuild.buildId, "alpha-v1.8.3-release-1");
+  assert.equal(context.HerdHarborBuild.buildId, "alpha-v1.8.4-release-1");
   assert.equal(context.HerdHarborCloudSyncV2.version, "2.0");
   assert.equal(localStorage.getItem(BASE_KEY), baseState);
 });
