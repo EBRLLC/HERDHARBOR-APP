@@ -194,7 +194,7 @@
 - **Base branch:** `feat/harden-paper-pedigree-ai-production`
 - **Base SHA:** `aceff2b9de5f512907a1b0b598345a56b4bd3b3e`
 - **Validated implementation head SHA:** `d633808b71ebe908073cb05c13356be1a06e86de`
-- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after the closure commit is revalidated, because a commit cannot contain its own Git SHA
+- **Final head SHA:** `4a79e10bb029917a892e4be466346fbe18724d95`
 - **Parent PR:** #145
 - **Application version:** 1.8.2
 - **Component/build identities changed:** no monitoring release/build identity changed; PWA bootstrap browser/cache asset revision advances from `pwa.js?v=30` to `pwa.js?v=31`; whole-app build ID remains `cloud-sync-v2-state-integrity-1`
@@ -220,12 +220,47 @@
 
 ---
 
-## Phase 6B — Runtime extraction: Animals / Profile
+## Completed Phase 6B — Runtime extraction: Animals / Profile
+
+- **Roadmap phase:** Phase 6B — Runtime extraction: Animals / Profile
+- **PR number:** #149
+- **PR title:** refactor: extract animal and profile runtime domain
+- **Branch:** `refactor/extract-animal-profile-runtime-domain`
+- **Base branch:** `perf/decouple-monitoring-from-application-startup`
+- **Base SHA:** `4a79e10bb029917a892e4be466346fbe18724d95`
+- **Validated implementation head SHA:** `b94c7fb825637aa38d81e0cd2515be614c3ed977`
+- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after the closure commit is revalidated, because a commit cannot contain its own Git SHA
+- **Parent PR:** #147
+- **Application version:** 1.8.2
+- **Component/build identities changed:** no whole-app, cloud-sync, monitoring, or existing domain component identity changed; new extracted component `animal-profile-runtime-v1.8.3.js?v=1` is loaded before the composition runtime
+- **Production behavior changed:** no intended user-facing behavior redesign; Animals list/filter, animal create/edit/delete UI/runtime, legacy detail fallback, pedigree preview support used by detail screens, and animal QR-card runtime now execute from the extracted Animals/Profile module rather than the monolithic application runtime
+- **Production behavior intentionally NOT changed:** canonical animal state remains the existing `state.animals` array; modern Phase Two profile navigation/rendering remains owned by `flow-phase2-v1.8.2.js`; profile actions remain owned by `animal-action-router-v1.8.3.js`; Free Adult/Junior limits, sale-linked delete protection, sireId/damId, pedigree/import/print behavior, QR deep links, and save/state-integrity semantics are preserved; no auth or normalized-sync authority change; release remains 1.8.2
+- **Files/modules now owning the feature:** `animal-profile-runtime-v1.8.3.js` owns Animals list/filter, CRUD form, legacy detail fallback, QR cards, and narrow editor/pedigree-print adapters; `flow-phase2-v1.8.2.js` remains canonical modern profile shell owner; `animal-action-router-v1.8.3.js` remains profile action router; `herdharbor-app-runtime.js` is composition/shared-service owner and delegates to the extracted module
+- **Canonical state owner:** unchanged canonical HerdHarbor application state; extracted module receives `getState`/shared services and creates no localStorage/sessionStorage/IndexedDB/domain state store
+- **Public entry points introduced:** `window.HerdHarborAnimalProfileRuntime.create(deps)`; existing `HerdHarborApp.openAnimalEditor` and `HerdHarborApp.openAnimalPedigreePrint` remain stable thin public entry points delegating to the extracted owner
+- **Compatibility paths retained:** modern Phase Two profile remains preferred; legacy animal detail fallback remains for direct legacy callers; existing Quick Add/deep-link/pedigree record callers continue through composition delegates; existing router public contracts are unchanged
+- **Compatibility paths removed:** duplicate monolithic implementations of `animalView`, Animals result/card rendering, animal CRUD, QR pending state/QR cards, and legacy-detail implementation are removed from `herdharbor-app-runtime.js`
+- **Database/schema changes:** none
+- **Edge Function changes:** none
+- **Environment variables/secrets required:** none
+- **Monitoring changes:** none; Phase 6A non-blocking startup and Phase 1 cloud telemetry contracts are inherited unchanged
+- **Migration requirements:** none; static deployment must include `animal-profile-runtime-v1.8.3.js`, which the Pages artifact gate now verifies
+- **Rollback procedure:** revert PR #149 shell/module/runtime/test changes, restoring the prior monolithic Animals/Profile implementation; no state/data migration rollback is required because canonical state shape and persistence were unchanged
+- **Tests added:** `tests/runtime-animal-profile-extraction-v1.8.3.test.cjs`
+- **Tests modified:** animal-first/router, app compile, release-reference, shell-decomposition, stability, analytics, Junior entry paths, Member cattle workflow, mobile pedigree, optional-tool lazy-loading, sales/customers, storage-efficiency, Pages artifact check, and `package.json` v1.8.3 development gate
+- **Full CI result:** Alpha v1.8.2 CI #235 — PASS on validated implementation head `b94c7fb825637aa38d81e0cd2515be614c3ed977`; current release/security, lifecycle/state-integrity, complete UTC and America/New_York regression discovery, monitoring build/architecture/config, source-mutation guard, and Android v1.8.2 review bundle all passed. The ledger-closure head is revalidated before Phase 6C.
+- **Manual validation still required:** exercise Animals filtering, add/edit/reactivate/delete, modern profile navigation/actions/returns, legacy direct detail fallback, cattle fields, photo upload, QR printing/deep links, and sale-linked delete refusal in a deployed browser/PWA
+- **Known risks:** the extracted module intentionally depends on injected composition helpers, so load order is contractually important; legacy detail fallback remains temporarily alongside the modern profile by design; later extraction phases must not pull shared helpers into multiple modules or create competing state owners
+- **Exact requirements inherited by next phase:** preserve `HerdHarborAnimalProfileRuntime.create(deps)`, modern Phase Two profile authority, `HerdHarborAnimalActionRouter`, narrow `HerdHarborApp.openAnimalEditor/openAnimalPedigreePrint` contracts, canonical single state ownership, animal-limit/state-integrity protections, Phase 6A non-blocking monitoring boot, prior AI/subscription/cloud contracts, and whole-app v1.8.2 identity
+
+---
+
+## Phase 6C — Runtime extraction: Breeding / Litters
 
 - **Status:** pending
-- **Required base branch:** `perf/decouple-monitoring-from-application-startup`
-- **Required base:** exact final green Phase 6A ledger-closure head
-- **Parent PR:** #147
+- **Required base branch:** `refactor/extract-animal-profile-runtime-domain`
+- **Required base:** exact final green Phase 6B ledger-closure head
+- **Parent PR:** #149
 - **Application version target for this phase:** remain 1.8.2
 
-At Phase 6B start, first correct the inherited Phase 6A `Final head SHA` line to the exact final green parent SHA, then inspect repository HEAD, PR #147 diff, current animal/profile runtime tests, branch ancestry, callers, and open PR overlap before extraction.
+At Phase 6C start, first correct the inherited Phase 6B `Final head SHA` line to the exact final green parent SHA, then inspect repository HEAD, PR #149 diff, breeding/litter callers and canonical lifecycle engines, tests, branch ancestry, and open PR overlap before extraction.

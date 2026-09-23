@@ -4,6 +4,7 @@ const path = require("node:path");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 const appRuntime = fs.readFileSync(path.join(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
+const animalProfileRuntime = fs.readFileSync(path.join(__dirname, "..", "animal-profile-runtime-v1.8.3.js"), "utf8");
 const start = appRuntime.indexOf("  function customerName(customerId)");
 const end = appRuntime.indexOf("  function renderSales()", start);
 assert.ok(start >= 0 && end > start, "sales and payment helpers are present");
@@ -90,7 +91,7 @@ assert.match(appRuntime, /function openSaleForm\(/);
 assert.match(appRuntime, /function printSaleDocument\(/);
 assert.match(appRuntime, /function exportAnimalTransfer\(/);
 assert.match(appRuntime, /function handleTransferImport\(/);
-assert.match(appRuntime, /function openAnimalQrCardForm\(/);
+assert.match(animalProfileRuntime, /function openAnimalQrCardForm\(/);
 assert.match(appRuntime, /function transferRecordKey\(/);
 assert.match(appRuntime, /Complete the sale before creating its animal transfer file/);
 assert.match(appRuntime, /Its total cannot be reduced below that amount/);

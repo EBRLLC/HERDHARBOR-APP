@@ -73,12 +73,6 @@
   let currentRoute = ["dashboard", "analytics", "animals", "pedigrees", "breeding", "litters", "health", "symptoms", "tasks", "budget", "sales", "settings", "admin"].includes(requestedRoute)
     ? requestedRoute
     : "dashboard";
-  let animalView = {
-    search: "",
-    species: "",
-    sex: "",
-    status: "Active"
-  };
   let budgetView = {
     period: "Month",
     month: new Date().toISOString().slice(0, 7),
@@ -114,7 +108,6 @@
     search: ""
   };
   let deepLinkHandled = false;
-  let qrToolActionPending = false;
 
   const EXPENSE_CATEGORIES = [
     "Feed", "Hay / Fodder", "Bedding", "Veterinary", "Medication",
@@ -1086,557 +1079,68 @@
     return `<div class="empty-state"><strong>${esc(title)}</strong><p>${esc(text)}</p></div>`;
   }
 
+  let animalProfileRuntimeInstance = null;
+
+  function animalProfileRuntime() {
+    if (animalProfileRuntimeInstance) return animalProfileRuntimeInstance;
+    const create = window.HerdHarborAnimalProfileRuntime?.create;
+    if (typeof create !== "function") {
+      throw new Error("The Animals/Profile runtime module did not load.");
+    }
+    animalProfileRuntimeInstance = create({
+      getState: () => state,
+      getCurrentRoute: () => currentRoute,
+      scheduleUiWork,
+      $,
+      $$,
+      esc,
+      headerHtml,
+      emptyState,
+      animalVisualHtml,
+      ageText,
+      openPedigreeImport,
+      openModal,
+      closeModal,
+      field,
+      selectField,
+      breedComboboxField,
+      selectAnimalField,
+      textareaField,
+      speciesIcon,
+      breedOptionsFor,
+      prepareProfileImage,
+      toast,
+      allowsAnimalTransition,
+      uid,
+      rememberBreed,
+      recordActivity,
+      saveState,
+      renderCurrentView,
+      completeWorkflowTasks,
+      formatDate,
+      formatMoney,
+      detailField,
+      navigate,
+      openPrintPedigreeForm,
+      ensureQrToolsReady
+    });
+    return animalProfileRuntimeInstance;
+  }
+
   function renderAnimals() {
-    $("#view-animals").innerHTML = `
-      ${headerHtml(
-        "Animals",
-        "Keep identity, lineage, location, status, and notes connected to each animal.",
-        `<button class="button button-ghost" id="import-pedigree-from-animals">Import pedigree</button>
-         <button class="button button-ghost" id="print-animal-qr-cards">Print QR cards</button>
-         <button class="button button-primary" id="add-animal">+ Add animal</button>`
-      )}
-      <div class="toolbar">
-        <input id="animal-search" type="search" value="${esc(animalView.search)}" placeholder="Search name, tag, registration, breeder, breed, or location">
-        <select id="animal-species"><option value="">All species</option>${state.settings.species.map((species) => `<option ${species === animalView.species ? "selected" : ""}>${esc(species)}</option>`).join("")}</select>
-        <select id="animal-sex"><option value="">Any sex</option>${["Female", "Male", "Unknown"].map((sex) => `<option ${sex === animalView.sex ? "selected" : ""}>${sex}</option>`).join("")}</select>
-        <select id="animal-status"><option value="">Any status</option>${["Active", "Breeding", "Growing", "Retired", "For Sale", "Reserved", "Sold", "Deceased", "Archived", "Ancestor Only"].map((status) => `<option ${status === animalView.status ? "selected" : ""}>${status}</option>`).join("")}</select>
-      </div>
-      <div id="animal-results"></div>`;
-
-    $("#add-animal").addEventListener("click", () => openAnimalForm());
-    $("#import-pedigree-from-animals").addEventListener("click", () => openPedigreeImport());
-    $("#print-animal-qr-cards").addEventListener("click", (event) => openAnimalQrCardForm("", event.currentTarget));
-    $("#animal-search").addEventListener("input", (event) => {
-      animalView.search = event.currentTarget.value;
-      scheduleUiWork("animal-search", () => {
-        if (currentRoute === "animals") renderAnimalResults();
-      });
-    });
-    [["animal-species", "species"], ["animal-sex", "sex"], ["animal-status", "status"]].forEach(([id, fieldName]) => {
-      $(`#${id}`).addEventListener("change", (event) => {
-        animalView[fieldName] = event.currentTarget.value;
-        renderAnimalResults();
-      });
-    });
-    renderAnimalResults();
-  }
-
-  function renderAnimalResults() {
-    const root = $("#animal-results");
-    if (!root) return;
-    const query = animalView.search.toLowerCase();
-    const { species, sex, status } = animalView;
-
-    const animals = state.animals.filter((a) => {
-      const haystack = [a.name, a.tag, a.earTagNumber, a.earTagColor, a.registrationNumber, a.tattoo, a.breeder, a.breed, a.location, a.color].join(" ").toLowerCase();
-      return (!query || haystack.includes(query)) &&
-        (!species || a.species === species) &&
-        (!sex || a.sex === sex) &&
-        (!status || a.status === status);
-    });
-
-    root.innerHTML = animals.length ? `<div class="cards-grid">${animals.map(animalCardHtml).join("")}</div>` :
-      emptyState("No matching animals.", "Add a new animal or change the filters.");
-
-    $$("[data-view-animal]", root).forEach((button) => button.addEventListener("click", () => openAnimalDetail(button.dataset.viewAnimal)));
-    $$("[data-edit-animal]", root).forEach((button) => button.addEventListener("click", () => openAnimalForm(button.dataset.editAnimal)));
-  }
-
-  function animalCardHtml(a) {
-    return `<article class="animal-card">
-      <div class="animal-card-top">
-        <div class="animal-avatar ${a.photoData ? "has-photo" : ""}">${animalVisualHtml(a, true)}</div>
-        <span class="badge ${["Active", "Breeding", "Growing"].includes(a.status) ? "green" : ["For Sale", "Reserved"].includes(a.status) ? "warning" : "gray"}">${esc(a.status || "Active")}</span>
-      </div>
-      <h3>${esc(a.name || "Unnamed animal")}</h3>
-      <div class="meta">${esc([a.earTagNumber ? `Ear tag ${a.earTagNumber}` : a.tag, a.earTagColor, a.breed, a.sex].filter(Boolean).join(" · "))}</div>
-      <div class="meta">${esc(ageText(a.dob))}${a.location ? ` · ${esc(a.location)}` : ""}</div>
-      <div class="animal-card-footer">
-        <button class="button button-ghost button-small" data-view-animal="${a.id}">View</button>
-        <button class="button button-ghost button-small" data-edit-animal="${a.id}">Edit</button>
-      </div>
-    </article>`;
+    return animalProfileRuntime().renderAnimals();
   }
 
   function openAnimalForm(id = "") {
-    const animal = state.animals.find((a) => a.id === id) || {};
-    let pendingPhotoData = animal.photoData || "";
-    let pendingPhotoFileName = animal.photoFileName || "";
-
-    openModal(id ? "Edit animal" : "Add animal", `
-      <form id="animal-form">
-        <div class="photo-upload-card">
-          <div class="photo-preview" id="animal-photo-preview">
-            ${pendingPhotoData ? `<img src="${pendingPhotoData}" alt="${esc(animal.name || "Animal")} photo">` : `<span>${speciesIcon(animal.species || "Rabbit")}</span>`}
-          </div>
-          <div class="photo-upload-copy">
-            <strong>Animal photo</strong>
-            <p>Upload a JPG, PNG, or WebP photo for this animal. HerdHarbor creates a small compressed profile image for cards and pedigrees. Leave it blank to use the default species icon.</p>
-            <div class="photo-upload-actions">
-              <label class="button button-primary button-small" for="animal-photo-file">${pendingPhotoData ? "Replace photo" : "Upload photo"}</label>
-              <input id="animal-photo-file" class="hidden" type="file" accept="image/jpeg,image/png,image/webp">
-              <button type="button" class="button button-ghost button-small" id="use-default-animal-photo" ${pendingPhotoData ? "" : "disabled"}>Use default icon</button>
-            </div>
-            <div class="brand-file-note" id="animal-photo-status">${pendingPhotoFileName ? esc(pendingPhotoFileName) : "No custom photo selected."}</div>
-          </div>
-        </div>
-
-        <div class="form-grid two">
-          ${field("Name", "name", animal.name, true)}
-          ${field("ID or tag", "tag", animal.tag)}
-          ${field("Tattoo / ear number", "tattoo", animal.tattoo)}
-          ${field("Registration number", "registrationNumber", animal.registrationNumber)}
-          ${field("Breeder name", "breeder", animal.breeder)}
-          ${selectField("Species", "species", state.settings.species, animal.species || "Rabbit", true)}
-          <label class="cattle-ear-field ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "hidden"}" ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "hidden"}>Ear tag number<input name="earTagNumber" value="${esc(animal.earTagNumber || "")}" ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "disabled"}></label>
-          <label class="cattle-ear-field ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "hidden"}" ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "hidden"}>Ear tag color<input name="earTagColor" value="${esc(animal.earTagColor || "")}" placeholder="Blue, yellow, green, or other" ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "disabled"}></label>
-          ${breedComboboxField(animal.species || "Rabbit", animal.breed)}
-          ${selectField("Sex", "sex", ["Female", "Male", "Unknown"], animal.sex || "Unknown", true)}
-          ${field("Date of birth", "dob", animal.dob, false, "date")}
-          ${field("Birth weight (optional)", "birthWeight", animal.birthWeight, false, "number")}
-          ${selectField("Birth weight unit", "birthWeightUnit", ["lb", "lb+oz", "oz", "kg", "g"], animal.birthWeightUnit || "lb")}
-          <label class="birth-weight-ounces ${animal.birthWeightUnit === "lb+oz" ? "" : "hidden"}">Birth weight ounces<input name="birthWeightOunces" type="number" min="0" max="15.9" step="0.1" value="${esc(animal.birthWeightOunces || "")}" ${animal.birthWeightUnit === "lb+oz" ? "" : "disabled"}></label>
-          ${field("Color or variety", "color", animal.color)}
-          ${field("Location / cage / pen", "location", animal.location)}
-          ${selectField("Status", "status", ["Active", "Breeding", "Growing", "Retired", "For Sale", "Reserved", "Sold", "Deceased", "Archived", "Ancestor Only"], animal.status || "Active", true)}
-          ${field("Asking price (optional)", "askingPrice", animal.askingPrice, false, "number")}
-          ${selectAnimalField("Sire", "sireId", animal.sireId, "Male")}
-          ${selectAnimalField("Dam", "damId", animal.damId, "Female")}
-        </div>
-        ${textareaField("Notes", "notes", animal.notes)}
-        <div class="modal-actions">
-          ${id ? `<button type="button" class="button button-danger" id="delete-animal">Delete</button>` : ""}
-          <button type="button" class="button button-ghost" id="cancel-modal">Cancel</button>
-          <button type="submit" class="button button-primary">${id ? "Save changes" : "Add animal"}</button>
-        </div>
-      </form>
-    `, "Animal record");
-
-    const photoInput = $("#animal-photo-file");
-    const photoPreview = $("#animal-photo-preview");
-    const photoStatus = $("#animal-photo-status");
-    const defaultButton = $("#use-default-animal-photo");
-    const speciesSelect = $('[name="species"]', $("#animal-form"));
-    const birthWeightUnit = $('[name="birthWeightUnit"]', $("#animal-form"));
-    const birthWeightOunces = $(".birth-weight-ounces", $("#animal-form"));
-    const breedList = $("#animal-breed-options");
-    const cattleEarFields = $$(".cattle-ear-field", $("#animal-form"));
-
-    const refreshBreedOptions = () => {
-      if (!breedList) return;
-      breedList.innerHTML = breedOptionsFor(speciesSelect?.value || "Rabbit")
-        .map((breed) => `<option value="${esc(breed)}"></option>`)
-        .join("");
-    };
-
-    const refreshPhotoPreview = () => {
-      const currentSpecies = speciesSelect?.value || animal.species || "Rabbit";
-      photoPreview.innerHTML = pendingPhotoData
-        ? `<img src="${pendingPhotoData}" alt="Animal photo preview">`
-        : `<span>${speciesIcon(currentSpecies)}</span>`;
-      photoStatus.textContent = pendingPhotoFileName || "Using the default species icon.";
-      defaultButton.disabled = !pendingPhotoData;
-    };
-
-    const refreshCattleEarFields = () => {
-      const isCattle = String(speciesSelect?.value || "").trim().toLowerCase() === "cattle";
-      cattleEarFields.forEach((label) => {
-        label.hidden = !isCattle;
-        label.classList.toggle("hidden", !isCattle);
-        const input = $("input", label);
-        if (input) input.disabled = !isCattle;
-      });
-    };
-
-    const refreshBirthWeightFields = () => {
-      const usesOunces = birthWeightUnit?.value === "lb+oz";
-      birthWeightOunces?.classList.toggle("hidden", !usesOunces);
-      const input = birthWeightOunces ? $("input", birthWeightOunces) : null;
-      if (input) input.disabled = !usesOunces;
-    };
-
-    speciesSelect?.addEventListener("change", () => {
-      refreshPhotoPreview();
-      refreshBreedOptions();
-      refreshCattleEarFields();
-    });
-    refreshBreedOptions();
-    refreshCattleEarFields();
-    birthWeightUnit?.addEventListener("change", refreshBirthWeightFields);
-    refreshBirthWeightFields();
-
-    photoInput.addEventListener("change", async () => {
-      const file = photoInput.files?.[0];
-      if (!file) return;
-      try {
-        photoStatus.textContent = "Preparing photo…";
-        const prepared = await prepareProfileImage(file, {
-          maxDimension: 560,
-          targetBytes: 65000,
-          outputType: "image/jpeg",
-          background: "#ffffff"
-        });
-        pendingPhotoData = prepared.dataUrl;
-        pendingPhotoFileName = prepared.fileName;
-        refreshPhotoPreview();
-        toast(prepared.compressed ? "Animal photo compressed and ready." : "Animal photo ready.", "success");
-      } catch (error) {
-        photoInput.value = "";
-        photoStatus.textContent = error.message || "The photo could not be prepared.";
-        toast(photoStatus.textContent, "error");
-      }
-    });
-
-    defaultButton.addEventListener("click", () => {
-      pendingPhotoData = "";
-      pendingPhotoFileName = "";
-      photoInput.value = "";
-      refreshPhotoPreview();
-    });
-
-    $("#cancel-modal").addEventListener("click", closeModal);
-    $("#animal-form").addEventListener("submit", (event) => {
-      event.preventDefault();
-      const data = Object.fromEntries(new FormData(event.currentTarget));
-      data.breed = String(data.breed || "").trim();
-      if (String(data.species || "").trim().toLowerCase() !== "cattle") {
-        data.earTagNumber = "";
-        data.earTagColor = "";
-      } else {
-        data.earTagNumber = String(data.earTagNumber || "").trim();
-        data.earTagColor = String(data.earTagColor || "").trim();
-      }
-      const askingPrice = data.askingPrice === "" ? NaN : Number(data.askingPrice);
-      if (data.askingPrice !== "" && (!Number.isFinite(askingPrice) || askingPrice < 0)) {
-        toast("Asking price must be a valid amount of zero or more.", "error");
-        return;
-      }
-      data.askingPrice = Number.isFinite(askingPrice) ? askingPrice.toFixed(2) : "";
-      const birthWeight = data.birthWeight === "" ? NaN : Number(data.birthWeight);
-      const birthWeightOuncesValue = data.birthWeightOunces === "" ? 0 : Number(data.birthWeightOunces);
-      if (data.birthWeight !== "" && (!Number.isFinite(birthWeight) || birthWeight < 0)) {
-        toast("Birth weight must be a valid amount of zero or more.", "error");
-        return;
-      }
-      if (data.birthWeightUnit === "lb+oz" && (!Number.isFinite(birthWeightOuncesValue) || birthWeightOuncesValue < 0 || birthWeightOuncesValue >= 16)) {
-        toast("Birth weight ounces must be between 0 and less than 16.", "error");
-        return;
-      }
-      data.birthWeight = Number.isFinite(birthWeight) ? String(birthWeight) : "";
-      data.birthWeightUnit = ["lb", "lb+oz", "oz", "kg", "g"].includes(data.birthWeightUnit) ? data.birthWeightUnit : "lb";
-      data.birthWeightOunces = data.birthWeight && data.birthWeightUnit === "lb+oz" ? String(birthWeightOuncesValue) : "";
-      data.photoData = pendingPhotoData;
-      data.photoFileName = pendingPhotoFileName;
-      if (id) {
-        const nextAnimal = { ...animal, ...data, updatedAt: new Date().toISOString() };
-        const nextAnimals = state.animals.map((item) => item.id === id ? nextAnimal : item);
-        if (!allowsAnimalTransition(state.animals, nextAnimals)) return;
-        const original = { ...animal };
-        Object.assign(animal, nextAnimal);
-        rememberBreed(data.species, data.breed);
-        recordActivity(`Updated ${data.name}.`, "animal");
-        if (!saveState("Animal updated.")) {
-          Object.keys(animal).forEach((key) => delete animal[key]);
-          Object.assign(animal, original);
-          state.activity.shift();
-          return;
-        }
-      } else {
-        const newAnimal = { id: uid("animal"), ...data, createdAt: new Date().toISOString() };
-        if (!allowsAnimalTransition(state.animals, [...state.animals, newAnimal])) return;
-        state.animals.push(newAnimal);
-        rememberBreed(data.species, data.breed);
-        recordActivity(`Added ${data.name} to animal records.`, "animal");
-        if (!saveState("Animal added.")) {
-          state.animals = state.animals.filter((item) => item.id !== newAnimal.id);
-          state.activity.shift();
-          return;
-        }
-      }
-      closeModal();
-      renderCurrentView();
-    });
-
-    $("#delete-animal")?.addEventListener("click", () => {
-      if (state.sales.some((sale) => (sale.items || []).some((item) => item.animalId === id))) {
-        toast("This animal is connected to a sale record. Keep the animal for invoices, transfers, and buyer history.", "error");
-        return;
-      }
-      if (!confirm(`Delete ${animal.name}? This cannot be undone.`)) return;
-      const removedBreedingIds = state.breedings
-        .filter((record) => record.femaleId === id || record.maleId === id)
-        .map((record) => record.id);
-      removedBreedingIds.forEach((breedingId) => completeWorkflowTasks("breeding", breedingId));
-      state.animals = state.animals.filter((a) => a.id !== id);
-      state.breedings = state.breedings.filter((b) => b.femaleId !== id && b.maleId !== id);
-      state.health = state.health.filter((h) => h.animalId !== id);
-      state.pedigrees = state.pedigrees.filter((p) => p.subjectAnimalId !== id);
-      state.pedigreeDrafts = state.pedigreeDrafts.filter((p) => p.subjectAnimalId !== id);
-      state.tasks = state.tasks.map((t) => t.animalId === id ? { ...t, animalId: "" } : t);
-      recordActivity(`Deleted ${animal.name}.`, "animal");
-      saveState("Animal deleted.");
-      closeModal();
-      renderCurrentView();
-    });
-  }
-
-  function pedigreePreviewCardHtml(animal, relation, subject = false) {
-    const sex = animal?.sex === "Male"
-      ? (animal?.species === "Rabbit" ? "♂ Buck" : "♂ Male")
-      : animal?.sex === "Female"
-        ? (animal?.species === "Rabbit" ? "♀ Doe" : "♀ Female")
-        : "Unknown";
-    return `<article class="pedigree-preview-card ${subject ? "subject" : ""} ${animal ? "" : "unknown"}">
-      <div class="pedigree-preview-heading">
-        <div><small>${esc(relation)}</small><strong>${esc(animal?.name || "Unknown")}</strong></div>
-        <span class="pedigree-preview-sex">${esc(sex)}</span>
-      </div>
-      <div class="pedigree-preview-details">
-        <span data-field="id"><b>ID:</b> ${esc(animal?.earTagNumber || animal?.tag || animal?.tattoo || "—")}</span>
-        <span data-field="dob"><b>DOB:</b> ${esc(animal?.dob ? formatDate(animal.dob) : "—")}</span>
-        <span data-field="color"><b>COLOR:</b> ${esc(animal?.color || "—")}</span>
-        <span data-field="breed"><b>BREED:</b> ${esc(animal?.breed || "—")}</span>
-      </div>
-    </article>`;
-  }
-
-  function pedigreeRecordPreviewHtml(subject, record = null) {
-    const byId = (id) => state.animals.find((animal) => animal.id === id) || null;
-    const ids = record?.ancestorIds || {};
-    const sire = byId(ids.sire || subject?.sireId);
-    const dam = byId(ids.dam || subject?.damId);
-    const sireSire = byId(ids.sireSire || sire?.sireId);
-    const sireDam = byId(ids.sireDam || sire?.damId);
-    const damSire = byId(ids.damSire || dam?.sireId);
-    const damDam = byId(ids.damDam || dam?.damId);
-    return `<div class="pedigree-preview-scroll" aria-label="Pedigree chart for ${esc(subject?.name || "animal")}">
-      <div class="pedigree-preview-tree">
-        <div class="pedigree-preview-node" style="grid-column:1;grid-row:1 / 5">${pedigreePreviewCardHtml(subject, "Animal", true)}</div>
-        <div class="pedigree-preview-branch" style="grid-column:2;grid-row:1 / 5"><span class="pedigree-preview-arm top"></span><span class="pedigree-preview-arm bottom"></span></div>
-        <div class="pedigree-preview-node" style="grid-column:3;grid-row:1 / 3">${pedigreePreviewCardHtml(sire, "Sire")}</div>
-        <div class="pedigree-preview-node" style="grid-column:3;grid-row:3 / 5">${pedigreePreviewCardHtml(dam, "Dam")}</div>
-        <div class="pedigree-preview-branch" style="grid-column:4;grid-row:1 / 3"><span class="pedigree-preview-arm top"></span><span class="pedigree-preview-arm bottom"></span></div>
-        <div class="pedigree-preview-branch" style="grid-column:4;grid-row:3 / 5"><span class="pedigree-preview-arm top"></span><span class="pedigree-preview-arm bottom"></span></div>
-        <div class="pedigree-preview-node" style="grid-column:5;grid-row:1">${pedigreePreviewCardHtml(sireSire, "Sire's sire")}</div>
-        <div class="pedigree-preview-node" style="grid-column:5;grid-row:2">${pedigreePreviewCardHtml(sireDam, "Sire's dam")}</div>
-        <div class="pedigree-preview-node" style="grid-column:5;grid-row:3">${pedigreePreviewCardHtml(damSire, "Dam's sire")}</div>
-        <div class="pedigree-preview-node" style="grid-column:5;grid-row:4">${pedigreePreviewCardHtml(damDam, "Dam's dam")}</div>
-      </div>
-    </div>`;
+    return animalProfileRuntime().openAnimalForm(id);
   }
 
   function openAnimalDetail(id) {
-    const a = state.animals.find((item) => item.id === id);
-    if (!a) return;
-    const sire = state.animals.find((x) => x.id === a.sireId);
-    const dam = state.animals.find((x) => x.id === a.damId);
-    const sireSire = sire ? state.animals.find((x) => x.id === sire.sireId) : null;
-    const sireDam = sire ? state.animals.find((x) => x.id === sire.damId) : null;
-    const damSire = dam ? state.animals.find((x) => x.id === dam.sireId) : null;
-    const damDam = dam ? state.animals.find((x) => x.id === dam.damId) : null;
-    const health = state.health.filter((h) => h.animalId === id).sort((x,y) => (y.date || "").localeCompare(x.date || ""));
-    const breedings = state.breedings.filter((b) => b.femaleId === id || b.maleId === id);
-    const pedigreeImports = state.pedigrees.filter((p) => p.subjectAnimalId === id);
-
-    openModal(a.name, `
-      <div class="animal-detail-hero">
-        <div class="animal-detail-photo ${a.photoData ? "has-photo" : ""}">${animalVisualHtml(a)}</div>
-        <div>
-          <p class="eyebrow">${esc(a.species || "Animal")} profile</p>
-          <h2 style="margin-bottom:5px">${esc(a.name)}</h2>
-          <p class="muted">${esc([a.earTagNumber ? `Ear tag ${a.earTagNumber}` : a.tag || a.tattoo, a.earTagColor, a.breed, a.color].filter(Boolean).join(" · ") || "No additional identity details")}</p>
-        </div>
-      </div>
-      <div class="detail-grid">
-        ${detailField("Species", a.species)}
-        ${detailField("Breed", a.breed)}
-        ${detailField("Sex", a.sex)}
-        ${detailField("Tag", a.tag)}
-        ${String(a.species || "").toLowerCase() === "cattle" ? detailField("Ear tag number", a.earTagNumber) : ""}
-        ${String(a.species || "").toLowerCase() === "cattle" ? detailField("Ear tag color", a.earTagColor) : ""}
-        ${detailField("Tattoo / ear number", a.tattoo)}
-        ${detailField("Registration", a.registrationNumber)}
-        ${detailField("Breeder", a.breeder)}
-        ${detailField("Born", formatDate(a.dob))}
-        ${detailField("Age", ageText(a.dob))}
-        ${detailField("Location", a.location)}
-        ${detailField("Status", a.status)}
-        ${detailField("Asking price", a.askingPrice ? formatMoney(a.askingPrice) : "—")}
-      </div>
-      <h3 style="margin-top:22px">Pedigree preview</h3>
-      <div class="pedigree-preview-scroll">
-        <div class="pedigree-preview-tree">
-          <div class="pedigree-preview-node" style="grid-column:1;grid-row:1 / 5">${pedigreePreviewCardHtml(a, "Animal", true)}</div>
-          <div class="pedigree-preview-branch" style="grid-column:2;grid-row:1 / 5"><span class="pedigree-preview-arm top"></span><span class="pedigree-preview-arm bottom"></span></div>
-          <div class="pedigree-preview-node" style="grid-column:3;grid-row:1 / 3">${pedigreePreviewCardHtml(sire, "Sire")}</div>
-          <div class="pedigree-preview-node" style="grid-column:3;grid-row:3 / 5">${pedigreePreviewCardHtml(dam, "Dam")}</div>
-          <div class="pedigree-preview-branch" style="grid-column:4;grid-row:1 / 3"><span class="pedigree-preview-arm top"></span><span class="pedigree-preview-arm bottom"></span></div>
-          <div class="pedigree-preview-branch" style="grid-column:4;grid-row:3 / 5"><span class="pedigree-preview-arm top"></span><span class="pedigree-preview-arm bottom"></span></div>
-          <div class="pedigree-preview-node" style="grid-column:5;grid-row:1">${pedigreePreviewCardHtml(sireSire, "Sire's sire")}</div>
-          <div class="pedigree-preview-node" style="grid-column:5;grid-row:2">${pedigreePreviewCardHtml(sireDam, "Sire's dam")}</div>
-          <div class="pedigree-preview-node" style="grid-column:5;grid-row:3">${pedigreePreviewCardHtml(damSire, "Dam's sire")}</div>
-          <div class="pedigree-preview-node" style="grid-column:5;grid-row:4">${pedigreePreviewCardHtml(damDam, "Dam's dam")}</div>
-        </div>
-      </div>
-      <h3 style="margin-top:22px">Notes</h3>
-      <p class="muted">${esc(a.notes || "No notes recorded.")}</p>
-      <h3 style="margin-top:22px">Record summary</h3>
-      <p class="muted">${health.length} health record${health.length === 1 ? "" : "s"} · ${breedings.length} breeding record${breedings.length === 1 ? "" : "s"} · ${pedigreeImports.length} pedigree import${pedigreeImports.length === 1 ? "" : "s"}</p>
-      <div class="modal-actions">
-        <button class="button button-ghost" id="detail-close">Close</button>
-        <button class="button button-ghost" id="detail-analytics">View analytics</button>
-        <button class="button button-ghost" id="detail-print-pedigree">Print sale pedigree</button>
-        <button class="button button-ghost" id="detail-print-qr">Print QR card</button>
-        <button class="button button-ghost" id="detail-import-pedigree">Build / import pedigree</button>
-        <button class="button button-primary" id="detail-edit">Edit animal</button>
-      </div>
-    `, `${a.species || "Animal"} record`);
-
-    $("#detail-close").addEventListener("click", closeModal);
-    $("#detail-analytics").addEventListener("click", () => {
-      closeModal();
-      window.HerdHarborAnalytics?.openAnimal?.(id);
-      navigate("analytics");
-    });
-    $("#detail-print-pedigree").addEventListener("click", () => openPrintPedigreeForm(id));
-    $("#detail-print-qr").addEventListener("click", (event) => openAnimalQrCardForm(id, event.currentTarget));
-    $("#detail-import-pedigree").addEventListener("click", () => openPedigreeImport(id));
-    $("#detail-edit").addEventListener("click", () => openAnimalForm(id));
+    return animalProfileRuntime().openAnimalDetail(id);
   }
 
-  function animalDeepLink(animalId) {
-    const base = window.location.hostname === "app.herdharbor.com"
-      ? new URL(window.location.origin + window.location.pathname)
-      : new URL("https://app.herdharbor.com/");
-    base.searchParams.set("animal", animalId);
-    return base.toString();
-  }
-
-  function animalQrSvg(animalId) {
-    if (typeof window.qrcode !== "function") throw new Error("The QR card tool did not load. Close and reopen HerdHarbor, then try again.");
-    const code = window.qrcode(0, "M");
-    code.addData(animalDeepLink(animalId));
-    code.make();
-    return code.createSvgTag({ cellSize: 4, margin: 4, scalable: true });
-  }
-
-  function qrCardCandidates() {
-    const query = animalView.search.toLowerCase();
-    return state.animals.filter((animal) => {
-      if (["Deceased", "Ancestor Only"].includes(animal.status)) return false;
-      const haystack = [animal.name, animal.tag, animal.registrationNumber, animal.tattoo, animal.breeder, animal.breed, animal.location, animal.color].join(" ").toLowerCase();
-      return (!query || haystack.includes(query)) &&
-        (!animalView.species || animal.species === animalView.species) &&
-        (!animalView.sex || animal.sex === animalView.sex) &&
-        (!animalView.status || animal.status === animalView.status);
-    });
-  }
-
-  async function openAnimalQrCardForm(animalId = "", triggerButton = null) {
-    if (qrToolActionPending) return;
-    let candidates = animalId
-      ? state.animals.filter((animal) => animal.id === animalId)
-      : qrCardCandidates();
-    if (!candidates.length) {
-      toast("No animals are available for QR cards with the current filters.", "error");
-      return;
-    }
-
-    qrToolActionPending = true;
-    const originalTriggerText = triggerButton?.textContent || "";
-    if (triggerButton) {
-      triggerButton.disabled = true;
-      triggerButton.textContent = "Loading QR…";
-    }
-    try {
-      await ensureQrToolsReady();
-    } catch (error) {
-      toast(error.message || "The QR card tool could not be loaded.", "error");
-      return;
-    } finally {
-      qrToolActionPending = false;
-      if (triggerButton) {
-        triggerButton.disabled = false;
-        triggerButton.textContent = originalTriggerText;
-      }
-    }
-
-    candidates = animalId
-      ? state.animals.filter((animal) => animal.id === animalId)
-      : qrCardCandidates();
-    if (!candidates.length) {
-      toast("No animals are available for QR cards with the current filters.", "error");
-      return;
-    }
-
-    openModal("Print QR animal cards", `
-      <form id="animal-qr-form">
-        <div class="form-grid two">
-          ${selectField("Card layout", "layout", ["Animal card", "Cage / pen card"], "Animal card", true)}
-          <label>Animals selected
-            <strong id="qr-selected-count">${animalId ? 1 : candidates.length}</strong>
-            <small class="muted">Each code opens the matching animal in the signed-in farm account.</small>
-          </label>
-        </div>
-        <div class="sale-animal-picker">
-          ${candidates.map((animal) => `
-            <label class="sale-animal-choice">
-              <input type="checkbox" data-qr-animal value="${animal.id}" checked>
-              <span><strong>${esc(animal.name || "Unnamed animal")}</strong><small>${esc([animal.earTagNumber || animal.tag || animal.tattoo, animal.earTagColor, animal.location, animal.status].filter(Boolean).join(" · ") || animal.species || "Animal")}</small></span>
-            </label>`).join("")}
-        </div>
-        <p class="budget-note">A phone camera can scan the printed code. HerdHarbor will ask the tester to sign in before showing private farm records.</p>
-        <div class="modal-actions">
-          <button type="button" class="button button-ghost" id="cancel-modal">Cancel</button>
-          <button type="submit" class="button button-primary">Print selected cards</button>
-        </div>
-      </form>
-    `, "QR animal, cage, and pen cards");
-    $(".modal").classList.add("modal-wide");
-    const updateCount = () => {
-      $("#qr-selected-count").textContent = $$('[data-qr-animal]:checked', $("#animal-qr-form")).length;
-    };
-    $$('[data-qr-animal]', $("#animal-qr-form")).forEach((box) => box.addEventListener("change", updateCount));
-    $("#cancel-modal").addEventListener("click", closeModal);
-    $("#animal-qr-form").addEventListener("submit", (event) => {
-      event.preventDefault();
-      const ids = $$('[data-qr-animal]:checked', event.currentTarget).map((box) => box.value);
-      if (!ids.length) {
-        toast("Choose at least one animal.", "error");
-        return;
-      }
-      try {
-        printAnimalQrCards(ids, new FormData(event.currentTarget).get("layout"));
-      } catch (error) {
-        toast(error.message || "The QR cards could not be created.", "error");
-      }
-    });
-  }
-
-  function printAnimalQrCards(animalIds, layout = "Animal card") {
-    const animals = animalIds.map((id) => state.animals.find((animal) => animal.id === id)).filter(Boolean);
-    if (!animals.length) return;
-    const popup = window.open("", "_blank");
-    if (!popup) {
-      toast("Allow pop-ups for HerdHarbor to print QR cards.", "error");
-      return;
-    }
-    popup.opener = null;
-    const operationName = state.profile?.operationName || "HerdHarbor";
-    const cageLayout = layout === "Cage / pen card";
-    popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(operationName)} QR Cards</title><style>
-      @page{size:letter;margin:.35in}*{box-sizing:border-box}body{margin:0;color:#142638;background:#fff;font:12px/1.35 Arial,sans-serif}.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.18in}.card{display:grid;grid-template-columns:1.35in 1fr;gap:.16in;min-height:2.25in;padding:.18in;border:2px solid #0d2540;border-radius:12px;break-inside:avoid;page-break-inside:avoid}.qr{display:grid;place-items:center}.qr svg{width:1.3in;height:1.3in}.copy{min-width:0}.eyebrow{margin:0;color:#2e7d7b;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}h1{margin:3px 0 5px;font-size:20px;line-height:1.05}.location{margin:0 0 7px;padding:6px 8px;color:#fff;background:#0d2540;border-radius:6px;font-size:14px;font-weight:800}.meta{margin:3px 0;color:#455764}.scan{grid-column:1/-1;margin:0;padding-top:5px;border-top:1px solid #ccd5dc;color:#5f6d78;font-size:8px;overflow-wrap:anywhere}.cage{grid-template-columns:1.1in 1fr;min-height:1.75in}.cage .qr svg{width:1.05in;height:1.05in}.cage h1{font-size:17px}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}@media(max-width:700px){.cards{grid-template-columns:1fr}}
-    </style></head><body><main class="cards">${animals.map((animal) => `
-      <article class="card ${cageLayout ? "cage" : ""}">
-        <div class="qr">${animalQrSvg(animal.id)}</div>
-        <div class="copy"><p class="eyebrow">${esc(operationName)} · ${cageLayout ? "Cage / pen" : "Animal"}</p><h1>${esc(animal.name || "Unnamed animal")}</h1>
-          ${cageLayout ? `<p class="location">${esc(animal.location || "Location not recorded")}</p>` : ""}
-          <p class="meta"><strong>${esc(animal.earTagNumber || animal.tag || animal.tattoo || "No ID recorded")}</strong> · ${esc([animal.earTagColor, animal.species || "Animal", animal.breed || "Breed not recorded"].filter(Boolean).join(" · "))}</p>
-          <p class="meta">${esc([animal.sex, animal.dob ? formatDate(animal.dob) : "", animal.status].filter(Boolean).join(" · "))}</p></div>
-        <p class="scan">Scan to open this private HerdHarbor animal record: ${esc(animalDeepLink(animal.id))}</p>
-      </article>`).join("")}</main><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),120));<\/script></body></html>`);
-    popup.document.close();
-    recordActivity(`Opened ${animals.length} printable QR card${animals.length === 1 ? "" : "s"}.`, "animal");
+  function pedigreeRecordPreviewHtml(subject, record = null) {
+    return animalProfileRuntime().pedigreeRecordPreviewHtml(subject, record);
   }
 
   function detailField(label, value) {
@@ -7695,18 +7199,8 @@
     toast,
     getAnimalById: animalById,
     getCurrentRoute: () => currentRoute,
-    openAnimalEditor: (animalId) => {
-      const id = String(animalId || "").trim();
-      if (!id || !state.animals.some((animal) => String(animal.id) === id)) return false;
-      openAnimalForm(id);
-      return true;
-    },
-    openAnimalPedigreePrint: (animalId) => {
-      const id = String(animalId || "").trim();
-      if (!id || !state.animals.some((animal) => String(animal.id) === id)) return false;
-      openPrintPedigreeForm(id);
-      return true;
-    }
+    openAnimalEditor: (animalId) => animalProfileRuntime().openEditor(animalId),
+    openAnimalPedigreePrint: (animalId) => animalProfileRuntime().openPedigreePrint(animalId)
   });
   try { window.dispatchEvent(new CustomEvent("herdharbor:app-ready")); } catch {}
 

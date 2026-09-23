@@ -40,13 +40,15 @@ test("profile Quick Add uses the shared animal action router and does not create
   assert.doesNotMatch(quickBlock, /state\.(?:animals|health|breedings|litters|pedigrees)\.(?:push|splice)/);
 });
 
-test("canonical runtime wrappers stay narrow and validate the target animal", () => {
+test("canonical runtime wrappers stay narrow after Animals/Profile extraction", () => {
   const runtime = read("herdharbor-app-runtime.js");
-  assert.match(runtime, /openAnimalEditor:\s*\(animalId\)\s*=>/);
-  assert.match(runtime, /openAnimalPedigreePrint:\s*\(animalId\)\s*=>/);
-  assert.match(runtime, /state\.animals\.some\(\(animal\) => String\(animal\.id\) === id\)/);
-  assert.match(runtime, /openAnimalForm\(id\)/);
-  assert.match(runtime, /openPrintPedigreeForm\(id\)/);
+  const extracted = read("animal-profile-runtime-v1.8.3.js");
+  assert.match(runtime, /openAnimalEditor:\s*\(animalId\)\s*=>\s*animalProfileRuntime\(\)\.openEditor\(animalId\)/);
+  assert.match(runtime, /openAnimalPedigreePrint:\s*\(animalId\)\s*=>\s*animalProfileRuntime\(\)\.openPedigreePrint\(animalId\)/);
+  assert.match(extracted, /function openEditor\(animalId\)/);
+  assert.match(extracted, /animalsNow\(\)\.some\(\(animal\) => String\(animal\.id\) === id\)/);
+  assert.match(extracted, /function openPedigreePrint\(animalId\)/);
+  assert.match(extracted, /deps\.openPrintPedigreeForm\(id\)/);
 });
 
 test("Phase 3 does not bump the whole app or activate normalized-sync rollout infrastructure", () => {

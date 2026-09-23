@@ -6,13 +6,15 @@ const path = require("node:path");
 
 const html = fs.readFileSync(path.resolve(__dirname, "..", "index.html"), "utf8");
 const appRuntime = fs.readFileSync(path.resolve(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
+const animalProfileRuntime = fs.readFileSync(path.resolve(__dirname, "..", "animal-profile-runtime-v1.8.3.js"), "utf8");
 const shellCss = fs.readFileSync(path.resolve(__dirname, "..", "herdharbor-index-shell.css"), "utf8");
 
 assert.match(appRuntime, /data-view-pedigree="\$\{p\.id\}"/);
 assert.match(appRuntime, /event\.target\.closest\("\[data-view-pedigree\]"\)/);
 assert.match(appRuntime, /openPedigreeRecord\(viewButton\.dataset\.viewPedigree\)/);
 assert.match(appRuntime, /function pedigreeRecordPreviewHtml\(subject, record = null\)/);
-assert.match(appRuntime, /const ids = record\?\.ancestorIds \|\| \{\}/);
+assert.match(animalProfileRuntime, /function pedigreeRecordPreviewHtml\(subject, record = null\)/);
+assert.match(animalProfileRuntime, /const ids = record\?\.ancestorIds \|\| \{\}/);
 assert.match(appRuntime, /Pedigree chart/);
 assert.match(appRuntime, /type="button" class="button button-ghost button-small" data-view-pedigree/);
 assert.match(shellCss, /\.pedigree-document-card \.list-item-actions \.button \{[\s\S]*?min-height: 44px/);

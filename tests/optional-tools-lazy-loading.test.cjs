@@ -12,6 +12,7 @@ const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const html = read("index.html");
 const loader = read("herdharbor-optional-tools.js");
 const runtime = read("herdharbor-app-runtime.js");
+const animalProfileRuntime = read("animal-profile-runtime-v1.8.3.js");
 const worker = read("service-worker.js");
 
 const heavyAssets = [
@@ -223,7 +224,8 @@ test("spreadsheet and QR action paths await their optional tools", () => {
   assert.match(runtime, /export-excel[\s\S]*?await ensureSpreadsheetToolsReady\(\)/);
   assert.match(runtime, /download-spreadsheet-template[\s\S]*?await ensureSpreadsheetToolsReady\(\)/);
   assert.match(runtime, /async function handleSpreadsheetImport[\s\S]*?await ensureSpreadsheetToolsReady\(\{ importSupport: true \}\)/);
-  assert.match(runtime, /async function openAnimalQrCardForm[\s\S]*?await ensureQrToolsReady\(\)/);
+  assert.match(runtime, /ensureQrToolsReady/);
+  assert.match(animalProfileRuntime, /async function openAnimalQrCardForm[\s\S]*?await deps\.ensureQrToolsReady\(\)/);
 });
 
 test("service worker reuses cached optional assets offline and fails cleanly on a first-use miss", async () => {
