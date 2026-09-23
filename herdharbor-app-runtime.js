@@ -2421,54 +2421,43 @@
     });
   }
 
-  function renderHealth() {
-    const rows = state.health.slice().sort((a,b) => (b.date || "").localeCompare(a.date || ""));
-    $("#view-health").innerHTML = `
-      ${headerHtml(
-        "Health and weights",
-        "Keep weights, treatments, medications, observations, and follow-up dates together.",
-        `<button class="button button-primary" id="add-health">+ Add health record</button>`
-      )}
-      <section class="panel symptom-lookup-panel" aria-labelledby="health-symptom-lookup-title">
-        <div class="panel-header">
-          <div>
-            <p class="eyebrow">Educational triage aid</p>
-            <h3 id="health-symptom-lookup-title">Look up a symptom</h3>
-            <small>Search common warning signs and possible concerns by animal or species.</small>
-          </div>
-          <button class="button button-ghost" type="button" id="open-symptom-guide">Open full guide</button>
-        </div>
-        <form class="symptom-lookup-form" id="health-symptom-search">
-          <input id="health-symptom-query" type="search" autocomplete="off" placeholder="Try: not eating, diarrhea, coughing, limping, bloat…" aria-label="Symptom to look up">
-          <button class="button button-primary" type="submit">Search symptoms</button>
-        </form>
-        <p class="symptom-reference-note"><strong>Important:</strong> HerdHarbor is not a veterinary provider. This guide is educational only and cannot diagnose or treat an animal. Contact a licensed veterinarian for any health concern.</p>
-      </section>
-      ${rows.length ? `<div class="panel data-table-wrap">
-        <table class="data-table">
-          <thead><tr><th>Date</th><th>Animal</th><th>Type</th><th>Details</th><th>Weight</th><th>Follow-up</th><th></th></tr></thead>
-          <tbody>${rows.map((h) => `
-            <tr>
-              <td>${formatDate(h.date)}</td>
-              <td><strong>${esc(animalName(h.animalId))}</strong></td>
-              <td><span class="badge">${esc(h.type)}</span></td>
-              <td>${esc(h.details)}</td>
-              <td>${esc(h.weight ? `${h.weight} ${h.weightUnit || "lb"}` : "—")}</td>
-              <td>${formatDate(h.followUpDate)}</td>
-              <td><button class="button button-ghost button-small" data-edit-health="${h.id}">Edit</button></td>
-            </tr>`).join("")}</tbody>
-        </table>
-      </div>` : emptyState("No health records yet.", "Add a weight, treatment, medication, or observation.")}`;
+  let healthRuntimeInstance = null;
 
-    $("#add-health").addEventListener("click", () => openHealthForm());
-    $("#open-symptom-guide").addEventListener("click", () => navigate("symptoms"));
-    $("#health-symptom-search").addEventListener("submit", (event) => {
-      event.preventDefault();
-      symptomView.search = $("#health-symptom-query").value.trim();
-      navigate("symptoms");
+  function healthRuntime() {
+    if (healthRuntimeInstance) return healthRuntimeInstance;
+    const create = window.HerdHarborHealthRuntime?.create;
+    if (typeof create !== "function") {
+      throw new Error("The Health runtime module did not load.");
+    }
+    healthRuntimeInstance = create({
+      getState: () => state,
+      $,
+      $$,
+      esc,
+      headerHtml,
+      emptyState,
+      formatDate,
+      animalName,
+      openModal,
+      closeModal,
+      selectAnimalField,
+      field,
+      selectField,
+      textareaField,
+      todayISO,
+      toast,
+      navigate,
+      uid,
+      recordActivity,
+      saveState,
+      renderCurrentView,
+      setSymptomSearch: (value) => { symptomView.search = String(value || ""); }
     });
-    $$("[data-edit-health]", $("#view-health")).forEach((button) =>
-      button.addEventListener("click", () => openHealthForm(button.dataset.editHealth)));
+    return healthRuntimeInstance;
+  }
+
+  function renderHealth() {
+    return healthRuntime().renderHealth();
   }
 
   function symptomUrgencyClass(urgency = "") {
@@ -2634,70 +2623,7 @@
   }
 
   function openHealthForm(id = "", defaults = {}) {
-    if (!state.animals.length) {
-      toast("Add an animal before creating health records.", "error");
-      navigate("animals");
-      return;
-    }
-    const health = id ? (state.health.find((h) => h.id === id) || {}) : { ...defaults };
-    openModal(id ? "Edit health record" : "Add health record", `
-      <form id="health-form">
-        <div class="form-grid two">
-          ${selectAnimalField("Animal", "animalId", health.animalId, "", true)}
-          ${field("Date", "date", health.date || todayISO(), true, "date")}
-          ${selectField("Record type", "type", ["Weight", "Treatment", "Medication", "Vaccination", "Observation", "Veterinary visit"], health.type || "Observation", true)}
-          ${field("Weight", "weight", health.weight, false, "number")}
-          ${selectField("Weight unit", "weightUnit", ["lb", "lb+oz", "oz", "kg", "g"], health.weightUnit || "lb")}
-          <label id="health-weight-ounces-field" class="${health.weightUnit === "lb+oz" ? "" : "hidden"}">Weight ounces<input name="weightOunces" type="number" min="0" max="15.9" step="0.1" value="${esc(health.weightOunces || "")}" ${health.weightUnit === "lb+oz" ? "" : "disabled"}></label>
-          ${field("Follow-up date", "followUpDate", health.followUpDate, false, "date")}
-        </div>
-        ${textareaField("Details", "details", health.details, true)}
-        <div class="modal-actions">
-          ${id ? `<button type="button" class="button button-danger" id="delete-health">Delete</button>` : ""}
-          <button type="button" class="button button-ghost" id="cancel-modal">Cancel</button>
-          <button type="submit" class="button button-primary">${id ? "Save changes" : "Add record"}</button>
-        </div>
-      </form>`, "Health record");
-
-    $("#cancel-modal").addEventListener("click", closeModal);
-    const healthWeightUnit = $('[name="weightUnit"]', $("#health-form"));
-    const healthWeightOuncesField = $("#health-weight-ounces-field");
-    const refreshHealthWeightOunces = () => {
-      const enabled = healthWeightUnit?.value === "lb+oz";
-      healthWeightOuncesField?.classList.toggle("hidden", !enabled);
-      const input = healthWeightOuncesField ? $("input", healthWeightOuncesField) : null;
-      if (input) input.disabled = !enabled;
-    };
-    healthWeightUnit?.addEventListener("change", refreshHealthWeightOunces);
-    refreshHealthWeightOunces();
-    $("#health-form").addEventListener("submit", (event) => {
-      event.preventDefault();
-      const data = Object.fromEntries(new FormData(event.currentTarget));
-      const weight = data.weight === "" ? NaN : Number(data.weight);
-      const ounces = data.weightOunces === "" ? 0 : Number(data.weightOunces);
-      if (data.weight !== "" && (!Number.isFinite(weight) || weight < 0)) {
-        toast("Weight must be a valid amount of zero or more.", "error");
-        return;
-      }
-      if (data.weightUnit === "lb+oz" && (!Number.isFinite(ounces) || ounces < 0 || ounces >= 16)) {
-        toast("Weight ounces must be between 0 and less than 16.", "error");
-        return;
-      }
-      data.weightOunces = data.weight !== "" && data.weightUnit === "lb+oz" ? String(ounces) : "";
-      if (id) Object.assign(health, data, { updatedAt: new Date().toISOString() });
-      else state.health.push({ id: uid("health"), ...data, createdAt: new Date().toISOString() });
-      recordActivity(`${id ? "Updated" : "Added"} ${data.type.toLowerCase()} record for ${animalName(data.animalId)}.`, "health");
-      saveState(id ? "Health record updated." : "Health record added.");
-      closeModal();
-      renderCurrentView();
-    });
-    $("#delete-health")?.addEventListener("click", () => {
-      if (!confirm("Delete this health record?")) return;
-      state.health = state.health.filter((h) => h.id !== id);
-      saveState("Health record deleted.");
-      closeModal();
-      renderCurrentView();
-    });
+    return healthRuntime().openHealthForm(id, defaults);
   }
 
   function normalizeTaskRecurrence(task = {}) {
