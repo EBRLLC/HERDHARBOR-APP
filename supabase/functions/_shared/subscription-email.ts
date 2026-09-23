@@ -98,14 +98,20 @@ function render(eventType: string, payload: Record<string, unknown>, firstName =
 
   if (eventType === "subscription_canceled") {
     const subject = "Your HerdHarbor subscription is scheduled to end";
-    const text = `${hello}\n\nYour HerdHarbor Member subscription is canceled and will remain active through ${renewalDate}. After that date, your account will return to Junior unless another entitlement or Member credit applies.`;
-    return { subject, text, html: shell(subject, paragraph(htmlEscape(hello)) + paragraph(`Your HerdHarbor Member subscription is canceled and will remain active through <strong>${htmlEscape(renewalDate)}</strong>.`) + paragraph("After that date, your account will return to Junior unless another entitlement or Member credit applies.")) };
+    const text = `${hello}\n\nYour HerdHarbor Member subscription is canceled and will remain active through ${renewalDate}. After that date, your adult account will use Free Adult unless another protected entitlement applies. Existing records remain preserved.`;
+    return { subject, text, html: shell(subject, paragraph(htmlEscape(hello)) + paragraph(`Your HerdHarbor Member subscription is canceled and will remain active through <strong>${htmlEscape(renewalDate)}</strong>.`) + paragraph("After that date, your adult account will use Free Adult unless another protected entitlement applies. Existing records remain preserved.")) };
   }
 
   if (eventType === "subscription_ended") {
     const subject = "Your HerdHarbor Member subscription has ended";
-    const text = `${hello}\n\nYour paid HerdHarbor Member subscription has ended. Your records are preserved. Your account will use Junior access unless another entitlement applies.`;
-    return { subject, text, html: shell(subject, paragraph(htmlEscape(hello)) + paragraph("Your paid HerdHarbor Member subscription has ended. <strong>Your records are preserved.</strong>") + paragraph("Your account will use Junior access unless another entitlement applies.")) };
+    const text = `${hello}\n\nYour paid HerdHarbor Member subscription has ended. Your records are preserved. Your adult account will use Free Adult with up to 5 active animals unless another protected entitlement applies.`;
+    return { subject, text, html: shell(subject, paragraph(htmlEscape(hello)) + paragraph("Your paid HerdHarbor Member subscription has ended. <strong>Your records are preserved.</strong>") + paragraph("Your adult account will use Free Adult with up to 5 active animals unless another protected entitlement applies.")) };
+  }
+
+  if (eventType === "free_adult_fallback") {
+    const subject = "Your HerdHarbor account is now on Free Adult";
+    const text = `${hello}\n\nYour HerdHarbor adult account is now using Free Adult. Existing records remain preserved. Free Adult supports up to 5 active animals, and you can continue managing an existing herd above the allowance while reducing it.`;
+    return { subject, text, html: shell(subject, paragraph(htmlEscape(hello)) + paragraph("Your HerdHarbor adult account is now using <strong>Free Adult</strong>. Existing records remain preserved.") + paragraph("Free Adult supports up to 5 active animals. If your existing herd is already above the allowance, you can continue managing it while reducing the active count.")) };
   }
 
   if (eventType === "junior_fallback") {

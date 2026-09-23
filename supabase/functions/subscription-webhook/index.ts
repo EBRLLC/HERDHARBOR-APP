@@ -162,16 +162,20 @@ Deno.serve(async (req) => {
   async function accessStatus(userId: string, status: string, planId?: string | null) {
     const { data: access, error } = await admin
       .from("account_access")
-      .select("membership_source,membership_tier")
+      .select("account_role,membership_source,membership_tier")
       .eq("user_id", userId)
       .maybeSingle();
     if (error) throw error;
-    const protectedSource = ["manual_override", "founder"].includes(String(access?.membership_source || "").toLowerCase());
+    const role = String(access?.account_role || "user").toLowerCase();
+    const source = String(access?.membership_source || "").toLowerCase();
+    const protectedAccess = ["owner", "admin"].includes(role)
+      || ["manual_override", "founder"].includes(source)
+      || String(access?.membership_tier || "").toLowerCase() === "founder";
     const patch: Record<string, unknown> = {
       subscription_status: status,
       updated_at: new Date().toISOString()
     };
-    if (!protectedSource && planId && ACTIVE.has(status)) {
+    if (!protectedAccess && planId && ACTIVE.has(status)) {
       patch.membership_tier = planId;
       patch.membership_source = "subscription";
     }
@@ -586,19 +590,23 @@ Deno.serve(async (req) => {
       if (event.type === "customer.subscription.deleted" && context?.userId) {
         await expireUnqualifiedReferral(context.userId);
         await releaseFutureReservedCredits(context.userId);
+        // Adult paid access degrades to the permanent Free Adult state. This
+        // changes only subscription_status; protected role/founder/manual
+        // membership ownership remains untouched by accessStatus().
+        await accessStatus(context.userId, "free_adult", context.planId);
         await queueNotification({
           userId: context.userId,
           subscriptionId: context.subscriptionRowId || null,
           eventType: "subscription_ended",
           dedupeKey: `subscription-ended:${stringId((event.data.object as Stripe.Subscription)?.id)}:${event.id}`,
-          payload: { plan: context.planId || "member", fallbackPlan: "junior" }
+          payload: { plan: context.planId || "member", fallbackPlan: "free_adult" }
         });
         await queueNotification({
           userId: context.userId,
           subscriptionId: context.subscriptionRowId || null,
-          eventType: "junior_fallback",
-          dedupeKey: `junior-fallback:${stringId((event.data.object as Stripe.Subscription)?.id)}:${event.id}`,
-          payload: { plan: "junior", reason: "subscription_ended" }
+          eventType: "free_adult_fallback",
+          dedupeKey: `free-adult-fallback:${stringId((event.data.object as Stripe.Subscription)?.id)}:${event.id}`,
+          payload: { plan: "free_adult", maxActiveAnimals: 5, reason: "subscription_ended" }
         });
       }
     } else if (event.type === "checkout.session.completed") {

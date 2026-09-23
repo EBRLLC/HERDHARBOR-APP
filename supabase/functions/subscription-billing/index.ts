@@ -159,6 +159,17 @@ async function buildSnapshot(admin: ReturnType<typeof createClient>, user: AuthU
     maxActiveAnimals = 5;
   }
 
+  if (String(access.subscription_status || "") !== String(effectiveStatus || "")) {
+    const { error: accessStatusError } = await admin
+      .from("account_access")
+      .update({
+        subscription_status: effectiveStatus,
+        updated_at: new Date().toISOString()
+      })
+      .eq("user_id", userId);
+    if (accessStatusError) throw accessStatusError;
+  }
+
   return {
     status: effectiveStatus,
     plan: effectivePlan,
@@ -341,6 +352,13 @@ Deno.serve(async (req) => {
           : {})
       };
 
+      const checkoutIdempotencyKey = [
+        "herdharbor",
+        "member-checkout",
+        user.id,
+        String(trialEndUnix)
+      ].join(":");
+
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
         line_items: [{ price: MEMBER_MONTH.priceId, quantity: 1 }],
@@ -353,6 +371,8 @@ Deno.serve(async (req) => {
         automatic_tax: { enabled: true },
         metadata,
         subscription_data: subscriptionData
+      }, {
+        idempotencyKey: checkoutIdempotencyKey
       });
       return json({ url: session.url, billingStartsAt: trialEndUnix > nowUnix ? trial.endsAt : new Date().toISOString() });
     }

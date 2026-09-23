@@ -4,7 +4,7 @@
   const INTERVAL_KEY = "herdharbor_subscription_interval_v1";
   const CALL_TIMEOUT_MS = 15000;
   const ACCESS_REFRESH_TIMEOUT_MS = 5000;
-  const ACTIVE = new Set(["active", "trialing", "founder", "free_junior", "resubscribed"]);
+  const ACTIVE = new Set(["active", "trialing", "past_due", "founder", "free_junior", "resubscribed"]);
   const PLAN_ORDER = ["junior", "founder", "member", "business"];
   const PRICING = Object.freeze({
     junior: Object.freeze({ month: 0, year: 0 }),
@@ -13,15 +13,15 @@
     business: Object.freeze({ month: 4999, year: 55000 })
   });
 
-  let selectedInterval = (() => {
-    try { return localStorage.getItem(INTERVAL_KEY) === "year" ? "year" : "month"; }
-    catch { return "month"; }
-  })();
+  let selectedInterval = "month";
+  try { localStorage.setItem(INTERVAL_KEY, "month"); } catch {}
   let configured = false;
   let successRefreshInFlight = false;
   let checkoutReadyTimer = null;
   let lastMembershipSignature = "";
   let verifiedSnapshotUserId = null;
+  let checkoutState = "idle";
+  let checkoutError = "";
 
   function sessionUserId() {
     try { return String(window.HerdHarborCloud?.getSession?.()?.user?.id || ""); }
@@ -117,7 +117,7 @@
       if (planId === "junior") throw new Error("HerdHarbor Junior is a free youth plan and does not use Stripe checkout.");
       return call("checkout", {
         planId,
-        billingInterval: selectedInterval,
+        billingInterval: planId === "member" ? "month" : selectedInterval,
         origin: appReturnUrl()
       });
     },
@@ -136,14 +136,24 @@
     }
   });
 
-  function setBillingInterval(next) {
-    selectedInterval = next === "year" ? "year" : "month";
-    try { localStorage.setItem(INTERVAL_KEY, selectedInterval); } catch {}
+  function setBillingInterval() {
+    // Public Member checkout is monthly-only. Keep legacy price metadata for
+    // future plans, but never let browser storage manufacture an unsupported
+    // annual Member checkout request.
+    selectedInterval = "month";
+    try { localStorage.setItem(INTERVAL_KEY, "month"); } catch {}
     enhancePanel();
   }
 
   async function beginMemberCheckout(button) {
-    if (button) button.disabled = true;
+    if (checkoutState === "pending") return;
+    checkoutState = "pending";
+    checkoutError = "";
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Opening secure checkout…";
+    }
+    enhancePanel();
     try {
       const result = await provider.createCheckoutSession({ plan: "member" });
       if (!result?.url) throw new Error("Checkout did not return a secure destination.");
@@ -151,11 +161,79 @@
       if (!/^https?:$/.test(url.protocol)) throw new Error("Billing provider returned an unsafe destination.");
       window.location.assign(url.href);
     } catch (error) {
-      const panel = document.getElementById("hh-subscription-engine-panel");
-      const heroStatus = panel?.querySelector?.(".hh-subscription-hero p");
-      if (heroStatus) heroStatus.textContent = error?.message || "The billing request could not be completed.";
+      checkoutState = "error";
+      checkoutError = error?.message || "The billing request could not be completed.";
+      enhancePanel();
       if (button) button.disabled = false;
     }
+  }
+
+  function accessExperience() {
+    try {
+      return window.HerdHarborSubscriptionLaunch?.getExperienceState?.() || {
+        key: "checking",
+        label: "Checking subscription status",
+        verified: false,
+        upgradeAvailable: false
+      };
+    } catch {
+      return { key: "checking", label: "Checking subscription status", verified: false, upgradeAvailable: false };
+    }
+  }
+
+  function ensureAccessStateCard(panel, experience, snapshot = {}) {
+    let card = panel.querySelector("[data-hh-subscription-access-state]");
+    if (!card) {
+      card = document.createElement("section");
+      card.className = "hh-subscription-card";
+      card.dataset.hhSubscriptionAccessState = "true";
+      const content = panel.querySelector(".hh-subscription-content");
+      const hero = panel.querySelector(".hh-subscription-hero");
+      if (content && hero) content.insertBefore(card, hero.nextSibling);
+    }
+    if (!card) return null;
+
+    const ends = formatDate(experience.endsAt);
+    let detail = "Your base HerdHarbor app remains available while subscription status is checked.";
+    if (experience.key === "trial_active") {
+      const days = Number(experience.daysRemaining || 0);
+      detail = ends
+        ? `No credit card is required to use the trial. ${days} day${days === 1 ? "" : "s"} remaining; Member trial ends ${ends}.`
+        : "No credit card is required to use the trial.";
+    } else if (experience.key === "paid_member") {
+      detail = snapshot.status === "past_due"
+        ? "Member access is still available while Stripe retries payment. Use Manage billing to resolve the payment method."
+        : "Paid Member access is active.";
+    } else if (experience.key === "paid_access_ending") {
+      detail = ends
+        ? `Paid Member access remains active through ${ends}. After that, the adult account moves to Free Adult and existing records stay intact.`
+        : "Paid Member access is scheduled to end. After it ends, the adult account moves to Free Adult and existing records stay intact.";
+    } else if (experience.key === "free_adult") {
+      detail = "Free Adult includes up to 5 active animals. Existing herds above the allowance remain manageable but cannot increase until reduced or upgraded.";
+    } else if (experience.key === "junior") {
+      detail = "Junior remains a separate youth enrollment state with up to 5 active animals.";
+    } else if (experience.key === "protected_access") {
+      detail = "Protected account access takes precedence over trial and Free Adult policy.";
+    } else if (experience.key === "status_unavailable") {
+      detail = "Subscription status could not be refreshed. HerdHarbor startup and existing local records remain available; retry when connectivity returns.";
+    }
+
+    if (checkoutState === "pending") {
+      detail = "Opening secure Stripe checkout. Your existing HerdHarbor access remains unchanged until checkout completes.";
+    } else if (checkoutState === "error" && checkoutError) {
+      detail = `Checkout could not be opened: ${checkoutError} Your current access is unchanged.`;
+    }
+
+    card.innerHTML = `
+      <span class="hh-subscription-kicker">Access</span>
+      <h3>${experience.label || "HerdHarbor access"}</h3>
+      <p data-hh-subscription-access-detail></p>`;
+    const paragraph = card.querySelector("[data-hh-subscription-access-detail]");
+    if (paragraph) paragraph.textContent = detail;
+    card.dataset.state = checkoutState === "pending" ? "checkout_pending"
+      : checkoutState === "error" ? "checkout_error"
+        : String(experience.key || "checking");
+    return card;
   }
 
   function ensureFreeAdultCard(grid, isCurrent) {
@@ -189,26 +267,9 @@
       switcher = document.createElement("div");
       switcher.className = "hh-subscription-interval-switcher";
       switcher.dataset.hhStripeIntervalSwitcher = "true";
-      switcher.setAttribute("role", "group");
-      switcher.setAttribute("aria-label", "Billing interval");
-      switcher.innerHTML = `
-        <button type="button" class="button button-ghost" data-hh-stripe-interval="month">Monthly</button>
-        <button type="button" class="button button-ghost" data-hh-stripe-interval="year">Yearly</button>
-        <span class="hh-subscription-note">Annual plans renew once per year.</span>`;
+      switcher.innerHTML = '<span class="hh-subscription-note">Member is currently offered month-to-month at $14.99/month.</span>';
       grid.parentElement?.insertBefore(switcher, grid);
-      switcher.addEventListener("click", (event) => {
-        const button = event.target?.closest?.("[data-hh-stripe-interval]");
-        if (!button) return;
-        setBillingInterval(button.dataset.hhStripeInterval);
-      });
     }
-
-    switcher.querySelectorAll("[data-hh-stripe-interval]").forEach((button) => {
-      const active = button.dataset.hhStripeInterval === selectedInterval;
-      button.classList.toggle("button-primary", active);
-      button.classList.toggle("button-ghost", !active);
-      button.setAttribute("aria-pressed", active ? "true" : "false");
-    });
 
     panel.querySelectorAll(".hh-subscription-plan-card:not([data-hh-free-adult-card])").forEach((card, index) => {
       const planId = PLAN_ORDER[index];
@@ -225,25 +286,31 @@
     });
 
     const snapshot = window.HerdHarborSubscriptionEngine?.getState?.() || {};
+    const experience = accessExperience();
     const status = String(snapshot.status || "").toLowerCase();
-    const freeAdult = snapshot.freeAdult === true || status === "free_adult";
+    const freeAdult = experience.key === "free_adult";
     ensureFreeAdultCard(grid, freeAdult);
+    ensureAccessStateCard(panel, experience, snapshot);
 
     const heroStatus = panel.querySelector(".hh-subscription-hero p");
-    const trialDate = formatDate(snapshot.trialEndsAt || snapshot.initialTrialEndsAt);
-    if (freeAdult) {
-      if (heroStatus) {
-        heroStatus.textContent = "Free Adult includes up to 5 active animals. Your existing HerdHarbor records stay available, and you can upgrade to unlimited Member access at any time.";
-      }
-    } else if (snapshot.initialTrial === true && status === "trialing") {
-      if (heroStatus) {
+    const trialDate = formatDate(experience.endsAt || snapshot.trialEndsAt || snapshot.initialTrialEndsAt);
+    if (heroStatus) {
+      if (experience.key === "free_adult") {
+        heroStatus.textContent = "Free Adult keeps existing HerdHarbor records intact and includes up to 5 active animals. Upgrade to Member whenever you need unlimited active animals.";
+      } else if (experience.key === "trial_active") {
         heroStatus.textContent = trialDate
-          ? `Free Member Trial — your free Member access ends ${trialDate}. No credit card is required during your free trial.`
-          : "Free Member Trial — no credit card is required during your free trial.";
-      }
-    } else if (snapshot.subscriptionRequired === true || status === "expired") {
-      if (heroStatus) {
-        heroStatus.textContent = "Your paid or trial access has ended. HerdHarbor has moved the account to Free Adult with up to 5 active animals; your existing data remains preserved.";
+          ? `Free Member Trial — access ends ${trialDate}. No credit card is required to begin or use the trial.`
+          : "Free Member Trial — no credit card is required to begin or use the trial.";
+      } else if (experience.key === "paid_access_ending") {
+        heroStatus.textContent = trialDate
+          ? `Paid Member access is scheduled to end ${trialDate}; Free Adult follows automatically without deleting records.`
+          : "Paid Member access is scheduled to end; Free Adult follows automatically without deleting records.";
+      } else if (experience.key === "paid_member") {
+        heroStatus.textContent = status === "past_due"
+          ? "Member access remains available while Stripe retries a payment. Manage billing to resolve the payment method."
+          : "Paid Member access is active.";
+      } else if (experience.key === "checking" || experience.key === "status_unavailable") {
+        heroStatus.textContent = "Subscription status is resolving asynchronously. HerdHarbor startup and existing records are not blocked by billing.";
       }
     }
 
@@ -253,8 +320,7 @@
       memberCard.querySelector(".hh-subscription-current")?.remove();
     }
 
-    const needsMemberCta = freeAdult || (!snapshot.providerSubscriptionId
-      && (snapshot.initialTrial === true || snapshot.subscriptionRequired === true || status === "expired"));
+    const needsMemberCta = experience.key === "free_adult" || experience.key === "trial_active";
     if (needsMemberCta && memberCard) {
       let button = memberCard.querySelector("[data-hh-trial-member-checkout]");
       if (!button) {
@@ -264,11 +330,12 @@
         button.dataset.hhTrialMemberCheckout = "true";
         memberCard.appendChild(button);
       }
-      button.textContent = freeAdult
-        ? "Upgrade to Member"
-        : (snapshot.subscriptionRequired === true || status === "expired"
-          ? "Subscribe to Member"
-          : (trialDate ? `Subscribe — billing starts ${trialDate}` : "Subscribe to Member"));
+      button.textContent = checkoutState === "pending"
+        ? "Opening secure checkout…"
+        : freeAdult
+          ? "Upgrade to Member"
+          : (trialDate ? `Subscribe — billing starts ${trialDate}` : "Subscribe to Member");
+      button.disabled = checkoutState === "pending";
       if (button.dataset.hhTrialCheckoutBound !== "true") {
         button.dataset.hhTrialCheckoutBound = "true";
         button.addEventListener("click", () => void beginMemberCheckout(button));
@@ -300,8 +367,17 @@
     url.searchParams.delete("subscription");
     url.searchParams.delete("session_id");
     window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
-    if (result !== "success") return;
+    if (result !== "success") {
+      if (result === "canceled") {
+        checkoutState = "error";
+        checkoutError = "Checkout was canceled.";
+        window.setTimeout(enhancePanel, 0);
+      }
+      return;
+    }
 
+    checkoutState = "pending";
+    checkoutError = "";
     successRefreshInFlight = true;
     try {
       for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -315,6 +391,9 @@
       }
     } finally {
       successRefreshInFlight = false;
+      checkoutState = "idle";
+      checkoutError = "";
+      window.setTimeout(enhancePanel, 0);
     }
   }
 

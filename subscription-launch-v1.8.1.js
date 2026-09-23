@@ -7,6 +7,7 @@
   const FREE_ADULT_MAX_ACTIVE_ANIMALS = 5;
   const ACTIVE_PAID_STATUSES = new Set(["active", "trialing", "past_due", "founder", "resubscribed"]);
   const PAID_TIERS = new Set(["founder", "member", "business"]);
+  const BACKEND_FREE_ADULT_STATUSES = new Set(["free_adult", "expired", "canceled", "unpaid", "incomplete_expired"]);
 
   const original = window.HerdHarborMembership;
   if (!original || window.HerdHarborSubscriptionLaunch) return;
@@ -98,24 +99,116 @@
     return snapshot.freeAdult === true
       || status === "free_adult"
       || snapshot.subscriptionRequired === true
-      || status === "expired";
+      || BACKEND_FREE_ADULT_STATUSES.has(status);
+  }
+
+  function hasBackendFreeAdult(base = {}) {
+    if (base.backendReady !== true) return false;
+    return BACKEND_FREE_ADULT_STATUSES.has(normalize(base.subscriptionStatus));
   }
 
   function freeAdultAccount(base = {}, snapshot = subscriptionSnapshot(), policy = policyState()) {
+    const snapshotTrusted = trustedSnapshot(snapshot);
     return {
       ...base,
       effectiveMembershipTier: MEMBER_TRIAL_TIER,
       membershipSource: "free_adult",
       subscriptionStatus: "free_adult",
       maxActiveAnimals: FREE_ADULT_MAX_ACTIVE_ANIMALS,
-      trialEndsAt: snapshot.trialEndsAt || snapshot.initialTrialEndsAt || null,
-      initialTrialStartsAt: snapshot.initialTrialStartsAt || null,
+      trialEndsAt: snapshotTrusted ? (snapshot.trialEndsAt || snapshot.initialTrialEndsAt || null) : null,
+      initialTrialStartsAt: snapshotTrusted ? (snapshot.initialTrialStartsAt || null) : null,
       subscriptionRequired: false,
       readOnly: false,
       accessMode: "free_adult",
-      backendTrialVerified: true,
+      backendTrialVerified: snapshotTrusted || base.backendReady === true,
       subscriptionLaunch: policy
     };
+  }
+
+  function remainingDays(endsAt, serverNow) {
+    const end = asTime(endsAt);
+    const now = asTime(serverNow);
+    if (end == null || now == null || end <= now) return 0;
+    return Math.max(1, Math.ceil((end - now) / (24 * 60 * 60 * 1000)));
+  }
+
+  function experienceState(now = new Date()) {
+    const snapshot = subscriptionSnapshot();
+    const account = resolveAccount(now);
+    const trusted = trustedSnapshot(snapshot);
+    const serverNow = trusted && snapshot.serverNow ? snapshot.serverNow : null;
+    const mode = normalize(account.accessMode);
+    const status = normalize(account.subscriptionStatus || snapshot.status);
+
+    if (["owner", "admin"].includes(normalize(account.accountRole))
+      || ["manual_override", "founder"].includes(normalize(account.membershipSource))
+      || normalize(account.effectiveMembershipTier) === "founder") {
+      return Object.freeze({
+        key: "protected_access",
+        label: normalize(account.effectiveMembershipTier) === "founder" ? "Founder access" : "Protected access",
+        upgradeAvailable: false,
+        verified: account.backendReady === true || trusted
+      });
+    }
+
+    if (mode === "junior" || normalize(account.effectiveMembershipTier) === "junior") {
+      return Object.freeze({
+        key: "junior",
+        label: "Junior",
+        upgradeAvailable: true,
+        maxActiveAnimals: 5,
+        verified: account.backendReady === true || trusted
+      });
+    }
+
+    if (mode === "trial" && trusted) {
+      const endsAt = account.trialEndsAt || snapshot.initialTrialEndsAt || snapshot.trialEndsAt || null;
+      return Object.freeze({
+        key: "trial_active",
+        label: "Free Member Trial",
+        endsAt,
+        daysRemaining: remainingDays(endsAt, serverNow),
+        upgradeAvailable: true,
+        verified: true
+      });
+    }
+
+    if (mode === "paid") {
+      const ending = trusted && snapshot.cancelAtPeriodEnd === true;
+      return Object.freeze({
+        key: ending ? "paid_access_ending" : "paid_member",
+        label: ending ? "Member access ending" : "Paid Member",
+        endsAt: ending ? (snapshot.currentPeriodEnd || null) : null,
+        upgradeAvailable: false,
+        verified: trusted || hasBackendPaidSubscription(account)
+      });
+    }
+
+    if (mode === "free_adult" || hasBackendFreeAdult(account)) {
+      return Object.freeze({
+        key: "free_adult",
+        label: "Free Adult",
+        maxActiveAnimals: FREE_ADULT_MAX_ACTIVE_ANIMALS,
+        upgradeAvailable: true,
+        verified: account.backendTrialVerified === true || account.backendReady === true || trusted
+      });
+    }
+
+    if (status === "unavailable") {
+      return Object.freeze({
+        key: "status_unavailable",
+        label: "Subscription status unavailable",
+        upgradeAvailable: false,
+        verified: false
+      });
+    }
+
+    return Object.freeze({
+      key: "checking",
+      label: "Checking subscription status",
+      upgradeAvailable: false,
+      verified: false
+    });
   }
 
   function resolveAccount(now = new Date()) {
@@ -176,7 +269,7 @@
       };
     }
 
-    if (isFreeAdult(snapshot)) {
+    if (isFreeAdult(snapshot) || hasBackendFreeAdult(base)) {
       return freeAdultAccount(base, snapshot, policy);
     }
 
@@ -197,25 +290,14 @@
       };
     }
 
-    if (policy.preLaunchWindow) {
-      return {
-        ...base,
-        effectiveMembershipTier: MEMBER_TRIAL_TIER,
-        membershipSource: "launch_trial_fallback",
-        subscriptionStatus: "trialing",
-        maxActiveAnimals: null,
-        trialEndsAt: HARD_LAUNCH_AT,
-        subscriptionRequired: false,
-        readOnly: false,
-        accessMode: "trial",
-        backendTrialVerified: false,
-        subscriptionLaunch: policy
-      };
-    }
-
+    // An unverified browser snapshot can never create or extend a trial.
+    // Keep the already-resolved account usable while the asynchronous server
+    // snapshot settles, but do not attach trial dates or Free Adult status until
+    // a trusted provider snapshot or fresh account_access state proves them.
     return {
       ...base,
       backendTrialVerified: false,
+      accessMode: "pending",
       subscriptionLaunch: policy
     };
   }
@@ -315,15 +397,19 @@
     freeAdultMaxActiveAnimals: FREE_ADULT_MAX_ACTIVE_ANIMALS,
     getPolicy: () => policyState(),
     getAccount: () => clone(resolveAccount()),
+    getExperienceState: () => clone(experienceState()),
     __test: Object.freeze({
       policyState,
       trustedSnapshot,
       hasPaidSubscription,
       hasBackendPaidSubscription,
+      hasBackendFreeAdult,
       isFounder,
       isJunior,
       isFreeAdult,
       freeAdultAccount,
+      remainingDays,
+      experienceState,
       resolveAccount,
       validateAnimalTransition
     })
