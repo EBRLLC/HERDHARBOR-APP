@@ -156,7 +156,7 @@
   const CLOUD_SYNC_ENGINE = "legacy-full-state";
   const CLOUD_PROVIDER = "supabase";
   const CLOUD_SYNC_COMPONENT_BUILD = "legacy-full-state-observability-3";
-  const CLOUD_SYNC_APP_RELEASE = "1.8.3";
+  const CLOUD_SYNC_APP_RELEASE = "1.8.4";
   const CLOUD_RETRY_DELAYS_MS = [750, 2000];
 
   function sanitizeCloudDiagnosticText(value, maxLength = 240) {
