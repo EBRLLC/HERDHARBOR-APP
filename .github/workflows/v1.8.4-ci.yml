@@ -88,7 +88,7 @@ jobs:
           grep -q 'versionName "1.8.4"' android/app/build.gradle
           grep -q 'versionCode 18' android/app/build.gradle
           grep -q '"appVersion": "1.8.4"' twa-manifest.json
-          grep -q '"appVersionCode": 17' twa-manifest.json
+          grep -q '"appVersionCode": 18' twa-manifest.json
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
