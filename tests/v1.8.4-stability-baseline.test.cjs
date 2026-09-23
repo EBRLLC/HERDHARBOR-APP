@@ -6,12 +6,12 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
-test("v1.8.4 stability baseline preserves current whole-app v1.8.3 identity", () => {
+test("v1.8.4 release closeout owns whole-app v1.8.4 identity", () => {
   const pkg = JSON.parse(read("package.json"));
-  assert.equal(pkg.version, "1.8.3");
-  assert.match(pkg.description, /Alpha v1\.8\.3/);
-  assert.match(read("herdharbor-build.js"), /version:\s*["']1\.8\.3["']/);
-  assert.match(read("manifest.json"), /1\.8\.3/);
+  assert.equal(pkg.version, "1.8.4");
+  assert.match(pkg.description, /Alpha v1\.8\.4/);
+  assert.match(read("herdharbor-build.js"), /version:\s*["\']1\.8\.4["\']/);
+  assert.match(read("manifest.json"), /1\.8\.4/);
 });
 
 test("v1.8.4 contract defines a nine-phase stacked stability release", () => {
@@ -30,7 +30,7 @@ test("v1.8.4 defers AI expansion and keeps normalized authority gated", () => {
   assert.match(contract, /v2\.0\.1/);
   assert.match(contract, /does not expand AI functionality/i);
   assert.match(contract, /legacy full-state sync remains authoritative\/recovery/i);
-  assert.match(contract, /formal whole-app promotion to Alpha v1\.8\.4 belongs to PR 9/i);
+  assert.match(read("RELEASE_NOTES-v1.8.4.md"), /Alpha v1\.8\.4/);
 });
 
 test("current operational documentation uses the v1.8.3 production baseline", () => {
