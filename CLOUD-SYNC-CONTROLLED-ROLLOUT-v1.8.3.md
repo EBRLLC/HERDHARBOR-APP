@@ -26,7 +26,7 @@ The rollout is default-off.
 
 Apply schema only through an authorized Supabase/database change procedure. Do not embed these files into normal web-app startup.
 
-1. Confirm current production remains on HerdHarbor Alpha v1.8.2 and Phase 1 telemetry is green.
+1. Confirm current production application identity is HerdHarbor Alpha v1.8.3, legacy full-state sync remains authoritative, normalized authority is still gated, and production cloud telemetry is available.
 2. Apply `supabase/v1.8.3-cloud-sync-normalized-records.sql`.
 3. Apply `supabase/v1.8.3-cloud-sync-cutover-legacy-guard.sql`.
 4. Run the read-only `supabase/v1.8.3-cloud-sync-rollout-preflight.sql`.
