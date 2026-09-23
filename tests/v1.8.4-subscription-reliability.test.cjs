@@ -45,7 +45,7 @@ test("failed renewal and checkout failures do not cause temporary destructive do
 
 test("referral and member-month credit contracts remain covered by the current suite",()=>{
   const refs=read("tests/subscription-referrals-credits-v1.8.1.test.cjs");
-  assert.match(refs,/self-referral|self referral/i);
+  assert.match(refs,/cannot refer your own HerdHarbor account/i);
   assert.match(refs,/five|5/);
   assert.match(refs,/credit/i);
   assert.match(refs,/renewal/i);
