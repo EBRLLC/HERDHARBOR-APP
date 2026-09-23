@@ -8,9 +8,9 @@ const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
 const config = read("herdharbor-monitoring-config.js");
-const pagesWorkflow = read(".github/workflows/v1.8.3-production-pages.yml");
-const reviewWorkflowPath = ".github/workflows/v1.8.3-ci.yml";
-const productionWorkflowPath = ".github/workflows/v1.8.3-production-acceptance.yml";
+const pagesWorkflow = read(".github/workflows/v1.8.4-production-pages.yml");
+const reviewWorkflowPath = ".github/workflows/v1.8.4-ci.yml";
+const productionWorkflowPath = ".github/workflows/v1.8.4-production-acceptance.yml";
 const instrumentation = read("monitoring/herdharbor-monitoring-instrumentation.mjs");
 const cloud = read("herdharbor-cloud.js");
 const readme = read("README.md");
@@ -18,8 +18,8 @@ const sentryAcceptance = read("scripts/sentry-production-acceptance.mjs");
 
 assert.match(readme, /published from the exact reviewed `main` commit through GitHub Pages/);
 assert.match(config, /dsn: ""/);
-assert.match(config, /HerdHarbor@1\.8\.3/);
-assert.match(config, /alpha-v1.8.3-release-1/);
+assert.match(config, /HerdHarbor@1\.8\.4/);
+assert.match(config, /alpha-v1.8.4-release-1/);
 assert.doesNotMatch(config, /https:\/\/[^"']+@[^"']*sentry/i);
 
 assert.match(pagesWorkflow, /workflow_dispatch:/);
