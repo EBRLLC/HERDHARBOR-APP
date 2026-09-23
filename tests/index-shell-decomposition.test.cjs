@@ -49,7 +49,7 @@ test("classic script and stylesheet order is preserved", () => {
   const coreCss = html.indexOf("herdharbor-core-v1.6.1.css?v=1.7.1");
   assert.ok(baseCss >= 0 && shellCssIndex > baseCss && coreCss > shellCssIndex);
 
-  const analyticsRuntime = html.indexOf("analytics-v1.6.1.js?v=1.7.1");
+  const analyticsRuntime = html.indexOf("analytics-v1.6.1.js?v=2");
   const animalProfileRuntimeIndex = html.indexOf("animal-profile-runtime-v1.8.3.js?v=1");
   const appRuntimeIndex = html.indexOf("herdharbor-app-runtime.js?v=2");
   assert.ok(analyticsRuntime >= 0 && animalProfileRuntimeIndex > analyticsRuntime && appRuntimeIndex > animalProfileRuntimeIndex);

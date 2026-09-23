@@ -600,3 +600,35 @@
 - **Deployment note:** the Edge Function code/config are committed in the stack; production deployment must follow the normal controlled release path and is not performed by this stacked PR
 - **Exact requirements inherited by Phase 9C:** preserve formal v1.8.3 identity, 9A/9B review-before-mutation, canonical Animal/Health ownership, provider-key isolation, Paper Pedigree confirmation boundary, cloud/subscription/security/privacy/PWA/runtime contracts, and no unrelated auth/sign-in changes
 
+
+
+---
+
+## Completed Phase 9C — Growth + Litter Performance Analytics
+
+- **Roadmap phase:** Phase 9C — Growth + Litter Performance Analytics
+- **PR number:** #171
+- **PR title:** feat: expand growth and litter performance analytics
+- **Branch:** `feat/expand-growth-litter-performance-analytics`
+- **Parent PR:** #169
+- **Base branch:** `feat/reviewed-photo-assisted-record-entry`
+- **Base SHA:** `0fe8715345d5400e543f9042704a2b2174d6072b`
+- **Validated implementation SHA:** `061c2e5d7729a3ee07d2880eb87ee526bebb86fe`
+- **Final ledger-closure SHA:** `a9adee0502b1544122bf78602319fcce7e00061e`
+- **Application version:** 1.8.3 (unchanged)
+- **Component identities changed:** `analytics-v1.6.1.js` build `analytics-growth-litter-performance-1`; Analytics JS/CSS shell and service-worker cache revisions advanced to `?v=2` without renaming the stable component files
+- **Canonical state owner:** Analytics remains read-only over canonical Animal, Health, Breeding, Litter, Sale, and Transfer records; dated Health weight records remain the sole weight owner
+- **New public APIs:** `latestSameDayWeightRows`, `latestWeightRowsByAnimal`, `litterParents`, `offspringForLitter`, `offspringOutcome`, `litterOutcomeAnalytics`, `litterWeightPerformance`, `parentOffspringPerformance`, `pairingOffspringPerformance`, `retainedSoldComparison`, and `weaningPerformance`
+- **Compatibility paths retained:** existing Analytics tabs/metrics; preferred display-unit conversion without stored-unit rewrites; current/historical Animal behavior; sale/payment synchronization; canonical `sireId`/`damId`; stable Analytics filenames; rabbit 28-day minimum-weaning safeguard
+- **Compatibility paths removed:** none
+- **Database/schema changes:** none
+- **Edge Function changes:** none
+- **Secrets/config required:** none
+- **Monitoring changes:** none; existing coarse Analytics monitoring/error capture retained
+- **Migration/deployment requirements:** no data migration; deploy the revised Analytics assets and service-worker cache revision after ordered stack merge
+- **Rollback method:** revert the Phase 9C implementation/ledger commits while leaving the Phase 9B parent and canonical records unchanged
+- **Tests added/changed:** added `tests/growth-litter-performance-analytics-v1.8.3.test.cjs`; updated Analytics release, shell decomposition, service-worker/static-asset, package aggregate, and v1.8.3 aggregate contracts
+- **Exact CI result:** Alpha v1.8.3 CI #43 — PASS on exact implementation SHA `061c2e5d7729a3ee07d2880eb87ee526bebb86fe` through closed-unmerged validation-only PR #172
+- **Manual validation still required:** representative small-screen chart/table review, long labels/tooltips, preferred-unit switching, sparse historical herds, and real mixed-status litter records
+- **Known risks:** comparisons remain only as complete as recorded Health/litter/sale outcomes; direct offspring links are preferred and partial historical parent/litter linkage can produce explicit incomplete samples rather than inferred values
+- **Requirements inherited by Phase 9D:** consume Phase 9C's read-only offspring/pair summaries instead of duplicating them; preserve missing-data/sample-size semantics, canonical pedigree `sireId`/`damId`, canonical Health weight ownership, formal v1.8.3 identity, review-before-mutation, cloud/subscription/security/PWA/runtime contracts, and normalized-sync rollout guardrails
