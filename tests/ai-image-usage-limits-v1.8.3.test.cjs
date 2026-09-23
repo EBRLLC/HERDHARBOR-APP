@@ -21,8 +21,8 @@ test("AI image readers default to ten scans per user per UTC day", () => {
 });
 
 test("both readers share a conservative global daily backstop", () => {
-  assert.match(paper, /const DEFAULT_GLOBAL_DAILY_LIMIT = 25;/);
-  assert.match(photo, /const DEFAULT_GLOBAL_DAILY_LIMIT = 25;/);
+  assert.match(paper, /const DEFAULT_GLOBAL_DAILY_LIMIT = 50;/);
+  assert.match(photo, /const DEFAULT_GLOBAL_DAILY_LIMIT = 50;/);
   assert.match(paper, /AI_IMAGE_GLOBAL_DAILY_LIMIT/);
   assert.match(photo, /AI_IMAGE_GLOBAL_DAILY_LIMIT/);
   assert.match(paper, /herdharbor_reserve_ai_image_request/);
