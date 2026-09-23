@@ -779,7 +779,7 @@
 - **Exact implementation CI result:** Alpha v1.8.3 CI #57 — PASS on exact implementation SHA `d5cfcd144e7932041c2420e5d7ec62e9f901116c`
 - **Manual validation still required:** physical iOS/Android rear-camera capture, rotated EXIF photos, very large phone images, offline-to-online retry while modal remains open, background/foreground resume, narrow-screen review forms, and installed-PWA resume behavior
 - **Known risks:** in-memory pending photo analysis intentionally does not survive a full browser/process termination; this avoids introducing a second persistent offline image queue. Canonical farm records remain protected by the existing local/cloud architecture.
-- **Roadmap status:** implementation Phases 9A through 9G are complete; this ledger-closure commit must pass the full v1.8.3 CI gate before the remaining roadmap is considered fully green.
+- **Roadmap status:** implementation Phases 9A through 9G are complete and the exact Phase 9G closure head passed the full v1.8.3 CI gate.
 
 
 
@@ -792,7 +792,7 @@
 - **Branch:** `fix/ai-image-usage-limits`
 - **Base branch:** `feat/harden-offline-mobile-capture`
 - **Base SHA:** `35d9e3affad4eab52692c8331000b31fdcd0186d`
-- **Validated implementation SHA:** `f3b779a6ab1f292791ca432dc3b43c97876181fb`
+- **Validated implementation SHA:** `74caa237e4673d4139e9bb81948f786a86cee21b`
 - **Application version:** 1.8.3 (unchanged)
 - **Policy defaults:** Paper Pedigree = 10 scans per authenticated user per UTC day; general Photo Entry = 10 scans per authenticated user per UTC day; shared global AI-image backstop = 50 provider calls per UTC day
 - **Environment overrides:** `PAPER_PEDIGREE_DAILY_LIMIT`, `PHOTO_ENTRY_DAILY_LIMIT`, and `AI_IMAGE_GLOBAL_DAILY_LIMIT`
@@ -803,7 +803,7 @@
 - **Compatibility retained:** review-before-mutation, server-side provider keys, `store:false`, canonical Animal/Health/Pedigree owners, Phase 9G offline behavior, and formal v1.8.3 identity
 - **Legacy compatibility:** the older Paper Pedigree-only v1.8.2 usage ledger remains in repository history for existing deployments, but the v1.8.3 shared guard is authoritative after its migration is applied
 - **Tests added/updated:** `tests/ai-image-usage-limits-v1.8.3.test.cjs`; `tests/paper-pedigree-rate-limit-v1.8.2.test.cjs`; v1.8.3 aggregate gate
-- **Exact CI result:** Alpha v1.8.3 CI #60 — PASS on implementation SHA `f3b779a6ab1f292791ca432dc3b43c97876181fb`; Web/security/regression and Android v1.8.3 review bundle passed
+- **Exact CI result:** Alpha v1.8.3 CI #62 — PASS on final exact head `74caa237e4673d4139e9bb81948f786a86cee21b`; Web/security/regression and Android v1.8.3 review bundle passed
 - **Deployment order:** apply `supabase/v1.8.3-ai-image-usage-guard.sql` first, then deploy updated `paper-pedigree-extract` and `record-photo-extract`
 - **Manual validation still required:** live authenticated quota exhaustion, UTC-day reset, production AI secret/config, representative real documents, and provider-budget monitoring
 - **Known risk:** these application limits bound HerdHarbor request counts but do not create or guarantee a provider free tier; provider-side spending/billing controls remain the final cost backstop
