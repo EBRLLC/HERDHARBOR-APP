@@ -1140,8 +1140,8 @@
     return breedingLitterRuntime().renderBreedings();
   }
 
-  function openBreedingForm(id = "") {
-    return breedingLitterRuntime().openBreedingForm(id);
+  function openBreedingForm(id = "", defaults = {}) {
+    return breedingLitterRuntime().openBreedingForm(id, defaults);
   }
 
   function renderLitters() {
@@ -2835,6 +2835,25 @@
     return settingsRuntime().openFeedbackForm();
   }
 
+  let voiceAssistedEntryInstance = null;
+
+  function voiceAssistedEntry() {
+    if (voiceAssistedEntryInstance) return voiceAssistedEntryInstance;
+    const create = window.HerdHarborVoiceAssistedEntry?.create;
+    if (typeof create !== "function") throw new Error("The voice-assisted entry module did not load.");
+    voiceAssistedEntryInstance = create({
+      getState: () => state,
+      openModal,
+      closeModal,
+      openHealthForm,
+      openBreedingForm,
+      todayISO,
+      esc,
+      toast
+    });
+    return voiceAssistedEntryInstance;
+  }
+
   function openQuickAdd() {
     openModal("Quick add", `
       <div class="cards-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
@@ -2843,6 +2862,7 @@
         ${quickCard("Birth / litter", "Record delivery, outcomes, weaning, and offspring.", "litter")}
         ${quickCard("Pedigree", "Use the guided builder, attach a source, or resume later.", "pedigree")}
         ${quickCard("Health", "Add a weight, treatment, or observation.", "health")}
+        ${quickCard("Voice-assisted entry", "Speak or type a weight, medication, or breeding instruction for review.", "voice")}
         ${quickCard("Task", "Create a chore or reminder.", "task")}
         ${quickCard("Customer", "Save a buyer and contact details.", "customer")}
         ${quickCard("Animal sale", "Reserve or sell animals and prepare documents.", "sale")}
@@ -2857,6 +2877,7 @@
       if (type === "litter") openLitterForm();
       if (type === "pedigree") openPedigreeImport();
       if (type === "health") openHealthForm();
+      if (type === "voice") voiceAssistedEntry().open();
       if (type === "task") openTaskForm();
       if (type === "customer") openCustomerForm();
       if (type === "sale") openSaleForm();
