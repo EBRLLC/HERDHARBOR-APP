@@ -46,7 +46,7 @@ assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog \{[\s\S]*?col
 assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog h2 \{ color: #0D2540; \}/);
 assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog \.hh-account-email \{ color: #526474; \}/);
 const webVersion=build.match(/version:\s*"([^"]+)"/)?.[1];
-assert.ok(["1.7.1","1.8.0","1.8.1","1.8.2","1.8.3"].includes(webVersion),`unexpected web release ${webVersion}`);
+assert.ok(["1.7.1","1.8.0","1.8.1","1.8.2","1.8.3","1.8.4"].includes(webVersion),`unexpected web release ${webVersion}`);
 if(webVersion==="1.8.2")assert.match(build,/buildId:\s*"cloud-sync-v2-/);
 if(webVersion==="1.8.4")assert.match(build,/buildId:\s*"alpha-v1\.8\.4-release-1"/);
 assert.match(worker,/const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1|8\.2|8\.3)-/);
