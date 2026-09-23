@@ -159,7 +159,7 @@
 - **Base branch:** `feat/complete-production-trial-free-adult`
 - **Base SHA:** `7ac4a0a58dbf694242b825ae65fee883d3223a61`
 - **Validated implementation head SHA:** `c8cf37ac9b1423c7a285c34d508dedac8b4972ee`
-- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after the closure commit is revalidated, because a commit cannot contain its own Git SHA
+- **Final head SHA:** `aceff2b9de5f512907a1b0b598345a56b4bd3b3e`
 - **Parent PR:** #143
 - **Application version:** 1.8.2
 - **Component/build identities changed:** no whole-app release identity changed; `herdharbor-cloud.js` browser asset revision advances from `?v=20` to `?v=21`; `paper-pedigree-import-v1.8.2.js` asset revision advances from `?v=1` to `?v=2`; Paper Pedigree core contract/version remains v1.8.2
@@ -178,19 +178,54 @@
 - **Rollback procedure:** revert PR #145 browser/Edge Function changes and restore cloud/pedigree asset revisions; aggregate metrics table/RPC may remain inert or be separately rolled back by an authorized operator; canonical farm data requires no migration rollback because AI never directly mutates it
 - **Tests added:** `tests/paper-pedigree-production-hardening-v1.8.3.test.cjs`
 - **Tests modified:** `tests/paper-pedigree-runtime-v1.8.2.test.cjs`; `tests/stability-release.test.cjs`; `tests/current-shell-asset-identity-v1.6.7.test.cjs`; `tests/tablet-layout-login-color.test.cjs`; `tests/workflow-phase1-v1.7.1.test.cjs`; `tests/launch-hardening.test.cjs`; `package.json` v1.8.3 development gate
-- **Full CI result:** Alpha v1.8.2 CI #219 — PASS on validated implementation head `c8cf37ac9b1423c7a285c34d508dedac8b4972ee`; complete UTC and America/New_York regression discovery, release/security, lifecycle/state-integrity, monitoring build/architecture/config, source-mutation guard, and Android review bundle passed. The ledger-closure head is revalidated before Phase 6A.
+- **Full CI result:** Alpha v1.8.2 CI #220 — PASS on exact final head `aceff2b9de5f512907a1b0b598345a56b4bd3b3e`; complete UTC and America/New_York regression discovery, release/security, lifecycle/state-integrity, monitoring build/architecture/config, source-mutation guard, and Android review bundle passed.
 - **Manual validation still required:** deploy/apply the aggregate metrics migration in an authorized environment; verify production Edge Function secrets and timeout configuration; test representative clear/rotated/perspective/partial rabbit pedigree photos and confirm uncertain fields/warnings; verify provider timeout/rate-limit behavior against the deployed provider; handwriting reliability is intentionally not claimed
 - **Known risks:** provider vision quality varies by document quality/layout; low-confidence and ambiguous fields still require human judgment; aggregate metrics are unavailable until the SQL migration is applied; sanitized browser diagnostics depend on the Supabase Functions error context retaining the response body; multi-photo merge is deferred because safe deterministic per-image provenance/conflict resolution is not yet implemented
 - **Exact requirements inherited by next phase:** preserve the single reviewed AI mutation boundary, canonical matching/conflict/lineage ownership, local source-image privacy, server-only provider keys, authenticated fail-closed extraction, stable safe diagnostics, aggregate-only telemetry, no multi-photo merge without provenance design, Phase 4 subscription protections, Phase 1/2 cloud contracts, and whole-app v1.8.2 identity
 
 ---
 
-## Phase 6A — Monitoring non-blocking startup
+## Completed Phase 6A — Monitoring non-blocking startup
+
+- **Roadmap phase:** Phase 6A — Monitoring non-blocking startup
+- **PR number:** #147
+- **PR title:** perf: decouple monitoring from application startup
+- **Branch:** `perf/decouple-monitoring-from-application-startup`
+- **Base branch:** `feat/harden-paper-pedigree-ai-production`
+- **Base SHA:** `aceff2b9de5f512907a1b0b598345a56b4bd3b3e`
+- **Validated implementation head SHA:** `d633808b71ebe908073cb05c13356be1a06e86de`
+- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after the closure commit is revalidated, because a commit cannot contain its own Git SHA
+- **Parent PR:** #145
+- **Application version:** 1.8.2
+- **Component/build identities changed:** no monitoring release/build identity changed; PWA bootstrap browser/cache asset revision advances from `pwa.js?v=30` to `pwa.js?v=31`; whole-app build ID remains `cloud-sync-v2-state-integrity-1`
+- **Production behavior changed:** normal application boot no longer waits for monitoring configuration or the bundled monitoring SDK; monitoring begins independently as early as the PWA bootstrap can attach; application boot is one-shot; a bounded eight-item in-memory early error/rejection queue preserves practical startup visibility until monitoring settles; queued failures are flushed through the existing monitoring API only if monitoring attaches; temporary early listeners are removed when monitoring settles
+- **Production behavior intentionally NOT changed:** monitoring is not disabled; config -> bundled SDK ordering remains; monitoring privacy/sampling/release/build metadata are unchanged; PR #137/#138 cloud failure provenance/retry/session telemetry is unchanged; PWA update flow and Cloud Sync independence are unchanged; authentication, domain state, normalized-sync authority, and whole-app release remain unchanged
+- **Files/modules now owning the feature:** `pwa.js` owns startup ordering, monitoring attachment coordination, bounded early-failure buffering, application-module boot, and PWA update registration; existing monitoring browser/core/instrumentation modules remain monitoring behavior/privacy owners
+- **Canonical state owner:** no domain state ownership change; `pwa.js` owns bootstrap sequencing only
+- **Public entry points introduced:** none; existing `window.HerdHarborPWA` and `window.HerdHarborMonitoring` public surfaces remain unchanged
+- **Compatibility paths retained:** existing optional monitoring config and bundled SDK loading; fail-open behavior when config/SDK cannot load; normal monitoring global instrumentation after attach; existing service-worker update UX
+- **Compatibility paths removed:** `loadMonitoring(bootApplication)` is no longer the application boot gate
+- **Database/schema changes:** none
+- **Edge Function changes:** none
+- **Environment variables/secrets required:** none added; existing environment-driven Sentry DSN/config generation remains unchanged
+- **Monitoring changes:** startup timing/attachment only; bounded early bootstrap errors can be reported after attach; no new private metadata fields; cloud-sync telemetry contract remains intact
+- **Migration requirements:** none; deploy updated `pwa.js?v=31`, `index.html`, and service-worker shell references together
+- **Rollback procedure:** revert PR #147 and restore PWA asset revision v30; monitoring resumes gating application boot as before; no data migration rollback is required
+- **Tests added:** `tests/monitoring-startup-nonblocking-v1.8.3.test.cjs`
+- **Tests modified:** `tests/monitoring-integration-v1.5.1.test.cjs`; `tests/current-shell-asset-identity-v1.6.7.test.cjs`; `tests/launch-hardening.test.cjs`; `tests/pwa-update-regression-v1.5.0.test.cjs`; `tests/runtime-consolidation-v1.5.1.test.cjs`; `tests/stability-release.test.cjs`; `package.json` v1.8.3 development gate
+- **Full CI result:** Alpha v1.8.2 CI #225 — PASS on validated implementation head `d633808b71ebe908073cb05c13356be1a06e86de`; release/security, lifecycle/state-integrity, complete UTC and America/New_York regression discovery, monitoring build/architecture/config, source-mutation guard, and Android review bundle all passed. The ledger-closure head is revalidated before Phase 6B.
+- **Manual validation still required:** measure/observe a cold mobile/PWA start under slow or blocked monitoring asset delivery; confirm base UI/modules become usable without waiting for monitoring; verify a controlled early bootstrap exception is captured after delayed monitoring attachment in a non-production test environment
+- **Known risks:** errors occurring before `pwa.js` itself executes cannot be buffered by this bridge; if monitoring asset delivery hangs indefinitely, temporary listeners remain installed but the queue is capped at eight entries and application boot remains independent; external network timing cannot be fully reproduced by static repository CI
+- **Exact requirements inherited by next phase:** preserve monitoring-independent one-shot boot, bounded early-error queue semantics, fail-open monitoring, current monitoring release/build/privacy and cloud-error telemetry contracts, PWA update independence, Phase 5 AI protections, Phase 4 subscription protections, Phase 1/2 cloud contracts, and whole-app v1.8.2 identity
+
+---
+
+## Phase 6B — Runtime extraction: Animals / Profile
 
 - **Status:** pending
-- **Required base branch:** `feat/harden-paper-pedigree-ai-production`
-- **Required base:** exact final green Phase 5 ledger-closure head
-- **Parent PR:** #145
+- **Required base branch:** `perf/decouple-monitoring-from-application-startup`
+- **Required base:** exact final green Phase 6A ledger-closure head
+- **Parent PR:** #147
 - **Application version target for this phase:** remain 1.8.2
 
-At Phase 6A start, first correct the inherited Phase 5 `Final head SHA` line to the exact green parent SHA, then inspect repository HEAD, PR #145 diff, current startup/monitoring tests, branch ancestry, and open PR overlap before implementation.
+At Phase 6B start, first correct the inherited Phase 6A `Final head SHA` line to the exact final green parent SHA, then inspect repository HEAD, PR #147 diff, current animal/profile runtime tests, branch ancestry, callers, and open PR overlap before extraction.

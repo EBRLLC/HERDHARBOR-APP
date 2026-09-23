@@ -18,6 +18,13 @@
   let updateActivationInFlight = false;
   let updateActivationTimer = null;
   let updateDeferredUntil = 0;
+  const EARLY_MONITORING_QUEUE_LIMIT = 8;
+  let monitoringLoadStarted = false;
+  let monitoringLoadSettled = false;
+  let applicationBooted = false;
+  const earlyMonitoringFailures = [];
+  let earlyWindowErrorHandler = null;
+  let earlyUnhandledRejectionHandler = null;
 
   const navigatorRef = () => window.navigator || (typeof navigator !== "undefined" ? navigator : {});
   const isStandalone = () => window.matchMedia?.("(display-mode: standalone)")?.matches === true || navigatorRef().standalone === true;
@@ -93,9 +100,10 @@
     return window.HerdHarborMonitoring || null;
   }
 
-  function monitorFailure(error, errorCategory, moduleName = "dashboard", metadata = {}) {
-    try {
-      monitoring()?.captureError?.(error, {
+  function monitoringFailurePayload(error, errorCategory, moduleName = "dashboard", metadata = {}) {
+    return {
+      error: error instanceof Error ? error : new Error("HerdHarbor startup operation failed"),
+      options: {
         module: moduleName,
         errorCategory,
         metadata: {
@@ -103,8 +111,76 @@
           result: "failure",
           ...metadata
         }
+      }
+    };
+  }
+
+  function queueEarlyMonitoringFailure(error, errorCategory, moduleName = "dashboard", metadata = {}) {
+    if (monitoringLoadSettled || earlyMonitoringFailures.length >= EARLY_MONITORING_QUEUE_LIMIT) return false;
+    earlyMonitoringFailures.push(monitoringFailurePayload(error, errorCategory, moduleName, metadata));
+    return true;
+  }
+
+  function monitorFailure(error, errorCategory, moduleName = "dashboard", metadata = {}) {
+    const activeMonitoring = monitoring();
+    if (!activeMonitoring?.captureError) {
+      queueEarlyMonitoringFailure(error, errorCategory, moduleName, metadata);
+      return;
+    }
+    try {
+      activeMonitoring.captureError(error, monitoringFailurePayload(error, errorCategory, moduleName, metadata).options);
+    } catch {}
+  }
+
+  function installEarlyMonitoringBridge() {
+    if (earlyWindowErrorHandler || earlyUnhandledRejectionHandler) return;
+    earlyWindowErrorHandler = (event) => {
+      queueEarlyMonitoringFailure(
+        event?.error instanceof Error ? event.error : new Error("HerdHarbor early bootstrap error"),
+        "startup_failure",
+        "dashboard",
+        { operation: "early_window_error" }
+      );
+    };
+    earlyUnhandledRejectionHandler = (event) => {
+      queueEarlyMonitoringFailure(
+        event?.reason instanceof Error ? event.reason : new Error("HerdHarbor early bootstrap rejection"),
+        "unhandledrejection",
+        "dashboard",
+        { operation: "early_unhandled_rejection" }
+      );
+    };
+    window.addEventListener("error", earlyWindowErrorHandler);
+    window.addEventListener("unhandledrejection", earlyUnhandledRejectionHandler);
+  }
+
+  function removeEarlyMonitoringBridge() {
+    if (earlyWindowErrorHandler) window.removeEventListener?.("error", earlyWindowErrorHandler);
+    if (earlyUnhandledRejectionHandler) window.removeEventListener?.("unhandledrejection", earlyUnhandledRejectionHandler);
+    earlyWindowErrorHandler = null;
+    earlyUnhandledRejectionHandler = null;
+  }
+
+  function settleMonitoringLoad() {
+    if (monitoringLoadSettled) return;
+    monitoringLoadSettled = true;
+    removeEarlyMonitoringBridge();
+    const activeMonitoring = monitoring();
+    if (!activeMonitoring?.captureError) {
+      earlyMonitoringFailures.length = 0;
+      return;
+    }
+    try {
+      activeMonitoring.setModule?.("dashboard");
+      activeMonitoring.addBreadcrumb?.({
+        module: "dashboard",
+        action: applicationBooted ? "monitoring_attached_after_application_boot" : "monitoring_attached_before_application_boot"
       });
     } catch {}
+    while (earlyMonitoringFailures.length) {
+      const queued = earlyMonitoringFailures.shift();
+      try { activeMonitoring.captureError(queued.error, queued.options); } catch {}
+    }
   }
 
   function loadMonitoring(done) {
@@ -112,6 +188,12 @@
       if (!configLoaded) { done?.(); return; }
       addOptionalScript("hh-monitoring-v151", "vendor/herdharbor-monitoring-v1.6.1.min.js?v=1.8.2", () => done?.());
     });
+  }
+
+  function startMonitoringLoad() {
+    if (monitoringLoadStarted) return;
+    monitoringLoadStarted = true;
+    loadMonitoring(settleMonitoringLoad);
   }
 
   function loadPedigreeVisuals() {
@@ -377,6 +459,8 @@
   };
 
   function bootApplication() {
+    if (applicationBooted) return;
+    applicationBooted = true;
     try {
       monitoring()?.setModule?.("dashboard");
       monitoring()?.addBreadcrumb?.({ module: "dashboard", action: "load_application_modules" });
@@ -393,10 +477,14 @@
   }
 
   function boot() {
-    // Monitoring is optional and fail-open. If either configuration or the
-    // bundled SDK cannot load, the application starts normally.
-    loadMonitoring(bootApplication);
+    // Application startup is authoritative and never waits for monitoring.
+    // Monitoring begins as early as this PWA bootstrap can safely attach, runs
+    // independently, and flushes only a bounded in-memory early-error queue.
+    bootApplication();
   }
+
+  installEarlyMonitoringBridge();
+  startMonitoringLoad();
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
   else boot();
