@@ -9,7 +9,7 @@ const instrumentation=fs.readFileSync(path.join(root,"monitoring","herdharbor-mo
 const core=fs.readFileSync(path.join(root,"monitoring","herdharbor-monitoring-core.mjs"),"utf8");
 
 test("cloud telemetry reports current app release independently from component build",()=>{
-  assert.match(cloud,/CLOUD_SYNC_APP_RELEASE = "1\.8\.3"/);
+  assert.match(cloud,/CLOUD_SYNC_APP_RELEASE = "1\.8\.4"/);
   assert.match(cloud,/CLOUD_SYNC_COMPONENT_BUILD = "legacy-full-state-observability-3"/);
   assert.match(cloud,/app_release: CLOUD_SYNC_APP_RELEASE/);
   assert.match(cloud,/component_build: CLOUD_SYNC_COMPONENT_BUILD/);
