@@ -18,7 +18,7 @@ const instrumentation = read("monitoring/herdharbor-monitoring-instrumentation.m
 const cloud = read("herdharbor-cloud.js");
 const shows = read("shows-v1.6.1.js");
 
-assert.equal(pkg.version, "1.8.3");
+assert.equal(pkg.version, "1.8.4");
 assert.equal(pkg.dependencies["@sentry/browser"], "10.71.0");
 assert.ok(pkg.devDependencies.esbuild);
 assert.match(browser, /import \* as Sentry from "@sentry\/browser"/);
@@ -27,11 +27,11 @@ assert.doesNotMatch(browser, /loader\.js|browser\.sentry-cdn\.com|sentry\.io\/ap
 
 assert.match(config, /dsn: ""/);
 assert.doesNotMatch(config, /https:\/\/[^"']+@[^"']*sentry/i, "DSN is not hard-coded in source");
-assert.match(config, /HerdHarbor@1\.8\.3/);
-assert.match(config, /build: "alpha-v1.8.3-release-1"/);
+assert.match(config, /HerdHarbor@1\.8\.4/);
+assert.match(config, /build: "alpha-v1.8.4-release-1"/);
 assert.match(config, /enableTestCrash: false/);
-assert.match(generator, /release: "HerdHarbor@1\.8\.3"/);
-assert.match(generator, /alpha-v1.8.3-release-1/);
+assert.match(generator, /release: "HerdHarbor@1\.8\.4"/);
+assert.match(generator, /alpha-v1.8.4-release-1/);
 
 assert.match(core, /beforeSend:/);
 assert.match(core, /beforeBreadcrumb:/);
