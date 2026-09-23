@@ -857,6 +857,7 @@
   }
 
   function renderDashboard() {
+    taskRuntime().syncDerivedAutomation();
     const activeAnimalCount = activeAnimals().length;
     const openBreedings = state.breedings.filter((record) =>
       !["Not pregnant", "Delivered", "Cancelled"].includes(normalizeBreedingStatus(record.status))
@@ -2643,6 +2644,10 @@
 
   function taskStatusMeta(task) {
     return taskRuntime().taskStatusMeta(task);
+  }
+
+  function syncDerivedTaskAutomation(now = new Date().toISOString()) {
+    return taskRuntime().syncDerivedAutomation(now);
   }
 
   function renderTasks() {

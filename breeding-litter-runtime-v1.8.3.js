@@ -382,6 +382,7 @@
             ${field("Confirmation date", "confirmedDate", breeding.confirmedDate || "", false, "date")}
             ${field("Birth / nest preparation date", "nestBoxDate", breeding.nestBoxDate || breeding.preparationDate || "", false, "date")}
             ${field("Expected due date", "dueDate", breeding.dueDate || "", true, "date")}
+            ${field("Additional follow-up date", "followUpDate", breeding.followUpDate || "", false, "date")}
             ${selectField("Status", "status", BREEDING_STATUS_OPTIONS, normalizeBreedingStatus(breeding.status), true)}
           </div>
           <p class="task-repeat-note" id="breeding-schedule-note">Choose a dam and breeding date to calculate the schedule.</p>
@@ -542,6 +543,7 @@
             ${selectAnimalField("Sire", "sireId", litter.sireId, "Male", true)}
             ${field("Birth date", "birthDate", litter.birthDate || linkedBreeding?.dueDate || todayISO(), true, "date")}
             ${field("Expected weaning date", "expectedWeanDate", litter.expectedWeanDate || (initialRule ? addDays(litter.birthDate || linkedBreeding?.dueDate || todayISO(), initialRule.weanDays) : ""), false, "date")}
+            ${field("Additional litter follow-up date", "followUpDate", litter.followUpDate || "", false, "date")}
             ${field("Born alive", "bornAlive", litter.bornAlive ?? 0, true, "number")}
             ${field("Stillborn", "stillborn", litter.stillborn ?? 0, false, "number")}
             ${field("Fostered in", "fosteredIn", litter.fosteredIn ?? 0, false, "number")}
@@ -550,7 +552,7 @@
             ${field("Weaned", "weaned", litter.weaned ?? 0, false, "number")}
             ${field("Offspring tag prefix", "offspringPrefix", litter.offspringPrefix || "", false)}
           </div>
-          <p class="task-repeat-note">Linking a breeding marks it delivered, closes its expected-birth reminders, and creates a weaning reminder when a date is entered. Existing offspring are never deleted when this record changes.</p>
+          <p class="task-repeat-note">Linking a breeding marks it delivered, closes its expected-birth reminders, and creates a weaning reminder when a date is entered. An additional follow-up date creates a separate litter task. Existing offspring are never deleted when this record changes.</p>
           ${textareaField("Notes", "notes", litter.notes)}
           <div class="modal-actions">
             ${id ? `<button type="button" class="button button-danger" id="delete-litter">Delete</button>` : ""}

@@ -203,7 +203,106 @@
       return { label: "Upcoming", tone: "" };
     }
   
+    function syncDerivedAutomation(now = new Date().toISOString()) {
+      const automation = root.HerdHarborTaskAutomation;
+      if (typeof automation?.deriveTaskDefinitions !== "function") return { changed: false, created: 0, updated: 0, completed: 0, reopened: 0 };
+      const state = stateNow();
+      if (!Array.isArray(state.tasks)) state.tasks = [];
+      const definitions = automation.deriveTaskDefinitions(state);
+      const definitionIds = new Set(definitions.map((definition) => definition.id));
+      let changed = false, created = 0, updated = 0, completed = 0, reopened = 0;
+
+      definitions.forEach((definition) => {
+        const existing = state.tasks.find((task) => task.id === definition.id);
+        const fingerprint = definition.automationFingerprint || automation.taskFingerprint?.(definition) || "";
+        if (!definition.dueDate) {
+          if (!existing) return;
+          if (!existing.completed) {
+            existing.completed = true;
+            existing.completedAt = now;
+            existing.updatedAt = now;
+            completed += 1;
+            changed = true;
+          }
+          if (!existing.automationManaged || existing.automationFingerprint !== fingerprint) {
+            existing.automationManaged = true;
+            existing.automationFingerprint = fingerprint;
+            changed = true;
+          }
+          return;
+        }
+
+        if (!existing) {
+          if (definition.completed) return;
+          state.tasks.push({
+            ...definition,
+            completed: false,
+            automationManaged: true,
+            automationFingerprint: fingerprint,
+            createdAt: now,
+            updatedAt: now
+          });
+          created += 1;
+          changed = true;
+          return;
+        }
+
+        const priorFingerprint = String(existing.automationFingerprint || "");
+        const fields = [
+          "title", "category", "dueDate", "animalId", "notes", "sourceType", "sourceRecordId",
+          "reminderType", "recurrence", "recurrenceDays"
+        ];
+        let rowChanged = false;
+        fields.forEach((fieldName) => {
+          const nextValue = definition[fieldName] ?? "";
+          if ((existing[fieldName] ?? "") === nextValue) return;
+          existing[fieldName] = nextValue;
+          rowChanged = true;
+        });
+        if (!existing.automationManaged) {
+          existing.automationManaged = true;
+          rowChanged = true;
+        }
+        if (existing.automationFingerprint !== fingerprint) {
+          existing.automationFingerprint = fingerprint;
+          rowChanged = true;
+        }
+
+        if (definition.completed && !existing.completed) {
+          existing.completed = true;
+          existing.completedAt = now;
+          completed += 1;
+          rowChanged = true;
+        } else if (!definition.completed && existing.completed && priorFingerprint && priorFingerprint !== fingerprint && !existing.nextTaskId) {
+          existing.completed = false;
+          delete existing.completedAt;
+          reopened += 1;
+          rowChanged = true;
+        }
+
+        if (rowChanged) {
+          existing.updatedAt = now;
+          updated += 1;
+          changed = true;
+        }
+      });
+
+      state.tasks.forEach((task) => {
+        if (!task.automationManaged || task.generatedFromTaskId || definitionIds.has(task.id)) return;
+        if (task.completed) return;
+        task.completed = true;
+        task.completedAt = now;
+        task.updatedAt = now;
+        completed += 1;
+        changed = true;
+      });
+
+      if (changed) saveState();
+      return { changed, created, updated, completed, reopened };
+    }
+
     function renderTasks() {
+      syncDerivedAutomation();
       const today = todayISO();
       const allRows = stateNow().tasks.slice().sort(taskSort);
       const open = allRows.filter((task) => !task.completed).length;
@@ -407,6 +506,7 @@
       recurringTaskId,
       ensureNextRecurringTask,
       setTaskCompleted,
+      syncDerivedAutomation,
       taskSort,
       filterTasks,
       taskStatusMeta,

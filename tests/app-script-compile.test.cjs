@@ -8,6 +8,7 @@ const appRuntime = fs.readFileSync(path.join(root, "herdharbor-app-runtime.js"),
 const animalProfileRuntime = fs.readFileSync(path.join(root, "animal-profile-runtime-v1.8.3.js"), "utf8");
 const breedingLitterRuntime = fs.readFileSync(path.join(root, "breeding-litter-runtime-v1.8.3.js"), "utf8");
 const healthRuntime = fs.readFileSync(path.join(root, "health-runtime-v1.8.3.js"), "utf8");
+const taskAutomation = fs.readFileSync(path.join(root, "task-automation-v1.8.3.js"), "utf8");
 const taskRuntime = fs.readFileSync(path.join(root, "task-runtime-v1.8.3.js"), "utf8");
 const salesCustomerRuntime = fs.readFileSync(path.join(root, "sales-customer-runtime-v1.8.3.js"), "utf8");
 const profitabilityAnalytics = fs.readFileSync(path.join(root, "profitability-analytics-v1.8.3.js"), "utf8");
@@ -24,6 +25,7 @@ assert.ok(appRuntime.trim(), "external application runtime is present");
 assert.ok(animalProfileRuntime.trim(), "extracted Animals/Profile runtime is present");
 assert.ok(breedingLitterRuntime.trim(), "extracted Breeding/Litter runtime is present");
 assert.ok(healthRuntime.trim(), "extracted Health runtime is present");
+assert.ok(taskAutomation.trim(), "derived Task automation module is present");
 assert.ok(taskRuntime.trim(), "extracted Task runtime is present");
 assert.ok(salesCustomerRuntime.trim(), "extracted Sales/Customer runtime is present");
 assert.ok(profitabilityAnalytics.trim(), "profitability analytics runtime is present");
@@ -34,6 +36,7 @@ assert.ok(photoAssistedEntry.trim(), "reviewed photo-assisted entry runtime is p
 assert.doesNotThrow(() => new Function(animalProfileRuntime), "extracted Animals/Profile runtime compiles");
 assert.doesNotThrow(() => new Function(breedingLitterRuntime), "extracted Breeding/Litter runtime compiles");
 assert.doesNotThrow(() => new Function(healthRuntime), "extracted Health runtime compiles");
+assert.doesNotThrow(() => new Function(taskAutomation), "derived Task automation module compiles");
 assert.doesNotThrow(() => new Function(taskRuntime), "extracted Task runtime compiles");
 assert.doesNotThrow(() => new Function(salesCustomerRuntime), "extracted Sales/Customer runtime compiles");
 assert.doesNotThrow(() => new Function(profitabilityAnalytics), "profitability analytics runtime compiles");

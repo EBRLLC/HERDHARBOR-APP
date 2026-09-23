@@ -705,3 +705,42 @@
 - **Known risks:** profitability is only as complete as recorded costs/payments and explicit allocation metadata; partial margins are intentionally withheld instead of inferred
 - **Requirements inherited by Phase 9F:** preserve canonical accounting owners and read-only profitability boundaries; reuse existing TaskRuntime and existing breeding reminder IDs; preserve v1.8.3 identity, review-before-mutation, cloud/subscription/security/PWA/runtime contracts, recurrence/idempotency, and normalized-sync rollout guardrails
 
+
+
+---
+
+## Completed Phase 9F — Reminders + Automation
+
+- **Roadmap phase:** Phase 9F — Reminders + Automation
+- **PR number:** #177
+- **PR title:** feat: add derived task automation
+- **Branch:** `feat/add-derived-task-automation`
+- **Base branch:** `feat/add-production-profitability-analytics`
+- **Base SHA:** `c60cb51f6b5f94ecd0742b7d0d6b17c0d584c109`
+- **Validated implementation SHA:** `69e61bf0b29774a46646b1e5cad1b0abcdb2d65f`
+- **Parent PR:** #175
+- **Application version:** 1.8.3 (unchanged)
+- **New component:** `task-automation-v1.8.3.js` build `derived-task-automation-1`
+- **Canonical task owner:** existing `task-runtime-v1.8.3.js` remains the only runtime that reconciles definitions into `state.tasks`; the automation module is definition-only
+- **Existing producers retained:** Breeding/Litter runtime remains authoritative for pregnancy-check, birth-preparation, expected-birth, and weaning reminder IDs/behavior
+- **New canonical source metadata:** optional breeding follow-up date; optional litter follow-up date; Health follow-up recurrence and custom-day interval
+- **New derived reminder types:** breeding-follow-up, litter-follow-up, health-follow-up, medication-follow-up, vaccination-follow-up; recurring Health care uses the existing Task recurrence engine
+- **Idempotency:** deterministic root IDs from source type/record/reminder type; same source re-sync updates one root task; completed recurring roots create exactly one deterministic next occurrence through existing recurrence logic
+- **Completion/source-change rule:** unchanged source fingerprints do not reopen completed automation roots; a completed non-recurring root may reopen only when its canonical source schedule changes; missing dates/deleted sources close managed roots instead of inventing dates
+- **Dashboard/task behavior:** derived reminder reconciliation occurs before Dashboard/Tasks consume task state; save is silent when task state actually changed
+- **Domain mutation boundary:** automation/task completion changes Tasks only; Health, Breeding, Litters, Animals and other domain records remain unchanged
+- **Compatibility retained:** all existing Task recurrence/filter/manual-task behavior, existing breeding reminder producers, Phase 9A/9B review boundaries, Phase 9C-9E analytics, v1.8.3 identity, cloud/subscription/security/PWA/runtime contracts
+- **Compatibility removed:** none
+- **Database/schema changes:** none
+- **Edge Function changes:** none
+- **Secrets/config required:** none
+- **Monitoring changes:** none
+- **Migration/deployment requirements:** no data migration; deploy the new static task-automation module plus revised Health/Breeding/Task/App shell/service-worker assets after ordered stack merge
+- **Rollback method:** revert Phase 9F commits; canonical source records remain intact and manual/existing breeding reminders retain their prior ownership
+- **Tests added/changed:** added `tests/derived-task-automation-v1.8.3.test.cjs`; updated Health compatibility behavior, app-script compile, package v1.8.3 gate, PWA shell/load order, Pages artifact requirements
+- **Documentation:** `docs/DERIVED-TASK-AUTOMATION-v1.8.3.md`
+- **Exact CI result:** Alpha v1.8.3 CI #53 — PASS on implementation SHA `69e61bf0b29774a46646b1e5cad1b0abcdb2d65f` through validation-only PR #178; ledger-closure head must also pass before Phase 9G branches
+- **Manual validation still required:** Health repeat controls on narrow mobile layout; breeding/litter follow-up task appearance; recurring completion; Dashboard counts after automatic reconciliation; edit/delete source behavior
+- **Known risks:** automatic reminders depend on explicit canonical follow-up dates; no due date is invented; existing historical breeding reminders remain owned by their established producer
+- **Requirements inherited by Phase 9G:** preserve Task-only mutation boundary, recurrence/idempotency, all cloud dirty/conflict/tombstone/LKG/backup guardrails, Phase 9B photo review-before-mutation and server-side key isolation, formal v1.8.3 identity, canonical local cache, and no second offline database
+
