@@ -9,7 +9,7 @@ const CORS = {
 
 const OPENAI_API = "https://api.openai.com/v1/responses";
 const DEFAULT_MODEL = "gpt-5.6-luna";
-const DEFAULT_DAILY_LIMIT = 5;
+const DEFAULT_DAILY_LIMIT = 10;
 const DEFAULT_GLOBAL_DAILY_LIMIT = 25;
 const DEFAULT_PROVIDER_TIMEOUT_MS = 30_000;
 const MAX_REQUEST_BYTES = 11_000_000;
