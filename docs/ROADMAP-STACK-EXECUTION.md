@@ -848,8 +848,24 @@ The planned HerdHarbor development roadmap through Phase 9G is implemented and t
 - **Canonical legacy rollback:** retained
 - **AI review-before-mutation:** retained for Paper Pedigree, Voice Entry, and Photo Entry
 - **Android:** v1.8.3 review bundle passes CI; signed Play release remains external/manual
-- **Production deployment:** not yet performed by this development stack
-- **Database deployment required:** apply the v1.8.3 AI image usage guard migration; previously documented normalized-sync migrations remain separate controlled operational work
-- **Edge Function deployment required:** updated Paper Pedigree and Photo Entry extractors with existing provider/Supabase secrets
-- **Production/manual validation still required:** Stripe/webhooks, Free Adult edge cases, production Sentry event quality, real photo/pedigree documents, voice capture on supported devices, iOS/Android camera/PWA behavior, and controlled normalized-sync preflight/cohort rollout
+- **Production deployment:** merged `main` head `70a9b40224229f270ba255ce576ecf2f22193228` published successfully through GitHub Pages and the monitored Alpha v1.8.3 production Pages workflow
+- **Database deployment:** `v1_8_3_paper_pedigree_ai_metrics` and `v1_8_3_ai_image_usage_guard` are applied and live schema/RPC presence was verified; normalized-sync migrations remain unapplied and separately gated
+- **Edge Function deployment:** `paper-pedigree-extract` is active at version 4 and `record-photo-extract` is active at version 2; both require JWT and use the shared 10/user/day + 50/global/day guard
+- **Production/manual validation still required:** authenticated live quota exhaustion/reset, representative real pedigree/photo documents, voice capture on supported devices, iOS/Android camera/PWA behavior, Stripe/webhook and Free Adult edge cases, production Sentry event quality, signed Android/Play release, leaked-password protection review, and controlled normalized-sync preflight/cohort rollout
 - **Auto-merge status:** no implementation PR in this stack has been auto-merged
+
+
+## Production deployment verification
+
+- **GitHub main head:** `70a9b40224229f270ba255ce576ecf2f22193228`
+- **Pages deployment:** standard GitHub Pages build/deploy run #214 — PASS
+- **Monitored v1.8.3 production publish:** production Pages workflow run #9 — PASS
+- **Supabase project:** `HERDHARBOR-APP` remains ACTIVE_HEALTHY
+- **AI metrics migration:** applied; aggregate metrics table and service-role-only metric RPC verified present
+- **AI image quota migration:** applied; per-user/per-feature table, global table, and shared reservation RPC verified present
+- **Quota defaults in deployed functions:** Paper Pedigree 10/user/UTC day; Photo Entry 10/user/UTC day; shared global backstop 50/provider calls/UTC day
+- **Paper Pedigree Edge Function:** active version 4, `verify_jwt=true`
+- **Photo Entry Edge Function:** active version 2, `verify_jwt=true`
+- **Normalized-sync production promotion:** NOT performed; normalized authority remains gated
+- **Migration history note:** the two v1.8.3 AI migrations were applied concurrently by separate execution sessions, producing duplicate migration-history names at different timestamps. Their SQL is idempotent and the resulting schema/RPC state was verified correct. Do not delete migration-history rows solely to cosmetically deduplicate them.
+- **Remaining manual launch checks:** authenticated quota exhaustion/reset, representative real documents, mobile camera/microphone/PWA behavior, Stripe/webhooks, Free Adult downgrade/limit cases, production Sentry event quality, signed Android release, and Auth leaked-password protection configuration
