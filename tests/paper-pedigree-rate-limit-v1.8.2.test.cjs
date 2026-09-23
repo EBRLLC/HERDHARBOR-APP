@@ -23,13 +23,17 @@ test('paper pedigree usage ledger is service-role only with an atomic daily rese
 test('Edge Function validates the image before reserving a bounded daily AI request', () => {
   const edge = read('supabase/functions/paper-pedigree-extract/index.ts');
   assert.match(edge, /DEFAULT_DAILY_LIMIT = 10/);
+  assert.match(edge, /DEFAULT_GLOBAL_DAILY_LIMIT = 50/);
   assert.match(edge, /PAPER_PEDIGREE_DAILY_LIMIT/);
+  assert.match(edge, /AI_IMAGE_GLOBAL_DAILY_LIMIT/);
   assert.match(edge, /MAX_REQUEST_BYTES/);
   const mimeCheck = edge.indexOf('if (!ALLOWED_MIME.has(mimeType))');
-  const reserveCall = edge.indexOf('admin.rpc("herdharbor_reserve_paper_pedigree_ai_request"');
+  const reserveCall = edge.indexOf('admin.rpc("herdharbor_reserve_ai_image_request"');
   const providerCall = edge.indexOf('fetch(OPENAI_API');
   assert.ok(mimeCheck >= 0 && reserveCall > mimeCheck, 'invalid payloads must not consume a usage reservation');
   assert.ok(providerCall > reserveCall, 'usage reservation must happen before the paid provider call');
-  assert.match(edge, /status[^\n]*429|, 429\)/);
+  assert.match(edge, /p_feature:\s*"paper_pedigree"/);
+  assert.match(edge, /quota_exceeded/);
+  assert.match(edge, /global_quota_exceeded/);
   assert.match(edge, /reached today's paper pedigree reading limit/);
 });
