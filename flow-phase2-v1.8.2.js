@@ -11,11 +11,8 @@
   const PROFILE_ROUTE="animal";
   const TABS=Object.freeze(["overview","health","breeding","genetics","pedigree","shows","production","history"]);
   const TAB_LABELS=Object.freeze({overview:"Overview",health:"Health",breeding:"Breeding",genetics:"Genetics",pedigree:"Pedigree",shows:"Shows",production:"Production",history:"History"});
-  const RETURN_TTL_MS=5*60*1000;
   let installed=false;
   let activeProfile=null;
-  let coreModalBypass=0;
-  let pendingReturn=null;
   let syncingLocation=false;
 
   const clean=value=>String(value==null?"":value).trim();
@@ -332,7 +329,7 @@
       const tabButton=event.target.closest?.("[data-hh-p2-tab]");
       if(tabButton){event.preventDefault();selectTab(tabButton.dataset.hhP2Tab||"overview");return;}
       const action=event.target.closest?.("[data-hh-p2-action]");
-      if(action){event.preventDefault();openCoreAction(action.dataset.hhP2Action||"");}
+      if(action){event.preventDefault();openProfileAction(action.dataset.hhP2Action||"");}
     });
     return view;
   }
@@ -533,32 +530,11 @@
     return true;
   }
 
-  function waitFor(selector,callback,attempt=0,max=45){
-    const node=root.document?.querySelector(selector);
-    if(node){callback(node);return true;}
-    if(attempt>=max)return false;
-    root.setTimeout?.(()=>waitFor(selector,callback,attempt+1,max),50);
-    return true;
-  }
-
-  function openCoreAction(action){
+  function openProfileAction(action){
     if(!activeProfile?.animalId||!clean(action))return false;
-    const animalId=activeProfile.animalId;
-    pendingReturn={animalId,tab:activeProfile.tab,expiresAt:Date.now()+RETURN_TTL_MS};
-    const launch=button=>{
-      coreModalBypass+=1;
-      button.click();
-      waitFor("#modal-content .hh-p1-profile-hub",hub=>{
-        const actionButton=hub.querySelector(`[data-hh-p1-action="${cssEscape(action)}"]`);
-        if(!actionButton){pendingReturn=null;root.HerdHarborApp?.toast?.("That animal action is not available for this record.","error");return;}
-        actionButton.click();
-      });
-    };
-    const existing=root.document?.querySelector(`#view-animals [data-view-animal="${cssEscape(animalId)}"]`);
-    if(existing){launch(existing);return true;}
-    clickAnimalsRoute();
-    waitFor(`#view-animals [data-view-animal="${cssEscape(animalId)}"]`,launch);
-    return true;
+    const handled=root.HerdHarborAnimalActionRouter?.open?.(action,activeProfile.animalId,{returnTab:activeProfile.tab})===true;
+    if(!handled)root.HerdHarborApp?.toast?.("That animal action is not available right now.","error");
+    return handled;
   }
 
   function todayTarget(eventNode){
@@ -573,14 +549,11 @@
     if(today){const target=todayTarget(today);if(target?.kind==="animal"&&target.animalId){event.preventDefault();event.stopImmediatePropagation();openAnimalProfile(target.animalId,target.tab||"overview",{history:"push",label:target.label||""});return;}}
     const viewButton=event.target.closest?.("[data-view-animal]");
     if(!viewButton)return;
-    if(coreModalBypass>0){coreModalBypass-=1;return;}
     const animalId=viewButton.dataset.viewAnimal||"";
     if(!animalId)return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    let tab="overview";
-    if(pendingReturn&&pendingReturn.animalId===String(animalId)&&Date.now()<=pendingReturn.expiresAt){tab=pendingReturn.tab||"overview";pendingReturn=null;}
-    openAnimalProfile(animalId,tab,{history:"push"});
+    openAnimalProfile(animalId,"overview",{history:"push"});
   }
 
   function syncFromLocation(){
@@ -613,7 +586,6 @@
     root.removeEventListener?.("popstate",syncFromLocation);
     installed=false;
     activeProfile=null;
-    pendingReturn=null;
   }
 
   const API=Object.freeze({VERSION,TABS,IDENTITY_FIELD_KEYS,DEFAULT_IDENTITY_LAYOUT,MAX_IDENTITY_FIELDS,normalizeIdentityLayout,identityLayoutFor,validateIdentityLayout,stateWithIdentityLayout,stateWithoutIdentityLayout,weightRecordDateKey,latestWeightRecord,displayWeightGrams,identityField,identityRows,openIdentityLayoutDialog,resetIdentityLayout,normalizeTab,profileHash,parseProfileHash,lifecycleSummary,openAnimalProfile,selectTab,backToAnimals,renderProfile,install,uninstall});

@@ -141,6 +141,22 @@
   function contextualQuickTypes(route){
     return({dashboard:['animal','health','task'],animals:['animal','pedigree','health'],breeding:['breeding','litter','task'],litters:['litter','animal','task'],health:['health','task'],tasks:['task','health'],budget:['expense','income','task'],sales:['sale','customer','income'],shows:['task','health']}[route]||['animal','health','task']);
   }
+  function profileQuickActions(state,animalId){
+    const model=profileModel(state,animalId);
+    if(!model)return[];
+    const actions=[
+      {action:'weight',label:'Add weight'},
+      {action:'episode',label:'Health episode'},
+      {action:'care',label:'Add care'}
+    ];
+    if(model.current&&['female','male'].includes(lower(model.animal?.sex))&&!model.quarantined){
+      actions.push({action:'breeding',label:'Breed'});
+    }
+    actions.push({action:'pedigree',label:'Pedigree'});
+    if(model.tabs.includes('shows'))actions.push({action:'show-entry',label:'Show entry'});
+    return actions;
+  }
+
   function eventTone(date,kind='dated'){
     const d=clean(date),t=today();
     if(kind==='attention')return'attention';
@@ -255,7 +271,43 @@
     panel.addEventListener('click',e=>{if(e.target.closest('[data-hh-p1-open-tasks]')){root.document.querySelector('#dashboard-view-tasks')?.click();return;}if(e.target.closest('[data-hh-p1-quick-add]')){root.document.querySelector('#quick-add-button')?.click();return;}const key=e.target.closest('[data-hh-p1-event]')?.dataset?.hhP1Event;if(!key)return;const item=events.find(x=>x.key===key);if(!item)return;if(item.source==='health')nav('health');else if(item.source==='shows')root.document.querySelector('.nav-item[data-route="shows"]')?.click();else nav('tasks');});
     return true;
   }
-  function enhanceQuickAdd(){const content=root.document?.querySelector('#modal-content'),title=clean(root.document?.querySelector('#modal-title')?.textContent);if(!content||title!=='Quick add'||content.querySelector('.hh-p1-quick-context'))return false;const route=root.HerdHarborApp?.getCurrentRoute?.()||'dashboard',types=contextualQuickTypes(route),labels={animal:'Animal',health:'Health',task:'Task',pedigree:'Pedigree',breeding:'Breeding',litter:'Birth / litter',expense:'Expense',income:'Income',sale:'Animal sale',customer:'Customer'};const block=root.document.createElement('section');block.className='hh-p1-quick-context';block.innerHTML=`<p class="eyebrow">Suggested here</p><div>${types.map(type=>`<button type="button" class="button button-ghost button-small" data-hh-p1-quick="${type}">${esc(labels[type]||type)}</button>`).join('')}</div>`;content.prepend(block);block.addEventListener('click',e=>{const type=e.target.closest('[data-hh-p1-quick]')?.dataset?.hhP1Quick;if(!type)return;content.querySelector(`[data-quick="${type}"]`)?.click();});return true;}
+  function enhanceQuickAdd(){
+    const content=root.document?.querySelector('#modal-content');
+    const title=clean(root.document?.querySelector('#modal-title')?.textContent);
+    if(!content||title!=='Quick add'||content.querySelector('.hh-p1-quick-context'))return false;
+
+    const profileTarget=root.HerdHarborFlowPhase2?.parseProfileHash?.(root.location?.hash||'');
+    const state=stateNow();
+    const profileAnimal=profileTarget?.animalId?animalById(state,profileTarget.animalId):null;
+    const profileActions=profileAnimal?profileQuickActions(state,profileAnimal.id):[];
+    const route=root.HerdHarborApp?.getCurrentRoute?.()||'dashboard';
+    const types=contextualQuickTypes(route);
+    const labels={animal:'Animal',health:'Health',task:'Task',pedigree:'Pedigree',breeding:'Breeding',litter:'Birth / litter',expense:'Expense',income:'Income',sale:'Animal sale',customer:'Customer'};
+    const block=root.document.createElement('section');
+    block.className='hh-p1-quick-context';
+
+    if(profileAnimal&&profileActions.length&&typeof root.HerdHarborAnimalActionRouter?.open==='function'){
+      block.dataset.hhP1AnimalQuick=String(profileAnimal.id);
+      block.innerHTML=`<p class="eyebrow">For ${esc(profileAnimal.name||'this animal')}</p><div>${profileActions.map(item=>`<button type="button" class="button button-ghost button-small" data-hh-p1-animal-quick="${esc(item.action)}">${esc(item.label)}</button>`).join('')}</div>`;
+      block.addEventListener('click',e=>{
+        const action=e.target.closest('[data-hh-p1-animal-quick]')?.dataset?.hhP1AnimalQuick;
+        if(!action)return;
+        e.preventDefault();
+        const handled=root.HerdHarborAnimalActionRouter?.open?.(action,profileAnimal.id,{returnTab:profileTarget.tab||'overview'})===true;
+        if(!handled)toast('That animal action is not available right now.','error');
+      });
+    }else{
+      block.innerHTML=`<p class="eyebrow">Suggested here</p><div>${types.map(type=>`<button type="button" class="button button-ghost button-small" data-hh-p1-quick="${type}">${esc(labels[type]||type)}</button>`).join('')}</div>`;
+      block.addEventListener('click',e=>{
+        const type=e.target.closest('[data-hh-p1-quick]')?.dataset?.hhP1Quick;
+        if(!type)return;
+        content.querySelector(`[data-quick="${type}"]`)?.click();
+      });
+    }
+
+    content.prepend(block);
+    return true;
+  }
 
   function enhance(){enhanceAnimalProfile();enhanceDashboard();enhanceQuickAdd();}
   function runEnhance(){queued=false;if(!appReady)return;const body=root.document?.body;if(observer&&body)observer.disconnect();try{enhance();}finally{if(observer&&body)observer.observe(body,{childList:true,subtree:true});}}
@@ -271,6 +323,6 @@
     return API;
   }
   function uninstall(){observer?.disconnect?.();observer=null;queued=false;appReady=false;installed=false;root.__hhPhase1WorkflowInstalled=false;}
-  const API=Object.freeze({VERSION,CONTRACT,isCurrentAnimal,profileTabs,profileModel,timelineRows,contextualQuickTypes,todayEvents,eventSignature,enhanceAnimalProfile,enhanceDashboard,enhanceQuickAdd,install,uninstall});
+  const API=Object.freeze({VERSION,CONTRACT,isCurrentAnimal,profileTabs,profileModel,timelineRows,contextualQuickTypes,profileQuickActions,todayEvents,eventSignature,enhanceAnimalProfile,enhanceDashboard,enhanceQuickAdd,install,uninstall});
   return API;
 });

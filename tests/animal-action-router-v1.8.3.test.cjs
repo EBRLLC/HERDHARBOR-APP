@@ -10,12 +10,16 @@ const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 test('v1.8.3 router owns the migrated animal profile actions', () => {
   assert.equal(Router.VERSION, '1.8.3');
   assert.deepEqual([...Router.DIRECT_ACTIONS], [
-    'weight', 'health', 'episode', 'care', 'breeding', 'genetics', 'pedigree', 'show-entry', 'analytics'
+    'weight', 'health', 'episode', 'care', 'breeding', 'genetics', 'pedigree', 'show-entry', 'analytics', 'print-pedigree', 'edit'
   ]);
   for (const action of Router.DIRECT_ACTIONS) assert.equal(Router.canHandle(action), true);
-  for (const fallback of ['print-pedigree', 'edit']) {
-    assert.equal(Router.canHandle(fallback), false, `${fallback} should remain on the proven compatibility path until directly migrated`);
-  }
+  assert.equal(Router.returnSurfaceFor('weight'), '#health-form');
+  assert.equal(Router.returnSurfaceFor('episode'), '#hh-health-intelligence-modal');
+  assert.equal(Router.returnSurfaceFor('breeding'), '#breeding-form');
+  assert.equal(Router.returnSurfaceFor('pedigree'), '#pedigree-import-form');
+  assert.equal(Router.returnSurfaceFor('show-entry'), '#hh-entry-form');
+  assert.equal(Router.returnSurfaceFor('edit'), '#animal-form');
+  assert.equal(Router.returnSurfaceFor('analytics'), '');
 });
 
 test('breeding safeguards remain intact in the consolidated action router', () => {
@@ -33,6 +37,8 @@ test('direct animal actions no longer depend on opening the legacy profile modal
   assert.doesNotMatch(source, /hh-p1-profile-hub/);
   assert.doesNotMatch(source, /data-view-animal/);
   assert.doesNotMatch(source, /detail-import-pedigree|detail-print-pedigree|detail-edit|detail-analytics/);
+  assert.match(source, /HerdHarborApp\?\.openAnimalPedigreePrint/);
+  assert.match(source, /HerdHarborApp\?\.openAnimalEditor/);
   assert.match(source, /#view-animal-profile\.active \[data-hh-p2-action\]/);
   assert.match(source, /event\.stopImmediatePropagation\(\)/);
 });
@@ -74,4 +80,26 @@ test('PWA shell caches and network-refreshes the v1.8.3 router', () => {
   const worker = read('service-worker.js');
   assert.match(worker, /\.\/animal-action-router-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /"\/animal-action-router-v1\.8\.3\.js"/);
+});
+
+
+test('core runtime exposes narrow canonical edit and pedigree-print entry points for the router', () => {
+  const appRuntime = read('herdharbor-app-runtime.js');
+  assert.match(appRuntime, /openAnimalEditor:\s*\(animalId\)\s*=>/);
+  assert.match(appRuntime, /openAnimalPedigreePrint:\s*\(animalId\)\s*=>/);
+  assert.match(appRuntime, /openAnimalForm\(id\)/);
+  assert.match(appRuntime, /openPrintPedigreeForm\(id\)/);
+});
+
+
+test('return-to-animal watches canonical action surfaces and restores the same profile tab after close', () => {
+  const source = read('animal-action-router-v1.8.3.js');
+  assert.match(source, /function watchReturnToProfile/);
+  assert.match(source, /Date\.now\(\) \+ RETURN_TTL_MS/);
+  assert.match(source, /if \(present\) seen = true/);
+  assert.match(source, /else if \(seen\)/);
+  assert.match(source, /restoreAnimalProfile\(context\)/);
+  assert.match(source, /context\.tab \|\| "overview"/);
+  assert.match(source, /\{ history: "replace" \}/);
+  assert.match(source, /watchReturnToProfile\(nextAction, id, options\.returnTab \|\| "overview"\)/);
 });

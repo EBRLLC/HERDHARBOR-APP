@@ -54,3 +54,17 @@ test("ordinary tasks and shows retain record-level route targets", () => {
     kind: "record", route: "shows", id: "s1", label: "Show"
   });
 });
+
+
+test("Today animal targets prefer the canonical Phase Two animal profile and keep the legacy hub as fallback only", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const source = fs.readFileSync(path.resolve(__dirname, "..", "flow-phase1-v1.8.2.js"), "utf8");
+  const openStart = source.indexOf("function openAnimalTarget");
+  const openEnd = source.indexOf("function openRecordTarget", openStart);
+  const block = source.slice(openStart, openEnd);
+  assert.match(block, /HerdHarborFlowPhase2\?\.openAnimalProfile/);
+  assert.ok(block.indexOf("HerdHarborFlowPhase2") < block.indexOf('clickRoute("animals")'));
+  assert.match(block, /history: "push"/);
+  assert.match(block, /label: target\.label \|\| ""/);
+});
