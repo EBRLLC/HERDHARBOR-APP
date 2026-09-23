@@ -12,7 +12,7 @@ Phase 9B adds a review-only document-photo workflow for four supported classes: 
 - Only JPG and PNG are submitted automatically in this phase.
 - Apply `supabase/v1.8.3-ai-image-usage-guard.sql` before deploying the updated extractor.
 - Default Photo Entry allowance is **10 scans per authenticated user per UTC day** (`PHOTO_ENTRY_DAILY_LIMIT`).
-- Paper Pedigree and general Photo Entry share a default **25 AI-image provider calls per UTC day** global backstop (`AI_IMAGE_GLOBAL_DAILY_LIMIT`).
+- Paper Pedigree and general Photo Entry share a default **50 AI-image provider calls per UTC day** global backstop (`AI_IMAGE_GLOBAL_DAILY_LIMIT`).
 - The usage ledger stores only user id, feature, UTC date, count, and timestamp; it stores no image/document/farm content.
 
 ## Review and mutation boundary
