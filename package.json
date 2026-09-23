@@ -26,7 +26,8 @@
     "test:v1.8.4-sync-readiness": "node --test tests/v1.8.4-normalized-sync-readiness.test.cjs",
     "test:v1.8.4-cloud-telemetry": "node --test tests/v1.8.4-cloud-telemetry-hardening.test.cjs tests/cloud-sync-observability-retry-v1.8.2.test.cjs",
     "test:v1.8.4-state-integrity": "node --test tests/state-integrity-e2e-v1.8.2.test.cjs tests/v1.8.4-state-integrity-hardening.test.cjs",
-    "test:v1.8.4-pwa": "node --test tests/pwa-update-regression-v1.5.0.test.cjs tests/v1.8.4-pwa-update-stability.test.cjs"
+    "test:v1.8.4-pwa": "node --test tests/pwa-update-regression-v1.5.0.test.cjs tests/v1.8.4-pwa-update-stability.test.cjs",
+    "test:v1.8.4-auth": "node --test tests/auth-freeze-resilience-v1.8.2.test.cjs tests/auth-freeze-resilience-manifest-v1.8.2.test.cjs tests/auth-signin-deadlock-v1.6.7.test.cjs tests/v1.8.4-auth-regression-hardening.test.cjs"
   },
   "dependencies": {
     "@sentry/browser": "10.71.0"
