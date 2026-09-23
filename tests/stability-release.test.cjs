@@ -30,7 +30,7 @@ const mobileGrowth = fs.readFileSync(path.join(root, "tests/mobile-growth-layout
 // Current release remains additive: established data/runtime contracts and mobile protections stay intact.
 const webVersion = build.match(/version:\s*"([^"]+)"/)?.[1];
 const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
-assert.ok(["1.7.1", "1.8.0", "1.8.1", "1.8.2", "1.8.3"].includes(webVersion), `unexpected web release ${webVersion}`);
+assert.ok(["1.7.1", "1.8.0", "1.8.1", "1.8.2", "1.8.3", "1.8.4"].includes(webVersion), `unexpected web release ${webVersion}`);
 if (webVersion === "1.7.1") assert.equal(buildId, "multispecies-genetics-foundation-1");
 if (webVersion === "1.8.0") assert.match(buildId, /^subscription-engine-/);
 if (webVersion === "1.8.1") {
@@ -41,11 +41,11 @@ if (webVersion === "1.8.2") {
   assert.match(buildId, /^cloud-sync-v2-/);
   assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=2/);
 }
-if (webVersion === "1.8.3") {
+if (webVersion === "1.8.4") {
   assert.equal(buildId, "alpha-v1.8.4-release-1");
   assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=2/);
 }
-assert.match(html, /HerdHarbor Alpha v1\.8\.3 current application shell/);
+assert.match(html, /HerdHarbor Alpha v1\.8\.4 current application shell/);
 assert.doesNotMatch(appRuntime, /id="settings-sync-now"/);
 assert.match(settingsRuntime, /id="settings-sync-now"/);
 assert.match(settingsRuntime, /id="settings-last-synced"/);
@@ -116,7 +116,7 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1|8\.2|8\.3)-/);
+assert.match(serviceWorker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1|8\.2|8\.3|8\.4)-/);
 if (webVersion === "1.8.1") assert.match(serviceWorker, /v1\.8\.1-alpha-october-subscription-launch-/);
 assert.match(optionalTools, /spreadsheet-import\.js\?v=17/);
 assert.match(serviceWorker, /"\/spreadsheet-import\.js"/);
