@@ -300,7 +300,7 @@
 - **Base branch:** `refactor/extract-breeding-litter-runtime-domain`
 - **Base SHA:** `70f368d6ef12df658998b777d32c11e34fe79611`
 - **Validated implementation head SHA:** `9e62af3829db47ba3aa9c6923a1b29aaad765a9f`
-- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after the closure commit is revalidated, because a commit cannot contain its own Git SHA
+- **Final head SHA:** `fe6f2b956ea939d03057721751928ca4b693774c`
 - **Parent PR:** #151
 - **Application version:** 1.8.2
 - **Component/build identities changed:** no whole-app/cloud/monitoring/Health Intelligence identity changed; new extracted component `health-runtime-v1.8.3.js?v=1` is loaded after Breeding/Litter and before composition runtime
@@ -319,19 +319,54 @@
 - **Rollback procedure:** revert PR #153 shell/module/runtime/test changes to restore prior monolithic basic Health runtime; no health/state data migration rollback is required because canonical state shapes are unchanged
 - **Tests added:** `tests/runtime-health-extraction-v1.8.3.test.cjs`
 - **Tests modified:** symptom-guide ownership regression, application-script compile, current-release asset/reference audit, production Pages artifact check, and `package.json` v1.8.3 development gate
-- **Full CI result:** Alpha v1.8.2 CI #246 — PASS on validated implementation head `9e62af3829db47ba3aa9c6923a1b29aaad765a9f`; current release/security, lifecycle/state-integrity, complete UTC and America/New_York regression discovery, monitoring build/architecture/config, source-mutation guard, and Android v1.8.2 review bundle all passed. The ledger-closure head is revalidated before Phase 6E.
+- **Full CI result:** Alpha v1.8.2 CI #247 — PASS on exact final head `fe6f2b956ea939d03057721751928ca4b693774c`; current release/security, lifecycle/state-integrity, complete UTC and America/New_York regression discovery, monitoring build/architecture/config, source-mutation guard, and Android v1.8.2 review bundle all passed.
 - **Manual validation still required:** deployed-browser Health list, add/edit/delete basic record, Weight in each supported unit including lb+oz, profile Add Weight/Observation return behavior, Current Weight display after new/edit/delete weight, symptom-guide observation handoff, Health Intelligence episode/care/group/quarantine flows, and coexistence of legacy/basic and structured Health records
 - **Known risks:** two health layers intentionally coexist with different scopes—`state.health` basic records and `state.healthIntelligence` structured intelligence—so later refactors must not collapse or duplicate them casually; extracted module load order/dependency injection is contractual
 - **Exact requirements inherited by next phase:** preserve `HerdHarborHealthRuntime.create(deps)`, canonical `state.health` Weight ownership, Phase Two Current Weight derivation, Health Intelligence ownership/APIs, profile action return surfaces, symptom-guide behavior, prior Phase 6A-6C runtime contracts, subscription/AI/cloud protections, and whole-app v1.8.2 identity
 
 ---
 
-## Phase 6E — Runtime extraction: Tasks
+## Completed Phase 6E — Runtime extraction: Tasks
+
+- **Roadmap phase:** Phase 6E — Runtime extraction: Tasks
+- **PR number:** #155
+- **PR title:** refactor: extract task runtime domain
+- **Branch:** `refactor/extract-task-runtime-domain`
+- **Base branch:** `refactor/extract-health-runtime-domain`
+- **Base SHA:** `fe6f2b956ea939d03057721751928ca4b693774c`
+- **Validated implementation head SHA:** `0cabac6970fe3f012628bfaabb40fbaeefc45909`
+- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after closure revalidation
+- **Parent PR:** #153
+- **Application version:** 1.8.2
+- **Component/build identities changed:** new `task-runtime-v1.8.3.js?v=1`; no whole-app/cloud/monitoring identity changed
+- **Production behavior changed:** no intended task behavior redesign; recurrence calculation, deterministic next-occurrence generation, task filtering/list UI, create/edit/delete, complete/reopen, and tomorrow rescheduling now execute from the extracted Task runtime
+- **Production behavior intentionally NOT changed:** canonical `state.tasks` remains sole task state owner; breeding/birth reminder production remains in Breeding/Litter runtime; dashboard/Today semantics, categories, recurrence behavior, and persistence remain unchanged; no new automation rules; release remains 1.8.2
+- **Files/modules now owning the feature:** `task-runtime-v1.8.3.js` owns task-domain behavior/UI/filter state; `breeding-litter-runtime-v1.8.3.js` remains reminder producer; `herdharbor-app-runtime.js` retains composition/dashboard and thin task delegates
+- **Canonical state owner:** existing HerdHarbor `state.tasks`; extracted runtime receives canonical state/save helpers and creates no secondary persistence
+- **Public entry points introduced:** `window.HerdHarborTaskRuntime.create(deps)`; existing internal composition function names remain as thin delegates for dashboard/Quick Add callers
+- **Compatibility paths retained:** dashboard task checkbox and Quick Add task launch continue through delegates; breeding/birth reminder tasks remain compatible canonical records
+- **Compatibility paths removed:** monolithic task filter state, recurrence implementation, list/results UI, and task form implementation removed from `herdharbor-app-runtime.js`
+- **Database/schema changes:** none
+- **Edge Function changes:** none
+- **Environment variables/secrets required:** none
+- **Monitoring changes:** none
+- **Migration requirements:** none; deploy the new static Task runtime asset, verified by Pages artifact gate
+- **Rollback procedure:** revert PR #155 shell/runtime/module/test changes; canonical task records require no migration rollback
+- **Tests added:** `tests/runtime-task-extraction-v1.8.3.test.cjs`
+- **Tests modified:** recurring-task behavioral tests, storage-efficiency ownership assertion, stability, app compile, release reference, Pages artifact gate, and `package.json` v1.8.3 development gate
+- **Full CI result:** Alpha v1.8.2 CI #249 — PASS on validated implementation head `0cabac6970fe3f012628bfaabb40fbaeefc45909`; release/security, lifecycle/state-integrity, UTC and America/New_York full discovery, monitoring, source-mutation, and Android all passed. Ledger-closure head is revalidated before Phase 6F.
+- **Manual validation still required:** deployed-browser task list/filtering, add/edit/delete, Today/overdue filtering, dashboard complete, tomorrow reschedule, monthly month-end recurrence, custom recurrence, reopen/recomplete idempotency, and breeding/birth reminder coexistence
+- **Known risks:** Task runtime relies on injected composition services/load order; reminder producers remain separate intentionally; future Phase 9F automation must reuse this canonical task owner rather than mutate animal lifecycle state directly
+- **Exact requirements inherited by next phase:** preserve `HerdHarborTaskRuntime.create(deps)`, canonical `state.tasks`, recurrence/idempotency semantics, external reminder producers, Phase 6A-6D extracted-domain contracts, subscription/AI/cloud protections, and whole-app v1.8.2 identity
+
+---
+
+## Phase 6F — Runtime extraction: Sales / Customers / Transfers
 
 - **Status:** pending
-- **Required base branch:** `refactor/extract-health-runtime-domain`
-- **Required base:** exact final green Phase 6D ledger-closure head
-- **Parent PR:** #153
+- **Required base branch:** `refactor/extract-task-runtime-domain`
+- **Required base:** exact final green Phase 6E ledger-closure head
+- **Parent PR:** #155
 - **Application version target for this phase:** remain 1.8.2
 
-At Phase 6E start, first correct the inherited Phase 6D `Final head SHA` line to the exact final green parent SHA, then inspect repository HEAD, PR #153 diff, task callers/reminder ownership, tests, branch ancestry, and open PR overlap before extraction.
+At Phase 6F start, correct the inherited Phase 6E final-head line to the exact green closure SHA, then inspect PR #155 diff, sales/customer/transfer ownership, transfer integrity/provenance tests, branch ancestry, and open PR overlap before extraction.

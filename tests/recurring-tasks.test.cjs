@@ -4,11 +4,10 @@ const path = require("node:path");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 const appRuntime = fs.readFileSync(path.join(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
-const start = appRuntime.indexOf("  function normalizeTaskRecurrence(task = {})");
-const end = appRuntime.indexOf("  function renderTasks()", start);
-assert.ok(start >= 0 && end > start, "recurring task helpers are present");
+const taskRuntimeSource = fs.readFileSync(path.join(__dirname, "..", "task-runtime-v1.8.3.js"), "utf8");
+const TaskRuntime = require("../task-runtime-v1.8.3.js");
 
-const recurrenceOptions = ["None", "Daily", "Weekly", "Every 2 weeks", "Monthly", "Custom"];
+const recurrenceOptions = TaskRuntime.TASK_RECURRENCE_OPTIONS;
 const addDays = (dateString, days) => {
   const date = new Date(`${dateString}T12:00:00`);
   date.setDate(date.getDate() + Number(days));
@@ -16,27 +15,34 @@ const addDays = (dateString, days) => {
 };
 
 function buildHelpers(state) {
-  const source = appRuntime.slice(start, end);
-  return new Function(
-    "state",
-    "TASK_RECURRENCE_OPTIONS",
-    "addDays",
-    "todayISO",
-    "animalName",
-    "daysFromNow",
-    `${source}\nreturn {
-      normalizeTaskRecurrence, taskRecurrenceDays, taskNextDueDate,
-      taskRecurrenceLabel, recurringTaskId, ensureNextRecurringTask,
-      setTaskCompleted, taskSort, filterTasks, taskStatusMeta
-    };`
-  )(
-    state,
-    recurrenceOptions,
+  const noop = () => {};
+  const html = () => "";
+  return TaskRuntime.create({
+    getState: () => state,
+    getCurrentRoute: () => "tasks",
+    $: () => null,
+    $$: () => [],
+    esc: (value) => String(value ?? ""),
+    headerHtml: html,
+    statCard: html,
+    emptyState: html,
+    animalName: (id) => ({ "cow-1": "Bessie", "hen-1": "Layer flock" })[id] || "Unknown",
+    formatDate: (value) => String(value || ""),
+    daysFromNow: (date) => Math.round((new Date(`${date}T12:00:00`) - new Date("2026-08-04T12:00:00")) / 86400000),
+    scheduleUiWork: (_key, work) => work?.(),
+    openModal: noop,
+    closeModal: noop,
+    field: html,
+    selectField: html,
+    selectAnimalField: html,
+    textareaField: html,
+    todayISO: () => "2026-08-04",
     addDays,
-    () => "2026-08-04",
-    (id) => ({ "cow-1": "Bessie", "hen-1": "Layer flock" })[id] || "Unknown",
-    (date) => Math.round((new Date(`${date}T12:00:00`) - new Date("2026-08-04T12:00:00")) / 86400000)
-  );
+    uid: (prefix) => prefix + "-test",
+    recordActivity: noop,
+    saveState: () => true,
+    renderCurrentView: noop
+  });
 }
 
 {
@@ -170,10 +176,11 @@ function buildHelpers(state) {
   );
 }
 
-assert.match(appRuntime, /id="task-status-filter"/);
-assert.match(appRuntime, /id="task-category-filter"/);
-assert.match(appRuntime, /id="task-animal-filter"/);
+assert.match(taskRuntimeSource, /id="task-status-filter"/);
+assert.match(taskRuntimeSource, /id="task-category-filter"/);
+assert.match(taskRuntimeSource, /id="task-animal-filter"/);
 assert.match(appRuntime, /data-dashboard-task/);
-assert.match(appRuntime, /data-task-tomorrow/);
+assert.match(taskRuntimeSource, /data-task-tomorrow/);
+assert.match(appRuntime, /HerdHarborTaskRuntime\?\.create/);
 
 console.log("recurring tasks and daily workflow tests passed");
