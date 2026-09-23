@@ -459,7 +459,7 @@
 - **Rollback procedure:** revert PR #161 runtime/shell/test changes to restore Settings ownership to the composition runtime; no data migration rollback is required
 - **Tests added:** `tests/runtime-settings-extraction-v1.8.3.test.cjs`
 - **Tests modified:** compile, release-reference, shell-decomposition, launch-hardening, optional-tools, phase2 release, stability, storage-efficiency, Pages artifact coverage, and `package.json` v1.8.3 development gate
-- **Full CI result:** Alpha v1.8.2 CI #270 — PASS on validated implementation head `274615228d06ac99f3f045277cef127c3efc7def`; ledger-closure head must also pass before Phase 7 branches
+- **Full CI result:** Alpha v1.8.2 CI #270 — PASS on validated implementation head `274615228d06ac99f3f045277cef127c3efc7def`; ledger-closure head subsequently passed before Phase 7 branched
 - **Manual validation still required:** Settings route on supported mobile/desktop widths; operation profile edit; logo upload/remove; theme/weight preference; Market Analytics consent; sync-now/status refresh; device storage summary; backup/export/import; spreadsheet lazy-load actions; feedback and account deletion launch
 - **Known risks:** Settings depends on injected composition/domain services and script load order; cross-domain services must remain authoritative outside Settings; whole-app release remains 1.8.2
 - **Exact requirements inherited by Phase 7:** preserve all Phase 6B-6H extracted runtime APIs, canonical domain ownership, optional-tool lazy loading, animal-action router behavior, monitoring startup behavior, cloud/subscription/Paper Pedigree AI contracts, PWA/service-worker order, normalized-sync default-off guardrails, and whole-app v1.8.2 identity
@@ -495,7 +495,7 @@
 - **Tests added:** `tests/help-center-v1.8.3.test.cjs`
 - **Tests removed:** `tests/how-to-center-v1.8.1.test.cjs`
 - **Tests/CI changed:** v1.8.3 development gate includes Help Center contract; production Pages artifact gate requires How To navigation and `how-to/index.html`
-- **Full CI result:** Alpha v1.8.2 CI #272 — PASS on validated implementation head `919bfd289ab04e0484002e0ef1108c8553a07b88`; ledger-closure head must also pass before Phase 8 branches
+- **Full CI result:** Alpha v1.8.2 CI #272 — PASS on validated implementation head `919bfd289ab04e0484002e0ef1108c8553a07b88`; ledger-closure head subsequently passed before Phase 8 branched
 - **Manual validation still required:** physical-device Help navigation/sidebar shortcut, search/filter behavior, deep-anchor scrolling, Settings Help link, offline Help load after service-worker update, and mobile layout
 - **Known risks:** Help text can drift if future domain behavior changes without updating documentation; the Help Center intentionally describes existing workflows rather than owning their rules
 - **Exact requirements inherited by Phase 8:** preserve all Phase 6B-6H runtime APIs, current Help Center routes/anchors, backend subscription authority and Free Adult fallback, Paper Pedigree confirmation-before-mutation, canonical state owners, optional-tool lazy loading, cloud safety/normalized-sync default-off guardrails, monitoring startup behavior, and PWA/service-worker ordering; Phase 8 is the first remaining phase authorized to change whole-app identity to v1.8.3
@@ -526,7 +526,7 @@
 - **Current release audit:** `tests/current-release-reference-audit-v1.8.3.test.cjs`
 - **Retired current-release audit:** `tests/current-release-reference-audit-v1.8.2.test.cjs` (v1.8.2 component/state-integrity compatibility tests remain)
 - **Release workflows:** `.github/workflows/v1.8.3-ci.yml`, `.github/workflows/v1.8.3-production-pages.yml`, `.github/workflows/v1.8.3-production-acceptance.yml`
-- **Full CI result:** Alpha v1.8.3 CI #32 — PASS on validated implementation head `94a3a2140bc4fa1346de0db9717b538004df5502`; ledger-closure head must also pass before Phase 9 branches
+- **Full CI result:** Alpha v1.8.3 CI #32 — PASS on validated implementation head `94a3a2140bc4fa1346de0db9717b538004df5502`; ledger-closure head subsequently passed before Phase 9 branched
 - **Manual validation still required:** production deployment after eventual merge; protected production acceptance inputs/secrets; Android signed Play release outside review CI; controlled normalized-sync production promotion remains a separate operational decision
 - **Exact requirements inherited by Phase 9:** preserve formal v1.8.3 whole-app identity, all Phase 6-8 runtime/help/release contracts, canonical record ownership, legacy sync rollback and normalized-sync rollout guardrails, account/subscription authority, Paper Pedigree confirmation-before-mutation, privacy/security gates, PWA ordering, and no unrelated auth/sign-in changes
 
@@ -561,7 +561,7 @@
 - **Database/schema changes:** none
 - **Edge Function changes:** none
 - **Secrets/provider keys:** none added
-- **Full CI result:** Alpha v1.8.3 CI #36 — PASS on validated implementation head `fe9f2adf6cbeed9f642d2ecfa21c5a5134b570b1`; ledger-closure head must also pass before Phase 9B branches
+- **Full CI result:** Alpha v1.8.3 CI #36 — PASS on validated implementation head `fe9f2adf6cbeed9f642d2ecfa21c5a5134b570b1`; ledger-closure head subsequently passed before Phase 9B branched
 - **Manual validation still required:** supported mobile browser microphone permission/voice recognition; typed fallback; review editing; Health form handoff; Breeding form handoff; cancellation/provider-failure UX
 - **Exact requirements inherited by Phase 9B:** preserve formal v1.8.3 release identity, voice review-before-mutation, canonical Health/Breeding owners, Paper Pedigree provider-key isolation and confirmation boundary, all cloud/subscription/security/privacy/PWA/runtime contracts, and no unrelated auth/sign-in changes
 
@@ -595,7 +595,7 @@
 - **New production contract:** `PHOTO-ASSISTED-ENTRY-PRODUCTION-v1.8.3.md`
 - **Tests added:** `tests/photo-assisted-entry-v1.8.3.test.cjs`
 - **Compatibility tests updated:** Animal/Profile extraction contract now permits reviewed defaults to pass through to the canonical Animal form
-- **Full CI result:** Alpha v1.8.3 CI #40 — PASS on validated implementation head `83f76ad374671e9a9daa46120d1244bde4c305dd`; this record-only closure commit must also pass before Phase 9C branches
+- **Full CI result:** Alpha v1.8.3 CI #40 — PASS on validated implementation head `83f76ad374671e9a9daa46120d1244bde4c305dd`; the record-only closure commit subsequently passed before Phase 9C branched
 - **Manual validation still required:** deployed Edge Function invocation with production secrets; representative registration/vet/weight/medication photos; multi-row selector; mobile upload UX; provider timeout/rate-limit UX
 - **Deployment note:** the Edge Function code/config are committed in the stack; production deployment must follow the normal controlled release path and is not performed by this stacked PR
 - **Exact requirements inherited by Phase 9C:** preserve formal v1.8.3 identity, 9A/9B review-before-mutation, canonical Animal/Health ownership, provider-key isolation, Paper Pedigree confirmation boundary, cloud/subscription/security/privacy/PWA/runtime contracts, and no unrelated auth/sign-in changes
@@ -700,7 +700,7 @@
 - **Rollback method:** revert Phase 9E commits; canonical transactions, payments, sales, production, litters, breedings, and animals remain unchanged
 - **Tests added/changed:** added `tests/profitability-production-analytics-v1.8.3.test.cjs`; updated app-script compile, package v1.8.3 gate, PWA shell, HTML load order, and Pages artifact requirements
 - **Documentation:** `docs/PROFITABILITY-PRODUCTION-ANALYTICS-v1.8.3.md`
-- **Exact CI result:** Alpha v1.8.3 CI #50 — PASS on implementation SHA `13d27e2ccd44da024128cbac107ce535f97f1cfc` through validation-only PR #176; ledger-closure head must also pass before Phase 9F branches
+- **Exact CI result:** Alpha v1.8.3 CI #50 — PASS on implementation SHA `13d27e2ccd44da024128cbac107ce535f97f1cfc` through validation-only PR #176; ledger-closure head subsequently passed before Phase 9F branched
 - **Manual validation still required:** narrow-screen profitability tables, mixed-payment sales, species-filtered cost coverage, real shared-cost herds, and representative production records with/without explicit product-linked costs
 - **Known risks:** profitability is only as complete as recorded costs/payments and explicit allocation metadata; partial margins are intentionally withheld instead of inferred
 - **Requirements inherited by Phase 9F:** preserve canonical accounting owners and read-only profitability boundaries; reuse existing TaskRuntime and existing breeding reminder IDs; preserve v1.8.3 identity, review-before-mutation, cloud/subscription/security/PWA/runtime contracts, recurrence/idempotency, and normalized-sync rollout guardrails
@@ -739,7 +739,7 @@
 - **Rollback method:** revert Phase 9F commits; canonical source records remain intact and manual/existing breeding reminders retain their prior ownership
 - **Tests added/changed:** added `tests/derived-task-automation-v1.8.3.test.cjs`; updated Health compatibility behavior, app-script compile, package v1.8.3 gate, PWA shell/load order, Pages artifact requirements
 - **Documentation:** `docs/DERIVED-TASK-AUTOMATION-v1.8.3.md`
-- **Exact CI result:** Alpha v1.8.3 CI #53 — PASS on implementation SHA `69e61bf0b29774a46646b1e5cad1b0abcdb2d65f` through validation-only PR #178; ledger-closure head must also pass before Phase 9G branches
+- **Exact CI result:** Alpha v1.8.3 CI #53 — PASS on implementation SHA `69e61bf0b29774a46646b1e5cad1b0abcdb2d65f` through validation-only PR #178; ledger-closure head subsequently passed before Phase 9G branched
 - **Manual validation still required:** Health repeat controls on narrow mobile layout; breeding/litter follow-up task appearance; recurring completion; Dashboard counts after automatic reconciliation; edit/delete source behavior
 - **Known risks:** automatic reminders depend on explicit canonical follow-up dates; no due date is invented; existing historical breeding reminders remain owned by their established producer
 - **Requirements inherited by Phase 9G:** preserve Task-only mutation boundary, recurrence/idempotency, all cloud dirty/conflict/tombstone/LKG/backup guardrails, Phase 9B photo review-before-mutation and server-side key isolation, formal v1.8.3 identity, canonical local cache, and no second offline database
