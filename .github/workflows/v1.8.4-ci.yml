@@ -65,7 +65,7 @@ jobs:
         run: |
           npm run build:monitoring-config
           grep -q '"environment": "test"' herdharbor-monitoring-config.js
-          grep -q '"release": "HerdHarbor@1.8.3"' herdharbor-monitoring-config.js
+          grep -q '"release": "HerdHarbor@1.8.4"' herdharbor-monitoring-config.js
           grep -q '"build": "ci-v1.8.4"' herdharbor-monitoring-config.js
           grep -q '"enableTestCrash": true' herdharbor-monitoring-config.js
           git checkout -- herdharbor-monitoring-config.js
@@ -85,9 +85,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify Android release identity
         run: |
-          grep -q 'versionName "1.8.3"' android/app/build.gradle
+          grep -q 'versionName "1.8.4"' android/app/build.gradle
           grep -q 'versionCode 18' android/app/build.gradle
-          grep -q '"appVersion": "1.8.3"' twa-manifest.json
+          grep -q '"appVersion": "1.8.4"' twa-manifest.json
           grep -q '"appVersionCode": 17' twa-manifest.json
       - uses: actions/setup-java@v5
         with:
