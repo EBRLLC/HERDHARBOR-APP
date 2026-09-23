@@ -8,6 +8,7 @@ const appRuntime = fs.readFileSync(path.join(root, "herdharbor-app-runtime.js"),
 const animalProfileRuntime = fs.readFileSync(path.join(root, "animal-profile-runtime-v1.8.3.js"), "utf8");
 const breedingLitterRuntime = fs.readFileSync(path.join(root, "breeding-litter-runtime-v1.8.3.js"), "utf8");
 const taskRuntime = fs.readFileSync(path.join(root, "task-runtime-v1.8.3.js"), "utf8");
+const salesCustomerRuntime = fs.readFileSync(path.join(root, "sales-customer-runtime-v1.8.3.js"), "utf8");
 const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const spreadsheet = fs.readFileSync(path.join(root, "spreadsheet-import.js"), "utf8");
 const optionalTools = fs.readFileSync(path.join(root, "herdharbor-optional-tools.js"), "utf8");
@@ -117,6 +118,8 @@ assert.match(serviceWorker, /pwa\.js\?v=31/);
 assert.match(serviceWorker, /animal-profile-runtime-v1\.8\.3\.js\?v=1/);
 assert.match(serviceWorker, /breeding-litter-runtime-v1\.8\.3\.js\?v=1/);
 assert.match(serviceWorker, /task-runtime-v1\.8\.3\.js\?v=1/);
+assert.match(serviceWorker, /sales-customer-runtime-v1\.8\.3\.js\?v=1/);
+assert.match(serviceWorker, /sales-customer-runtime-v1\.8\.3\.js\?v=1/);
 assert.match(serviceWorker, /pedigree-visual\.css\?v=2/);
 assert.match(serviceWorker, /pedigree-visual\.js\?v=2/);
 for (const asset of [

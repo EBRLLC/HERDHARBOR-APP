@@ -335,7 +335,7 @@
 - **Base branch:** `refactor/extract-health-runtime-domain`
 - **Base SHA:** `fe6f2b956ea939d03057721751928ca4b693774c`
 - **Validated implementation head SHA:** `0cabac6970fe3f012628bfaabb40fbaeefc45909`
-- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after closure revalidation
+- **Final head SHA:** `befd8cf3223191aacb641dacc1c897d134a332c4`
 - **Parent PR:** #153
 - **Application version:** 1.8.2
 - **Component/build identities changed:** new `task-runtime-v1.8.3.js?v=1`; no whole-app/cloud/monitoring identity changed
@@ -361,12 +361,47 @@
 
 ---
 
-## Phase 6F — Runtime extraction: Sales / Customers / Transfers
+## Completed Phase 6F — Runtime extraction: Sales / Customers / Transfers
+
+- **Roadmap phase:** Phase 6F — Runtime extraction: Sales / Customers / Transfers
+- **PR number:** #157
+- **PR title:** refactor: extract sales customer transfer runtime domain
+- **Branch:** `refactor/extract-sales-customer-runtime-domain`
+- **Base branch:** `refactor/extract-task-runtime-domain`
+- **Base SHA:** `befd8cf3223191aacb641dacc1c897d134a332c4`
+- **Validated implementation head SHA:** `59778d92498c4024ae2e34de1a2c4f62d319805d`
+- **Final head SHA:** ledger-closure commit for this phase; the immediate child phase must correct this line to the exact final green parent SHA after the closure commit is revalidated, because a commit cannot contain its own Git SHA
+- **Parent PR:** #155
+- **Application version:** 1.8.2
+- **Component/build identities changed:** new static component `sales-customer-runtime-v1.8.3.js?v=1`; no whole-app, monitoring, cloud-sync, transfer-service, or Android release identity changed
+- **Production behavior changed:** no intended Sales/Customers/Transfers behavior redesign; route UI/filter state, customer CRUD, sale CRUD/detail, deposits/payments, linked Budget income synchronization, sale-driven animal statuses, buyer-document printing, and legacy JSON transfer import/export compatibility now execute from the extracted Sales/Customer runtime
+- **Production behavior intentionally NOT changed:** canonical sales/customer/payment/transaction/transfer/animal state shapes are unchanged; asking price remains distinct from actual sale price; hardened direct-transfer and litter-sale-transfer engines, authenticated transfer Edge Function, transfer provenance/deduplication, Free Adult/Junior animal limits, and cloud authority are unchanged; release remains 1.8.2
+- **Files/modules now owning the feature:** `sales-customer-runtime-v1.8.3.js` owns route UI/filter state, customer/sale/payment workflows, buyer document printing, and legacy JSON transfer compatibility; `direct-transfer-core-v1.8.2.js` / `direct-transfer-v1.8.2.js` remain authoritative for hardened account-to-account transfer; `litter-sale-transfer-core-v1.8.2.js` / `litter-sale-transfer-v1.8.2.js` remain authoritative for litter-origin sale/transfer; `herdharbor-app-runtime.js` retains composition/shared services and delegates the extracted domain
+- **Canonical state owner:** existing HerdHarbor application state arrays `state.customers`, `state.sales`, `state.payments`, `state.transactions`, `state.transfers`, and `state.animals`; extracted module receives canonical state/save/replace services and creates no browser/cloud side state
+- **Public entry points introduced:** `window.HerdHarborSalesCustomerRuntime.create(deps)`; route-level composition delegates remain stable for existing callers
+- **Compatibility paths retained:** legacy JSON transfer import/export remains compatibility-only and still enforces duplicate detection, record limits, animal allowance, ancestry remapping, rollback on save failure, and privacy-safe transferable fields; hardened direct transfer remains the preferred protected transfer path; buyer document/receipt/invoice behavior is unchanged
+- **Compatibility paths removed:** monolithic Sales/Customers route state/UI, customer/sale/payment CRUD, payment-to-Budget synchronization, legacy transfer implementation, and buyer-document implementation are removed from `herdharbor-app-runtime.js`
+- **Database/schema changes:** none
+- **Edge Function changes:** none
+- **Environment variables/secrets required:** none
+- **Monitoring changes:** none
+- **Migration requirements:** none; deploy the extracted static runtime asset, which is included in shell/service-worker/Pages artifact checks
+- **Rollback procedure:** revert PR #157 shell/module/runtime/test changes to restore the previous monolithic Sales/Customers/legacy transfer implementation; no data migration rollback is required because canonical state shapes and transfer schemas were not changed
+- **Tests added:** `tests/runtime-sales-customer-extraction-v1.8.3.test.cjs`
+- **Tests modified:** Junior animal-entry gating, Member cattle/transfer regression, market-analytics sale-price invariants, optional-tool transfer cleanup ownership, application-script compile, current-release reference audit, stability/shell ownership assertions, production Pages artifact check, and `package.json` v1.8.3 development gate
+- **Full CI result:** Alpha v1.8.2 CI #255 — PASS on validated implementation head `59778d92498c4024ae2e34de1a2c4f62d319805d`; current release/security, lifecycle state-integrity, complete UTC and America/New_York repository discovery, monitoring build/architecture/config, source-mutation guard, and Android v1.8.2 review bundle all passed. The ledger-closure head is revalidated before Phase 6G.
+- **Manual validation still required:** deployed-browser Sales/Customers list/filtering, customer add/edit/delete protection, sale create/edit/cancel/complete, asking-vs-sale price snapshot, deposits/payment edits/deletes and linked Budget income, invoices/receipts/bill of sale, direct-transfer flows, litter-origin sale/transfer, legacy JSON transfer import duplicate/limit/rollback behavior, and cattle ear-tag field preservation
+- **Known risks:** two transfer paths intentionally coexist—hardened direct transfer and legacy JSON compatibility—so later cleanup must not make the compatibility path authoritative or weaken direct-transfer provenance; extracted module dependency injection/load order is contractual
+- **Exact requirements inherited by next phase:** preserve `HerdHarborSalesCustomerRuntime.create(deps)`, canonical sales/customer/payment/transaction/transfer/animal state ownership, asking-price vs sale-price distinction, Budget payment synchronization, direct-transfer provenance/deduplication, litter-sale transfer protections, Free Adult/Junior limits, prior Phase 6A-6E runtime contracts, subscription/AI/cloud protections, and whole-app v1.8.2 identity
+
+---
+
+## Phase 6G — Runtime extraction: Production / Reporting
 
 - **Status:** pending
-- **Required base branch:** `refactor/extract-task-runtime-domain`
-- **Required base:** exact final green Phase 6E ledger-closure head
-- **Parent PR:** #155
+- **Required base branch:** `refactor/extract-sales-customer-runtime-domain`
+- **Required base:** exact final green Phase 6F ledger-closure head
+- **Parent PR:** #157
 - **Application version target for this phase:** remain 1.8.2
 
-At Phase 6F start, correct the inherited Phase 6E final-head line to the exact green closure SHA, then inspect PR #155 diff, sales/customer/transfer ownership, transfer integrity/provenance tests, branch ancestry, and open PR overlap before extraction.
+At Phase 6G start, first correct the inherited Phase 6F `Final head SHA` line to the exact final green parent SHA, then inspect repository HEAD, PR #157 diff, production/budget/reporting callers, optional spreadsheet lazy-loading contracts, tests, branch ancestry, and open PR overlap before extraction.

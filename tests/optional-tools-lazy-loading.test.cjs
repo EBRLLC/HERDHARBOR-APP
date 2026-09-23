@@ -14,6 +14,7 @@ const loader = read("herdharbor-optional-tools.js");
 const runtime = read("herdharbor-app-runtime.js");
 const animalProfileRuntime = read("animal-profile-runtime-v1.8.3.js");
 const breedingLitterRuntime = read("breeding-litter-runtime-v1.8.3.js");
+const salesCustomerRuntime = read("sales-customer-runtime-v1.8.3.js");
 const worker = read("service-worker.js");
 
 const heavyAssets = [
@@ -313,10 +314,10 @@ test("service worker keeps heavy tools out of APP_SHELL and runtime-caches them"
 
 
 test("transfer import cleanup remains independent from optional spreadsheet state", () => {
-  const start = runtime.indexOf("async function handleTransferImport(event)");
-  const end = runtime.indexOf("\n  function renderBudget()", start);
+  const start = salesCustomerRuntime.indexOf("async function handleTransferImport(event)");
+  const end = salesCustomerRuntime.indexOf("\n    return Object.freeze({", start);
   assert.ok(start >= 0 && end > start, "transfer import function is present");
-  const transferImport = runtime.slice(start, end);
+  const transferImport = salesCustomerRuntime.slice(start, end);
 
   assert.match(transferImport, /const file = event\.target\.files\?\.\[0\]/);
   assert.match(transferImport, /finally\s*\{[\s\S]*?event\.target\.value = "";[\s\S]*?\}/);
