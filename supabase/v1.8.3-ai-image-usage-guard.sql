@@ -4,8 +4,8 @@
 -- extracted record values, prompts, provider responses, or farm state are stored.
 --
 -- Default application policy:
---   * Paper Pedigree: 5 scans per authenticated user per UTC day
---   * General Photo Entry: 5 scans per authenticated user per UTC day
+--   * Paper Pedigree: 10 scans per authenticated user per UTC day
+--   * General Photo Entry: 10 scans per authenticated user per UTC day
 --   * Shared AI-image backstop: 25 provider calls per UTC day across both features
 --
 -- Edge Function environment variables may lower or raise these limits without a
