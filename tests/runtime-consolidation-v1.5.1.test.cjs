@@ -78,13 +78,13 @@ assert.match(pedigreeGenetics, /printContext&&doc\.documentElement\?\.classList\
 assert.match(pedigreeGeneticsCss, /html\.hh-pedigree-print-document \.hh-pedigree-genetics\{font-size:7\.3px;/, "compact print genetics sizing is defined");
 assert.doesNotMatch(geneticsV2, /breeding-intelligence-core\.js['"]/, "advanced genetics engine does not require the legacy unversioned core");
 
-assert.ok(pwa.includes('const APP_VERSION = window.HerdHarborBuild?.version || "1.8.3"'));
+assert.ok(pwa.includes('const APP_VERSION = window.HerdHarborBuild?.version || "1.8.4"'));
 const webVersion = build.match(/version:\s*"([^"]+)"/)?.[1];
 assert.ok(["1.7.1", "1.8.0", "1.8.1", "1.8.2", "1.8.3"].includes(webVersion), `unexpected web shell ${webVersion}`);
 assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1|8\.2|8\.3)-/);
 if (webVersion === "1.8.1") assert.ok(worker.includes("v1.8.1-alpha-october-subscription-launch-"));
 if (webVersion === "1.8.2") assert.match(build, /buildId:\s*"cloud-sync-v2-/);
-if (webVersion === "1.8.3") assert.match(build, /buildId:\s*"alpha-v1\.8\.3-release-1"/);
+if (webVersion === "1.8.4") assert.match(build, /buildId:\s*"alpha-v1\.8\.4-release-1"/);
 assert.ok(worker.includes("pwa.js?v=31"));
 assert.ok(!pwa.includes(";" + String.fromCharCode(92) + "n    if"), "pwa.js contains no literal newline escape in executable source");
 assert.ok(!read("herdharbor-membership-v1.6.1.js").includes(";" + String.fromCharCode(92) + "n    if"), "membership source contains no literal newline escape in executable source");
