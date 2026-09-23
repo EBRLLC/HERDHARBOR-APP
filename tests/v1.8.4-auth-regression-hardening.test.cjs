@@ -18,7 +18,7 @@ test("sign-in startup resilience remains before cloud initialization without unl
   assert.ok(index.indexOf("herdharbor-build.js") < index.indexOf("herdharbor-cloud.js"));
   const build=read("herdharbor-build.js");
   assert.match(build,/AUTH_FETCH_TIMEOUT_MS\s*=\s*12000/);
-  assert.match(build,/AUTH_WATCHDOG_MS\s*=\s*15000/);
+  assert.match(build,/SIGN_IN_WATCHDOG_MS\s*=\s*15000/);
   assert.doesNotMatch(build,/classList\.remove\(["\']hh-auth-locked["\']\)/);
 });
 
