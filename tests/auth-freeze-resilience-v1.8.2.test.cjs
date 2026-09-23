@@ -27,7 +27,7 @@ function loadBuild(){
 
 test('auth resilience stays frozen while the web runtime advances to v1.8.4',()=>{
   const sandbox=loadBuild();
-  assert.equal(sandbox.HerdHarborBuild.version,'1.8.3');
+  assert.equal(sandbox.HerdHarborBuild.version,'1.8.4');
   assert.equal(sandbox.HerdHarborBuild.buildId,'alpha-v1.8.4-release-1');
 });
 
