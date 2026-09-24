@@ -309,7 +309,14 @@
     watch();
   }
 
-  function openCoreRecord(kind,id,animalId){\n    const route=(kind==="edit-litter"||kind==="create-offspring")?"litters":"breeding";\n    if(!clickRoute(route))return false;\n    rememberReturn(animalId);\n    const selector=kind==="edit-breeding"?`[data-edit-breeding="${cssEscape(id)}"]`:kind==="edit-litter"?`[data-edit-litter="${cssEscape(id)}"]`:`[data-create-offspring="${cssEscape(id)}"]`;\n    waitFor(selector,button=>{button.click();const formSelector=kind==="edit-breeding"?"#breeding-form":kind==="edit-litter"?"#litter-form":"#offspring-form";waitFor(formSelector,form=>restoreAfterForm(form));});\n    return true;\n  }
+  function openCoreRecord(kind,id,animalId){
+    const route=(kind==="edit-litter"||kind==="create-offspring")?"litters":"breeding";
+    if(!clickRoute(route))return false;
+    rememberReturn(animalId);
+    const selector=kind==="edit-breeding"?`[data-edit-breeding="${cssEscape(id)}"]`:kind==="edit-litter"?`[data-edit-litter="${cssEscape(id)}"]`:`[data-create-offspring="${cssEscape(id)}"]`;
+    waitFor(selector,button=>{button.click();const formSelector=kind==="edit-breeding"?"#breeding-form":kind==="edit-litter"?"#litter-form":"#offspring-form";waitFor(formSelector,form=>restoreAfterForm(form));});
+    return true;
+  }
   function onClick(event){
     const offspring=event.target.closest?.("[data-hh-p2-open-offspring]");
     if(offspring){event.preventDefault();event.stopPropagation();root.HerdHarborFlowPhase2?.openAnimalProfile?.(offspring.dataset.hhP2OpenOffspring,"overview",{history:"push"});return;}
@@ -320,7 +327,8 @@
     const kind=action.dataset.hhP2LifeAction||"";
     const breedingId=action.dataset.breedingId||"";
     const litterId=action.dataset.litterId||"";
-    if(kind==="edit-breeding"||kind==="record-birth")openCoreRecord(kind,breedingId,animalId);
+    if(kind==="record-birth"){root.HerdHarborApp?.openRecordBirth?.(breedingId);return;}
+    if(kind==="edit-breeding")openCoreRecord(kind,breedingId,animalId);
     else if(kind==="edit-litter"||kind==="create-offspring")openCoreRecord(kind,litterId,animalId);
   }
 
