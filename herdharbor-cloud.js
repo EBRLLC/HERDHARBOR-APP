@@ -1483,6 +1483,15 @@
     const { data, error } = await fetchCloudRecord(userId);
     if (error || !data?.app_state) return false;
 
+    // A local edit can occur while the cloud refresh request is in flight
+    // (for example, immediately after returning to an already-open device).
+    // Re-check dirty state after the fetch so that fresh local work goes through
+    // the normal three-way merge/save path instead of being mislabeled as a
+    // two-device conflict.
+    if (originalGetItem.call(localStorage, dirtyKey(userId)) === "1") {
+      return syncNow();
+    }
+
     const remoteRaw = JSON.stringify(data.app_state);
     const activeRaw = originalGetItem.call(localStorage, STORAGE_KEY);
     const confirmedBase = originalGetItem.call(localStorage, baseKey(userId));
@@ -1496,6 +1505,18 @@
 
     if (confirmedBase && sameState(activeRaw, confirmedBase)) {
       await recordRecoverySnapshot(userId, activeRaw, "Local copy before receiving another device's changes");
+
+      // The recovery snapshot is asynchronous. A local edit made while it is
+      // being stored must not be overwritten by the cloud copy we fetched
+      // earlier. Hand the newest local state to the normal sync/merge path.
+      const latestActiveRaw = originalGetItem.call(localStorage, STORAGE_KEY);
+      if (
+        originalGetItem.call(localStorage, dirtyKey(userId)) === "1" ||
+        !sameState(latestActiveRaw, activeRaw)
+      ) {
+        return syncNow();
+      }
+
       const deviceCloudRaw = applyDevicePreferences(remoteRaw, activeRaw);
       if (
         !allowAnimalStateTransition(
