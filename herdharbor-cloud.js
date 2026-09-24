@@ -1011,6 +1011,20 @@
         // creating a recovery snapshot or sending the full farm state to cloud.
         if (previousValue && sameState(previousValue, value)) return result;
 
+        // If sync metadata was evicted but the device was clean before this
+        // edit, the pre-edit state is the only safe local merge ancestor we
+        // still possess. Capture it before marking the device dirty so a later
+        // cloud preflight can perform the normal three-way merge instead of
+        // failing with "missing sync history".
+        if (
+          previousValue &&
+          safeParse(previousValue) &&
+          !originalGetItem.call(localStorage, baseKey(userId)) &&
+          originalGetItem.call(localStorage, dirtyKey(userId)) !== "1"
+        ) {
+          safeStorageSet(baseKey(userId), previousValue);
+        }
+
         writeSequence += 1;
         syncConflict = null;
         safeStorageSet(dirtyKey(userId), "1");
@@ -1037,6 +1051,18 @@
         session?.user?.id
       ) {
         const userId = session.user.id;
+
+        // Preserve the pre-clear state as a merge ancestor when sync metadata
+        // is missing but this device was clean before the clear operation.
+        if (
+          previousValue &&
+          safeParse(previousValue) &&
+          !originalGetItem.call(localStorage, baseKey(userId)) &&
+          originalGetItem.call(localStorage, dirtyKey(userId)) !== "1"
+        ) {
+          safeStorageSet(baseKey(userId), previousValue);
+        }
+
         writeSequence += 1;
         syncConflict = null;
         safeStorageSet(ACTIVE_OWNER_KEY, userId);
