@@ -514,8 +514,14 @@
     downloadLocalBackup();
     recordOperation("restore-last-known-good", "working", "Restoring last confirmed cloud snapshot locally.");
     try {
-      store.setItem(STATE_KEY, baseline);
-      store.setItem(dirtyKey(userId), "1");
+      const parsedBaseline = safeParse(baseline);
+      const stateStore = root.HerdHarborStateStore;
+      if (!parsedBaseline || !stateStore?.commit) throw new Error("Canonical state store is unavailable.");
+      const result = stateStore.commit(parsedBaseline, {
+        source: "local",
+        reason: "restore-last-known-good"
+      });
+      if (!result?.ok) throw result?.error || new Error("Restore commit failed.");
       recordOperation("restore-last-known-good", "success", "Last confirmed cloud snapshot restored locally; reconciliation remains pending.");
       root.setTimeout?.(() => root.location?.reload?.(), 50);
       return true;
