@@ -1022,7 +1022,8 @@
       previousValue &&
       safeParse(previousValue) &&
       !originalGetItem.call(localStorage, baseKey(userId)) &&
-      originalGetItem.call(localStorage, dirtyKey(userId)) !== "1"
+      originalGetItem.call(localStorage, dirtyKey(userId)) !== "1" &&
+      Boolean(originalGetItem.call(localStorage, versionKey(userId)))
     ) {
       safeStorageSet(baseKey(userId), previousValue);
       dispatchBaselineRestored(userId, "before-local-edit");
