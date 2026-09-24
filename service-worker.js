@@ -97,7 +97,6 @@ self.addEventListener("install", (event) => {
         .filter(({ result }) => result.status === "rejected")
         .map(({ request }) => new URL(request.url).pathname);
       const fatal = requiredFailures.filter((path) =>
-        path.endsWith("/") ||
         path.endsWith("/index.html") ||
         path.endsWith("/herdharbor-build.js") ||
         path.endsWith("/herdharbor-app-runtime.js") ||
