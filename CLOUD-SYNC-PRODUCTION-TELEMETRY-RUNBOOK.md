@@ -78,6 +78,6 @@ For the next naturally occurring production cloud failure, verify that:
 - safe provider fields are populated where the provider supplied them
 - raw state and credentials are absent
 - retry/session-refresh metadata matches the observed path
-- application release remains `1.8.2` unless a separate formal release changes it
+- application release remains `1.8.3` during the v1.8.4 stability stack until the formal v1.8.4 release-closeout phase changes whole-app identity
 
 Do not trigger destructive writes or deliberately corrupt production data to create a validation event.

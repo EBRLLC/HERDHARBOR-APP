@@ -6,7 +6,7 @@ The current production cloud layer stores a user's complete HerdHarbor applicati
 
 v1.8.3 starts the migration to row-granular cloud storage so a small change can synchronize only the records that changed instead of replacing unrelated state.
 
-This PR is still non-production foundation work. None of the v1.8.3 normalization modules are loaded by `index.html`, the new SQL has not been applied to production by this branch, and no existing `herdharbor_user_data` row is changed or deleted. Production remains on the v1.8.2 full-state path until shadow verification is deliberately enabled for an internal cohort.
+The normalization architecture is present in the v1.8.3 repository together with controlled rollout, cohort, reconciliation, bootstrap, dual-write, fallback, and rollback guardrails. Production authority is still intentionally gated: legacy full-state sync remains the recovery and authoritative path until an explicitly authorized operator rollout advances an eligible cohort. No normalization document authorizes mass enablement or deletion of `herdharbor_user_data`.
 
 ## Storage model
 
@@ -70,13 +70,11 @@ Safety behavior:
 
 The dedicated `test:v1.8.3` suite covers the record store, mapper/reassembler, and shadow safety gates. The repository's full CI also discovers these tests through `tests/*.test.cjs` in both UTC and America/New_York.
 
-## Remaining rollout plan
+## Controlled rollout model
 
 ### Phase D — internal shadow integration
 
-Add a deliberately disabled runtime bootstrap that can be enabled only for an explicit internal/test cohort. It should read the authoritative legacy snapshot, invoke the shadow controller, verify the normalized reconstruction, and publish privacy-safe diagnostics. The legacy snapshot remains authoritative for reads and recovery.
-
-No public account should enter shadow mode automatically.
+Implemented as guarded rollout infrastructure in v1.8.3. The bootstrap and cohort controls remain default-off for unrestricted production use. Internal/test eligibility, verified schema, monitoring availability, rollback readiness, and explicit operator action are required before an account may enter shadow mode. Legacy remains authoritative for reads and recovery.
 
 ### Phase E — dual write
 
@@ -96,6 +94,6 @@ The migration remains reversible through the entire shadow and dual-write period
 
 Provider errors must continue through the privacy-safe monitoring path added by the v1.8.2 hotfix. Raw application state, record payloads, animal information, notes, and other user data must never be copied into Sentry telemetry.
 
-## Next implementation slice
+## Next stability slice
 
-The next code slice is the internal shadow bootstrap and cohort gate. It should remain absent from the production page until its feature gate, monitoring events, rollback behavior, and end-to-end fixture tests are complete. After that, the branch can add multi-device conflict simulations before any live Supabase rollout is considered.
+The remaining work is production-readiness validation, not invention of another sync architecture: verify migration/preflight state, owner-only RLS and required RPCs, stale-client protection, bootstrap resumability, cohort gating, reconciliation evidence, dual-write degradation, normalized-read fallback, adjacent rollback, and writer-preparation guards. Production authority must remain unchanged until those checks pass for an explicitly controlled cohort.
