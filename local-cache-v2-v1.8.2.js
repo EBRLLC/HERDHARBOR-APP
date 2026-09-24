@@ -278,40 +278,31 @@
   }
 
   function install() {
-    if (installed || !root.localStorage || !root.Storage?.prototype?.setItem) return API;
+    if (installed || !root.localStorage) return API;
     installed = true;
 
-    const previousSetItem = root.Storage.prototype.setItem;
-    const previousRemoveItem = root.Storage.prototype.removeItem;
-
-    root.Storage.prototype.setItem = function herdHarborLocalCacheSetItem(key, value) {
-      const result = previousSetItem.call(this, key, value);
-      if (this === root.localStorage && key === STATE_KEY) schedule(String(value), "state-change");
-      return result;
-    };
-
-    if (typeof previousRemoveItem === "function") {
-      root.Storage.prototype.removeItem = function herdHarborLocalCacheRemoveItem(key) {
-        const result = previousRemoveItem.call(this, key);
-        if (this === root.localStorage && key === STATE_KEY) schedule("{}", "state-cleared");
-        return result;
-      };
+    const stateStore = root.HerdHarborStateStore;
+    if (stateStore?.subscribe) {
+      stateStore.subscribe((detail) => {
+        if (!detail?.rawValue) return;
+        schedule(String(detail.rawValue), detail.source === "cloud" ? "cloud-state-replace" : "state-commit");
+      });
     }
 
-    const current = root.localStorage.getItem(STATE_KEY);
+    const current = stateStore?.compatibilitySnapshot?.() || root.localStorage.getItem(STATE_KEY);
     if (safeParse(current)) schedule(current, "startup-warm-cache");
 
     root.addEventListener?.("pagehide", () => {
       if (pendingRaw) void flush();
     });
     root.addEventListener?.("online", () => {
-      const latest = root.localStorage.getItem(STATE_KEY);
+      const latest = stateStore?.compatibilitySnapshot?.() || root.localStorage.getItem(STATE_KEY);
       if (safeParse(latest)) schedule(latest, "online-refresh");
     });
     root.document?.addEventListener?.("visibilitychange", () => {
       if (root.document.visibilityState === "hidden" && pendingRaw) void flush();
       if (root.document.visibilityState === "visible") {
-        const latest = root.localStorage.getItem(STATE_KEY);
+        const latest = stateStore?.compatibilitySnapshot?.() || root.localStorage.getItem(STATE_KEY);
         if (safeParse(latest)) schedule(latest, "foreground-refresh");
       }
     });
@@ -319,7 +310,7 @@
       if (pendingRaw) void flush();
     });
     root.addEventListener?.("pageshow", () => {
-      const latest = root.localStorage.getItem(STATE_KEY);
+      const latest = stateStore?.compatibilitySnapshot?.() || root.localStorage.getItem(STATE_KEY);
       if (safeParse(latest)) schedule(latest, "resume-refresh");
     });
 
