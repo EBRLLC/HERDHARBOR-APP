@@ -81,7 +81,7 @@ assert.doesNotMatch(geneticsV2, /breeding-intelligence-core\.js['"]/, "advanced 
 assert.ok(pwa.includes('const APP_VERSION = window.HerdHarborBuild?.version || "1.8.4"'));
 const webVersion = build.match(/version:\s*"([^"]+)"/)?.[1];
 assert.ok(["1.7.1", "1.8.0", "1.8.1", "1.8.2", "1.8.3", "1.8.4"].includes(webVersion), `unexpected web shell ${webVersion}`);
-assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1|8\.2|8\.3)-/);
+assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1|8\.2|8\.3|8\.4)-/);
 if (webVersion === "1.8.1") assert.ok(worker.includes("v1.8.1-alpha-october-subscription-launch-"));
 if (webVersion === "1.8.2") assert.match(build, /buildId:\s*"cloud-sync-v2-/);
 if (webVersion === "1.8.4") assert.match(build, /buildId:\s*"alpha-v1\.8\.4-release-1"/);
