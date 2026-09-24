@@ -381,8 +381,7 @@
         root?.dispatchEvent?.(new root.CustomEvent("herdharbor:state-committed", {
           detail: {
             source: detail.source,
-            reason: detail.reason,
-            ownerId: detail.ownerId,
+            ownerIdPresent: Boolean(detail.ownerId),
             revision: detail.revision,
             cloudRelevant: detail.cloudRelevant,
             mutationCount: detail.mutations.length
