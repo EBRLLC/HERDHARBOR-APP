@@ -154,7 +154,25 @@ const NETWORK_FIRST_PATHS = [
   "/subscription-tab-visibility-v1.8.0.js",
   "/subscription-header-copy-v1.8.0.js",
   "/subscription-stripe-provider-v1.8.0.js",
-  "/subscription-stripe-launch-bridge-v1.8.1.js"
+  "/subscription-stripe-launch-bridge-v1.8.1.js",
+  "/animal-profile-runtime-v1.8.3.js",
+  "/breeding-litter-runtime-v1.8.3.js",
+  "/task-automation-v1.8.3.js",
+  "/health-runtime-v1.8.3.js",
+  "/task-runtime-v1.8.3.js",
+  "/sales-customer-runtime-v1.8.3.js",
+  "/profitability-analytics-v1.8.3.js",
+  "/production-reporting-runtime-v1.8.3.js",
+  "/settings-runtime-v1.8.3.js",
+  "/mobile-capture-v1.8.3.js",
+  "/herdharbor-app-runtime.js",
+  "/mobile-viewport-hotfix-v1.8.0.css",
+  "/paper-pedigree-import-core-v1.8.2.js",
+  "/paper-pedigree-import-v1.8.2.js",
+  "/spreadsheet-import.js",
+  "/vendor/jszip-3.10.1.min.js",
+  "/vendor/exceljs-4.4.0.min.js",
+  "/vendor/qrcode-generator-1.4.4.js"
 ];
 
 function isNetworkFirstPath(pathname) {
@@ -190,8 +208,12 @@ async function networkFirst(request) {
 async function cacheFirst(request) {
   const cached = await caches.match(request);
   if (cached) return cached;
-  const response = await fetch(request);
-  return cacheFreshResponse(request, response);
+  try {
+    const response = await fetch(request);
+    return cacheFreshResponse(request, response);
+  } catch {
+    return caches.match(request);
+  }
 }
 
 function isVersionedStaticAsset(url) {
