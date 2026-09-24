@@ -137,6 +137,7 @@ const NETWORK_FIRST_PATHS = [
   "/herdharbor-membership-v1.6.1.js",
   "/herdharbor-billing-v1.6.1.js",
   "/herdharbor-access-cache-v1.6.1.js",
+  "/herdharbor-index-shell.css",
   "/pwa.js",
   "/local-cache-v2-v1.8.2.js",
   "/cloud-sync-v2-flow-v1.8.2.js",
