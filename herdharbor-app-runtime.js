@@ -1170,6 +1170,10 @@
     return breedingLitterRuntime().openLitterForm(id, breedingId);
   }
 
+  function openRecordBirth(breedingId) {
+    return breedingLitterRuntime().openRecordBirth(breedingId);
+  }
+
   const PEDIGREE_SLOTS = [
     { key: "sire", label: "Sire", sex: "Male", generation: "Parents" },
     { key: "dam", label: "Dam", sex: "Female", generation: "Parents" },
@@ -3274,7 +3278,8 @@
     getAnimalById: animalById,
     getCurrentRoute: () => currentRoute,
     openAnimalEditor: (animalId) => animalProfileRuntime().openEditor(animalId),
-    openAnimalPedigreePrint: (animalId) => animalProfileRuntime().openPedigreePrint(animalId)
+    openAnimalPedigreePrint: (animalId) => animalProfileRuntime().openPedigreePrint(animalId),
+    openRecordBirth: (breedingId) => openRecordBirth(breedingId)
   });
   try { window.dispatchEvent(new CustomEvent("herdharbor:app-ready")); } catch {}
 
