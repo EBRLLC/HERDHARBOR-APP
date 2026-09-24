@@ -156,6 +156,7 @@ const NETWORK_FIRST_PATHS = [
   "/subscription-stripe-provider-v1.8.0.js",
   "/subscription-stripe-launch-bridge-v1.8.1.js",
   "/animal-profile-runtime-v1.8.3.js",
+  "/animal-action-router-v1.8.3.js",
   "/breeding-litter-runtime-v1.8.3.js",
   "/task-automation-v1.8.3.js",
   "/health-runtime-v1.8.3.js",
@@ -231,10 +232,10 @@ self.addEventListener("install", (event) => {
         .filter(({ result }) => result.status === "rejected")
         .map(({ request }) => new URL(request.url).pathname);
       const fatal = requiredFailures.filter((path) =>
-        path.endsWith("/index.html") ||
-        path.endsWith("/herdharbor-build.js") ||
-        path.endsWith("/herdharbor-app-runtime.js") ||
-        path.endsWith("/herdharbor-cloud.js")
+        path.endsWith("index.html") ||
+        path.endsWith("herdharbor-build.js") ||
+        path.endsWith("herdharbor-app-runtime.js") ||
+        path.endsWith("herdharbor-cloud.js")
       );
       if (fatal.length) throw new Error("Required HerdHarbor shell assets failed to cache: " + fatal.join(", "));
     })
