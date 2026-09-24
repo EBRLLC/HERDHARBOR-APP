@@ -1,7 +1,8 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v1.8.4-alpha-v1.8.4-release-1";
+const RELEASE_ASSET_REVISION = "__HH_RELEASE_ASSET_REVISION__";
+const CACHE_NAME = CACHE_PREFIX + RELEASE_ASSET_REVISION;
 const REQUIRED_SHELL = [
   "./",
   "./index.html",
@@ -182,6 +183,7 @@ function isNetworkFirstPath(pathname) {
 }
 
 function isRuntimeCachePath(url) {
+  if (!url.searchParams.has("rev")) return false;
   return RUNTIME_CACHE_PATHS.some((path) => {
     try {
       return new URL(path, self.location.href).pathname === url.pathname;
@@ -220,7 +222,15 @@ async function cacheFirst(request) {
 
 function isVersionedStaticAsset(url) {
   if (!/\.(?:js|css|png|svg|webp|woff2?)$/i.test(url.pathname)) return false;
-  return url.searchParams.has("v") || /\/vendor\//.test(url.pathname);
+  return url.searchParams.has("rev");
+}
+
+function isMutableApplicationAsset(url) {
+  return /\.(?:js|css|html|json)$/i.test(url.pathname);
+}
+
+function isApplicationApiPath(pathname) {
+  return /\/(?:auth|rest|functions|storage|realtime|graphql)\/v\d+(?:\/|$)/i.test(pathname);
 }
 
 self.addEventListener("install", (event) => {
@@ -264,6 +274,7 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (isApplicationApiPath(url.pathname)) return;
 
   if (request.mode === "navigate") {
     event.respondWith(
@@ -292,6 +303,11 @@ self.addEventListener("fetch", (event) => {
 
   if (isRuntimeCachePath(url) || isVersionedStaticAsset(url)) {
     event.respondWith(cacheFirst(request));
+    return;
+  }
+
+  if (isMutableApplicationAsset(url)) {
+    event.respondWith(networkFirst(request));
     return;
   }
 
