@@ -124,6 +124,8 @@ test('UI surfaces next action on profile, breeding cards, litter workspace, and 
   assert.match(ui,/HerdHarborFlowPhase2\?\.openAnimalProfile/);
   assert.match(ui,/HerdHarborBreedingWorkspace\?\.open/);
   assert.match(ui,/data-hh-bw-disposition/);
+  assert.match(ui,/data-hh-p2-life-action="record-birth"/);
+  assert.doesNotMatch(ui,/hh-p2-life-actions button:first-child/);
 });
 
 test('release loader includes the next-action engine under the formal v1.8.4 identity',()=>{
