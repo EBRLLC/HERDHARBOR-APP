@@ -36,7 +36,8 @@ test("all whole-app release owners identify Alpha v1.8.4", () => {
 test("PWA, shell and monitoring use the v1.8.4 release identity", () => {
   assert.match(pwa, /version \|\| "1\.8\.4"/);
   assert.match(pwa, /buildId \|\| "alpha-v1\.8\.4-release-1"/);
-  assert.match(worker, /herdharbor-shell-v1\.8\.4-alpha-v1\.8\.4-release-1/);
+  assert.match(worker, /RELEASE_ASSET_REVISION = "__HH_RELEASE_ASSET_REVISION__"/);
+  assert.match(worker, /CACHE_NAME = CACHE_PREFIX \\+ RELEASE_ASSET_REVISION/);
   assert.match(index, /manifest\.json\?v=1\.8\.4/);
   assert.match(index, /herdharbor-build\.js\?v=1\.8\.4/);
   assert.match(monitoring, /release:\s*"HerdHarbor@1\.8\.4"/);
