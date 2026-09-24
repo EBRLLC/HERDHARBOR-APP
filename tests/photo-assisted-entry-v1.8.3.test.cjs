@@ -169,12 +169,15 @@ test("canonical Animal and Health runtimes remain final save owners", () => {
   assert.match(healthRuntime, /liveState\.health\.push\(\{ id: deps\.uid\("health"\)/);
 });
 
-test("photo asset loads before composition runtime and is available in the PWA artifact", () => {
-  const photoIndex = html.indexOf("photo-assisted-entry-v1.8.3.js?v=2");
+test("photo AI stays production-deployed but lazy-loads only for approved live testers", () => {
+  const optional = read("herdharbor-optional-tools.js");
   const appIndex = html.indexOf("herdharbor-app-runtime.js?v=2");
-  assert.ok(photoIndex >= 0 && appIndex > photoIndex);
+  assert.ok(appIndex >= 0);
+  assert.doesNotMatch(html, /<script[^>]+photo-assisted-entry-v1\.8\.3\.js/);
+  assert.match(optional, /photoAi:\s*"photo-assisted-entry-v1\.8\.3\.js\?v=2"/);
+  assert.match(optional, /isAiLiveTester/);
+  assert.match(optional, /ensureAiLiveTools/);
   assert.match(worker, /\.\/photo-assisted-entry-v1\.8\.3\.js\?v=2/);
-  assert.match(worker, /"\/photo-assisted-entry-v1\.8\.3\.js"/);
   assert.match(pkg.scripts["test:v1.8.3"], /photo-assisted-entry-v1\.8\.3\.test\.cjs/);
 });
 
