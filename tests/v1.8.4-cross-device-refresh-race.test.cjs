@@ -67,6 +67,36 @@ test("cloud refresh does not overwrite an edit made during recovery snapshot cre
   assert.match(guarded, /return syncNow\(\)/, "new local work is routed through merge/save instead of overwritten");
 });
 
+
+test("a clean device with missing sync metadata captures its pre-edit state as the merge ancestor", () => {
+  const start = cloud.indexOf("function installStorageBridge()");
+  const end = cloud.indexOf("\n  async function fetchCloudRecord", start);
+  assert.ok(start >= 0 && end > start, "storage bridge is present");
+  const body = cloud.slice(start, end);
+
+  assert.match(
+    body,
+    /!originalGetItem\.call\(localStorage, baseKey\(userId\)\)[\s\S]*originalGetItem\.call\(localStorage, dirtyKey\(userId\)\) !== "1"[\s\S]*safeStorageSet\(baseKey\(userId\), previousValue\)/,
+    "the pre-edit state is retained before a clean device becomes dirty"
+  );
+
+  const baselineIndex = body.indexOf("safeStorageSet(baseKey(userId), previousValue)");
+  const dirtyIndex = body.indexOf('safeStorageSet(dirtyKey(userId), "1")');
+  assert.ok(baselineIndex >= 0 && dirtyIndex > baselineIndex, "baseline capture happens before dirty state is set");
+});
+
+test("a missing baseline is never replaced once the device was already dirty", () => {
+  const start = cloud.indexOf("function installStorageBridge()");
+  const end = cloud.indexOf("\n  async function fetchCloudRecord", start);
+  const body = cloud.slice(start, end);
+
+  assert.match(
+    body,
+    /originalGetItem\.call\(localStorage, dirtyKey\(userId\)\) !== "1"/,
+    "ancestor reconstruction is limited to a previously clean device"
+  );
+});
+
 test("true same-field cross-device conflicts remain protected by the three-way merge", () => {
   const start = cloud.indexOf("async function syncValueToCloud");
   const end = cloud.indexOf("\n  async function drainSyncQueue", start);
