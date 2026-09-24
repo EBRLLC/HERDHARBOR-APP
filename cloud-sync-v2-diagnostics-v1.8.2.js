@@ -30,8 +30,6 @@
   let installed = false;
   let observer = null;
   let queued = false;
-  let previousSetItem = null;
-  let previousRemoveItem = null;
 
   const clean = (value) => String(value == null ? "" : value).trim();
   const baseKey = (userId) => `herdharbor_user_cloud_base_${userId}`;
@@ -211,18 +209,16 @@
     }
   }
 
-  function bumpLocalRevision(reason = "state-change") {
+  function recordLocalRevision(revision, reason = "state-commit") {
     const userId = activeUserId();
     const store = storage();
     if (!userId || !store) return false;
     try {
-      const current = Math.max(0, Number(store.getItem(revisionKey(userId)) || 0));
-      const writer = previousSetItem || root.Storage?.prototype?.setItem;
-      if (typeof writer !== "function") return false;
-      writer.call(store, revisionKey(userId), String(current + 1));
-      writer.call(store, revisionAtKey(userId), new Date().toISOString());
+      const nextRevision = Math.max(0, Number(revision || root.HerdHarborStateStore?.getRevision?.(userId) || 0));
+      store.setItem(revisionKey(userId), String(nextRevision));
+      store.setItem(revisionAtKey(userId), new Date().toISOString());
       root.dispatchEvent?.(new root.CustomEvent("herdharbor:sync-v2-local-revision", {
-        detail: { userId, revision: current + 1, reason }
+        detail: { userIdPresent: true, revision: nextRevision, reason: String(reason || "state-commit").slice(0, 80) }
       }));
       return true;
     } catch {
@@ -236,12 +232,10 @@
     if (!userId || !store) return false;
     try {
       if (store.getItem(revisionKey(userId))) return false;
-      if (!safeParse(store.getItem(STATE_KEY))) return false;
-      const writer = previousSetItem || root.Storage?.prototype?.setItem;
-      if (typeof writer !== "function") return false;
-      writer.call(store, revisionKey(userId), "1");
-      writer.call(store, revisionAtKey(userId), new Date().toISOString());
-      return true;
+      const stateStore = root.HerdHarborStateStore;
+      const rawValue = stateStore?.compatibilitySnapshot?.() || store.getItem(STATE_KEY);
+      if (!safeParse(rawValue)) return false;
+      return recordLocalRevision(stateStore?.getRevision?.(userId) || 1, "initial-state");
     } catch {
       return false;
     }
@@ -580,23 +574,12 @@
   }
 
   function installRevisionTracking() {
-    const store = storage();
-    const StorageCtor = root.Storage;
-    if (!store || !StorageCtor?.prototype?.setItem || previousSetItem) return false;
-    previousSetItem = StorageCtor.prototype.setItem;
-    previousRemoveItem = StorageCtor.prototype.removeItem;
-    StorageCtor.prototype.setItem = function herdHarborSyncV2DiagnosticsSetItem(key, value) {
-      const result = previousSetItem.call(this, key, value);
-      if (this === store && key === STATE_KEY) bumpLocalRevision("state-change");
-      return result;
-    };
-    if (typeof previousRemoveItem === "function") {
-      StorageCtor.prototype.removeItem = function herdHarborSyncV2DiagnosticsRemoveItem(key) {
-        const result = previousRemoveItem.call(this, key);
-        if (this === store && key === STATE_KEY) bumpLocalRevision("state-cleared");
-        return result;
-      };
-    }
+    const stateStore = root.HerdHarborStateStore;
+    if (!stateStore?.subscribe) return false;
+    stateStore.subscribe((detail) => {
+      if (!detail || detail.source !== "local") return;
+      recordLocalRevision(detail.revision, "state-commit");
+    });
     ensureInitialRevision();
     return true;
   }
