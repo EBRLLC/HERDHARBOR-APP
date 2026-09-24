@@ -11,6 +11,7 @@ Alpha v1.8.4 is a production-stability release built on the v1.8.3 application a
 - authentication architecture remains frozen and regression-protected for startup, session restoration, deadlock prevention, bounded auth requests, and one canonical Supabase browser client
 - subscription/payment-state behavior remains non-destructive across checkout failure, renewal failure, cancellation, Free Adult fallback, protected roles, Junior, Founder/manual authority, referrals, and backend-owned trial state
 - one aggregate v1.8.4 end-to-end release-regression gate binds the critical user journeys together
+- runtime efficiency hardening reduces mandatory PWA precache scope, keeps optional assets runtime-cacheable, and removes eager voice/photo AI loading for non-test users
 
 ## Production authority
 
@@ -18,9 +19,11 @@ Normalized sync is **not mass-enabled** by this release. Legacy full-state sync 
 
 No production schema is applied automatically by the application release. No cohort is enabled automatically.
 
-## AI scope
+## AI live testing
 
-v1.8.4 does not expand AI functionality. Existing v1.8.3 AI-assisted behavior remains carried forward. New or expanded Paper Pedigree AI, photo-assisted AI entry, voice-assisted AI entry, and other AI-assisted roadmap work is deferred to v2.0.1.
+AI production code remains deployed in v1.8.4 for controlled live testing. Voice-assisted entry and photo-assisted entry are hidden from ordinary users and lazy-load only after explicit tester enablement. Paper Pedigree remains deployed while its AI-read action is hidden from non-test browsers.
+
+The public AI launch remains deferred to v2.0.1. v1.8.4 is the controlled production-test period, not the public AI release.
 
 ## Stable component identities
 
