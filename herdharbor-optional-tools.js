@@ -120,6 +120,7 @@
   }
 
   function installAiTesterVisibility() {
+    if (!document.documentElement?.dataset || typeof document.getElementById !== "function") return;
     if (document.getElementById("hh-ai-live-tester-visibility")) return;
     const style = document.createElement("style");
     style.id = "hh-ai-live-tester-visibility";
