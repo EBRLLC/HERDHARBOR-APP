@@ -29,8 +29,9 @@
     "test:v1.8.4-pwa": "node --test tests/pwa-update-regression-v1.5.0.test.cjs tests/v1.8.4-pwa-update-stability.test.cjs",
     "test:v1.8.4-auth": "node --test tests/auth-freeze-resilience-v1.8.2.test.cjs tests/auth-freeze-resilience-manifest-v1.8.2.test.cjs tests/auth-signin-deadlock-v1.6.7.test.cjs tests/v1.8.4-auth-regression-hardening.test.cjs",
     "test:v1.8.4-subscription": "node --test tests/subscription-production-completion-v1.8.3.test.cjs tests/subscription-stripe-v1.8.1.test.cjs tests/subscription-referrals-credits-v1.8.1.test.cjs tests/v1.8.4-subscription-reliability.test.cjs",
-    "test:v1.8.4-regression": "npm run test:v1.8.4-baseline && npm run test:v1.8.4-sync-readiness && npm run test:v1.8.4-cloud-telemetry && npm run test:v1.8.4-state-integrity && npm run test:v1.8.4-pwa && npm run test:v1.8.4-auth && npm run test:v1.8.4-subscription && node --test tests/v1.8.4-end-to-end-regression.test.cjs",
-    "test:v1.8.4": "npm run test:v1.8.3 && npm run test:v1.8.4-regression && node --test tests/current-release-reference-audit-v1.8.4.test.cjs"
+    "test:v1.8.4-regression": "npm run test:v1.8.4-baseline && npm run test:v1.8.4-sync-readiness && npm run test:v1.8.4-cloud-telemetry && npm run test:v1.8.4-state-integrity && npm run test:v1.8.4-pwa && npm run test:v1.8.4-auth && npm run test:v1.8.4-subscription && npm run test:v1.8.4-runtime-efficiency && node --test tests/v1.8.4-end-to-end-regression.test.cjs",
+    "test:v1.8.4": "npm run test:v1.8.3 && npm run test:v1.8.4-regression && node --test tests/current-release-reference-audit-v1.8.4.test.cjs",
+    "test:v1.8.4-runtime-efficiency": "node --test tests/v1.8.4-runtime-efficiency.test.cjs"
   },
   "dependencies": {
     "@sentry/browser": "10.71.0"
