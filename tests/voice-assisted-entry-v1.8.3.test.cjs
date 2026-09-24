@@ -96,11 +96,14 @@ test("canonical Health and Breeding forms remain final save owners", () => {
   assert.doesNotMatch(source, /stateNow\(\)\.breedings\.push|stateNow\(\)\.health\.push/);
 });
 
-test("voice asset loads before composition runtime and remains offline-safe", () => {
-  const voiceIndex = html.indexOf("voice-assisted-entry-v1.8.3.js?v=1");
+test("voice AI stays production-deployed but lazy-loads only for approved live testers", () => {
+  const optional = read("herdharbor-optional-tools.js");
   const appIndex = html.indexOf("herdharbor-app-runtime.js?v=2");
-  assert.ok(voiceIndex >= 0 && appIndex > voiceIndex);
+  assert.ok(appIndex >= 0);
+  assert.doesNotMatch(html, /<script[^>]+voice-assisted-entry-v1\.8\.3\.js/);
+  assert.match(optional, /voiceAi:\s*"voice-assisted-entry-v1\.8\.3\.js\?v=1"/);
+  assert.match(optional, /isAiLiveTester/);
+  assert.match(optional, /ensureAiLiveTools/);
   assert.match(worker, /\.\/voice-assisted-entry-v1\.8\.3\.js\?v=1/);
-  assert.match(worker, /"\/voice-assisted-entry-v1\.8\.3\.js"/);
   assert.match(pkg.scripts["test:v1.8.3"], /voice-assisted-entry-v1\.8\.3\.test\.cjs/);
 });

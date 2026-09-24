@@ -122,11 +122,14 @@ test("canonical cloud retry safeguards remain untouched", () => {
   assert.doesNotMatch(mobile, /dirtyKey|baseKey|lifecycleTombstones|syncConflict/);
 });
 
-test("mobile capture helper loads before photo entry and remains in the offline shell", () => {
+test("mobile capture remains in the core shell while photo AI is live-tester lazy-loaded", () => {
   const mobileIndex = html.indexOf("mobile-capture-v1.8.3.js?v=1");
-  const photoIndex = html.indexOf("photo-assisted-entry-v1.8.3.js?v=2");
   const appIndex = html.indexOf("herdharbor-app-runtime.js?v=2");
-  assert.ok(mobileIndex >= 0 && photoIndex > mobileIndex && appIndex > photoIndex);
+  const optional = read("herdharbor-optional-tools.js");
+  assert.ok(mobileIndex >= 0 && appIndex > mobileIndex);
+  assert.doesNotMatch(html, /<script[^>]+photo-assisted-entry-v1\.8\.3\.js/);
+  assert.match(optional, /photoAi:\s*"photo-assisted-entry-v1\.8\.3\.js\?v=2"/);
+  assert.match(optional, /ensureAiLiveTools/);
   assert.match(worker, /\.\/mobile-capture-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /"\/mobile-capture-v1\.8\.3\.js"/);
   assert.match(worker, /\.\/photo-assisted-entry-v1\.8\.3\.js\?v=2/);
