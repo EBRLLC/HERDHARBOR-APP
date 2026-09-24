@@ -39,6 +39,34 @@ test("cross-device refresh rechecks dirty state after the remote fetch", () => {
   );
 });
 
+
+test("cloud refresh does not overwrite an edit made during recovery snapshot creation", () => {
+  const start = cloud.indexOf("async function checkForCloudChanges()");
+  const end = cloud.indexOf("\n  function ensureStyles()", start);
+  const body = cloud.slice(start, end);
+
+  const snapshotIndex = body.indexOf(
+    'await recordRecoverySnapshot(userId, activeRaw, "Local copy before receiving another device\'s changes")'
+  );
+  const latestReadIndex = body.indexOf(
+    "const latestActiveRaw = originalGetItem.call(localStorage, STORAGE_KEY)",
+    snapshotIndex
+  );
+  const replaceIndex = body.indexOf(
+    "setActiveUserData(userId, deviceCloudRaw)",
+    snapshotIndex
+  );
+
+  assert.ok(snapshotIndex >= 0, "cloud refresh preserves a local recovery copy");
+  assert.ok(latestReadIndex > snapshotIndex, "active state is re-read after the asynchronous snapshot");
+  assert.ok(replaceIndex > latestReadIndex, "cloud replacement only happens after the second local-state guard");
+
+  const guarded = body.slice(latestReadIndex, replaceIndex);
+  assert.match(guarded, /dirtyKey\(userId\)/, "dirty state is checked again before replacement");
+  assert.match(guarded, /!sameState\(latestActiveRaw, activeRaw\)/, "unexpected local changes are also detected");
+  assert.match(guarded, /return syncNow\(\)/, "new local work is routed through merge/save instead of overwritten");
+});
+
 test("true same-field cross-device conflicts remain protected by the three-way merge", () => {
   const start = cloud.indexOf("async function syncValueToCloud");
   const end = cloud.indexOf("\n  async function drainSyncQueue", start);
