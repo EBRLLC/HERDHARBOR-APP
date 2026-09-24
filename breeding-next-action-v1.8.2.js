@@ -58,7 +58,13 @@
   function openProfile(next){
     if(!next.animalId)return false;root.HerdHarborFlowPhase2?.openAnimalProfile?.(next.animalId,"breeding",{history:"push"});
     if(["start-breeding","plan-rebreed"].includes(next.kind)){waitFor('#view-animal-profile.active [data-hh-p2-action="breeding"]',button=>button.click());return true;}
-    if(["pregnancy-check","record-birth"].includes(next.kind)&&next.breedingId){waitFor(`#view-animal-profile.active [data-hh-p2-breeding-id="${root.CSS?.escape?root.CSS.escape(next.breedingId):next.breedingId}"] .hh-p2-life-actions button:first-child`,button=>button.click());}
+    if(next.kind==="record-birth"&&next.breedingId){
+      const id=root.CSS?.escape?root.CSS.escape(next.breedingId):next.breedingId;
+      waitFor(`#view-animal-profile.active [data-hh-p2-breeding-id="${id}"] [data-hh-p2-life-action="record-birth"][data-breeding-id="${id}"]`,button=>button.click());
+    }else if(next.kind==="pregnancy-check"&&next.breedingId){
+      const id=root.CSS?.escape?root.CSS.escape(next.breedingId):next.breedingId;
+      waitFor(`#view-animal-profile.active [data-hh-p2-breeding-id="${id}"] [data-hh-p2-life-action="edit-breeding"][data-breeding-id="${id}"]`,button=>button.click());
+    }
     return true;
   }
   function openWorkspace(next){
