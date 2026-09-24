@@ -399,7 +399,7 @@
 
   function currentActiveAnimalCount(userId) {
     if (!userId || userId !== session?.user?.id) return null;
-    const localState = safeParse(originalGetItem.call(localStorage, STORAGE_KEY));
+    const localState = safeParse(activeStateRaw());
     const animals = Array.isArray(localState?.animals) ? localState.animals : [];
     return window.HerdHarborMembership?.activeAnimalCount?.(animals) ?? null;
   }
@@ -812,6 +812,10 @@
     return JSON.stringify(cloudState);
   }
 
+  function activeStateRaw() {
+    return canonicalStateStore?.compatibilitySnapshot?.() || originalGetItem.call(localStorage, STORAGE_KEY) || "";
+  }
+
   function safeStorageSet(key, value) {
     try {
       originalSetItem.call(localStorage, key, value);
@@ -946,7 +950,7 @@
 
   function preserveActiveForUser(userId, reason) {
     if (!userId) return;
-    const activeRaw = originalGetItem.call(localStorage, STORAGE_KEY);
+    const activeRaw = activeStateRaw();
     if (!activeRaw || !safeParse(activeRaw)) return;
     safeStorageSet(cacheKey(userId), activeRaw);
     safeStorageSet(ACTIVE_OWNER_KEY, userId);
@@ -1001,7 +1005,7 @@
     if (originalGetItem.call(localStorage, baseKey(userId))) return false;
     if (originalGetItem.call(localStorage, dirtyKey(userId)) === "1") return false;
     if (!originalGetItem.call(localStorage, versionKey(userId))) return false;
-    const activeRaw = canonicalStateStore?.compatibilitySnapshot?.() || originalGetItem.call(localStorage, STORAGE_KEY);
+    const activeRaw = activeStateRaw();
     if (!activeRaw || !safeParse(activeRaw)) return false;
     safeStorageSet(baseKey(userId), activeRaw);
     dispatchBaselineRestored(userId, reason);
@@ -1143,7 +1147,7 @@
     const remoteRaw = remoteRecord?.app_state
       ? JSON.stringify(remoteRecord.app_state)
       : null;
-    const activeRaw = originalGetItem.call(localStorage, STORAGE_KEY);
+    const activeRaw = activeStateRaw();
     const confirmedBase = originalGetItem.call(localStorage, baseKey(userId));
     const localBaselineRaw = confirmedBase || activeRaw;
 
@@ -1286,7 +1290,7 @@
     }
 
     if (autoMerged && sequence !== writeSequence) {
-      const currentRaw = originalGetItem.call(localStorage, STORAGE_KEY);
+      const currentRaw = activeStateRaw();
       const rebased = mergeRawStates(
         localRawBeforeMerge,
         currentRaw,
@@ -1366,7 +1370,7 @@
   }
 
   async function syncNow() {
-    const raw = originalGetItem.call(localStorage, STORAGE_KEY);
+    const raw = activeStateRaw();
     if (!raw) {
       setSyncState("No HerdHarbor data is available to sync.", "error");
       return false;
@@ -1489,7 +1493,7 @@
     }
 
     const remoteRaw = JSON.stringify(data.app_state);
-    const activeRaw = originalGetItem.call(localStorage, STORAGE_KEY);
+    const activeRaw = activeStateRaw();
     const confirmedBase = originalGetItem.call(localStorage, baseKey(userId));
 
     if (activeRaw && sameState(activeRaw, remoteRaw)) {
@@ -1505,7 +1509,7 @@
       // The recovery snapshot is asynchronous. A local edit made while it is
       // being stored must not be overwritten by the cloud copy we fetched
       // earlier. Hand the newest local state to the normal sync/merge path.
-      const latestActiveRaw = originalGetItem.call(localStorage, STORAGE_KEY);
+      const latestActiveRaw = activeStateRaw();
       if (
         originalGetItem.call(localStorage, dirtyKey(userId)) === "1" ||
         !sameState(latestActiveRaw, activeRaw)
@@ -2066,7 +2070,7 @@
   }
 
   async function downloadSafetyBackup() {
-    const rawValue = originalGetItem.call(localStorage, STORAGE_KEY);
+    const rawValue = activeStateRaw();
     let appState = safeParse(rawValue);
     if (!appState) {
       setSyncState("No readable local records are available to back up.", "error");
@@ -2254,7 +2258,7 @@
 
     const userId = session.user.id;
     restoreMissingCloudBaseline(userId, "hydrate");
-    const storedActiveRaw = canonicalStateStore?.compatibilitySnapshot?.() || originalGetItem.call(localStorage, STORAGE_KEY);
+    const storedActiveRaw = activeStateRaw();
     const activeOwner = originalGetItem.call(localStorage, ACTIVE_OWNER_KEY);
     const activeRaw =
       !activeOwner || activeOwner === userId
