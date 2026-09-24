@@ -96,6 +96,7 @@
       DEVICE_LOCAL_SETTINGS.forEach((key) => {
         delete safe.settings[key];
       });
+      if (!Object.keys(safe.settings).length) delete safe.settings;
     }
     return safe;
   }
