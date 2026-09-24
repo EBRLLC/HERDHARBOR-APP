@@ -124,7 +124,9 @@ test('UI surfaces next action on profile, breeding cards, litter workspace, and 
   assert.match(ui,/HerdHarborFlowPhase2\?\.openAnimalProfile/);
   assert.match(ui,/HerdHarborBreedingWorkspace\?\.open/);
   assert.match(ui,/data-hh-bw-disposition/);
-  assert.match(ui,/data-hh-p2-life-action="record-birth"/);
+  assert.match(ui,/nav-item\[data-route="breeding"\]/);
+  assert.match(ui,/data-record-birth=/);
+  assert.doesNotMatch(ui,/data-hh-p2-life-action="record-birth"/);
   assert.doesNotMatch(ui,/hh-p2-life-actions button:first-child/);
 });
 
