@@ -99,6 +99,17 @@ jobs:
             --exclude='package.json' \
             --exclude='package-lock.json' \
             ./ _site/
+          node scripts/stage-release-assets.mjs --root _site --release-sha "$RELEASE_SHA"
+          test -s _site/release-asset-manifest.json
+          node -e '
+            const fs = require("node:fs");
+            const manifest = JSON.parse(fs.readFileSync("_site/release-asset-manifest.json", "utf8"));
+            if (!/^[a-f0-9]{24}$/.test(manifest.revision || "")) process.exit(1);
+            const html = fs.readFileSync("_site/index.html", "utf8");
+            const worker = fs.readFileSync("_site/service-worker.js", "utf8");
+            if (!html.includes("?rev=" + manifest.revision)) process.exit(1);
+            if (!worker.includes("const RELEASE_ASSET_REVISION = \\"" + manifest.revision + "\\";")) process.exit(1);
+          '
           test -s _site/herdharbor-monitoring-config.js
           test -s _site/vendor/herdharbor-monitoring-v1.6.1.min.js
           test -s _site/health-intelligence-v1.7.1.js
