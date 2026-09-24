@@ -1,11 +1,11 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v1.8.3-alpha-v1.8.3-release-1";
+const CACHE_NAME = "herdharbor-shell-v1.8.4-alpha-v1.8.4-release-1";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./manifest.json?v=1.8.3",
+  "./manifest.json?v=1.8.4",
   "./herdharbor-release-v1.6.1.js?v=1.7.1",
   "./herdharbor-membership-v1.6.1.js?v=1.7.1",
   "./herdharbor-billing-v1.6.1.js?v=1.7.1",
@@ -18,7 +18,7 @@ const APP_SHELL = [
   "./herdharbor-core-v1.6.1.css?v=1.7.1",
   "./herdharbor-v1.6.1.css?v=1.7.1",
   "./herdharbor-index-shell.css?v=1",
-  "./herdharbor-build.js?v=1.8.3",
+  "./herdharbor-build.js?v=1.8.4",
   "./herdharbor-app-runtime.js?v=2",
   "./animal-profile-runtime-v1.8.3.js?v=1",
   "./breeding-litter-runtime-v1.8.3.js?v=1",
@@ -79,8 +79,8 @@ const APP_SHELL = [
   "./analytics-v1.6.1.css?v=2",
   "./market-analytics-v1.6.5.js?v=1.7.1",
   "./analytics-v1.6.1.js?v=2",
-  "./herdharbor-monitoring-config.js?v=1.8.3",
-  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=1.8.3",
+  "./herdharbor-monitoring-config.js?v=1.8.4",
+  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=1.8.4",
   "./symptom-guide.js?v=1",
   "./health-intelligence-v1.7.1.js?v=1.7.1",
   "./health-intelligence-v1.7.1.css?v=1.7.1",

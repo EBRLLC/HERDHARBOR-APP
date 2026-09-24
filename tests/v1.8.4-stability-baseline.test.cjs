@@ -6,12 +6,12 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
-test("v1.8.4 stability baseline preserves current whole-app v1.8.3 identity", () => {
+test("v1.8.4 release closeout owns whole-app v1.8.4 identity", () => {
   const pkg = JSON.parse(read("package.json"));
-  assert.equal(pkg.version, "1.8.3");
-  assert.match(pkg.description, /Alpha v1\.8\.3/);
-  assert.match(read("herdharbor-build.js"), /version:\s*["']1\.8\.3["']/);
-  assert.match(read("manifest.json"), /1\.8\.3/);
+  assert.equal(pkg.version, "1.8.4");
+  assert.match(pkg.description, /Alpha v1\.8\.4/);
+  assert.match(read("herdharbor-build.js"), /version:\s*["\']1\.8\.4["\']/);
+  assert.match(read("manifest.json"), /1\.8\.4/);
 });
 
 test("v1.8.4 contract defines a nine-phase stacked stability release", () => {
@@ -30,16 +30,16 @@ test("v1.8.4 defers AI expansion and keeps normalized authority gated", () => {
   assert.match(contract, /v2\.0\.1/);
   assert.match(contract, /does not expand AI functionality/i);
   assert.match(contract, /legacy full-state sync remains authoritative\/recovery/i);
-  assert.match(contract, /formal whole-app promotion to Alpha v1\.8\.4 belongs to PR 9/i);
+  assert.match(read("RELEASE_NOTES-v1.8.4.md"), /Alpha v1\.8\.4/);
 });
 
-test("current operational documentation uses the v1.8.3 production baseline", () => {
+test("current operational documentation uses the v1.8.4 production release", () => {
   const checklist = read("TEST_CHECKLIST.md");
   const telemetry = read("CLOUD-SYNC-PRODUCTION-TELEMETRY-RUNBOOK.md");
   const rollout = read("CLOUD-SYNC-CONTROLLED-ROLLOUT-v1.8.3.md");
 
-  assert.match(checklist, /current v1\.8\.3 production baseline/i);
+  assert.match(checklist, /Alpha v1\.8\.4 release candidate/i);
   assert.doesNotMatch(checklist, /current v1\.8\.1 release contract/i);
-  assert.match(telemetry, /application release remains `1\.8\.3`/);
-  assert.match(rollout, /current production application identity is HerdHarbor Alpha v1\.8\.3/i);
+  assert.match(telemetry, /application release is `1\.8\.4`/);
+  assert.match(rollout, /current production application identity is HerdHarbor Alpha v1\.8\.4/i);
 });

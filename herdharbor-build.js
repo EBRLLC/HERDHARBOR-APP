@@ -3,9 +3,9 @@
   root.HerdHarborBuild = Object.freeze({
     product: "HerdHarbor",
     channel: "Alpha",
-    version: "1.8.3",
-    buildId: "alpha-v1.8.3-release-1",
-    build: "1.8.3-alpha-v1.8.3-release-1"
+    version: "1.8.4",
+    buildId: "alpha-v1.8.4-release-1",
+    build: "1.8.4-alpha-v1.8.4-release-1"
   });
 
   // Keep authentication and the first cloud hydration from waiting forever while

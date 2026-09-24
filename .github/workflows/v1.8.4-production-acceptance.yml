@@ -1,4 +1,4 @@
-name: Alpha v1.8.3 production acceptance
+name: Alpha v1.8.4 production acceptance
 
 on:
   workflow_dispatch:
@@ -19,7 +19,7 @@ permissions:
 
 env:
   HERDHARBOR_MONITORING_ENVIRONMENT: production
-  HERDHARBOR_BUILD_ID: v1.8.3-production-acceptance
+  HERDHARBOR_BUILD_ID: v1.8.4-production-acceptance
 
 jobs:
   production-acceptance:
@@ -30,11 +30,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Verify reviewed Alpha v1.8.3 release contract before production acceptance
+      - name: Verify reviewed Alpha v1.8.4 release contract before production acceptance
         run: |
           npm ci --no-audit --no-fund
           npm run test:release
-          npm run test:v1.8.3
+          npm run test:v1.8.4
 
       - name: Run membership/RLS production acceptance
         if: ${{ inputs.run_membership }}
@@ -59,6 +59,6 @@ jobs:
 
       - name: Production acceptance summary
         run: |
-          echo "Alpha v1.8.3 protected production acceptance finished."
+          echo "Alpha v1.8.4 protected production acceptance finished."
           echo "Membership acceptance requested: ${{ inputs.run_membership }}"
           echo "Sentry acceptance requested: ${{ inputs.run_sentry }}"

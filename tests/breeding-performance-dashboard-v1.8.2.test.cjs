@@ -100,13 +100,13 @@ test('UI injects into Analytics Breeding and links dam/sire rows back to animal 
   assert.match(ui,/data-hh-bpd-animal/);
 });
 
-test('release loader and service worker include performance assets under the formal v1.8.3 identity',()=>{
+test('release loader and service worker include performance assets under the formal v1.8.4 identity',()=>{
   const build=fs.readFileSync(path.join(__dirname,'..','herdharbor-build.js'),'utf8');
   const sw=fs.readFileSync(path.join(__dirname,'..','service-worker.js'),'utf8');
   for(const asset of ['breeding-performance-core-v1.8.2.js','breeding-performance-dashboard-v1.8.2.js','breeding-performance-dashboard-v1.8.2.css']){
     assert.match(build,new RegExp(asset.replace(/\./g,'\\.')));
     assert.match(sw,new RegExp(asset.replace(/\./g,'\\.')));
   }
-  assert.match(build,/version:\s*"1\.8\.3"/);
-  assert.match(build,/buildId:\s*"alpha-v1\.8\.3-release-1"/);
+  assert.match(build,/version:\s*"1\.8\.4"/);
+  assert.match(build,/buildId:\s*"alpha-v1\.8\.4-release-1"/);
 });

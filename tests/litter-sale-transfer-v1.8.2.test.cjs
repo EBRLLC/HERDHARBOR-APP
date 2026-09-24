@@ -100,13 +100,13 @@ test('UI connects Evaluation to canonical sales and the existing direct transfer
   assert.match(ui,/data-route=.*sales/);
 });
 
-test('release loader and PWA cache include litter sale-transfer assets under the formal v1.8.3 release identity',()=>{
+test('release loader and PWA cache include litter sale-transfer assets under the formal v1.8.4 release identity',()=>{
   const build=fs.readFileSync(path.join(__dirname,'..','herdharbor-build.js'),'utf8');
   const sw=fs.readFileSync(path.join(__dirname,'..','service-worker.js'),'utf8');
   for(const asset of ['litter-sale-transfer-core-v1.8.2.js','litter-sale-transfer-v1.8.2.js','litter-sale-transfer-v1.8.2.css']){
     assert.match(build,new RegExp(asset.replace(/\./g,'\\.')));
     assert.match(sw,new RegExp(asset.replace(/\./g,'\\.')));
   }
-  assert.match(build,/version:\s*"1\.8\.3"/);
-  assert.match(build,/buildId:\s*"alpha-v1.8.3-release-1"/);
+  assert.match(build,/version:\s*"1\.8\.4"/);
+  assert.match(build,/buildId:\s*"alpha-v1.8.4-release-1"/);
 });

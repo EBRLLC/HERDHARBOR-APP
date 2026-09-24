@@ -66,7 +66,7 @@ test("v1.7.0 reference-guide assets remain loaded and offline-safe under the cur
   }
   const version=build.match(/version:\s*"([^"]+)"/)?.[1];
   const buildId=build.match(/buildId:\s*"([^"]+)"/)?.[1];
-  assert.ok(["1.7.1","1.8.0","1.8.1","1.8.2","1.8.3"].includes(version),`unexpected web release ${version}`);
+  assert.ok(["1.7.1","1.8.0","1.8.1","1.8.2","1.8.3","1.8.4"].includes(version),`unexpected web release ${version}`);
   if(version==="1.7.1"){
     assert.equal(buildId,"multispecies-genetics-foundation-1");
     assert.match(sw,/herdharbor-shell-v1\.7\.1-alpha-multispecies-genetics-foundation-1/);
@@ -80,7 +80,7 @@ test("v1.7.0 reference-guide assets remain loaded and offline-safe under the cur
     assert.match(buildId,/^cloud-sync-v2-/);
     assert.match(sw,/herdharbor-shell-v1\.8\.2-alpha-cloud-sync-v2-state-integrity-1/);
   }else{
-    assert.equal(buildId,"alpha-v1.8.3-release-1");
-    assert.match(sw,/herdharbor-shell-v1\.8\.3-alpha-v1\.8\.3-release-1/);
+    assert.equal(buildId,"alpha-v1.8.4-release-1");
+    assert.match(sw,/herdharbor-shell-v1\.8\.4-alpha-v1\.8\.4-release-1/);
   }
 });

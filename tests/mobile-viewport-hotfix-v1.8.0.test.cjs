@@ -38,7 +38,7 @@ test("mobile dashboard and Today workflow are constrained to the viewport", () =
 test("mobile hotfix remains loaded last and network-first under the current shell", () => {
   assert.match(build, /addStyle\("hh-mobile-viewport-v180-style", "mobile-viewport-hotfix-v1\.8\.0\.css\?v=1"\)/);
   assert.ok(build.indexOf("mobile-viewport-hotfix-v1.8.0.css?v=1") > build.indexOf("subscription-member-ui-v1.8.0.css?v=1"));
-  assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:8\.0|8\.1|8\.2|8\.3)-/);
+  assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:8\.0|8\.1|8\.2|8\.3|8\.4)-/);
   assert.match(worker, /"\.\/mobile-viewport-hotfix-v1\.8\.0\.css\?v=1"/);
   assert.match(worker, /"\/mobile-viewport-hotfix-v1\.8\.0\.css"/);
 });

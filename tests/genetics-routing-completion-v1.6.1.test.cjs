@@ -28,7 +28,7 @@ test("visible genetics actions are captured and routed by selected animal id", (
 test("current web release and PWA cache move together while preserving the v1.7.1 genetics foundation", () => {
   const version = build.match(/version:\s*"([^"]+)"/)?.[1];
   const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
-  assert.ok(["1.7.1", "1.8.0", "1.8.1", "1.8.2", "1.8.3"].includes(version), `unexpected web release ${version}`);
+  assert.ok(["1.7.1", "1.8.0", "1.8.1", "1.8.2", "1.8.3", "1.8.4"].includes(version), `unexpected web release ${version}`);
   if (version === "1.7.1") {
     assert.equal(buildId, "multispecies-genetics-foundation-1");
     assert.match(worker, /herdharbor-shell-v1\.7\.1-alpha-multispecies-genetics-foundation-1/);
@@ -42,8 +42,8 @@ test("current web release and PWA cache move together while preserving the v1.7.
     assert.equal(buildId, "cloud-sync-v2-state-integrity-1");
     assert.match(worker, /herdharbor-shell-v1\.8\.2-alpha-cloud-sync-v2-state-integrity-1/);
   } else {
-    assert.equal(buildId, "alpha-v1.8.3-release-1");
-    assert.match(worker, /herdharbor-shell-v1\.8\.3-alpha-v1\.8\.3-release-1/);
+    assert.equal(buildId, "alpha-v1.8.4-release-1");
+    assert.match(worker, /herdharbor-shell-v1\.8\.4-alpha-v1\.8\.4-release-1/);
   }
   assert.match(worker, /herdharbor-release-v1\.6\.1\.js\?v=1\.7\.1/);
   assert.match(worker, /multispecies-genetics-v1\.7\.1\.js\?v=1\.7\.1/);

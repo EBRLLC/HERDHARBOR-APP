@@ -31,7 +31,7 @@
     const stateNow = () => deps.getState() || {};
     const defaultSettings = () => deps.getDefaultSettings() || {};
     const currentRoute = () => deps.getCurrentRoute() || "dashboard";
-    const appVersion = () => deps.getAppVersion() || "1.8.3";
+    const appVersion = () => deps.getAppVersion() || "1.8.4";
     const confirm = typeof root?.confirm === "function" ? root.confirm.bind(root) : () => false;
 
     function renderSettings() {
@@ -189,7 +189,7 @@
               <a class="button button-ghost" href="https://herdharbor.com/terms/" target="_blank" rel="noopener">Terms</a>
               <a class="button button-ghost" href="https://herdharbor.com/delete-account/" target="_blank" rel="noopener">Account deletion</a>
             </div>
-            <p class="brand-file-note">Version 1.8.3 formalizes controlled normalized-sync rollout guardrails, animal-first workflows, production trial and Free Adult behavior, hardened paper pedigree photo import, non-blocking monitoring startup, runtime decomposition, and the current How To Center while preserving established HerdHarbor domain engines.</p>
+            <p class="brand-file-note">Version 1.8.4 is the production-stability release that hardens normalized-sync readiness, cloud telemetry, cross-device integrity, PWA updates, authentication regressions, subscription state, and end-to-end release coverage while preserving established HerdHarbor domain engines.</p>
           </article>
 
           <article class="settings-card">

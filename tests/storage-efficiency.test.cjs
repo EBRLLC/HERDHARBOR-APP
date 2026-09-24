@@ -13,7 +13,7 @@ const taskRuntime = fs.readFileSync(path.join(root, "task-runtime-v1.8.3.js"), "
 const salesCustomerRuntime = fs.readFileSync(path.join(root, "sales-customer-runtime-v1.8.3.js"), "utf8");
 const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 
-assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.3"/);
+assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.4"/);
 assert.match(appRuntime, /let lastSavedRaw = localStorage\.getItem\(STORAGE_KEY\) \|\| ""/);
 assert.match(appRuntime, /if \(rawValue !== lastSavedRaw\) \{[\s\S]*?localStorage\.setItem\(STORAGE_KEY, rawValue\)[\s\S]*?lastSavedRaw = rawValue/);
 assert.match(appRuntime, /function scheduleUiWork\(key, callback\)/);

@@ -156,6 +156,6 @@ test("new policy assets load in the build and remain network-first in the PWA", 
     assert.match(build, new RegExp(asset.replaceAll(".", "\\.")));
     assert.match(sw, new RegExp(asset.replaceAll(".", "\\.")));
   }
-  assert.match(sw, /herdharbor-shell-v1\.8\.3-alpha-v1\.8\.3-release-1/);
+  assert.match(sw, /herdharbor-shell-v1\.8\.4-alpha-v1\.8\.4-release-1/);
   assert.match(sw, /NETWORK_FIRST_PATHS/);
 });
