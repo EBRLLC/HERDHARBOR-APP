@@ -78,7 +78,7 @@ assert.doesNotMatch(pwa, /HerdHarborCloud.*syncNow[\s\S]*SKIP_WAITING/, "app upd
 // Monitoring is a preserved v1.7.1 subsystem, while the application shell may
 // advance independently. Guard the shell identity shape plus the exact monitoring
 // assets instead of pinning this integration test to the retired v1.7.1 shell.
-assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1|8\.2|8\.3)-/);
+assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1|8\.2|8\.3|8\.4)-/);
 assert.match(worker, /herdharbor-monitoring-config\.js\?v=1\.8\.4/);
 assert.match(worker, /herdharbor-monitoring-v1\.6\.1\.min\.js\?v=1\.8\.4/);
 assert.match(worker, /cache: "no-store"/);
