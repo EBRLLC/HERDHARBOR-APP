@@ -1,51 +1,13 @@
+"use strict";
+
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
-const vm = require("node:vm");
 
+const StateStore = require("../herdharbor-state-store-v1.8.4.js");
 const buildSource = fs.readFileSync(path.join(__dirname, "..", "herdharbor-build.js"), "utf8");
-
-function loadBuild(seed = {}) {
-  class TestStorage {
-    constructor(initial = {}) {
-      this.values = new Map(Object.entries(initial));
-    }
-    getItem(key) {
-      return this.values.has(String(key)) ? this.values.get(String(key)) : null;
-    }
-    setItem(key, value) {
-      this.values.set(String(key), String(value));
-    }
-    removeItem(key) {
-      this.values.delete(String(key));
-    }
-  }
-
-  const localStorage = new TestStorage(seed);
-  const events = [];
-  const context = {
-    Storage: TestStorage,
-    localStorage,
-    console,
-    URL,
-    setTimeout,
-    clearTimeout,
-    AbortController,
-    CustomEvent: class CustomEvent {
-      constructor(type, options = {}) {
-        this.type = type;
-        this.detail = options.detail;
-      }
-    },
-    dispatchEvent(event) { events.push(event); },
-    location: { href: "https://app.herdharbor.com/" }
-  };
-  context.globalThis = context;
-  vm.createContext(context);
-  vm.runInContext(buildSource, context, { filename: "herdharbor-build.js" });
-  return { context, localStorage, events };
-}
+const cloudSource = fs.readFileSync(path.join(__dirname, "..", "herdharbor-cloud.js"), "utf8");
 
 const STATE_KEY = "herdharbor_pre_alpha_v1";
 const OWNER_KEY = "herdharbor_active_user_v1";
@@ -55,93 +17,159 @@ const DIRTY_KEY = `herdharbor_user_dirty_${userId}`;
 const VERSION_KEY = `herdharbor_user_cloud_version_${userId}`;
 const baseState = JSON.stringify({ animals: [{ id: "a1", name: "Judy" }], settings: {} });
 
-test("v1.8.2 restores a missing confirmed baseline only for a clean known cloud revision", () => {
-  const { context, localStorage } = loadBuild({
-    [OWNER_KEY]: userId,
+class TestStorage {
+  constructor(initial = {}) {
+    this.values = new Map(Object.entries(initial));
+  }
+  getItem(key) {
+    return this.values.has(String(key)) ? this.values.get(String(key)) : null;
+  }
+  setItem(key, value) {
+    this.values.set(String(key), String(value));
+  }
+  removeItem(key) {
+    this.values.delete(String(key));
+  }
+}
+
+function safeParse(raw) {
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function makeBridge(seed = {}) {
+  const storage = new TestStorage({ [OWNER_KEY]: userId, ...seed });
+  const stateStore = StateStore.create({ storage, indexedDB: null, now: () => "2026-09-24T12:00:00.000Z" });
+  const scheduled = [];
+  const recovery = [];
+  const events = [];
+  const start = cloudSource.indexOf("  function dispatchBaselineRestored");
+  const end = cloudSource.indexOf("\n  async function fetchCloudRecord", start);
+  assert.ok(start >= 0 && end > start, "explicit state-store cloud bridge is present");
+  const bridgeSource = cloudSource.slice(start, end);
+
+  class CustomEvent {
+    constructor(type, options = {}) {
+      this.type = type;
+      this.detail = options.detail;
+    }
+  }
+  const windowObject = {
+    dispatchEvent(event) { events.push(event); }
+  };
+  const createBridge = new Function(
+    "originalGetItem",
+    "localStorage",
+    "baseKey",
+    "dirtyKey",
+    "versionKey",
+    "canonicalStateStore",
+    "safeParse",
+    "safeStorageSet",
+    "window",
+    "CustomEvent",
+    "sessionArg",
+    "removeRedundantStateCache",
+    "sameState",
+    "recordRecoverySnapshot",
+    "scheduleCloudSync",
+    `let session=sessionArg;let writeSequence=0;let syncConflict=null;
+${bridgeSource}
+return {
+  restoreMissingCloudBaseline,
+  handleCanonicalStateCommit,
+  installStateStoreBridge,
+  sequence:()=>writeSequence
+};`
+  );
+
+  const bridge = createBridge(
+    TestStorage.prototype.getItem,
+    storage,
+    (id) => `herdharbor_user_cloud_base_${id}`,
+    (id) => `herdharbor_user_dirty_${id}`,
+    (id) => `herdharbor_user_cloud_version_${id}`,
+    stateStore,
+    safeParse,
+    (key, value) => { storage.setItem(key, value); return true; },
+    windowObject,
+    CustomEvent,
+    { user: { id: userId } },
+    () => {},
+    (left, right) => left === right,
+    (id, raw, reason) => { recovery.push({ id, raw, reason }); return Promise.resolve(true); },
+    (rawValue, sequence) => { scheduled.push({ rawValue, sequence }); }
+  );
+
+  return { storage, stateStore, bridge, scheduled, recovery, events };
+}
+
+test("missing confirmed baseline is restored only for a clean device with a known cloud revision", () => {
+  const { storage, bridge } = makeBridge({
     [STATE_KEY]: baseState,
     [VERSION_KEY]: "2026-09-10T04:00:00.000Z"
   });
-
-  assert.equal(context.HerdHarborBuild.version, "1.8.4");
-  assert.equal(context.HerdHarborBuild.buildId, "alpha-v1.8.4-release-1");
-  assert.equal(context.HerdHarborCloudSyncV2.version, "2.0");
-  assert.equal(localStorage.getItem(BASE_KEY), baseState);
+  assert.equal(bridge.restoreMissingCloudBaseline(userId, "hydrate"), true);
+  assert.equal(storage.getItem(BASE_KEY), baseState);
 });
 
-test("v1.8.2 never invents a baseline when unsynced local work is marked dirty", () => {
-  const { localStorage } = loadBuild({
-    [OWNER_KEY]: userId,
+test("dirty local work prevents baseline invention", () => {
+  const { storage, bridge } = makeBridge({
     [STATE_KEY]: baseState,
     [VERSION_KEY]: "2026-09-10T04:00:00.000Z",
     [DIRTY_KEY]: "1"
   });
-
-  assert.equal(localStorage.getItem(BASE_KEY), null);
+  assert.equal(bridge.restoreMissingCloudBaseline(userId, "hydrate"), false);
+  assert.equal(storage.getItem(BASE_KEY), null);
 });
 
-test("v1.8.2 does not rebuild a baseline without a known cloud revision", () => {
-  const { localStorage } = loadBuild({
-    [OWNER_KEY]: userId,
-    [STATE_KEY]: baseState
-  });
-
-  assert.equal(localStorage.getItem(BASE_KEY), null);
-});
-
-test("v1.8.2 does not rebuild a baseline from malformed local state", () => {
-  const { localStorage } = loadBuild({
-    [OWNER_KEY]: userId,
-    [STATE_KEY]: "not-json",
-    [VERSION_KEY]: "2026-09-10T04:00:00.000Z"
-  });
-
-  assert.equal(localStorage.getItem(BASE_KEY), null);
-});
-
-test("v1.8.2 captures the last clean state immediately before the first local edit when baseline history is missing", () => {
-  const { localStorage } = loadBuild({
-    [OWNER_KEY]: userId,
-    [STATE_KEY]: baseState
-  });
-
-  assert.equal(localStorage.getItem(BASE_KEY), null);
-  localStorage.setItem(VERSION_KEY, "2026-09-10T04:00:00.000Z");
-
-  const edited = JSON.stringify({ animals: [{ id: "a1", name: "Judy", notes: "new note" }], settings: {} });
-  localStorage.setItem(STATE_KEY, edited);
-
-  assert.equal(localStorage.getItem(BASE_KEY), baseState);
-  assert.equal(localStorage.getItem(STATE_KEY), edited);
-});
-
-test("v1.8.2 captures the last clean state before a first local clear when baseline history is missing", () => {
-  const { localStorage } = loadBuild({
-    [OWNER_KEY]: userId,
-    [STATE_KEY]: baseState
-  });
-
-  localStorage.setItem(VERSION_KEY, "2026-09-10T04:00:00.000Z");
-  localStorage.removeItem(STATE_KEY);
-
-  assert.equal(localStorage.getItem(BASE_KEY), baseState);
-  assert.equal(localStorage.getItem(STATE_KEY), null);
-});
-
-test("v1.8.2 refuses to capture a pre-mutation baseline once local work is dirty", () => {
-  const { localStorage } = loadBuild({
-    [OWNER_KEY]: userId,
+test("canonical local commit captures the clean pre-edit ancestor before marking legacy sync dirty", () => {
+  const { storage, stateStore, bridge, scheduled } = makeBridge({
     [STATE_KEY]: baseState,
-    [DIRTY_KEY]: "1",
     [VERSION_KEY]: "2026-09-10T04:00:00.000Z"
   });
+  stateStore.subscribe(bridge.handleCanonicalStateCommit);
 
-  const edited = JSON.stringify({ animals: [{ id: "a1", name: "Changed" }], settings: {} });
-  localStorage.setItem(STATE_KEY, edited);
+  const edited = { animals: [{ id: "a1", name: "Judy", notes: "new note" }], settings: {} };
+  const result = stateStore.commit(edited, { source: "local" });
 
-  assert.equal(localStorage.getItem(BASE_KEY), null);
+  assert.equal(result.ok, true);
+  assert.equal(storage.getItem(BASE_KEY), baseState);
+  assert.equal(storage.getItem(DIRTY_KEY), "1");
+  assert.equal(scheduled.length, 1);
+  assert.equal(scheduled[0].rawValue, JSON.stringify(edited));
+  assert.equal(bridge.sequence(), 1);
 });
 
-test("Cloud Sync V2 leaves the existing sign-in resilience contract intact", () => {
+test("canonical local commit never invents a merge ancestor without a known cloud revision", () => {
+  const { storage, stateStore, bridge, scheduled } = makeBridge({ [STATE_KEY]: baseState });
+  stateStore.subscribe(bridge.handleCanonicalStateCommit);
+
+  stateStore.commit({ animals: [{ id: "a1", name: "Changed" }], settings: {} }, { source: "local" });
+
+  assert.equal(storage.getItem(BASE_KEY), null);
+  assert.equal(storage.getItem(DIRTY_KEY), "1");
+  assert.equal(scheduled.length, 1);
+});
+
+test("device-only state commits do not schedule the legacy full-state cloud engine", () => {
+  const { stateStore, bridge, scheduled } = makeBridge({
+    [STATE_KEY]: JSON.stringify({ settings: { theme: "system" } }),
+    [VERSION_KEY]: "2026-09-10T04:00:00.000Z"
+  });
+  stateStore.subscribe(bridge.handleCanonicalStateCommit);
+  const result = stateStore.commit({ settings: { theme: "dark" } }, { source: "local" });
+  assert.equal(result.cloudRelevant, false);
+  assert.equal(scheduled.length, 0);
+});
+
+test("build bootstrap no longer owns sync correctness while sign-in resilience remains intact", () => {
+  assert.doesNotMatch(buildSource, /Storage\.prototype\.(?:setItem|removeItem)\s*=/);
+  assert.doesNotMatch(buildSource, /CLOUD_STATE_KEY|cloudDirtyKey|captureMissingBaselineBeforeMutation/);
   assert.match(buildSource, /const AUTH_FETCH_TIMEOUT_MS = 12000;/);
   assert.match(buildSource, /const SIGN_IN_WATCHDOG_MS = 15000;/);
   assert.match(buildSource, /path\.startsWith\("\/auth\/v1\/"\)/);
