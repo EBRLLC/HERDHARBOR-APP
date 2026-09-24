@@ -13,6 +13,7 @@ const REQUIRED_SHELL = [
   "./vendor/supabase-2.111.0.js",
   "./herdharbor-optional-tools.js?v=2",
   "./herdharbor-build.js?v=1.8.4",
+  "./herdharbor-state-store-v1.8.4.js?v=1",
   "./herdharbor-release-v1.6.1.js?v=1.7.1",
   "./herdharbor-membership-v1.6.1.js?v=1.7.1",
   "./herdharbor-billing-v1.6.1.js?v=1.7.1",
