@@ -27,7 +27,7 @@ const heavyAssets = [
 ];
 
 function appShellBlock() {
-  return worker.match(/const APP_SHELL = \[([\s\S]*?)\n\];/)?.[1] || "";
+  return worker.match(/const REQUIRED_SHELL = \[([\s\S]*?)\n\];/)?.[1] || "";
 }
 
 function nextTurn() {
@@ -102,9 +102,9 @@ test("heavy spreadsheet and QR assets are absent from unconditional index startu
   for (const asset of heavyAssets) {
     assert.ok(!html.includes('<script src="' + asset + '"></script>'), asset + " must not load from index.html");
   }
-  assert.match(html, /herdharbor-optional-tools\.js\?v=1/);
+  assert.match(html, /herdharbor-optional-tools\.js\?v=2/);
   assert.ok(
-    html.indexOf("herdharbor-optional-tools.js?v=1") < html.indexOf("herdharbor-app-runtime.js?v=2"),
+    html.indexOf("herdharbor-optional-tools.js?v=2") < html.indexOf("herdharbor-app-runtime.js?v=2"),
     "optional loader is available before the app runtime"
   );
 });
@@ -281,36 +281,29 @@ test("service worker reuses cached optional assets offline and fails cleanly on 
   });
   vm.runInContext(worker, context);
 
-  const networkFirst = vm.runInContext("networkFirst", context);
+  const cacheFirst = vm.runInContext("cacheFirst", context);
   const cachedRequest = new Request("https://app.herdharbor.com/vendor/exceljs-4.4.0.min.js");
-  const onlineResponse = await networkFirst(cachedRequest);
+  const onlineResponse = await cacheFirst(cachedRequest);
   assert.equal(onlineResponse.ok, true);
   assert.ok(stored.has(cachedRequest.url), "successful optional fetch is cached");
 
   online = false;
-  const offlineCached = await networkFirst(cachedRequest);
+  const offlineCached = await cacheFirst(cachedRequest);
   assert.equal(offlineCached, onlineResponse, "previously cached optional asset is reused offline");
 
-  const firstUseOffline = await networkFirst(new Request("https://app.herdharbor.com/vendor/qrcode-generator-1.4.4.js"));
+  const firstUseOffline = await cacheFirst(new Request("https://app.herdharbor.com/vendor/qrcode-generator-1.4.4.js"));
   assert.equal(firstUseOffline, undefined, "first-use offline miss remains unavailable without breaking the shell");
 });
 
-test("service worker keeps heavy tools out of APP_SHELL and runtime-caches them", () => {
+test("service worker keeps heavy tools out of REQUIRED_SHELL and runtime-caches versioned assets", () => {
   const shell = appShellBlock();
   for (const asset of heavyAssets) {
-    assert.ok(!shell.includes(asset), asset + " must not be mandatory APP_SHELL");
+    assert.ok(!shell.includes(asset), asset + " must not be mandatory REQUIRED_SHELL");
   }
-  assert.match(shell, /herdharbor-optional-tools\.js\?v=1/);
-
-  for (const route of [
-    "/vendor/jszip-3.10.1.min.js",
-    "/vendor/exceljs-4.4.0.min.js",
-    "/vendor/qrcode-generator-1.4.4.js",
-    "/spreadsheet-import.js"
-  ]) {
-    assert.ok(worker.includes('"' + route + '"'), route + " must remain runtime-cacheable");
-  }
-  assert.ok(worker.includes('"/herdharbor-optional-tools.js"'));
+  assert.match(shell, /herdharbor-optional-tools\.js\?v=2/);
+  assert.match(worker, /function isVersionedStaticAsset/);
+  assert.match(worker, /\/vendor\//);
+  assert.match(worker, /event\.respondWith\(cacheFirst\(request\)\)/);
   assert.match(worker, /return caches\.match\(request\)/);
 });
 
