@@ -44,6 +44,90 @@ const REQUIRED_SHELL = [
   "./icon-512.png"
 ];
 
+const RUNTIME_CACHE_PATHS = [
+  "./voice-assisted-entry-v1.8.3.js?v=1",
+  "./photo-assisted-entry-v1.8.3.js?v=2",
+  "./how-to-navigation-v1.8.1.js?v=1",
+  "./direct-transfer-core-v1.8.2.js?v=1",
+  "./direct-transfer-v1.8.2.js?v=1",
+  "./direct-transfer-v1.8.2.css?v=1",
+  "./paper-pedigree-import-core-v1.8.2.js?v=1",
+  "./paper-pedigree-import-v1.8.2.js?v=2",
+  "./registration-safety-v1.8.1.js?v=1",
+  "./subscription-referral-policy-v1.8.1.js?v=1",
+  "./subscription-admin-credits-v1.8.1.js?v=1",
+  "./subscription-launch-v1.8.1.js?v=2",
+  "./subscription-engine-v1.8.0.js?v=1",
+  "./subscription-engine-v1.8.0.css?v=1",
+  "./subscription-member-ui-v1.8.0.css?v=1",
+  "./subscription-tab-visibility-v1.8.0.js?v=2",
+  "./subscription-header-copy-v1.8.0.js?v=3",
+  "./subscription-stripe-provider-v1.8.0.js?v=2",
+  "./subscription-stripe-launch-bridge-v1.8.1.js?v=1",
+  "./mobile-viewport-hotfix-v1.8.0.css?v=1",
+  "./herdharbor-v1.7.1-stability-hotfix.js?v=2",
+  "./workflow-phase1-v1.7.1.js?v=2",
+  "./workflow-phase1-v1.7.1.css?v=2",
+  "./flow-phase1-v1.8.2.js?v=1",
+  "./flow-phase2-v1.8.2.js?v=1",
+  "./animal-action-router-v1.8.3.js?v=1",
+  "./flow-phase2-v1.8.2.css?v=1",
+  "./flow-phase2-lifecycle-v1.8.2.js?v=1",
+  "./flow-phase2-lifecycle-v1.8.2.css?v=1",
+  "./breeding-litter-workspace-v1.8.2.js?v=1",
+  "./breeding-litter-workspace-integration-v1.8.2.js?v=1",
+  "./breeding-litter-workspace-v1.8.2.css?v=1",
+  "./litter-sale-transfer-core-v1.8.2.js?v=1",
+  "./litter-sale-transfer-v1.8.2.js?v=1",
+  "./litter-sale-transfer-v1.8.2.css?v=1",
+  "./breeding-next-action-core-v1.8.2.js?v=1",
+  "./breeding-next-action-v1.8.2.js?v=1",
+  "./breeding-next-action-v1.8.2.css?v=1",
+  "./breeding-performance-core-v1.8.2.js?v=1",
+  "./breeding-performance-dashboard-v1.8.2.js?v=1",
+  "./breeding-performance-dashboard-v1.8.2.css?v=1",
+  "./flow-phase2-profile-finish-v1.8.2.js?v=1",
+  "./flow-phase2-profile-finish-v1.8.2.css?v=1",
+  "./flow-phase1-completion-v1.8.2.js?v=1",
+  "./flow-phase1-v1.8.2.css?v=1",
+  "./health-intelligence-v1.7.1.js?v=1.7.1",
+  "./health-intelligence-v1.7.1.css?v=1.7.1",
+  "./pedigree-visual.css?v=2",
+  "./pedigree-visual.js?v=2",
+  "./pedigree-genetics-v1.6.1.css?v=1.7.1",
+  "./pedigree-genetics-v1.6.1.js?v=1.7.1",
+  "./breeding-intelligence-core-v1.6.1.js?v=1.7.1",
+  "./rabbit-genetics-v1.6.1.js?v=2",
+  "./standards-registry-v1.6.1.js?v=1.7.1",
+  "./multispecies-genetics-v1.7.1.js?v=1.7.1",
+  "./multispecies-genetics-ui-v1.7.1.js?v=1.7.1",
+  "./multispecies-genetics-v1.7.1.css?v=1.7.1",
+  "./standards-genetics-ui-v1.6.1.js?v=1.7.1",
+  "./standards-genetics-v1.6.1.css?v=1.7.1",
+  "./rabbit-records-v1.6.1.js?v=1.7.1",
+  "./rabbit-genetics-engine-advanced-v1.6.1.js?v=1.7.1",
+  "./rabbit-genetics-engine-compat-v1.6.1.js?v=1.7.1",
+  "./rabbit-genetics-runtime-v1.6.1.js?v=1.7.1",
+  "./breeding-intelligence-v1.6.1.css?v=1.7.1",
+  "./breeding-genetics-advanced-v1.6.1.css?v=1.7.1",
+  "./breeding-intelligence-v1.6.1.js?v=1.7.1",
+  "./breeding-pair-v1.6.1.js?v=1.7.1",
+  "./rabbit-genetics-ui-compat-v1.6.1.js?v=1.7.1",
+  "./rabbit-genetics-ui-advanced-v1.6.1.js?v=2",
+  "./breeding-intelligence-tools-v1.6.1.js?v=1.7.1",
+  "./shows-v1.6.1.css?v=1.7.1",
+  "./shows-v1.6.1.js?v=1.7.1",
+  "./shows-v1.6.1-hardening.js?v=1.7.1",
+  "./shows-v1.6.1-performance.js?v=1.7.1",
+  "./standards-v1.7.0.css?v=1.7.1",
+  "./standards-registry-v1.7.0.js?v=1.7.1",
+  "./standards-ui-v1.7.0.js?v=1.7.1",
+  "./standards-public-reference-v1.7.0.js?v=1.7.1",
+  "./shows-youth-guides-v1.7.0.js?v=1.7.1",
+  "./reference-guides-v1.7.0.css?v=1.7.1",
+  "./herdharbor-optional-tools.js?v=1"
+];
+
 const NETWORK_FIRST_PATHS = [
   "/manifest.json",
   "/herdharbor-build.js",
@@ -52,11 +136,39 @@ const NETWORK_FIRST_PATHS = [
   "/herdharbor-release-v1.6.1.js",
   "/herdharbor-membership-v1.6.1.js",
   "/herdharbor-billing-v1.6.1.js",
-  "/herdharbor-access-cache-v1.6.1.js"
+  "/herdharbor-access-cache-v1.6.1.js",
+  "/pwa.js",
+  "/local-cache-v2-v1.8.2.js",
+  "/cloud-sync-v2-flow-v1.8.2.js",
+  "/cloud-sync-v2-diagnostics-v1.8.2.js",
+  "/herdharbor-admin-v1.6.1.js",
+  "/market-analytics-v1.6.5.js",
+  "/analytics-v1.6.1.js",
+  "/registration-safety-v1.8.1.js",
+  "/subscription-referral-policy-v1.8.1.js",
+  "/subscription-admin-credits-v1.8.1.js",
+  "/subscription-launch-v1.8.1.js",
+  "/subscription-engine-v1.8.0.js",
+  "/subscription-engine-v1.8.0.css",
+  "/subscription-member-ui-v1.8.0.css",
+  "/subscription-tab-visibility-v1.8.0.js",
+  "/subscription-header-copy-v1.8.0.js",
+  "/subscription-stripe-provider-v1.8.0.js",
+  "/subscription-stripe-launch-bridge-v1.8.1.js"
 ];
 
 function isNetworkFirstPath(pathname) {
   return NETWORK_FIRST_PATHS.some((path) => pathname.endsWith(path));
+}
+
+function isRuntimeCachePath(url) {
+  return RUNTIME_CACHE_PATHS.some((path) => {
+    try {
+      return new URL(path, self.location.href).pathname === url.pathname;
+    } catch {
+      return false;
+    }
+  });
 }
 
 async function cacheFreshResponse(request, response) {
@@ -154,7 +266,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (isVersionedStaticAsset(url)) {
+  if (isRuntimeCachePath(url) || isVersionedStaticAsset(url)) {
     event.respondWith(cacheFirst(request));
     return;
   }
