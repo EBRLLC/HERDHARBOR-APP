@@ -1505,6 +1505,18 @@
 
     if (confirmedBase && sameState(activeRaw, confirmedBase)) {
       await recordRecoverySnapshot(userId, activeRaw, "Local copy before receiving another device's changes");
+
+      // The recovery snapshot is asynchronous. A local edit made while it is
+      // being stored must not be overwritten by the cloud copy we fetched
+      // earlier. Hand the newest local state to the normal sync/merge path.
+      const latestActiveRaw = originalGetItem.call(localStorage, STORAGE_KEY);
+      if (
+        originalGetItem.call(localStorage, dirtyKey(userId)) === "1" ||
+        !sameState(latestActiveRaw, activeRaw)
+      ) {
+        return syncNow();
+      }
+
       const deviceCloudRaw = applyDevicePreferences(remoteRaw, activeRaw);
       if (
         !allowAnimalStateTransition(
