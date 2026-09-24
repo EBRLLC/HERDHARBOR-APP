@@ -79,7 +79,7 @@ function executeWorker() {
     caches,
     fetch: async () => { fetchCalls += 1; throw new Error("offline"); },
     self: {
-      location: { href: "https://app.test/service-worker.js" },
+      location: { href: "https://app.test/service-worker.js", origin: "https://app.test" },
       clients: { claim: async () => {} },
       skipWaiting: () => {},
       addEventListener(type, handler) { listeners[type] = handler; }
