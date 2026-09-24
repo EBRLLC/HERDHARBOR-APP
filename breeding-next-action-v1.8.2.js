@@ -55,7 +55,12 @@
     section.innerHTML=`<div class="hh-next-dashboard-head"><div><strong>Breeding next actions</strong><span>Derived from the breeding and litter records you already entered.</span></div></div><div class="hh-next-dashboard-list">${actions.map(next=>`<article class="is-${tone(next.urgency)}"><div><strong>${esc(next.animalName)} · ${esc(next.label)}</strong><small>${esc(next.reason||"")}</small></div><button type="button" class="button button-small button-primary" data-hh-next-kind="${esc(next.kind)}" data-hh-next-animal="${esc(next.animalId||"")}" data-hh-next-breeding="${esc(next.breedingId||"")}" data-hh-next-litter="${esc(next.litterId||"")}" data-hh-next-sale="${esc(next.saleId||"")}" data-hh-next-tab="${esc(next.tab||"")}">${esc(next.shortLabel||"Open")}</button></article>`).join("")}</div>`;return true;
   }
 
-  function openRecordBirth(next){\n    if(!next.breedingId)return false;\n    const command=root.HerdHarborApp?.openRecordBirth;\n    if(typeof command!=="function")return false;\n    return command(next.breedingId)!==false;\n  }
+  function openRecordBirth(next){
+    if(!next.breedingId)return false;
+    const command=root.HerdHarborApp?.openRecordBirth;
+    if(typeof command!=="function")return false;
+    return command(next.breedingId)!==false;
+  }
   function openProfile(next){
     if(!next.animalId)return false;root.HerdHarborFlowPhase2?.openAnimalProfile?.(next.animalId,"breeding",{history:"push"});
     if(["start-breeding","plan-rebreed"].includes(next.kind)){waitFor('#view-animal-profile.active [data-hh-p2-action="breeding"]',button=>button.click());return true;}
