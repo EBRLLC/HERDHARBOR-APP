@@ -55,13 +55,19 @@
     section.innerHTML=`<div class="hh-next-dashboard-head"><div><strong>Breeding next actions</strong><span>Derived from the breeding and litter records you already entered.</span></div></div><div class="hh-next-dashboard-list">${actions.map(next=>`<article class="is-${tone(next.urgency)}"><div><strong>${esc(next.animalName)} · ${esc(next.label)}</strong><small>${esc(next.reason||"")}</small></div><button type="button" class="button button-small button-primary" data-hh-next-kind="${esc(next.kind)}" data-hh-next-animal="${esc(next.animalId||"")}" data-hh-next-breeding="${esc(next.breedingId||"")}" data-hh-next-litter="${esc(next.litterId||"")}" data-hh-next-sale="${esc(next.saleId||"")}" data-hh-next-tab="${esc(next.tab||"")}">${esc(next.shortLabel||"Open")}</button></article>`).join("")}</div>`;return true;
   }
 
+  function openRecordBirth(next){
+    if(!next.breedingId)return false;
+    const id=root.CSS?.escape?root.CSS.escape(next.breedingId):next.breedingId;
+    const route=root.document.querySelector('.nav-item[data-route="breeding"]');
+    if(!route)return false;
+    route.click();
+    waitFor(`#view-breeding [data-record-birth="${id}"]`,button=>button.click(),0,60);
+    return true;
+  }
   function openProfile(next){
     if(!next.animalId)return false;root.HerdHarborFlowPhase2?.openAnimalProfile?.(next.animalId,"breeding",{history:"push"});
     if(["start-breeding","plan-rebreed"].includes(next.kind)){waitFor('#view-animal-profile.active [data-hh-p2-action="breeding"]',button=>button.click());return true;}
-    if(next.kind==="record-birth"&&next.breedingId){
-      const id=root.CSS?.escape?root.CSS.escape(next.breedingId):next.breedingId;
-      waitFor(`#view-animal-profile.active [data-hh-p2-breeding-id="${id}"] [data-hh-p2-life-action="record-birth"][data-breeding-id="${id}"]`,button=>button.click());
-    }else if(next.kind==="pregnancy-check"&&next.breedingId){
+    if(next.kind==="pregnancy-check"&&next.breedingId){
       const id=root.CSS?.escape?root.CSS.escape(next.breedingId):next.breedingId;
       waitFor(`#view-animal-profile.active [data-hh-p2-breeding-id="${id}"] [data-hh-p2-life-action="edit-breeding"][data-breeding-id="${id}"]`,button=>button.click());
     }
@@ -75,7 +81,7 @@
     }else waitFor(`#hh-breeding-litter-workspace [data-hh-bw-tab="${tab}"]`,button=>button.click());
     return true;
   }
-  function activate(node){const next={kind:clean(node.dataset.hhNextKind),animalId:clean(node.dataset.hhNextAnimal),breedingId:clean(node.dataset.hhNextBreeding),litterId:clean(node.dataset.hhNextLitter),saleId:clean(node.dataset.hhNextSale),tab:clean(node.dataset.hhNextTab)};if(["manage-litter","update-offspring","wean-litter","evaluate-litter","create-sale","transfer-buyer","lifecycle-complete"].includes(next.kind))return openWorkspace(next);return openProfile(next);}
+  function activate(node){const next={kind:clean(node.dataset.hhNextKind),animalId:clean(node.dataset.hhNextAnimal),breedingId:clean(node.dataset.hhNextBreeding),litterId:clean(node.dataset.hhNextLitter),saleId:clean(node.dataset.hhNextSale),tab:clean(node.dataset.hhNextTab)};if(next.kind==="record-birth")return openRecordBirth(next);if(["manage-litter","update-offspring","wean-litter","evaluate-litter","create-sale","transfer-buyer","lifecycle-complete"].includes(next.kind))return openWorkspace(next);return openProfile(next);}
 
   function captureEvaluation(event){
     const button=event.target.closest?.("#hh-breeding-litter-workspace [data-hh-bw-disposition]");if(!button)return;
