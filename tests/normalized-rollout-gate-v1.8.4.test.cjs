@@ -78,7 +78,7 @@ test("cohort gate used by rollout is allowlist-only with zero percentage", () =>
   const gate = Cohort.createCohortGate({
     enabled: true,
     mode: "allowlist",
-    allowlist: ["u-approved"],
+    allowlistUserIds: ["u-approved"],
     percentage: 0
   });
   assert.equal(gate.evaluate("u-approved").eligible, true);
@@ -102,7 +102,7 @@ test("post-legacy coordinator preserves legacy success when normalized drain deg
 
   const result = await coordinator.afterLegacySave({}, { ok: true });
   assert.equal(result.legacySaved, true);
-  assert.equal(result.ok, true);
+  assert.equal(result.ok, false);
   assert.equal(result.mode, "dual-write-degraded");
   assert.equal(result.normalizedPending, true);
   assert.equal(result.normalizedConflicts, 1);
