@@ -562,6 +562,8 @@ declare
   v_user uuid := auth.uid();
   v_eligible boolean := false;
   v_schema_verified boolean := false;
+  v_stage text := 'legacy';
+  v_authority_active boolean := false;
 begin
   if v_user is null then
     raise exception using errcode = '42501', message = 'HH_SYNC_AUTH_REQUIRED';
@@ -625,7 +627,9 @@ begin
     'eligible', v_eligible,
     'mode', 'allowlist',
     'percentage_enabled', false,
-    'schema_verified', v_schema_verified
+    'schema_verified', v_schema_verified,
+    'stage', v_stage,
+    'authority_active', v_authority_active
   );
 end;
 $;
