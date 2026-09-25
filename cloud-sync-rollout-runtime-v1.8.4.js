@@ -747,32 +747,14 @@
       const ctx = await ensureContext();
       if (!ctx) return { ok: true, skipped: true, reason: "not-eligible" };
       await refreshContextStage(ctx);
-      let recovery = null;
       if (ctx.stage === "normalized") {
-        const sync = await syncNormalizedNow();
-        if (!sync.ok) {
-          throw Object.assign(new Error("Rollback blocked while normalized mutations are still pending."), {
-            code: "HH_SYNC_ROLLBACK_PENDING_MUTATIONS"
-          });
-        }
-        const read = await ctx.readResolver.read();
-        if (read?.source !== "normalized" || read?.fallback === true) {
-          throw Object.assign(new Error("Rollback blocked because normalized authority could not be read safely."), {
-            code: "HH_SYNC_ROLLBACK_READ_REQUIRED"
-          });
-        }
-        const manifest = await ctx.recordStore.getManifest();
-        const generation = Number(manifest?.sync_generation ?? manifest?.syncGeneration);
-        recovery = await ctx.recordStore.materializeLegacyRecovery({
-          snapshot: read.snapshot,
-          expectedGeneration: generation
-        });
+        return rollbackToLegacy();
       }
       const result = await ctx.rolloutControl.rollback();
-      ctx.stage = stageOf(await ctx.recordStore.getManifest());
+      await refreshContextStage(ctx);
       validationPasses = 0;
       emit("rollback", { stage: ctx.stage, ok: true });
-      return Object.freeze({ ...result, recovery });
+      return result;
     }
 
     async function checkEligibility() {
