@@ -773,8 +773,14 @@
       ) {
         return Object.freeze({ ...eligibility, active: false });
       }
-      await ensureContext();
-      return Object.freeze({ ...eligibility, active: Boolean(context) });
+      const ctx = await ensureContext();
+      if (ctx) await refreshContextStage(ctx);
+      return Object.freeze({
+        ...eligibility,
+        stage: ctx?.stage || eligibility?.stage || "legacy",
+        authorityActive: isNormalizedAuthority(),
+        active: Boolean(context)
+      });
     }
 
     async function start(startOptions = {}) {
