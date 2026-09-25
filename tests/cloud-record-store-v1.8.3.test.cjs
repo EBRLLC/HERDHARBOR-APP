@@ -24,6 +24,7 @@ test("normalized cloud record store exposes the hardened v1.8.3 RPC foundation",
   assert.equal(api.recordTable, "herdharbor_sync_records");
   assert.equal(api.manifestTable, "herdharbor_sync_manifest");
   assert.equal(api.batchRpc, "herdharbor_sync_apply_batch");
+  assert.equal(api.recordRpc, "herdharbor_sync_apply_record");
   assert.equal(api.verifyRpc, "herdharbor_sync_mark_verified");
   assert.equal(api.prepareWriterRpc, "herdharbor_sync_prepare_normalized_writer_guarded");
   assert.equal(api.stageRpc, "herdharbor_sync_set_stage");
@@ -63,7 +64,7 @@ test("integrity numbers reject missing, coercible, fractional, and unsafe values
 test("store exposes reads plus guarded RPC mutations, not unsafe direct writes", () => {
   const client = { from(){return{select(){return this;},eq(){return this;},order(){return this;},is(){return this;},maybeSingle:async()=>({data:null,error:null}),then(resolve){return Promise.resolve({data:[],error:null}).then(resolve);}};}, rpc:async()=>({data:{},error:null}) };
   const store=api.createRecordStore({client,userId:"11111111-1111-1111-1111-111111111111"});
-  for(const name of ["list","listHeaders","getManifest","applyBatch","markVerified","prepareNormalizedWriter","setStage"]) assert.equal(typeof store[name],"function");
+  for(const name of ["list","listHeaders","getManifest","applyBatch","applyRecordMutation","markVerified","prepareNormalizedWriter","setStage"]) assert.equal(typeof store[name],"function");
   assert.equal(store.put,undefined); assert.equal(store.tombstone,undefined); assert.equal(store.putManifest,undefined); assert.match(adapterSource,/payload_checksum/);
 });
 
@@ -116,4 +117,57 @@ test("normalized foundation uses explicit least-privilege table and function gra
 test("normalized owner policies evaluate auth identity once per statement",()=>{
   assert.match(schema,/using \(user_id = \(select auth\.uid\(\)\)\)/i);
   assert.doesNotMatch(schema,/using \(user_id = auth\.uid\(\)\)/i);
+});
+
+
+test("record CAS adapter serializes one mutation without account-wide generation", async () => {
+  const calls=[];
+  const client={
+    from(){throw new Error("table path should not be used");},
+    async rpc(name,args){
+      calls.push([name,args]);
+      return {data:{ok:true,record_id:args.p_record_id,record_version:6,deleted:Boolean(args.p_delete),generation:19},error:null};
+    }
+  };
+  const store=api.createRecordStore({client,userId:"11111111-1111-1111-1111-111111111111"});
+  const result=await store.applyRecordMutation({
+    namespace:"legacy-state",
+    recordId:"item:animals:a1",
+    payload:{kind:"array_item",key:"animals",value:{id:"a1",name:"Judy"}},
+    payloadChecksum:"hh64:1234567890abcdef",
+    expectedVersion:5,
+    writerVersion:"record-cas-v1"
+  });
+  assert.equal(result.record_version,6);
+  assert.equal(calls.length,1);
+  assert.equal(calls[0][0],api.recordRpc);
+  assert.equal(calls[0][1].p_expected_version,5);
+  assert.equal(calls[0][1].p_delete,false);
+  assert.equal(calls[0][1].p_writer_version,"record-cas-v1");
+  assert.equal(Object.prototype.hasOwnProperty.call(calls[0][1],"p_expected_generation"),false);
+});
+
+test("record CAS adapter requires versions for tombstones and classifies CAS errors", async () => {
+  let calls=0;
+  const client={
+    from(){return{};},
+    async rpc(){calls+=1;return{data:null,error:{code:"40001",message:"HH_SYNC_CONFLICT"}};}
+  };
+  const store=api.createRecordStore({client,userId:"11111111-1111-1111-1111-111111111111"});
+  await assert.rejects(
+    ()=>store.applyRecordMutation({namespace:"legacy-state",recordId:"x",deleted:true}),
+    /expectedVersion/
+  );
+  assert.equal(calls,0);
+  await assert.rejects(
+    ()=>store.applyRecordMutation({
+      namespace:"legacy-state",
+      recordId:"x",
+      payload:{kind:"root_value",key:"x",value:1},
+      payloadChecksum:"hh64:a",
+      expectedVersion:1
+    }),
+    error=>error?.code==="HH_SYNC_CONFLICT"&&error?.operation==="record-write"
+  );
+  assert.equal(calls,1);
 });
