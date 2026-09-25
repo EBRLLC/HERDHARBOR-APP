@@ -29,6 +29,16 @@ test("rollout preflight verifies normalized tables, RLS, owner policies, RPCs, a
   assert.match(sql, /herdharbor_sync_prepare_normalized_writer_guarded\(bigint,text,text,integer\)/);
   assert.match(sql, /herdharbor_legacy_write_cutover_guard/);
   assert.match(sql, /t\.tgenabled <> 'D'/i);
+  assert.match(sql, /records_authenticated_select/i);
+  assert.match(sql, /manifest_authenticated_select/i);
+  assert.match(sql, /no_authenticated_direct_mutation/i);
+  assert.match(sql, /no_anon_table_access/i);
+  assert.match(sql, /batch_authenticated_execute/i);
+  assert.match(sql, /guarded_writer_authenticated_execute/i);
+  assert.match(sql, /unguarded_writer_not_exposed/i);
+  assert.match(sql, /no_anon_sync_function_execute/i);
+  assert.match(sql, /legacy_authority_only/i);
   assert.match(sql, /as owner_rls/i);
+  assert.match(sql, /as rpc_acl/i);
   assert.match(sql, /as verified/i);
 });
