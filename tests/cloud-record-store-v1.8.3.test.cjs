@@ -64,7 +64,7 @@ test("integrity numbers reject missing, coercible, fractional, and unsafe values
 test("store exposes reads plus guarded RPC mutations, not unsafe direct writes", () => {
   const client = { from(){return{select(){return this;},eq(){return this;},order(){return this;},is(){return this;},maybeSingle:async()=>({data:null,error:null}),then(resolve){return Promise.resolve({data:[],error:null}).then(resolve);}};}, rpc:async()=>({data:{},error:null}) };
   const store=api.createRecordStore({client,userId:"11111111-1111-1111-1111-111111111111"});
-  for(const name of ["list","listHeaders","getManifest","applyBatch","applyRecordMutation","markVerified","prepareNormalizedWriter","setStage"]) assert.equal(typeof store[name],"function");
+  for(const name of ["list","listHeaders","getManifest","applyBatch","applyRecordMutation","markVerified","prepareNormalizedWriter","setStage","activateNormalizedAuthority","materializeLegacyRecovery"]) assert.equal(typeof store[name],"function");
   assert.equal(store.put,undefined); assert.equal(store.tombstone,undefined); assert.equal(store.putManifest,undefined); assert.match(adapterSource,/payload_checksum/);
 });
 
@@ -170,4 +170,75 @@ test("record CAS adapter requires versions for tombstones and classifies CAS err
     error=>error?.code==="HH_SYNC_CONFLICT"&&error?.operation==="record-write"
   );
   assert.equal(calls,1);
+});
+
+
+test("authority adapter uses dedicated activation and rollback materialization RPCs", async () => {
+  const calls = [];
+  const client = {
+    from(){ throw new Error("direct table mutation must not be used"); },
+    async rpc(name,args){
+      calls.push([name,args]);
+      if(name===api.activateAuthorityRpc) {
+        return {data:{ok:true,stage:"normalized",generation:22,authority_version:args.p_authority_version},error:null};
+      }
+      if(name===api.materializeLegacyRpc) {
+        return {data:{ok:true,stage:"normalized",generation:22},error:null};
+      }
+      throw new Error(`unexpected rpc ${name}`);
+    }
+  };
+  const store=api.createRecordStore({client,userId:"11111111-1111-1111-1111-111111111111"});
+  const activated=await store.activateNormalizedAuthority({
+    expectedGeneration:21,
+    writerVersion:"record-cas-v1",
+    namespace:"legacy-state",
+    formatVersion:2,
+    authorityVersion:"record-authority-v1"
+  });
+  assert.equal(activated.stage,"normalized");
+  assert.equal(calls[0][0],api.activateAuthorityRpc);
+  assert.deepEqual(calls[0][1],{
+    p_expected_generation:21,
+    p_writer_version:"record-cas-v1",
+    p_namespace:"legacy-state",
+    p_format_version:2,
+    p_authority_version:"record-authority-v1"
+  });
+
+  const snapshot={animals:[{id:"a1",name:"Judy"}],settings:{theme:"system"}};
+  const recovery=await store.materializeLegacyRecovery({snapshot,expectedGeneration:22});
+  assert.equal(recovery.ok,true);
+  assert.equal(calls[1][0],api.materializeLegacyRpc);
+  assert.deepEqual(calls[1][1],{
+    p_app_state:snapshot,
+    p_expected_generation:22
+  });
+});
+
+test("authority adapter classifies server cutover guards without leaking raw provider semantics", async () => {
+  const client={
+    from(){return{};},
+    async rpc(name){
+      const message=name===api.activateAuthorityRpc
+        ? "HH_SYNC_COHORT_REQUIRED"
+        : "HH_SYNC_NORMALIZED_AUTHORITY_REQUIRED";
+      return {data:null,error:{code:"55000",message}};
+    }
+  };
+  const store=api.createRecordStore({client,userId:"11111111-1111-1111-1111-111111111111"});
+  await assert.rejects(
+    ()=>store.activateNormalizedAuthority({
+      expectedGeneration:1,
+      writerVersion:"record-cas-v1",
+      namespace:"legacy-state",
+      formatVersion:2,
+      authorityVersion:"record-authority-v1"
+    }),
+    error=>error?.code==="HH_SYNC_COHORT_REQUIRED"&&error?.operation==="activate-normalized-authority"
+  );
+  await assert.rejects(
+    ()=>store.materializeLegacyRecovery({snapshot:{settings:{}},expectedGeneration:1}),
+    error=>error?.code==="HH_SYNC_NORMALIZED_AUTHORITY_REQUIRED"&&error?.operation==="materialize-legacy-recovery"
+  );
 });
