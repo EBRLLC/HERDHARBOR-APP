@@ -552,6 +552,89 @@ grant execute on function public.herdharbor_sync_apply_record(
   text, text, jsonb, text, bigint, boolean, text
 ) to authenticated;
 
+create or replace function public.herdharbor_sync_cohort_status()
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_user uuid := auth.uid();
+  v_eligible boolean := false;
+  v_schema_verified boolean := false;
+begin
+  if v_user is null then
+    raise exception using errcode = '42501', message = 'HH_SYNC_AUTH_REQUIRED';
+  end if;
+
+  select exists (
+    select 1
+    from public.herdharbor_sync_cohort c
+    where c.user_id = v_user
+      and c.enabled
+      and c.cohort = 'internal_test'
+  ) into v_eligible;
+
+  v_schema_verified := (
+    to_regclass('public.herdharbor_sync_records') is not null
+    and to_regclass('public.herdharbor_sync_manifest') is not null
+    and to_regclass('public.herdharbor_sync_cohort') is not null
+    and to_regprocedure('public.herdharbor_sync_apply_batch(jsonb,jsonb,jsonb)') is not null
+    and to_regprocedure('public.herdharbor_sync_apply_record(text,text,jsonb,text,bigint,boolean,text)') is not null
+    and to_regprocedure('public.herdharbor_sync_mark_verified(bigint,text,integer)') is not null
+    and to_regprocedure('public.herdharbor_sync_prepare_normalized_writer_guarded(bigint,text,text,integer)') is not null
+    and to_regprocedure('public.herdharbor_sync_set_stage(text,bigint)') is not null
+    and to_regprocedure('public.herdharbor_sync_activate_normalized_authority(bigint,text,text,integer,text)') is not null
+    and to_regprocedure('public.herdharbor_sync_materialize_legacy_recovery(jsonb,bigint)') is not null
+    and coalesce(has_function_privilege(
+      'authenticated',
+      to_regprocedure('public.herdharbor_sync_apply_record(text,text,jsonb,text,bigint,boolean,text)'),
+      'EXECUTE'
+    ), false)
+    and coalesce(has_function_privilege(
+      'authenticated',
+      to_regprocedure('public.herdharbor_sync_activate_normalized_authority(bigint,text,text,integer,text)'),
+      'EXECUTE'
+    ), false)
+    and coalesce(has_function_privilege(
+      'authenticated',
+      to_regprocedure('public.herdharbor_sync_materialize_legacy_recovery(jsonb,bigint)'),
+      'EXECUTE'
+    ), false)
+    and not coalesce(has_function_privilege(
+      'anon',
+      to_regprocedure('public.herdharbor_sync_activate_normalized_authority(bigint,text,text,integer,text)'),
+      'EXECUTE'
+    ), false)
+    and not coalesce(has_function_privilege(
+      'anon',
+      to_regprocedure('public.herdharbor_sync_materialize_legacy_recovery(jsonb,bigint)'),
+      'EXECUTE'
+    ), false)
+    and exists (
+      select 1
+      from pg_catalog.pg_trigger t
+      where t.tgrelid = to_regclass('public.herdharbor_user_data')
+        and t.tgname = 'herdharbor_legacy_write_cutover_guard'
+        and not t.tgisinternal
+        and t.tgenabled <> 'D'
+    )
+  );
+
+  return jsonb_build_object(
+    'eligible', v_eligible,
+    'mode', 'allowlist',
+    'percentage_enabled', false,
+    'schema_verified', v_schema_verified
+  );
+end;
+$;
+
+revoke all on function public.herdharbor_sync_cohort_status()
+from public, anon, authenticated;
+grant execute on function public.herdharbor_sync_cohort_status()
+to authenticated;
+
 comment on function public.herdharbor_sync_activate_normalized_authority(
   bigint, text, text, integer, text
 ) is
