@@ -240,3 +240,96 @@ test("deterministic generated JSON states round-trip without loss", () => {
     assert.deepEqual(api.reassembleLegacySnapshot(rowsFrom(mapped)), clone(state), `case ${caseIndex}`);
   }
 });
+
+
+test("authoritative reassembly tolerates only a stale global checkpoint after a valid record CAS update", () => {
+  const mapped = api.mapLegacySnapshot(fixture);
+  const rows = rowsFrom(mapped);
+  const animal = rows.find((row) => row.payload?.kind === "array_item" && row.payload?.key === "animals");
+  assert.ok(animal);
+  animal.payload.value.name = "CAS Updated Annie";
+  animal.payload_checksum = api.checksumValue(animal.payload);
+  animal.record_version += 1;
+
+  const result = api.reassembleAuthoritativeSnapshotWithMetadata(rows);
+
+  assert.equal(result.snapshot.animals.find((entry) => entry.id === animal.payload.value.id).name, "CAS Updated Annie");
+  assert.equal(result.checkpointStale, true);
+  assert.notEqual(result.checksum, result.manifestChecksum);
+  assert.equal(result.recordCount, rows.length);
+});
+
+test("authoritative reassembly rejects payload tampering even when topology is otherwise valid", () => {
+  const rows = rowsFrom(api.mapLegacySnapshot(fixture));
+  const animal = rows.find((row) => row.payload?.kind === "array_item" && row.payload?.key === "animals");
+  animal.payload.value.name = "Tampered Without Checksum";
+
+  assert.throws(
+    () => api.reassembleAuthoritativeSnapshotWithMetadata(rows),
+    (error) => error?.code === "HH_NORMALIZED_ROW_CHECKSUM_MISMATCH"
+  );
+});
+
+test("authoritative reassembly rejects orphan items and missing array references", () => {
+  const mapped = api.mapLegacySnapshot(fixture);
+  const rows = rowsFrom(mapped);
+  const item = rows.find((row) => row.payload?.kind === "array_item" && row.payload?.key === "animals");
+  const manifest = rows.find((row) => row.payload?.kind === "array_manifest" && row.payload?.key === "animals");
+  assert.ok(item && manifest);
+
+  const orphaned = clone(rows);
+  const orphanManifest = orphaned.find((row) => row.record_id === manifest.record_id);
+  orphanManifest.payload.item_record_ids = orphanManifest.payload.item_record_ids.filter((id) => id !== item.record_id);
+  orphanManifest.payload.length = orphanManifest.payload.item_record_ids.length;
+  orphanManifest.payload_checksum = api.checksumValue(orphanManifest.payload);
+  assert.throws(
+    () => api.reassembleAuthoritativeSnapshotWithMetadata(orphaned),
+    (error) => error?.code === "HH_NORMALIZED_ORPHAN_RECORD"
+  );
+
+  const missing = rows.filter((row) => row.record_id !== item.record_id);
+  assert.throws(
+    () => api.reassembleAuthoritativeSnapshotWithMetadata(missing),
+    (error) => error?.code === "HH_NORMALIZED_ARRAY_ITEM_MISSING"
+  );
+});
+
+test("authoritative reassembly accepts a new top-level section absent from the older global checkpoint", () => {
+  const before = api.mapLegacySnapshot(fixture);
+  const afterState = clone(fixture);
+  afterState.futureSection = { enabled: true, values: [1, 2, 3] };
+  const after = api.mapLegacySnapshot(afterState);
+
+  const rows = rowsFrom(before);
+  const newRoot = after.records.find((row) => row.payload?.kind === "root_value" && row.payload?.key === "futureSection");
+  assert.ok(newRoot);
+  rows.push({
+    ...clone(newRoot),
+    record_version: 1,
+    deleted_at: null
+  });
+
+  const result = api.reassembleAuthoritativeSnapshotWithMetadata(rows);
+
+  assert.deepEqual(result.snapshot.futureSection, afterState.futureSection);
+  assert.equal(result.checkpointStale, true);
+});
+
+test("authoritative reassembly still requires the checkpoint identity and supported format", () => {
+  const mapped = api.mapLegacySnapshot(fixture);
+  const rows = rowsFrom(mapped);
+
+  assert.throws(
+    () => api.reassembleAuthoritativeSnapshotWithMetadata(rows.filter((row) => row.record_id !== api.snapshotManifestId)),
+    (error) => error?.code === "HH_NORMALIZED_MANIFEST_MISSING"
+  );
+
+  const badFormat = clone(rows);
+  const checkpoint = badFormat.find((row) => row.record_id === api.snapshotManifestId);
+  checkpoint.payload.format_version = api.formatVersion + 1;
+  checkpoint.payload_checksum = api.checksumValue(checkpoint.payload);
+  assert.throws(
+    () => api.reassembleAuthoritativeSnapshotWithMetadata(badFormat),
+    (error) => error?.code === "HH_NORMALIZED_FORMAT_UNSUPPORTED"
+  );
+});
