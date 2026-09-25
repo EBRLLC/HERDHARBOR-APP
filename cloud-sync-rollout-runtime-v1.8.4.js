@@ -648,8 +648,11 @@
               snapshot: preview.snapshot,
               expectedGeneration: generation
             });
-            await ctx.rolloutControl.rollback();
             await refreshContextStage(ctx);
+            while (ctx.stage !== "legacy") {
+              await ctx.rolloutControl.rollback();
+              await refreshContextStage(ctx);
+            }
           }
         } catch {}
         validationPasses = 0;
