@@ -17,7 +17,7 @@ const hardening = fs.readFileSync(
 
 test("normalized owner RLS initializes auth.uid once per statement", () => {
   for (const source of [foundation, hardening]) {
-    assert.match(source, /using\s*\(\(select auth\.uid\(\)\) = user_id\)/i);
+    assert.match(source, /using\s*\(user_id = \(select auth\.uid\(\)\)\)/i);
     assert.doesNotMatch(source, /using\s*\(user_id = auth\.uid\(\)\)/i);
   }
 });
