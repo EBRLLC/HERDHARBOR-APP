@@ -104,7 +104,7 @@
         };
         emit("dual-write-degraded", failure);
         return Object.freeze({
-          ok: true,
+          ok: false,
           mode: "dual-write-degraded",
           legacySaved: true,
           normalizedSaved: false,
@@ -124,7 +124,7 @@
         const failure = safeFailure(error, "normalized-write");
         emit("dual-write-degraded", failure);
         return Object.freeze({
-          ok: true,
+          ok: false,
           mode: "dual-write-degraded",
           legacySaved: true,
           normalizedSaved: false,
@@ -148,7 +148,7 @@
           normalizedPending: true
         });
         return Object.freeze({
-          ok: true,
+          ok: false,
           mode: "dual-write-degraded",
           legacySaved: true,
           normalizedSaved: Number(normalizedResult?.succeeded || 0) > 0,
@@ -157,6 +157,7 @@
           normalizedPending: true,
           verificationPending: false,
           normalizedErrorCode: errorCode,
+          normalizedConflicts: Number(normalizedResult?.conflicts || 0),
           normalizedResult,
           legacyResult
         });
