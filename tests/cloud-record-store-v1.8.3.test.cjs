@@ -111,3 +111,9 @@ test("normalized foundation uses explicit least-privilege table and function gra
   assert.doesNotMatch(schema,/grant execute on function public\.herdharbor_sync_prepare_normalized_writer\(bigint, text, text, integer\) to authenticated/i);
   assert.match(schema,/security definer\s+set search_path = ''/i);
 });
+
+
+test("normalized owner policies evaluate auth identity once per statement",()=>{
+  assert.match(schema,/using \(user_id = \(select auth\.uid\(\)\)\)/i);
+  assert.doesNotMatch(schema,/using \(user_id = auth\.uid\(\)\)/i);
+});
