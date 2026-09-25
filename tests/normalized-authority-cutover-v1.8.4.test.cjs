@@ -71,5 +71,5 @@ test("authority and recovery RPCs are authenticated-only and cohort status can r
   assert.match(sql, /grant execute on function public\.herdharbor_sync_materialize_legacy_recovery[\s\S]*to authenticated/i);
   assert.match(sql, /'stage', v_stage/i);
   assert.match(sql, /'authority_active', v_authority_active/i);
-  assert.match(sql, /v_authority_active := v_stage = 'normalized'/i);
+  assert.match(sql, /v_authority_active\s*:=\s*v_stage\s*=\s*'normalized'/i);
 });
