@@ -63,10 +63,108 @@ begin
   v_schema_verified := (
     to_regclass('public.herdharbor_sync_records') is not null
     and to_regclass('public.herdharbor_sync_manifest') is not null
+    and coalesce((
+      select c.relrowsecurity
+      from pg_catalog.pg_class c
+      where c.oid = to_regclass('public.herdharbor_sync_records')
+    ), false)
+    and coalesce((
+      select c.relrowsecurity
+      from pg_catalog.pg_class c
+      where c.oid = to_regclass('public.herdharbor_sync_manifest')
+    ), false)
+    and exists (
+      select 1 from pg_catalog.pg_policies
+      where schemaname = 'public'
+        and tablename = 'herdharbor_sync_records'
+        and policyname = 'users read own normalized sync records'
+    )
+    and exists (
+      select 1 from pg_catalog.pg_policies
+      where schemaname = 'public'
+        and tablename = 'herdharbor_sync_manifest'
+        and policyname = 'users read own sync manifest'
+    )
+    and exists (
+      select 1 from information_schema.role_table_grants
+      where table_schema = 'public'
+        and table_name = 'herdharbor_sync_records'
+        and grantee = 'authenticated'
+        and privilege_type = 'SELECT'
+    )
+    and exists (
+      select 1 from information_schema.role_table_grants
+      where table_schema = 'public'
+        and table_name = 'herdharbor_sync_manifest'
+        and grantee = 'authenticated'
+        and privilege_type = 'SELECT'
+    )
+    and not exists (
+      select 1 from information_schema.role_table_grants
+      where table_schema = 'public'
+        and table_name in ('herdharbor_sync_records', 'herdharbor_sync_manifest')
+        and grantee = 'authenticated'
+        and privilege_type <> 'SELECT'
+    )
+    and not exists (
+      select 1 from information_schema.role_table_grants
+      where table_schema = 'public'
+        and table_name in ('herdharbor_sync_records', 'herdharbor_sync_manifest')
+        and grantee = 'anon'
+    )
     and to_regprocedure('public.herdharbor_sync_apply_batch(jsonb,jsonb,jsonb)') is not null
     and to_regprocedure('public.herdharbor_sync_apply_record(text,text,jsonb,text,bigint,boolean,text)') is not null
     and to_regprocedure('public.herdharbor_sync_mark_verified(bigint,text,integer)') is not null
+    and to_regprocedure('public.herdharbor_sync_prepare_normalized_writer_guarded(bigint,text,text,integer)') is not null
     and to_regprocedure('public.herdharbor_sync_set_stage(text,bigint)') is not null
+    and coalesce(has_function_privilege(
+      'authenticated',
+      to_regprocedure('public.herdharbor_sync_apply_batch(jsonb,jsonb,jsonb)'),
+      'EXECUTE'
+    ), false)
+    and coalesce(has_function_privilege(
+      'authenticated',
+      to_regprocedure('public.herdharbor_sync_apply_record(text,text,jsonb,text,bigint,boolean,text)'),
+      'EXECUTE'
+    ), false)
+    and coalesce(has_function_privilege(
+      'authenticated',
+      to_regprocedure('public.herdharbor_sync_mark_verified(bigint,text,integer)'),
+      'EXECUTE'
+    ), false)
+    and coalesce(has_function_privilege(
+      'authenticated',
+      to_regprocedure('public.herdharbor_sync_prepare_normalized_writer_guarded(bigint,text,text,integer)'),
+      'EXECUTE'
+    ), false)
+    and coalesce(has_function_privilege(
+      'authenticated',
+      to_regprocedure('public.herdharbor_sync_set_stage(text,bigint)'),
+      'EXECUTE'
+    ), false)
+    and not coalesce(has_function_privilege(
+      'authenticated',
+      to_regprocedure('public.herdharbor_sync_prepare_normalized_writer(bigint,text,text,integer)'),
+      'EXECUTE'
+    ), false)
+    and not exists (
+      select 1
+      from pg_catalog.pg_proc p
+      join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname in (
+          'herdharbor_touch_sync_record',
+          'herdharbor_touch_sync_manifest',
+          'herdharbor_sync_apply_batch',
+          'herdharbor_sync_apply_record',
+          'herdharbor_sync_mark_verified',
+          'herdharbor_sync_prepare_normalized_writer',
+          'herdharbor_sync_prepare_normalized_writer_guarded',
+          'herdharbor_sync_set_stage',
+          'herdharbor_block_legacy_write_after_normalized'
+        )
+        and has_function_privilege('anon', p.oid, 'EXECUTE')
+    )
     and exists (
       select 1
       from pg_catalog.pg_trigger t
