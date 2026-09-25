@@ -29,7 +29,7 @@ test("cloud refresh discovers authority before any legacy-row fetch", () => {
   const refresh = body("  async function checkNormalizedAuthorityChanges() {", "\n  async function checkForCloudChanges()");
   assert.match(refresh, /refreshNormalizedAuthorityIfEligible\(\)/);
 
-  const check = body("  async function checkForCloudChanges() {", "\n  async function invokeFunction");
+  const check = body("  async function checkForCloudChanges() {", "\n  function ensureStyles()");
   const normalizedIndex = check.indexOf("checkNormalizedAuthorityChanges()");
   const legacyFetchIndex = check.indexOf("fetchCloudRecord(userId)");
   assert.ok(normalizedIndex >= 0);
