@@ -649,3 +649,11 @@ test("reorder is quarantined when the confirmed manifest contains unseen remote 
   assert.equal(pending[0].recordId, "$order");
   assert.ok(pending[0].lastConflictFields.includes("$order.remote_members"));
 });
+
+
+test("recovery-in-progress is classified as a migration-stage retry", () => {
+  assert.equal(
+    Worker.classifyFailure(Object.assign(new Error("HH_SYNC_RECOVERY_IN_PROGRESS"), { code: "HH_SYNC_RECOVERY_IN_PROGRESS" })),
+    "migration_stage"
+  );
+});
