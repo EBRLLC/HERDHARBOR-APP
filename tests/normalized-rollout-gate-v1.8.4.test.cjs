@@ -88,19 +88,21 @@ test("cohort gate used by rollout is allowlist-only with zero percentage", () =>
 
 test("post-legacy coordinator preserves legacy success when normalized drain degrades", async () => {
   const events = [];
-  const coordinator = Dual.createPostLegacyCoordinator({
+  const coordinator = Dual.createDualWriteCoordinator({
     enabled: true,
-    normalizedWriter: {
+    recordWorker: {
       async drain() {
         return { ok: false, failed: 1, succeeded: 0, conflicts: 1 };
       }
     },
+    shadowController: { async sync(){ return {}; }, async verifyAndRecord(){ return { ok: true }; } },
+    writeLegacySnapshot: async () => ({ ok: true }),
     onEvent: (event) => events.push(event)
   });
 
-  const result = await coordinator.afterLegacyCommit();
+  const result = await coordinator.afterLegacySave({}, { ok: true });
   assert.equal(result.legacySaved, true);
-  assert.equal(result.ok, false);
+  assert.equal(result.ok, true);
   assert.equal(result.mode, "dual-write-degraded");
   assert.equal(result.normalizedPending, true);
   assert.equal(result.normalizedConflicts, 1);
@@ -109,11 +111,13 @@ test("post-legacy coordinator preserves legacy success when normalized drain deg
 
 test("post-legacy coordinator never invokes normalized writer while disabled", async () => {
   let drains = 0;
-  const coordinator = Dual.createPostLegacyCoordinator({
+  const coordinator = Dual.createDualWriteCoordinator({
     enabled: false,
-    normalizedWriter: { async drain() { drains += 1; return { failed: 0 }; } }
+    recordWorker: { async drain() { drains += 1; return { failed: 0 }; } },
+    shadowController: { async sync(){ return {}; }, async verifyAndRecord(){ return { ok: true }; } },
+    writeLegacySnapshot: async () => ({ ok: true })
   });
-  const result = await coordinator.afterLegacyCommit();
+  const result = await coordinator.afterLegacySave({}, { ok: true });
   assert.equal(result.mode, "legacy-only");
   assert.equal(result.legacySaved, true);
   assert.equal(drains, 0);
