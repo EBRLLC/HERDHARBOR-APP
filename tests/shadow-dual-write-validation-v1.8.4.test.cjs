@@ -254,11 +254,25 @@ class RolloutRecordStore {
     this.manifest.sync_generation += 1;
     if (targetStage === "legacy" || targetStage === "shadow" && from === "dual_write") {
       this.manifest.normalized_verified_at = null;
+      this.manifest.metadata = {
+        ...this.manifest.metadata,
+        normalized_writer_ready: false,
+        normalized_writer_version: null,
+        normalized_writer_prepared_at: null,
+        verified_checksum: null,
+        last_shadow_verified_at: null,
+        verification_record_count: null
+      };
     }
     return { ok: true, from_stage: from, stage: targetStage, generation: this.manifest.sync_generation };
   }
 
   async prepareNormalizedWriter({ expectedGeneration, writerVersion, namespace, formatVersion }) {
+    if (this.failPrepareWriter) {
+      const error = this.failPrepareWriter;
+      this.failPrepareWriter = null;
+      throw error;
+    }
     assert.equal(expectedGeneration, this.manifest.sync_generation);
     assert.equal(this.manifest.cutover_stage, "dual_write");
     assert.equal(namespace, Normalizer.namespace);
@@ -504,4 +518,29 @@ test("runtime never promotes to normalized authority in PR6", () => {
   );
   assert.doesNotMatch(source,/promote\("normalized"/);
   assert.match(source,/normalized-authority-owned-by-pr7/);
+});
+
+
+test("writer preparation failure automatically rolls dual_write promotion back to shadow", async () => {
+  const h = await harness();
+  await h.runtime.checkEligibility();
+  await h.runtime.afterLegacyCommit();
+  for (let i = 0; i < 3; i += 1) {
+    const validation = await h.runtime.validateNow();
+    assert.equal(validation.ok, true);
+  }
+
+  h.recordStore.failPrepareWriter = Object.assign(
+    new Error("writer preparation failed"),
+    { code: "HH_SYNC_WRITER_PREPARE_TEST" }
+  );
+
+  await assert.rejects(
+    () => h.runtime.promoteToDualWrite(),
+    (error) => error?.code === "HH_SYNC_WRITER_PREPARE_TEST"
+  );
+
+  assert.equal(h.runtime.status().stage, "shadow");
+  assert.equal(h.recordStore.manifest.cutover_stage, "shadow");
+  assert.notEqual(h.recordStore.manifest.metadata.normalized_writer_ready, true);
 });
