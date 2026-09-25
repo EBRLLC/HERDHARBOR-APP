@@ -746,7 +746,7 @@ test("failed post-activation normalized read materializes recovery and rolls ful
 
   await assert.rejects(
     () => h.runtime.promoteToNormalized(),
-    (error) => error?.code === "HH_SYNC_READ_TEST" || /read failed/i.test(error?.message || "")
+    (error) => error?.code === "HH_SYNC_NORMALIZED_READ_VERIFY_FAILED"
   );
 
   assert.equal(injected, true);
