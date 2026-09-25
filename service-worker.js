@@ -58,6 +58,7 @@ const RUNTIME_CACHE_PATHS = [
   "./cloud-sync-stage-policy-v1.8.3.js?v=1",
   "./cloud-sync-rollout-control-v1.8.3.js?v=1",
   "./cloud-dual-write-coordinator-v1.8.3.js?v=1",
+  "./cloud-normalized-read-fallback-v1.8.3.js?v=1",
   "./voice-assisted-entry-v1.8.3.js?v=1",
   "./photo-assisted-entry-v1.8.3.js?v=2",
   "./how-to-navigation-v1.8.1.js?v=1",
