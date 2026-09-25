@@ -54,7 +54,9 @@ test("online, foreground, and focus resumes all enter authority-aware sync paths
 
   assert.match(online, /syncNow\(\)/);
   assert.match(online, /checkForCloudChanges\(\)/);
+  assert.match(visibility, /document\.visibilityState === "hidden"/);
   assert.match(visibility, /syncNow\(\)/);
+  assert.match(visibility, /document\.visibilityState === "visible"/);
   assert.match(visibility, /checkForCloudChanges\(\)/);
   assert.match(focus, /checkForCloudChanges\(\)/);
 
