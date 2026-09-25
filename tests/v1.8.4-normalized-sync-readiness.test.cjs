@@ -29,7 +29,7 @@ test("v1.8.4 normalized readiness preserves owner RLS and no destructive legacy 
   const schema=read("supabase/v1.8.3-cloud-sync-normalized-records.sql");
   const readiness=read("V1.8.4-NORMALIZED-SYNC-READINESS.md");
   assert.match(schema,/enable row level security/i);
-  assert.match(schema,/user_id = auth\.uid\(\)/);
+  assert.match(schema,/user_id = \\(select auth\\.uid\\(\\)\\)/i);
   assert.match(schema,/revoke all on table public\.herdharbor_sync_records from anon, authenticated/i);
   assert.match(schema,/revoke all on table public\.herdharbor_sync_manifest from anon, authenticated/i);
   assert.match(schema,/grant select on table public\.herdharbor_sync_records to authenticated/i);
