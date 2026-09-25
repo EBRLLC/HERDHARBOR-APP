@@ -32,6 +32,8 @@ const goodSchema = Object.freeze({
   manifestTable: true,
   ownerRls: true,
   batchRpc: true,
+  recordRpc: true,
+  cohortRpc: true,
   verifyRpc: true,
   stageRpc: true,
   guardedWriterRpc: true,
