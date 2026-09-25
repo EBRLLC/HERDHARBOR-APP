@@ -36,7 +36,7 @@ test("normalized-writer preparation fails closed unless the database guard trigg
 test("unguarded browser writer-preparation RPC is revoked after guard installation", () => {
   assert.match(
     sql,
-    /revoke execute on function public\.herdharbor_sync_prepare_normalized_writer\(bigint, text, text, integer\) from authenticated/i
+    /revoke all on function public\.herdharbor_sync_prepare_normalized_writer\(bigint, text, text, integer\) from public, anon, authenticated/i
   );
   assert.match(
     sql,
