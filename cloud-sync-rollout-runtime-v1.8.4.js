@@ -255,7 +255,10 @@
             for (const key of m.rolloutApi.requiredSchemaChecks || []) status[key] = ready;
             return status;
           },
-          getMetrics: async () => metrics.snapshot(),
+          getMetrics: async () => ({
+            ...(lastValidation?.reconciliation || {}),
+            ...metrics.snapshot()
+          }),
           telemetryAvailable: async () => telemetryAvailable() === true,
           rollbackAvailable
         });
