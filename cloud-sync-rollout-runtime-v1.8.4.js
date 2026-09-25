@@ -422,6 +422,14 @@
     async function refreshContextStage(ctx) {
       const manifest = await ctx.recordStore.getManifest();
       ctx.stage = stageOf(manifest);
+      const authorityActive =
+        ctx.stage === "normalized" &&
+        manifest?.metadata?.normalized_authority_ready === true;
+      eligibility = {
+        ...(eligibility || {}),
+        stage: ctx.stage,
+        authorityActive
+      };
       return { manifest, stage: ctx.stage };
     }
 
@@ -618,7 +626,7 @@
         formatVersion: ctx.normalizer.formatVersion,
         authorityVersion: AUTHORITY_VERSION
       });
-      ctx.stage = stageOf(await ctx.recordStore.getManifest());
+      await refreshContextStage(ctx);
 
       try {
         const read = await ctx.readResolver.read();
@@ -641,7 +649,7 @@
               expectedGeneration: generation
             });
             await ctx.rolloutControl.rollback();
-            ctx.stage = stageOf(await ctx.recordStore.getManifest());
+            await refreshContextStage(ctx);
           }
         } catch {}
         validationPasses = 0;
@@ -685,7 +693,7 @@
       while (ctx.stage !== "legacy") {
         const result = await ctx.rolloutControl.rollback();
         transitions.push(result);
-        ctx.stage = stageOf(await ctx.recordStore.getManifest());
+        await refreshContextStage(ctx);
       }
       validationPasses = 0;
       emit("rollback-legacy-complete", { stage: ctx.stage, ok: true });
