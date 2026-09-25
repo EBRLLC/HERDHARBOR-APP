@@ -45,3 +45,22 @@ test("normalized local commits never mark the legacy full-state row dirty", () =
   assert.ok(removeDirtyIndex > authorityIndex);
   assert.ok(legacyDirtyIndex > removeDirtyIndex);
 });
+
+
+test("online, foreground, and focus resumes all enter authority-aware sync paths", () => {
+  const online = body('  window.addEventListener("online", () => {', '\n  window.addEventListener("offline"');
+  const visibility = body('  document.addEventListener("visibilitychange", () => {', '\n  window.addEventListener("focus"');
+  const focus = body('  window.addEventListener("focus", () => {', '\n  async function getNormalizedSyncCohortStatus');
+
+  assert.match(online, /syncNow\(\)/);
+  assert.match(online, /checkForCloudChanges\(\)/);
+  assert.match(visibility, /syncNow\(\)/);
+  assert.match(visibility, /checkForCloudChanges\(\)/);
+  assert.match(focus, /checkForCloudChanges\(\)/);
+
+  const sync = body("  async function syncNow() {", "\n  async function invokeFunction");
+  assert.ok(sync.indexOf("refreshNormalizedAuthorityIfEligible()") < sync.indexOf("const raw = activeStateRaw()"));
+
+  const refresh = body("  async function checkForCloudChanges() {", "\n  function ensureStyles()");
+  assert.ok(refresh.indexOf("checkNormalizedAuthorityChanges()") < refresh.indexOf("fetchCloudRecord(userId)"));
+});
