@@ -195,7 +195,7 @@
           !m.reconciliationApi?.reconcileSnapshot ||
           !m.reconciliationApi?.createRolloutMetrics ||
           !m.rolloutApi?.createRolloutControl ||
-          !m.dualWriteApi?.createPostLegacyCoordinator
+          !m.dualWriteApi?.createDualWriteCoordinator
         ) {
           throw Object.assign(new Error("Normalized rollout modules are incomplete."), { code: "HH_SYNC_ROLLOUT_MODULES_MISSING" });
         }
@@ -237,9 +237,11 @@
           createShadowSyncController: () => shadowController,
           onEvent: metrics.recordEvent
         });
-        const postLegacy = m.dualWriteApi.createPostLegacyCoordinator({
-          normalizedWriter: worker,
+        const postLegacy = m.dualWriteApi.createDualWriteCoordinator({
           enabled: true,
+          recordWorker: worker,
+          shadowController,
+          writeLegacySnapshot: async () => ({ ok: true, skipped: true, reason: "legacy-already-confirmed" }),
           onEvent: metrics.recordEvent
         });
         const rolloutControl = m.rolloutApi.createRolloutControl({
@@ -307,7 +309,10 @@
 
       let result;
       if (ctx.stage === "dual_write") {
-        result = await ctx.postLegacy.afterLegacyCommit({ ownerId: ctx.userId });
+        result = await ctx.postLegacy.afterLegacySave(stateStore.getState(), {
+          ok: true,
+          updated_at: null
+        });
       } else {
         const normalizedResult = await ctx.worker.drain({ ownerId: ctx.userId });
         result = {
@@ -321,11 +326,12 @@
         if (!result.ok) ctx.metrics.record("dualWriteFailures");
       }
       lastResult = result;
-      if (!result.ok) validationPasses = 0;
-      emit(result.ok ? "post-legacy-complete" : "post-legacy-degraded", {
+      const normalizedOk = result.mode !== "dual-write-degraded" && result.normalizedPending !== true;
+      if (!normalizedOk) validationPasses = 0;
+      emit(normalizedOk ? "post-legacy-complete" : "post-legacy-degraded", {
         stage: ctx.stage,
-        ok: result.ok,
-        reason: result.normalizedResult?.reason || ""
+        ok: normalizedOk,
+        reason: result.normalizedErrorCode || result.normalizedResult?.reason || ""
       });
       return result;
     }
