@@ -177,6 +177,10 @@
     }
 
     async function promote(targetStage, { userId } = {}) {
+      if (String(targetStage || "").trim() === "normalized") {
+        const decision = await promotionDecision(targetStage, userId);
+        throw rolloutError({ ...decision, reasons: ["authority-activation-required"] });
+      }
       const decision = await promotionDecision(targetStage, userId);
       if (!decision.allowed) throw rolloutError(decision);
       const manifest = await store.getManifest();
