@@ -197,17 +197,18 @@ test("legacy authority is preserved through shadow and dual-write policy definit
 });
 
 
-test("controlled rollout runtime is loaded but authority remains server-gated and allowlist-only", () => {
+test("controlled rollout runtime is loaded while normalized dependencies stay server-gated and lazy", () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
   const indexSource = fs.readFileSync(path.join(root, "index.html"), "utf8");
   const cloudSource = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
-  const runtimeSource = fs.readFileSync(path.join(root, "cloud-sync-validation-runtime-v1.8.4.js"), "utf8");
+  const runtimeSource = fs.readFileSync(path.join(root, "cloud-sync-rollout-runtime-v1.8.4.js"), "utf8");
   assert.equal(packageJson.version, "1.8.4");
-  assert.match(indexSource, /cloud-sync-reconciliation-v1\.8\.3\.js/);
-  assert.match(indexSource, /cloud-sync-rollout-control-v1\.8\.3\.js/);
-  assert.match(indexSource, /cloud-sync-validation-runtime-v1\.8\.4\.js/);
+  assert.match(indexSource, /cloud-sync-rollout-runtime-v1\.8\.4\.js/);
+  assert.doesNotMatch(indexSource, /cloud-sync-reconciliation-v1\.8\.3\.js/);
+  assert.doesNotMatch(indexSource, /cloud-sync-rollout-control-v1\.8\.3\.js/);
   assert.match(cloudSource, /herdharbor_sync_cohort_status/);
-  assert.match(runtimeSource, /mode === "allowlist"/);
-  assert.match(runtimeSource, /percentageEnabled === false/);
-  assert.doesNotMatch(runtimeSource, /mode:\s*"percentage"/);
+  assert.match(runtimeSource, /mode !== "allowlist"/);
+  assert.match(runtimeSource, /percentageEnabled === true/);
+  assert.match(runtimeSource, /allowlistUserIds: \[userId\]/);
+  assert.doesNotMatch(runtimeSource, /promote\("normalized"/);
 });
