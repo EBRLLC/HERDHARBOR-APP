@@ -173,11 +173,11 @@
         if (!userId) throw Object.assign(new Error("A signed-in session is required."), { code: "HH_SYNC_NO_SESSION" });
 
         eligibility = await cloud.getNormalizedSyncCohortStatus();
-        const authorityRecovery =
-          eligibility?.authorityActive === true &&
-          eligibility?.stage === "normalized";
+        const recoveryAccess =
+          (eligibility?.authorityActive === true && eligibility?.stage === "normalized") ||
+          eligibility?.recoveryPending === true;
         if (
-          (eligibility?.eligible !== true && !authorityRecovery) ||
+          (eligibility?.eligible !== true && !recoveryAccess) ||
           eligibility?.mode !== "allowlist" ||
           eligibility?.percentageEnabled === true ||
           eligibility?.schemaVerified !== true
@@ -425,10 +425,13 @@
       const authorityActive =
         ctx.stage === "normalized" &&
         manifest?.metadata?.normalized_authority_ready === true;
+      const recoveryPending =
+        manifest?.metadata?.legacy_recovery_lock === true;
       eligibility = {
         ...(eligibility || {}),
         stage: ctx.stage,
-        authorityActive
+        authorityActive,
+        recoveryPending
       };
       return { manifest, stage: ctx.stage };
     }
@@ -442,11 +445,50 @@
       );
     }
 
+    async function resumeRecoveryRollback(ctx) {
+      await refreshContextStage(ctx);
+      if (eligibility?.recoveryPending !== true) {
+        return Object.freeze({ ok: true, skipped: true, stage: ctx.stage });
+      }
+
+      const transitions = [];
+      while (ctx.stage !== "legacy") {
+        const result = await ctx.rolloutControl.rollback();
+        transitions.push(result);
+        await refreshContextStage(ctx);
+      }
+      validationPasses = 0;
+      eligibility = {
+        ...(eligibility || {}),
+        stage: "legacy",
+        authorityActive: false,
+        recoveryPending: false
+      };
+      emit("rollback-recovery-resumed", { stage: "legacy", ok: true });
+      return Object.freeze({
+        ok: true,
+        skipped: false,
+        stage: "legacy",
+        transitions: Object.freeze(transitions)
+      });
+    }
+
     async function prepareHydration(options = {}) {
       const ctx = await ensureContext();
       if (!ctx) return Object.freeze({ active: false, authoritative: false, ok: true, stage: "legacy" });
 
       const { stage } = await refreshContextStage(ctx);
+      if (eligibility?.recoveryPending === true) {
+        const recovery = await resumeRecoveryRollback(ctx);
+        return Object.freeze({
+          active: true,
+          authoritative: false,
+          ok: recovery.ok === true,
+          stage: recovery.stage,
+          recoveryCompleted: recovery.ok === true,
+          recovery
+        });
+      }
       if (stage !== "normalized") {
         return Object.freeze({ active: true, authoritative: false, ok: true, stage });
       }
@@ -762,11 +804,11 @@
 
     async function checkEligibility() {
       eligibility = await cloud.getNormalizedSyncCohortStatus();
-      const authorityRecovery =
-        eligibility?.authorityActive === true &&
-        eligibility?.stage === "normalized";
+      const recoveryAccess =
+        (eligibility?.authorityActive === true && eligibility?.stage === "normalized") ||
+        eligibility?.recoveryPending === true;
       if (
-        (eligibility?.eligible !== true && !authorityRecovery) ||
+        (eligibility?.eligible !== true && !recoveryAccess) ||
         eligibility?.mode !== "allowlist" ||
         eligibility?.percentageEnabled === true ||
         eligibility?.schemaVerified !== true
@@ -779,6 +821,7 @@
         ...eligibility,
         stage: ctx?.stage || eligibility?.stage || "legacy",
         authorityActive: isNormalizedAuthority(),
+        recoveryPending: eligibility?.recoveryPending === true,
         active: Boolean(context)
       });
     }
@@ -827,6 +870,7 @@
         mode: eligibility?.mode || "allowlist",
         percentageEnabled: eligibility?.percentageEnabled === true,
         schemaVerified: eligibility?.schemaVerified === true,
+        recoveryPending: eligibility?.recoveryPending === true,
         stage: context?.stage || "legacy",
         validationPasses,
         requiredValidationPasses,
