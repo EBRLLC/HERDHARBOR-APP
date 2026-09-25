@@ -18,6 +18,7 @@
   const VERSION = "1.0";
   const RELEASE = "1.8.4";
   const REQUIRED_VALIDATION_PASSES = 3;
+  const WRITER_VERSION = "record-cas-v1";
   const DEPENDENCIES = Object.freeze([
     ["hh-normalized-record-store-v183", "cloud-record-store-v1.8.3.js?v=1"],
     ["hh-normalized-state-mapper-v183", "cloud-state-normalizer-v1.8.3.js?v=1"],
@@ -203,7 +204,7 @@
         const cohortGate = m.cohortApi.createCohortGate({
           enabled: true,
           mode: "allowlist",
-          allowlist: [userId],
+          allowlistUserIds: [userId],
           percentage: 0
         });
         if (cohortGate.evaluate(userId).eligible !== true) {
@@ -219,7 +220,8 @@
           stateStore,
           recordStore,
           normalizer: m.normalizer,
-          baselineStore
+          baselineStore,
+          writerVersion: WRITER_VERSION
         });
         const metrics = m.reconciliationApi.createRolloutMetrics();
         const shadowController = m.shadowApi.createShadowSyncController({
@@ -247,7 +249,12 @@
         const rolloutControl = m.rolloutApi.createRolloutControl({
           recordStore,
           cohortGate,
-          getSchemaStatus: async () => ({ verified: eligibility?.schemaVerified === true }),
+          getSchemaStatus: async () => {
+            const ready = eligibility?.schemaVerified === true;
+            const status = { verified: ready };
+            for (const key of m.rolloutApi.requiredSchemaChecks || []) status[key] = ready;
+            return status;
+          },
           getMetrics: async () => metrics.snapshot(),
           telemetryAvailable: async () => telemetryAvailable() === true,
           rollbackAvailable
@@ -404,11 +411,27 @@
           { code: "HH_SYNC_REPEATED_VALIDATION_REQUIRED" }
         );
       }
-      const result = await ctx.rolloutControl.promote("dual_write", { userId: ctx.userId });
-      ctx.stage = stageOf(await ctx.recordStore.getManifest());
-      validationPasses = 0;
-      emit("promoted-dual-write", { stage: ctx.stage, ok: true });
-      return result;
+      const promoted = await ctx.rolloutControl.promote("dual_write", { userId: ctx.userId });
+      try {
+        const prepared = await ctx.rolloutControl.prepareWriter({
+          userId: ctx.userId,
+          writerVersion: WRITER_VERSION,
+          namespace: ctx.normalizer.namespace,
+          formatVersion: ctx.normalizer.formatVersion
+        });
+        ctx.stage = stageOf(await ctx.recordStore.getManifest());
+        validationPasses = 0;
+        emit("promoted-dual-write", { stage: ctx.stage, ok: true });
+        return Object.freeze({ ok: true, stage: ctx.stage, promoted, prepared });
+      } catch (error) {
+        try {
+          await ctx.rolloutControl.rollback();
+          ctx.stage = stageOf(await ctx.recordStore.getManifest());
+          emit("dual-write-prepare-rollback", { stage: ctx.stage, ok: true, reason: error?.code || "writer-prepare-failed" });
+        } catch {}
+        validationPasses = 0;
+        throw error;
+      }
     }
 
     async function rollback() {
@@ -508,6 +531,7 @@
     version: VERSION,
     release: RELEASE,
     requiredValidationPasses: REQUIRED_VALIDATION_PASSES,
+    writerVersion: WRITER_VERSION,
     dependencies: DEPENDENCIES,
     reconciliationPass,
     create,
