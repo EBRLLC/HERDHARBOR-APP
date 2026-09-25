@@ -67,7 +67,7 @@ test("authority and rollback claims in the runbook remain backed by SQL guards",
   assert.match(authoritySql, /HH_SYNC_AUTHORITY_ACTIVATION_RPC_REQUIRED/);
   assert.match(authoritySql, /legacy_recovery_lock/);
   assert.match(authoritySql, /herdharbor_sync_materialize_legacy_recovery/);
-  assert.match(authoritySql, /normalized -> dual_write/i);
+  assert.match(authoritySql, /v_current_stage = 'normalized' and p_target_stage = 'dual_write'/i);
   assert.match(runbook, /stale legacy clients blocked by the database guard/i);
   assert.match(runbook, /retain normalized rows/i);
   assert.match(runbook, /clear the recovery lock only on return to legacy/i);
