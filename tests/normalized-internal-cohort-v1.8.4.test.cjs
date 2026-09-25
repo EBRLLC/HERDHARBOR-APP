@@ -30,6 +30,10 @@ test("cohort status exposes only caller eligibility, allowlist mode, and schema 
   assert.match(sql,/'mode', 'allowlist'/i);
   assert.match(sql,/'percentage_enabled', false/i);
   assert.match(sql,/'schema_verified', v_schema_verified/i);
+  assert.match(sql,/relrowsecurity/i);
+  assert.match(sql,/role_table_grants/i);
+  assert.match(sql,/has_function_privilege/i);
+  assert.match(sql,/herdharbor_sync_prepare_normalized_writer_guarded/i);
   assert.doesNotMatch(sql,/jsonb_build_object\([\s\S]*'user_id'/i);
   assert.match(sql,/security definer\s+set search_path = ''/i);
   assert.match(sql,/revoke all on function public\.herdharbor_sync_cohort_status\(\)[\s\S]*from public, anon, authenticated/i);
