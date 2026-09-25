@@ -12,10 +12,14 @@ const animalProfileRuntime = fs.readFileSync(path.join(root, "animal-profile-run
 const taskRuntime = fs.readFileSync(path.join(root, "task-runtime-v1.8.3.js"), "utf8");
 const salesCustomerRuntime = fs.readFileSync(path.join(root, "sales-customer-runtime-v1.8.3.js"), "utf8");
 const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
+const stateStore = fs.readFileSync(path.join(root, "herdharbor-state-store-v1.8.4.js"), "utf8");
 
 assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.4"/);
-assert.match(appRuntime, /let lastSavedRaw = localStorage\.getItem\(STORAGE_KEY\) \|\| ""/);
-assert.match(appRuntime, /if \(rawValue !== lastSavedRaw\) \{[\s\S]*?localStorage\.setItem\(STORAGE_KEY, rawValue\)[\s\S]*?lastSavedRaw = rawValue/);
+assert.match(appRuntime, /const canonicalStateStore = window\.HerdHarborStateStore \|\| null/);
+assert.match(appRuntime, /let lastSavedRaw = canonicalStateStore\?\.getRaw\?\.\(\) \|\| localStorage\.getItem\(STORAGE_KEY\) \|\| ""/);
+assert.match(appRuntime, /canonicalStateStore\.commit\(state,[\s\S]*?lastSavedRaw = result\.rawValue/);
+assert.doesNotMatch(appRuntime, /localStorage\.setItem\(STORAGE_KEY/);
+assert.match(stateStore, /if \(previousRaw === rawValue\)/);
 assert.match(appRuntime, /function scheduleUiWork\(key, callback\)/);
 assert.match(appRuntime, /window\.requestAnimationFrame/);
 assert.match(animalProfileRuntime, /deps\.scheduleUiWork\("animal-search"/);
@@ -38,16 +42,17 @@ assert.match(cloud, /const MAX_RECOVERY_BYTES = 8_000_000/);
 assert.match(cloud, /if \(snapshots\[0\]\?\.rawValue === rawValue\) return/);
 assert.match(cloud, /retainedBytes \+ snapshotBytes > MAX_RECOVERY_BYTES/);
 assert.match(cloud, /if \(left === right\) return Boolean\(safeParse\(left\)\)/);
-assert.match(cloud, /if \(previousValue === value\) return undefined/);
-assert.match(cloud, /if \(previousValue && sameState\(previousValue, value\)\) return result/);
+assert.match(cloud, /canonicalStateStore\.subscribe\(handleCanonicalStateCommit\)/);
+assert.match(cloud, /captureCleanBaselineBeforeLocalCommit\(userId, previousValue\)/);
+assert.doesNotMatch(cloud, /Storage\.prototype\.(?:setItem|removeItem)\s*=/);
 
 const fullCacheWrites = cloud.match(/safeStorageSet\(cacheKey\(userId\),/g) || [];
 assert.equal(
   fullCacheWrites.length,
-  2,
-  "only signed-out account fallback and the tiny clear-data sentinel may use the per-user cache"
+  1,
+  "only signed-out account fallback may keep a duplicate full-state cache"
 );
 assert.match(cloud, /safeStorageSet\(cacheKey\(userId\), activeRaw\)/);
-assert.match(cloud, /safeStorageSet\(cacheKey\(userId\), "\{\}"\)/);
+assert.doesNotMatch(cloud, /safeStorageSet\(cacheKey\(userId\), "\{\}"\)/);
 
 console.log("workflow and storage efficiency tests passed");
