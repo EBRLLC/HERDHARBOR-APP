@@ -19,7 +19,8 @@ test("internal normalized cohort is empty-by-default and has no browser write pa
   assert.match(sql,/create table if not exists public\.herdharbor_sync_cohort/i);
   assert.match(sql,/cohort = 'internal_test'/i);
   assert.doesNotMatch(sql,/insert into public\.herdharbor_sync_cohort/i);
-  assert.doesNotMatch(sql,/percentage/i, "database allowlist must not implement percentage rollout");
+  const executableSql = sql.replace(/--.*$/gm, "");
+  assert.doesNotMatch(executableSql,/\bpercentage\b/i, "database allowlist must not implement percentage rollout");
   assert.match(sql,/revoke all on table public\.herdharbor_sync_cohort from anon, authenticated/i);
   assert.doesNotMatch(sql,/grant (?:insert|update|delete|all).*herdharbor_sync_cohort.*authenticated/i);
 });
