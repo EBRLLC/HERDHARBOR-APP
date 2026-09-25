@@ -29,20 +29,21 @@ function normalizedRows(snapshot = fixture) {
   }));
 }
 
-function verifiedManifest(snapshot = fixture, rows = normalizedRows(snapshot)) {
-  const checksum = normalizer.snapshotChecksum(snapshot);
+function authorityManifest(overrides = {}) {
   return {
     cutover_stage: "normalized",
     sync_generation: 9,
-    normalized_verified_at: "2026-09-16T05:00:00.000Z",
+    normalized_verified_at: null,
     metadata: {
-      source_checksum: checksum,
-      verified_checksum: checksum,
-      normalized_record_count: rows.length,
-      verification_record_count: rows.length,
       normalized_namespace: normalizer.namespace,
-      normalized_format_version: normalizer.formatVersion
-    }
+      normalized_format_version: normalizer.formatVersion,
+      normalized_writer_ready: true,
+      normalized_writer_version: "record-cas-v1",
+      normalized_authority_ready: true,
+      normalized_authority_version: "record-authority-v1",
+      ...deepClone(overrides.metadata || {})
+    },
+    ...deepClone(Object.fromEntries(Object.entries(overrides).filter(([key]) => key !== "metadata")))
   };
 }
 
@@ -50,7 +51,7 @@ function setup(overrides = {}) {
   const calls = [];
   const events = [];
   const rows = overrides.rows || normalizedRows();
-  const initialManifest = overrides.manifest === undefined ? verifiedManifest(fixture, rows) : overrides.manifest;
+  const initialManifest = overrides.manifest === undefined ? authorityManifest() : overrides.manifest;
   let manifestReadCount = 0;
   const resolver = readFallback.createReadResolver({
     normalizer,
@@ -78,7 +79,7 @@ function setup(overrides = {}) {
   return { resolver, calls, events, rows, manifest: initialManifest };
 }
 
-test("verified normalized stage reads normalized state and rechecks manifest before return", async () => {
+test("normalized authority reads row-integrity state and rechecks manifest before return", async () => {
   const state = setup();
   const result = await state.resolver.read();
 
@@ -87,15 +88,32 @@ test("verified normalized stage reads normalized state and rechecks manifest bef
   assert.equal(result.checksum, normalizer.snapshotChecksum(fixture));
   assert.equal(result.recordCount, state.rows.length);
   assert.equal(result.generation, 9);
+  assert.equal(result.authorityVersion, "record-authority-v1");
+  assert.equal(result.checkpointStale, false);
   assert.deepEqual(result.snapshot, fixture);
   assert.deepEqual(state.calls, ["getManifest", "listNormalizedRows", "getManifest"]);
   assert.equal(state.events.at(-1).source, "normalized");
 });
 
-test("legacy, shadow, and dual-write stages never attempt normalized reads", async () => {
+test("ordinary record CAS remains readable when the global checkpoint checksum is stale", async () => {
+  const rows = normalizedRows();
+  const animal = rows.find((row) => row.payload?.kind === "array_item" && row.payload?.key === "animals");
+  animal.payload.value.name = "Post-cutover Edit";
+  animal.payload_checksum = normalizer.checksumValue(animal.payload);
+  animal.record_version += 1;
+
+  const state = setup({ rows });
+  const result = await state.resolver.read();
+
+  assert.equal(result.source, "normalized");
+  assert.equal(result.checkpointStale, true);
+  assert.equal(result.snapshot.animals.some((entry) => entry.name === "Post-cutover Edit"), true);
+  assert.deepEqual(state.calls, ["getManifest", "listNormalizedRows", "getManifest"]);
+});
+
+test("legacy, shadow, and dual-write stages never attempt normalized authority reads", async () => {
   for (const stage of ["legacy", "shadow", "dual_write"]) {
-    const manifest = verifiedManifest();
-    manifest.cutover_stage = stage;
+    const manifest = authorityManifest({ cutover_stage: stage });
     const state = setup({ manifest });
     const result = await state.resolver.read();
     assert.equal(result.source, "legacy");
@@ -104,33 +122,22 @@ test("legacy, shadow, and dual-write stages never attempt normalized reads", asy
   }
 });
 
-test("missing required verification markers always uses legacy recovery", async () => {
-  const missing = setup({ manifest: null });
-  assert.equal((await missing.resolver.read()).reason, "manifest-missing");
+test("normalized stage requires explicit authority, writer, namespace and format markers", async () => {
+  const cases = [
+    ["normalized-authority-marker-missing", { normalized_authority_ready: false }],
+    ["normalized-authority-version-missing", { normalized_authority_version: null }],
+    ["normalized-writer-not-ready", { normalized_writer_ready: false }],
+    ["normalized-writer-not-ready", { normalized_writer_version: null }],
+    ["normalized-namespace-mismatch", { normalized_namespace: "other" }],
+    ["normalized-format-mismatch", { normalized_format_version: normalizer.formatVersion + 1 }]
+  ];
 
-  const noVerifiedAt = verifiedManifest();
-  noVerifiedAt.normalized_verified_at = null;
-  assert.equal((await setup({ manifest: noVerifiedAt }).resolver.read()).reason, "normalized-not-verified");
-
-  const noChecksum = verifiedManifest();
-  noChecksum.metadata.verified_checksum = null;
-  assert.equal((await setup({ manifest: noChecksum }).resolver.read()).reason, "verification-checksum-missing");
-
-  const sourceMismatch = verifiedManifest();
-  sourceMismatch.metadata.source_checksum = "hh64:0000000000000000";
-  assert.equal((await setup({ manifest: sourceMismatch }).resolver.read()).reason, "verification-source-mismatch");
-
-  const noCount = verifiedManifest();
-  noCount.metadata.verification_record_count = null;
-  assert.equal((await setup({ manifest: noCount }).resolver.read()).reason, "verification-record-count-missing");
-
-  const badNamespace = verifiedManifest();
-  badNamespace.metadata.normalized_namespace = "other";
-  assert.equal((await setup({ manifest: badNamespace }).resolver.read()).reason, "normalized-namespace-mismatch");
-
-  const badFormat = verifiedManifest();
-  badFormat.metadata.normalized_format_version = normalizer.formatVersion + 1;
-  assert.equal((await setup({ manifest: badFormat }).resolver.read()).reason, "normalized-format-mismatch");
+  for (const [reason, metadata] of cases) {
+    const state = setup({ manifest: authorityManifest({ metadata }) });
+    const result = await state.resolver.read();
+    assert.equal(result.source, "legacy");
+    assert.equal(result.reason, reason);
+  }
 });
 
 test("provider failures on manifest or normalized row reads fall back to legacy without leaking provider messages", async () => {
@@ -153,55 +160,49 @@ test("provider failures on manifest or normalized row reads fall back to legacy 
   assert.doesNotMatch(JSON.stringify([...manifestFailure.events, ...rowFailure.events]), /secret detail|private content/);
 });
 
-test("missing or tampered normalized rows never become authoritative", async () => {
-  const baseRows = normalizedRows();
-  const missingRows = baseRows.slice(1);
-  const missing = setup({ rows: missingRows, manifest: verifiedManifest(fixture, baseRows) });
+test("tampered, orphaned, or incomplete normalized rows never become authoritative", async () => {
+  const missingRows = normalizedRows();
+  const missingItem = missingRows.find((row) => row.payload?.kind === "array_item" && row.payload?.key === "animals");
+  const missing = setup({ rows: missingRows.filter((row) => row.record_id !== missingItem.record_id) });
   assert.equal((await missing.resolver.read()).reason, "normalized-reassembly-failed");
 
   const tamperedRows = normalizedRows();
   const animal = tamperedRows.find((row) => row.payload?.kind === "array_item" && row.payload?.key === "animals");
   animal.payload.value.name = "Tampered Cloud Name";
-  const tampered = setup({ rows: tamperedRows, manifest: verifiedManifest(fixture, normalizedRows()) });
+  const tampered = setup({ rows: tamperedRows });
   const result = await tampered.resolver.read();
   assert.equal(result.reason, "normalized-reassembly-failed");
   assert.deepEqual(result.snapshot, fixture);
+
+  const orphanRows = normalizedRows();
+  const orphan = orphanRows.find((row) => row.payload?.kind === "array_item" && row.payload?.key === "animals");
+  const manifest = orphanRows.find((row) => row.payload?.kind === "array_manifest" && row.payload?.key === "animals");
+  manifest.payload.item_record_ids = manifest.payload.item_record_ids.filter((id) => id !== orphan.record_id);
+  manifest.payload.length = manifest.payload.item_record_ids.length;
+  manifest.payload_checksum = normalizer.checksumValue(manifest.payload);
+  assert.equal((await setup({ rows: orphanRows }).resolver.read()).reason, "normalized-reassembly-failed");
 });
 
-test("verification checksum and record-count mismatch each trigger legacy rollback", async () => {
-  const rows = normalizedRows();
-  const badChecksumManifest = verifiedManifest(fixture, rows);
-  badChecksumManifest.metadata.verified_checksum = "hh64:0000000000000000";
-  badChecksumManifest.metadata.source_checksum = "hh64:0000000000000000";
-  const badChecksum = setup({ rows, manifest: badChecksumManifest });
-  assert.equal((await badChecksum.resolver.read()).reason, "normalized-checksum-mismatch");
+test("concurrent stage, generation, or authority-marker change prevents stale normalized return", async () => {
+  const initial = authorityManifest();
 
-  const badCountManifest = verifiedManifest(fixture, rows);
-  badCountManifest.metadata.verification_record_count = rows.length + 1;
-  badCountManifest.metadata.normalized_record_count = rows.length + 1;
-  const badCount = setup({ rows, manifest: badCountManifest });
-  assert.equal((await badCount.resolver.read()).reason, "normalized-record-count-mismatch");
-});
-
-test("concurrent stage or generation change during payload read prevents stale normalized return", async () => {
-  const initial = verifiedManifest();
   const rolledBack = deepClone(initial);
   rolledBack.cutover_stage = "dual_write";
   rolledBack.sync_generation += 1;
-  const rollbackState = setup({ manifest: initial, finalManifest: rolledBack });
-  const rollbackResult = await rollbackState.resolver.read();
-  assert.equal(rollbackResult.source, "legacy");
-  assert.equal(rollbackResult.reason, "normalized-manifest-changed");
+  assert.equal((await setup({ manifest: initial, finalManifest: rolledBack }).resolver.read()).reason, "normalized-manifest-changed");
 
   const generationChanged = deepClone(initial);
   generationChanged.sync_generation += 1;
-  const generationState = setup({ manifest: initial, finalManifest: generationChanged });
-  assert.equal((await generationState.resolver.read()).reason, "normalized-manifest-changed");
+  assert.equal((await setup({ manifest: initial, finalManifest: generationChanged }).resolver.read()).reason, "normalized-manifest-changed");
+
+  const authorityChanged = deepClone(initial);
+  authorityChanged.metadata.normalized_authority_ready = false;
+  assert.equal((await setup({ manifest: initial, finalManifest: authorityChanged }).resolver.read()).reason, "normalized-manifest-changed");
 });
 
 test("legacy recovery failure propagates instead of returning corrupt normalized state", async () => {
   const state = setup({
-    manifest: null,
+    manifest: authorityManifest({ metadata: { normalized_authority_ready: false } }),
     legacyError: Object.assign(new Error("legacy recovery unavailable with Annie payload"), {
       code: "LEGACY_DOWN"
     })
@@ -219,5 +220,6 @@ test("read fallback module has no mutation or cutover path", () => {
   assert.doesNotMatch(source, /herdharbor_user_data/);
   assert.doesNotMatch(source, /app_state/);
   assert.match(source, /normalized-manifest-changed/);
-  assert.match(source, /normalized-record-count-mismatch/);
+  assert.match(source, /normalized-authority-marker-missing/);
+  assert.match(source, /reassembleAuthoritativeSnapshotWithMetadata/);
 });
