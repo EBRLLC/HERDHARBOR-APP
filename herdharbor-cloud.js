@@ -496,6 +496,18 @@
     return normalizedRollout?.isNormalizedAuthority?.() === true;
   }
 
+  async function refreshNormalizedAuthorityIfEligible() {
+    if (normalizedAuthorityActive()) return true;
+    const status = normalizedRollout?.status?.();
+    if (status?.eligible !== true || !normalizedRollout?.checkEligibility) return false;
+    try {
+      const decision = await normalizedRollout.checkEligibility();
+      return decision?.authorityActive === true && normalizedAuthorityActive();
+    } catch {
+      return false;
+    }
+  }
+
   function normalizedOutboxPending(userId = session?.user?.id) {
     if (!userId || !normalizedAuthorityActive() || !canonicalStateStore?.getOutbox) return false;
     return canonicalStateStore.getOutbox(userId).length > 0;
@@ -1416,6 +1428,9 @@
   }
 
   async function syncNow() {
+    if (!normalizedAuthorityActive()) {
+      await refreshNormalizedAuthorityIfEligible();
+    }
     if (normalizedAuthorityActive()) {
       clearTimeout(syncTimer);
       pendingSync = null;
@@ -1538,6 +1553,9 @@
   }
 
   async function checkNormalizedAuthorityChanges() {
+    if (!normalizedAuthorityActive()) {
+      await refreshNormalizedAuthorityIfEligible();
+    }
     if (!normalizedAuthorityActive()) return null;
     if (normalizedRefreshInFlight) return normalizedRefreshInFlight;
 
