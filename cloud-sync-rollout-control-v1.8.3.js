@@ -17,6 +17,8 @@
     "manifestTable",
     "ownerRls",
     "batchRpc",
+    "recordRpc",
+    "cohortRpc",
     "verifyRpc",
     "stageRpc",
     "guardedWriterRpc",
