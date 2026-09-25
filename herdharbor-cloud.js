@@ -1012,6 +1012,16 @@
     return true;
   }
 
+  function captureCleanBaselineBeforeLocalCommit(userId, previousValue, reason = "before-local-edit") {
+    if (!userId || !previousValue || !safeParse(previousValue)) return false;
+    if (originalGetItem.call(localStorage, baseKey(userId))) return false;
+    if (originalGetItem.call(localStorage, dirtyKey(userId)) === "1") return false;
+    if (!originalGetItem.call(localStorage, versionKey(userId))) return false;
+    safeStorageSet(baseKey(userId), previousValue);
+    dispatchBaselineRestored(userId, reason);
+    return true;
+  }
+
   function handleCanonicalStateCommit(detail) {
     if (!detail || detail.source !== "local" || !detail.cloudRelevant || !session?.user?.id) return false;
     const userId = session.user.id;
@@ -1021,17 +1031,7 @@
 
     safeStorageSet(ACTIVE_OWNER_KEY, userId);
     removeRedundantStateCache(userId);
-
-    if (
-      previousValue &&
-      safeParse(previousValue) &&
-      !originalGetItem.call(localStorage, baseKey(userId)) &&
-      originalGetItem.call(localStorage, dirtyKey(userId)) !== "1" &&
-      Boolean(originalGetItem.call(localStorage, versionKey(userId)))
-    ) {
-      safeStorageSet(baseKey(userId), previousValue);
-      dispatchBaselineRestored(userId, "before-local-edit");
-    }
+    captureCleanBaselineBeforeLocalCommit(userId, previousValue);
 
     writeSequence += 1;
     syncConflict = null;
