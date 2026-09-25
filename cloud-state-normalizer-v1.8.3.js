@@ -461,7 +461,10 @@
 
     const rank = (entry) => {
       if (mutation.operation === "delete") return entry.role === "domain-manifest" ? 0 : 1;
-      return entry.role === "primary" ? 0 : 1;
+      if (entry.type === "put" && entry.role === "primary") return 0;
+      if (entry.role === "domain-manifest") return 1;
+      if (entry.type === "delete") return 2;
+      return 3;
     };
     selected.sort((left, right) => rank(left) - rank(right) || rowRecordId(left.row).localeCompare(rowRecordId(right.row)));
 
