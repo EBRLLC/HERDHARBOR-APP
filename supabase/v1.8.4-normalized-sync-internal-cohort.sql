@@ -46,6 +46,8 @@ declare
   v_user uuid := auth.uid();
   v_eligible boolean := false;
   v_schema_verified boolean := false;
+  v_stage text := 'legacy';
+  v_authority_active boolean := false;
 begin
   if v_user is null then
     raise exception using errcode = '42501', message = 'HH_SYNC_AUTH_REQUIRED';
@@ -59,6 +61,20 @@ begin
       and c.cohort = 'internal_test'
   )
   into v_eligible;
+
+  select
+    coalesce(m.cutover_stage, 'legacy'),
+    coalesce(m.metadata -> 'normalized_authority_ready' = 'true'::jsonb, false)
+  into v_stage, v_authority_active
+  from public.herdharbor_sync_manifest m
+  where m.user_id = v_user;
+
+  if not found then
+    v_stage := 'legacy';
+    v_authority_active := false;
+  end if;
+
+  v_authority_active := v_stage = 'normalized' and v_authority_active;
 
   v_schema_verified := (
     to_regclass('public.herdharbor_sync_records') is not null
@@ -193,7 +209,9 @@ begin
     'eligible', v_eligible,
     'mode', 'allowlist',
     'percentage_enabled', false,
-    'schema_verified', v_schema_verified
+    'schema_verified', v_schema_verified,
+    'stage', v_stage,
+    'authority_active', v_authority_active
   );
 end;
 $$;
