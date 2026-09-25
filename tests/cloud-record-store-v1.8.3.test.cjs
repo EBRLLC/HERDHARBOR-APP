@@ -242,3 +242,23 @@ test("authority adapter classifies server cutover guards without leaking raw pro
     error=>error?.code==="HH_SYNC_NORMALIZED_AUTHORITY_REQUIRED"&&error?.operation==="materialize-legacy-recovery"
   );
 });
+
+
+test("record store preserves recovery-in-progress as a stable sync error code", async () => {
+  const client={
+    from(){return{};},
+    async rpc(){return{data:null,error:{code:"55000",message:"HH_SYNC_RECOVERY_IN_PROGRESS"}};}
+  };
+  const store=api.createRecordStore({client,userId:"11111111-1111-1111-1111-111111111111"});
+  await assert.rejects(
+    ()=>store.applyRecordMutation({
+      namespace:"legacy-state",
+      recordId:"item:animals:a1",
+      payload:{kind:"array_item",key:"animals",value:{id:"a1"}},
+      payloadChecksum:"hh64:a",
+      expectedVersion:1,
+      writerVersion:"record-cas-v1"
+    }),
+    error=>error?.code==="HH_SYNC_RECOVERY_IN_PROGRESS" && error?.operation==="record-write"
+  );
+});
