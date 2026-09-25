@@ -559,3 +559,93 @@ test("draining an already-acknowledged mutation is a no-op", async () => {
   assert.equal(second.processed, 0);
   assert.equal(h.recordStore.calls.length, calls);
 });
+
+
+test("later local membership intent preserves a remote-only member learned through manifest reconciliation", async () => {
+  const initial = animalState();
+  const h = await createHarness(initial);
+
+  // Device A creates a3 locally.
+  const local = clone(initial);
+  local.animals.push({ id: "a3", name: "Local A3", weight: 2.8 });
+  h.save(local);
+
+  // Device B creates a4 directly in normalized cloud and advances the array manifest.
+  const remoteState = clone(initial);
+  remoteState.animals.push({ id: "a4", name: "Remote A4", weight: 3.0 });
+  const remoteMapped = Normalizer.mapLegacySnapshot(remoteState);
+  const remoteA4 = remoteMapped.records.find((row) => row.payload?.kind === "array_item" && row.payload.value?.id === "a4");
+  const remoteManifest = remoteMapped.records.find((row) => row.payload?.kind === "array_manifest" && row.payload.key === "animals");
+  assert.ok(remoteA4);
+  assert.ok(remoteManifest);
+
+  h.recordStore.rows.set(cloudKey(remoteA4.namespace, remoteA4.record_id), {
+    ...clone(remoteA4),
+    record_version: 1,
+    deleted_at: null
+  });
+  const currentManifest = h.recordStore.rowForLogical("animals", "$order");
+  currentManifest.payload = clone(remoteManifest.payload);
+  currentManifest.payload_checksum = remoteManifest.payload_checksum;
+  currentManifest.record_version += 1;
+  h.recordStore.manifest.sync_generation += 1;
+
+  const first = await h.worker.drain();
+  assert.equal(first.ok, true);
+  assert.equal(h.outbox().length, 0);
+  const mergedManifest = h.recordStore.rowForLogical("animals", "$order");
+  const a4Id = remoteA4.record_id;
+  assert.ok(mergedManifest.payload.item_record_ids.includes(a4Id));
+
+  // Device A still does not have a4 in its legacy snapshot, then creates a5.
+  const later = h.state();
+  later.animals.push({ id: "a5", name: "Local A5", weight: 3.2 });
+  h.save(later);
+  const second = await h.worker.drain();
+  assert.equal(second.ok, true);
+
+  const finalManifest = h.recordStore.rowForLogical("animals", "$order");
+  const finalState = Normalizer.mapLegacySnapshot({
+    animals: [{ id: "a5", name: "Local A5", weight: 3.2 }]
+  });
+  const a5Id = finalState.records.find((row) => row.payload?.kind === "array_item" && row.payload.value?.id === "a5").record_id;
+  assert.ok(finalManifest.payload.item_record_ids.includes(a4Id), "remote-only a4 must remain referenced");
+  assert.ok(finalManifest.payload.item_record_ids.includes(a5Id), "new local a5 must be added");
+});
+
+test("reorder is quarantined when the confirmed manifest contains unseen remote members", async () => {
+  const initial = animalState();
+  const h = await createHarness(initial);
+
+  const remoteState = clone(initial);
+  remoteState.animals.push({ id: "a4", name: "Remote A4", weight: 3.0 });
+  const remoteMapped = Normalizer.mapLegacySnapshot(remoteState);
+  const remoteA4 = remoteMapped.records.find((row) => row.payload?.kind === "array_item" && row.payload.value?.id === "a4");
+  const remoteManifest = remoteMapped.records.find((row) => row.payload?.kind === "array_manifest" && row.payload.key === "animals");
+  h.recordStore.rows.set(cloudKey(remoteA4.namespace, remoteA4.record_id), {
+    ...clone(remoteA4),
+    record_version: 1,
+    deleted_at: null
+  });
+
+  // Simulate the durable baseline having learned the remote manifest while the
+  // legacy local snapshot has not yet materialized a4.
+  const baselineManifest = await h.baselineStore.get(Normalizer.namespace, h.recordStore.rowForLogical("animals", "$order").record_id);
+  await h.baselineStore.put({
+    ...baselineManifest,
+    payload: clone(remoteManifest.payload),
+    payload_checksum: remoteManifest.payload_checksum,
+    record_version: baselineManifest.record_version + 1
+  });
+
+  const reordered = h.state();
+  reordered.animals = [reordered.animals[1], reordered.animals[0]];
+  h.save(reordered);
+  const result = await h.worker.drain();
+
+  assert.equal(result.conflicts, 1);
+  const pending = h.outbox();
+  assert.equal(pending.length, 1);
+  assert.equal(pending[0].recordId, "$order");
+  assert.ok(pending[0].lastConflictFields.includes("$order.remote_members"));
+});
