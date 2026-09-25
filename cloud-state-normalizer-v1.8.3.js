@@ -242,6 +242,177 @@
     return map;
   }
 
+  function strictPayloadIntegrity(row, recordId) {
+    const payload = rowPayload(row);
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      throw integrityError(
+        `Normalized cloud record ${recordId} has an invalid payload.`,
+        "HH_NORMALIZED_ROW_PAYLOAD_INVALID"
+      );
+    }
+    const supplied = String(row?.payload_checksum ?? row?.payloadChecksum ?? "").trim();
+    if (!supplied) {
+      throw integrityError(
+        `Normalized cloud record ${recordId} is missing its payload checksum.`,
+        "HH_NORMALIZED_ROW_CHECKSUM_MISSING"
+      );
+    }
+    const actual = checksumValue(payload);
+    if (actual !== supplied) {
+      throw integrityError(
+        `Normalized cloud record ${recordId} failed payload integrity validation.`,
+        "HH_NORMALIZED_ROW_CHECKSUM_MISMATCH"
+      );
+    }
+    return payload;
+  }
+
+  function reassembleAuthoritativeSnapshotWithMetadata(rows) {
+    const records = new Map();
+    for (const row of Array.isArray(rows) ? rows : []) {
+      if (rowNamespace(row) !== NAMESPACE || rowDeletedAt(row)) continue;
+      const recordId = rowRecordId(row);
+      if (!recordId) {
+        throw integrityError(
+          "Normalized cloud contains an active record without an identifier.",
+          "HH_NORMALIZED_RECORD_ID_MISSING"
+        );
+      }
+      if (records.has(recordId)) {
+        throw integrityError(
+          `Duplicate normalized cloud record ${recordId}.`,
+          "HH_NORMALIZED_DUPLICATE_RECORD"
+        );
+      }
+      records.set(recordId, {
+        row,
+        payload: strictPayloadIntegrity(row, recordId)
+      });
+    }
+
+    const checkpoint = records.get(SNAPSHOT_MANIFEST_ID);
+    if (!checkpoint || checkpoint.payload.kind !== "snapshot_manifest") {
+      throw integrityError(
+        "Normalized cloud checkpoint manifest is missing.",
+        "HH_NORMALIZED_MANIFEST_MISSING"
+      );
+    }
+    if (Number(checkpoint.payload.format_version) !== FORMAT_VERSION) {
+      throw integrityError(
+        "Normalized cloud checkpoint format is not supported.",
+        "HH_NORMALIZED_FORMAT_UNSUPPORTED"
+      );
+    }
+
+    const output = Object.create(null);
+    const claimedKeys = new Set();
+    const referencedItems = new Set();
+    const arrayManifests = [];
+
+    for (const [recordId, entry] of records) {
+      if (recordId === SNAPSHOT_MANIFEST_ID) continue;
+      const payload = entry.payload;
+      const kind = String(payload.kind || "");
+
+      if (kind === "root_value") {
+        if (!("key" in payload)) {
+          throw integrityError("Normalized root record is missing its key.");
+        }
+        const key = String(payload.key);
+        if (claimedKeys.has(key)) {
+          throw integrityError(
+            `Normalized cloud contains duplicate top-level key ${key}.`,
+            "HH_NORMALIZED_DUPLICATE_KEY"
+          );
+        }
+        claimedKeys.add(key);
+        output[key] = cloneJson(payload.value, `normalized root ${key}`);
+        continue;
+      }
+
+      if (kind === "array_manifest") {
+        if (!("key" in payload)) {
+          throw integrityError("Normalized array manifest is missing its key.");
+        }
+        arrayManifests.push({ recordId, payload });
+        continue;
+      }
+
+      if (kind !== "array_item") {
+        throw integrityError(
+          `Normalized cloud record ${recordId} has unsupported kind ${kind || "unknown"}.`,
+          "HH_NORMALIZED_KIND_UNSUPPORTED"
+        );
+      }
+    }
+
+    for (const { payload } of arrayManifests) {
+      const key = String(payload.key);
+      if (claimedKeys.has(key)) {
+        throw integrityError(
+          `Normalized cloud contains duplicate top-level key ${key}.`,
+          "HH_NORMALIZED_DUPLICATE_KEY"
+        );
+      }
+      claimedKeys.add(key);
+
+      if (!Array.isArray(payload.item_record_ids)) {
+        throw integrityError(`Normalized array manifest is invalid for ${key}.`);
+      }
+      const declaredLength = Number(payload.length);
+      if (
+        !Number.isSafeInteger(declaredLength) ||
+        declaredLength < 0 ||
+        declaredLength !== payload.item_record_ids.length
+      ) {
+        throw integrityError(`Normalized array length is invalid for ${key}.`);
+      }
+
+      const localIds = new Set();
+      output[key] = payload.item_record_ids.map((value, index) => {
+        const itemRecordId = String(value ?? "");
+        if (!itemRecordId || localIds.has(itemRecordId) || referencedItems.has(itemRecordId)) {
+          throw integrityError(
+            `Normalized array item reference ${index} is invalid for ${key}.`,
+            "HH_NORMALIZED_ARRAY_REFERENCE_INVALID"
+          );
+        }
+        localIds.add(itemRecordId);
+        referencedItems.add(itemRecordId);
+        const item = records.get(itemRecordId);
+        if (!item || item.payload.kind !== "array_item" || String(item.payload.key) !== key) {
+          throw integrityError(
+            `Normalized array item ${index} is missing for ${key}.`,
+            "HH_NORMALIZED_ARRAY_ITEM_MISSING"
+          );
+        }
+        return cloneJson(item.payload.value, `normalized array item ${key}[${index}]`);
+      });
+    }
+
+    for (const [recordId, entry] of records) {
+      if (entry.payload.kind === "array_item" && !referencedItems.has(recordId)) {
+        throw integrityError(
+          `Normalized cloud record ${recordId} is orphaned from its array manifest.`,
+          "HH_NORMALIZED_ORPHAN_RECORD"
+        );
+      }
+    }
+
+    const safeOutput = cloneJson(output, "normalized authoritative snapshot");
+    const actualChecksum = checksumValue(safeOutput);
+    const checkpointChecksum = String(checkpoint.payload.snapshot_checksum || "");
+
+    return Object.freeze({
+      snapshot: safeOutput,
+      checksum: actualChecksum,
+      manifestChecksum: checkpointChecksum,
+      recordCount: records.size,
+      dataRecordCount: Math.max(0, records.size - 1),
+      checkpointStale: Boolean(checkpointChecksum) && checkpointChecksum !== actualChecksum
+    });
+  }
+
   function reassembleLegacySnapshotWithMetadata(rows, options = {}) {
     const records = activeRecordMap(rows);
     const manifest = records.get(SNAPSHOT_MANIFEST_ID);
@@ -745,6 +916,7 @@
     mapLegacySnapshot,
     reassembleLegacySnapshot,
     reassembleLegacySnapshotWithMetadata,
+    reassembleAuthoritativeSnapshotWithMetadata,
     diffNormalizedRecords,
     planLogicalMutation,
     threeWayMergeJson,
