@@ -50,3 +50,11 @@ test("guard migration changes no existing legacy application-state row", () => {
   assert.doesNotMatch(sql, /\binsert\s+into\s+public\.herdharbor_user_data\b/i);
   assert.doesNotMatch(sql, /\btruncate\s+(?:table\s+)?public\.herdharbor_user_data\b/i);
 });
+
+
+test("cutover security-definer helpers are explicitly locked down before guarded exposure", () => {
+  assert.match(sql, /security definer\s+set search_path = ''/i);
+  assert.match(sql, /revoke all on function public\.herdharbor_block_legacy_write_after_normalized\(\) from public, anon, authenticated/i);
+  assert.match(sql, /revoke all on function public\.herdharbor_sync_prepare_normalized_writer_guarded\(bigint, text, text, integer\) from public, anon, authenticated/i);
+  assert.match(sql, /grant execute on function public\.herdharbor_sync_prepare_normalized_writer_guarded\(bigint, text, text, integer\) to authenticated/i);
+});
