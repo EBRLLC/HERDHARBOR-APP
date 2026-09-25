@@ -320,6 +320,23 @@
       const baselineRows = await baselineStore.list(namespace);
       const plan = normalizer.planLogicalMutation(currentState, baselineRows, mutation);
 
+      if (Array.isArray(plan.conflictFields) && plan.conflictFields.length) {
+        stateStore.markMutationRetry(mutation.mutationId, {
+          retryState: "conflict",
+          lastErrorClass: "cas_conflict",
+          conflictFields: plan.conflictFields,
+          nextRetryAt: null,
+          lastAttemptAt: now()
+        }, mutation.ownerId);
+        return {
+          ok: false,
+          conflict: true,
+          domain: mutation.domain,
+          recordId: mutation.recordId,
+          fields: [...plan.conflictFields]
+        };
+      }
+
       if (!plan.operations.length) {
         stateStore.acknowledgeMutations(group.mutationIds, mutation.ownerId);
         return { ok: true, acknowledged: group.mutationIds.length, noop: true };
