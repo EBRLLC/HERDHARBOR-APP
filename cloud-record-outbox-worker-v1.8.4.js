@@ -81,7 +81,7 @@
     if (/auth|required|jwt|session|401|403/.test(`${code} ${message}`)) return "auth";
     if (/timeout|timed out|abort/.test(`${code} ${message}`)) return "timeout";
     if (/offline|network|fetch|connection|failed to fetch/.test(`${code} ${message}`)) return "network";
-    if (/stage|writer|required|manifest/.test(`${code} ${message}`)) return "migration_stage";
+    if (/recovery|stage|writer|required|manifest/.test(`${code} ${message}`)) return "migration_stage";
     if (/invalid|payload|checksum|serialize/.test(`${code} ${message}`)) return "local_payload";
     if (/5\d\d|server|provider/.test(`${code} ${message}`)) return "provider";
     return "provider";
