@@ -47,6 +47,7 @@
     const groups = new Map();
     for (const mutation of Array.isArray(outbox) ? outbox : []) {
       if (!mutation?.mutationId || !mutation?.domain || !mutation?.recordId) continue;
+      if (String(mutation.retryState || "") === "conflict") continue;
       const nextRetryAt = parseTime(mutation.nextRetryAt);
       if (nextRetryAt > nowMs) continue;
       const key = logicalKey(mutation);
@@ -161,6 +162,9 @@
     async function primeBaseline({ force = false } = {}) {
       const meta = await baselineStore.getMeta(namespace);
       if (meta?.primed && !force) return { ok: true, skipped: true, reason: "already-primed", meta };
+      if (force && stateStore.getOutbox().length > 0) {
+        return { ok: false, skipped: true, reason: "pending-local-mutations" };
+      }
 
       const manifest = await recordStore.getManifest();
       if (!manifest) return { ok: false, skipped: true, reason: "manifest-missing" };
