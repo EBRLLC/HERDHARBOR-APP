@@ -149,10 +149,12 @@ async function makeDevice(name, cloud, state = initialState(), persisted = null)
   });
   const baselineRows = persisted?.baselineRows || new Map();
   const baselineMetas = persisted?.baselineMetas || new Map();
+  const clock = persisted?.clock || { value: Date.parse("2026-09-25T12:00:00.000Z") };
+  const now = () => new Date(clock.value).toISOString();
   const stateStore = StateStore.create({
     storage,
     indexedDB: null,
-    now: () => "2026-09-25T12:00:00.000Z"
+    now
   });
   const baselineStore = Baseline.createMemoryStore({
     ownerId: USER_ID,
@@ -166,7 +168,7 @@ async function makeDevice(name, cloud, state = initialState(), persisted = null)
     normalizer: Normalizer,
     baselineStore,
     online: () => online,
-    now: () => "2026-09-25T12:00:00.000Z",
+    now,
     baseBackoffMs: 100,
     maxBackoffMs: 1000
   });
@@ -205,8 +207,9 @@ async function makeDevice(name, cloud, state = initialState(), persisted = null)
       });
       return snapshot;
     },
+    advance(ms) { clock.value += Number(ms || 0); },
     persisted() {
-      return { storage, baselineRows, baselineMetas, online };
+      return { storage, baselineRows, baselineMetas, online, clock };
     }
   };
 }
@@ -393,6 +396,7 @@ test("Scenario I: lost commit response reconciles only that record and retries i
   assert.equal(cloud.row("tasks", "t1").record_version, 2);
   assert.equal(web.stateStore.getOutbox(USER_ID).length, 1);
 
+  web.advance(1000);
   const persisted = web.persisted();
   web = await makeDevice("web-reopened", cloud, initialState(), persisted);
   const second = await web.push();
