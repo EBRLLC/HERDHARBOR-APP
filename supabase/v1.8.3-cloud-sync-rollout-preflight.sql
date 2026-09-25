@@ -5,6 +5,7 @@ with object_checks as (
   select
     to_regclass('public.herdharbor_sync_records') is not null as records_table,
     to_regclass('public.herdharbor_sync_manifest') is not null as manifest_table,
+    to_regclass('public.herdharbor_sync_validation_cohort') is not null as cohort_table,
     to_regclass('public.herdharbor_sync_cohort') is not null as cohort_table,
     coalesce((select c.relrowsecurity from pg_catalog.pg_class c where c.oid = to_regclass('public.herdharbor_sync_records')), false) as records_rls,
     coalesce((select c.relrowsecurity from pg_catalog.pg_class c where c.oid = to_regclass('public.herdharbor_sync_manifest')), false) as manifest_rls,
@@ -54,6 +55,7 @@ with object_checks as (
     to_regprocedure('public.herdharbor_sync_apply_batch(jsonb,jsonb,jsonb)') is not null as batch_rpc,
     to_regprocedure('public.herdharbor_sync_apply_record(text,text,jsonb,text,bigint,boolean,text)') is not null as record_rpc,
     to_regprocedure('public.herdharbor_sync_cohort_status()') is not null as cohort_rpc,
+    to_regprocedure('public.herdharbor_sync_cohort_status()') is not null as cohort_rpc,
     to_regprocedure('public.herdharbor_sync_mark_verified(bigint,text,integer)') is not null as verify_rpc,
     to_regprocedure('public.herdharbor_sync_set_stage(text,bigint)') is not null as stage_rpc,
     to_regprocedure('public.herdharbor_sync_prepare_normalized_writer_guarded(bigint,text,text,integer)') is not null as guarded_writer_rpc,
@@ -67,6 +69,11 @@ with object_checks as (
       to_regprocedure('public.herdharbor_sync_apply_record(text,text,jsonb,text,bigint,boolean,text)'),
       'EXECUTE'
     ), false) as record_authenticated_execute,
+    coalesce(has_function_privilege(
+      'authenticated',
+      to_regprocedure('public.herdharbor_sync_cohort_status()'),
+      'EXECUTE'
+    ), false) as cohort_authenticated_execute,
     coalesce(has_function_privilege(
       'authenticated',
       to_regprocedure('public.herdharbor_sync_cohort_status()'),
