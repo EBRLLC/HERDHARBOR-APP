@@ -394,6 +394,58 @@
     return result;
   }
 
+  function intentArrayManifest(currentManifest, baselineManifest, primaryId, operation) {
+    if (!currentManifest?.payload || currentManifest.payload.kind !== "array_manifest") return currentManifest;
+    if (!baselineManifest?.payload || baselineManifest.payload.kind !== "array_manifest") return currentManifest;
+    const currentIds = Array.isArray(currentManifest.payload.item_record_ids)
+      ? currentManifest.payload.item_record_ids.map(String)
+      : [];
+    const baselineIds = Array.isArray(baselineManifest.payload.item_record_ids)
+      ? baselineManifest.payload.item_record_ids.map(String)
+      : [];
+    const targetId = String(primaryId || "");
+
+    let desired = [...baselineIds];
+    if (operation === "delete" && targetId) {
+      desired = desired.filter((id) => id !== targetId);
+    } else if (operation === "create" && targetId && !desired.includes(targetId)) {
+      const targetIndex = currentIds.indexOf(targetId);
+      let inserted = false;
+      for (let index = targetIndex - 1; index >= 0; index -= 1) {
+        const anchor = currentIds[index];
+        const anchorIndex = desired.indexOf(anchor);
+        if (anchorIndex >= 0) {
+          desired.splice(anchorIndex + 1, 0, targetId);
+          inserted = true;
+          break;
+        }
+      }
+      if (!inserted) {
+        for (let index = targetIndex + 1; index < currentIds.length; index += 1) {
+          const anchor = currentIds[index];
+          const anchorIndex = desired.indexOf(anchor);
+          if (anchorIndex >= 0) {
+            desired.splice(anchorIndex, 0, targetId);
+            inserted = true;
+            break;
+          }
+        }
+      }
+      if (!inserted) desired.push(targetId);
+    }
+
+    const payload = {
+      ...cloneJson(currentManifest.payload, "array manifest"),
+      length: desired.length,
+      item_record_ids: desired
+    };
+    return {
+      ...currentManifest,
+      payload,
+      payload_checksum: checksumValue(payload)
+    };
+  }
+
   function planLogicalMutation(snapshot, baselineRows, mutation = {}) {
     const domain = String(mutation.domain || "");
     const logicalId = String(mutation.recordId || "");
@@ -424,6 +476,24 @@
     const baselineRoot = baselineDomainRows.find((row) => rowKind(row) === "root_value");
 
     if (logicalId === "$order") {
+      const currentIds = Array.isArray(currentArrayManifest?.payload?.item_record_ids)
+        ? currentArrayManifest.payload.item_record_ids.map(String)
+        : [];
+      const baselineIds = Array.isArray(baselineArrayManifest?.payload?.item_record_ids)
+        ? baselineArrayManifest.payload.item_record_ids.map(String)
+        : [];
+      const localSet = new Set(currentIds);
+      const remoteOnly = baselineIds.filter((id) => !localSet.has(id));
+      if (remoteOnly.length) {
+        return Object.freeze({
+          namespace: NAMESPACE,
+          checksum: mapped.checksum,
+          recordCount: mapped.records.length,
+          operations: Object.freeze([]),
+          snapshotManifestChanged: true,
+          conflictFields: Object.freeze(["$order.remote_members"])
+        });
+      }
       if (currentArrayManifest) addPut(rowRecordId(currentArrayManifest), "domain-manifest");
     } else if (logicalId === "$section") {
       const ids = new Set([
@@ -445,7 +515,18 @@
 
       if (mutation.operation === "create" || mutation.operation === "delete") {
         const manifestId = rowRecordId(currentArrayManifest || baselineArrayManifest || {});
-        if (manifestId && changedPuts.has(manifestId)) selected.push({ type: "put", role: "domain-manifest", row: changedPuts.get(manifestId) });
+        if (manifestId && changedPuts.has(manifestId)) {
+          selected.push({
+            type: "put",
+            role: "domain-manifest",
+            row: intentArrayManifest(
+              changedPuts.get(manifestId),
+              baselineArrayManifest,
+              primaryId,
+              mutation.operation
+            )
+          });
+        }
         if (manifestId && changedDeletes.has(manifestId)) selected.push({ type: "delete", role: "domain-manifest", row: changedDeletes.get(manifestId) });
       }
     }
