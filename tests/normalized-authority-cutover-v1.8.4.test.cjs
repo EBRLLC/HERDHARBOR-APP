@@ -52,6 +52,8 @@ test("stale legacy writes stay blocked while the recovery RPC has a scoped bypas
   assert.match(sql, /HH_SYNC_LEGACY_WRITE_BLOCKED_AFTER_CUTOVER/);
   assert.match(sql, /current_setting\('herdharbor\.normalized_recovery_write'/i);
   assert.match(sql, /set_config\('herdharbor\.normalized_recovery_write', 'on', true\)/i);
+  assert.match(sql, /legacy_recovery_lock', true/i);
+  assert.match(sql, /v_stage = 'normalized' or v_recovery_lock/i);
   assert.match(sql, /herdharbor_sync_materialize_legacy_recovery/i);
   assert.match(sql, /v_stage <> 'normalized'[\s\S]*HH_SYNC_NORMALIZED_AUTHORITY_REQUIRED/i);
   assert.match(sql, /insert into public\.herdharbor_user_data \(user_id, app_state\)[\s\S]*on conflict \(user_id\) do update/i);
@@ -61,6 +63,7 @@ test("rollback clears authority/writer markers but retains normalized rows", () 
   assert.match(sql, /normalized_authority_ready', false/i);
   assert.match(sql, /normalized_authority_version', null/i);
   assert.match(sql, /normalized_writer_ready', false/i);
+  assert.match(sql, /when p_target_stage = 'legacy' then false[\s\S]*legacy_recovery_lock/i);
   assert.doesNotMatch(sql, /delete\s+from\s+public\.herdharbor_sync_records/i);
 });
 
