@@ -2724,7 +2724,11 @@
       eligible: data?.eligible === true,
       mode: String(data?.mode || "allowlist") === "allowlist" ? "allowlist" : "invalid",
       percentageEnabled: data?.percentage_enabled === true,
-      schemaVerified: data?.schema_verified === true
+      schemaVerified: data?.schema_verified === true,
+      stage: ["legacy", "shadow", "dual_write", "normalized"].includes(String(data?.stage || "legacy"))
+        ? String(data.stage)
+        : "legacy",
+      authorityActive: data?.authority_active === true
     });
   }
 
