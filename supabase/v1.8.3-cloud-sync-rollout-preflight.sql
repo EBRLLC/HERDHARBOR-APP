@@ -5,13 +5,6 @@ with object_checks as (
   select
     to_regclass('public.herdharbor_sync_records') is not null as records_table,
     to_regclass('public.herdharbor_sync_manifest') is not null as manifest_table,
-    to_regclass('public.herdharbor_sync_validation_cohort') is not null as cohort_table,
-    not exists (
-      select 1 from information_schema.role_table_grants
-      where table_schema = 'public'
-        and table_name = 'herdharbor_sync_validation_cohort'
-        and grantee in ('anon', 'authenticated')
-    ) as cohort_no_direct_access,
     to_regclass('public.herdharbor_sync_cohort') is not null as cohort_table,
     coalesce((select c.relrowsecurity from pg_catalog.pg_class c where c.oid = to_regclass('public.herdharbor_sync_records')), false) as records_rls,
     coalesce((select c.relrowsecurity from pg_catalog.pg_class c where c.oid = to_regclass('public.herdharbor_sync_manifest')), false) as manifest_rls,
@@ -58,9 +51,14 @@ with object_checks as (
         and table_name in ('herdharbor_sync_records', 'herdharbor_sync_manifest')
         and grantee = 'anon'
     ) as no_anon_table_access,
+    not exists (
+      select 1 from information_schema.role_table_grants
+      where table_schema = 'public'
+        and table_name = 'herdharbor_sync_cohort'
+        and grantee in ('anon', 'authenticated')
+    ) as no_browser_cohort_table_access,
     to_regprocedure('public.herdharbor_sync_apply_batch(jsonb,jsonb,jsonb)') is not null as batch_rpc,
     to_regprocedure('public.herdharbor_sync_apply_record(text,text,jsonb,text,bigint,boolean,text)') is not null as record_rpc,
-    to_regprocedure('public.herdharbor_sync_cohort_status()') is not null as cohort_rpc,
     to_regprocedure('public.herdharbor_sync_cohort_status()') is not null as cohort_rpc,
     to_regprocedure('public.herdharbor_sync_mark_verified(bigint,text,integer)') is not null as verify_rpc,
     to_regprocedure('public.herdharbor_sync_set_stage(text,bigint)') is not null as stage_rpc,
@@ -75,11 +73,6 @@ with object_checks as (
       to_regprocedure('public.herdharbor_sync_apply_record(text,text,jsonb,text,bigint,boolean,text)'),
       'EXECUTE'
     ), false) as record_authenticated_execute,
-    coalesce(has_function_privilege(
-      'authenticated',
-      to_regprocedure('public.herdharbor_sync_cohort_status()'),
-      'EXECUTE'
-    ), false) as cohort_authenticated_execute,
     coalesce(has_function_privilege(
       'authenticated',
       to_regprocedure('public.herdharbor_sync_cohort_status()'),
@@ -105,12 +98,6 @@ with object_checks as (
       to_regprocedure('public.herdharbor_sync_prepare_normalized_writer(bigint,text,text,integer)'),
       'EXECUTE'
     ), false) as unguarded_writer_not_exposed,
-    not exists (
-      select 1 from information_schema.role_table_grants
-      where table_schema = 'public'
-        and table_name = 'herdharbor_sync_cohort'
-        and grantee in ('anon', 'authenticated')
-    ) as no_browser_cohort_table_access,
     not exists (
       select 1
       from pg_catalog.pg_proc p
@@ -168,8 +155,9 @@ summary as (
 select
   *,
   (
-    records_table and manifest_table and cohort_table and cohort_no_direct_access and owner_rls and
+    records_table and manifest_table and cohort_table and
+    owner_rls and no_browser_cohort_table_access and
     batch_rpc and record_rpc and cohort_rpc and verify_rpc and stage_rpc and guarded_writer_rpc and
-    rpc_acl and no_browser_cohort_table_access and legacy_guard and legacy_authority_only
+    rpc_acl and legacy_guard and legacy_authority_only
   ) as verified
 from summary;
