@@ -19,6 +19,7 @@ const REQUIRED_SHELL = [
   "./herdharbor-billing-v1.6.1.js?v=1.7.1",
   "./herdharbor-access-cache-v1.6.1.js?v=1.7.1",
   "./herdharbor-cloud.js?v=21",
+  "./cloud-sync-rollout-runtime-v1.8.4.js?v=1",
   "./local-cache-v2-v1.8.2.js?v=1",
   "./cloud-sync-v2-flow-v1.8.2.js?v=1",
   "./cloud-sync-v2-diagnostics-v1.8.2.js?v=1",
@@ -46,6 +47,17 @@ const REQUIRED_SHELL = [
 ];
 
 const RUNTIME_CACHE_PATHS = [
+  "./cloud-record-store-v1.8.3.js?v=1",
+  "./cloud-state-normalizer-v1.8.3.js?v=1",
+  "./cloud-record-baseline-v1.8.4.js?v=1",
+  "./cloud-record-outbox-worker-v1.8.4.js?v=1",
+  "./cloud-sync-cohort-gate-v1.8.3.js?v=1",
+  "./cloud-shadow-sync-v1.8.3.js?v=1",
+  "./cloud-shadow-bootstrap-v1.8.3.js?v=1",
+  "./cloud-sync-reconciliation-v1.8.3.js?v=1",
+  "./cloud-sync-stage-policy-v1.8.3.js?v=1",
+  "./cloud-sync-rollout-control-v1.8.3.js?v=1",
+  "./cloud-dual-write-coordinator-v1.8.3.js?v=1",
   "./voice-assisted-entry-v1.8.3.js?v=1",
   "./photo-assisted-entry-v1.8.3.js?v=2",
   "./how-to-navigation-v1.8.1.js?v=1",
