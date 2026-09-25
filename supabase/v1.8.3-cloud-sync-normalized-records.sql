@@ -187,14 +187,14 @@ create policy "users read own normalized sync records"
 on public.herdharbor_sync_records
 for select
 to authenticated
-using (user_id = auth.uid());
+using (user_id = (select auth.uid()));
 
 drop policy if exists "users read own sync manifest" on public.herdharbor_sync_manifest;
 create policy "users read own sync manifest"
 on public.herdharbor_sync_manifest
 for select
 to authenticated
-using (user_id = auth.uid());
+using (user_id = (select auth.uid()));
 
 -- Remove direct browser mutation paths from earlier drafts. All writes now go
 -- through generation/version guarded SECURITY DEFINER RPCs below.
