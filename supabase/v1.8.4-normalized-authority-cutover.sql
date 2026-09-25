@@ -101,6 +101,10 @@ begin
     );
 
     if v_forward then
+      if coalesce(old.metadata -> 'legacy_recovery_lock' = 'true'::jsonb, false) then
+        raise exception using errcode = '55000', message = 'HH_SYNC_RECOVERY_IN_PROGRESS';
+      end if;
+
       select exists (
         select 1
         from public.herdharbor_sync_cohort c
@@ -580,6 +584,10 @@ begin
     raise exception using errcode = '55000', message = 'HH_SYNC_RECORD_WRITER_STAGE_REQUIRED';
   end if;
 
+  if v_metadata -> 'legacy_recovery_lock' = 'true'::jsonb then
+    raise exception using errcode = '55000', message = 'HH_SYNC_RECOVERY_IN_PROGRESS';
+  end if;
+
   if v_stage in ('dual_write', 'normalized') then
     if v_metadata -> 'normalized_writer_ready' is distinct from 'true'::jsonb
        or nullif(btrim(v_metadata ->> 'normalized_writer_version'), '') is null then
@@ -697,6 +705,7 @@ declare
   v_stage text := 'legacy';
   v_metadata jsonb := '{}'::jsonb;
   v_authority_active boolean := false;
+  v_recovery_pending boolean := false;
 begin
   if v_user is null then
     raise exception using errcode = '42501', message = 'HH_SYNC_AUTH_REQUIRED';
@@ -725,6 +734,10 @@ begin
      and v_metadata -> 'normalized_authority_ready' is distinct from 'true'::jsonb then
     v_authority_active := false;
   end if;
+  v_recovery_pending := coalesce(
+    v_metadata -> 'legacy_recovery_lock' = 'true'::jsonb,
+    false
+  );
 
   v_schema_verified := (
     to_regclass('public.herdharbor_sync_records') is not null
@@ -829,7 +842,8 @@ begin
     'percentage_enabled', false,
     'schema_verified', v_schema_verified,
     'stage', v_stage,
-    'authority_active', v_authority_active
+    'authority_active', v_authority_active,
+    'recovery_pending', v_recovery_pending
   );
 end;
 $$;
