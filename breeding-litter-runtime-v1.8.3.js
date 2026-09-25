@@ -371,7 +371,7 @@
       });
       $$('[data-edit-breeding]', $("#view-breeding")).forEach((button) =>
         button.addEventListener("click", () => openBreedingForm(button.dataset.editBreeding)));
-      $('[data-record-birth]', $("#view-breeding")).forEach((button) =>
+      $$('[data-record-birth]', $("#view-breeding")).forEach((button) =>
         button.addEventListener("click", () => openRecordBirth(button.dataset.recordBirth)));
     }
   
