@@ -37,6 +37,8 @@ const goodSchema = Object.freeze({
   verifyRpc: true,
   stageRpc: true,
   guardedWriterRpc: true,
+  authorityRpc: true,
+  recoveryRpc: true,
   legacyGuard: true
 });
 
@@ -81,6 +83,21 @@ function setup(initialManifest, overrides = {}) {
       current.metadata.verified_checksum = current.metadata.source_checksum;
       current.metadata.verification_record_count = current.metadata.normalized_record_count;
       return { ok: true, generation: current.sync_generation };
+    },
+    async activateNormalizedAuthority(input) {
+      calls.push(["activateNormalizedAuthority", input]);
+      assert.equal(current.cutover_stage, "dual_write");
+      assert.equal(input.expectedGeneration, current.sync_generation);
+      current.cutover_stage = "normalized";
+      current.sync_generation += 1;
+      current.metadata.normalized_authority_ready = true;
+      current.metadata.normalized_authority_version = input.authorityVersion;
+      return {
+        ok: true,
+        stage: "normalized",
+        generation: current.sync_generation,
+        authority_version: input.authorityVersion
+      };
     }
   };
   const cohortGate = overrides.cohortGate || { evaluate: () => ({ eligible: true, reason: "allowlisted" }) };
@@ -154,17 +171,40 @@ test("normalized writer preparation is guarded and does not itself promote autho
   assert.equal(state.calls.some((call) => call[0] === "setStage"), false);
 });
 
-test("normalized promotion blocks when fallback was observed and succeeds only after healthy validation", async () => {
+test("normalized authority activation blocks fallback evidence and requires the dedicated activation path", async () => {
   const blocked = setup(manifest("dual_write", { verified: true, writerReady: true }), {
     metrics: { ...goodMetrics, normalizedReadFallbackCount: 1 }
   });
   const decision = await blocked.control.promotionDecision("normalized", "user-1");
   assert.equal(decision.allowed, false);
   assert.ok(decision.reasons.includes("normalized-read-fallbacks-present"));
+  await assert.rejects(
+    () => blocked.control.activateAuthority({
+      userId: "user-1",
+      writerVersion: "writer-v1",
+      namespace: "legacy-state",
+      formatVersion: 2,
+      authorityVersion: "record-authority-v1"
+    }),
+    (error) => error?.code === "HH_SYNC_PROMOTION_BLOCKED"
+  );
 
   const healthy = setup(manifest("dual_write", { verified: true, writerReady: true }));
-  const result = await healthy.control.promote("normalized", { userId: "user-1" });
+  await assert.rejects(
+    () => healthy.control.promote("normalized", { userId: "user-1" }),
+    (error) => error?.code === "HH_SYNC_PROMOTION_BLOCKED" &&
+      error?.reasons?.includes("authority-activation-required")
+  );
+
+  const result = await healthy.control.activateAuthority({
+    userId: "user-1",
+    writerVersion: "writer-v1",
+    namespace: "legacy-state",
+    formatVersion: 2,
+    authorityVersion: "record-authority-v1"
+  });
   assert.equal(result.stage, "normalized");
+  assert.equal(healthy.getManifest().metadata.normalized_authority_ready, true);
 });
 
 test("illegal stage transitions remain blocked by the existing stage policy", async () => {
@@ -211,4 +251,6 @@ test("controlled rollout runtime is loaded while normalized dependencies stay se
   assert.match(runtimeSource, /percentageEnabled === true/);
   assert.match(runtimeSource, /allowlistUserIds: \[userId\]/);
   assert.doesNotMatch(runtimeSource, /promote\("normalized"/);
+  assert.match(runtimeSource, /activateAuthority/);
+  assert.match(runtimeSource, /promoteToNormalized/);
 });
