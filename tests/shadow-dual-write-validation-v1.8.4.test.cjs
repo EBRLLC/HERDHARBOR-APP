@@ -184,6 +184,9 @@ class RolloutRecordStore {
   }
 
   async applyRecordMutation(input) {
+    if (this.manifest?.metadata?.legacy_recovery_lock === true) {
+      throw Object.assign(new Error("HH_SYNC_RECOVERY_IN_PROGRESS"), { code: "HH_SYNC_RECOVERY_IN_PROGRESS" });
+    }
     if (this.failNextRecord === input.recordId) {
       this.failNextRecord = null;
       throw Object.assign(new Error("Failed to fetch"), { code: "network_error" });
@@ -269,7 +272,10 @@ class RolloutRecordStore {
         normalized_authority_activated_at: null,
         verified_checksum: null,
         last_shadow_verified_at: null,
-        verification_record_count: null
+        verification_record_count: null,
+        legacy_recovery_lock: targetStage === "legacy"
+          ? false
+          : this.manifest.metadata.legacy_recovery_lock === true
       };
     }
     return { ok: true, from_stage: from, stage: targetStage, generation: this.manifest.sync_generation };
@@ -337,6 +343,11 @@ class RolloutRecordStore {
     assert.equal(this.manifest.metadata.normalized_authority_ready, true);
     assert.equal(expectedGeneration, this.manifest.sync_generation);
     const copy = clone(snapshot);
+    this.manifest.metadata = {
+      ...this.manifest.metadata,
+      legacy_recovery_lock: true,
+      legacy_recovery_materialized_at: "2026-09-25T15:03:00.000Z"
+    };
     this.materializedRecovery = copy;
     if (typeof this.onMaterialize === "function") this.onMaterialize(copy);
     return {
@@ -391,7 +402,8 @@ async function harness() {
       stage: recordStore.manifest?.cutover_stage || "legacy",
       authorityActive:
         recordStore.manifest?.cutover_stage === "normalized" &&
-        recordStore.manifest?.metadata?.normalized_authority_ready === true
+        recordStore.manifest?.metadata?.normalized_authority_ready === true,
+      recoveryPending: recordStore.manifest?.metadata?.legacy_recovery_lock === true
     }),
     createNormalizedRecordStore: () => recordStore,
     readLegacySnapshotForNormalizedSync: async () => ({
@@ -768,4 +780,89 @@ test("already-open dual-write device discovers an external normalized authority 
   assert.equal(decision.authorityActive, true);
   assert.equal(h.runtime.status().stage, "normalized");
   assert.equal(h.runtime.isNormalizedAuthority(), true);
+});
+
+
+test("restart during rollback resumes to legacy before allowing either writer again", async () => {
+  const h = await harness();
+  await h.runtime.checkEligibility();
+  await h.runtime.afterLegacyCommit();
+  for (let i = 0; i < 3; i += 1) assert.equal((await h.runtime.validateNow()).ok, true);
+  await h.runtime.promoteToDualWrite();
+  for (let i = 0; i < 3; i += 1) assert.equal((await h.runtime.validateNow()).ok, true);
+  await h.runtime.promoteToNormalized();
+
+  const current = h.stateStore.getState();
+  current.animals[0].weight = 4.4;
+  h.stateStore.commit(current, { source: "local", reason: "pre-recovery-edit" });
+  assert.equal((await h.runtime.syncNormalizedNow()).ok, true);
+
+  const read = await h.runtime.refreshAuthoritative();
+  assert.equal(read.source, "normalized");
+  const manifest = await h.recordStore.getManifest();
+  await h.recordStore.materializeLegacyRecovery({
+    snapshot: read.snapshot,
+    expectedGeneration: manifest.sync_generation
+  });
+  await h.recordStore.setStage({
+    targetStage: "dual_write",
+    expectedGeneration: h.recordStore.manifest.sync_generation
+  });
+
+  assert.equal(h.recordStore.manifest.cutover_stage, "dual_write");
+  assert.equal(h.recordStore.manifest.metadata.legacy_recovery_lock, true);
+  await assert.rejects(
+    () => h.recordStore.applyRecordMutation({
+      namespace: Normalizer.namespace,
+      recordId: [...h.recordStore.rows.values()].find((row) => row.payload?.kind === "array_item").record_id,
+      payload: { kind: "array_item", key: "animals", value: { id: "a1", name: "Blocked" } },
+      payloadChecksum: "hh64:blocked",
+      expectedVersion: 1,
+      writerVersion: "record-cas-v1"
+    }),
+    (error) => error?.code === "HH_SYNC_RECOVERY_IN_PROGRESS"
+  );
+
+  h.cloud.getNormalizedSyncCohortStatus = async () => ({
+    eligible: false,
+    mode: "allowlist",
+    percentageEnabled: false,
+    schemaVerified: true,
+    stage: "dual_write",
+    authorityActive: false,
+    recoveryPending: true
+  });
+
+  const restarted = Runtime.create({
+    root: h.root,
+    cloud: h.cloud,
+    stateStore: h.stateStore,
+    loadDependencies: async () => true,
+    modules: {
+      recordStoreApi: RecordStoreApi,
+      normalizer: Normalizer,
+      baselineApi: {
+        createIndexedDbStore: () => Baseline.createMemoryStore({ ownerId: USER_ID })
+      },
+      workerApi: Worker,
+      cohortApi: Cohort,
+      shadowApi: Shadow,
+      bootstrapApi: Bootstrap,
+      reconciliationApi: Reconciliation,
+      stagePolicy: StagePolicy,
+      rolloutApi: Rollout,
+      dualWriteApi: Dual,
+      readApi: ReadFallback
+    },
+    telemetryAvailable: () => true
+  });
+
+  const hydration = await restarted.prepareHydration({ legacyDirty: false });
+  assert.equal(hydration.ok, true);
+  assert.equal(hydration.authoritative, false);
+  assert.equal(hydration.recoveryCompleted, true);
+  assert.equal(hydration.stage, "legacy");
+  assert.equal(h.recordStore.manifest.cutover_stage, "legacy");
+  assert.equal(h.recordStore.manifest.metadata.legacy_recovery_lock, false);
+  assert.equal(h.legacySnapshot.animals[0].weight, 4.4);
 });
