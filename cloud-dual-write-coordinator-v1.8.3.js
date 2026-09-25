@@ -23,6 +23,13 @@
     return value;
   }
 
+  function requiredRecordWorker(value) {
+    if (!value || typeof value.drain !== "function") {
+      throw new TypeError("A record-level normalized outbox worker is required.");
+    }
+    return value;
+  }
+
   function safeFailure(error, operation) {
     return {
       operation,
@@ -34,6 +41,7 @@
   function createDualWriteCoordinator(options = {}) {
     const writeLegacySnapshot = requiredFunction(options.writeLegacySnapshot, "writeLegacySnapshot");
     const shadowController = requiredShadowController(options.shadowController);
+    const recordWorker = options.recordWorker ? requiredRecordWorker(options.recordWorker) : null;
     const onEvent = typeof options.onEvent === "function" ? options.onEvent : () => {};
     const verifyAfterWrite = options.verifyAfterWrite === true;
     let enabled = options.enabled === true;
@@ -56,18 +64,15 @@
 
     async function verifyCurrent(snapshot) {
       if (!enabled) return Object.freeze({ skipped: true, reason: "disabled" });
-      return shadowController.verifyAndRecord(snapshot);
+      const syncResult = await shadowController.sync(snapshot);
+      const verification = await shadowController.verifyAndRecord(snapshot);
+      return Object.freeze({
+        ...verification,
+        checkpointSync: syncResult
+      });
     }
 
-    async function save(snapshot, saveOptions = {}) {
-      let legacyResult;
-      try {
-        legacyResult = await writeLegacySnapshot(snapshot, saveOptions.legacy || {});
-      } catch (error) {
-        emit("dual-write-failure", safeFailure(error, "legacy-write"));
-        throw error;
-      }
-
+    async function afterLegacySave(snapshot, legacyResult = {}) {
       if (!enabled) {
         const result = Object.freeze({
           ok: true,
@@ -92,15 +97,29 @@
         return result;
       }
 
+      if (!recordWorker) {
+        const failure = {
+          operation: "normalized-write",
+          errorCode: "HH_SYNC_RECORD_WORKER_REQUIRED"
+        };
+        emit("dual-write-degraded", failure);
+        return Object.freeze({
+          ok: true,
+          mode: "dual-write-degraded",
+          legacySaved: true,
+          normalizedSaved: false,
+          normalizedCurrent: false,
+          normalizedVerified: false,
+          normalizedPending: true,
+          verificationPending: false,
+          normalizedErrorCode: failure.errorCode,
+          legacyResult
+        });
+      }
+
       let normalizedResult;
       try {
-        normalizedResult = await shadowController.sync(snapshot, {
-          legacySnapshotUpdatedAt:
-            saveOptions.legacySnapshotUpdatedAt ||
-            legacyResult?.updated_at ||
-            legacyResult?.updatedAt ||
-            undefined
-        });
+        normalizedResult = await recordWorker.drain();
       } catch (error) {
         const failure = safeFailure(error, "normalized-write");
         emit("dual-write-degraded", failure);
@@ -118,163 +137,95 @@
         });
       }
 
-      if (normalizedResult?.skipped) {
-        const reason = String(normalizedResult.reason || "normalized-write-skipped").slice(0, 80);
-        if (reason === "already-current") {
-          const alreadyVerified = normalizedResult.verified === true;
-          if (verifyAfterWrite && !alreadyVerified) {
-            try {
-              const verification = await shadowController.verifyAndRecord(snapshot);
-              return Object.freeze({
-                ok: true,
-                mode: "dual-write",
-                legacySaved: true,
-                normalizedSaved: false,
-                normalizedCurrent: true,
-                normalizedVerified: verification?.ok === true,
-                normalizedPending: false,
-                verificationPending: verification?.ok !== true,
-                normalizedGeneration: normalizedResult?.generation ?? null,
-                verifiedAt: verification?.verifiedAt || null,
-                legacyResult
-              });
-            } catch (error) {
-              const failure = safeFailure(error, "normalized-verify");
-              emit("dual-write-degraded", failure);
-              return Object.freeze({
-                ok: true,
-                mode: "dual-write-degraded",
-                legacySaved: true,
-                normalizedSaved: false,
-                normalizedCurrent: true,
-                normalizedVerified: false,
-                normalizedPending: false,
-                verificationPending: true,
-                normalizedErrorCode: failure.errorCode,
-                legacyResult
-              });
-            }
-          }
-          const result = Object.freeze({
-            ok: true,
-            mode: "dual-write",
-            legacySaved: true,
-            normalizedSaved: false,
-            normalizedCurrent: true,
-            normalizedVerified: alreadyVerified,
-            normalizedPending: false,
-            verificationPending: !alreadyVerified,
-            normalizedGeneration: normalizedResult?.generation ?? null,
-            legacyResult
-          });
-          emit("dual-write-complete", {
-            mode: result.mode,
-            normalizedCurrent: true,
-            normalizedVerified: result.normalizedVerified,
-            verificationPending: result.verificationPending
-          });
-          return result;
-        }
-
-        const result = Object.freeze({
-          ok: true,
-          mode: "dual-write-degraded",
-          legacySaved: true,
-          normalizedSaved: false,
-          normalizedCurrent: reason === "normalized-authoritative",
-          normalizedVerified: false,
-          normalizedPending: reason !== "normalized-authoritative",
-          verificationPending: false,
-          normalizedReason: reason,
-          legacyResult
-        });
+      const normalizedFailed = normalizedResult?.ok === false || Number(normalizedResult?.failed || 0) > 0;
+      if (normalizedFailed) {
+        const errorCode = Number(normalizedResult?.conflicts || 0) > 0
+          ? "HH_SYNC_RECORD_CONFLICT"
+          : String(normalizedResult?.results?.find?.((entry) => entry?.errorClass)?.errorClass || "HH_SYNC_RECORD_RETRY_PENDING");
         emit("dual-write-degraded", {
           operation: "normalized-write",
-          reason,
-          normalizedPending: result.normalizedPending
+          errorCode,
+          normalizedPending: true
         });
-        return result;
-      }
-
-      // A full normalized read/reassembly is deliberately not performed after
-      // every legacy save. Atomic generation/version guards make the write safe;
-      // explicit verification is performed at shadow bootstrap, on demand, and
-      // immediately before any stage promotion that requires it.
-      if (!verifyAfterWrite) {
-        const result = Object.freeze({
-          ok: true,
-          mode: "dual-write",
-          legacySaved: true,
-          normalizedSaved: true,
-          normalizedCurrent: true,
-          normalizedVerified: false,
-          normalizedPending: false,
-          verificationPending: true,
-          normalizedGeneration: normalizedResult?.generation ?? null,
-          legacyResult
-        });
-        emit("dual-write-complete", {
-          mode: result.mode,
-          legacySaved: true,
-          normalizedSaved: true,
-          normalizedCurrent: true,
-          normalizedVerified: false,
-          normalizedPending: false,
-          verificationPending: true,
-          normalizedGeneration: result.normalizedGeneration
-        });
-        return result;
-      }
-
-      try {
-        const verification = await shadowController.verifyAndRecord(snapshot);
-        const result = Object.freeze({
-          ok: true,
-          mode: "dual-write",
-          legacySaved: true,
-          normalizedSaved: true,
-          normalizedCurrent: true,
-          normalizedVerified: verification?.ok === true,
-          normalizedPending: false,
-          verificationPending: verification?.ok !== true,
-          normalizedGeneration: normalizedResult?.generation ?? null,
-          verifiedAt: verification?.verifiedAt || null,
-          legacyResult
-        });
-        emit("dual-write-complete", {
-          mode: result.mode,
-          legacySaved: true,
-          normalizedSaved: true,
-          normalizedCurrent: true,
-          normalizedVerified: result.normalizedVerified,
-          normalizedPending: false,
-          verificationPending: result.verificationPending,
-          normalizedGeneration: result.normalizedGeneration
-        });
-        return result;
-      } catch (error) {
-        const failure = safeFailure(error, "normalized-verify");
-        emit("dual-write-degraded", failure);
         return Object.freeze({
           ok: true,
           mode: "dual-write-degraded",
           legacySaved: true,
-          normalizedSaved: true,
-          normalizedCurrent: true,
+          normalizedSaved: Number(normalizedResult?.succeeded || 0) > 0,
+          normalizedCurrent: false,
           normalizedVerified: false,
-          normalizedPending: false,
-          verificationPending: true,
-          normalizedGeneration: normalizedResult?.generation ?? null,
-          normalizedErrorCode: failure.errorCode,
+          normalizedPending: true,
+          verificationPending: false,
+          normalizedErrorCode: errorCode,
+          normalizedResult,
           legacyResult
         });
       }
+
+      let verification = null;
+      if (verifyAfterWrite) {
+        try {
+          verification = await verifyCurrent(snapshot);
+        } catch (error) {
+          const failure = safeFailure(error, "normalized-verify");
+          emit("dual-write-degraded", failure);
+          return Object.freeze({
+            ok: true,
+            mode: "dual-write-degraded",
+            legacySaved: true,
+            normalizedSaved: true,
+            normalizedCurrent: true,
+            normalizedVerified: false,
+            normalizedPending: false,
+            verificationPending: true,
+            normalizedErrorCode: failure.errorCode,
+            normalizedResult,
+            legacyResult
+          });
+        }
+      }
+
+      const result = Object.freeze({
+        ok: true,
+        mode: "dual-write",
+        legacySaved: true,
+        normalizedSaved: Number(normalizedResult?.processed || 0) > 0,
+        normalizedCurrent: true,
+        normalizedVerified: verification?.ok === true,
+        normalizedPending: false,
+        verificationPending: verifyAfterWrite ? verification?.ok !== true : true,
+        normalizedResult,
+        verifiedAt: verification?.verifiedAt || null,
+        legacyResult
+      });
+      emit("dual-write-complete", {
+        mode: result.mode,
+        legacySaved: true,
+        normalizedSaved: result.normalizedSaved,
+        normalizedCurrent: true,
+        normalizedVerified: result.normalizedVerified,
+        normalizedPending: false,
+        verificationPending: result.verificationPending
+      });
+      return result;
+    }
+
+    async function save(snapshot, saveOptions = {}) {
+      let legacyResult;
+      try {
+        legacyResult = await writeLegacySnapshot(snapshot, saveOptions.legacy || {});
+      } catch (error) {
+        emit("dual-write-failure", safeFailure(error, "legacy-write"));
+        throw error;
+      }
+      return afterLegacySave(snapshot, legacyResult);
     }
 
     return Object.freeze({
       setEnabled,
       isEnabled,
       verifyCurrent,
+      afterLegacySave,
       save
     });
   }
