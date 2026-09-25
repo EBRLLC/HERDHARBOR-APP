@@ -16,6 +16,7 @@ const Reconciliation = require("../cloud-sync-reconciliation-v1.8.3.js");
 const StagePolicy = require("../cloud-sync-stage-policy-v1.8.3.js");
 const Rollout = require("../cloud-sync-rollout-control-v1.8.3.js");
 const Dual = require("../cloud-dual-write-coordinator-v1.8.3.js");
+const ReadFallback = require("../cloud-normalized-read-fallback-v1.8.3.js");
 
 const OWNER_KEY = "herdharbor_active_user_v1";
 const STATE_KEY = "herdharbor_pre_alpha_v1";
@@ -368,7 +369,8 @@ async function harness() {
     reconciliationApi: Reconciliation,
     stagePolicy: StagePolicy,
     rolloutApi: Rollout,
-    dualWriteApi: Dual
+    dualWriteApi: Dual,
+    readApi: ReadFallback
   };
 
   const runtime = Runtime.create({
