@@ -2768,6 +2768,28 @@
     returnMemberToAutomatic
   };
 
+  if (
+    window.HerdHarborNormalizedSyncRolloutRuntime?.createBrowserRuntime &&
+    canonicalStateStore
+  ) {
+    try {
+      normalizedRollout = window.HerdHarborNormalizedSyncRolloutRuntime.createBrowserRuntime(window);
+      window.HerdHarborNormalizedSyncRollout = normalizedRollout;
+      void normalizedRollout.start({ confirmLegacy: false }).catch((error) => {
+        console.warn(
+          "HerdHarbor normalized rollout stayed disabled:",
+          error?.code || error?.message || error
+        );
+      });
+    } catch (error) {
+      console.warn(
+        "HerdHarbor normalized rollout could not initialize:",
+        error?.code || error?.message || error
+      );
+      normalizedRollout = null;
+    }
+  }
+
   initialize().catch((error) => {
     console.error("HerdHarbor cloud initialization failed:", error);
     ensureStyles();
