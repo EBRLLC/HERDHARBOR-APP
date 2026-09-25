@@ -706,3 +706,43 @@ test("already-active normalized authority remains readable even if forward cohor
   assert.equal(hydration.ok, true);
   assert.equal(hydration.snapshot.animals[0].weight, h.stateStore.getState().animals[0].weight);
 });
+
+
+test("failed post-activation normalized read materializes recovery and rolls fully back to legacy", async () => {
+  const h = await harness();
+  await h.runtime.checkEligibility();
+  await h.runtime.afterLegacyCommit();
+
+  for (let i = 0; i < 3; i += 1) {
+    assert.equal((await h.runtime.validateNow()).ok, true);
+  }
+  await h.runtime.promoteToDualWrite();
+
+  for (let i = 0; i < 3; i += 1) {
+    assert.equal((await h.runtime.validateNow()).ok, true);
+  }
+
+  const originalList = h.recordStore.list.bind(h.recordStore);
+  let injected = false;
+  h.recordStore.list = async (...args) => {
+    if (!injected && h.recordStore.manifest?.cutover_stage === "normalized") {
+      injected = true;
+      throw Object.assign(new Error("post-cutover read failed"), { code: "HH_SYNC_READ_TEST" });
+    }
+    return originalList(...args);
+  };
+
+  await assert.rejects(
+    () => h.runtime.promoteToNormalized(),
+    (error) => error?.code === "HH_SYNC_READ_TEST" || /read failed/i.test(error?.message || "")
+  );
+
+  assert.equal(injected, true);
+  assert.equal(h.runtime.status().stage, "legacy");
+  assert.equal(h.recordStore.manifest.cutover_stage, "legacy");
+  assert.equal(h.recordStore.manifest.metadata.normalized_authority_ready, false);
+  assert.equal(h.recordStore.manifest.metadata.normalized_writer_ready, false);
+  assert.equal(h.recordStore.manifest.metadata.legacy_recovery_lock, false);
+  assert.deepEqual(h.legacySnapshot, sourceState(), "recovery snapshot remains the verified pre-cutover state");
+  assert.ok(h.recordStore.rows.size > 0, "normalized rows are retained for diagnosis/retry");
+});
