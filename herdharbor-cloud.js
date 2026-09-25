@@ -2746,7 +2746,8 @@
       stage: ["legacy", "shadow", "dual_write", "normalized"].includes(String(data?.stage || "legacy"))
         ? String(data.stage)
         : "legacy",
-      authorityActive: data?.authority_active === true
+      authorityActive: data?.authority_active === true,
+      recoveryPending: data?.recovery_pending === true
     });
   }
 
