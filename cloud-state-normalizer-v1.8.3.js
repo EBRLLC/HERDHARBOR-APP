@@ -657,6 +657,7 @@
     snapshotManifestId: SNAPSHOT_MANIFEST_ID,
     stableStringify,
     snapshotChecksum,
+    checksumValue,
     mapLegacySnapshot,
     reassembleLegacySnapshot,
     reassembleLegacySnapshotWithMetadata,
