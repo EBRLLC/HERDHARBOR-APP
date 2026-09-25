@@ -63,6 +63,8 @@ with object_checks as (
     to_regprocedure('public.herdharbor_sync_mark_verified(bigint,text,integer)') is not null as verify_rpc,
     to_regprocedure('public.herdharbor_sync_set_stage(text,bigint)') is not null as stage_rpc,
     to_regprocedure('public.herdharbor_sync_prepare_normalized_writer_guarded(bigint,text,text,integer)') is not null as guarded_writer_rpc,
+    to_regprocedure('public.herdharbor_sync_activate_normalized_authority(bigint,text,text,integer,text)') is not null as authority_rpc,
+    to_regprocedure('public.herdharbor_sync_materialize_legacy_recovery(jsonb,bigint)') is not null as recovery_rpc,
     coalesce(has_function_privilege(
       'authenticated',
       to_regprocedure('public.herdharbor_sync_apply_batch(jsonb,jsonb,jsonb)'),
@@ -93,6 +95,16 @@ with object_checks as (
       to_regprocedure('public.herdharbor_sync_prepare_normalized_writer_guarded(bigint,text,text,integer)'),
       'EXECUTE'
     ), false) as guarded_writer_authenticated_execute,
+    coalesce(has_function_privilege(
+      'authenticated',
+      to_regprocedure('public.herdharbor_sync_activate_normalized_authority(bigint,text,text,integer,text)'),
+      'EXECUTE'
+    ), false) as authority_authenticated_execute,
+    coalesce(has_function_privilege(
+      'authenticated',
+      to_regprocedure('public.herdharbor_sync_materialize_legacy_recovery(jsonb,bigint)'),
+      'EXECUTE'
+    ), false) as recovery_authenticated_execute,
     not coalesce(has_function_privilege(
       'authenticated',
       to_regprocedure('public.herdharbor_sync_prepare_normalized_writer(bigint,text,text,integer)'),
@@ -109,6 +121,8 @@ with object_checks as (
           'herdharbor_sync_apply_batch',
           'herdharbor_sync_apply_record',
           'herdharbor_sync_cohort_status',
+          'herdharbor_sync_activate_normalized_authority',
+          'herdharbor_sync_materialize_legacy_recovery',
           'herdharbor_sync_mark_verified',
           'herdharbor_sync_prepare_normalized_writer',
           'herdharbor_sync_prepare_normalized_writer_guarded',
@@ -147,6 +161,8 @@ summary as (
       verify_authenticated_execute and
       stage_authenticated_execute and
       guarded_writer_authenticated_execute and
+      authority_authenticated_execute and
+      recovery_authenticated_execute and
       unguarded_writer_not_exposed and
       no_anon_sync_function_execute
     ) as rpc_acl
@@ -158,6 +174,7 @@ select
     records_table and manifest_table and cohort_table and
     owner_rls and no_browser_cohort_table_access and
     batch_rpc and record_rpc and cohort_rpc and verify_rpc and stage_rpc and guarded_writer_rpc and
+    authority_rpc and recovery_rpc and
     rpc_acl and legacy_guard and legacy_authority_only
   ) as verified
 from summary;
