@@ -69,6 +69,7 @@ function makeBridge(seed = {}) {
     "versionKey",
     "canonicalStateStore",
     "safeParse",
+    "activeStateRaw",
     "safeStorageSet",
     "window",
     "CustomEvent",
@@ -81,6 +82,7 @@ function makeBridge(seed = {}) {
 ${bridgeSource}
 return {
   restoreMissingCloudBaseline,
+  captureCleanBaselineBeforeLocalCommit,
   handleCanonicalStateCommit,
   installStateStoreBridge,
   sequence:()=>writeSequence
@@ -95,6 +97,7 @@ return {
     (id) => `herdharbor_user_cloud_version_${id}`,
     stateStore,
     safeParse,
+    () => stateStore.compatibilitySnapshot(),
     (key, value) => { storage.setItem(key, value); return true; },
     windowObject,
     CustomEvent,
