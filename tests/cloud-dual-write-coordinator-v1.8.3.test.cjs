@@ -142,7 +142,7 @@ test("normalized worker failure after legacy success degrades safely and remains
     }
   });
   const result = await state.coordinator.save(fixture);
-  assert.equal(result.ok, true);
+  assert.equal(result.ok, false);
   assert.equal(result.mode, "dual-write-degraded");
   assert.equal(result.legacySaved, true);
   assert.equal(result.normalizedSaved, true);
@@ -158,7 +158,7 @@ test("provider exception after legacy success does not invalidate legacy save", 
     workerError: Object.assign(new Error("provider details with record payload"), { code: "NETWORK" })
   });
   const result = await state.coordinator.save(fixture);
-  assert.equal(result.ok, true);
+  assert.equal(result.ok, false);
   assert.equal(result.mode, "dual-write-degraded");
   assert.equal(result.legacySaved, true);
   assert.equal(result.normalizedPending, true);
