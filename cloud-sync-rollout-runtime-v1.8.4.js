@@ -523,7 +523,14 @@
       stateStore: root.HerdHarborStateStore,
       indexedDB: root.indexedDB,
       loadDependencies: browserScriptLoader(root),
-      telemetryAvailable: () => Boolean(root.HerdHarborMonitoringConfig)
+      telemetryAvailable: () => {
+        try {
+          const status = root.HerdHarborMonitoring?.getStatus?.();
+          return status?.initialized === true && status?.enabled === true;
+        } catch {
+          return false;
+        }
+      }
     });
   }
 
