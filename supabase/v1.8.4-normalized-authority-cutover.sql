@@ -16,6 +16,7 @@ as $$
 declare
   v_user uuid;
   v_stage text;
+  v_recovery_lock boolean := false;
   v_recovery_write boolean := false;
 begin
   v_user := case when tg_op = 'DELETE' then old.user_id else new.user_id end;
@@ -29,12 +30,14 @@ begin
     ''
   ) = 'on';
 
-  select cutover_stage
-  into v_stage
+  select
+    cutover_stage,
+    coalesce(metadata -> 'legacy_recovery_lock' = 'true'::jsonb, false)
+  into v_stage, v_recovery_lock
   from public.herdharbor_sync_manifest
   where user_id = v_user;
 
-  if v_stage = 'normalized' and not v_recovery_write then
+  if (v_stage = 'normalized' or v_recovery_lock) and not v_recovery_write then
     raise exception using
       errcode = '55000',
       message = 'HH_SYNC_LEGACY_WRITE_BLOCKED_AFTER_CUTOVER';
@@ -232,7 +235,8 @@ begin
     metadata = metadata || jsonb_build_object(
       'normalized_authority_ready', true,
       'normalized_authority_version', btrim(p_authority_version),
-      'normalized_authority_activated_at', v_activated_at
+      'normalized_authority_activated_at', v_activated_at,
+      'legacy_recovery_lock', false
     ),
     sync_generation = sync_generation + 1
   where user_id = v_user
@@ -293,6 +297,18 @@ begin
     raise exception using errcode = '55000', message = 'HH_SYNC_NORMALIZED_AUTHORITY_REQUIRED';
   end if;
   if v_generation <> p_expected_generation then
+    raise exception using errcode = '40001', message = 'HH_SYNC_CONFLICT';
+  end if;
+
+  update public.herdharbor_sync_manifest
+  set metadata = metadata || jsonb_build_object(
+    'legacy_recovery_lock', true,
+    'legacy_recovery_materialized_at', now()
+  )
+  where user_id = v_user
+    and sync_generation = p_expected_generation;
+
+  if not found then
     raise exception using errcode = '40001', message = 'HH_SYNC_CONFLICT';
   end if;
 
@@ -402,7 +418,11 @@ begin
           'normalized_writer_prepared_at', null,
           'normalized_authority_ready', false,
           'normalized_authority_version', null,
-          'normalized_authority_activated_at', null
+          'normalized_authority_activated_at', null,
+          'legacy_recovery_lock', case
+            when p_target_stage = 'legacy' then false
+            else coalesce(metadata -> 'legacy_recovery_lock' = 'true'::jsonb, false)
+          end
         )
         else metadata
       end,
