@@ -129,6 +129,7 @@
             stage: String(detail.stage || context?.stage || "legacy").slice(0, 32),
             ok: detail.ok === true,
             eligible: eligibility?.eligible === true,
+        authorityActive: eligibility?.authorityActive === true,
             validationPasses,
             reason: String(detail.reason || "").slice(0, 120) || null
           }
@@ -172,17 +173,20 @@
         if (!userId) throw Object.assign(new Error("A signed-in session is required."), { code: "HH_SYNC_NO_SESSION" });
 
         eligibility = await cloud.getNormalizedSyncCohortStatus();
+        const authorityRecovery =
+          eligibility?.authorityActive === true &&
+          eligibility?.stage === "normalized";
         if (
-          eligibility?.eligible !== true ||
+          (eligibility?.eligible !== true && !authorityRecovery) ||
           eligibility?.mode !== "allowlist" ||
           eligibility?.percentageEnabled === true ||
           eligibility?.schemaVerified !== true
         ) {
           const reason = eligibility?.percentageEnabled === true
             ? "percentage-rollout-forbidden"
-            : eligibility?.eligible !== true
-              ? "not-in-internal-cohort"
-              : "schema-not-ready";
+            : eligibility?.schemaVerified !== true
+              ? "schema-not-ready"
+              : "not-in-internal-cohort";
           emit("rollout-disabled", { reason });
           return null;
         }
@@ -424,7 +428,7 @@
     function isNormalizedAuthority() {
       return Boolean(
         context &&
-        eligibility?.eligible === true &&
+        eligibility?.authorityActive === true &&
         eligibility?.schemaVerified === true &&
         context.stage === "normalized"
       );
@@ -765,8 +769,11 @@
 
     async function checkEligibility() {
       eligibility = await cloud.getNormalizedSyncCohortStatus();
+      const authorityRecovery =
+        eligibility?.authorityActive === true &&
+        eligibility?.stage === "normalized";
       if (
-        eligibility?.eligible !== true ||
+        (eligibility?.eligible !== true && !authorityRecovery) ||
         eligibility?.mode !== "allowlist" ||
         eligibility?.percentageEnabled === true ||
         eligibility?.schemaVerified !== true
@@ -785,11 +792,18 @@
         commitChain = commitChain.then(afterLegacyCommit, afterLegacyCommit);
       });
       root?.document?.addEventListener?.("herdharbor:auth-session", () => {
+        const currentUserId = safeText(cloud.getSession?.()?.user?.id);
+        if (context && currentUserId && context.userId === currentUserId) {
+          void cloud.getNormalizedSyncCohortStatus()
+            .then((next) => { eligibility = next; })
+            .catch(() => {});
+          return;
+        }
         context = null;
         eligibility = null;
         validationPasses = 0;
         lastValidation = null;
-        void checkEligibility().catch(() => {});
+        if (currentUserId) void checkEligibility().catch(() => {});
       });
 
       const session = await cloud.getSession();
