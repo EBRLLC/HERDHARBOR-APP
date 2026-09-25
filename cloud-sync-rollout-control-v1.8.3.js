@@ -8,7 +8,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (stagePolicy) {
   "use strict";
 
-  const VERSION = "1.0-rollout-guardrails";
+  const VERSION = "1.1-authority-activation";
   const RELEASE = "1.8.3";
   const BUILD = "cloud-sync-rollout-control-1";
 
@@ -22,6 +22,8 @@
     "verifyRpc",
     "stageRpc",
     "guardedWriterRpc",
+    "authorityRpc",
+    "recoveryRpc",
     "legacyGuard"
   ]);
 
@@ -186,6 +188,26 @@
       return store.setStage({ targetStage, expectedGeneration: generation });
     }
 
+    async function activateAuthority({ userId, writerVersion, namespace, formatVersion, authorityVersion } = {}) {
+      const decision = await promotionDecision("normalized", userId);
+      if (!decision.allowed) throw rolloutError(decision);
+      if (typeof store.activateNormalizedAuthority !== "function") {
+        throw rolloutError({ ...decision, reasons: ["authority-activation-rpc-missing"] });
+      }
+      const manifest = await store.getManifest();
+      const generation = stagePolicy.generationOf(manifest);
+      if (generation === null) {
+        throw rolloutError({ ...decision, reasons: ["manifest-generation-missing"] });
+      }
+      return store.activateNormalizedAuthority({
+        expectedGeneration: generation,
+        writerVersion,
+        namespace,
+        formatVersion,
+        authorityVersion
+      });
+    }
+
     async function prepareWriter({ userId, writerVersion, namespace, formatVersion } = {}) {
       const decision = await promotionDecision("normalized", userId);
       const allowedReasons = new Set(["normalized-writer-required"]);
@@ -221,6 +243,7 @@
       build: BUILD,
       promotionDecision,
       promote,
+      activateAuthority,
       prepareWriter,
       rollback
     });
