@@ -523,6 +523,18 @@
     }
   }
 
+  function dispatchLegacyCloudCommit(sequence, updatedAt) {
+    try {
+      document.dispatchEvent(new CustomEvent("herdharbor:legacy-cloud-commit", {
+        detail: {
+          sequence: Number(sequence || 0),
+          updatedAt: updatedAt || null,
+          userIdPresent: Boolean(session?.user?.id)
+        }
+      }));
+    } catch {}
+  }
+
   function safeParse(value) {
     if (!value) return null;
     try {
@@ -1176,6 +1188,7 @@
       }
       syncConflict = null;
       setSyncState("Saved to cloud", "success");
+      dispatchLegacyCloudCommit(sequence, remoteRecord.updated_at || null);
       return true;
     }
 
@@ -1328,6 +1341,7 @@
       autoMerged ? "Device and cloud changes combined and saved" : "Saved to cloud",
       "success"
     );
+    dispatchLegacyCloudCommit(sequence, savedRecord?.updated_at || null);
     return true;
   }
 
@@ -2487,11 +2501,43 @@
     checkForCloudChanges();
   });
 
+  async function getNormalizedSyncCohortStatus() {
+    if (!session?.user?.id) return Object.freeze({ eligible: false, mode: "allowlist", percentageEnabled: false, schemaVerified: false });
+    const { data, error } = await client.rpc("herdharbor_sync_cohort_status");
+    if (error) throw new Error(error.message || "Normalized sync cohort status could not be read.");
+    return Object.freeze({
+      eligible: data?.eligible === true,
+      mode: String(data?.mode || "allowlist") === "allowlist" ? "allowlist" : "invalid",
+      percentageEnabled: data?.percentage_enabled === true,
+      schemaVerified: data?.schema_verified === true
+    });
+  }
+
+  function createNormalizedRecordStore() {
+    if (!session?.user?.id) throw new Error("Sign in before creating the normalized record store.");
+    const api = window.HerdHarborCloudRecordStore;
+    if (!api?.createRecordStore) throw new Error("The normalized record-store module is not loaded.");
+    return api.createRecordStore({ client, userId: session.user.id });
+  }
+
+  async function readLegacySnapshotForNormalizedSync() {
+    if (!session?.user?.id) throw new Error("Sign in before reading the legacy cloud snapshot.");
+    const { data, error } = await fetchCloudRecord(session.user.id);
+    if (error) throw new Error(error.message || "The legacy cloud snapshot could not be read.");
+    return {
+      snapshot: data?.app_state && typeof data.app_state === "object" ? data.app_state : {},
+      updatedAt: data?.updated_at || null
+    };
+  }
+
   window.HerdHarborCloud = {
     syncNow,
     invokeFunction,
     invokeFunctionWithDiagnostics,
     getSession: () => session,
+    getNormalizedSyncCohortStatus,
+    createNormalizedRecordStore,
+    readLegacySnapshotForNormalizedSync,
     getSyncState: () => syncState,
     getSyncDetails,
     hasUnsyncedChanges: () => {
