@@ -746,3 +746,26 @@ test("failed post-activation normalized read materializes recovery and rolls ful
   assert.deepEqual(h.legacySnapshot, sourceState(), "recovery snapshot remains the verified pre-cutover state");
   assert.ok(h.recordStore.rows.size > 0, "normalized rows are retained for diagnosis/retry");
 });
+
+
+test("already-open dual-write device discovers an external normalized authority cutover", async () => {
+  const h = await harness();
+  await h.runtime.checkEligibility();
+  await h.runtime.afterLegacyCommit();
+  for (let i = 0; i < 3; i += 1) assert.equal((await h.runtime.validateNow()).ok, true);
+  await h.runtime.promoteToDualWrite();
+
+  assert.equal(h.runtime.status().stage, "dual_write");
+  h.recordStore.manifest.cutover_stage = "normalized";
+  h.recordStore.manifest.sync_generation += 1;
+  h.recordStore.manifest.metadata.normalized_authority_ready = true;
+  h.recordStore.manifest.metadata.normalized_authority_version = "record-authority-v1";
+
+  const decision = await h.runtime.checkEligibility();
+
+  assert.equal(decision.active, true);
+  assert.equal(decision.stage, "normalized");
+  assert.equal(decision.authorityActive, true);
+  assert.equal(h.runtime.status().stage, "normalized");
+  assert.equal(h.runtime.isNormalizedAuthority(), true);
+});
