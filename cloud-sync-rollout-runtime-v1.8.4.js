@@ -610,7 +610,6 @@
       const activated = await ctx.rolloutControl.activateAuthority({
         userId: ctx.userId,
         writerVersion: WRITER_VERSION,
-    authorityVersion: AUTHORITY_VERSION,
         namespace: ctx.normalizer.namespace,
         formatVersion: ctx.normalizer.formatVersion,
         authorityVersion: AUTHORITY_VERSION
@@ -865,6 +864,7 @@
     release: RELEASE,
     requiredValidationPasses: REQUIRED_VALIDATION_PASSES,
     writerVersion: WRITER_VERSION,
+    authorityVersion: AUTHORITY_VERSION,
     dependencies: DEPENDENCIES,
     reconciliationPass,
     create,
