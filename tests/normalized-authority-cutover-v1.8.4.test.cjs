@@ -79,3 +79,12 @@ test("authority and recovery RPCs are authenticated-only and cohort status can r
   assert.match(sql, /v_authority_active\s*:=\s*v_stage\s*=\s*'normalized'/i);
   assert.match(sql, /'recovery_pending', v_recovery_pending/i);
 });
+
+
+test("a stale installed PWA cannot resume legacy full-state writes after normalized cutover", () => {
+  const guard = sql.match(/create or replace function public\.herdharbor_block_legacy_write_after_normalized\(\)[\s\S]*?\$\$;/i)?.[0] || "";
+  assert.match(guard, /v_stage = 'normalized' or v_recovery_lock/i);
+  assert.match(guard, /HH_SYNC_LEGACY_WRITE_BLOCKED_AFTER_CUTOVER/);
+  assert.match(guard, /current_setting\('herdharbor\.normalized_recovery_write'/i);
+  assert.doesNotMatch(guard, /user.agent|app.version|service.worker|client.version/i);
+});
