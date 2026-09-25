@@ -21,12 +21,13 @@ test("v1.8.4 normalized readiness binds schema, preflight, rollout, fallback and
   assert.match(preflight,/READ ONLY/i);
   assert.match(readiness,/legacy -> shadow -> dual_write -> normalized/);
   assert.match(readiness,/normalized -> dual_write -> shadow -> legacy/);
-  assert.match(index,/cloud-sync-rollout-control-v1\.8\.3\.js/);
-  assert.match(index,/cloud-sync-validation-runtime-v1\.8\.4\.js/);
-  const validation=read("cloud-sync-validation-runtime-v1.8.4.js");
-  assert.match(validation,/mode === "allowlist"/);
-  assert.match(validation,/percentageEnabled === false/);
-  assert.doesNotMatch(validation,/normalized-authority-enabled/);
+  assert.match(index,/cloud-sync-rollout-runtime-v1\.8\.4\.js/);
+  assert.doesNotMatch(index,/cloud-sync-rollout-control-v1\.8\.3\.js/);
+  const rollout=read("cloud-sync-rollout-runtime-v1.8.4.js");
+  assert.match(rollout,/eligibility\?\.mode !== "allowlist"/);
+  assert.match(rollout,/eligibility\?\.percentageEnabled === true/);
+  assert.match(rollout,/REQUIRED_VALIDATION_PASSES = 3/);
+  assert.doesNotMatch(rollout,/promote\("normalized"/);
 });
 
 test("v1.8.4 normalized readiness preserves owner RLS and no destructive legacy cleanup",()=>{
