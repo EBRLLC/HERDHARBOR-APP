@@ -253,13 +253,20 @@ class RolloutRecordStore {
     }
     this.manifest.cutover_stage = targetStage;
     this.manifest.sync_generation += 1;
-    if (targetStage === "legacy" || targetStage === "shadow" && from === "dual_write") {
+    const isRollback =
+      (from === "normalized" && targetStage === "dual_write") ||
+      (from === "dual_write" && targetStage === "shadow") ||
+      (from === "shadow" && targetStage === "legacy");
+    if (isRollback) {
       this.manifest.normalized_verified_at = null;
       this.manifest.metadata = {
         ...this.manifest.metadata,
         normalized_writer_ready: false,
         normalized_writer_version: null,
         normalized_writer_prepared_at: null,
+        normalized_authority_ready: false,
+        normalized_authority_version: null,
+        normalized_authority_activated_at: null,
         verified_checksum: null,
         last_shadow_verified_at: null,
         verification_record_count: null
@@ -298,6 +305,47 @@ class RolloutRecordStore {
       writer_version: writerVersion
     };
   }
+
+  async activateNormalizedAuthority({ expectedGeneration, writerVersion, namespace, formatVersion, authorityVersion }) {
+    assert.equal(expectedGeneration, this.manifest.sync_generation);
+    assert.equal(this.manifest.cutover_stage, "dual_write");
+    assert.ok(this.manifest.normalized_verified_at);
+    assert.equal(this.manifest.metadata.verified_checksum, this.manifest.metadata.source_checksum);
+    assert.equal(this.manifest.metadata.normalized_writer_ready, true);
+    assert.equal(this.manifest.metadata.normalized_writer_version, writerVersion);
+    assert.equal(namespace, Normalizer.namespace);
+    assert.equal(formatVersion, Normalizer.formatVersion);
+    assert.equal(authorityVersion, "record-authority-v1");
+    this.manifest.cutover_stage = "normalized";
+    this.manifest.metadata = {
+      ...this.manifest.metadata,
+      normalized_authority_ready: true,
+      normalized_authority_version: authorityVersion,
+      normalized_authority_activated_at: "2026-09-25T15:02:00.000Z"
+    };
+    this.manifest.sync_generation += 1;
+    return {
+      ok: true,
+      stage: "normalized",
+      generation: this.manifest.sync_generation,
+      authority_version: authorityVersion
+    };
+  }
+
+  async materializeLegacyRecovery({ snapshot, expectedGeneration }) {
+    assert.equal(this.manifest.cutover_stage, "normalized");
+    assert.equal(this.manifest.metadata.normalized_authority_ready, true);
+    assert.equal(expectedGeneration, this.manifest.sync_generation);
+    const copy = clone(snapshot);
+    this.materializedRecovery = copy;
+    if (typeof this.onMaterialize === "function") this.onMaterialize(copy);
+    return {
+      ok: true,
+      stage: "normalized",
+      generation: expectedGeneration,
+      updated_at: "2026-09-25T15:03:00.000Z"
+    };
+  }
 }
 
 function sourceState() {
@@ -327,6 +375,10 @@ async function harness() {
   const baselineMetas = new Map();
   let legacySnapshot = clone(initial);
   let legacyUpdatedAt = "2026-09-25T15:00:00.000Z";
+  recordStore.onMaterialize = (snapshot) => {
+    legacySnapshot = clone(snapshot);
+    legacyUpdatedAt = "2026-09-25T15:03:00.000Z";
+  };
   let syncNowCalls = 0;
 
   const cloud = {
@@ -335,7 +387,11 @@ async function harness() {
       eligible: true,
       mode: "allowlist",
       percentageEnabled: false,
-      schemaVerified: true
+      schemaVerified: true,
+      stage: recordStore.manifest?.cutover_stage || "legacy",
+      authorityActive:
+        recordStore.manifest?.cutover_stage === "normalized" &&
+        recordStore.manifest?.metadata?.normalized_authority_ready === true
     }),
     createNormalizedRecordStore: () => recordStore,
     readLegacySnapshotForNormalizedSync: async () => ({
@@ -513,13 +569,14 @@ test("rollback from dual_write returns to shadow without deleting normalized row
   assert.deepEqual(h.legacySnapshot, beforeLegacy);
 });
 
-test("runtime never promotes to normalized authority in PR6", () => {
+test("runtime uses dedicated PR7 authority activation instead of generic normalized stage promotion", () => {
   const source = require("node:fs").readFileSync(
     require("node:path").join(__dirname, "..", "cloud-sync-rollout-runtime-v1.8.4.js"),
     "utf8"
   );
   assert.doesNotMatch(source,/promote\("normalized"/);
-  assert.match(source,/normalized-authority-owned-by-pr7/);
+  assert.match(source,/activateAuthority/);
+  assert.match(source,/promoteToNormalized/);
 });
 
 
@@ -545,4 +602,107 @@ test("writer preparation failure automatically rolls dual_write promotion back t
   assert.equal(h.runtime.status().stage, "shadow");
   assert.equal(h.recordStore.manifest.cutover_stage, "shadow");
   assert.notEqual(h.recordStore.manifest.metadata.normalized_writer_ready, true);
+});
+
+
+test("PR7 cutover makes normalized state primary and full rollback preserves the latest normalized edit", async () => {
+  const h = await harness();
+  await h.runtime.checkEligibility();
+  await h.runtime.afterLegacyCommit();
+
+  for (let i = 0; i < 3; i += 1) {
+    const validation = await h.runtime.validateNow();
+    assert.equal(validation.ok, true);
+  }
+  await h.runtime.promoteToDualWrite();
+
+  for (let i = 0; i < 3; i += 1) {
+    const validation = await h.runtime.validateNow();
+    assert.equal(validation.ok, true);
+    assert.equal(validation.stage, "dual_write");
+  }
+
+  const cutover = await h.runtime.promoteToNormalized();
+  assert.equal(cutover.ok, true);
+  assert.equal(cutover.stage, "normalized");
+  assert.equal(h.runtime.isNormalizedAuthority(), true);
+  assert.equal(h.recordStore.manifest.metadata.normalized_authority_ready, true);
+
+  const frozenLegacy = h.legacySnapshot;
+  const next = h.stateStore.getState();
+  next.animals[0].weight = 4.2;
+  h.stateStore.commit(next, { source: "local", reason: "normalized-primary-edit" });
+
+  const saved = await h.runtime.syncNormalizedNow();
+  assert.equal(saved.ok, true);
+  assert.equal(h.stateStore.getOutbox(USER_ID).length, 0);
+  assert.equal(h.legacySnapshot.animals[0].weight, frozenLegacy.animals[0].weight);
+
+  const refreshed = await h.runtime.refreshAuthoritative();
+  assert.equal(refreshed.ok, true);
+  assert.equal(refreshed.source, "normalized");
+  assert.equal(refreshed.snapshot.animals[0].weight, 4.2);
+  assert.equal(refreshed.checkpointStale, true);
+
+  const rowCountBeforeRollback = h.recordStore.rows.size;
+  const rollback = await h.runtime.rollbackToLegacy();
+  assert.equal(rollback.ok, true);
+  assert.equal(rollback.stage, "legacy");
+  assert.equal(rollback.transitions.length, 3);
+  assert.equal(h.recordStore.rows.size, rowCountBeforeRollback, "rollback must retain normalized rows");
+  assert.equal(h.legacySnapshot.animals[0].weight, 4.2, "rollback materializes latest normalized authority");
+  assert.equal(h.runtime.isNormalizedAuthority(), false);
+  assert.equal(h.recordStore.manifest.metadata.normalized_authority_ready, false);
+});
+
+test("already-active normalized authority remains readable even if forward cohort eligibility is later disabled", async () => {
+  const h = await harness();
+  await h.runtime.checkEligibility();
+  await h.runtime.afterLegacyCommit();
+  for (let i = 0; i < 3; i += 1) await h.runtime.validateNow();
+  await h.runtime.promoteToDualWrite();
+  for (let i = 0; i < 3; i += 1) await h.runtime.validateNow();
+  await h.runtime.promoteToNormalized();
+
+  h.cloud.getNormalizedSyncCohortStatus = async () => ({
+    eligible: false,
+    mode: "allowlist",
+    percentageEnabled: false,
+    schemaVerified: true,
+    stage: "normalized",
+    authorityActive: true
+  });
+
+  const secondRuntime = Runtime.create({
+    root: h.root,
+    cloud: h.cloud,
+    stateStore: h.stateStore,
+    loadDependencies: async () => true,
+    modules: {
+      recordStoreApi: RecordStoreApi,
+      normalizer: Normalizer,
+      baselineApi: {
+        createIndexedDbStore: () => Baseline.createMemoryStore({ ownerId: USER_ID })
+      },
+      workerApi: Worker,
+      cohortApi: Cohort,
+      shadowApi: Shadow,
+      bootstrapApi: Bootstrap,
+      reconciliationApi: Reconciliation,
+      stagePolicy: StagePolicy,
+      rolloutApi: Rollout,
+      dualWriteApi: Dual,
+      readApi: ReadFallback
+    },
+    telemetryAvailable: () => true
+  });
+
+  const decision = await secondRuntime.checkEligibility();
+  assert.equal(decision.eligible, false);
+  assert.equal(decision.authorityActive, true);
+  assert.equal(decision.active, true);
+  const hydration = await secondRuntime.prepareHydration({ legacyDirty: false });
+  assert.equal(hydration.authoritative, true);
+  assert.equal(hydration.ok, true);
+  assert.equal(hydration.snapshot.animals[0].weight, h.stateStore.getState().animals[0].weight);
 });
