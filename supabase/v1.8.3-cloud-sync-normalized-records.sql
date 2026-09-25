@@ -83,6 +83,8 @@ create trigger herdharbor_sync_records_touch
 before update on public.herdharbor_sync_records
 for each row execute function public.herdharbor_touch_sync_record();
 
+revoke all on function public.herdharbor_touch_sync_record() from public, anon, authenticated;
+
 -- Final transition guard is installed in the base migration so accidentally
 -- omitting a later rollout script cannot permit an unsafe stage jump.
 create or replace function public.herdharbor_touch_sync_manifest()
@@ -175,6 +177,8 @@ create trigger herdharbor_sync_manifest_touch
 before insert or update on public.herdharbor_sync_manifest
 for each row execute function public.herdharbor_touch_sync_manifest();
 
+revoke all on function public.herdharbor_touch_sync_manifest() from public, anon, authenticated;
+
 alter table public.herdharbor_sync_records enable row level security;
 alter table public.herdharbor_sync_manifest enable row level security;
 
@@ -200,10 +204,13 @@ drop policy if exists "users delete own normalized sync records" on public.herdh
 drop policy if exists "users insert own sync manifest" on public.herdharbor_sync_manifest;
 drop policy if exists "users update own sync manifest" on public.herdharbor_sync_manifest;
 
-revoke insert, update, delete on public.herdharbor_sync_records from authenticated;
-revoke insert, update, delete on public.herdharbor_sync_manifest from authenticated;
-grant select on public.herdharbor_sync_records to authenticated;
-grant select on public.herdharbor_sync_manifest to authenticated;
+-- Supabase projects may auto-grant broad public-schema table privileges.
+-- Make browser access explicit: authenticated clients may read only their RLS-
+-- scoped rows; all normalized mutations go through guarded RPCs.
+revoke all on table public.herdharbor_sync_records from anon, authenticated;
+revoke all on table public.herdharbor_sync_manifest from anon, authenticated;
+grant select on table public.herdharbor_sync_records to authenticated;
+grant select on table public.herdharbor_sync_manifest to authenticated;
 
 create or replace function public.herdharbor_sync_apply_batch(
   p_puts jsonb default '[]'::jsonb,
@@ -213,7 +220,7 @@ create or replace function public.herdharbor_sync_apply_batch(
 returns jsonb
 language plpgsql
 security definer
-set search_path = pg_catalog, public
+set search_path = ''
 as $$
 declare
   v_user uuid := auth.uid();
@@ -444,7 +451,7 @@ create or replace function public.herdharbor_sync_mark_verified(
 returns jsonb
 language plpgsql
 security definer
-set search_path = pg_catalog, public
+set search_path = ''
 as $$
 declare
   v_user uuid := auth.uid();
@@ -515,7 +522,7 @@ create or replace function public.herdharbor_sync_prepare_normalized_writer(
 returns jsonb
 language plpgsql
 security definer
-set search_path = pg_catalog, public
+set search_path = ''
 as $$
 declare
   v_user uuid := auth.uid();
@@ -591,7 +598,7 @@ create or replace function public.herdharbor_sync_set_stage(
 returns jsonb
 language plpgsql
 security definer
-set search_path = pg_catalog, public
+set search_path = ''
 as $$
 declare
   v_user uuid := auth.uid();
@@ -664,13 +671,16 @@ begin
 end;
 $$;
 
-revoke all on function public.herdharbor_sync_apply_batch(jsonb, jsonb, jsonb) from public;
-revoke all on function public.herdharbor_sync_mark_verified(bigint, text, integer) from public;
-revoke all on function public.herdharbor_sync_prepare_normalized_writer(bigint, text, text, integer) from public;
-revoke all on function public.herdharbor_sync_set_stage(text, bigint) from public;
+-- Functions created in public may inherit EXECUTE for browser roles.
+-- Revoke first, then opt in only the authenticated RPCs that are safe at this
+-- foundation stage. The unguarded writer-preparation function is internal and
+-- is exposed only through the cutover-guard wrapper in the next migration.
+revoke all on function public.herdharbor_sync_apply_batch(jsonb, jsonb, jsonb) from public, anon, authenticated;
+revoke all on function public.herdharbor_sync_mark_verified(bigint, text, integer) from public, anon, authenticated;
+revoke all on function public.herdharbor_sync_prepare_normalized_writer(bigint, text, text, integer) from public, anon, authenticated;
+revoke all on function public.herdharbor_sync_set_stage(text, bigint) from public, anon, authenticated;
 grant execute on function public.herdharbor_sync_apply_batch(jsonb, jsonb, jsonb) to authenticated;
 grant execute on function public.herdharbor_sync_mark_verified(bigint, text, integer) to authenticated;
-grant execute on function public.herdharbor_sync_prepare_normalized_writer(bigint, text, text, integer) to authenticated;
 grant execute on function public.herdharbor_sync_set_stage(text, bigint) to authenticated;
 
 comment on table public.herdharbor_sync_records is
