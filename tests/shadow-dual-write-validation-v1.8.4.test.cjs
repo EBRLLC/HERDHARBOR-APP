@@ -258,8 +258,30 @@ class RolloutRecordStore {
     return { ok: true, from_stage: from, stage: targetStage, generation: this.manifest.sync_generation };
   }
 
-  async prepareNormalizedWriter() {
-    throw new Error("PR6 must not prepare normalized authority.");
+  async prepareNormalizedWriter({ expectedGeneration, writerVersion, namespace, formatVersion }) {
+    assert.equal(expectedGeneration, this.manifest.sync_generation);
+    assert.equal(this.manifest.cutover_stage, "dual_write");
+    assert.equal(namespace, Normalizer.namespace);
+    assert.equal(formatVersion, Normalizer.formatVersion);
+    assert.equal(typeof writerVersion, "string");
+    assert.ok(writerVersion.length > 0);
+    this.manifest.metadata = {
+      ...this.manifest.metadata,
+      normalized_writer_ready: true,
+      normalized_writer_version: writerVersion,
+      normalized_writer_prepared_at: "2026-09-25T15:00:30.000Z",
+      verified_checksum: null,
+      last_shadow_verified_at: null,
+      verification_record_count: null
+    };
+    this.manifest.normalized_verified_at = null;
+    this.manifest.sync_generation += 1;
+    return {
+      ok: true,
+      stage: "dual_write",
+      generation: this.manifest.sync_generation,
+      writer_version: writerVersion
+    };
   }
 }
 
@@ -400,6 +422,8 @@ test("three consecutive zero-divergence checkpoints are required before explicit
 
   const promoted = await h.runtime.promoteToDualWrite();
   assert.equal(promoted.stage, "dual_write");
+  assert.equal(promoted.prepared.writer_version, "record-cas-v1");
+  assert.equal(h.recordStore.manifest.metadata.normalized_writer_ready, true);
   assert.equal(h.runtime.status().stage, "dual_write");
   assert.equal(h.runtime.status().validationPasses, 0);
 });
