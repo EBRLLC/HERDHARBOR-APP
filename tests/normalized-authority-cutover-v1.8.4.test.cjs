@@ -57,6 +57,8 @@ test("stale legacy writes stay blocked while the recovery RPC has a scoped bypas
   assert.match(sql, /herdharbor_sync_materialize_legacy_recovery/i);
   assert.match(sql, /v_stage <> 'normalized'[\s\S]*HH_SYNC_NORMALIZED_AUTHORITY_REQUIRED/i);
   assert.match(sql, /insert into public\.herdharbor_user_data \(user_id, app_state\)[\s\S]*on conflict \(user_id\) do update/i);
+  assert.match(sql, /legacy_recovery_lock[\s\S]*HH_SYNC_RECOVERY_IN_PROGRESS/i);
+  assert.match(sql, /v_metadata -> 'legacy_recovery_lock' = 'true'::jsonb[\s\S]*HH_SYNC_RECOVERY_IN_PROGRESS/i);
 });
 
 test("rollback clears authority/writer markers but retains normalized rows", () => {
@@ -75,4 +77,5 @@ test("authority and recovery RPCs are authenticated-only and cohort status can r
   assert.match(sql, /'stage', v_stage/i);
   assert.match(sql, /'authority_active', v_authority_active/i);
   assert.match(sql, /v_authority_active\s*:=\s*v_stage\s*=\s*'normalized'/i);
+  assert.match(sql, /'recovery_pending', v_recovery_pending/i);
 });
