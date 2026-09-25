@@ -851,10 +851,15 @@
       const session = await cloud.getSession();
       if (session?.user?.id) {
         const decision = await checkEligibility();
-        if (decision.active && startOptions.confirmLegacy !== false && context?.stage !== "normalized") {
-          // Confirm the authoritative legacy snapshot first. The resulting
-          // payload-free legacy-commit event is the only trigger that may start
-          // shadow/dual-write work.
+        if (
+          decision.active &&
+          decision.recoveryPending !== true &&
+          startOptions.confirmLegacy !== false &&
+          context?.stage !== "normalized"
+        ) {
+          // Confirm legacy only during forward shadow/dual-write validation.
+          // A pending rollback must be resumed by prepareHydration() before
+          // either cloud writer is allowed to run again.
           await cloud.syncNow();
         }
       }
