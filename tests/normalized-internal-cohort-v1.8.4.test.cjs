@@ -25,12 +25,17 @@ test("internal normalized cohort is empty-by-default and has no browser write pa
   assert.doesNotMatch(sql,/grant (?:insert|update|delete|all).*herdharbor_sync_cohort.*authenticated/i);
 });
 
-test("cohort status exposes only caller eligibility, allowlist mode, and schema readiness", () => {
+test("cohort status exposes caller rollout eligibility plus already-active authority state", () => {
   assert.match(sql,/herdharbor_sync_cohort_status\(\)/i);
   assert.match(sql,/'eligible', v_eligible/i);
   assert.match(sql,/'mode', 'allowlist'/i);
   assert.match(sql,/'percentage_enabled', false/i);
   assert.match(sql,/'schema_verified', v_schema_verified/i);
+  assert.match(sql,/'stage', v_stage/i);
+  assert.match(sql,/'authority_active', v_authority_active/i);
+  assert.match(sql,/normalized_authority_ready/i);
+  assert.match(sql,/herdharbor_sync_activate_normalized_authority/i);
+  assert.match(sql,/herdharbor_sync_materialize_legacy_recovery/i);
   assert.match(sql,/relrowsecurity/i);
   assert.match(sql,/role_table_grants/i);
   assert.match(sql,/has_function_privilege/i);
@@ -46,5 +51,9 @@ test("rollout preflight requires the server allowlist without changing legacy au
   assert.match(preflight,/cohort_rpc/i);
   assert.match(preflight,/cohort_authenticated_execute/i);
   assert.match(preflight,/no_browser_cohort_table_access/i);
+  assert.match(preflight,/authority_rpc/i);
+  assert.match(preflight,/recovery_rpc/i);
+  assert.match(preflight,/authority_authenticated_execute/i);
+  assert.match(preflight,/recovery_authenticated_execute/i);
   assert.match(preflight,/legacy_authority_only/i);
 });
