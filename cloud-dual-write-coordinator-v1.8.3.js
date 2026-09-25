@@ -8,7 +8,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const VERSION = "0.2-deferred-verification";
+  const VERSION = "0.3-record-outbox";
   const RELEASE = "1.8.3";
 
   function requiredFunction(value, label) {
@@ -279,9 +279,91 @@
     });
   }
 
+
+  function createPostLegacyCoordinator(options = {}) {
+    const normalizedWriter = options.normalizedWriter;
+    if (!normalizedWriter || typeof normalizedWriter.drain !== "function") {
+      throw new TypeError("A normalized record outbox writer is required.");
+    }
+    const onEvent = typeof options.onEvent === "function" ? options.onEvent : () => {};
+    let enabled = options.enabled === true;
+
+    function emit(type, detail = {}) {
+      try { onEvent({ type, release: RELEASE, ...detail }); } catch {}
+    }
+
+    function setEnabled(value) {
+      enabled = value === true;
+      emit("dual-write-toggle", { enabled, mode: "post-legacy-records" });
+      return enabled;
+    }
+
+    function isEnabled() {
+      return enabled;
+    }
+
+    async function afterLegacyCommit(context = {}) {
+      if (!enabled) {
+        const result = Object.freeze({
+          ok: true,
+          mode: "legacy-only",
+          legacySaved: true,
+          normalizedSaved: false,
+          normalizedPending: false
+        });
+        emit("dual-write-complete", result);
+        return result;
+      }
+
+      try {
+        const normalizedResult = await normalizedWriter.drain({
+          ownerId: context.ownerId,
+          maxGroups: context.maxGroups
+        });
+        const failed = Number(normalizedResult?.failed || 0);
+        const pending = normalizedResult?.skipped === true || failed > 0;
+        const result = Object.freeze({
+          ok: failed === 0,
+          mode: failed === 0 ? "dual-write" : "dual-write-degraded",
+          legacySaved: true,
+          normalizedSaved: Number(normalizedResult?.succeeded || 0) > 0,
+          normalizedPending: pending,
+          normalizedConflicts: Number(normalizedResult?.conflicts || 0),
+          normalizedResult
+        });
+        emit(failed === 0 ? "dual-write-complete" : "dual-write-degraded", {
+          mode: result.mode,
+          legacySaved: true,
+          normalizedSaved: result.normalizedSaved,
+          normalizedPending: result.normalizedPending,
+          normalizedConflicts: result.normalizedConflicts
+        });
+        return result;
+      } catch (error) {
+        const failure = safeFailure(error, "normalized-record-write");
+        emit("dual-write-degraded", failure);
+        return Object.freeze({
+          ok: false,
+          mode: "dual-write-degraded",
+          legacySaved: true,
+          normalizedSaved: false,
+          normalizedPending: true,
+          normalizedErrorCode: failure.errorCode
+        });
+      }
+    }
+
+    return Object.freeze({
+      setEnabled,
+      isEnabled,
+      afterLegacyCommit
+    });
+  }
+
   return Object.freeze({
     version: VERSION,
     release: RELEASE,
-    createDualWriteCoordinator
+    createDualWriteCoordinator,
+    createPostLegacyCoordinator
   });
 });
