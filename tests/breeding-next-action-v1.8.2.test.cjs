@@ -226,6 +226,7 @@ test('Record Birth command is shared by Breeding, Today, and animal-profile life
   const lifecycle=fs.readFileSync(path.join(__dirname,'..','flow-phase2-lifecycle-v1.8.2.js'),'utf8');
   assert.match(app,/openRecordBirth:\s*\(breedingId\)\s*=>\s*openRecordBirth\(breedingId\)/);
   assert.match(breeding,/button\.addEventListener\("click",\s*\(\)\s*=>\s*openRecordBirth\(button\.dataset\.recordBirth\)\)/);
+  assert.match(breeding,/\$\$\('\[data-record-birth\]'/);
   assert.match(lifecycle,/HerdHarborApp\?\.openRecordBirth\?\.\(breedingId\)/);
   assert.doesNotMatch(lifecycle,/kind==="record-birth"\?\`\[data-record-birth=/);
 });
