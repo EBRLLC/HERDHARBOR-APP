@@ -147,7 +147,7 @@
     if (!normalizer?.planLogicalMutation || !normalizer?.mergeNormalizedPayload || !normalizer?.checksumValue) {
       throw new TypeError("The normalized state mapper is incomplete.");
     }
-    if (!baselineStore?.list || !baselineStore?.get || !baselineStore?.put || !baselineStore?.replace) {
+    if (!baselineStore?.list || !baselineStore?.get || !baselineStore?.put || !baselineStore?.replace || !baselineStore?.getMeta) {
       throw new TypeError("A durable normalized record baseline is required.");
     }
 
@@ -306,9 +306,13 @@
       }
     }
 
-    async function processGroup(group, currentState) {
+    async function processGroup(group) {
       const mutation = group.latest;
       const processedRevision = mutationRevision(mutation);
+      const currentState = stateStore.getState?.();
+      if (!currentState || typeof currentState !== "object") {
+        throw Object.assign(new Error("Local state is unavailable for normalized planning."), { code: "HH_SYNC_LOCAL_STATE_MISSING" });
+      }
       const baselineRows = await baselineStore.list(namespace);
       const plan = normalizer.planLogicalMutation(currentState, baselineRows, mutation);
 
@@ -391,7 +395,7 @@
       for (const group of groups) {
         summary.processed += 1;
         try {
-          const result = await processGroup(group, currentState);
+          const result = await processGroup(group);
           summary.results.push({
             domain: group.latest.domain,
             recordId: group.latest.recordId,
