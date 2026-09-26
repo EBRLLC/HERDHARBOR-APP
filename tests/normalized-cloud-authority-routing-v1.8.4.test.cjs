@@ -37,7 +37,7 @@ test("cloud refresh discovers authority before any legacy-row fetch", () => {
 });
 
 test("normalized local commits never mark the legacy full-state row dirty", () => {
-  const bridge = body("  function handleCanonicalStateCommit(detail) {", "\n  function installStateStoreBridge()");
+  const bridge = body("  async function handleCanonicalStateCommit(detail) {", "\n  function installStateStoreBridge()");
   const authorityIndex = bridge.indexOf("if (normalizedAuthorityActive())");
   const removeDirtyIndex = bridge.indexOf("safeStorageRemove(dirtyKey(userId))");
   const legacyDirtyIndex = bridge.indexOf('safeStorageSet(dirtyKey(userId), "1")');
