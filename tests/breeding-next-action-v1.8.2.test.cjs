@@ -232,6 +232,66 @@ test('Record Birth command is shared by Breeding, Today, and animal-profile life
   assert.doesNotMatch(lifecycle,/kind==="record-birth"\?\`\[data-record-birth=/);
 });
 
+test('animal-profile Record Birth returns to the same Breeding tab after the birth form closes',()=>{
+  const source=fs.readFileSync(path.join(__dirname,'..','flow-phase2-lifecycle-v1.8.2.js'),'utf8');
+  const queued=[];
+  const handlers={};
+  const profileOpens=[];
+  const form={isConnected:true};
+  const markerNode={dataset:{hhP2AnimalId:'doe'}};
+  const view={
+    querySelector(selector){
+      if(selector==='[data-hh-p2-animal-id]')return markerNode;
+      return null;
+    }
+  };
+  const action={
+    dataset:{hhP2LifeAction:'record-birth',breedingId:'b1'},
+    closest(selector){
+      if(selector==='[data-hh-p2-life-action]')return action;
+      return null;
+    }
+  };
+  const context={
+    HerdHarborApp:{
+      getState:()=>rabbitFixture(),
+      openRecordBirth:id=>id==='b1'
+    },
+    HerdHarborFlowPhase2:{
+      parseProfileHash:()=>({animalId:'doe'}),
+      openAnimalProfile:(animalId,tab,options)=>profileOpens.push({animalId,tab,history:options?.history})
+    },
+    document:{
+      body:{},
+      querySelector(selector){
+        if(selector==='#view-animal-profile.hh-p2-profile-view.active')return view;
+        if(selector==='#litter-form')return form;
+        return null;
+      },
+      createElement:()=>({className:'',innerHTML:'',appendChild(){}})
+    },
+    location:{hash:''},
+    MutationObserver:class{observe(){} disconnect(){}},
+    addEventListener:(name,handler)=>{handlers[name]=handler;},
+    removeEventListener:()=>{},
+    requestAnimationFrame:()=>1,
+    setTimeout:handler=>{queued.push(handler);return queued.length;},
+    Date,console
+  };
+  context.globalThis=context;
+  vm.runInNewContext(source,context,{filename:'flow-phase2-lifecycle-v1.8.2.js'});
+
+  handlers.click({target:action,preventDefault(){},stopPropagation(){}});
+  assert.equal(queued.length,1,'connected birth form should install a close watcher');
+
+  form.isConnected=false;
+  queued.shift()();
+  assert.equal(queued.length,1,'closing the form should schedule profile restoration');
+  queued.shift()();
+
+  assert.deepEqual(profileOpens,[{animalId:'doe',tab:'breeding',history:'replace'}]);
+});
+
 test('release loader includes the next-action engine under the formal v1.8.4 identity',()=>{
   const build=fs.readFileSync(path.join(__dirname,'..','herdharbor-build.js'),'utf8');
   for(const asset of ['breeding-next-action-core-v1.8.2.js','breeding-next-action-v1.8.2.js','breeding-next-action-v1.8.2.css'])assert.match(build,new RegExp(asset.replace(/\./g,'\\.')));
