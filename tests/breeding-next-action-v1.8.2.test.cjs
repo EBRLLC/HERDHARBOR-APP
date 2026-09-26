@@ -377,7 +377,9 @@ test('animal-profile Record Birth returns to the same Breeding tab after the bir
 test('release loader includes the next-action engine under the formal v1.8.4 identity',()=>{
   const build=fs.readFileSync(path.join(__dirname,'..','herdharbor-build.js'),'utf8');
   for(const asset of ['breeding-next-action-core-v1.8.2.js','breeding-next-action-v1.8.2.js','breeding-next-action-v1.8.2.css'])assert.match(build,new RegExp(asset.replace(/\./g,'\\.')));
-  assert.match(build,/breeding-next-action-core-v1\.8\.2\.js\?v=3/);\n  assert.match(build,/breeding-next-action-v1\.8\.2\.js\?v=2/);\n  assert.match(build,/breeding-litter-workspace-v1\.8\.2\.js\?v=2/);
+  assert.match(build,/breeding-next-action-core-v1\.8\.2\.js\?v=3/);
+  assert.match(build,/breeding-next-action-v1\.8\.2\.js\?v=2/);
+  assert.match(build,/breeding-litter-workspace-v1\.8\.2\.js\?v=2/);
   assert.match(build,/version:\s*"1\.8\.4"/);
   assert.match(build,/buildId:\s*"alpha-v1\.8\.4-release-1"/);
 });
