@@ -53,6 +53,29 @@ test('linked litter advances through offspring details and weaning',()=>{
   assert.equal(next.kind,'wean-litter');
 });
 
+test('delivered breeding reuses one unlinked birth only when parents and due date match exactly',()=>{
+  const state=rabbitFixture();
+  state.breedings[0]={...state.breedings[0],breedingDate:'2026-08-03',dueDate:'2026-09-03',status:'Delivered'};
+  state.litters=[{id:'l-orphan',breedingId:'',damId:'doe',sireId:'buck',birthDate:'2026-09-03',bornAlive:'1',weaned:'0',offspringIds:[]}];
+  const linked=Core.linkedLitter(state,state.breedings[0]);
+  assert.equal(linked?.id,'l-orphan');
+  const next=Core.breedingNextAction(state,state.breedings[0],'2026-09-10');
+  assert.notEqual(next.kind,'record-birth');
+  assert.equal(next.litterId,'l-orphan');
+  assert.equal(next.breedingId,'b1');
+});
+
+test('ambiguous unlinked births are never guessed as a breeding match',()=>{
+  const state=rabbitFixture();
+  state.breedings[0]={...state.breedings[0],breedingDate:'2026-08-03',dueDate:'2026-09-03',status:'Delivered'};
+  state.litters=[
+    {id:'l1',breedingId:'',damId:'doe',sireId:'buck',birthDate:'2026-09-03',bornAlive:'1',weaned:'0',offspringIds:[]},
+    {id:'l2',breedingId:'',damId:'doe',sireId:'buck',birthDate:'2026-09-03',bornAlive:'1',weaned:'0',offspringIds:[]}
+  ];
+  assert.equal(Core.linkedLitter(state,state.breedings[0]),null);
+  assert.equal(Core.breedingNextAction(state,state.breedings[0],'2026-09-10').kind,'record-birth');
+});
+
 test('four-day-old rabbit litter cannot be evaluated for weaning from a legacy weaned count',()=>{
   const state=rabbitFixture();
   state.breedings[0]={...state.breedings[0],breedingDate:'2026-08-03',status:'Delivered'};
@@ -124,13 +147,72 @@ test('UI surfaces next action on profile, breeding cards, litter workspace, and 
   const ui=fs.readFileSync(path.join(__dirname,'..','breeding-next-action-v1.8.2.js'),'utf8');
   for(const token of ['hh-next-profile','hh-next-card-row','hh-next-workspace','hh-next-dashboard'])assert.match(ui,new RegExp(token));
   assert.match(ui,/HerdHarborFlowPhase2\?\.openAnimalProfile/);
-  assert.match(ui,/HerdHarborBreedingWorkspace\?\.open/);
+  assert.match(ui,/HerdHarborBreedingWorkspace/);
   assert.match(ui,/data-hh-bw-disposition/);
   assert.match(ui,/HerdHarborApp\?\.openRecordBirth/);
   assert.doesNotMatch(ui,/nav-item\[data-route="breeding"\]/);
   assert.doesNotMatch(ui,/data-record-birth=/);
   assert.doesNotMatch(ui,/data-hh-p2-life-action="record-birth"/);
   assert.doesNotMatch(ui,/hh-p2-life-actions button:first-child/);
+});
+
+test('Today Update offspring opens the exact litter workspace and offspring tab',()=>{
+  const state=rabbitFixture();
+  state.breedings[0]={...state.breedings[0],status:'Delivered'};
+  state.litters=[{id:'l-target',breedingId:'b1',damId:'doe',sireId:'buck',birthDate:'2026-10-02',bornAlive:'2',weaned:'0',expectedWeanDate:'2026-11-13',offspringIds:['k1','k2']}];
+  state.animals.push(
+    {id:'k1',name:'Kit 1',species:'Rabbit',sex:'Unknown',tag:'A1',status:'Active',sourceBirthId:'l-target'},
+    {id:'k2',name:'Kit 2',species:'Rabbit',sex:'Unknown',tag:'A2',status:'Active',sourceBirthId:'l-target'}
+  );
+  const action=Core.dashboardActions(state,'2026-10-10',14).find(item=>item.kind==='update-offspring');
+  assert.ok(action);
+  assert.equal(action.litterId,'l-target');
+
+  const clickHandlers=[];
+  const opened=[];
+  const clickedTabs=[];
+  const toasts=[];
+  let overlayVisible=false;
+  const tabButton={click(){clickedTabs.push('offspring');}};
+  const overlay={querySelector:selector=>selector==='[data-hh-bw-tab="offspring"]'?tabButton:null};
+  const context={
+    HerdHarborBreedingNextActionCore:Core,
+    HerdHarborApp:{getState:()=>state,toast:(message,type)=>toasts.push({message,type})},
+    HerdHarborFlowPhase2:{},
+    HerdHarborBreedingWorkspace:{open:id=>{opened.push(id);overlayVisible=true;return true;}},
+    document:{
+      body:{},
+      querySelector:()=>null,
+      querySelectorAll:()=>[],
+      getElementById:id=>id==='hh-breeding-litter-workspace'&&overlayVisible?overlay:null
+    },
+    MutationObserver:class{observe(){} disconnect(){}},
+    addEventListener:(name,handler)=>{if(name==='click')clickHandlers.push(handler);},
+    requestAnimationFrame:handler=>{handler();return 1;},
+    setTimeout:handler=>{handler();return 1;},
+    Date,Error,console
+  };
+  context.globalThis=context;
+  const ui=fs.readFileSync(path.join(__dirname,'..','breeding-next-action-v1.8.2.js'),'utf8');
+  vm.runInNewContext(ui,context,{filename:'breeding-next-action-v1.8.2.js'});
+  assert.equal(clickHandlers.length,1);
+
+  const button={
+    dataset:{
+      hhNextKind:action.kind,
+      hhNextAnimal:action.animalId||'',
+      hhNextBreeding:action.breedingId||'',
+      hhNextLitter:action.litterId||'',
+      hhNextSale:action.saleId||'',
+      hhNextTab:action.tab||''
+    },
+    closest:selector=>selector==='[data-hh-next-kind]'?button:null
+  };
+  clickHandlers[0]({target:button,preventDefault(){},stopPropagation(){}});
+
+  assert.deepEqual(opened,['l-target']);
+  assert.deepEqual(clickedTabs,['offspring']);
+  assert.deepEqual(toasts,[]);
 });
 
 test('Today Record Birth click opens the canonical birth form for the exact breeding',()=>{
@@ -295,7 +377,7 @@ test('animal-profile Record Birth returns to the same Breeding tab after the bir
 test('release loader includes the next-action engine under the formal v1.8.4 identity',()=>{
   const build=fs.readFileSync(path.join(__dirname,'..','herdharbor-build.js'),'utf8');
   for(const asset of ['breeding-next-action-core-v1.8.2.js','breeding-next-action-v1.8.2.js','breeding-next-action-v1.8.2.css'])assert.match(build,new RegExp(asset.replace(/\./g,'\\.')));
-  assert.match(build,/breeding-next-action-core-v1\.8\.2\.js\?v=2/);
+  assert.match(build,/breeding-next-action-core-v1\.8\.2\.js\?v=3/);\n  assert.match(build,/breeding-next-action-v1\.8\.2\.js\?v=2/);\n  assert.match(build,/breeding-litter-workspace-v1\.8\.2\.js\?v=2/);
   assert.match(build,/version:\s*"1\.8\.4"/);
   assert.match(build,/buildId:\s*"alpha-v1\.8\.4-release-1"/);
 });

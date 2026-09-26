@@ -29,7 +29,23 @@
   function animalById(state,id){return array(state,"animals").find(row=>String(row.id)===String(id))||null;}
   function animalName(state,id){return animalById(state,id)?.name||"Animal";}
   function breedingById(state,id){return array(state,"breedings").find(row=>String(row.id)===String(id))||null;}
-  function linkedLitter(state,breeding){return array(state,"litters").find(row=>String(row.breedingId||"")===String(breeding?.id||""))||null;}
+  function linkedLitter(state,breeding){
+    const breedingId=clean(breeding?.id);if(!breedingId)return null;
+    const litters=array(state,"litters");
+    const direct=litters.find(row=>clean(row.breedingId)===breedingId);if(direct)return direct;
+    const explicitLitterId=clean(breeding?.litterId);
+    if(explicitLitterId){
+      const explicit=litters.find(row=>clean(row.id)===explicitLitterId);if(explicit)return explicit;
+    }
+    const due=dateOnly(breeding?.dueDate)||derivedDueDate(state,breeding);if(!due)return null;
+    const orphanMatches=litters.filter(row=>
+      !clean(row.breedingId)&&
+      clean(row.damId)===clean(breeding?.femaleId)&&
+      clean(row.sireId)===clean(breeding?.maleId)&&
+      dateOnly(row.birthDate)===due
+    );
+    return orphanMatches.length===1?orphanMatches[0]:null;
+  }
   function offspringForLitter(state,litterOrId){
     const litter=typeof litterOrId==="object"?litterOrId:array(state,"litters").find(row=>String(row.id)===String(litterOrId));
     if(!litter)return[];const ids=new Set(array(litter,"offspringIds").map(String));
@@ -139,7 +155,7 @@
 
   function breedingNextAction(state,breeding,today=todayValue()){
     if(!breeding)return null;
-    const litter=linkedLitter(state,breeding);if(litter)return litterNextAction(state,litter,today);
+    const litter=linkedLitter(state,breeding);if(litter){const resolved=clean(litter.breedingId)?litter:{...litter,breedingId:breeding.id};return litterNextAction(state,resolved,today);}
     const status=lower(breeding.status||"Bred"),check=lower(breeding.pregnancyCheckStatus||"Not checked"),animalId=clean(breeding.femaleId)||clean(breeding.maleId);
     if(TERMINAL_BREEDING.has(status)||check==="negative")return action({kind:"plan-rebreed",label:"Plan rebreed",shortLabel:"Plan rebreed",animalId,breedingId:breeding.id,reason:"This breeding is closed without a pregnancy."});
     if(status==="planned")return action({kind:"open-breeding",label:"Record breeding",shortLabel:"Record breeding",animalId,breedingId:breeding.id,reason:"The pairing is planned but has not been recorded as bred."});

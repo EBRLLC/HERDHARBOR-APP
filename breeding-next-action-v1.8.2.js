@@ -55,14 +55,42 @@
     section.innerHTML=`<div class="hh-next-dashboard-head"><div><strong>Breeding next actions</strong><span>Derived from the breeding and litter records you already entered.</span></div></div><div class="hh-next-dashboard-list">${actions.map(next=>`<article class="is-${tone(next.urgency)}"><div><strong>${esc(next.animalName)} · ${esc(next.label)}</strong><small>${esc(next.reason||"")}</small></div><button type="button" class="button button-small button-primary" data-hh-next-kind="${esc(next.kind)}" data-hh-next-animal="${esc(next.animalId||"")}" data-hh-next-breeding="${esc(next.breedingId||"")}" data-hh-next-litter="${esc(next.litterId||"")}" data-hh-next-sale="${esc(next.saleId||"")}" data-hh-next-tab="${esc(next.tab||"")}">${esc(next.shortLabel||"Open")}</button></article>`).join("")}</div>`;return true;
   }
 
+  function actionFailure(message,next,error=null){
+    root.HerdHarborApp?.toast?.(message,"error");
+    try{
+      root.HerdHarborMonitoring?.captureError?.(
+        error instanceof Error?error:new Error(message),
+        {
+          module:"breeding",
+          errorCategory:"next_action_failure",
+          metadata:{
+            kind:clean(next?.kind),
+            hasBreedingId:Boolean(clean(next?.breedingId)),
+            hasLitterId:Boolean(clean(next?.litterId))
+          }
+        }
+      );
+    }catch{}
+    return false;
+  }
+
   function openRecordBirth(next){
-    if(!next.breedingId)return false;
+    if(!next.breedingId)return actionFailure("This birth action is missing its breeding record.",next);
     const command=root.HerdHarborApp?.openRecordBirth;
-    if(typeof command!=="function")return false;
-    return command(next.breedingId)!==false;
+    if(typeof command!=="function")return actionFailure("The birth form is still loading. Refresh HerdHarbor and try again.",next);
+    try{
+      const opened=command(next.breedingId);
+      return opened===true?true:actionFailure("HerdHarbor could not open that breeding's birth form.",next);
+    }catch(error){
+      return actionFailure("HerdHarbor could not open that breeding's birth form.",next,error);
+    }
   }
   function openProfile(next){
-    if(!next.animalId)return false;root.HerdHarborFlowPhase2?.openAnimalProfile?.(next.animalId,"breeding",{history:"push"});
+    if(!next.animalId)return actionFailure("This breeding action is missing its animal record.",next);
+    const opener=root.HerdHarborFlowPhase2?.openAnimalProfile;
+    if(typeof opener!=="function")return actionFailure("The animal profile is still loading. Refresh HerdHarbor and try again.",next);
+    try{opener(next.animalId,"breeding",{history:"push"});}
+    catch(error){return actionFailure("HerdHarbor could not open that animal's breeding profile.",next,error);}
     if(["start-breeding","plan-rebreed"].includes(next.kind)){waitFor('#view-animal-profile.active [data-hh-p2-action="breeding"]',button=>button.click());return true;}
     if(next.kind==="pregnancy-check"&&next.breedingId){
       const id=root.CSS?.escape?root.CSS.escape(next.breedingId):next.breedingId;
@@ -71,11 +99,23 @@
     return true;
   }
   function openWorkspace(next){
-    if(!next.litterId)return false;root.HerdHarborBreedingWorkspace?.open?.(next.litterId);
+    if(!next.litterId)return actionFailure("This litter action is missing its litter record.",next);
+    const workspace=root.HerdHarborBreedingWorkspace;
+    if(typeof workspace?.open!=="function")return actionFailure("The litter workspace is still loading. Refresh HerdHarbor and try again.",next);
+    let opened=false;
+    try{opened=workspace.open(next.litterId)===true;}
+    catch(error){return actionFailure("HerdHarbor could not open that litter workspace.",next,error);}
+    if(!opened)return actionFailure("HerdHarbor could not open that litter workspace.",next);
+    const overlay=root.document.getElementById("hh-breeding-litter-workspace");
+    if(!overlay)return actionFailure("The litter workspace did not finish opening.",next);
     const tab=next.kind==="wean-litter"?"weaning":next.kind==="evaluate-litter"?"decisions":next.kind==="update-offspring"?"offspring":next.tab||"offspring";
     if(["create-sale","transfer-buyer"].includes(next.kind)){
       waitFor("#hh-breeding-litter-workspace [data-hh-lst-tab]",button=>{button.click();if(next.kind==="transfer-buyer"&&next.saleId)waitFor(`#hh-breeding-litter-workspace [data-hh-lst-transfer="${root.CSS?.escape?root.CSS.escape(next.saleId):next.saleId}"]`,transfer=>transfer.click(),0,60);},0,60);
-    }else waitFor(`#hh-breeding-litter-workspace [data-hh-bw-tab="${tab}"]`,button=>button.click());
+      return true;
+    }
+    const tabButton=overlay.querySelector?.(`[data-hh-bw-tab="${tab}"]`);
+    if(!tabButton)return actionFailure("The requested litter workspace section is unavailable.",next);
+    tabButton.click();
     return true;
   }
   function activate(node){const next={kind:clean(node.dataset.hhNextKind),animalId:clean(node.dataset.hhNextAnimal),breedingId:clean(node.dataset.hhNextBreeding),litterId:clean(node.dataset.hhNextLitter),saleId:clean(node.dataset.hhNextSale),tab:clean(node.dataset.hhNextTab)};if(next.kind==="record-birth")return openRecordBirth(next);if(["manage-litter","update-offspring","wean-litter","evaluate-litter","create-sale","transfer-buyer","lifecycle-complete"].includes(next.kind))return openWorkspace(next);return openProfile(next);}
