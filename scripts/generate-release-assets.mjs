@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 const root = path.resolve(process.argv[2] || "_site");
 const MANIFEST_NAME = "release-asset-manifest.json";
 const EXCLUDED_DIRS = new Set([".git", ".github", "node_modules", "tests", "scripts", "android", "monitoring"]);
-const URL_PATTERN = /((?:(?:\.\.\/)+|\.\/|\/)?[A-Za-z0-9_.\/-]+\.(?:js|css))(?:\?(?:v|rev)=[A-Za-z0-9._-]+)?/g;
+const URL_PATTERN = /((?:(?:\.\.\/)+|\.\/|\/)?[A-Za-z0-9_.\/-]+\.(?:js|css))((?:\?[^#"'\`\s<>)\\]*)?)(#[^"'\`\s<>)\\]*)?(?=["'\`\s<>)\\]|$)/g;
 
 function sha256(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
@@ -37,12 +37,21 @@ function resolveReference(reference, fromRelative) {
   return resolved === ".." || resolved.startsWith("../") ? "" : resolved.replace(/^\.\//, "");
 }
 
+function fingerprintQuery(query, digest) {
+  const params = new URLSearchParams(String(query || "").replace(/^\?/, ""));
+  params.delete("v");
+  params.delete("rev");
+  params.set("rev", digest);
+  const encoded = params.toString();
+  return encoded ? `?${encoded}` : `?rev=${digest}`;
+}
+
 function rewriteReferences(text, hashes, fromRelative) {
-  return text.replace(URL_PATTERN, (full, reference) => {
+  return text.replace(URL_PATTERN, (full, reference, query = "", hash = "") => {
     const normalized = resolveReference(reference, fromRelative);
     const digest = normalized ? hashes.get(normalized) : null;
     if (!digest) return full;
-    return `${reference}?rev=${digest}`;
+    return `${reference}${fingerprintQuery(query, digest)}${hash || ""}`;
   });
 }
 
