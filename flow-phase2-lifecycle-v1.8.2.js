@@ -327,7 +327,13 @@
     const kind=action.dataset.hhP2LifeAction||"";
     const breedingId=action.dataset.breedingId||"";
     const litterId=action.dataset.litterId||"";
-    if(kind==="record-birth"){root.HerdHarborApp?.openRecordBirth?.(breedingId);return;}
+    if(kind==="record-birth"){
+      rememberReturn(animalId);
+      const opened=root.HerdHarborApp?.openRecordBirth?.(breedingId);
+      if(opened===false){pendingReturn=null;return;}
+      waitFor("#litter-form",form=>restoreAfterForm(form));
+      return;
+    }
     if(kind==="edit-breeding")openCoreRecord(kind,breedingId,animalId);
     else if(kind==="edit-litter"||kind==="create-offspring")openCoreRecord(kind,litterId,animalId);
   }
