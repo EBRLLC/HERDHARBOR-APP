@@ -222,3 +222,35 @@ test("mutation ids remain unique for sanitized and truncated logical-id collisio
   assert.equal(new Set(pending.map((entry) => entry.mutationId)).size, 4);
   assert.equal(new Set(pending.map((entry) => entry.recordId)).size, 4);
 });
+
+
+test("same-revision array membership replacement emits one atomic section mutation", () => {
+  const initial = {
+    activity: [
+      { id: "x1", type: "one" },
+      { id: "x2", type: "two" },
+      { id: "x3", type: "three" }
+    ]
+  };
+  const storage = new MemoryStorage({
+    [OWNER_KEY]: "user-1",
+    [STATE_KEY]: JSON.stringify(initial)
+  });
+  const store = createStore(storage);
+  const next = {
+    activity: [
+      { id: "x4", type: "four" },
+      { id: "x1", type: "one" },
+      { id: "x2", type: "two" }
+    ]
+  };
+
+  const result = store.commit(next, { source: "local", reason: "activity-rollover" });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.mutations.length, 1);
+  assert.equal(result.mutations[0].domain, "activity");
+  assert.equal(result.mutations[0].recordId, "$section");
+  assert.equal(result.mutations[0].operation, "update");
+  assert.equal(store.getOutbox("user-1").length, 1);
+});

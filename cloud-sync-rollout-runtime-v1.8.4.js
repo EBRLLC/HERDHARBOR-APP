@@ -24,7 +24,7 @@
     ["hh-normalized-record-store-v183", "cloud-record-store-v1.8.3.js?v=1"],
     ["hh-normalized-state-mapper-v183", "cloud-state-normalizer-v1.8.3.js?v=1"],
     ["hh-normalized-record-baseline-v184", "cloud-record-baseline-v1.8.4.js?v=1"],
-    ["hh-normalized-record-worker-v184", "cloud-record-outbox-worker-v1.8.4.js?v=1"],
+    ["hh-normalized-record-worker-v184", "cloud-record-outbox-worker-v1.8.4.js?v=2"],
     ["hh-normalized-cohort-gate-v183", "cloud-sync-cohort-gate-v1.8.3.js?v=1"],
     ["hh-normalized-shadow-sync-v183", "cloud-shadow-sync-v1.8.3.js?v=1"],
     ["hh-normalized-shadow-bootstrap-v183", "cloud-shadow-bootstrap-v1.8.3.js?v=1"],
@@ -230,7 +230,8 @@
           recordStore,
           normalizer: m.normalizer,
           baselineStore,
-          writerVersion: WRITER_VERSION
+          writerVersion: WRITER_VERSION,
+          readAuthoritativeLegacySnapshot: cloud.readLegacySnapshotForNormalizedSync
         });
         const metrics = m.reconciliationApi.createRolloutMetrics();
         const shadowController = m.shadowApi.createShadowSyncController({

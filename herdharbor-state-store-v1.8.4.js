@@ -183,6 +183,21 @@
     const after = new Map(next.map((record) => [recordIdentity(record), record]));
     const mutations = [];
     const ids = [...new Set([...before.keys(), ...after.keys()])].sort();
+    const addedIds = ids.filter((recordId) => !before.has(recordId) && after.has(recordId));
+    const removedIds = ids.filter((recordId) => before.has(recordId) && !after.has(recordId));
+
+    // A same-commit membership replacement (for example a capped activity
+    // list adding the newest entry while dropping the oldest) must be planned
+    // as one domain transaction. Emitting independent create/delete/$order
+    // mutations lets sibling CAS operations race the shared array manifest.
+    if (addedIds.length && removedIds.length) {
+      return [mutationMetadata({
+        ...context,
+        recordId: "$section",
+        operation: "update",
+        expectedCloudVersion: null
+      })];
+    }
 
     for (const recordId of ids) {
       const oldRecord = before.get(recordId);

@@ -232,7 +232,8 @@ async function createHarness(initialState, options = {}) {
     online: () => online,
     now: clock.iso,
     baseBackoffMs: 100,
-    maxBackoffMs: 1000
+    maxBackoffMs: 1000,
+    readAuthoritativeLegacySnapshot: options.readAuthoritativeLegacySnapshot || null
   });
   if (options.prime !== false) {
     const primed = await worker.primeBaseline();
@@ -770,4 +771,144 @@ test("recovery-in-progress is classified as a migration-stage retry", () => {
     Worker.classifyFailure(Object.assign(new Error("HH_SYNC_RECOVERY_IN_PROGRESS"), { code: "HH_SYNC_RECOVERY_IN_PROGRESS" })),
     "migration_stage"
   );
+});
+
+
+test("capped array rollover commits create manifest and tombstone as one atomic section", async () => {
+  const initial = animalState({
+    activity: [
+      { id: "x1", type: "one" },
+      { id: "x2", type: "two" },
+      { id: "x3", type: "three" }
+    ]
+  });
+  const h = await createHarness(initial);
+  const next = clone(initial);
+  next.activity = [
+    { id: "x4", type: "four" },
+    { id: "x1", type: "one" },
+    { id: "x2", type: "two" }
+  ];
+
+  h.save(next);
+  assert.equal(h.outbox().length, 1);
+  assert.equal(h.outbox()[0].recordId, "$section");
+
+  const result = await h.worker.drain();
+
+  assert.equal(result.ok, true);
+  assert.equal(result.pending, 0);
+  assert.equal(h.recordStore.groupCalls.length, 1);
+  assert.equal(h.recordStore.groupCalls[0].length, 3);
+
+  const added = h.recordStore.rowForLogical("activity", "x4");
+  const removed = h.recordStore.rowForLogical("activity", "x3");
+  const manifest = h.recordStore.rowForLogical("activity", "$order");
+  assert.ok(added && !added.deleted_at);
+  assert.ok(removed?.deleted_at);
+  assert.ok(manifest.payload.item_record_ids.includes(added.record_id));
+  assert.ok(!manifest.payload.item_record_ids.includes(removed.record_id));
+});
+
+test("shadow repair safely heals an old quarantined order conflict from matching legacy authority", async () => {
+  const initial = animalState({
+    activity: [
+      { id: "x1", type: "one" },
+      { id: "x2", type: "two" },
+      { id: "x3", type: "three" }
+    ]
+  });
+  const authoritative = clone(initial);
+  authoritative.activity = [
+    { id: "x4", type: "four" },
+    { id: "x1", type: "one" },
+    { id: "x2", type: "two" }
+  ];
+
+  const h = await createHarness(initial, {
+    readAuthoritativeLegacySnapshot: async () => ({ snapshot: clone(authoritative) })
+  });
+
+  h.recordStore.remoteDelete("activity", "x3");
+  h.stateStore.replaceRaw(JSON.stringify(authoritative), { source: "cloud", notify: false });
+
+  h.storage.setItem(
+    `herdharbor_state_outbox_v1_${USER_ID}`,
+    JSON.stringify([{
+      mutationId: "old-order-conflict",
+      ownerId: USER_ID,
+      domain: "activity",
+      recordId: "$order",
+      operation: "update",
+      expectedCloudVersion: 1,
+      localRevision: 1,
+      createdAt: h.clock.iso(),
+      retryState: "conflict",
+      retryCount: 1,
+      nextRetryAt: null,
+      lastErrorClass: "cas_conflict",
+      lastConflictFields: ["$order.remote_members"],
+      lastAttemptAt: h.clock.iso()
+    }])
+  );
+
+  const result = await h.worker.drain();
+
+  assert.equal(result.ok, true);
+  assert.equal(result.succeeded, 1);
+  assert.equal(result.pending, 0);
+  assert.equal(result.results[0].repairedOrderConflict, true);
+  assert.equal(h.outbox().length, 0);
+
+  const added = h.recordStore.rowForLogical("activity", "x4");
+  const removed = h.recordStore.rowForLogical("activity", "x3");
+  const manifest = h.recordStore.rowForLogical("activity", "$order");
+  assert.ok(added && !added.deleted_at);
+  assert.ok(removed?.deleted_at);
+  assert.ok(manifest.payload.item_record_ids.includes(added.record_id));
+  assert.ok(!manifest.payload.item_record_ids.includes(removed.record_id));
+});
+
+test("shadow order repair refuses to use a stale local snapshot", async () => {
+  const initial = animalState({
+    activity: [
+      { id: "x1", type: "one" },
+      { id: "x2", type: "two" }
+    ]
+  });
+  const authoritative = clone(initial);
+  authoritative.activity.unshift({ id: "x3", type: "remote" });
+
+  const h = await createHarness(initial, {
+    readAuthoritativeLegacySnapshot: async () => ({ snapshot: clone(authoritative) })
+  });
+
+  h.storage.setItem(
+    `herdharbor_state_outbox_v1_${USER_ID}`,
+    JSON.stringify([{
+      mutationId: "stale-order-conflict",
+      ownerId: USER_ID,
+      domain: "activity",
+      recordId: "$order",
+      operation: "update",
+      expectedCloudVersion: 1,
+      localRevision: 1,
+      createdAt: h.clock.iso(),
+      retryState: "conflict",
+      retryCount: 1,
+      nextRetryAt: null,
+      lastErrorClass: "cas_conflict",
+      lastConflictFields: ["$order.remote_members"],
+      lastAttemptAt: h.clock.iso()
+    }])
+  );
+
+  const result = await h.worker.drain();
+
+  assert.equal(result.ok, false);
+  assert.equal(result.conflicts, 1);
+  assert.equal(result.pending, 1);
+  assert.equal(result.results[0].repairDeferred, true);
+  assert.ok(result.results[0].fields.includes("$order.authority_mismatch"));
+  assert.equal(h.outbox().length, 1);
 });
