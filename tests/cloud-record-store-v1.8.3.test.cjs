@@ -9,6 +9,7 @@ const root = path.resolve(__dirname, "..");
 const api = require(path.join(root, "cloud-record-store-v1.8.3.js"));
 const adapterSource = fs.readFileSync(path.join(root, "cloud-record-store-v1.8.3.js"), "utf8");
 const schema = fs.readFileSync(path.join(root, "supabase", "v1.8.3-cloud-sync-normalized-records.sql"), "utf8");
+const recordGroupSchema = fs.readFileSync(path.join(root, "supabase", "v1.8.4-normalized-record-group-cas.sql"), "utf8");
 
 function makeRpcOnlyStore() {
   let rpcCalls = 0;
@@ -25,6 +26,7 @@ test("normalized cloud record store exposes the hardened v1.8.3 RPC foundation",
   assert.equal(api.manifestTable, "herdharbor_sync_manifest");
   assert.equal(api.batchRpc, "herdharbor_sync_apply_batch");
   assert.equal(api.recordRpc, "herdharbor_sync_apply_record");
+  assert.equal(api.recordGroupRpc, "herdharbor_sync_apply_record_group");
   assert.equal(api.verifyRpc, "herdharbor_sync_mark_verified");
   assert.equal(api.prepareWriterRpc, "herdharbor_sync_prepare_normalized_writer_guarded");
   assert.equal(api.stageRpc, "herdharbor_sync_set_stage");
@@ -64,7 +66,7 @@ test("integrity numbers reject missing, coercible, fractional, and unsafe values
 test("store exposes reads plus guarded RPC mutations, not unsafe direct writes", () => {
   const client = { from(){return{select(){return this;},eq(){return this;},order(){return this;},is(){return this;},maybeSingle:async()=>({data:null,error:null}),then(resolve){return Promise.resolve({data:[],error:null}).then(resolve);}};}, rpc:async()=>({data:{},error:null}) };
   const store=api.createRecordStore({client,userId:"11111111-1111-1111-1111-111111111111"});
-  for(const name of ["list","listHeaders","getManifest","applyBatch","applyRecordMutation","markVerified","prepareNormalizedWriter","setStage"]) assert.equal(typeof store[name],"function");
+  for(const name of ["list","listHeaders","getManifest","applyBatch","applyRecordMutation","applyRecordMutationsAtomic","markVerified","prepareNormalizedWriter","setStage"]) assert.equal(typeof store[name],"function");
   assert.equal(store.put,undefined); assert.equal(store.tombstone,undefined); assert.equal(store.putManifest,undefined); assert.match(adapterSource,/payload_checksum/);
 });
 
@@ -145,6 +147,63 @@ test("record CAS adapter serializes one mutation without account-wide generation
   assert.equal(calls[0][1].p_delete,false);
   assert.equal(calls[0][1].p_writer_version,"record-cas-v1");
   assert.equal(Object.prototype.hasOwnProperty.call(calls[0][1],"p_expected_generation"),false);
+});
+
+test("atomic record-group adapter sends one RPC for a logical membership mutation", async () => {
+  const calls=[];
+  const client={
+    from(){throw new Error("table path should not be used");},
+    async rpc(name,args){
+      calls.push([name,args]);
+      return {
+        data:{
+          ok:true,
+          generation:20,
+          operations:args.p_operations.map((operation,index)=>({
+            record_id:operation.record_id,
+            record_version:(operation.expected_version||0)+1,
+            deleted:Boolean(operation.deleted)
+          }))
+        },
+        error:null
+      };
+    }
+  };
+  const store=api.createRecordStore({client,userId:"11111111-1111-1111-1111-111111111111"});
+  const result=await store.applyRecordMutationsAtomic({
+    writerVersion:"record-cas-v1",
+    operations:[
+      {
+        namespace:"legacy-state",
+        recordId:"item:animals:a3",
+        payload:{kind:"array_item",key:"animals",value:{id:"a3"}},
+        payloadChecksum:"hh64:item"
+      },
+      {
+        namespace:"legacy-state",
+        recordId:"array:animals",
+        payload:{kind:"array_manifest",key:"animals",length:1,item_record_ids:["item:animals:a3"]},
+        payloadChecksum:"hh64:manifest",
+        expectedVersion:4
+      }
+    ]
+  });
+
+  assert.equal(calls.length,1);
+  assert.equal(calls[0][0],api.recordGroupRpc);
+  assert.equal(calls[0][1].p_operations.length,2);
+  assert.equal(calls[0][1].p_operations[0].expected_version,null);
+  assert.equal(calls[0][1].p_operations[1].expected_version,4);
+  assert.equal(result.operations.length,2);
+});
+
+test("atomic record-group SQL rolls back all member writes on any CAS failure", () => {
+  assert.match(recordGroupSchema,/create or replace function public\.herdharbor_sync_apply_record_group\(/i);
+  assert.match(recordGroupSchema,/for v_operation in select value from jsonb_array_elements\(p_operations\)/i);
+  assert.match(recordGroupSchema,/if v_rows <> 1 then[\s\S]*HH_SYNC_CONFLICT/i);
+  assert.match(recordGroupSchema,/HH_SYNC_STAGE_CHANGED/i);
+  assert.match(recordGroupSchema,/revoke all on function public\.herdharbor_sync_apply_record_group\(jsonb, text\)[\s\S]*from public, anon, authenticated/i);
+  assert.match(recordGroupSchema,/grant execute on function public\.herdharbor_sync_apply_record_group\(jsonb, text\)[\s\S]*to authenticated/i);
 });
 
 test("record CAS adapter requires versions for tombstones and classifies CAS errors", async () => {
