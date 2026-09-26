@@ -41,8 +41,11 @@ function safeParse(raw) {
   }
 }
 
+const flushAsync = () => new Promise((resolve) => setImmediate(resolve));
+
 function makeBridge(seed = {}) {
   const storage = new TestStorage({ [OWNER_KEY]: userId, ...seed });
+  const baseline = new Map();
   const stateStore = StateStore.create({ storage, indexedDB: null, now: () => "2026-09-24T12:00:00.000Z" });
   const scheduled = [];
   const recovery = [];
@@ -72,6 +75,8 @@ function makeBridge(seed = {}) {
     "safeParse",
     "activeStateRaw",
     "safeStorageSet",
+    "readCloudBaseline",
+    "writeCloudBaseline",
     "window",
     "CustomEvent",
     "sessionArg",
@@ -103,6 +108,23 @@ return {
     safeParse,
     () => stateStore.compatibilitySnapshot(),
     (key, value) => { storage.setItem(key, value); return true; },
+    async (id) => {
+      const durable = baseline.get(id);
+      if (durable) return durable;
+      const legacy = storage.getItem(`herdharbor_user_cloud_base_${id}`);
+      if (legacy && safeParse(legacy)) {
+        baseline.set(id, legacy);
+        storage.removeItem(`herdharbor_user_cloud_base_${id}`);
+        return legacy;
+      }
+      return null;
+    },
+    async (id, raw) => {
+      if (!id || !safeParse(raw)) return false;
+      baseline.set(id, raw);
+      storage.removeItem(`herdharbor_user_cloud_base_${id}`);
+      return true;
+    },
     windowObject,
     CustomEvent,
     { user: { id: userId } },
@@ -114,30 +136,30 @@ return {
     (key) => storage.removeItem(key)
   );
 
-  return { storage, stateStore, bridge, scheduled, recovery, events };
+  return { storage, baseline, stateStore, bridge, scheduled, recovery, events };
 }
 
-test("missing confirmed baseline is restored only for a clean device with a known cloud revision", () => {
-  const { storage, bridge } = makeBridge({
+test("missing confirmed baseline is restored only for a clean device with a known cloud revision", async () => {
+  const { baseline, bridge } = makeBridge({
     [STATE_KEY]: baseState,
     [VERSION_KEY]: "2026-09-10T04:00:00.000Z"
   });
-  assert.equal(bridge.restoreMissingCloudBaseline(userId, "hydrate"), true);
-  assert.equal(storage.getItem(BASE_KEY), baseState);
+  assert.equal(await bridge.restoreMissingCloudBaseline(userId, "hydrate"), true);
+  assert.equal(baseline.get(userId), baseState);
 });
 
-test("dirty local work prevents baseline invention", () => {
-  const { storage, bridge } = makeBridge({
+test("dirty local work prevents baseline invention", async () => {
+  const { baseline, bridge } = makeBridge({
     [STATE_KEY]: baseState,
     [VERSION_KEY]: "2026-09-10T04:00:00.000Z",
     [DIRTY_KEY]: "1"
   });
-  assert.equal(bridge.restoreMissingCloudBaseline(userId, "hydrate"), false);
-  assert.equal(storage.getItem(BASE_KEY), null);
+  assert.equal(await bridge.restoreMissingCloudBaseline(userId, "hydrate"), false);
+  assert.equal(baseline.get(userId) || null, null);
 });
 
-test("canonical local commit captures the clean pre-edit ancestor before marking legacy sync dirty", () => {
-  const { storage, stateStore, bridge, scheduled } = makeBridge({
+test("canonical local commit captures the clean pre-edit ancestor before marking legacy sync dirty", async () => {
+  const { storage, baseline, stateStore, bridge, scheduled } = makeBridge({
     [STATE_KEY]: baseState,
     [VERSION_KEY]: "2026-09-10T04:00:00.000Z"
   });
@@ -145,22 +167,24 @@ test("canonical local commit captures the clean pre-edit ancestor before marking
 
   const edited = { animals: [{ id: "a1", name: "Judy", notes: "new note" }], settings: {} };
   const result = stateStore.commit(edited, { source: "local" });
+  await flushAsync();
 
   assert.equal(result.ok, true);
-  assert.equal(storage.getItem(BASE_KEY), baseState);
+  assert.equal(baseline.get(userId), baseState);
   assert.equal(storage.getItem(DIRTY_KEY), "1");
   assert.equal(scheduled.length, 1);
   assert.equal(scheduled[0].rawValue, JSON.stringify(edited));
   assert.equal(bridge.sequence(), 1);
 });
 
-test("canonical local commit never invents a merge ancestor without a known cloud revision", () => {
-  const { storage, stateStore, bridge, scheduled } = makeBridge({ [STATE_KEY]: baseState });
+test("canonical local commit never invents a merge ancestor without a known cloud revision", async () => {
+  const { storage, baseline, stateStore, bridge, scheduled } = makeBridge({ [STATE_KEY]: baseState });
   stateStore.subscribe(bridge.handleCanonicalStateCommit);
 
   stateStore.commit({ animals: [{ id: "a1", name: "Changed" }], settings: {} }, { source: "local" });
+  await flushAsync();
 
-  assert.equal(storage.getItem(BASE_KEY), null);
+  assert.equal(baseline.get(userId) || null, null);
   assert.equal(storage.getItem(DIRTY_KEY), "1");
   assert.equal(scheduled.length, 1);
 });
