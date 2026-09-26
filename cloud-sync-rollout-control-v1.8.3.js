@@ -18,6 +18,7 @@
     "ownerRls",
     "batchRpc",
     "recordRpc",
+    "recordGroupRpc",
     "cohortRpc",
     "verifyRpc",
     "stageRpc",
