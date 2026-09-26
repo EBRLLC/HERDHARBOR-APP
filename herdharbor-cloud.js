@@ -74,6 +74,7 @@
   const originalGetItem = Storage.prototype.getItem;
   const originalSetItem = Storage.prototype.setItem;
   const originalRemoveItem = Storage.prototype.removeItem;
+  const canonicalStateStore = window.HerdHarborStateStore || null;
 
   let session = null;
   let syncTimer = null;
@@ -81,7 +82,6 @@
   let pendingSync = null;
   let writeSequence = 0;
   let lastCloudCheckAt = 0;
-  let internalStorageWrite = false;
   let accountButton = null;
   let accountDialog = null;
   let syncConflict = null;
@@ -399,7 +399,7 @@
 
   function currentActiveAnimalCount(userId) {
     if (!userId || userId !== session?.user?.id) return null;
-    const localState = safeParse(originalGetItem.call(localStorage, STORAGE_KEY));
+    const localState = safeParse(activeStateRaw());
     const animals = Array.isArray(localState?.animals) ? localState.animals : [];
     return window.HerdHarborMembership?.activeAnimalCount?.(animals) ?? null;
   }
@@ -812,6 +812,10 @@
     return JSON.stringify(cloudState);
   }
 
+  function activeStateRaw() {
+    return canonicalStateStore?.compatibilitySnapshot?.() || originalGetItem.call(localStorage, STORAGE_KEY) || "";
+  }
+
   function safeStorageSet(key, value) {
     try {
       originalSetItem.call(localStorage, key, value);
@@ -840,21 +844,31 @@
   }
 
   function setInternalStorage(key, value) {
-    internalStorageWrite = true;
-    try {
-      originalSetItem.call(localStorage, key, value);
-    } finally {
-      internalStorageWrite = false;
+    if (key === STORAGE_KEY) {
+      if (!canonicalStateStore?.replaceRaw) throw new Error("Canonical state store is unavailable.");
+      const result = canonicalStateStore.replaceRaw(value, {
+        source: "cloud",
+        reason: "legacy-cloud-state-replace",
+        notify: false
+      });
+      if (!result?.ok) throw result?.error || new Error("Canonical state replacement failed.");
+      return;
     }
+    originalSetItem.call(localStorage, key, value);
   }
 
   function removeInternalStorage(key) {
-    internalStorageWrite = true;
-    try {
-      originalRemoveItem.call(localStorage, key);
-    } finally {
-      internalStorageWrite = false;
+    if (key === STORAGE_KEY) {
+      if (!canonicalStateStore?.replaceRaw) throw new Error("Canonical state store is unavailable.");
+      const result = canonicalStateStore.replaceRaw(null, {
+        source: "cloud",
+        reason: "legacy-cloud-state-clear",
+        notify: false
+      });
+      if (!result?.ok) throw result?.error || new Error("Canonical state clear failed.");
+      return;
     }
+    originalRemoveItem.call(localStorage, key);
   }
 
   function openRecoveryDatabase() {
@@ -936,7 +950,7 @@
 
   function preserveActiveForUser(userId, reason) {
     if (!userId) return;
-    const activeRaw = originalGetItem.call(localStorage, STORAGE_KEY);
+    const activeRaw = activeStateRaw();
     if (!activeRaw || !safeParse(activeRaw)) return;
     safeStorageSet(cacheKey(userId), activeRaw);
     safeStorageSet(ACTIVE_OWNER_KEY, userId);
@@ -978,104 +992,64 @@
     dispatchSyncStatus();
   }
 
-  function installStorageBridge() {
-    if (window.__HERDHARBOR_STORAGE_BRIDGE__) return;
-    window.__HERDHARBOR_STORAGE_BRIDGE__ = true;
+  function dispatchBaselineRestored(userId, reason) {
+    try {
+      window.dispatchEvent?.(new CustomEvent("herdharbor:cloud-baseline-restored", {
+        detail: { userIdPresent: Boolean(userId), reason: String(reason || "state-store").slice(0, 80) }
+      }));
+    } catch {}
+  }
 
-    Storage.prototype.setItem = function patchedSetItem(key, value) {
-      const previousValue =
-        this === localStorage && key === STORAGE_KEY
-          ? originalGetItem.call(localStorage, STORAGE_KEY)
-          : null;
-      if (previousValue === value) return undefined;
-      if (
-        this === localStorage &&
-        key === STORAGE_KEY &&
-        session?.user?.id
-      ) {
-        removeRedundantStateCache(session.user.id);
-      }
-      const result = originalSetItem.call(this, key, value);
+  function restoreMissingCloudBaseline(userId, reason = "state-store") {
+    if (!userId) return false;
+    if (originalGetItem.call(localStorage, baseKey(userId))) return false;
+    if (originalGetItem.call(localStorage, dirtyKey(userId)) === "1") return false;
+    if (!originalGetItem.call(localStorage, versionKey(userId))) return false;
+    const activeRaw = activeStateRaw();
+    if (!activeRaw || !safeParse(activeRaw)) return false;
+    safeStorageSet(baseKey(userId), activeRaw);
+    dispatchBaselineRestored(userId, reason);
+    return true;
+  }
 
-      if (
-        this === localStorage &&
-        key === STORAGE_KEY &&
-        !internalStorageWrite &&
-        session?.user?.id
-      ) {
-        const userId = session.user.id;
-        safeStorageSet(ACTIVE_OWNER_KEY, userId);
-        removeRedundantStateCache(userId);
+  function captureCleanBaselineBeforeLocalCommit(userId, previousValue, reason = "before-local-edit") {
+    if (!userId || !previousValue || !safeParse(previousValue)) return false;
+    if (originalGetItem.call(localStorage, baseKey(userId))) return false;
+    if (originalGetItem.call(localStorage, dirtyKey(userId)) === "1") return false;
+    if (!originalGetItem.call(localStorage, versionKey(userId))) return false;
+    safeStorageSet(baseKey(userId), previousValue);
+    dispatchBaselineRestored(userId, reason);
+    return true;
+  }
 
-        // Theme and sidebar preferences are device-local. Persist them without
-        // creating a recovery snapshot or sending the full farm state to cloud.
-        if (previousValue && sameState(previousValue, value)) return result;
+  function handleCanonicalStateCommit(detail) {
+    if (!detail || detail.source !== "local" || !detail.cloudRelevant || !session?.user?.id) return false;
+    const userId = session.user.id;
+    const rawValue = String(detail.rawValue || "");
+    const previousValue = String(detail.previousRaw || "");
+    if (!safeParse(rawValue)) return false;
 
-        // If sync metadata was evicted but the device was clean before this
-        // edit, the pre-edit state is the only safe local merge ancestor we
-        // still possess. Capture it before marking the device dirty so a later
-        // cloud preflight can perform the normal three-way merge instead of
-        // failing with "missing sync history".
-        if (
-          previousValue &&
-          safeParse(previousValue) &&
-          !originalGetItem.call(localStorage, baseKey(userId)) &&
-          originalGetItem.call(localStorage, dirtyKey(userId)) !== "1"
-        ) {
-          safeStorageSet(baseKey(userId), previousValue);
-        }
+    safeStorageSet(ACTIVE_OWNER_KEY, userId);
+    removeRedundantStateCache(userId);
+    captureCleanBaselineBeforeLocalCommit(userId, previousValue);
 
-        writeSequence += 1;
-        syncConflict = null;
-        safeStorageSet(dirtyKey(userId), "1");
-        if (previousValue && !sameState(previousValue, value)) {
-          recordRecoverySnapshot(userId, previousValue, "Before local change");
-        }
-        scheduleCloudSync(value, writeSequence);
-      }
+    writeSequence += 1;
+    syncConflict = null;
+    safeStorageSet(dirtyKey(userId), "1");
+    if (previousValue && !sameState(previousValue, rawValue)) {
+      void recordRecoverySnapshot(userId, previousValue, "Before local change");
+    }
+    scheduleCloudSync(rawValue, writeSequence);
+    return true;
+  }
 
-      return result;
-    };
-
-    Storage.prototype.removeItem = function patchedRemoveItem(key) {
-      const previousValue =
-        this === localStorage && key === STORAGE_KEY
-          ? originalGetItem.call(localStorage, STORAGE_KEY)
-          : null;
-      const result = originalRemoveItem.call(this, key);
-
-      if (
-        this === localStorage &&
-        key === STORAGE_KEY &&
-        !internalStorageWrite &&
-        session?.user?.id
-      ) {
-        const userId = session.user.id;
-
-        // Preserve the pre-clear state as a merge ancestor when sync metadata
-        // is missing but this device was clean before the clear operation.
-        if (
-          previousValue &&
-          safeParse(previousValue) &&
-          !originalGetItem.call(localStorage, baseKey(userId)) &&
-          originalGetItem.call(localStorage, dirtyKey(userId)) !== "1"
-        ) {
-          safeStorageSet(baseKey(userId), previousValue);
-        }
-
-        writeSequence += 1;
-        syncConflict = null;
-        safeStorageSet(ACTIVE_OWNER_KEY, userId);
-        safeStorageSet(cacheKey(userId), "{}");
-        safeStorageSet(dirtyKey(userId), "1");
-        if (previousValue) {
-          recordRecoverySnapshot(userId, previousValue, "Before clearing local records");
-        }
-        scheduleCloudSync("{}", writeSequence);
-      }
-
-      return result;
-    };
+  function installStateStoreBridge() {
+    if (window.__HERDHARBOR_STATE_STORE_CLOUD_BRIDGE__) return true;
+    if (!canonicalStateStore?.subscribe) {
+      throw new Error("HerdHarbor cloud sync requires the canonical state store.");
+    }
+    window.__HERDHARBOR_STATE_STORE_CLOUD_BRIDGE__ = canonicalStateStore.subscribe(handleCanonicalStateCommit);
+    return true;
   }
 
   async function fetchCloudRecord(userId) {
@@ -1173,7 +1147,7 @@
     const remoteRaw = remoteRecord?.app_state
       ? JSON.stringify(remoteRecord.app_state)
       : null;
-    const activeRaw = originalGetItem.call(localStorage, STORAGE_KEY);
+    const activeRaw = activeStateRaw();
     const confirmedBase = originalGetItem.call(localStorage, baseKey(userId));
     const localBaselineRaw = confirmedBase || activeRaw;
 
@@ -1316,7 +1290,7 @@
     }
 
     if (autoMerged && sequence !== writeSequence) {
-      const currentRaw = originalGetItem.call(localStorage, STORAGE_KEY);
+      const currentRaw = activeStateRaw();
       const rebased = mergeRawStates(
         localRawBeforeMerge,
         currentRaw,
@@ -1396,7 +1370,7 @@
   }
 
   async function syncNow() {
-    const raw = originalGetItem.call(localStorage, STORAGE_KEY);
+    const raw = activeStateRaw();
     if (!raw) {
       setSyncState("No HerdHarbor data is available to sync.", "error");
       return false;
@@ -1519,7 +1493,7 @@
     }
 
     const remoteRaw = JSON.stringify(data.app_state);
-    const activeRaw = originalGetItem.call(localStorage, STORAGE_KEY);
+    const activeRaw = activeStateRaw();
     const confirmedBase = originalGetItem.call(localStorage, baseKey(userId));
 
     if (activeRaw && sameState(activeRaw, remoteRaw)) {
@@ -1535,7 +1509,7 @@
       // The recovery snapshot is asynchronous. A local edit made while it is
       // being stored must not be overwritten by the cloud copy we fetched
       // earlier. Hand the newest local state to the normal sync/merge path.
-      const latestActiveRaw = originalGetItem.call(localStorage, STORAGE_KEY);
+      const latestActiveRaw = activeStateRaw();
       if (
         originalGetItem.call(localStorage, dirtyKey(userId)) === "1" ||
         !sameState(latestActiveRaw, activeRaw)
@@ -2096,7 +2070,7 @@
   }
 
   async function downloadSafetyBackup() {
-    const rawValue = originalGetItem.call(localStorage, STORAGE_KEY);
+    const rawValue = activeStateRaw();
     let appState = safeParse(rawValue);
     if (!appState) {
       setSyncState("No readable local records are available to back up.", "error");
@@ -2283,7 +2257,8 @@
     }
 
     const userId = session.user.id;
-    const storedActiveRaw = originalGetItem.call(localStorage, STORAGE_KEY);
+    restoreMissingCloudBaseline(userId, "hydrate");
+    const storedActiveRaw = activeStateRaw();
     const activeOwner = originalGetItem.call(localStorage, ACTIVE_OWNER_KEY);
     const activeRaw =
       !activeOwner || activeOwner === userId
@@ -2400,7 +2375,7 @@
   }
 
   async function initialize() {
-    installStorageBridge();
+    installStateStoreBridge();
     ensureStyles();
     document.documentElement.classList.add("hh-auth-locked");
     buildAuthRoot();

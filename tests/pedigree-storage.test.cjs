@@ -27,6 +27,7 @@ assert.match(cloud, /HerdHarborAttachments\?\.stateWithPedigreeAttachments/);
 assert.match(cloud, /version: "1\.7\.1"/);
 assert.match(cloud, /function removeRedundantStateCache\(userId\)/);
 assert.match(cloud, /safeStorageRemove\(cacheKey\(userId\)\)/);
-assert.match(cloud, /removeRedundantStateCache\(session\.user\.id\)/);
+assert.match(cloud, /function handleCanonicalStateCommit\(detail\)/);
+assert.match(cloud, /removeRedundantStateCache\(userId\)/);
 
 console.log("expanded pedigree attachment storage and backup tests passed");

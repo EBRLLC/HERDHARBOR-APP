@@ -67,8 +67,9 @@
     }
   };
 
+  const canonicalStateStore = window.HerdHarborStateStore || null;
   let state = loadState();
-  let lastSavedRaw = localStorage.getItem(STORAGE_KEY) || "";
+  let lastSavedRaw = canonicalStateStore?.getRaw?.() || localStorage.getItem(STORAGE_KEY) || "";
   const requestedRoute = String(window.location.hash || "").replace(/^#/, "");
   let currentRoute = ["dashboard", "analytics", "animals", "pedigrees", "breeding", "litters", "health", "symptoms", "tasks", "budget", "sales", "settings", "admin"].includes(requestedRoute)
     ? requestedRoute
@@ -127,7 +128,8 @@
 
   function loadState() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const storedState = canonicalStateStore?.load?.();
+      const raw = storedState ? JSON.stringify(storedState) : localStorage.getItem(STORAGE_KEY);
       if (!raw) return structuredClone(defaultState);
       const parsed = JSON.parse(raw);
       return {
@@ -158,15 +160,19 @@
 
   function saveState(message = "") {
     try {
-      const rawValue = JSON.stringify(state);
-      if (rawValue !== lastSavedRaw) {
-        localStorage.setItem(STORAGE_KEY, rawValue);
-        lastSavedRaw = rawValue;
+      if (!canonicalStateStore?.commit) {
+        throw new Error("The canonical HerdHarbor state store is unavailable.");
       }
+      const result = canonicalStateStore.commit(state, {
+        source: "local",
+        reason: message || "state-save"
+      });
+      if (!result?.ok) throw result?.error || new Error("The local state commit failed.");
+      lastSavedRaw = result.rawValue || JSON.stringify(state);
       if (message) toast(message, "success");
       return true;
     } catch (error) {
-      toast("This device is low on browser storage. HerdHarbor kept your records unchanged; download a safety backup before adding more photos.", "error");
+      toast("This device could not durably save the change. Download a safety backup before adding more records or photos.", "error");
       return false;
     }
   }
@@ -3254,7 +3260,12 @@
   async function clearData() {
     if (!confirm("Clear every local HerdHarbor record on this device?")) return;
     if (!confirm("This cannot be undone unless you exported a backup. Continue?")) return;
-    localStorage.removeItem(STORAGE_KEY);
+    const cleared = canonicalStateStore?.clear?.({ source: "local", reason: "user-cleared-local-data" });
+    if (!cleared?.ok) {
+      toast("HerdHarbor could not durably record the clear operation on this device.", "error");
+      return;
+    }
+    lastSavedRaw = cleared.rawValue || "{}";
     await new Promise((resolve) => {
       if (!window.indexedDB) return resolve();
       const request = indexedDB.deleteDatabase(ATTACHMENT_DB);

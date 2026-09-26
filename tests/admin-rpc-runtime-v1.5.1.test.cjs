@@ -74,6 +74,7 @@ const safeParse = (value) => {
   try { return value ? JSON.parse(value) : null; } catch { return null; }
 };
 const STORAGE_KEY = "herdharbor_pre_alpha_v1";
+const activeStateRaw = () => originalGetItem.call(localStorage, STORAGE_KEY);
 const ADMIN_DIRECTORY_RPC = "admin_member_directory";
 
 const build = new Function(
@@ -85,6 +86,7 @@ const build = new Function(
   "originalGetItem",
   "localStorage",
   "safeParse",
+  "activeStateRaw",
   "STORAGE_KEY",
   "ADMIN_DIRECTORY_RPC",
   "ADMIN_AUDIT_TABLE",
@@ -100,6 +102,7 @@ const api = build(
   originalGetItem,
   localStorage,
   safeParse,
+  activeStateRaw,
   STORAGE_KEY,
   ADMIN_DIRECTORY_RPC,
   "admin_audit_log"

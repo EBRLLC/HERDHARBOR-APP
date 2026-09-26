@@ -92,16 +92,23 @@ test("diagnostics include the required safety and recovery controls", () => {
   assert.match(source, />Restore Last-Known-Good</);
 });
 
-test("restore-last-known-good is backup-first and keeps reconciliation dirty", () => {
+test("restore-last-known-good is backup-first and commits through the canonical state store", () => {
   const restoreIndex = source.indexOf("async function restoreLastKnownGood");
   assert.ok(restoreIndex >= 0);
   const restoreSource = source.slice(restoreIndex, source.indexOf("function ensureOpenButton", restoreIndex));
   assert.match(restoreSource, /downloadLocalBackup\(\)/);
-  assert.match(restoreSource, /store\.setItem\(STATE_KEY, baseline\)/);
-  assert.match(restoreSource, /store\.setItem\(dirtyKey\(userId\), "1"\)/);
+  assert.match(restoreSource, /stateStore\.commit\(parsedBaseline/);
+  assert.match(restoreSource, /source: "local"/);
+  assert.match(restoreSource, /reason: "restore-last-known-good"/);
   assert.match(restoreSource, /location\?\.reload/);
-  assert.doesNotMatch(restoreSource, /removeItem\(dirtyKey/);
-  assert.doesNotMatch(restoreSource, /bumpLocalRevision\(\"restore-last-known-good\"\)/, "restore must not double-increment the diagnostic local revision");
+  assert.doesNotMatch(restoreSource, /store\.setItem\(STATE_KEY/);
+  assert.doesNotMatch(restoreSource, /store\.setItem\(dirtyKey/);
+});
+
+test("diagnostic revision tracking subscribes to canonical state commits without Storage prototype interception", () => {
+  assert.match(source, /HerdHarborStateStore/);
+  assert.match(source, /stateStore\.subscribe/);
+  assert.doesNotMatch(source, /Storage\.prototype\.(?:setItem|removeItem)\s*=/);
 });
 
 test("diagnostics remain record-private and do not send livestock data to a third party", () => {
