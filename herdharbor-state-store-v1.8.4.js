@@ -85,6 +85,15 @@
     return safe.slice(0, 120) || "record";
   }
 
+  function mutationToken(value) {
+    const raw = String(value == null ? "" : value).trim();
+    const safe = raw
+      .replace(/[^a-zA-Z0-9_.:-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 96) || "record";
+    return `${safe}-${checksumText(raw)}`;
+  }
+
   function ownerToken(value) {
     return token(value || "local");
   }
@@ -128,7 +137,7 @@
     createdAt
   }) {
     return Object.freeze({
-      mutationId: `hhm:${ownerToken(ownerId)}:${revision}:${token(domain)}:${token(recordId)}:${operation}`,
+      mutationId: `hhm:${ownerToken(ownerId)}:${revision}:${mutationToken(domain)}:${mutationToken(recordId)}:${operation}`,
       ownerId: ownerId || "local",
       domain,
       recordId,
