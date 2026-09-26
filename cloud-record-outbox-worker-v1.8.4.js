@@ -642,7 +642,7 @@
       }
 
       summary.pending = stateStore.getOutbox(options.ownerId).length;
-      summary.ok = summary.failed === 0 && summary.pending === 0;
+      summary.ok = summary.failed === 0;
       return summary;
     }
 
