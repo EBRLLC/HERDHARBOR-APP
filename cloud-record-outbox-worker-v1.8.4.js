@@ -138,6 +138,9 @@
     const maxGroups = Math.max(1, Number(options.maxGroups || DEFAULT_MAX_GROUPS));
     const baseBackoffMs = Math.max(100, Number(options.baseBackoffMs || DEFAULT_BASE_BACKOFF_MS));
     const maxBackoffMs = Math.max(baseBackoffMs, Number(options.maxBackoffMs || DEFAULT_MAX_BACKOFF_MS));
+    const readAuthoritativeLegacySnapshot = typeof options.readAuthoritativeLegacySnapshot === "function"
+      ? options.readAuthoritativeLegacySnapshot
+      : null;
 
     if (!stateStore?.getOutbox || !stateStore?.acknowledgeMutations || !stateStore?.markMutationRetry) {
       throw new TypeError("A canonical HerdHarbor state store is required.");
@@ -145,7 +148,7 @@
     if (!recordStore?.get || !recordStore?.list || !recordStore?.getManifest || !recordStore?.applyRecordMutation || !recordStore?.applyRecordMutationsAtomic) {
       throw new TypeError("A normalized record store with record CAS and atomic logical groups is required.");
     }
-    if (!normalizer?.planLogicalMutation || !normalizer?.mergeNormalizedPayload || !normalizer?.checksumValue) {
+    if (!normalizer?.planLogicalMutation || !normalizer?.mergeNormalizedPayload || !normalizer?.checksumValue || !normalizer?.mapLegacySnapshot) {
       throw new TypeError("The normalized state mapper is incomplete.");
     }
     if (!baselineStore?.list || !baselineStore?.get || !baselineStore?.put || !baselineStore?.replace || !baselineStore?.getMeta) {
@@ -479,15 +482,86 @@
       return committedIds;
     }
 
-    async function processGroup(group) {
+    function repairableOrderConflictGroups(outbox, stage, limit) {
+      if (!readAuthoritativeLegacySnapshot || !["shadow", "dual_write"].includes(String(stage || ""))) return [];
+      const rows = Array.isArray(outbox) ? outbox : [];
+      const latestByDomain = new Map();
+
+      for (const mutation of rows) {
+        if (
+          String(mutation?.retryState || "") !== "conflict" ||
+          String(mutation?.recordId || "") !== "$order" ||
+          !mutation?.domain ||
+          !mutation?.mutationId
+        ) continue;
+
+        const revision = mutationRevision(mutation);
+        const newerSameOrder = rows.some((entry) =>
+          sameLogicalRecord(entry, mutation) && mutationRevision(entry) > revision
+        );
+        if (newerSameOrder) continue;
+
+        const key = String(mutation.domain);
+        const previous = latestByDomain.get(key);
+        if (!previous || mutationRevision(previous) < revision) latestByDomain.set(key, mutation);
+      }
+
+      return [...latestByDomain.values()]
+        .sort((left, right) =>
+          mutationRevision(left) - mutationRevision(right) ||
+          String(left.domain).localeCompare(String(right.domain))
+        )
+        .slice(0, Math.max(1, Number(limit) || DEFAULT_MAX_GROUPS))
+        .map((mutation) => ({
+          entries: [mutation],
+          latest: mutation,
+          mutationIds: [String(mutation.mutationId)],
+          repairOrderConflict: true
+        }));
+    }
+
+    async function processGroup(group, stage) {
       const mutation = group.latest;
       const processedRevision = mutationRevision(mutation);
       const currentState = stateStore.getState?.();
       if (!currentState || typeof currentState !== "object") {
         throw Object.assign(new Error("Local state is unavailable for normalized planning."), { code: "HH_SYNC_LOCAL_STATE_MISSING" });
       }
+
+      let planningState = currentState;
+      let planningMutation = mutation;
+      if (group.repairOrderConflict === true) {
+        const legacyRead = await readAuthoritativeLegacySnapshot();
+        const authoritativeState = legacyRead?.snapshot || legacyRead;
+        if (!authoritativeState || typeof authoritativeState !== "object" || Array.isArray(authoritativeState)) {
+          throw Object.assign(new Error("Authoritative legacy snapshot is unavailable for array conflict repair."), {
+            code: "HH_SYNC_LEGACY_AUTHORITY_REQUIRED"
+          });
+        }
+
+        const localChecksum = String(normalizer.mapLegacySnapshot(currentState)?.checksum || "");
+        const authoritativeChecksum = String(normalizer.mapLegacySnapshot(authoritativeState)?.checksum || "");
+        if (!localChecksum || localChecksum !== authoritativeChecksum) {
+          return {
+            ok: false,
+            conflict: true,
+            repairDeferred: true,
+            domain: mutation.domain,
+            recordId: mutation.recordId,
+            fields: ["$order.authority_mismatch"]
+          };
+        }
+
+        planningState = authoritativeState;
+        planningMutation = {
+          ...mutation,
+          recordId: "$section",
+          operation: "update"
+        };
+      }
+
       const baselineRows = await baselineStore.list(namespace);
-      const plan = normalizer.planLogicalMutation(currentState, baselineRows, mutation);
+      const plan = normalizer.planLogicalMutation(planningState, baselineRows, planningMutation);
 
       if (Array.isArray(plan.conflictFields) && plan.conflictFields.length) {
         stateStore.markMutationRetry(mutation.mutationId, {
@@ -565,6 +639,7 @@
         acknowledged: acknowledgedIds.length,
         newerPending: newer,
         operations: plan.operations.length,
+        repairedOrderConflict: group.repairOrderConflict === true,
         snapshotManifestDeferred: plan.snapshotManifestChanged
       };
     }
@@ -589,11 +664,17 @@
       }
 
       const nowMs = Date.parse(now());
-      const groups = groupPendingMutations(
-        stateStore.getOutbox(options.ownerId),
-        Number.isFinite(nowMs) ? nowMs : Date.now(),
-        options.maxGroups || maxGroups
-      );
+      const pendingOutbox = stateStore.getOutbox(options.ownerId);
+      const groupLimit = options.maxGroups || maxGroups;
+      const repairGroups = repairableOrderConflictGroups(pendingOutbox, stage, groupLimit);
+      const groups = [
+        ...repairGroups,
+        ...groupPendingMutations(
+          pendingOutbox,
+          Number.isFinite(nowMs) ? nowMs : Date.now(),
+          groupLimit
+        )
+      ].slice(0, Math.max(1, Number(groupLimit) || DEFAULT_MAX_GROUPS));
       const summary = {
         ok: true,
         skipped: false,
@@ -608,7 +689,7 @@
       for (const group of groups) {
         summary.processed += 1;
         try {
-          const result = await processGroup(group);
+          const result = await processGroup(group, stage);
           summary.results.push({
             domain: group.latest.domain,
             recordId: group.latest.recordId,
