@@ -187,6 +187,18 @@
         expectedCloudVersion: versionLookup(context.recordVersions, context.domain, recordId)
       }));
     }
+
+    if (
+      previousIds.length === nextIds.length &&
+      previousIds.some((recordId, index) => recordId !== nextIds[index])
+    ) {
+      mutations.push(mutationMetadata({
+        ...context,
+        recordId: "$order",
+        operation: "update",
+        expectedCloudVersion: versionLookup(context.recordVersions, context.domain, "$order")
+      }));
+    }
     return mutations;
   }
 
@@ -570,7 +582,11 @@
           retryState: String(retry.retryState || "retry"),
           retryCount: Math.max(Number(entry.retryCount || 0) + 1, Number(retry.retryCount || 0)),
           nextRetryAt: retry.nextRetryAt || null,
-          lastErrorClass: retry.lastErrorClass || null
+          lastErrorClass: retry.lastErrorClass || null,
+          lastConflictFields: Array.isArray(retry.conflictFields)
+            ? retry.conflictFields.map((field) => String(field).slice(0, 160)).slice(0, 40)
+            : (entry.lastConflictFields || []),
+          lastAttemptAt: retry.lastAttemptAt || now()
         };
       });
       if (!changed) return false;

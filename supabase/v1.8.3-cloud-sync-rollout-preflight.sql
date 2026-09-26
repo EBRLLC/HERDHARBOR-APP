@@ -51,6 +51,8 @@ with object_checks as (
         and grantee = 'anon'
     ) as no_anon_table_access,
     to_regprocedure('public.herdharbor_sync_apply_batch(jsonb,jsonb,jsonb)') is not null as batch_rpc,
+    to_regprocedure('public.herdharbor_sync_apply_record(text,text,jsonb,text,bigint,boolean,text)') is not null as record_rpc,
+    to_regprocedure('public.herdharbor_sync_apply_record_group(jsonb,text)') is not null as record_group_rpc,
     to_regprocedure('public.herdharbor_sync_mark_verified(bigint,text,integer)') is not null as verify_rpc,
     to_regprocedure('public.herdharbor_sync_set_stage(text,bigint)') is not null as stage_rpc,
     to_regprocedure('public.herdharbor_sync_prepare_normalized_writer_guarded(bigint,text,text,integer)') is not null as guarded_writer_rpc,
@@ -59,6 +61,16 @@ with object_checks as (
       to_regprocedure('public.herdharbor_sync_apply_batch(jsonb,jsonb,jsonb)'),
       'EXECUTE'
     ), false) as batch_authenticated_execute,
+    coalesce(has_function_privilege(
+      'authenticated',
+      to_regprocedure('public.herdharbor_sync_apply_record(text,text,jsonb,text,bigint,boolean,text)'),
+      'EXECUTE'
+    ), false) as record_authenticated_execute,
+    coalesce(has_function_privilege(
+      'authenticated',
+      to_regprocedure('public.herdharbor_sync_apply_record_group(jsonb,text)'),
+      'EXECUTE'
+    ), false) as record_group_authenticated_execute,
     coalesce(has_function_privilege(
       'authenticated',
       to_regprocedure('public.herdharbor_sync_mark_verified(bigint,text,integer)'),
@@ -88,6 +100,8 @@ with object_checks as (
           'herdharbor_touch_sync_record',
           'herdharbor_touch_sync_manifest',
           'herdharbor_sync_apply_batch',
+          'herdharbor_sync_apply_record',
+          'herdharbor_sync_apply_record_group',
           'herdharbor_sync_mark_verified',
           'herdharbor_sync_prepare_normalized_writer',
           'herdharbor_sync_prepare_normalized_writer_guarded',
@@ -121,6 +135,8 @@ summary as (
     ) as owner_rls,
     (
       batch_authenticated_execute and
+      record_authenticated_execute and
+      record_group_authenticated_execute and
       verify_authenticated_execute and
       stage_authenticated_execute and
       guarded_writer_authenticated_execute and
@@ -133,7 +149,7 @@ select
   *,
   (
     records_table and manifest_table and owner_rls and
-    batch_rpc and verify_rpc and stage_rpc and guarded_writer_rpc and
+    batch_rpc and record_rpc and record_group_rpc and verify_rpc and stage_rpc and guarded_writer_rpc and
     rpc_acl and legacy_guard and legacy_authority_only
   ) as verified
 from summary;

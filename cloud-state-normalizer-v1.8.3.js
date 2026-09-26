@@ -360,6 +360,379 @@
     return { puts, tombstones };
   }
 
+
+  function logicalIdentityValue(item) {
+    if (!isPlainObject(item)) return "";
+    for (const key of IDENTITY_KEYS) {
+      const value = item[key];
+      if (typeof value === "string" && value.trim()) return value.trim();
+      if (typeof value === "number" && Number.isFinite(value)) return String(value);
+    }
+    return "";
+  }
+
+  function rowDomain(row) {
+    const payload = rowPayload(row);
+    return payload && typeof payload === "object" && "key" in payload ? String(payload.key) : "";
+  }
+
+  function rowKind(row) {
+    return String(rowPayload(row)?.kind || "");
+  }
+
+  function rowLogicalIdentity(row) {
+    const payload = rowPayload(row);
+    return payload?.kind === "array_item" ? logicalIdentityValue(payload.value) : "";
+  }
+
+  function rowsById(rows) {
+    const result = new Map();
+    for (const row of Array.isArray(rows) ? rows : []) {
+      const id = rowRecordId(row);
+      if (id) result.set(id, row);
+    }
+    return result;
+  }
+
+  function intentArrayManifest(currentManifest, baselineManifest, primaryId, operation) {
+    if (!currentManifest?.payload || currentManifest.payload.kind !== "array_manifest") return currentManifest;
+    if (!baselineManifest?.payload || baselineManifest.payload.kind !== "array_manifest") return currentManifest;
+    const currentIds = Array.isArray(currentManifest.payload.item_record_ids)
+      ? currentManifest.payload.item_record_ids.map(String)
+      : [];
+    const baselineIds = Array.isArray(baselineManifest.payload.item_record_ids)
+      ? baselineManifest.payload.item_record_ids.map(String)
+      : [];
+    const targetId = String(primaryId || "");
+
+    let desired = [...baselineIds];
+    if (operation === "delete" && targetId) {
+      desired = desired.filter((id) => id !== targetId);
+    } else if (operation === "create" && targetId && !desired.includes(targetId)) {
+      const targetIndex = currentIds.indexOf(targetId);
+      let inserted = false;
+      for (let index = targetIndex - 1; index >= 0; index -= 1) {
+        const anchor = currentIds[index];
+        const anchorIndex = desired.indexOf(anchor);
+        if (anchorIndex >= 0) {
+          desired.splice(anchorIndex + 1, 0, targetId);
+          inserted = true;
+          break;
+        }
+      }
+      if (!inserted) {
+        for (let index = targetIndex + 1; index < currentIds.length; index += 1) {
+          const anchor = currentIds[index];
+          const anchorIndex = desired.indexOf(anchor);
+          if (anchorIndex >= 0) {
+            desired.splice(anchorIndex, 0, targetId);
+            inserted = true;
+            break;
+          }
+        }
+      }
+      if (!inserted) desired.push(targetId);
+    }
+
+    const payload = {
+      ...cloneJson(currentManifest.payload, "array manifest"),
+      length: desired.length,
+      item_record_ids: desired
+    };
+    return {
+      ...currentManifest,
+      payload,
+      payload_checksum: checksumValue(payload)
+    };
+  }
+
+  function planLogicalMutation(snapshot, baselineRows, mutation = {}) {
+    const domain = String(mutation.domain || "");
+    const logicalId = String(mutation.recordId || "");
+    if (!domain || !logicalId) throw new TypeError("mutation domain and recordId are required.");
+
+    const mapped = mapLegacySnapshot(snapshot);
+    const currentRows = rowsById(mapped.records);
+    const baseline = rowsById(baselineRows);
+    const diff = diffNormalizedRecords(baselineRows, mapped.records);
+    const changedPuts = new Map(diff.puts.map((row) => [row.record_id, row]));
+    const changedDeletes = new Map(diff.tombstones.map((row) => [row.record_id, row]));
+    const selected = [];
+
+    function addPut(recordId, role) {
+      const row = changedPuts.get(recordId);
+      if (row) selected.push({ type: "put", role, row });
+    }
+    function addDelete(recordId, role) {
+      const row = changedDeletes.get(recordId);
+      if (row) selected.push({ type: "delete", role, row });
+    }
+
+    const currentDomainRows = [...currentRows.values()].filter((row) => rowDomain(row) === domain);
+    const baselineDomainRows = [...baseline.values()].filter((row) => rowDomain(row) === domain);
+    const currentArrayManifest = currentDomainRows.find((row) => rowKind(row) === "array_manifest");
+    const baselineArrayManifest = baselineDomainRows.find((row) => rowKind(row) === "array_manifest");
+    const currentRoot = currentDomainRows.find((row) => rowKind(row) === "root_value");
+    const baselineRoot = baselineDomainRows.find((row) => rowKind(row) === "root_value");
+
+    if (logicalId === "$order") {
+      const currentIds = Array.isArray(currentArrayManifest?.payload?.item_record_ids)
+        ? currentArrayManifest.payload.item_record_ids.map(String)
+        : [];
+      const baselineIds = Array.isArray(baselineArrayManifest?.payload?.item_record_ids)
+        ? baselineArrayManifest.payload.item_record_ids.map(String)
+        : [];
+      const localSet = new Set(currentIds);
+      const remoteOnly = baselineIds.filter((id) => !localSet.has(id));
+      if (remoteOnly.length) {
+        return Object.freeze({
+          namespace: NAMESPACE,
+          checksum: mapped.checksum,
+          recordCount: mapped.records.length,
+          operations: Object.freeze([]),
+          snapshotManifestChanged: true,
+          conflictFields: Object.freeze(["$order.remote_members"])
+        });
+      }
+      if (currentArrayManifest) addPut(rowRecordId(currentArrayManifest), "domain-manifest");
+    } else if (logicalId === "$section") {
+      const ids = new Set([
+        ...currentDomainRows.map(rowRecordId),
+        ...baselineDomainRows.map(rowRecordId)
+      ]);
+      for (const id of ids) {
+        if (changedPuts.has(id)) selected.push({ type: "put", role: rowKind(changedPuts.get(id)) === "array_manifest" ? "domain-manifest" : "primary", row: changedPuts.get(id) });
+        else if (changedDeletes.has(id)) selected.push({ type: "delete", role: rowKind(baseline.get(id)) === "array_manifest" ? "domain-manifest" : "primary", row: changedDeletes.get(id) });
+      }
+    } else {
+      const currentPrimary = currentDomainRows.find((row) => rowKind(row) === "array_item" && rowLogicalIdentity(row) === logicalId);
+      const baselinePrimary = baselineDomainRows.find((row) => rowKind(row) === "array_item" && rowLogicalIdentity(row) === logicalId);
+      const primaryId = rowRecordId(currentPrimary || baselinePrimary || {});
+      if (primaryId) {
+        if (changedPuts.has(primaryId)) selected.push({ type: "put", role: "primary", row: changedPuts.get(primaryId) });
+        if (changedDeletes.has(primaryId)) selected.push({ type: "delete", role: "primary", row: changedDeletes.get(primaryId) });
+      }
+
+      if (mutation.operation === "create" || mutation.operation === "delete") {
+        const manifestId = rowRecordId(currentArrayManifest || baselineArrayManifest || {});
+        if (manifestId && changedPuts.has(manifestId)) {
+          selected.push({
+            type: "put",
+            role: "domain-manifest",
+            row: intentArrayManifest(
+              changedPuts.get(manifestId),
+              baselineArrayManifest,
+              primaryId,
+              mutation.operation
+            )
+          });
+        }
+        if (manifestId && changedDeletes.has(manifestId)) selected.push({ type: "delete", role: "domain-manifest", row: changedDeletes.get(manifestId) });
+      }
+    }
+
+    // Root sections are represented by one normalized row. The global
+    // snapshot-manifest is finalized separately so its checksum cannot become
+    // an account-wide conflict boundary for unrelated record edits.
+    if (!selected.length && logicalId === "$section") {
+      const rootId = rowRecordId(currentRoot || baselineRoot || {});
+      if (rootId && changedPuts.has(rootId)) selected.push({ type: "put", role: "primary", row: changedPuts.get(rootId) });
+      if (rootId && changedDeletes.has(rootId)) selected.push({ type: "delete", role: "primary", row: changedDeletes.get(rootId) });
+    }
+
+    const rank = (entry) => {
+      if (mutation.operation === "delete") return entry.role === "domain-manifest" ? 0 : 1;
+      if (entry.type === "put" && entry.role === "primary") return 0;
+      if (entry.role === "domain-manifest") return 1;
+      if (entry.type === "delete") return 2;
+      return 3;
+    };
+    selected.sort((left, right) => rank(left) - rank(right) || rowRecordId(left.row).localeCompare(rowRecordId(right.row)));
+
+    const snapshotManifestChanged =
+      changedPuts.has(SNAPSHOT_MANIFEST_ID) || changedDeletes.has(SNAPSHOT_MANIFEST_ID);
+
+    return Object.freeze({
+      namespace: NAMESPACE,
+      checksum: mapped.checksum,
+      recordCount: mapped.records.length,
+      operations: Object.freeze(selected.map((entry) => Object.freeze({
+        type: entry.type,
+        role: entry.role,
+        row: Object.freeze(cloneJson(entry.row, "planned normalized row"))
+      }))),
+      snapshotManifestChanged
+    });
+  }
+
+  const MISSING = Symbol("missing");
+
+  function sameMergeValue(left, right) {
+    if (left === MISSING || right === MISSING) return left === right;
+    return stableStringify(left) === stableStringify(right);
+  }
+
+  function threeWayMergeJson(base, local, remote, path = "$") {
+    function mergeNode(baseValue, localValue, remoteValue, currentPath) {
+      if (sameMergeValue(localValue, remoteValue)) {
+        return { value: localValue === MISSING ? MISSING : cloneJson(localValue, "merged value"), conflicts: [] };
+      }
+      if (sameMergeValue(localValue, baseValue)) {
+        return { value: remoteValue === MISSING ? MISSING : cloneJson(remoteValue, "merged value"), conflicts: [] };
+      }
+      if (sameMergeValue(remoteValue, baseValue)) {
+        return { value: localValue === MISSING ? MISSING : cloneJson(localValue, "merged value"), conflicts: [] };
+      }
+
+      if (isPlainObject(baseValue) && isPlainObject(localValue) && isPlainObject(remoteValue)) {
+        const output = {};
+        const conflicts = [];
+        const keys = [...new Set([
+          ...Object.keys(baseValue),
+          ...Object.keys(localValue),
+          ...Object.keys(remoteValue)
+        ])].sort();
+
+        for (const key of keys) {
+          const b = Object.prototype.hasOwnProperty.call(baseValue, key) ? baseValue[key] : MISSING;
+          const l = Object.prototype.hasOwnProperty.call(localValue, key) ? localValue[key] : MISSING;
+          const r = Object.prototype.hasOwnProperty.call(remoteValue, key) ? remoteValue[key] : MISSING;
+          const childPath = `${currentPath}.${key}`;
+          const merged = mergeNode(b, l, r, childPath);
+          conflicts.push(...merged.conflicts);
+          if (merged.value !== MISSING) output[key] = merged.value;
+        }
+        return { value: output, conflicts };
+      }
+
+      return {
+        value: cloneJson(localValue === MISSING ? null : localValue, "conflicted local value"),
+        conflicts: [currentPath]
+      };
+    }
+
+    const result = mergeNode(base, local, remote, path);
+    return Object.freeze({
+      ok: result.conflicts.length === 0,
+      value: result.value === MISSING ? undefined : result.value,
+      conflicts: Object.freeze(result.conflicts)
+    });
+  }
+
+  function mergeUniqueSequence(baseList, localList, remoteList) {
+    const base = Array.isArray(baseList) ? baseList.map(String) : [];
+    const local = Array.isArray(localList) ? localList.map(String) : [];
+    const remote = Array.isArray(remoteList) ? remoteList.map(String) : [];
+    if (new Set(local).size !== local.length || new Set(remote).size !== remote.length || new Set(base).size !== base.length) {
+      return { ok: false, value: local, conflicts: ["$.item_record_ids"] };
+    }
+    if (stableStringify(local) === stableStringify(remote)) return { ok: true, value: [...local], conflicts: [] };
+    if (stableStringify(local) === stableStringify(base)) return { ok: true, value: [...remote], conflicts: [] };
+    if (stableStringify(remote) === stableStringify(base)) return { ok: true, value: [...local], conflicts: [] };
+
+    const baseSet = new Set(base);
+    const localSet = new Set(local);
+    const remoteSet = new Set(remote);
+    const deleted = new Set(base.filter((id) => !localSet.has(id) || !remoteSet.has(id)));
+    const nodes = [...new Set([...base, ...remote, ...local])].filter((id) => !deleted.has(id));
+    const nodeSet = new Set(nodes);
+    const edges = new Map(nodes.map((id) => [id, new Set()]));
+    const indegree = new Map(nodes.map((id) => [id, 0]));
+
+    function addSequence(sequence) {
+      const filtered = sequence.filter((id) => nodeSet.has(id));
+      for (let index = 0; index + 1 < filtered.length; index += 1) {
+        const from = filtered[index];
+        const to = filtered[index + 1];
+        if (from === to || edges.get(from).has(to)) continue;
+        edges.get(from).add(to);
+        indegree.set(to, indegree.get(to) + 1);
+      }
+    }
+    addSequence(remote);
+    addSequence(local);
+
+    const preference = new Map(nodes.map((id, index) => [id, index]));
+    const ready = nodes.filter((id) => indegree.get(id) === 0)
+      .sort((a, b) => preference.get(a) - preference.get(b) || a.localeCompare(b));
+    const output = [];
+    while (ready.length) {
+      const id = ready.shift();
+      output.push(id);
+      for (const next of edges.get(id)) {
+        indegree.set(next, indegree.get(next) - 1);
+        if (indegree.get(next) === 0) {
+          ready.push(next);
+          ready.sort((a, b) => preference.get(a) - preference.get(b) || a.localeCompare(b));
+        }
+      }
+    }
+    if (output.length !== nodes.length) {
+      return { ok: false, value: local, conflicts: ["$.item_record_ids"] };
+    }
+    return { ok: true, value: output, conflicts: [] };
+  }
+
+  function mergeNormalizedPayload(basePayload, localPayload, remotePayload) {
+    if (!basePayload || !localPayload || !remotePayload) {
+      return Object.freeze({ ok: false, value: cloneJson(localPayload, "local payload"), conflicts: Object.freeze(["$"]) });
+    }
+    if (
+      String(basePayload.kind || "") !== String(localPayload.kind || "") ||
+      String(basePayload.kind || "") !== String(remotePayload.kind || "") ||
+      String(basePayload.key ?? "") !== String(localPayload.key ?? "") ||
+      String(basePayload.key ?? "") !== String(remotePayload.key ?? "")
+    ) {
+      return Object.freeze({ ok: false, value: cloneJson(localPayload, "local payload"), conflicts: Object.freeze(["$.kind"]) });
+    }
+
+    if (localPayload.kind === "array_manifest") {
+      const mergedSequence = mergeUniqueSequence(
+        basePayload.item_record_ids,
+        localPayload.item_record_ids,
+        remotePayload.item_record_ids
+      );
+      if (!mergedSequence.ok) return Object.freeze({ ok: false, value: cloneJson(localPayload, "local payload"), conflicts: Object.freeze(mergedSequence.conflicts) });
+      const value = {
+        ...cloneJson(remotePayload, "remote array manifest"),
+        ...cloneJson(localPayload, "local array manifest"),
+        item_record_ids: mergedSequence.value,
+        length: mergedSequence.value.length
+      };
+      return Object.freeze({ ok: true, value, conflicts: Object.freeze([]) });
+    }
+
+    const merged = threeWayMergeJson(basePayload, localPayload, remotePayload);
+    return Object.freeze({
+      ok: merged.ok,
+      value: merged.value,
+      conflicts: merged.conflicts
+    });
+  }
+
+  function applyNormalizedPayloadToSnapshot(snapshot, recordId, payload) {
+    const safeSnapshot = normalizeSnapshot(snapshot);
+    if (!payload || typeof payload !== "object") throw new TypeError("normalized payload is required.");
+    if (payload.kind === "root_value") {
+      safeSnapshot[String(payload.key)] = cloneJson(payload.value, "normalized root value");
+      return safeSnapshot;
+    }
+    if (payload.kind !== "array_item") return safeSnapshot;
+
+    const key = String(payload.key);
+    if (!Array.isArray(safeSnapshot[key])) throw integrityError(`Normalized array ${key} is missing locally.`);
+    const currentMapped = mapLegacySnapshot(safeSnapshot);
+    const currentRow = currentMapped.records.find((row) => row.record_id === String(recordId));
+    const identity = logicalIdentityValue(currentRow?.payload?.value);
+    if (!identity) throw integrityError("Compatible record merge requires a stable logical identity.", "HH_NORMALIZED_MERGE_IDENTITY_REQUIRED");
+    const matches = safeSnapshot[key]
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => logicalIdentityValue(item) === identity);
+    if (matches.length !== 1) throw integrityError("Compatible record merge could not locate one stable local record.", "HH_NORMALIZED_MERGE_IDENTITY_REQUIRED");
+    safeSnapshot[key][matches[0].index] = cloneJson(payload.value, "merged normalized item");
+    return safeSnapshot;
+  }
+
   return Object.freeze({
     version: VERSION,
     release: RELEASE,
@@ -368,9 +741,15 @@
     snapshotManifestId: SNAPSHOT_MANIFEST_ID,
     stableStringify,
     snapshotChecksum,
+    checksumValue,
     mapLegacySnapshot,
     reassembleLegacySnapshot,
     reassembleLegacySnapshotWithMetadata,
-    diffNormalizedRecords
+    diffNormalizedRecords,
+    planLogicalMutation,
+    threeWayMergeJson,
+    mergeNormalizedPayload,
+    applyNormalizedPayloadToSnapshot,
+    logicalIdentityValue
   });
 });
