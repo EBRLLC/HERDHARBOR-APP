@@ -53,6 +53,7 @@ class FakeRecordStore {
       metadata: {}
     };
     this.calls = [];
+    this.groupCalls = [];
     this.beforeApply = null;
     this.failAfterCommit = new Set();
     this.failBeforeCommit = new Map();
@@ -135,6 +136,28 @@ class FakeRecordStore {
       deleted: Boolean(next.deleted_at),
       generation: this.manifest.sync_generation
     };
+  }
+
+  async applyRecordMutationsAtomic({ operations = [] } = {}) {
+    this.groupCalls.push(clone(operations));
+    const rowsBefore = new Map([...this.rows.entries()].map(([key, row]) => [key, clone(row)]));
+    const generationBefore = this.manifest.sync_generation;
+    const results = [];
+    try {
+      for (const operation of operations) {
+        results.push(await this.applyRecordMutation(operation));
+      }
+      this.manifest.sync_generation = generationBefore + 1;
+      return {
+        ok: true,
+        generation: this.manifest.sync_generation,
+        operations: results
+      };
+    } catch (error) {
+      this.rows = rowsBefore;
+      this.manifest.sync_generation = generationBefore;
+      throw error;
+    }
   }
 
   rowForLogical(domain, logicalId, includeDeleted = true) {
@@ -301,6 +324,68 @@ test("delete updates the array manifest before tombstoning the removed item", as
   assert.equal(h.recordStore.calls[1].deleted, true);
   const deleted = h.recordStore.rowForLogical("animals", "a2");
   assert.ok(deleted.deleted_at);
+});
+
+test("create plus manifest CAS is atomic when another device changes array membership", async () => {
+  const initial = animalState();
+  const h = await createHarness(initial);
+  const next = clone(initial);
+  next.animals.push({ id: "a3", name: "Local Annie", weight: 2.9 });
+  h.save(next);
+
+  const remoteState = clone(initial);
+  remoteState.animals.push({ id: "a4", name: "Remote Bonnie", weight: 3.1 });
+  const remoteMapped = Normalizer.mapLegacySnapshot(remoteState);
+  const remoteItem = remoteMapped.records.find((row) => row.payload?.kind === "array_item" && row.payload?.value?.id === "a4");
+  const remoteManifest = remoteMapped.records.find((row) => row.payload?.kind === "array_manifest" && row.payload?.key === "animals");
+  assert.ok(remoteItem);
+  assert.ok(remoteManifest);
+
+  h.recordStore.rows.set(cloudKey(remoteItem.namespace, remoteItem.record_id), {
+    ...clone(remoteItem),
+    record_version: 1,
+    deleted_at: null
+  });
+  const currentManifest = h.recordStore.rowForLogical("animals", "$order");
+  currentManifest.payload = clone(remoteManifest.payload);
+  currentManifest.payload_checksum = remoteManifest.payload_checksum;
+  currentManifest.record_version += 1;
+  h.recordStore.manifest.sync_generation += 1;
+
+  const result = await h.worker.drain();
+
+  assert.equal(result.ok, true);
+  assert.equal(h.outbox().length, 0);
+  assert.equal(h.recordStore.groupCalls.length, 2, "first atomic CAS should abort and one reconciled atomic retry should commit");
+  const finalManifest = h.recordStore.rowForLogical("animals", "$order");
+  const localItem = h.recordStore.rowForLogical("animals", "a3");
+  assert.ok(localItem, "local create must commit on the reconciled retry");
+  assert.ok(finalManifest.payload.item_record_ids.includes(remoteItem.record_id), "remote member must be preserved");
+  assert.ok(finalManifest.payload.item_record_ids.includes(localItem.record_id), "local member must be added");
+});
+
+test("delete conflict cannot partially remove array membership", async () => {
+  const initial = animalState();
+  const h = await createHarness(initial);
+  const next = clone(initial);
+  next.animals = next.animals.filter((animal) => animal.id !== "a2");
+  h.save(next);
+
+  h.recordStore.remoteEdit("animals", "a2", (payload) => {
+    payload.value.weight = 4.4;
+  });
+
+  const result = await h.worker.drain();
+
+  assert.equal(result.ok, false);
+  assert.equal(result.conflicts, 1);
+  const remoteAnimal = h.recordStore.rowForLogical("animals", "a2");
+  const manifest = h.recordStore.rowForLogical("animals", "$order");
+  assert.equal(Boolean(remoteAnimal.deleted_at), false, "remote edit must remain active");
+  assert.ok(manifest.payload.item_record_ids.includes(remoteAnimal.record_id), "failed delete must leave membership intact");
+  assert.equal(h.outbox().length, 1);
+  assert.equal(h.outbox()[0].retryState, "conflict");
+  assert.ok(h.outbox()[0].lastConflictFields.includes("$delete"));
 });
 
 test("offline create and update survive restart and synchronize after reconnect", async () => {
