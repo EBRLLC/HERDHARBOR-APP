@@ -13,7 +13,7 @@ create or replace function public.herdharbor_block_legacy_write_after_normalized
 returns trigger
 language plpgsql
 security definer
-set search_path = pg_catalog, public
+set search_path = ''
 as $$
 declare
   v_user uuid;
@@ -43,8 +43,7 @@ begin
 end;
 $$;
 
-revoke all on function public.herdharbor_block_legacy_write_after_normalized() from public;
-revoke all on function public.herdharbor_block_legacy_write_after_normalized() from authenticated;
+revoke all on function public.herdharbor_block_legacy_write_after_normalized() from public, anon, authenticated;
 
 drop trigger if exists herdharbor_legacy_write_cutover_guard on public.herdharbor_user_data;
 create trigger herdharbor_legacy_write_cutover_guard
@@ -63,7 +62,7 @@ create or replace function public.herdharbor_sync_prepare_normalized_writer_guar
 returns jsonb
 language plpgsql
 security definer
-set search_path = pg_catalog, public
+set search_path = ''
 as $$
 declare
   v_guard_ready boolean := false;
@@ -100,8 +99,8 @@ $$;
 -- Remove the unguarded browser path once the cutover guard migration is
 -- installed. Internal database ownership still allows the guarded wrapper to
 -- invoke it.
-revoke execute on function public.herdharbor_sync_prepare_normalized_writer(bigint, text, text, integer) from authenticated;
-revoke all on function public.herdharbor_sync_prepare_normalized_writer_guarded(bigint, text, text, integer) from public;
+revoke all on function public.herdharbor_sync_prepare_normalized_writer(bigint, text, text, integer) from public, anon, authenticated;
+revoke all on function public.herdharbor_sync_prepare_normalized_writer_guarded(bigint, text, text, integer) from public, anon, authenticated;
 grant execute on function public.herdharbor_sync_prepare_normalized_writer_guarded(bigint, text, text, integer) to authenticated;
 
 comment on function public.herdharbor_block_legacy_write_after_normalized() is

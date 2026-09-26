@@ -94,7 +94,26 @@ test("batch adapter rejects missing generation, duplicate records, and missing c
   await assert.rejects(()=>store.applyBatch({puts:[],tombstones:[],manifestPatch:{expectedGeneration:0,cutoverStage:"shadow",metadata:{}}}),(error)=>error?.code==="HH_SYNC_CONFLICT"); assert.equal(rpcCalls,1);
 });
 
-test("schema is additive to legacy data and uses payload checksums for header-only diffs",()=>{assert.match(schema,/create table if not exists public\.herdharbor_sync_records/i);assert.match(schema,/create table if not exists public\.herdharbor_sync_manifest/i);assert.match(schema,/payload_checksum text/i);assert.match(schema,/primary key \(user_id, namespace, record_id\)/i);assert.match(schema,/enable row level security/i);assert.match(schema,/user_id = auth\.uid\(\)/i);assert.match(schema,/record_version := old\.record_version \+ 1/i);assert.doesNotMatch(schema,/(?:drop\s+table|delete\s+from|truncate\s+table|alter\s+table|update)\s+public\.herdharbor_user_data/i);});
-test("schema makes browser mutations RPC-only and every real stage change advances generation",()=>{const lower=schema.toLowerCase();assert.ok(lower.includes("revoke insert, update, delete on public.herdharbor_sync_records from authenticated;"));assert.ok(lower.includes("revoke insert, update, delete on public.herdharbor_sync_manifest from authenticated;"));assert.match(schema,/security definer/i);assert.match(schema,/herdharbor_sync_apply_batch/i);assert.match(schema,/herdharbor_sync_set_stage/i);assert.match(schema,/sync_generation = sync_generation \+ 1/i);assert.match(schema,/v_put_count \+ v_tombstone_count > 0 or v_stage_changed/i);assert.match(schema,/HH_SYNC_STAGE_CHANGE_REQUIRES_RPC/);});
+test("schema is additive to legacy data and uses payload checksums for header-only diffs",()=>{assert.match(schema,/create table if not exists public\.herdharbor_sync_records/i);assert.match(schema,/create table if not exists public\.herdharbor_sync_manifest/i);assert.match(schema,/payload_checksum text/i);assert.match(schema,/primary key \(user_id, namespace, record_id\)/i);assert.match(schema,/enable row level security/i);assert.match(schema,/user_id = \(select auth\.uid\(\)\)/i);assert.match(schema,/record_version := old\.record_version \+ 1/i);assert.doesNotMatch(schema,/(?:drop\s+table|delete\s+from|truncate\s+table|alter\s+table|update)\s+public\.herdharbor_user_data/i);});
+test("schema makes browser mutations RPC-only and every real stage change advances generation",()=>{const lower=schema.toLowerCase();assert.ok(lower.includes("revoke all on table public.herdharbor_sync_records from anon, authenticated;"));assert.ok(lower.includes("revoke all on table public.herdharbor_sync_manifest from anon, authenticated;"));assert.ok(lower.includes("grant select on table public.herdharbor_sync_records to authenticated;"));assert.ok(lower.includes("grant select on table public.herdharbor_sync_manifest to authenticated;"));assert.match(schema,/security definer/i);assert.match(schema,/herdharbor_sync_apply_batch/i);assert.match(schema,/herdharbor_sync_set_stage/i);assert.match(schema,/sync_generation = sync_generation \+ 1/i);assert.match(schema,/v_put_count \+ v_tombstone_count > 0 or v_stage_changed/i);assert.match(schema,/HH_SYNC_STAGE_CHANGE_REQUIRES_RPC/);});
 test("verification is generation, checksum, metadata-count, and actual-row-count guarded",()=>{assert.match(schema,/herdharbor_sync_mark_verified/i);assert.match(schema,/sync_generation = p_expected_generation/i);assert.match(schema,/normalized_record_count/i);assert.match(schema,/select count\(\*\)::integer[\s\S]*namespace = 'legacy-state'/i);assert.match(schema,/HH_SYNC_RECORD_COUNT_MISMATCH/);assert.match(schema,/HH_SYNC_VERIFY_STALE/);});
 test("schema embeds the final adjacent stage guard in the base migration",()=>{assert.match(schema,/HH_SYNC_INITIAL_STAGE_MUST_BE_LEGACY/);assert.match(schema,/HH_SYNC_INVALID_STAGE_TRANSITION/);assert.match(schema,/HH_SYNC_STAGE_VERIFICATION_REQUIRED/);assert.match(schema,/HH_SYNC_NORMALIZED_REQUIRES_VERIFICATION/);assert.match(schema,/HH_SYNC_NORMALIZED_WRITER_REQUIRED/);assert.match(schema,/legacy app_state remains authoritative until cutover/i);});
+
+
+test("normalized foundation uses explicit least-privilege table and function grants",()=>{
+  assert.match(schema,/revoke all on table public\.herdharbor_sync_records from anon, authenticated/i);
+  assert.match(schema,/revoke all on table public\.herdharbor_sync_manifest from anon, authenticated/i);
+  assert.match(schema,/grant select on table public\.herdharbor_sync_records to authenticated/i);
+  assert.match(schema,/grant select on table public\.herdharbor_sync_manifest to authenticated/i);
+  assert.match(schema,/revoke all on function public\.herdharbor_touch_sync_record\(\) from public, anon, authenticated/i);
+  assert.match(schema,/revoke all on function public\.herdharbor_touch_sync_manifest\(\) from public, anon, authenticated/i);
+  assert.match(schema,/revoke all on function public\.herdharbor_sync_prepare_normalized_writer\(bigint, text, text, integer\) from public, anon, authenticated/i);
+  assert.doesNotMatch(schema,/grant execute on function public\.herdharbor_sync_prepare_normalized_writer\(bigint, text, text, integer\) to authenticated/i);
+  assert.match(schema,/security definer\s+set search_path = ''/i);
+});
+
+
+test("normalized owner policies evaluate auth identity once per statement",()=>{
+  assert.match(schema,/using \(user_id = \(select auth\.uid\(\)\)\)/i);
+  assert.doesNotMatch(schema,/using \(user_id = auth\.uid\(\)\)/i);
+});
