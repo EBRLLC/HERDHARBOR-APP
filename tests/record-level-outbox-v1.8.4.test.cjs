@@ -503,6 +503,35 @@ test("incompatible same-field conflict is scoped while unrelated record still sy
   assert.equal(h.recordStore.calls.length, callCount);
 });
 
+test("resolved newer save retires an older quarantined conflict", async () => {
+  const initial = animalState();
+  const h = await createHarness(initial);
+
+  const local = clone(initial);
+  local.animals[0].name = "Local Judy";
+  h.save(local);
+
+  h.recordStore.remoteEdit("animals", "a1", (payload) => {
+    payload.value.name = "Remote Judy";
+  });
+
+  const first = await h.worker.drain();
+  assert.equal(first.conflicts, 1);
+  assert.equal(h.outbox().length, 1);
+  assert.equal(h.outbox()[0].retryState, "conflict");
+
+  const resolved = h.state();
+  resolved.animals[0].name = "Remote Judy";
+  h.save(resolved);
+  assert.equal(h.outbox().length, 2);
+
+  const second = await h.worker.drain();
+  assert.equal(second.ok, true);
+  assert.equal(second.pending, 0);
+  assert.equal(h.outbox().length, 0);
+  assert.equal(h.recordStore.rowForLogical("animals", "a1").payload.value.name, "Remote Judy");
+});
+
 test("edits in two domains synchronize independently", async () => {
   const initial = animalState();
   const h = await createHarness(initial);
