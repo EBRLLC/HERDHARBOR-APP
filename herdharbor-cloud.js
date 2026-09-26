@@ -83,6 +83,9 @@
   let writeSequence = 0;
   let lastCloudCheckAt = 0;
   const FOREGROUND_CLOUD_CHECK_INTERVAL_MS = 30000;
+  const NORMALIZED_COHORT_STATUS_TTL_MS = 60000;
+  let normalizedCohortStatusCache = null;
+  let normalizedCohortStatusInFlight = null;
   let accountButton = null;
   let accountDialog = null;
   let syncConflict = null;
@@ -1689,10 +1692,12 @@
     const userId = session?.user?.id;
     if (!userId || syncInFlight || syncConflict) return false;
 
+    const now = Date.now();
+    if (now - lastCloudCheckAt < 15000) return false;
+    lastCloudCheckAt = now;
+
     const normalizedHandled = await checkNormalizedAuthorityChanges();
     if (normalizedHandled !== null) return normalizedHandled;
-    if (Date.now() - lastCloudCheckAt < 15000) return false;
-    lastCloudCheckAt = Date.now();
 
     if (originalGetItem.call(localStorage, dirtyKey(userId)) === "1") {
       return syncNow();
@@ -2746,6 +2751,8 @@
       const previousUserId = session?.user?.id;
       preserveActiveForUser(previousUserId, "Local copy retained after session ended");
       session = null;
+      normalizedCohortStatusCache = null;
+      normalizedCohortStatusInFlight = null;
       dispatchAuthSession();
       publishAccessProfile(fallbackAccessProfile());
       if (accountButton) accountButton.remove();
@@ -2809,21 +2816,63 @@
     void checkForCloudChanges();
   }, FOREGROUND_CLOUD_CHECK_INTERVAL_MS);
 
-  async function getNormalizedSyncCohortStatus() {
-    if (!session?.user?.id) return Object.freeze({ eligible: false, mode: "allowlist", percentageEnabled: false, schemaVerified: false });
-    const { data, error } = await client.rpc("herdharbor_sync_cohort_status");
-    if (error) throw new Error(error.message || "Normalized sync cohort status could not be read.");
-    return Object.freeze({
-      eligible: data?.eligible === true,
-      mode: String(data?.mode || "allowlist") === "allowlist" ? "allowlist" : "invalid",
-      percentageEnabled: data?.percentage_enabled === true,
-      schemaVerified: data?.schema_verified === true,
-      stage: ["legacy", "shadow", "dual_write", "normalized"].includes(String(data?.stage || "legacy"))
-        ? String(data.stage)
-        : "legacy",
-      authorityActive: data?.authority_active === true,
-      recoveryPending: data?.recovery_pending === true
+  async function getNormalizedSyncCohortStatus(options = {}) {
+    const userId = session?.user?.id;
+    if (!userId) {
+      return Object.freeze({
+        eligible: false,
+        mode: "allowlist",
+        percentageEnabled: false,
+        schemaVerified: false
+      });
+    }
+
+    const force = options?.force === true;
+    const now = Date.now();
+    if (
+      !force &&
+      normalizedCohortStatusCache?.userId === userId &&
+      now - normalizedCohortStatusCache.checkedAt < NORMALIZED_COHORT_STATUS_TTL_MS
+    ) {
+      return normalizedCohortStatusCache.status;
+    }
+
+    if (normalizedCohortStatusInFlight?.userId === userId) {
+      return normalizedCohortStatusInFlight.promise;
+    }
+
+    const request = (async () => {
+      const { data, error } = await client.rpc("herdharbor_sync_cohort_status");
+      if (error) throw new Error(error.message || "Normalized sync cohort status could not be read.");
+
+      const status = Object.freeze({
+        eligible: data?.eligible === true,
+        mode: String(data?.mode || "allowlist") === "allowlist" ? "allowlist" : "invalid",
+        percentageEnabled: data?.percentage_enabled === true,
+        schemaVerified: data?.schema_verified === true,
+        stage: ["legacy", "shadow", "dual_write", "normalized"].includes(String(data?.stage || "legacy"))
+          ? String(data.stage)
+          : "legacy",
+        authorityActive: data?.authority_active === true,
+        recoveryPending: data?.recovery_pending === true
+      });
+
+      if (session?.user?.id === userId) {
+        normalizedCohortStatusCache = {
+          userId,
+          checkedAt: Date.now(),
+          status
+        };
+      }
+      return status;
+    })().finally(() => {
+      if (normalizedCohortStatusInFlight?.promise === request) {
+        normalizedCohortStatusInFlight = null;
+      }
     });
+
+    normalizedCohortStatusInFlight = { userId, promise: request };
+    return request;
   }
 
   function createNormalizedRecordStore() {
