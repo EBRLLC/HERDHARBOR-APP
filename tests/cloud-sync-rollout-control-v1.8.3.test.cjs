@@ -33,6 +33,7 @@ const goodSchema = Object.freeze({
   ownerRls: true,
   batchRpc: true,
   recordRpc: true,
+  recordGroupRpc: true,
   cohortRpc: true,
   verifyRpc: true,
   stageRpc: true,
