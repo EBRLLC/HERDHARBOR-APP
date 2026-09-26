@@ -72,8 +72,7 @@ begin
   select cutover_stage, metadata
   into v_stage, v_metadata
   from public.herdharbor_sync_manifest
-  where user_id = v_user
-  for update;
+  where user_id = v_user;
 
   if not found then
     raise exception using errcode = 'P0002', message = 'HH_SYNC_MANIFEST_MISSING';
@@ -164,7 +163,24 @@ begin
     ),
     sync_generation = sync_generation + 1
   where user_id = v_user
+    and cutover_stage = v_stage
+    and coalesce(metadata -> 'legacy_recovery_lock' = 'true'::jsonb, false) = false
+    and (
+      v_stage = 'shadow'
+      or (
+        metadata -> 'normalized_writer_ready' = 'true'::jsonb
+        and btrim(coalesce(metadata ->> 'normalized_writer_version', '')) = v_writer_version
+      )
+    )
+    and (
+      v_stage <> 'normalized'
+      or metadata -> 'normalized_authority_ready' = 'true'::jsonb
+    )
   returning sync_generation into v_generation;
+
+  if v_generation is null then
+    raise exception using errcode = '40001', message = 'HH_SYNC_STAGE_CHANGED';
+  end if;
 
   return jsonb_build_object(
     'ok', true,
