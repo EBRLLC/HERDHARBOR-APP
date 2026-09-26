@@ -116,8 +116,13 @@ test("true same-field cross-device conflicts remain protected by the three-way m
   );
 });
 
-test("cross-device refresh fix does not disable automatic cloud-change checks", () => {
+test("cross-device refresh fix keeps foreground clients current without requiring focus changes", () => {
+  assert.match(cloud, /const FOREGROUND_CLOUD_CHECK_INTERVAL_MS = 30000;/);
   assert.match(cloud, /window\.addEventListener\("focus", \(\) => \{\s*checkForCloudChanges\(\);/);
   assert.match(cloud, /document\.addEventListener\("visibilitychange"/);
+  assert.match(
+    cloud,
+    /window\.setInterval\(\(\) => \{[\s\S]*document\.visibilityState !== "visible"[\s\S]*navigator\.onLine === false[\s\S]*!session\?\.user\?\.id[\s\S]*recoveryMode[\s\S]*checkForCloudChanges\(\);[\s\S]*FOREGROUND_CLOUD_CHECK_INTERVAL_MS/
+  );
   assert.doesNotMatch(cloud, /beforeunload/);
 });
