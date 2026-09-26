@@ -82,6 +82,7 @@
   let pendingSync = null;
   let writeSequence = 0;
   let lastCloudCheckAt = 0;
+  const FOREGROUND_CLOUD_CHECK_INTERVAL_MS = 30000;
   let accountButton = null;
   let accountDialog = null;
   let syncConflict = null;
@@ -2794,6 +2795,19 @@
   window.addEventListener("focus", () => {
     checkForCloudChanges();
   });
+
+  // Keep an already-open foreground client current when another device writes.
+  // Focus/visibility hooks are not enough on mobile PWAs that can remain visible
+  // for long periods without another lifecycle transition.
+  window.setInterval(() => {
+    if (
+      document.visibilityState !== "visible" ||
+      navigator.onLine === false ||
+      !session?.user?.id ||
+      recoveryMode
+    ) return;
+    void checkForCloudChanges();
+  }, FOREGROUND_CLOUD_CHECK_INTERVAL_MS);
 
   async function getNormalizedSyncCohortStatus() {
     if (!session?.user?.id) return Object.freeze({ eligible: false, mode: "allowlist", percentageEnabled: false, schemaVerified: false });
