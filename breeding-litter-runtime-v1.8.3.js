@@ -267,6 +267,18 @@
       ].filter((year) => Number.isInteger(year) && year >= 1900 && year <= 9999))].sort((left, right) => right - left);
     }
   
+    function openRecordBirth(breedingId = "") {
+      const id = String(breedingId || "").trim();
+      if (!id) return false;
+      const breeding = stateNow().breedings.find((record) => String(record.id) === id);
+      if (!breeding) {
+        toast("That breeding record is no longer available.", "error");
+        return false;
+      }
+      openLitterForm("", breeding.id);
+      return true;
+    }
+
     function renderBreedings() {
       const rows = stateNow().breedings
         .filter((record) => !breedingViewYear || String(record.breedingDate || "").startsWith(`${breedingViewYear}-`))
@@ -360,7 +372,7 @@
       $$('[data-edit-breeding]', $("#view-breeding")).forEach((button) =>
         button.addEventListener("click", () => openBreedingForm(button.dataset.editBreeding)));
       $$('[data-record-birth]', $("#view-breeding")).forEach((button) =>
-        button.addEventListener("click", () => openLitterForm("", button.dataset.recordBirth)));
+        button.addEventListener("click", () => openRecordBirth(button.dataset.recordBirth)));
     }
   
     function openBreedingForm(id = "", defaults = {}) {
@@ -776,6 +788,7 @@
       breedingReportSnapshot,
       renderBreedings,
       openBreedingForm,
+      openRecordBirth,
       renderLitters,
       openLitterForm,
       openOffspringCreator,

@@ -2,7 +2,9 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
+const vm=require('node:vm');
 const Core=require('../breeding-next-action-core-v1.8.2.js');
+const BreedingRuntime=require('../breeding-litter-runtime-v1.8.3.js');
 
 function rabbitFixture(){return{
   animals:[
@@ -124,10 +126,110 @@ test('UI surfaces next action on profile, breeding cards, litter workspace, and 
   assert.match(ui,/HerdHarborFlowPhase2\?\.openAnimalProfile/);
   assert.match(ui,/HerdHarborBreedingWorkspace\?\.open/);
   assert.match(ui,/data-hh-bw-disposition/);
-  assert.match(ui,/nav-item\[data-route="breeding"\]/);
-  assert.match(ui,/data-record-birth=/);
+  assert.match(ui,/HerdHarborApp\?\.openRecordBirth/);
+  assert.doesNotMatch(ui,/nav-item\[data-route="breeding"\]/);
+  assert.doesNotMatch(ui,/data-record-birth=/);
   assert.doesNotMatch(ui,/data-hh-p2-life-action="record-birth"/);
   assert.doesNotMatch(ui,/hh-p2-life-actions button:first-child/);
+});
+
+test('Today Record Birth click opens the canonical birth form for the exact breeding',()=>{
+  const state={
+    animals:[
+      {id:'doe1',name:'First Doe',species:'Rabbit',sex:'Female',status:'Breeding'},
+      {id:'buck1',name:'First Buck',species:'Rabbit',sex:'Male',status:'Active'},
+      {id:'doe2',name:'Target Doe',species:'Rabbit',sex:'Female',status:'Breeding'},
+      {id:'buck2',name:'Target Buck',species:'Rabbit',sex:'Male',status:'Active'}
+    ],
+    breedings:[
+      {id:'b1',femaleId:'doe1',maleId:'buck1',breedingDate:'2026-09-15',dueDate:'2026-10-16',status:'Confirmed pregnant',pregnancyCheckStatus:'Positive'},
+      {id:'b2',femaleId:'doe2',maleId:'buck2',breedingDate:'2026-09-01',dueDate:'2026-10-02',status:'Confirmed pregnant',pregnancyCheckStatus:'Positive'}
+    ],
+    litters:[],tasks:[],sales:[],transfers:[],profile:{},settings:{}
+  };
+  let captured=null;
+  const input=value=>({value,addEventListener(){}});
+  const form={addEventListener(){}};
+  const fields={
+    '[name="breedingId"]':input('b2'),
+    '[name="damId"]':input('doe2'),
+    '[name="sireId"]':input('buck2'),
+    '[name="birthDate"]':input('2026-10-02'),
+    '[name="expectedWeanDate"]':input('')
+  };
+  const $=selector=>{
+    if(selector==='#litter-form')return form;
+    if(selector==='#delete-litter')return null;
+    return fields[selector]||{addEventListener(){}};
+  };
+  const animalName=id=>state.animals.find(animal=>animal.id===id)?.name||id;
+  const addDays=(date,days)=>{
+    const value=new Date(date+'T12:00:00Z');
+    value.setUTCDate(value.getUTCDate()+Number(days||0));
+    return value.toISOString().slice(0,10);
+  };
+  const runtime=BreedingRuntime.create({
+    getState:()=>state,$,$$:()=>[],esc:value=>String(value??''),headerHtml:()=>'',statCard:()=>'',emptyState:()=>'',animalName,
+    formatDate:value=>String(value||''),daysFromNow:()=>0,ensureSpreadsheetToolsReady:async()=>({}),
+    openModal:(title,html)=>{captured={title,html};},closeModal:()=>{},
+    selectAnimalField:(label,name,selected)=>`<label>${label}<select name="${name}"><option value="${selected}" selected>${selected}</option></select></label>`,
+    field:(label,name,value)=>`<label>${label}<input name="${name}" value="${value??''}"></label>`,
+    selectField:(label,name,options,selected)=>`<label>${label}<select name="${name}"><option value="${selected}" selected>${selected}</option></select></label>`,
+    textareaField:(label,name,value)=>`<label>${label}<textarea name="${name}">${value??''}</textarea></label>`,
+    todayISO:()=> '2026-10-02',toast:()=>{},navigate:()=>{},uid:prefix=>prefix+'_1',recordActivity:()=>{},
+    saveState:()=>true,renderCurrentView:()=>{},addDays,allowsAnimalTransition:()=>true,rememberBreed:()=>{},completeWorkflowTasks:()=>{}
+  });
+
+  const action=Core.dashboardActions(state,'2026-10-02',14).find(item=>item.kind==='record-birth'&&item.breedingId==='b2');
+  assert.ok(action,'target breeding is surfaced as a Today Record Birth action');
+
+  const clickHandlers=[];
+  const context={
+    HerdHarborBreedingNextActionCore:Core,
+    HerdHarborApp:{getState:()=>state,openRecordBirth:id=>runtime.openRecordBirth(id)},
+    HerdHarborFlowPhase2:{},HerdHarborBreedingWorkspace:{},
+    document:{body:{},querySelector:()=>null,querySelectorAll:()=>[],getElementById:()=>null},
+    MutationObserver:class{observe(){} disconnect(){}},
+    addEventListener:(name,handler)=>{if(name==='click')clickHandlers.push(handler);},
+    requestAnimationFrame:handler=>{handler();return 1;},
+    setTimeout:handler=>{handler();return 1;},
+    Date,console
+  };
+  context.globalThis=context;
+  const ui=fs.readFileSync(path.join(__dirname,'..','breeding-next-action-v1.8.2.js'),'utf8');
+  vm.runInNewContext(ui,context,{filename:'breeding-next-action-v1.8.2.js'});
+  assert.equal(clickHandlers.length,1);
+
+  const button={
+    dataset:{
+      hhNextKind:action.kind,
+      hhNextAnimal:action.animalId||'',
+      hhNextBreeding:action.breedingId||'',
+      hhNextLitter:action.litterId||'',
+      hhNextSale:action.saleId||'',
+      hhNextTab:action.tab||''
+    },
+    closest:selector=>selector==='[data-hh-next-kind]'?button:null
+  };
+  clickHandlers[0]({target:button,preventDefault(){},stopPropagation(){}});
+
+  assert.equal(captured?.title,'Record birth or litter');
+  assert.match(captured?.html||'',/<option value="b2" selected>/);
+  assert.match(captured?.html||'',/<option value="doe2" selected>/);
+  assert.match(captured?.html||'',/<option value="buck2" selected>/);
+  assert.doesNotMatch(captured?.html||'',/<option value="b1" selected>/);
+});
+
+test('Record Birth command is shared by Breeding, Today, and animal-profile lifecycle surfaces',()=>{
+  const app=fs.readFileSync(path.join(__dirname,'..','herdharbor-app-runtime.js'),'utf8');
+  const breeding=fs.readFileSync(path.join(__dirname,'..','breeding-litter-runtime-v1.8.3.js'),'utf8');
+  const lifecycle=fs.readFileSync(path.join(__dirname,'..','flow-phase2-lifecycle-v1.8.2.js'),'utf8');
+  assert.match(app,/openRecordBirth:\s*\(breedingId\)\s*=>\s*openRecordBirth\(breedingId\)/);
+  assert.match(breeding,/button\.addEventListener\("click",\s*\(\)\s*=>\s*openRecordBirth\(button\.dataset\.recordBirth\)\)/);
+  assert.match(breeding,/\$\$\('\[data-record-birth\]'/);
+  assert.match(lifecycle,/if\(kind==="record-birth"\)\{[\s\S]*rememberReturn\(animalId\)[\s\S]*const command=root\.HerdHarborApp\?\.openRecordBirth[\s\S]*typeof command!=="function"[\s\S]*const opened=command\(breedingId\)[\s\S]*waitFor\("#litter-form",form=>restoreAfterForm\(form\)\)/);
+  assert.match(lifecycle,/if\(opened!==true\)\{pendingReturn=null;return;\}/);
+  assert.doesNotMatch(lifecycle,/kind==="record-birth"\?\`\[data-record-birth=/);
 });
 
 test('release loader includes the next-action engine under the formal v1.8.4 identity',()=>{

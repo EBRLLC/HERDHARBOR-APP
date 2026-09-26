@@ -57,12 +57,9 @@
 
   function openRecordBirth(next){
     if(!next.breedingId)return false;
-    const id=root.CSS?.escape?root.CSS.escape(next.breedingId):next.breedingId;
-    const route=root.document.querySelector('.nav-item[data-route="breeding"]');
-    if(!route)return false;
-    route.click();
-    waitFor(`#view-breeding [data-record-birth="${id}"]`,button=>button.click(),0,60);
-    return true;
+    const command=root.HerdHarborApp?.openRecordBirth;
+    if(typeof command!=="function")return false;
+    return command(next.breedingId)!==false;
   }
   function openProfile(next){
     if(!next.animalId)return false;root.HerdHarborFlowPhase2?.openAnimalProfile?.(next.animalId,"breeding",{history:"push"});
