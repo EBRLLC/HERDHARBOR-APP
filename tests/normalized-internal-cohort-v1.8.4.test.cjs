@@ -35,6 +35,7 @@ test("cohort status exposes only caller eligibility, allowlist mode, and schema 
   assert.match(sql,/role_table_grants/i);
   assert.match(sql,/has_function_privilege/i);
   assert.match(sql,/herdharbor_sync_prepare_normalized_writer_guarded/i);
+  assert.match(sql,/herdharbor_sync_apply_record_group\(jsonb,text\)/i);
   assert.doesNotMatch(sql,/jsonb_build_object\([\s\S]*'user_id'/i);
   assert.match(sql,/security definer\s+set search_path = ''/i);
   assert.match(sql,/revoke all on function public\.herdharbor_sync_cohort_status\(\)[\s\S]*from public, anon, authenticated/i);
@@ -45,6 +46,8 @@ test("rollout preflight requires the server allowlist without changing legacy au
   assert.match(preflight,/cohort_table/i);
   assert.match(preflight,/cohort_rpc/i);
   assert.match(preflight,/cohort_authenticated_execute/i);
+  assert.match(preflight,/record_group_rpc/i);
+  assert.match(preflight,/record_group_authenticated_execute/i);
   assert.match(preflight,/no_browser_cohort_table_access/i);
   assert.match(preflight,/legacy_authority_only/i);
 });
