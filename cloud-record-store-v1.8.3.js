@@ -12,6 +12,7 @@
   const MANIFEST_TABLE = "herdharbor_sync_manifest";
   const BATCH_RPC = "herdharbor_sync_apply_batch";
   const RECORD_RPC = "herdharbor_sync_apply_record";
+  const RECORD_GROUP_RPC = "herdharbor_sync_apply_record_group";
   const VERIFY_RPC = "herdharbor_sync_mark_verified";
   const PREPARE_WRITER_RPC = "herdharbor_sync_prepare_normalized_writer_guarded";
   const STAGE_RPC = "herdharbor_sync_set_stage";
@@ -64,10 +65,10 @@
 
   function knownProviderFailure(operation, error) {
     const message = String(error?.message || "");
-    const knownCodes = ["HH_SYNC_CONFLICT","HH_SYNC_RECORD_WRITER_STAGE_REQUIRED","HH_SYNC_RECORD_VERSION_REQUIRED","HH_SYNC_INVALID_RECORD_MUTATION","HH_SYNC_WRITER_VERSION_MISMATCH","HH_SYNC_VERIFY_STALE","HH_SYNC_BATCH_LIMIT","HH_SYNC_INVALID_BATCH","HH_SYNC_INVALID_PUT","HH_SYNC_INVALID_TOMBSTONE","HH_SYNC_INVALID_VERSION","HH_SYNC_INVALID_CHECKSUM","HH_SYNC_INVALID_VERIFICATION","HH_SYNC_RECORD_COUNT_MISMATCH","HH_SYNC_AUTH_REQUIRED","HH_SYNC_NORMALIZED_REQUIRES_VERIFICATION","HH_SYNC_NORMALIZED_WRITER_REQUIRED","HH_SYNC_STAGE_VERIFICATION_REQUIRED","HH_SYNC_ALREADY_NORMALIZED","HH_SYNC_EXPECTED_GENERATION_REQUIRED","HH_SYNC_INVALID_GENERATION","HH_SYNC_INVALID_STAGE","HH_SYNC_INVALID_STAGE_TRANSITION","HH_SYNC_INVALID_BATCH_STAGE","HH_SYNC_STAGE_CHANGE_REQUIRES_RPC","HH_SYNC_INVALID_SCHEMA_VERSION","HH_SYNC_INVALID_MANIFEST_METADATA","HH_SYNC_INVALID_WRITER_READINESS","HH_SYNC_DUAL_WRITE_STAGE_REQUIRED","HH_SYNC_WRITER_FORMAT_MISMATCH","HH_SYNC_LEGACY_GUARD_REQUIRED","HH_SYNC_LEGACY_WRITE_BLOCKED_AFTER_CUTOVER","HH_SYNC_LEGACY_GUARD_USER_REQUIRED","HH_SYNC_INITIAL_STAGE_MUST_BE_LEGACY","HH_SYNC_MANIFEST_MISSING"];
+    const knownCodes = ["HH_SYNC_CONFLICT","HH_SYNC_STAGE_CHANGED","HH_SYNC_INVALID_RECORD_GROUP","HH_SYNC_RECORD_GROUP_LIMIT","HH_SYNC_DUPLICATE_RECORD_MUTATION","HH_SYNC_RECORD_WRITER_STAGE_REQUIRED","HH_SYNC_RECORD_VERSION_REQUIRED","HH_SYNC_INVALID_RECORD_MUTATION","HH_SYNC_WRITER_VERSION_MISMATCH","HH_SYNC_VERIFY_STALE","HH_SYNC_BATCH_LIMIT","HH_SYNC_INVALID_BATCH","HH_SYNC_INVALID_PUT","HH_SYNC_INVALID_TOMBSTONE","HH_SYNC_INVALID_VERSION","HH_SYNC_INVALID_CHECKSUM","HH_SYNC_INVALID_VERIFICATION","HH_SYNC_RECORD_COUNT_MISMATCH","HH_SYNC_AUTH_REQUIRED","HH_SYNC_NORMALIZED_REQUIRES_VERIFICATION","HH_SYNC_NORMALIZED_WRITER_REQUIRED","HH_SYNC_STAGE_VERIFICATION_REQUIRED","HH_SYNC_ALREADY_NORMALIZED","HH_SYNC_EXPECTED_GENERATION_REQUIRED","HH_SYNC_INVALID_GENERATION","HH_SYNC_INVALID_STAGE","HH_SYNC_INVALID_STAGE_TRANSITION","HH_SYNC_INVALID_BATCH_STAGE","HH_SYNC_STAGE_CHANGE_REQUIRES_RPC","HH_SYNC_INVALID_SCHEMA_VERSION","HH_SYNC_INVALID_MANIFEST_METADATA","HH_SYNC_INVALID_WRITER_READINESS","HH_SYNC_DUAL_WRITE_STAGE_REQUIRED","HH_SYNC_WRITER_FORMAT_MISMATCH","HH_SYNC_LEGACY_GUARD_REQUIRED","HH_SYNC_LEGACY_WRITE_BLOCKED_AFTER_CUTOVER","HH_SYNC_LEGACY_GUARD_USER_REQUIRED","HH_SYNC_INITIAL_STAGE_MUST_BE_LEGACY","HH_SYNC_MANIFEST_MISSING"];
     const known = knownCodes.find((code) => message.includes(code));
     if (!known) return null;
-    const messages = { HH_SYNC_CONFLICT:"The normalized cloud record changed on another device.", HH_SYNC_RECORD_WRITER_STAGE_REQUIRED:"Record-level normalized writes are not enabled for this account stage.", HH_SYNC_RECORD_VERSION_REQUIRED:"The normalized record mutation requires a known cloud version.", HH_SYNC_INVALID_RECORD_MUTATION:"The normalized record mutation is invalid.", HH_SYNC_WRITER_VERSION_MISMATCH:"This normalized writer does not match the prepared cloud writer version.", HH_SYNC_VERIFY_STALE:"The normalized cloud state changed before verification completed.", HH_SYNC_ALREADY_NORMALIZED:"Legacy shadow writes are disabled after normalized cutover.", HH_SYNC_STAGE_VERIFICATION_REQUIRED:"A current normalized verification is required before this migration stage change.", HH_SYNC_NORMALIZED_WRITER_REQUIRED:"The normalized writer has not been prepared for cutover.", HH_SYNC_DUAL_WRITE_STAGE_REQUIRED:"Normalized writer preparation is only allowed during dual-write migration.", HH_SYNC_WRITER_FORMAT_MISMATCH:"The normalized writer does not match the verified cloud format.", HH_SYNC_LEGACY_GUARD_REQUIRED:"The stale-client legacy-write guard is required before normalized cutover.", HH_SYNC_LEGACY_WRITE_BLOCKED_AFTER_CUTOVER:"Legacy cloud writes are blocked because normalized sync is authoritative.", HH_SYNC_INVALID_STAGE_TRANSITION:"That cloud migration stage transition is not allowed.", HH_SYNC_MANIFEST_MISSING:"The normalized cloud migration manifest is missing.", HH_SYNC_RECORD_COUNT_MISMATCH:"The normalized cloud record count did not match the verified snapshot." };
+    const messages = { HH_SYNC_CONFLICT:"The normalized cloud record changed on another device.", HH_SYNC_STAGE_CHANGED:"Normalized rollout state changed while the record write was in flight.", HH_SYNC_INVALID_RECORD_GROUP:"The normalized logical-record mutation group is invalid.", HH_SYNC_RECORD_GROUP_LIMIT:"The normalized logical-record mutation group is too large.", HH_SYNC_DUPLICATE_RECORD_MUTATION:"A normalized logical-record mutation group targeted the same cloud row twice.", HH_SYNC_RECORD_WRITER_STAGE_REQUIRED:"Record-level normalized writes are not enabled for this account stage.", HH_SYNC_RECORD_VERSION_REQUIRED:"The normalized record mutation requires a known cloud version.", HH_SYNC_INVALID_RECORD_MUTATION:"The normalized record mutation is invalid.", HH_SYNC_WRITER_VERSION_MISMATCH:"This normalized writer does not match the prepared cloud writer version.", HH_SYNC_VERIFY_STALE:"The normalized cloud state changed before verification completed.", HH_SYNC_ALREADY_NORMALIZED:"Legacy shadow writes are disabled after normalized cutover.", HH_SYNC_STAGE_VERIFICATION_REQUIRED:"A current normalized verification is required before this migration stage change.", HH_SYNC_NORMALIZED_WRITER_REQUIRED:"The normalized writer has not been prepared for cutover.", HH_SYNC_DUAL_WRITE_STAGE_REQUIRED:"Normalized writer preparation is only allowed during dual-write migration.", HH_SYNC_WRITER_FORMAT_MISMATCH:"The normalized writer does not match the verified cloud format.", HH_SYNC_LEGACY_GUARD_REQUIRED:"The stale-client legacy-write guard is required before normalized cutover.", HH_SYNC_LEGACY_WRITE_BLOCKED_AFTER_CUTOVER:"Legacy cloud writes are blocked because normalized sync is authoritative.", HH_SYNC_INVALID_STAGE_TRANSITION:"That cloud migration stage transition is not allowed.", HH_SYNC_MANIFEST_MISSING:"The normalized cloud migration manifest is missing.", HH_SYNC_RECORD_COUNT_MISMATCH:"The normalized cloud record count did not match the verified snapshot." };
     const wrapped = new Error(messages[known] || "The normalized cloud operation was rejected by its safety gate.");
     wrapped.name = "HerdHarborCloudRecordError"; wrapped.code = known; wrapped.status = Number(error?.status || error?.statusCode || 0) || null; wrapped.operation = operation; return wrapped;
   }
@@ -131,10 +132,50 @@
       };
     }
 
+    async function applyRecordMutationsAtomic({operations=[],writerVersion=null}={}) {
+      if(!Array.isArray(operations) || operations.length < 1 || operations.length > 16) {
+        throw new TypeError("Atomic record mutations require between 1 and 16 operations.");
+      }
+      const seen=new Set();
+      const providerOperations=operations.map((operation)=>{
+        const safeNamespace=normalizeNamespace(operation?.namespace);
+        const safeRecordId=normalizeRecordId(operation?.recordId??operation?.record_id);
+        const key=`${safeNamespace}\u0000${safeRecordId}`;
+        if(seen.has(key)) throw new TypeError(`Duplicate normalized record mutation: ${safeRecordId}.`);
+        seen.add(key);
+        const safeExpectedVersion=normalizeExpectedVersion(operation?.expectedVersion??operation?.expected_version);
+        const isDelete=operation?.deleted===true;
+        if(isDelete && safeExpectedVersion===null) throw new TypeError("Deleted record mutations require expectedVersion.");
+        const provider={
+          namespace:safeNamespace,
+          record_id:safeRecordId,
+          expected_version:safeExpectedVersion,
+          deleted:isDelete
+        };
+        if(!isDelete){
+          provider.payload=normalizePayload(operation?.payload);
+          provider.payload_checksum=normalizeChecksum(operation?.payloadChecksum??operation?.payload_checksum);
+        }
+        return provider;
+      });
+      const safeWriterVersion=writerVersion===undefined||writerVersion===null||String(writerVersion).trim()===""?null:requiredText(writerVersion,"writerVersion",80);
+      const {data,error}=await client.rpc(RECORD_GROUP_RPC,{
+        p_operations:providerOperations,
+        p_writer_version:safeWriterVersion
+      });
+      if(error) throw providerError("record-group-write",error);
+      const results=Array.isArray(data?.operations)?data.operations:[];
+      return {
+        ...(data||{}),
+        ok:data?.ok!==false,
+        operations:results
+      };
+    }
+
     async function markVerified({expectedGeneration,checksum,recordCount}={}){const generation=normalizeGeneration(expectedGeneration),safeChecksum=normalizeChecksum(checksum,"checksum"),safeRecordCount=normalizeRecordCount(recordCount);const{data,error}=await client.rpc(VERIFY_RPC,{p_expected_generation:generation,p_checksum:safeChecksum,p_record_count:safeRecordCount});if(error)throw providerError("mark-verified",error);return data||{ok:true,generation,checksum:safeChecksum,record_count:safeRecordCount};}
     async function prepareNormalizedWriter({expectedGeneration,writerVersion,namespace,formatVersion}={}){const generation=normalizeGeneration(expectedGeneration),safeWriterVersion=requiredText(writerVersion,"writerVersion",80),safeNamespace=normalizeNamespace(namespace),safeFormatVersion=normalizeFormatVersion(formatVersion);const{data,error}=await client.rpc(PREPARE_WRITER_RPC,{p_expected_generation:generation,p_writer_version:safeWriterVersion,p_namespace:safeNamespace,p_format_version:safeFormatVersion});if(error)throw providerError("prepare-normalized-writer",error);return data||{ok:true,generation,writer_version:safeWriterVersion};}
     async function setStage({targetStage,expectedGeneration}={}){const stage=String(targetStage||"").trim();if(!CUTOVER_STAGES.has(stage))throw new TypeError("Invalid targetStage.");const generation=normalizeGeneration(expectedGeneration);const{data,error}=await client.rpc(STAGE_RPC,{p_target_stage:stage,p_expected_generation:generation});if(error)throw providerError("set-stage",error);return data||{ok:true,stage,generation};}
-    return Object.freeze({list,listHeaders,get,getManifest,applyBatch,applyRecordMutation,markVerified,prepareNormalizedWriter,setStage});
+    return Object.freeze({list,listHeaders,get,getManifest,applyBatch,applyRecordMutation,applyRecordMutationsAtomic,markVerified,prepareNormalizedWriter,setStage});
   }
-  return Object.freeze({version:VERSION,release:RELEASE,recordTable:RECORD_TABLE,manifestTable:MANIFEST_TABLE,batchRpc:BATCH_RPC,recordRpc:RECORD_RPC,verifyRpc:VERIFY_RPC,prepareWriterRpc:PREPARE_WRITER_RPC,stageRpc:STAGE_RPC,readPageSize:READ_PAGE_SIZE,maxReadRows:MAX_READ_ROWS,normalizeNamespace,normalizeRecordId,normalizePayload,createRecordStore});
+  return Object.freeze({version:VERSION,release:RELEASE,recordTable:RECORD_TABLE,manifestTable:MANIFEST_TABLE,batchRpc:BATCH_RPC,recordRpc:RECORD_RPC,recordGroupRpc:RECORD_GROUP_RPC,verifyRpc:VERIFY_RPC,prepareWriterRpc:PREPARE_WRITER_RPC,stageRpc:STAGE_RPC,readPageSize:READ_PAGE_SIZE,maxReadRows:MAX_READ_ROWS,normalizeNamespace,normalizeRecordId,normalizePayload,createRecordStore});
 });
