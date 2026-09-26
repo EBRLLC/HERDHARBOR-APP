@@ -47,12 +47,31 @@
     const keys={"pregnancy-check":["pregnancy","check"],"record-birth":["birth"],"wean-litter":["wean"],"transfer-buyer":["transfer"],"create-sale":["sale"]}[next.kind]||[];
     return keys.some(key=>text.includes(key));
   }
+  function dashboardSignature(actions){
+    return actions.map(next=>[
+      clean(next.kind),
+      clean(next.animalId),
+      clean(next.breedingId),
+      clean(next.litterId),
+      clean(next.saleId),
+      clean(next.tab),
+      clean(next.animalName),
+      clean(next.label),
+      clean(next.reason),
+      clean(next.shortLabel),
+      clean(next.urgency)
+    ].join("\u001f")).join("\u001e");
+  }
   function renderDashboard(){
     const panel=root.document.querySelector("#hh-p1-today");if(!panel)return false;
     const actions=Core.dashboardActions(stateNow(),today(),14).filter(next=>!alreadyInToday(panel,next)).slice(0,6);
     let section=panel.querySelector(".hh-next-dashboard");if(!actions.length){section?.remove();return false;}
     if(!section){section=root.document.createElement("section");section.className="hh-next-dashboard";panel.appendChild(section);}
-    section.innerHTML=`<div class="hh-next-dashboard-head"><div><strong>Breeding next actions</strong><span>Derived from the breeding and litter records you already entered.</span></div></div><div class="hh-next-dashboard-list">${actions.map(next=>`<article class="is-${tone(next.urgency)}"><div><strong>${esc(next.animalName)} · ${esc(next.label)}</strong><small>${esc(next.reason||"")}</small></div><button type="button" class="button button-small button-primary" data-hh-next-kind="${esc(next.kind)}" data-hh-next-animal="${esc(next.animalId||"")}" data-hh-next-breeding="${esc(next.breedingId||"")}" data-hh-next-litter="${esc(next.litterId||"")}" data-hh-next-sale="${esc(next.saleId||"")}" data-hh-next-tab="${esc(next.tab||"")}">${esc(next.shortLabel||"Open")}</button></article>`).join("")}</div>`;return true;
+    const signature=dashboardSignature(actions);
+    if(section.dataset?.hhNextSignature===signature)return true;
+    section.innerHTML=`<div class="hh-next-dashboard-head"><div><strong>Breeding next actions</strong><span>Derived from the breeding and litter records you already entered.</span></div></div><div class="hh-next-dashboard-list">${actions.map(next=>`<article class="is-${tone(next.urgency)}"><div><strong>${esc(next.animalName)} · ${esc(next.label)}</strong><small>${esc(next.reason||"")}</small></div><button type="button" class="button button-small button-primary" data-hh-next-kind="${esc(next.kind)}" data-hh-next-animal="${esc(next.animalId||"")}" data-hh-next-breeding="${esc(next.breedingId||"")}" data-hh-next-litter="${esc(next.litterId||"")}" data-hh-next-sale="${esc(next.saleId||"")}" data-hh-next-tab="${esc(next.tab||"")}">${esc(next.shortLabel||"Open")}</button></article>`).join("")}</div>`;
+    if(section.dataset)section.dataset.hhNextSignature=signature;
+    return true;
   }
 
   function actionFailure(message,next,error=null){

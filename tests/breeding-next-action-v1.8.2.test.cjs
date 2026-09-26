@@ -156,6 +156,75 @@ test('UI surfaces next action on profile, breeding cards, litter workspace, and 
   assert.doesNotMatch(ui,/hh-p2-life-actions button:first-child/);
 });
 
+test('Today dashboard preserves the same button node across unrelated DOM mutations',()=>{
+  const state=rabbitFixture();
+  state.breedings[0]={...state.breedings[0],status:'Delivered'};
+  state.litters=[{id:'l-target',breedingId:'b1',damId:'doe',sireId:'buck',birthDate:'2026-10-02',bornAlive:'1',weaned:'0',expectedWeanDate:'2026-11-13',offspringIds:['k1']}];
+  state.animals.push({id:'k1',name:'Kit 1',species:'Rabbit',sex:'Unknown',status:'Active',sourceBirthId:'l-target'});
+
+  let observerCallback=null;
+  let htmlWrites=0;
+  const section={
+    dataset:{},
+    _html:'',
+    set innerHTML(value){htmlWrites+=1;this._html=value;},
+    get innerHTML(){return this._html;},
+    remove(){}
+  };
+  const panel={
+    querySelector(selector){return selector==='.hh-next-dashboard'?section:null;},
+    cloneNode(){return {querySelector:()=>null,textContent:''};},
+    appendChild(){}
+  };
+  const context={
+    HerdHarborBreedingNextActionCore:{
+      animalNextAction:()=>null,
+      breedingNextAction:()=>null,
+      litterNextAction:()=>null,
+      dashboardActions:()=>[{
+        kind:'update-offspring',
+        animalId:'doe',
+        animalName:'Judy',
+        breedingId:'b1',
+        litterId:'l-target',
+        label:'Update offspring details (1)',
+        shortLabel:'Update offspring',
+        reason:'Sex and permanent ID can be entered for the litter from one screen.',
+        urgency:'today',
+        actionable:true,
+        tab:'offspring'
+      }]
+    },
+    HerdHarborApp:{getState:()=>state},
+    document:{
+      body:{},
+      querySelector:selector=>selector==='#hh-p1-today'?panel:null,
+      querySelectorAll:()=>[],
+      getElementById:()=>null,
+      createElement:()=>({className:'',dataset:{},innerHTML:'',remove(){}})
+    },
+    MutationObserver:class{
+      constructor(callback){observerCallback=callback;}
+      observe(){}
+      disconnect(){}
+    },
+    addEventListener:()=>{},
+    requestAnimationFrame:handler=>{handler();return 1;},
+    setTimeout:handler=>{handler();return 1;},
+    Date,console
+  };
+  context.globalThis=context;
+  const ui=fs.readFileSync(path.join(__dirname,'..','breeding-next-action-v1.8.2.js'),'utf8');
+  vm.runInNewContext(ui,context,{filename:'breeding-next-action-v1.8.2.js'});
+
+  assert.equal(htmlWrites,1,'initial dashboard render writes the action markup once');
+  assert.equal(typeof observerCallback,'function');
+
+  observerCallback([{type:'characterData'}]);
+  assert.equal(htmlWrites,1,'unrelated DOM changes must not replace an unchanged action button');
+  assert.ok(section.dataset.hhNextSignature,'stable action signature is retained on the section');
+});
+
 test('Today Update offspring opens the exact litter workspace and offspring tab',()=>{
   const state=rabbitFixture();
   state.breedings[0]={...state.breedings[0],status:'Delivered'};
@@ -378,7 +447,7 @@ test('release loader includes the next-action engine under the formal v1.8.4 ide
   const build=fs.readFileSync(path.join(__dirname,'..','herdharbor-build.js'),'utf8');
   for(const asset of ['breeding-next-action-core-v1.8.2.js','breeding-next-action-v1.8.2.js','breeding-next-action-v1.8.2.css'])assert.match(build,new RegExp(asset.replace(/\./g,'\\.')));
   assert.match(build,/breeding-next-action-core-v1\.8\.2\.js\?v=3/);
-  assert.match(build,/breeding-next-action-v1\.8\.2\.js\?v=2/);
+  assert.match(build,/breeding-next-action-v1\.8\.2\.js\?v=3/);
   assert.match(build,/breeding-litter-workspace-v1\.8\.2\.js\?v=2/);
   assert.match(build,/version:\s*"1\.8\.4"/);
   assert.match(build,/buildId:\s*"alpha-v1\.8\.4-release-1"/);
