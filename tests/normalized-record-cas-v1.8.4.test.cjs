@@ -53,3 +53,13 @@ test("record CAS RPC is least-privilege and part of rollout preflight", () => {
   assert.match(preflight,/record_authenticated_execute/i);
   assert.match(preflight,/record_rpc/i);
 });
+
+
+test("record CAS avoids a long manifest row lock and fails closed if rollout state changes", () => {
+  const readStart = sql.indexOf("select cutover_stage, metadata");
+  const readEnd = sql.indexOf("if not found", readStart);
+  assert.ok(readStart >= 0 && readEnd > readStart);
+  assert.doesNotMatch(sql.slice(readStart, readEnd), /for update/i);
+  assert.match(sql, /and cutover_stage = v_stage/i);
+  assert.match(sql, /HH_SYNC_STAGE_CHANGED/i);
+});
