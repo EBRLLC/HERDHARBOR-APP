@@ -77,7 +77,7 @@
   function classifyFailure(error) {
     const code = String(error?.code || "");
     const message = String(error?.message || "").toLowerCase();
-    if (code === "HH_SYNC_CONFLICT") return "cas_conflict";
+    if (code === "HH_SYNC_CONFLICT" || code === "HH_SYNC_CONFLICT_RETRY") return "cas_conflict";
     if (/auth|required|jwt|session|401|403/.test(`${code} ${message}`)) return "auth";
     if (/timeout|timed out|abort/.test(`${code} ${message}`)) return "timeout";
     if (/offline|network|fetch|connection|failed to fetch/.test(`${code} ${message}`)) return "network";
@@ -142,8 +142,8 @@
     if (!stateStore?.getOutbox || !stateStore?.acknowledgeMutations || !stateStore?.markMutationRetry) {
       throw new TypeError("A canonical HerdHarbor state store is required.");
     }
-    if (!recordStore?.get || !recordStore?.list || !recordStore?.getManifest || !recordStore?.applyRecordMutation) {
-      throw new TypeError("A normalized record store with record CAS is required.");
+    if (!recordStore?.get || !recordStore?.list || !recordStore?.getManifest || !recordStore?.applyRecordMutation || !recordStore?.applyRecordMutationsAtomic) {
+      throw new TypeError("A normalized record store with record CAS and atomic logical groups is required.");
     }
     if (!normalizer?.planLogicalMutation || !normalizer?.mergeNormalizedPayload || !normalizer?.checksumValue) {
       throw new TypeError("The normalized state mapper is incomplete.");
@@ -209,6 +209,35 @@
       return { ok: true, idempotent: true, remote };
     }
 
+    async function updateLocalAfterCompatibleMerge(operation, mutation, processedRevision) {
+      if (operation.role !== "primary" || operation.row?.payload?.kind === "array_manifest") return false;
+      const newer = stateStore.getOutbox().some((entry) =>
+        sameLogicalRecord(entry, mutation) && mutationRevision(entry) > processedRevision
+      );
+      if (newer) return false;
+      const current = stateStore.getState?.();
+      if (!current) return false;
+      const recordId = rowId(operation.row);
+      const next = normalizer.applyNormalizedPayloadToSnapshot(current, recordId, operation.row.payload);
+      stateStore.replaceRaw?.(JSON.stringify(next), {
+        source: "cloud",
+        reason: "record-cas-compatible-merge",
+        notify: true
+      });
+      return true;
+    }
+
+    function atomicInput(operation, expectedVersion) {
+      return {
+        namespace,
+        recordId: rowId(operation.row),
+        payload: operation.type === "delete" ? null : operation.row.payload,
+        payloadChecksum: operation.type === "delete" ? null : rowChecksum(operation.row),
+        expectedVersion,
+        deleted: operation.type === "delete"
+      };
+    }
+
     async function reconcileConflict(operation, mutation, processedRevision) {
       const recordId = rowId(operation.row);
       const remote = await recordStore.get(namespace, recordId, { includeDeleted: true });
@@ -263,24 +292,7 @@
         }
       };
       const confirmedRow = await persistConfirmed(mergedOperation, retry);
-
-      if (operation.role === "primary") {
-        const newer = stateStore.getOutbox().some((entry) =>
-          sameLogicalRecord(entry, mutation) && mutationRevision(entry) > processedRevision
-        );
-        if (!newer) {
-          const current = stateStore.getState?.();
-          if (current && merged.value?.kind !== "array_manifest") {
-            const next = normalizer.applyNormalizedPayloadToSnapshot(current, recordId, merged.value);
-            stateStore.replaceRaw?.(JSON.stringify(next), {
-              source: "cloud",
-              reason: "record-cas-compatible-merge",
-              notify: true
-            });
-          }
-        }
-      }
-
+      await updateLocalAfterCompatibleMerge(mergedOperation, mutation, processedRevision);
       return { ok: true, merged: true, row: confirmedRow };
     }
 
@@ -308,6 +320,150 @@
         if (String(error?.code || "") !== "HH_SYNC_CONFLICT") throw error;
         return reconcileConflict(operation, mutation, processedRevision);
       }
+    }
+
+    async function persistAtomicResults(entries, response) {
+      const results = Array.isArray(response?.operations) ? response.operations : [];
+      if (results.length !== entries.length) {
+        throw Object.assign(new Error("Atomic normalized write returned an incomplete result set."), {
+          code: "HH_SYNC_ATOMIC_RESULT_INCOMPLETE"
+        });
+      }
+      const byId = new Map(results.map((result) => [String(result?.record_id ?? result?.recordId ?? ""), result]));
+      for (const entry of entries) {
+        const result = byId.get(rowId(entry.operation.row));
+        if (!result) {
+          throw Object.assign(new Error("Atomic normalized write omitted a committed record."), {
+            code: "HH_SYNC_ATOMIC_RESULT_INCOMPLETE"
+          });
+        }
+        await persistConfirmed(entry.operation, result);
+      }
+    }
+
+    async function reconcileAtomicOperation(operation) {
+      const recordId = rowId(operation.row);
+      const remote = await recordStore.get(namespace, recordId, { includeDeleted: true });
+      const baseline = await baselineStore.get(namespace, recordId);
+
+      if (!remote) {
+        if (operation.type === "put" && !baseline) {
+          return { ok: true, operation, input: atomicInput(operation, null), merged: false };
+        }
+        return { ok: false, conflict: true, fields: ["$record_missing"] };
+      }
+
+      if (operation.type === "delete") {
+        if (rowDeleted(remote)) {
+          await acceptRemoteAsCommitted(operation, remote);
+          return { ok: true, committed: true, operation, merged: false };
+        }
+        if (!baseline || rowVersion(remote) !== rowVersion(baseline)) {
+          return { ok: false, conflict: true, fields: ["$delete"] };
+        }
+        return { ok: true, operation, input: atomicInput(operation, rowVersion(remote)), merged: false };
+      }
+
+      if (rowDeleted(remote)) {
+        return { ok: false, conflict: true, fields: ["$record_deleted"] };
+      }
+
+      if (rowChecksum(remote) && rowChecksum(remote) === rowChecksum(operation.row)) {
+        await acceptRemoteAsCommitted(operation, remote);
+        return { ok: true, committed: true, operation, merged: false };
+      }
+
+      if (!baseline) {
+        return { ok: false, conflict: true, fields: ["$create"] };
+      }
+      if (!baseline.payload || rowDeleted(baseline)) {
+        return { ok: false, conflict: true, fields: ["$baseline"] };
+      }
+
+      if (rowVersion(remote) === rowVersion(baseline)) {
+        return { ok: true, operation, input: atomicInput(operation, rowVersion(remote)), merged: false };
+      }
+
+      const merged = normalizer.mergeNormalizedPayload(
+        baseline.payload,
+        operation.row.payload,
+        remote.payload
+      );
+      if (!merged.ok) {
+        return { ok: false, conflict: true, fields: [...merged.conflicts] };
+      }
+
+      const mergedChecksum = normalizer.checksumValue(merged.value);
+      const mergedOperation = {
+        ...operation,
+        row: {
+          ...operation.row,
+          payload: merged.value,
+          payload_checksum: mergedChecksum
+        }
+      };
+      return {
+        ok: true,
+        operation: mergedOperation,
+        input: atomicInput(mergedOperation, rowVersion(remote)),
+        merged: true
+      };
+    }
+
+    async function applyAtomicOperations(operations, mutation, processedRevision) {
+      const initialEntries = [];
+      for (const operation of operations) {
+        const baseline = await baselineStore.get(namespace, rowId(operation.row));
+        if (operation.type === "put" && rowDeleted(baseline)) {
+          return { ok: false, conflict: true, fields: ["$record_deleted"] };
+        }
+        initialEntries.push({
+          operation,
+          input: atomicInput(operation, rowVersion(baseline)),
+          merged: false
+        });
+      }
+
+      try {
+        const response = await recordStore.applyRecordMutationsAtomic({
+          operations: initialEntries.map((entry) => entry.input),
+          writerVersion
+        });
+        await persistAtomicResults(initialEntries, response);
+        return { ok: true, atomic: true };
+      } catch (error) {
+        if (String(error?.code || "") !== "HH_SYNC_CONFLICT") throw error;
+      }
+
+      const retryEntries = [];
+      for (const operation of operations) {
+        const reconciled = await reconcileAtomicOperation(operation);
+        if (!reconciled.ok) return reconciled;
+        if (!reconciled.committed) retryEntries.push(reconciled);
+      }
+
+      if (retryEntries.length) {
+        let response;
+        try {
+          response = await recordStore.applyRecordMutationsAtomic({
+            operations: retryEntries.map((entry) => entry.input),
+            writerVersion
+          });
+        } catch (error) {
+          if (String(error?.code || "") === "HH_SYNC_CONFLICT") {
+            return { ok: false, retry: true, fields: ["$concurrent_retry"] };
+          }
+          throw error;
+        }
+        await persistAtomicResults(retryEntries, response);
+        for (const entry of retryEntries) {
+          if (entry.merged) {
+            await updateLocalAfterCompatibleMerge(entry.operation, mutation, processedRevision);
+          }
+        }
+      }
+
+      return { ok: true, atomic: true, reconciled: true };
     }
 
     async function processGroup(group) {
@@ -342,8 +498,31 @@
         return { ok: true, acknowledged: group.mutationIds.length, noop: true };
       }
 
-      for (const operation of plan.operations) {
-        const result = await applyOperation(operation, mutation, processedRevision);
+      if (plan.operations.length > 1) {
+        const result = await applyAtomicOperations(plan.operations, mutation, processedRevision);
+        if (!result.ok) {
+          if (result.retry) {
+            throw Object.assign(new Error("Normalized record group changed again during conflict reconciliation."), {
+              code: "HH_SYNC_CONFLICT_RETRY"
+            });
+          }
+          stateStore.markMutationRetry(mutation.mutationId, {
+            retryState: "conflict",
+            lastErrorClass: "cas_conflict",
+            conflictFields: result.fields,
+            nextRetryAt: null,
+            lastAttemptAt: now()
+          }, mutation.ownerId);
+          return {
+            ok: false,
+            conflict: true,
+            domain: mutation.domain,
+            recordId: mutation.recordId,
+            fields: result.fields
+          };
+        }
+      } else {
+        const result = await applyOperation(plan.operations[0], mutation, processedRevision);
         if (!result.ok) {
           stateStore.markMutationRetry(mutation.mutationId, {
             retryState: "conflict",
