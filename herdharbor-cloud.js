@@ -119,6 +119,17 @@
   const dirtyKey = (userId) => `herdharbor_user_dirty_${userId}`;
   const baseKey = (userId) => `herdharbor_user_cloud_base_${userId}`;
   const versionKey = (userId) => `herdharbor_user_cloud_version_${userId}`;
+  const cloudBaselineMemory = new Map();
+  const legacyBaselineStore = (() => {
+    try {
+      return window.HerdHarborLegacyCloudBaseline?.createIndexedDbStore?.({
+        indexedDB: window.indexedDB
+      }) || null;
+    } catch (error) {
+      console.warn("HerdHarbor durable cloud baseline storage is unavailable:", error);
+      return null;
+    }
+  })();
   const DEVICE_LOCAL_SETTINGS = new Set(["theme", "sidebarCollapsed"]);
   const ACCESS_TABLE = "account_access";
   const ADMIN_AUDIT_TABLE = "admin_audit_log";
@@ -874,6 +885,54 @@
     }
   }
 
+  async function readCloudBaseline(userId) {
+    if (!userId) return null;
+    const memory = cloudBaselineMemory.get(userId);
+    if (memory && safeParse(memory)) return memory;
+
+    const legacyRaw = originalGetItem.call(localStorage, baseKey(userId));
+    if (legacyRaw && safeParse(legacyRaw)) {
+      cloudBaselineMemory.set(userId, legacyRaw);
+      if (legacyBaselineStore) {
+        try {
+          await legacyBaselineStore.set(userId, legacyRaw);
+          safeStorageRemove(baseKey(userId));
+        } catch (error) {
+          console.warn("HerdHarbor could not migrate the cloud baseline to durable storage:", error);
+        }
+      }
+      return legacyRaw;
+    }
+
+    if (!legacyBaselineStore) return null;
+    try {
+      const durableRaw = await legacyBaselineStore.get(userId);
+      if (!durableRaw || !safeParse(durableRaw)) return null;
+      cloudBaselineMemory.set(userId, durableRaw);
+      return durableRaw;
+    } catch (error) {
+      console.warn("HerdHarbor could not read the durable cloud baseline:", error);
+      return null;
+    }
+  }
+
+  async function writeCloudBaseline(userId, rawValue) {
+    if (!userId || !rawValue || !safeParse(rawValue)) return false;
+    cloudBaselineMemory.set(userId, rawValue);
+
+    if (legacyBaselineStore) {
+      try {
+        await legacyBaselineStore.set(userId, rawValue);
+        safeStorageRemove(baseKey(userId));
+        return true;
+      } catch (error) {
+        console.warn("HerdHarbor could not retain the durable cloud baseline:", error);
+      }
+    }
+
+    return safeStorageSet(baseKey(userId), rawValue);
+  }
+
   function removeRedundantStateCache(userId) {
     if (!userId) return;
     // The active farm state is already retained under STORAGE_KEY and the last
@@ -1040,29 +1099,31 @@
     } catch {}
   }
 
-  function restoreMissingCloudBaseline(userId, reason = "state-store") {
+  async function restoreMissingCloudBaseline(userId, reason = "state-store") {
     if (!userId) return false;
-    if (originalGetItem.call(localStorage, baseKey(userId))) return false;
+    if (await readCloudBaseline(userId)) return false;
     if (originalGetItem.call(localStorage, dirtyKey(userId)) === "1") return false;
     if (!originalGetItem.call(localStorage, versionKey(userId))) return false;
     const activeRaw = activeStateRaw();
     if (!activeRaw || !safeParse(activeRaw)) return false;
-    safeStorageSet(baseKey(userId), activeRaw);
+    const stored = await writeCloudBaseline(userId, activeRaw);
+    if (!stored) return false;
     dispatchBaselineRestored(userId, reason);
     return true;
   }
 
-  function captureCleanBaselineBeforeLocalCommit(userId, previousValue, reason = "before-local-edit") {
+  async function captureCleanBaselineBeforeLocalCommit(userId, previousValue, reason = "before-local-edit") {
     if (!userId || !previousValue || !safeParse(previousValue)) return false;
-    if (originalGetItem.call(localStorage, baseKey(userId))) return false;
+    if (await readCloudBaseline(userId)) return false;
     if (originalGetItem.call(localStorage, dirtyKey(userId)) === "1") return false;
     if (!originalGetItem.call(localStorage, versionKey(userId))) return false;
-    safeStorageSet(baseKey(userId), previousValue);
+    const stored = await writeCloudBaseline(userId, previousValue);
+    if (!stored) return false;
     dispatchBaselineRestored(userId, reason);
     return true;
   }
 
-  function handleCanonicalStateCommit(detail) {
+  async function handleCanonicalStateCommit(detail) {
     if (!detail || detail.source !== "local" || !detail.cloudRelevant || !session?.user?.id) return false;
     const userId = session.user.id;
     const rawValue = String(detail.rawValue || "");
@@ -1084,7 +1145,7 @@
       return true;
     }
 
-    captureCleanBaselineBeforeLocalCommit(userId, previousValue);
+    await captureCleanBaselineBeforeLocalCommit(userId, previousValue);
     safeStorageSet(dirtyKey(userId), "1");
     scheduleCloudSync(rawValue, writeSequence);
     return true;
@@ -1195,7 +1256,7 @@
       ? JSON.stringify(remoteRecord.app_state)
       : null;
     const activeRaw = activeStateRaw();
-    const confirmedBase = originalGetItem.call(localStorage, baseKey(userId));
+    const confirmedBase = await readCloudBaseline(userId);
     const localBaselineRaw = confirmedBase || activeRaw;
 
     if (
@@ -1211,7 +1272,7 @@
     }
 
     if (remoteRaw && sameState(remoteRaw, rawValue)) {
-      safeStorageSet(baseKey(userId), remoteRaw);
+      await writeCloudBaseline(userId, remoteRaw);
       if (remoteRecord.updated_at) {
         safeStorageSet(versionKey(userId), remoteRecord.updated_at);
       }
@@ -1332,7 +1393,7 @@
     const savedRaw = savedRecord?.app_state
       ? JSON.stringify(savedRecord.app_state)
       : rawValue;
-    safeStorageSet(baseKey(userId), savedRaw);
+    await writeCloudBaseline(userId, savedRaw);
     if (savedRecord?.updated_at) {
       safeStorageSet(versionKey(userId), savedRecord.updated_at);
     }
@@ -1650,10 +1711,10 @@
 
     const remoteRaw = JSON.stringify(data.app_state);
     const activeRaw = activeStateRaw();
-    const confirmedBase = originalGetItem.call(localStorage, baseKey(userId));
+    const confirmedBase = await readCloudBaseline(userId);
 
     if (activeRaw && sameState(activeRaw, remoteRaw)) {
-      safeStorageSet(baseKey(userId), remoteRaw);
+      await writeCloudBaseline(userId, remoteRaw);
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       setSyncState("Saved to cloud", "success");
       return false;
@@ -1689,7 +1750,7 @@
         );
       }
       setActiveUserData(userId, deviceCloudRaw);
-      safeStorageSet(baseKey(userId), remoteRaw);
+      await writeCloudBaseline(userId, remoteRaw);
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       setSyncState("Newer cloud records found; reloading…", "success");
       window.location.reload();
@@ -2282,7 +2343,7 @@
         return false;
       }
       setActiveUserData(conflict.userId, deviceCloudRaw);
-      safeStorageSet(baseKey(conflict.userId), conflict.remoteRaw);
+      await writeCloudBaseline(conflict.userId, conflict.remoteRaw);
       if (conflict.remoteUpdatedAt) {
         safeStorageSet(versionKey(conflict.userId), conflict.remoteUpdatedAt);
       }
@@ -2510,7 +2571,7 @@
       return;
     }
 
-    restoreMissingCloudBaseline(userId, "hydrate");
+    await restoreMissingCloudBaseline(userId, "hydrate");
 
     if (dirty) {
       const unsyncedRaw = activeRaw || cachedRaw;
@@ -2575,7 +2636,7 @@
         await recordRecoverySnapshot(userId, activeRaw, "Local copy before loading newer cloud records");
       }
       setActiveUserData(userId, deviceCloudRaw);
-      safeStorageSet(baseKey(userId), cloudRaw);
+      await writeCloudBaseline(userId, cloudRaw);
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       safeStorageRemove(dirtyKey(userId));
       syncConflict = null;
