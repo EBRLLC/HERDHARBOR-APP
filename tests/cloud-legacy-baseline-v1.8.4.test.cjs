@@ -58,10 +58,10 @@ test("durable baseline loader precedes cloud runtime and has fresh cache identit
   const worker = fs.readFileSync(path.join(__dirname, "..", "service-worker.js"), "utf8");
 
   const baselineAt = index.indexOf("cloud-legacy-baseline-v1.8.4.js?v=1");
-  const cloudAt = index.indexOf("herdharbor-cloud.js?v=22");
+  const cloudAt = index.indexOf("herdharbor-cloud.js?v=23");
   assert.ok(baselineAt >= 0);
   assert.ok(cloudAt > baselineAt);
 
   assert.match(worker, /cloud-legacy-baseline-v1\.8\.4\.js\?v=1/);
-  assert.match(worker, /herdharbor-cloud\.js\?v=22/);
+  assert.match(worker, /herdharbor-cloud\.js\?v=23/);
 });

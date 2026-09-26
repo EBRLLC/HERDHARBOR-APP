@@ -30,7 +30,7 @@ assert.ok(worker.includes("/analytics-v1.6.1.js"), "analytics-v1.6.1.js must rem
 assert.match(html, /analytics-v1\.6\.1\.js\?v=2/);
 assert.match(html, /herdharbor-build\.js\?v=1\.8\.4/);
 assert.match(html, /cloud-legacy-baseline-v1\.8\.4\.js\?v=1/);
-assert.match(html, /herdharbor-cloud\.js\?v=22/);
+assert.match(html, /herdharbor-cloud\.js\?v=23/);
 assert.match(html, /pwa\.js\?v=31/);
 assert.doesNotMatch(html, /(?:herdharbor-release-v1\.6\.1|herdharbor-membership-v1\.6\.1|herdharbor-access-cache-v1\.6\.1|herdharbor-build|pwa|market-analytics-v1\.6\.5|analytics-v1\.6\.1)\.js\?v=1\.6\.5/);
 assert.match(worker, /"\/herdharbor-release-v1\.6\.1\.js"/);
