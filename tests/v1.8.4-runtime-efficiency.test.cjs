@@ -48,10 +48,12 @@ test("service worker install tolerates optional cache failures but protects core
   assert.match(sw, /herdharbor-cloud\.js/);
 });
 
-test("versioned static assets use cache-first while mutable authority files remain network-first", () => {
+test("fingerprinted static assets use cache-first while mutable authority files remain network-first", () => {
   const sw = read("service-worker.js");
-  assert.match(sw, /function isVersionedStaticAsset/);
+  assert.match(sw, /function isImmutableFingerprintAsset/);
+  assert.match(sw, /searchParams\.get\("rev"\)/);
   assert.match(sw, /event\.respondWith\(cacheFirst\(request\)\)/);
+  assert.match(sw, /if \(isRuntimeCachePath\(url\)\)[\s\S]*networkFirst\(request\)/);
   assert.match(sw, /"\/herdharbor-build\.js"/);
   assert.match(sw, /"\/herdharbor-cloud\.js"/);
   assert.match(sw, /"\/manifest\.json"/);

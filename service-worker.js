@@ -218,9 +218,9 @@ async function cacheFirst(request) {
   }
 }
 
-function isVersionedStaticAsset(url) {
-  if (!/\.(?:js|css|png|svg|webp|woff2?)$/i.test(url.pathname)) return false;
-  return url.searchParams.has("v") || /\/vendor\//.test(url.pathname);
+function isImmutableFingerprintAsset(url) {
+  if (!/\.(?:js|css)$/i.test(url.pathname)) return false;
+  return /^[a-f0-9]{12,64}$/i.test(url.searchParams.get("rev") || "");
 }
 
 self.addEventListener("install", (event) => {
@@ -290,18 +290,15 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (isRuntimeCachePath(url) || isVersionedStaticAsset(url)) {
+  if (isImmutableFingerprintAsset(url)) {
     event.respondWith(cacheFirst(request));
     return;
   }
 
-  event.respondWith(
-    caches.match(request).then((cached) => cached || fetch(request).then((response) => {
-      if (response.ok && response.type === "basic") {
-        const copy = response.clone();
-        event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)));
-      }
-      return response;
-    }))
-  );
+  if (isRuntimeCachePath(url)) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
+  event.respondWith(networkFirst(request));
 });

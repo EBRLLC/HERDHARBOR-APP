@@ -295,14 +295,14 @@ test("service worker reuses cached optional assets offline and fails cleanly on 
   assert.equal(firstUseOffline, undefined, "first-use offline miss remains unavailable without breaking the shell");
 });
 
-test("service worker keeps heavy tools out of REQUIRED_SHELL and runtime-caches versioned assets", () => {
+test("service worker keeps heavy tools out of REQUIRED_SHELL and cache-first is fingerprint-only", () => {
   const shell = appShellBlock();
   for (const asset of heavyAssets) {
     assert.ok(!shell.includes(asset), asset + " must not be mandatory REQUIRED_SHELL");
   }
   assert.match(shell, /herdharbor-optional-tools\.js\?v=2/);
-  assert.match(worker, /function isVersionedStaticAsset/);
-  assert.match(worker, /\/vendor\//);
+  assert.match(worker, /function isImmutableFingerprintAsset/);
+  assert.match(worker, /searchParams\.get\("rev"\)/);
   assert.match(worker, /event\.respondWith\(cacheFirst\(request\)\)/);
   assert.match(worker, /return caches\.match\(request\)/);
 });
