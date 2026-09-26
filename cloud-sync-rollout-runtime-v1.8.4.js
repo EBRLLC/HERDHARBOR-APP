@@ -350,7 +350,10 @@
           mode: "shadow-record-write",
           legacySaved: true,
           normalizedSaved: Number(normalizedResult?.succeeded || 0) > 0,
-          normalizedPending: normalizedResult?.skipped === true || Number(normalizedResult?.failed || 0) > 0,
+          normalizedPending:
+            normalizedResult?.skipped === true ||
+            Number(normalizedResult?.failed || 0) > 0 ||
+            Number(normalizedResult?.pending || 0) > 0,
           normalizedResult
         };
         if (!result.ok) ctx.metrics.record("dualWriteFailures");
