@@ -114,6 +114,7 @@ begin
     )
     and to_regprocedure('public.herdharbor_sync_apply_batch(jsonb,jsonb,jsonb)') is not null
     and to_regprocedure('public.herdharbor_sync_apply_record(text,text,jsonb,text,bigint,boolean,text)') is not null
+    and to_regprocedure('public.herdharbor_sync_apply_record_group(jsonb,text)') is not null
     and to_regprocedure('public.herdharbor_sync_mark_verified(bigint,text,integer)') is not null
     and to_regprocedure('public.herdharbor_sync_prepare_normalized_writer_guarded(bigint,text,text,integer)') is not null
     and to_regprocedure('public.herdharbor_sync_set_stage(text,bigint)') is not null
@@ -125,6 +126,11 @@ begin
     and coalesce(has_function_privilege(
       'authenticated',
       to_regprocedure('public.herdharbor_sync_apply_record(text,text,jsonb,text,bigint,boolean,text)'),
+      'EXECUTE'
+    ), false)
+    and coalesce(has_function_privilege(
+      'authenticated',
+      to_regprocedure('public.herdharbor_sync_apply_record_group(jsonb,text)'),
       'EXECUTE'
     ), false)
     and coalesce(has_function_privilege(
@@ -157,6 +163,7 @@ begin
           'herdharbor_touch_sync_manifest',
           'herdharbor_sync_apply_batch',
           'herdharbor_sync_apply_record',
+          'herdharbor_sync_apply_record_group',
           'herdharbor_sync_mark_verified',
           'herdharbor_sync_prepare_normalized_writer',
           'herdharbor_sync_prepare_normalized_writer_guarded',
