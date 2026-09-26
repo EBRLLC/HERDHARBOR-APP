@@ -18,6 +18,14 @@ function fixture() {
   ].join("\n"));
   fs.writeFileSync(path.join(dir, "app.js"), 'const feature = "./feature.js?v=1";\nconsole.log(feature);\n');
   fs.writeFileSync(path.join(dir, "feature.js"), 'globalThis.HerdHarborFeature = true;\n');
+  fs.mkdirSync(path.join(dir, "nested"), { recursive: true });
+  fs.writeFileSync(path.join(dir, "nested", "helper.js"), 'globalThis.HerdHarborNestedHelper = true;\n');
+  fs.writeFileSync(path.join(dir, "shared.js"), 'globalThis.HerdHarborShared = true;\n');
+  fs.writeFileSync(path.join(dir, "nested", "app.js"), [
+    'const helper = "./helper.js?v=1";',
+    'const shared = "../shared.js?v=1";',
+    'console.log(helper, shared);'
+  ].join("\n") + "\n");
   fs.writeFileSync(path.join(dir, "style.css"), 'body { min-height: 100%; }\n');
   fs.writeFileSync(path.join(dir, "service-worker.js"), [
     '"use strict";',
@@ -46,6 +54,20 @@ test("release artifact fingerprints local JS/CSS and derives the service-worker 
     assert.ok(worker.includes(`const CACHE_NAME = "${manifest.cacheName}";`));
     assert.equal(manifest.cacheName, `herdharbor-shell-${manifest.generation}`);
     assert.doesNotMatch(html + app + worker, /\.(?:js|css)\?v=/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("nested relative references resolve from the file that contains them", () => {
+  const dir = fixture();
+  try {
+    const manifest = generate(dir);
+    const nestedApp = fs.readFileSync(path.join(dir, "nested", "app.js"), "utf8");
+
+    assert.match(nestedApp, new RegExp(`\\.\\/helper\\.js\\?rev=${manifest.assets["nested/helper.js"]}`));
+    assert.match(nestedApp, new RegExp(`\\.\\.\\/shared\\.js\\?rev=${manifest.assets["shared.js"]}`));
+    assert.doesNotMatch(nestedApp, /(?:helper|shared)\\.js\\?v=/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
