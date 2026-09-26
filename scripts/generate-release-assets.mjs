@@ -155,8 +155,15 @@ for (const relative of textFiles) {
     const reference = match[1];
     const normalized = resolveReference(reference, relative);
     if (!normalized || !hashes.has(normalized)) continue;
-    const expected = `?rev=${hashes.get(normalized)}`;
-    if (!match[0].endsWith(expected)) staleLocalReferences.push(`${relative}: ${match[0]}`);
+    const params = new URLSearchParams(String(match[2] || "").replace(/^\?/, ""));
+    const expectedRev = hashes.get(normalized);
+    if (
+      params.get("rev") !== expectedRev ||
+      params.getAll("rev").length !== 1 ||
+      params.has("v")
+    ) {
+      staleLocalReferences.push(`${relative}: ${match[0]}`);
+    }
   }
 }
 if (staleLocalReferences.length) {
