@@ -227,8 +227,8 @@ test('Record Birth command is shared by Breeding, Today, and animal-profile life
   assert.match(app,/openRecordBirth:\s*\(breedingId\)\s*=>\s*openRecordBirth\(breedingId\)/);
   assert.match(breeding,/button\.addEventListener\("click",\s*\(\)\s*=>\s*openRecordBirth\(button\.dataset\.recordBirth\)\)/);
   assert.match(breeding,/\$\$\('\[data-record-birth\]'/);
-  assert.match(lifecycle,/if\(kind==="record-birth"\)\{[\s\S]*rememberReturn\(animalId\)[\s\S]*HerdHarborApp\?\.openRecordBirth\?\.\(breedingId\)[\s\S]*waitFor\("#litter-form",form=>restoreAfterForm\(form\)\)/);
-  assert.match(lifecycle,/if\(opened===false\)\{pendingReturn=null;return;\}/);
+  assert.match(lifecycle,/if\(kind==="record-birth"\)\{[\s\S]*rememberReturn\(animalId\)[\s\S]*const command=root\.HerdHarborApp\?\.openRecordBirth[\s\S]*typeof command!=="function"[\s\S]*const opened=command\(breedingId\)[\s\S]*waitFor\("#litter-form",form=>restoreAfterForm\(form\)\)/);
+  assert.match(lifecycle,/if\(opened!==true\)\{pendingReturn=null;return;\}/);
   assert.doesNotMatch(lifecycle,/kind==="record-birth"\?\`\[data-record-birth=/);
 });
 
