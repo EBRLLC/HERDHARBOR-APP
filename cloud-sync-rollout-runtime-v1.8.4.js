@@ -230,7 +230,8 @@
           recordStore,
           normalizer: m.normalizer,
           baselineStore,
-          writerVersion: WRITER_VERSION
+          writerVersion: WRITER_VERSION,
+          readAuthoritativeLegacySnapshot: cloud.readLegacySnapshotForNormalizedSync
         });
         const metrics = m.reconciliationApi.createRolloutMetrics();
         const shadowController = m.shadowApi.createShadowSyncController({
