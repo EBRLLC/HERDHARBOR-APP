@@ -574,8 +574,7 @@ begin
   select cutover_stage, metadata
   into v_stage, v_metadata
   from public.herdharbor_sync_manifest
-  where user_id = v_user
-  for update;
+  where user_id = v_user;
 
   if not found then
     raise exception using errcode = 'P0002', message = 'HH_SYNC_MANIFEST_MISSING';
@@ -676,7 +675,24 @@ begin
     ),
     sync_generation = sync_generation + 1
   where user_id = v_user
+    and cutover_stage = v_stage
+    and coalesce(metadata -> 'legacy_recovery_lock' = 'true'::jsonb, false) = false
+    and (
+      v_stage = 'shadow'
+      or (
+        metadata -> 'normalized_writer_ready' = 'true'::jsonb
+        and btrim(coalesce(metadata ->> 'normalized_writer_version', '')) = v_writer_version
+      )
+    )
+    and (
+      v_stage <> 'normalized'
+      or metadata -> 'normalized_authority_ready' = 'true'::jsonb
+    )
   returning sync_generation into v_generation;
+
+  if v_generation is null then
+    raise exception using errcode = '40001', message = 'HH_SYNC_STAGE_CHANGED';
+  end if;
 
   return jsonb_build_object(
     'ok', true,
@@ -792,6 +808,7 @@ begin
     )
     and to_regprocedure('public.herdharbor_sync_apply_batch(jsonb,jsonb,jsonb)') is not null
     and to_regprocedure('public.herdharbor_sync_apply_record(text,text,jsonb,text,bigint,boolean,text)') is not null
+    and to_regprocedure('public.herdharbor_sync_apply_record_group(jsonb,text)') is not null
     and to_regprocedure('public.herdharbor_sync_mark_verified(bigint,text,integer)') is not null
     and to_regprocedure('public.herdharbor_sync_prepare_normalized_writer_guarded(bigint,text,text,integer)') is not null
     and to_regprocedure('public.herdharbor_sync_set_stage(text,bigint)') is not null
@@ -799,6 +816,7 @@ begin
     and to_regprocedure('public.herdharbor_sync_materialize_legacy_recovery(jsonb,bigint)') is not null
     and coalesce(has_function_privilege('authenticated', to_regprocedure('public.herdharbor_sync_apply_batch(jsonb,jsonb,jsonb)'), 'EXECUTE'), false)
     and coalesce(has_function_privilege('authenticated', to_regprocedure('public.herdharbor_sync_apply_record(text,text,jsonb,text,bigint,boolean,text)'), 'EXECUTE'), false)
+    and coalesce(has_function_privilege('authenticated', to_regprocedure('public.herdharbor_sync_apply_record_group(jsonb,text)'), 'EXECUTE'), false)
     and coalesce(has_function_privilege('authenticated', to_regprocedure('public.herdharbor_sync_mark_verified(bigint,text,integer)'), 'EXECUTE'), false)
     and coalesce(has_function_privilege('authenticated', to_regprocedure('public.herdharbor_sync_prepare_normalized_writer_guarded(bigint,text,text,integer)'), 'EXECUTE'), false)
     and coalesce(has_function_privilege('authenticated', to_regprocedure('public.herdharbor_sync_set_stage(text,bigint)'), 'EXECUTE'), false)
@@ -815,6 +833,7 @@ begin
           'herdharbor_touch_sync_manifest',
           'herdharbor_sync_apply_batch',
           'herdharbor_sync_apply_record',
+          'herdharbor_sync_apply_record_group',
           'herdharbor_sync_cohort_status',
           'herdharbor_sync_activate_normalized_authority',
           'herdharbor_sync_materialize_legacy_recovery',
@@ -860,6 +879,9 @@ revoke all on function public.herdharbor_sync_set_stage(
 revoke all on function public.herdharbor_sync_apply_record(
   text, text, jsonb, text, bigint, boolean, text
 ) from public, anon, authenticated;
+revoke all on function public.herdharbor_sync_apply_record_group(
+  jsonb, text
+) from public, anon, authenticated;
 revoke all on function public.herdharbor_sync_cohort_status()
 from public, anon, authenticated;
 
@@ -874,6 +896,9 @@ grant execute on function public.herdharbor_sync_set_stage(
 ) to authenticated;
 grant execute on function public.herdharbor_sync_apply_record(
   text, text, jsonb, text, bigint, boolean, text
+) to authenticated;
+grant execute on function public.herdharbor_sync_apply_record_group(
+  jsonb, text
 ) to authenticated;
 grant execute on function public.herdharbor_sync_cohort_status()
 to authenticated;
