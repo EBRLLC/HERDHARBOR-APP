@@ -152,6 +152,28 @@ test("normalized worker failure after legacy success degrades safely and remains
   assert.deepEqual(state.calls.map((call) => call[0]), ["legacy.write", "worker.drain"]);
 });
 
+test("quarantined pending work can never report normalized current", async () => {
+  const state = setup({
+    enabled: true,
+    workerResult: {
+      ok: true,
+      processed: 0,
+      succeeded: 0,
+      failed: 0,
+      conflicts: 0,
+      pending: 1,
+      results: []
+    }
+  });
+
+  const result = await state.coordinator.save(fixture);
+  assert.equal(result.ok, false);
+  assert.equal(result.mode, "dual-write-degraded");
+  assert.equal(result.normalizedCurrent, false);
+  assert.equal(result.normalizedPending, true);
+  assert.equal(result.normalizedPendingCount, 1);
+});
+
 test("provider exception after legacy success does not invalidate legacy save", async () => {
   const state = setup({
     enabled: true,
