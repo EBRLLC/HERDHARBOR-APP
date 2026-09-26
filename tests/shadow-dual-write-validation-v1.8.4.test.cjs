@@ -236,6 +236,27 @@ class RolloutRecordStore {
     };
   }
 
+  async applyRecordMutationsAtomic({ operations = [] } = {}) {
+    const rowsBefore = new Map([...this.rows.entries()].map(([rowKey, row]) => [rowKey, clone(row)]));
+    const manifestBefore = clone(this.manifest);
+    const results = [];
+    try {
+      for (const operation of operations) {
+        results.push(await this.applyRecordMutation(operation));
+      }
+      this.manifest.sync_generation = manifestBefore.sync_generation + 1;
+      return {
+        ok: true,
+        generation: this.manifest.sync_generation,
+        operations: results
+      };
+    } catch (error) {
+      this.rows = rowsBefore;
+      this.manifest = manifestBefore;
+      throw error;
+    }
+  }
+
   async setStage({ targetStage, expectedGeneration }) {
     assert.equal(expectedGeneration, this.manifest.sync_generation);
     const from = this.manifest.cutover_stage;
