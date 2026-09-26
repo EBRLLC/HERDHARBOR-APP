@@ -16,7 +16,13 @@ function fixture() {
     '<link rel="stylesheet" href="./style.css?v=1">',
     '<script src="./app.js?v=1"></script>'
   ].join("\n"));
-  fs.writeFileSync(path.join(dir, "app.js"), 'const feature = "./feature.js?v=1";\nconsole.log(feature);\n');
+  fs.writeFileSync(path.join(dir, "app.js"), [
+    'const feature = "./feature.js?v=1";',
+    'const moduleRef = "./feature.js?module=1#ready";',
+    'const jsonRef = "./feature.json";',
+    'const mapRef = "./feature.js.map";',
+    'console.log(feature, moduleRef, jsonRef, mapRef);'
+  ].join("\n") + "\n");
   fs.writeFileSync(path.join(dir, "feature.js"), 'globalThis.HerdHarborFeature = true;\n');
   fs.mkdirSync(path.join(dir, "nested"), { recursive: true });
   fs.writeFileSync(path.join(dir, "nested", "helper.js"), 'globalThis.HerdHarborNestedHelper = true;\n');
@@ -68,6 +74,23 @@ test("nested relative references resolve from the file that contains them", () =
     assert.match(nestedApp, new RegExp(`\\.\\/helper\\.js\\?rev=${manifest.assets["nested/helper.js"]}`));
     assert.match(nestedApp, new RegExp(`\\.\\.\\/shared\\.js\\?rev=${manifest.assets["shared.js"]}`));
     assert.doesNotMatch(nestedApp, /(?:helper|shared)\\.js\\?v=/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("fingerprinting preserves arbitrary query parameters and ignores lookalike suffixes", () => {
+  const dir = fixture();
+  try {
+    const manifest = generate(dir);
+    const app = fs.readFileSync(path.join(dir, "app.js"), "utf8");
+    const digest = manifest.assets["feature.js"];
+
+    assert.ok(app.includes(`./feature.js?module=1&rev=${digest}#ready`));
+    assert.ok(app.includes("./feature.json"));
+    assert.ok(app.includes("./feature.js.map"));
+    assert.doesNotMatch(app, /feature\.json\?rev=/);
+    assert.doesNotMatch(app, /feature\.js\?rev=[a-f0-9]+\.map/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
