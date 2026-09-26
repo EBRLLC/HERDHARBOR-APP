@@ -1,3 +1,5 @@
+> **Current operator note (Alpha v1.8.4):** This document records the earlier controlled-rollout foundation. Its statements about the normalized modules not being loaded by production describe the pre-PR7 state. For the current v1.8.4 authority trial, use `CLOUD-SYNC-NORMALIZED-AUTHORITY-RUNBOOK-v1.8.4.md`. Do not use this historical guide to enroll or promote an account.
+
 # HerdHarbor v1.8.3 Controlled Normalized-Sync Rollout
 
 ## Scope and authority

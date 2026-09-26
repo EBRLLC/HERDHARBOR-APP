@@ -79,6 +79,8 @@ function makeBridge(seed = {}) {
     "sameState",
     "recordRecoverySnapshot",
     "scheduleCloudSync",
+    "normalizedAuthorityActive",
+    "safeStorageRemove",
     `let session=sessionArg;let writeSequence=0;let syncConflict=null;
 ${bridgeSource}
 return {
@@ -107,7 +109,9 @@ return {
     () => {},
     (left, right) => left === right,
     (id, raw, reason) => { recovery.push({ id, raw, reason }); return Promise.resolve(true); },
-    (rawValue, sequence) => { scheduled.push({ rawValue, sequence }); }
+    (rawValue, sequence) => { scheduled.push({ rawValue, sequence }); },
+    () => false,
+    (key) => storage.removeItem(key)
   );
 
   return { storage, stateStore, bridge, scheduled, recovery, events };

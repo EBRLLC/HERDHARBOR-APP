@@ -81,7 +81,7 @@
     if (/auth|required|jwt|session|401|403/.test(`${code} ${message}`)) return "auth";
     if (/timeout|timed out|abort/.test(`${code} ${message}`)) return "timeout";
     if (/offline|network|fetch|connection|failed to fetch/.test(`${code} ${message}`)) return "network";
-    if (/stage|writer|required|manifest/.test(`${code} ${message}`)) return "migration_stage";
+    if (/recovery|stage|writer|required|manifest/.test(`${code} ${message}`)) return "migration_stage";
     if (/invalid|payload|checksum|serialize/.test(`${code} ${message}`)) return "local_payload";
     if (/5\d\d|server|provider/.test(`${code} ${message}`)) return "provider";
     return "provider";
@@ -466,6 +466,19 @@
       return { ok: true, atomic: true, reconciled: true };
     }
 
+    function acknowledgeCommittedRevision(mutation, processedRevision) {
+      const committedIds = stateStore.getOutbox(mutation.ownerId)
+        .filter((entry) =>
+          sameLogicalRecord(entry, mutation) &&
+          mutationRevision(entry) <= processedRevision
+        )
+        .map((entry) => String(entry.mutationId));
+      if (committedIds.length) {
+        stateStore.acknowledgeMutations(committedIds, mutation.ownerId);
+      }
+      return committedIds;
+    }
+
     async function processGroup(group) {
       const mutation = group.latest;
       const processedRevision = mutationRevision(mutation);
@@ -494,8 +507,8 @@
       }
 
       if (!plan.operations.length) {
-        stateStore.acknowledgeMutations(group.mutationIds, mutation.ownerId);
-        return { ok: true, acknowledged: group.mutationIds.length, noop: true };
+        const acknowledgedIds = acknowledgeCommittedRevision(mutation, processedRevision);
+        return { ok: true, acknowledged: acknowledgedIds.length, noop: true };
       }
 
       if (plan.operations.length > 1) {
@@ -545,11 +558,11 @@
       const newer = latestOutbox.some((entry) =>
         sameLogicalRecord(entry, mutation) && mutationRevision(entry) > processedRevision
       );
-      stateStore.acknowledgeMutations(group.mutationIds, mutation.ownerId);
+      const acknowledgedIds = acknowledgeCommittedRevision(mutation, processedRevision);
 
       return {
         ok: true,
-        acknowledged: group.mutationIds.length,
+        acknowledged: acknowledgedIds.length,
         newerPending: newer,
         operations: plan.operations.length,
         snapshotManifestDeferred: plan.snapshotManifestChanged
@@ -628,6 +641,7 @@
         }
       }
 
+      summary.pending = stateStore.getOutbox(options.ownerId).length;
       summary.ok = summary.failed === 0;
       return summary;
     }

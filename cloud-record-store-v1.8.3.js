@@ -6,7 +6,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const VERSION = "0.9-record-cas";
+  const VERSION = "1.0-normalized-authority";
   const RELEASE = "1.8.3";
   const RECORD_TABLE = "herdharbor_sync_records";
   const MANIFEST_TABLE = "herdharbor_sync_manifest";
@@ -16,6 +16,8 @@
   const VERIFY_RPC = "herdharbor_sync_mark_verified";
   const PREPARE_WRITER_RPC = "herdharbor_sync_prepare_normalized_writer_guarded";
   const STAGE_RPC = "herdharbor_sync_set_stage";
+  const ACTIVATE_AUTHORITY_RPC = "herdharbor_sync_activate_normalized_authority";
+  const MATERIALIZE_LEGACY_RPC = "herdharbor_sync_materialize_legacy_recovery";
   const NAMESPACE_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
   const RECORD_ID_MAX_LENGTH = 160;
   const CUTOVER_STAGES = new Set(["legacy", "shadow", "dual_write", "normalized"]);
@@ -65,10 +67,10 @@
 
   function knownProviderFailure(operation, error) {
     const message = String(error?.message || "");
-    const knownCodes = ["HH_SYNC_CONFLICT","HH_SYNC_STAGE_CHANGED","HH_SYNC_INVALID_RECORD_GROUP","HH_SYNC_RECORD_GROUP_LIMIT","HH_SYNC_DUPLICATE_RECORD_MUTATION","HH_SYNC_RECORD_WRITER_STAGE_REQUIRED","HH_SYNC_RECORD_VERSION_REQUIRED","HH_SYNC_INVALID_RECORD_MUTATION","HH_SYNC_WRITER_VERSION_MISMATCH","HH_SYNC_VERIFY_STALE","HH_SYNC_BATCH_LIMIT","HH_SYNC_INVALID_BATCH","HH_SYNC_INVALID_PUT","HH_SYNC_INVALID_TOMBSTONE","HH_SYNC_INVALID_VERSION","HH_SYNC_INVALID_CHECKSUM","HH_SYNC_INVALID_VERIFICATION","HH_SYNC_RECORD_COUNT_MISMATCH","HH_SYNC_AUTH_REQUIRED","HH_SYNC_NORMALIZED_REQUIRES_VERIFICATION","HH_SYNC_NORMALIZED_WRITER_REQUIRED","HH_SYNC_STAGE_VERIFICATION_REQUIRED","HH_SYNC_ALREADY_NORMALIZED","HH_SYNC_EXPECTED_GENERATION_REQUIRED","HH_SYNC_INVALID_GENERATION","HH_SYNC_INVALID_STAGE","HH_SYNC_INVALID_STAGE_TRANSITION","HH_SYNC_INVALID_BATCH_STAGE","HH_SYNC_STAGE_CHANGE_REQUIRES_RPC","HH_SYNC_INVALID_SCHEMA_VERSION","HH_SYNC_INVALID_MANIFEST_METADATA","HH_SYNC_INVALID_WRITER_READINESS","HH_SYNC_DUAL_WRITE_STAGE_REQUIRED","HH_SYNC_WRITER_FORMAT_MISMATCH","HH_SYNC_LEGACY_GUARD_REQUIRED","HH_SYNC_LEGACY_WRITE_BLOCKED_AFTER_CUTOVER","HH_SYNC_LEGACY_GUARD_USER_REQUIRED","HH_SYNC_INITIAL_STAGE_MUST_BE_LEGACY","HH_SYNC_MANIFEST_MISSING"];
+    const knownCodes = ["HH_SYNC_CONFLICT","HH_SYNC_STAGE_CHANGED","HH_SYNC_INVALID_RECORD_GROUP","HH_SYNC_RECORD_GROUP_LIMIT","HH_SYNC_DUPLICATE_RECORD_MUTATION","HH_SYNC_RECORD_WRITER_STAGE_REQUIRED","HH_SYNC_RECORD_VERSION_REQUIRED","HH_SYNC_INVALID_RECORD_MUTATION","HH_SYNC_WRITER_VERSION_MISMATCH","HH_SYNC_VERIFY_STALE","HH_SYNC_BATCH_LIMIT","HH_SYNC_INVALID_BATCH","HH_SYNC_INVALID_PUT","HH_SYNC_INVALID_TOMBSTONE","HH_SYNC_INVALID_VERSION","HH_SYNC_INVALID_CHECKSUM","HH_SYNC_INVALID_VERIFICATION","HH_SYNC_RECORD_COUNT_MISMATCH","HH_SYNC_AUTH_REQUIRED","HH_SYNC_NORMALIZED_REQUIRES_VERIFICATION","HH_SYNC_NORMALIZED_WRITER_REQUIRED","HH_SYNC_STAGE_VERIFICATION_REQUIRED","HH_SYNC_ALREADY_NORMALIZED","HH_SYNC_EXPECTED_GENERATION_REQUIRED","HH_SYNC_INVALID_GENERATION","HH_SYNC_INVALID_STAGE","HH_SYNC_INVALID_STAGE_TRANSITION","HH_SYNC_INVALID_BATCH_STAGE","HH_SYNC_STAGE_CHANGE_REQUIRES_RPC","HH_SYNC_INVALID_SCHEMA_VERSION","HH_SYNC_INVALID_MANIFEST_METADATA","HH_SYNC_INVALID_WRITER_READINESS","HH_SYNC_DUAL_WRITE_STAGE_REQUIRED","HH_SYNC_WRITER_FORMAT_MISMATCH","HH_SYNC_LEGACY_GUARD_REQUIRED","HH_SYNC_LEGACY_WRITE_BLOCKED_AFTER_CUTOVER","HH_SYNC_LEGACY_GUARD_USER_REQUIRED","HH_SYNC_INITIAL_STAGE_MUST_BE_LEGACY","HH_SYNC_MANIFEST_MISSING","HH_SYNC_AUTHORITY_ACTIVATION_RPC_REQUIRED","HH_SYNC_INVALID_AUTHORITY_ACTIVATION","HH_SYNC_COHORT_REQUIRED","HH_SYNC_NORMALIZED_AUTHORITY_REQUIRED","HH_SYNC_INVALID_RECOVERY_SNAPSHOT","HH_SYNC_RECOVERY_IN_PROGRESS"];
     const known = knownCodes.find((code) => message.includes(code));
     if (!known) return null;
-    const messages = { HH_SYNC_CONFLICT:"The normalized cloud record changed on another device.", HH_SYNC_STAGE_CHANGED:"Normalized rollout state changed while the record write was in flight.", HH_SYNC_INVALID_RECORD_GROUP:"The normalized logical-record mutation group is invalid.", HH_SYNC_RECORD_GROUP_LIMIT:"The normalized logical-record mutation group is too large.", HH_SYNC_DUPLICATE_RECORD_MUTATION:"A normalized logical-record mutation group targeted the same cloud row twice.", HH_SYNC_RECORD_WRITER_STAGE_REQUIRED:"Record-level normalized writes are not enabled for this account stage.", HH_SYNC_RECORD_VERSION_REQUIRED:"The normalized record mutation requires a known cloud version.", HH_SYNC_INVALID_RECORD_MUTATION:"The normalized record mutation is invalid.", HH_SYNC_WRITER_VERSION_MISMATCH:"This normalized writer does not match the prepared cloud writer version.", HH_SYNC_VERIFY_STALE:"The normalized cloud state changed before verification completed.", HH_SYNC_ALREADY_NORMALIZED:"Legacy shadow writes are disabled after normalized cutover.", HH_SYNC_STAGE_VERIFICATION_REQUIRED:"A current normalized verification is required before this migration stage change.", HH_SYNC_NORMALIZED_WRITER_REQUIRED:"The normalized writer has not been prepared for cutover.", HH_SYNC_DUAL_WRITE_STAGE_REQUIRED:"Normalized writer preparation is only allowed during dual-write migration.", HH_SYNC_WRITER_FORMAT_MISMATCH:"The normalized writer does not match the verified cloud format.", HH_SYNC_LEGACY_GUARD_REQUIRED:"The stale-client legacy-write guard is required before normalized cutover.", HH_SYNC_LEGACY_WRITE_BLOCKED_AFTER_CUTOVER:"Legacy cloud writes are blocked because normalized sync is authoritative.", HH_SYNC_INVALID_STAGE_TRANSITION:"That cloud migration stage transition is not allowed.", HH_SYNC_MANIFEST_MISSING:"The normalized cloud migration manifest is missing.", HH_SYNC_RECORD_COUNT_MISMATCH:"The normalized cloud record count did not match the verified snapshot." };
+    const messages = { HH_SYNC_CONFLICT:"The normalized cloud record changed on another device.", HH_SYNC_STAGE_CHANGED:"Normalized rollout state changed while the record write was in flight.", HH_SYNC_INVALID_RECORD_GROUP:"The normalized logical-record mutation group is invalid.", HH_SYNC_RECORD_GROUP_LIMIT:"The normalized logical-record mutation group is too large.", HH_SYNC_DUPLICATE_RECORD_MUTATION:"A normalized logical-record mutation group targeted the same cloud row twice.", HH_SYNC_RECORD_WRITER_STAGE_REQUIRED:"Record-level normalized writes are not enabled for this account stage.", HH_SYNC_RECORD_VERSION_REQUIRED:"The normalized record mutation requires a known cloud version.", HH_SYNC_INVALID_RECORD_MUTATION:"The normalized record mutation is invalid.", HH_SYNC_WRITER_VERSION_MISMATCH:"This normalized writer does not match the prepared cloud writer version.", HH_SYNC_VERIFY_STALE:"The normalized cloud state changed before verification completed.", HH_SYNC_ALREADY_NORMALIZED:"Legacy shadow writes are disabled after normalized cutover.", HH_SYNC_STAGE_VERIFICATION_REQUIRED:"A current normalized verification is required before this migration stage change.", HH_SYNC_NORMALIZED_WRITER_REQUIRED:"The normalized writer has not been prepared for cutover.", HH_SYNC_DUAL_WRITE_STAGE_REQUIRED:"Normalized writer preparation is only allowed during dual-write migration.", HH_SYNC_WRITER_FORMAT_MISMATCH:"The normalized writer does not match the verified cloud format.", HH_SYNC_LEGACY_GUARD_REQUIRED:"The stale-client legacy-write guard is required before normalized cutover.", HH_SYNC_LEGACY_WRITE_BLOCKED_AFTER_CUTOVER:"Legacy cloud writes are blocked because normalized sync is authoritative.", HH_SYNC_INVALID_STAGE_TRANSITION:"That cloud migration stage transition is not allowed.", HH_SYNC_MANIFEST_MISSING:"The normalized cloud migration manifest is missing.", HH_SYNC_RECORD_COUNT_MISMATCH:"The normalized cloud record count did not match the verified snapshot.", HH_SYNC_AUTHORITY_ACTIVATION_RPC_REQUIRED:"Normalized authority must be activated through the guarded cutover RPC.", HH_SYNC_INVALID_AUTHORITY_ACTIVATION:"The normalized authority activation request is invalid.", HH_SYNC_COHORT_REQUIRED:"This account is not in the explicit normalized-sync validation cohort.", HH_SYNC_NORMALIZED_AUTHORITY_REQUIRED:"Normalized cloud authority is not active for this account.", HH_SYNC_INVALID_RECOVERY_SNAPSHOT:"The rollback compatibility snapshot is invalid.", HH_SYNC_RECOVERY_IN_PROGRESS:"Normalized sync recovery is in progress; retry after rollback completes." };
     const wrapped = new Error(messages[known] || "The normalized cloud operation was rejected by its safety gate.");
     wrapped.name = "HerdHarborCloudRecordError"; wrapped.code = known; wrapped.status = Number(error?.status || error?.statusCode || 0) || null; wrapped.operation = operation; return wrapped;
   }
@@ -175,7 +177,33 @@
     async function markVerified({expectedGeneration,checksum,recordCount}={}){const generation=normalizeGeneration(expectedGeneration),safeChecksum=normalizeChecksum(checksum,"checksum"),safeRecordCount=normalizeRecordCount(recordCount);const{data,error}=await client.rpc(VERIFY_RPC,{p_expected_generation:generation,p_checksum:safeChecksum,p_record_count:safeRecordCount});if(error)throw providerError("mark-verified",error);return data||{ok:true,generation,checksum:safeChecksum,record_count:safeRecordCount};}
     async function prepareNormalizedWriter({expectedGeneration,writerVersion,namespace,formatVersion}={}){const generation=normalizeGeneration(expectedGeneration),safeWriterVersion=requiredText(writerVersion,"writerVersion",80),safeNamespace=normalizeNamespace(namespace),safeFormatVersion=normalizeFormatVersion(formatVersion);const{data,error}=await client.rpc(PREPARE_WRITER_RPC,{p_expected_generation:generation,p_writer_version:safeWriterVersion,p_namespace:safeNamespace,p_format_version:safeFormatVersion});if(error)throw providerError("prepare-normalized-writer",error);return data||{ok:true,generation,writer_version:safeWriterVersion};}
     async function setStage({targetStage,expectedGeneration}={}){const stage=String(targetStage||"").trim();if(!CUTOVER_STAGES.has(stage))throw new TypeError("Invalid targetStage.");const generation=normalizeGeneration(expectedGeneration);const{data,error}=await client.rpc(STAGE_RPC,{p_target_stage:stage,p_expected_generation:generation});if(error)throw providerError("set-stage",error);return data||{ok:true,stage,generation};}
-    return Object.freeze({list,listHeaders,get,getManifest,applyBatch,applyRecordMutation,applyRecordMutationsAtomic,markVerified,prepareNormalizedWriter,setStage});
+    async function activateNormalizedAuthority({expectedGeneration,writerVersion,namespace,formatVersion,authorityVersion}={}) {
+      const generation=normalizeGeneration(expectedGeneration);
+      const safeWriterVersion=requiredText(writerVersion,"writerVersion",80);
+      const safeNamespace=normalizeNamespace(namespace);
+      const safeFormatVersion=normalizeFormatVersion(formatVersion);
+      const safeAuthorityVersion=requiredText(authorityVersion,"authorityVersion",80);
+      const {data,error}=await client.rpc(ACTIVATE_AUTHORITY_RPC,{
+        p_expected_generation:generation,
+        p_writer_version:safeWriterVersion,
+        p_namespace:safeNamespace,
+        p_format_version:safeFormatVersion,
+        p_authority_version:safeAuthorityVersion
+      });
+      if(error) throw providerError("activate-normalized-authority",error);
+      return data||{ok:true,stage:"normalized",generation:generation+1,authority_version:safeAuthorityVersion};
+    }
+    async function materializeLegacyRecovery({snapshot,expectedGeneration}={}) {
+      const generation=normalizeGeneration(expectedGeneration);
+      const safeSnapshot=normalizePayload(snapshot);
+      const {data,error}=await client.rpc(MATERIALIZE_LEGACY_RPC,{
+        p_app_state:safeSnapshot,
+        p_expected_generation:generation
+      });
+      if(error) throw providerError("materialize-legacy-recovery",error);
+      return data||{ok:true,stage:"normalized",generation};
+    }
+    return Object.freeze({list,listHeaders,get,getManifest,applyBatch,applyRecordMutation,applyRecordMutationsAtomic,markVerified,prepareNormalizedWriter,setStage,activateNormalizedAuthority,materializeLegacyRecovery});
   }
-  return Object.freeze({version:VERSION,release:RELEASE,recordTable:RECORD_TABLE,manifestTable:MANIFEST_TABLE,batchRpc:BATCH_RPC,recordRpc:RECORD_RPC,recordGroupRpc:RECORD_GROUP_RPC,verifyRpc:VERIFY_RPC,prepareWriterRpc:PREPARE_WRITER_RPC,stageRpc:STAGE_RPC,readPageSize:READ_PAGE_SIZE,maxReadRows:MAX_READ_ROWS,normalizeNamespace,normalizeRecordId,normalizePayload,createRecordStore});
+  return Object.freeze({version:VERSION,release:RELEASE,recordTable:RECORD_TABLE,manifestTable:MANIFEST_TABLE,batchRpc:BATCH_RPC,recordRpc:RECORD_RPC,recordGroupRpc:RECORD_GROUP_RPC,verifyRpc:VERIFY_RPC,prepareWriterRpc:PREPARE_WRITER_RPC,stageRpc:STAGE_RPC,activateAuthorityRpc:ACTIVATE_AUTHORITY_RPC,materializeLegacyRpc:MATERIALIZE_LEGACY_RPC,readPageSize:READ_PAGE_SIZE,maxReadRows:MAX_READ_ROWS,normalizeNamespace,normalizeRecordId,normalizePayload,createRecordStore});
 });

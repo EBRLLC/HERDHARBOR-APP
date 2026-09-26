@@ -54,7 +54,7 @@ test("local-first commit durably writes the compatibility snapshot and record-le
   assert.deepEqual(
     store.getOutbox("user-1")[0],
     {
-      mutationId: "hhm:user-1:1:animals:a1:create",
+      mutationId: result.mutations[0].mutationId,
       ownerId: "user-1",
       domain: "animals",
       recordId: "a1",
@@ -78,7 +78,7 @@ test("reload or installed-app close before acknowledgement preserves pending mut
 
   const reloaded = createStore(storage);
   assert.equal(reloaded.getOutbox("user-1").length, 1);
-  assert.equal(reloaded.getOutbox("user-1")[0].mutationId, "hhm:user-1:1:tasks:t1:create");
+  assert.match(reloaded.getOutbox("user-1")[0].mutationId, /^hhm:user-1:1:tasks-[a-f0-9-]+:t1-[a-f0-9-]+:create$/);
   assert.equal(reloaded.getState().tasks[0].id, "t1");
 });
 
@@ -200,4 +200,25 @@ test("canonical persistence no longer depends on Storage prototype interception"
 
   const build = fs.readFileSync(path.join(root, "herdharbor-build.js"), "utf8");
   assert.doesNotMatch(build, /CLOUD_STATE_KEY|cloudDirtyKey|captureMissingBaselineBeforeMutation/);
+});
+
+
+test("mutation ids remain unique for sanitized and truncated logical-id collisions", () => {
+  const storage = new MemoryStorage({ [OWNER_KEY]: "user-1" });
+  const store = createStore(storage);
+  const longPrefix = "x".repeat(140);
+  const result = store.commit({
+    animals: [
+      { id: "a/b", name: "Slash" },
+      { id: "a b", name: "Space" },
+      { id: longPrefix + "-one", name: "Long One" },
+      { id: longPrefix + "-two", name: "Long Two" }
+    ]
+  }, { source: "local" });
+
+  assert.equal(result.ok, true);
+  const pending = store.getOutbox("user-1");
+  assert.equal(pending.length, 4);
+  assert.equal(new Set(pending.map((entry) => entry.mutationId)).size, 4);
+  assert.equal(new Set(pending.map((entry) => entry.recordId)).size, 4);
 });

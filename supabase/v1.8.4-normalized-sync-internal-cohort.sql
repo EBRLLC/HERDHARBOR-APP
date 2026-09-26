@@ -46,6 +46,8 @@ declare
   v_user uuid := auth.uid();
   v_eligible boolean := false;
   v_schema_verified boolean := false;
+  v_stage text := 'legacy';
+  v_authority_active boolean := false;
 begin
   if v_user is null then
     raise exception using errcode = '42501', message = 'HH_SYNC_AUTH_REQUIRED';
@@ -59,6 +61,20 @@ begin
       and c.cohort = 'internal_test'
   )
   into v_eligible;
+
+  select
+    coalesce(m.cutover_stage, 'legacy'),
+    coalesce(m.metadata -> 'normalized_authority_ready' = 'true'::jsonb, false)
+  into v_stage, v_authority_active
+  from public.herdharbor_sync_manifest m
+  where m.user_id = v_user;
+
+  if not found then
+    v_stage := 'legacy';
+    v_authority_active := false;
+  end if;
+
+  v_authority_active := v_stage = 'normalized' and v_authority_active;
 
   v_schema_verified := (
     to_regclass('public.herdharbor_sync_records') is not null
@@ -118,6 +134,8 @@ begin
     and to_regprocedure('public.herdharbor_sync_mark_verified(bigint,text,integer)') is not null
     and to_regprocedure('public.herdharbor_sync_prepare_normalized_writer_guarded(bigint,text,text,integer)') is not null
     and to_regprocedure('public.herdharbor_sync_set_stage(text,bigint)') is not null
+    and to_regprocedure('public.herdharbor_sync_activate_normalized_authority(bigint,text,text,integer,text)') is not null
+    and to_regprocedure('public.herdharbor_sync_materialize_legacy_recovery(jsonb,bigint)') is not null
     and coalesce(has_function_privilege(
       'authenticated',
       to_regprocedure('public.herdharbor_sync_apply_batch(jsonb,jsonb,jsonb)'),
@@ -148,6 +166,16 @@ begin
       to_regprocedure('public.herdharbor_sync_set_stage(text,bigint)'),
       'EXECUTE'
     ), false)
+    and coalesce(has_function_privilege(
+      'authenticated',
+      to_regprocedure('public.herdharbor_sync_activate_normalized_authority(bigint,text,text,integer,text)'),
+      'EXECUTE'
+    ), false)
+    and coalesce(has_function_privilege(
+      'authenticated',
+      to_regprocedure('public.herdharbor_sync_materialize_legacy_recovery(jsonb,bigint)'),
+      'EXECUTE'
+    ), false)
     and not coalesce(has_function_privilege(
       'authenticated',
       to_regprocedure('public.herdharbor_sync_prepare_normalized_writer(bigint,text,text,integer)'),
@@ -164,6 +192,8 @@ begin
           'herdharbor_sync_apply_batch',
           'herdharbor_sync_apply_record',
           'herdharbor_sync_apply_record_group',
+          'herdharbor_sync_activate_normalized_authority',
+          'herdharbor_sync_materialize_legacy_recovery',
           'herdharbor_sync_mark_verified',
           'herdharbor_sync_prepare_normalized_writer',
           'herdharbor_sync_prepare_normalized_writer_guarded',
@@ -186,7 +216,9 @@ begin
     'eligible', v_eligible,
     'mode', 'allowlist',
     'percentage_enabled', false,
-    'schema_verified', v_schema_verified
+    'schema_verified', v_schema_verified,
+    'stage', v_stage,
+    'authority_active', v_authority_active
   );
 end;
 $$;

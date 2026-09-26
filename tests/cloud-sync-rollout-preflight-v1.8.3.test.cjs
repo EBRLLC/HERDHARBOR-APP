@@ -27,6 +27,8 @@ test("rollout preflight verifies normalized tables, RLS, owner policies, RPCs, a
   assert.match(sql, /herdharbor_sync_mark_verified\(bigint,text,integer\)/);
   assert.match(sql, /herdharbor_sync_set_stage\(text,bigint\)/);
   assert.match(sql, /herdharbor_sync_prepare_normalized_writer_guarded\(bigint,text,text,integer\)/);
+  assert.match(sql, /herdharbor_sync_activate_normalized_authority\(bigint,text,text,integer,text\)/);
+  assert.match(sql, /herdharbor_sync_materialize_legacy_recovery\(jsonb,bigint\)/);
   assert.match(sql, /herdharbor_legacy_write_cutover_guard/);
   assert.match(sql, /t\.tgenabled <> 'D'/i);
   assert.match(sql, /records_authenticated_select/i);
@@ -39,6 +41,8 @@ test("rollout preflight verifies normalized tables, RLS, owner policies, RPCs, a
   assert.match(sql, /record_group_authenticated_execute/i);
   assert.match(sql, /cohort_authenticated_execute/i);
   assert.match(sql, /guarded_writer_authenticated_execute/i);
+  assert.match(sql, /authority_authenticated_execute/i);
+  assert.match(sql, /recovery_authenticated_execute/i);
   assert.match(sql, /unguarded_writer_not_exposed/i);
   assert.match(sql, /no_anon_sync_function_execute/i);
   assert.match(sql, /legacy_authority_only/i);

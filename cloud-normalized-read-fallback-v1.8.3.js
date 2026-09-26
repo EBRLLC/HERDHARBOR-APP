@@ -8,7 +8,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (normalizer) {
   "use strict";
 
-  const VERSION = "0.3-single-pass-integrity";
+  const VERSION = "0.4-record-authority-integrity";
   const RELEASE = "1.8.3";
   const NORMALIZED_STAGE = "normalized";
 
@@ -18,7 +18,7 @@
   }
 
   function requiredNormalizer(value) {
-    const methods = ["reassembleLegacySnapshotWithMetadata"];
+    const methods = ["reassembleAuthoritativeSnapshotWithMetadata"];
     if (!value || methods.some((name) => typeof value[name] !== "function")) {
       throw new TypeError("HerdHarbor cloud state normalizer is required.");
     }
@@ -106,15 +106,13 @@
       }
     }
 
-    function verificationMarkers(manifest) {
+    function authorityMarkers(manifest) {
       const details = metadata(manifest);
-      const verifiedChecksum = String(details.verified_checksum || "").trim();
-      const sourceChecksum = String(details.source_checksum || "").trim();
       return {
-        verifiedChecksum,
-        sourceChecksum,
-        count: strictNonNegativeInteger(details.verification_record_count),
-        normalizedCount: strictNonNegativeInteger(details.normalized_record_count),
+        authorityReady: details.normalized_authority_ready === true,
+        authorityVersion: String(details.normalized_authority_version || "").trim(),
+        writerReady: details.normalized_writer_ready === true,
+        writerVersion: String(details.normalized_writer_version || "").trim(),
         formatVersion: strictNonNegativeInteger(details.normalized_format_version, 1),
         namespace: String(details.normalized_namespace || "").trim()
       };
@@ -130,18 +128,14 @@
 
       if (!manifest) return legacy("manifest-missing");
       if (!normalizedStage(manifest)) return legacy("normalized-not-authoritative");
-      if (!verifiedAt(manifest)) return legacy("normalized-not-verified");
 
       const initialGeneration = manifestGeneration(manifest);
       if (initialGeneration === null) return legacy("normalized-generation-missing");
-      const markers = verificationMarkers(manifest);
-      if (!markers.verifiedChecksum) return legacy("verification-checksum-missing");
-      if (!markers.sourceChecksum || markers.sourceChecksum !== markers.verifiedChecksum) {
-        return legacy("verification-source-mismatch");
-      }
-      if (markers.count === null || markers.normalizedCount === null || markers.count !== markers.normalizedCount) {
-        return legacy("verification-record-count-missing");
-      }
+
+      const markers = authorityMarkers(manifest);
+      if (!markers.authorityReady) return legacy("normalized-authority-marker-missing");
+      if (!markers.authorityVersion) return legacy("normalized-authority-version-missing");
+      if (!markers.writerReady || !markers.writerVersion) return legacy("normalized-writer-not-ready");
       if (markers.namespace !== mapper.namespace) return legacy("normalized-namespace-mismatch");
       if (markers.formatVersion !== mapper.formatVersion) return legacy("normalized-format-mismatch");
 
@@ -154,25 +148,13 @@
 
       let reconstruction;
       try {
-        // Reassembly already performs the full snapshot checksum. Reuse that
-        // result instead of cloning/stringifying/hashing a multi-MB state a
-        // second time on every normalized read.
-        reconstruction = mapper.reassembleLegacySnapshotWithMetadata(rows);
+        reconstruction = mapper.reassembleAuthoritativeSnapshotWithMetadata(rows);
       } catch (error) {
         return legacy("normalized-reassembly-failed", safeFailure(error, "normalized-reassembly-failed"));
       }
-      const snapshot = reconstruction.snapshot;
-      const actualChecksum = reconstruction.checksum;
-      if (actualChecksum !== markers.verifiedChecksum) {
-        return legacy("normalized-checksum-mismatch", {
-          errorName: "HerdHarborCloudNormalizationError",
-          errorCode: "HH_NORMALIZED_CHECKSUM_MISMATCH",
-          operation: "normalized-read-verify"
-        });
-      }
 
       const recordCount = activeRecordCount(rows, mapper.namespace);
-      if (recordCount !== markers.count) {
+      if (recordCount !== reconstruction.recordCount) {
         return legacy("normalized-record-count-mismatch", {
           errorName: "HerdHarborCloudNormalizationError",
           errorCode: "HH_NORMALIZED_RECORD_COUNT_MISMATCH",
@@ -180,22 +162,22 @@
         });
       }
 
-      // Re-read the small manifest after the payload read. A concurrent rollback
-      // or generation change must not let this caller return a snapshot that is
-      // no longer authoritative by the time the read completes.
       let finalManifest;
       try {
         finalManifest = await getManifest();
       } catch (error) {
         return legacy("manifest-recheck-failed", safeFailure(error, "manifest-recheck-failed"));
       }
-      const finalMarkers = verificationMarkers(finalManifest);
+      const finalMarkers = authorityMarkers(finalManifest);
       if (
         !normalizedStage(finalManifest) ||
         manifestGeneration(finalManifest) !== initialGeneration ||
-        verifiedAt(finalManifest) !== verifiedAt(manifest) ||
-        finalMarkers.verifiedChecksum !== markers.verifiedChecksum ||
-        finalMarkers.count !== markers.count
+        finalMarkers.authorityReady !== true ||
+        finalMarkers.authorityVersion !== markers.authorityVersion ||
+        finalMarkers.writerReady !== true ||
+        finalMarkers.writerVersion !== markers.writerVersion ||
+        finalMarkers.namespace !== markers.namespace ||
+        finalMarkers.formatVersion !== markers.formatVersion
       ) {
         return legacy("normalized-manifest-changed");
       }
@@ -204,17 +186,19 @@
         source: "normalized",
         fallback: false,
         reason: null,
-        checksum: actualChecksum,
+        checksum: reconstruction.checksum,
+        checkpointChecksum: reconstruction.manifestChecksum,
+        checkpointStale: reconstruction.checkpointStale === true,
         recordCount,
         generation: initialGeneration,
-        verifiedAt: verifiedAt(manifest),
-        snapshot
+        authorityVersion: markers.authorityVersion,
+        snapshot: reconstruction.snapshot
       });
       emit("normalized-read-complete", {
         source: "normalized",
-        checksum: result.checksum,
         recordCount: result.recordCount,
-        generation: result.generation
+        generation: result.generation,
+        checkpointStale: result.checkpointStale
       });
       return result;
     }

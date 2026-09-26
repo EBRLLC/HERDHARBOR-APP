@@ -8,7 +8,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (stagePolicy) {
   "use strict";
 
-  const VERSION = "1.0-rollout-guardrails";
+  const VERSION = "1.1-authority-activation";
   const RELEASE = "1.8.3";
   const BUILD = "cloud-sync-rollout-control-1";
 
@@ -23,6 +23,8 @@
     "verifyRpc",
     "stageRpc",
     "guardedWriterRpc",
+    "authorityRpc",
+    "recoveryRpc",
     "legacyGuard"
   ]);
 
@@ -176,6 +178,10 @@
     }
 
     async function promote(targetStage, { userId } = {}) {
+      if (String(targetStage || "").trim() === "normalized") {
+        const decision = await promotionDecision(targetStage, userId);
+        throw rolloutError({ ...decision, reasons: ["authority-activation-required"] });
+      }
       const decision = await promotionDecision(targetStage, userId);
       if (!decision.allowed) throw rolloutError(decision);
       const manifest = await store.getManifest();
@@ -185,6 +191,26 @@
         throw rolloutError(decisionWithReason);
       }
       return store.setStage({ targetStage, expectedGeneration: generation });
+    }
+
+    async function activateAuthority({ userId, writerVersion, namespace, formatVersion, authorityVersion } = {}) {
+      const decision = await promotionDecision("normalized", userId);
+      if (!decision.allowed) throw rolloutError(decision);
+      if (typeof store.activateNormalizedAuthority !== "function") {
+        throw rolloutError({ ...decision, reasons: ["authority-activation-rpc-missing"] });
+      }
+      const manifest = await store.getManifest();
+      const generation = stagePolicy.generationOf(manifest);
+      if (generation === null) {
+        throw rolloutError({ ...decision, reasons: ["manifest-generation-missing"] });
+      }
+      return store.activateNormalizedAuthority({
+        expectedGeneration: generation,
+        writerVersion,
+        namespace,
+        formatVersion,
+        authorityVersion
+      });
     }
 
     async function prepareWriter({ userId, writerVersion, namespace, formatVersion } = {}) {
@@ -222,6 +248,7 @@
       build: BUILD,
       promotionDecision,
       promote,
+      activateAuthority,
       prepareWriter,
       rollback
     });

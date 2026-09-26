@@ -89,6 +89,8 @@
   let syncStateType = "info";
   let reloadAfterSync = false;
   let accessProfile = null;
+  let normalizedRollout = null;
+  let normalizedRefreshInFlight = null;
   let recoveryMode = (() => {
     try {
       const url = new URL(window.location.href);
@@ -490,13 +492,39 @@
     return result;
   }
 
+  function normalizedAuthorityActive() {
+    return normalizedRollout?.isNormalizedAuthority?.() === true;
+  }
+
+  async function refreshNormalizedAuthorityIfEligible() {
+    if (normalizedAuthorityActive()) return true;
+    const status = normalizedRollout?.status?.();
+    if (status?.eligible !== true || !normalizedRollout?.checkEligibility) return false;
+    try {
+      const decision = await normalizedRollout.checkEligibility();
+      return decision?.authorityActive === true && normalizedAuthorityActive();
+    } catch {
+      return false;
+    }
+  }
+
+  function normalizedOutboxPending(userId = session?.user?.id) {
+    if (!userId || !normalizedAuthorityActive() || !canonicalStateStore?.getOutbox) return false;
+    return canonicalStateStore.getOutbox(userId).length > 0;
+  }
+
+  function hasPendingCloudMutations(userId = session?.user?.id) {
+    if (!userId) return false;
+    return (
+      originalGetItem.call(localStorage, dirtyKey(userId)) === "1" ||
+      Boolean(pendingSync) ||
+      normalizedOutboxPending(userId)
+    );
+  }
+
   function getSyncDetails() {
     const userId = session?.user?.id || "";
-    const unsynced = Boolean(userId) &&
-      (
-        originalGetItem.call(localStorage, dirtyKey(userId)) === "1" ||
-        Boolean(pendingSync)
-      );
+    const unsynced = hasPendingCloudMutations(userId);
 
     return {
       message: syncState,
@@ -855,12 +883,12 @@
     safeStorageRemove(cacheKey(userId));
   }
 
-  function setInternalStorage(key, value) {
+  function setInternalStorage(key, value, reason = "legacy-cloud-state-replace") {
     if (key === STORAGE_KEY) {
       if (!canonicalStateStore?.replaceRaw) throw new Error("Canonical state store is unavailable.");
       const result = canonicalStateStore.replaceRaw(value, {
         source: "cloud",
-        reason: "legacy-cloud-state-replace",
+        reason,
         notify: false
       });
       if (!result?.ok) throw result?.error || new Error("Canonical state replacement failed.");
@@ -969,15 +997,15 @@
     recordRecoverySnapshot(userId, activeRaw, reason);
   }
 
-  function setActiveUserData(userId, rawValue) {
+  function setActiveUserData(userId, rawValue, reason = "legacy-cloud-state-replace") {
     try {
-      setInternalStorage(STORAGE_KEY, rawValue);
+      setInternalStorage(STORAGE_KEY, rawValue, reason);
     } catch (error) {
       // A previous duplicate cache can consume the final mobile quota needed
       // to refresh the active copy. The caller still holds rawValue in memory,
       // so release only that redundant copy and retry once.
       removeRedundantStateCache(userId);
-      setInternalStorage(STORAGE_KEY, rawValue);
+      setInternalStorage(STORAGE_KEY, rawValue, reason);
     }
     removeRedundantStateCache(userId);
     setInternalStorage(ACTIVE_OWNER_KEY, userId);
@@ -1043,14 +1071,21 @@
 
     safeStorageSet(ACTIVE_OWNER_KEY, userId);
     removeRedundantStateCache(userId);
-    captureCleanBaselineBeforeLocalCommit(userId, previousValue);
 
     writeSequence += 1;
     syncConflict = null;
-    safeStorageSet(dirtyKey(userId), "1");
     if (previousValue && !sameState(previousValue, rawValue)) {
       void recordRecoverySnapshot(userId, previousValue, "Before local change");
     }
+
+    if (normalizedAuthorityActive()) {
+      safeStorageRemove(dirtyKey(userId));
+      scheduleCloudSync(rawValue, writeSequence);
+      return true;
+    }
+
+    captureCleanBaselineBeforeLocalCommit(userId, previousValue);
+    safeStorageSet(dirtyKey(userId), "1");
     scheduleCloudSync(rawValue, writeSequence);
     return true;
   }
@@ -1374,16 +1409,49 @@
 
   function scheduleCloudSync(rawValue, sequence = writeSequence) {
     clearTimeout(syncTimer);
-    pendingSync = { rawValue, sequence };
     const delay = String(rawValue || "").length >= LARGE_STATE_THRESHOLD_CHARS
       ? LARGE_STATE_SYNC_DELAY_MS
       : SYNC_DELAY_MS;
+
+    if (normalizedAuthorityActive()) {
+      pendingSync = null;
+      syncTimer = setTimeout(() => {
+        void syncNow();
+      }, delay);
+      return;
+    }
+
+    pendingSync = { rawValue, sequence };
     syncTimer = setTimeout(() => {
       drainSyncQueue();
     }, delay);
   }
 
   async function syncNow() {
+    if (!normalizedAuthorityActive()) {
+      await refreshNormalizedAuthorityIfEligible();
+    }
+    if (normalizedAuthorityActive()) {
+      clearTimeout(syncTimer);
+      pendingSync = null;
+      setSyncState("Saving normalized cloud records…", "working");
+      try {
+        const result = await normalizedRollout.syncNormalizedNow();
+        if (result?.reason !== "normalized-not-authoritative") {
+          if (result?.ok) {
+            setSyncState("Saved to cloud", "success");
+            return true;
+          }
+          setSyncState("Normalized cloud save is pending; local changes remain protected.", "error");
+          return false;
+        }
+      } catch (error) {
+        console.error("HerdHarbor normalized cloud save failed:", error);
+        setSyncState("Normalized cloud unavailable; local changes remain protected.", "error");
+        return false;
+      }
+    }
+
     const raw = activeStateRaw();
     if (!raw) {
       setSyncState("No HerdHarbor data is available to sync.", "error");
@@ -1447,7 +1515,7 @@
     }
 
     const userId = session.user.id;
-    const dirty = originalGetItem.call(localStorage, dirtyKey(userId)) === "1";
+    const dirty = hasPendingCloudMutations(userId);
     if (dirty && !(await syncNow())) {
       throw new Error("Your latest records have not synced. Download a backup, reconnect, and try again.");
     }
@@ -1484,9 +1552,83 @@
     return { ok: true, email: session.user.email };
   }
 
+  async function checkNormalizedAuthorityChanges() {
+    if (!normalizedAuthorityActive()) {
+      await refreshNormalizedAuthorityIfEligible();
+    }
+    if (!normalizedAuthorityActive()) return null;
+    if (normalizedRefreshInFlight) return normalizedRefreshInFlight;
+
+    normalizedRefreshInFlight = (async () => {
+      try {
+        const result = await normalizedRollout.refreshAuthoritative();
+        if (result?.reason === "normalized-not-authoritative") return null;
+        if (!result?.ok) {
+          setSyncState("Normalized cloud refresh is unavailable; this device copy was not overwritten.", "error");
+          return false;
+        }
+        if (result?.skipped) return false;
+        if (result?.source !== "normalized" || !result?.snapshot) {
+          setSyncState("Normalized cloud refresh could not be verified; this device copy was not overwritten.", "error");
+          return false;
+        }
+
+        const userId = session?.user?.id;
+        if (!userId) return false;
+        const remoteRaw = JSON.stringify(result.snapshot);
+        const activeRaw = activeStateRaw();
+        if (activeRaw && sameState(activeRaw, remoteRaw)) {
+          setSyncState("Saved to cloud", "success");
+          return false;
+        }
+
+        const deviceCloudRaw = applyDevicePreferences(remoteRaw, activeRaw);
+        if (
+          activeRaw &&
+          !allowAnimalStateTransition(
+            activeRaw,
+            deviceCloudRaw,
+            "Cloud update paused: the incoming records would exceed HerdHarbor Junior's limit of 5 active animals."
+          )
+        ) {
+          setSyncState("Normalized cloud update paused by the current account animal limit.", "error");
+          return false;
+        }
+
+        if (activeRaw) {
+          await recordRecoverySnapshot(
+            userId,
+            activeRaw,
+            "Local copy before receiving normalized cloud changes"
+          );
+        }
+        if (hasPendingCloudMutations(userId)) {
+          return false;
+        }
+
+        setActiveUserData(userId, deviceCloudRaw, "normalized-cloud-state-replace");
+        safeStorageRemove(dirtyKey(userId));
+        setSyncState("Newer normalized cloud records found; reloading…", "success");
+        window.location.reload();
+        return true;
+      } catch (error) {
+        console.error("HerdHarbor normalized cloud refresh failed:", error);
+        setSyncState("Normalized cloud refresh failed; this device copy was not overwritten.", "error");
+        return false;
+      } finally {
+        normalizedRefreshInFlight = null;
+      }
+    })();
+
+    return normalizedRefreshInFlight;
+  }
+
   async function checkForCloudChanges() {
     const userId = session?.user?.id;
     if (!userId || syncInFlight || syncConflict) return false;
+
+    const normalizedHandled = await checkNormalizedAuthorityChanges();
+    if (normalizedHandled !== null) return normalizedHandled;
     if (Date.now() - lastCloudCheckAt < 15000) return false;
     lastCloudCheckAt = Date.now();
 
@@ -2236,9 +2378,7 @@
 
       accountDialog.querySelector("#hh-sign-out").addEventListener("click", async () => {
         const userId = session?.user?.id;
-        const hasUnsyncedChanges =
-          Boolean(userId) &&
-          originalGetItem.call(localStorage, dirtyKey(userId)) === "1";
+        const hasUnsyncedChanges = hasPendingCloudMutations(userId);
         if (hasUnsyncedChanges && !(await syncNow())) {
           setSyncState(
             "Sign-out paused to protect unsynced records. Reconnect and try Save to cloud now.",
@@ -2271,7 +2411,6 @@
     }
 
     const userId = session.user.id;
-    restoreMissingCloudBaseline(userId, "hydrate");
     const storedActiveRaw = activeStateRaw();
     const activeOwner = originalGetItem.call(localStorage, ACTIVE_OWNER_KEY);
     const activeRaw =
@@ -2281,6 +2420,97 @@
     const cachedRaw = originalGetItem.call(localStorage, cacheKey(userId));
     if (activeRaw && safeParse(activeRaw)) removeRedundantStateCache(userId);
     const dirty = originalGetItem.call(localStorage, dirtyKey(userId)) === "1";
+    let rolloutDecision = null;
+
+    if (normalizedRollout?.prepareHydration) {
+      try {
+        rolloutDecision = await normalizedRollout.prepareHydration({ legacyDirty: dirty });
+      } catch (error) {
+        console.error("HerdHarbor normalized authority check failed:", error);
+        const offlineRaw = activeRaw || cachedRaw;
+        if (offlineRaw && safeParse(offlineRaw)) {
+          if (!activeRaw) setActiveUserData(userId, offlineRaw, "normalized-authority-offline-copy");
+          unlockApp();
+          setSyncState("Cloud authority could not be verified; this device copy was preserved.", "error");
+          return;
+        }
+        authMessage(
+          "Your account is signed in, but HerdHarbor could not verify the cloud authority. Try again shortly.",
+          "error"
+        );
+        showAuth("signin");
+        return;
+      }
+    }
+
+    if (rolloutDecision?.authoritative === true) {
+      if (!rolloutDecision.ok || !rolloutDecision.snapshot) {
+        const protectedRaw = activeRaw || cachedRaw;
+        if (protectedRaw && safeParse(protectedRaw)) {
+          if (!activeRaw) setActiveUserData(userId, protectedRaw, "normalized-authority-protected-local");
+          unlockApp();
+          setSyncState(
+            rolloutDecision?.reason === "legacy-dirty-without-record-outbox"
+              ? "Unsynced records from an older client were preserved; normalized recovery is required before cloud overwrite."
+              : "Normalized cloud records could not be verified; this device copy was preserved.",
+            "error"
+          );
+          return;
+        }
+        authMessage(
+          "Normalized cloud records could not be verified safely. No local records were removed.",
+          "error"
+        );
+        showAuth("signin");
+        return;
+      }
+
+      const cloudRaw = JSON.stringify(rolloutDecision.snapshot);
+      const deviceCloudRaw = applyDevicePreferences(cloudRaw, activeRaw || cachedRaw);
+      const stateChanged = !activeRaw || !sameState(activeRaw, deviceCloudRaw);
+
+      if (
+        activeRaw &&
+        stateChanged &&
+        !allowAnimalStateTransition(
+          activeRaw,
+          deviceCloudRaw,
+          "Cloud load paused: the incoming records would exceed HerdHarbor Junior's limit of 5 active animals."
+        )
+      ) {
+        unlockApp();
+        setSyncState("Normalized cloud load paused by the current account animal limit.", "error");
+        return;
+      }
+
+      if (activeRaw && stateChanged) {
+        await recordRecoverySnapshot(
+          userId,
+          activeRaw,
+          "Local copy before loading normalized authoritative records"
+        );
+      }
+
+      setActiveUserData(userId, deviceCloudRaw, "normalized-authority-hydration");
+      safeStorageRemove(dirtyKey(userId));
+      pendingSync = null;
+      syncConflict = null;
+
+      if (stateChanged) {
+        const reloadKey = `hh_normalized_loaded_${userId}_${rolloutDecision.generation || "current"}`;
+        if (!sessionStorage.getItem(reloadKey)) {
+          sessionStorage.setItem(reloadKey, "1");
+          window.location.reload();
+          return;
+        }
+      }
+
+      unlockApp();
+      setSyncState("Normalized cloud records loaded", "success");
+      return;
+    }
+
+    restoreMissingCloudBaseline(userId, "hydrate");
 
     if (dirty) {
       const unsyncedRaw = activeRaw || cachedRaw;
@@ -2361,6 +2591,9 @@
 
       unlockApp();
       setSyncState("Cloud records loaded", "success");
+      if (rolloutDecision?.active === true) {
+        void normalizedRollout?.afterLegacyCommit?.().catch?.(() => {});
+      }
       return;
     }
 
@@ -2467,7 +2700,7 @@
     const userId = session?.user?.id;
     if (
       userId &&
-      originalGetItem.call(localStorage, dirtyKey(userId)) === "1" &&
+      hasPendingCloudMutations(userId) &&
       !syncConflict
     ) {
       syncNow();
@@ -2488,7 +2721,7 @@
     if (
       document.visibilityState === "hidden" &&
       userId &&
-      originalGetItem.call(localStorage, dirtyKey(userId)) === "1" &&
+      hasPendingCloudMutations(userId) &&
       !syncConflict
     ) {
       syncNow();
@@ -2509,7 +2742,12 @@
       eligible: data?.eligible === true,
       mode: String(data?.mode || "allowlist") === "allowlist" ? "allowlist" : "invalid",
       percentageEnabled: data?.percentage_enabled === true,
-      schemaVerified: data?.schema_verified === true
+      schemaVerified: data?.schema_verified === true,
+      stage: ["legacy", "shadow", "dual_write", "normalized"].includes(String(data?.stage || "legacy"))
+        ? String(data.stage)
+        : "legacy",
+      authorityActive: data?.authority_active === true,
+      recoveryPending: data?.recovery_pending === true
     });
   }
 
@@ -2540,11 +2778,7 @@
     readLegacySnapshotForNormalizedSync,
     getSyncState: () => syncState,
     getSyncDetails,
-    hasUnsyncedChanges: () => {
-      const userId = session?.user?.id;
-      return Boolean(userId) &&
-        originalGetItem.call(localStorage, dirtyKey(userId)) === "1";
-    },
+    hasUnsyncedChanges: () => hasPendingCloudMutations(session?.user?.id),
     hasConflict: () => Boolean(syncConflict),
     downloadSafetyBackup,
     requestAccountDeletion,
@@ -2556,6 +2790,28 @@
     setMemberMembership,
     returnMemberToAutomatic
   };
+
+  if (
+    window.HerdHarborNormalizedSyncRolloutRuntime?.createBrowserRuntime &&
+    canonicalStateStore
+  ) {
+    try {
+      normalizedRollout = window.HerdHarborNormalizedSyncRolloutRuntime.createBrowserRuntime(window);
+      window.HerdHarborNormalizedSyncRollout = normalizedRollout;
+      void normalizedRollout.start({ confirmLegacy: false }).catch((error) => {
+        console.warn(
+          "HerdHarbor normalized rollout stayed disabled:",
+          error?.code || error?.message || error
+        );
+      });
+    } catch (error) {
+      console.warn(
+        "HerdHarbor normalized rollout could not initialize:",
+        error?.code || error?.message || error
+      );
+      normalizedRollout = null;
+    }
+  }
 
   initialize().catch((error) => {
     console.error("HerdHarbor cloud initialization failed:", error);
