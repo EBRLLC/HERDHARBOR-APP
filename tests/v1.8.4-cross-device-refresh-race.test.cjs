@@ -69,16 +69,16 @@ test("cloud refresh does not overwrite an edit made during recovery snapshot cre
 
 
 test("a clean device with confirmed cloud history captures its pre-edit state before becoming dirty", () => {
-  const helperStart = cloud.indexOf("function captureCleanBaselineBeforeLocalCommit");
-  const helperEnd = cloud.indexOf("\n  function handleCanonicalStateCommit", helperStart);
+  const helperStart = cloud.indexOf("async function captureCleanBaselineBeforeLocalCommit");
+  const helperEnd = cloud.indexOf("\n  async function handleCanonicalStateCommit", helperStart);
   assert.ok(helperStart >= 0 && helperEnd > helperStart, "baseline capture helper is present");
   const helper = cloud.slice(helperStart, helperEnd);
 
   assert.match(helper, /originalGetItem\.call\(localStorage, dirtyKey\(userId\)\) === "1"/);
   assert.match(helper, /!originalGetItem\.call\(localStorage, versionKey\(userId\)\)/);
-  assert.match(helper, /safeStorageSet\(baseKey\(userId\), previousValue\)/);
+  assert.match(helper, /await writeCloudBaseline\(userId, previousValue\)/);
 
-  const bridgeStart = cloud.indexOf("function handleCanonicalStateCommit(detail)");
+  const bridgeStart = cloud.indexOf("async function handleCanonicalStateCommit(detail)");
   const bridgeEnd = cloud.indexOf("\n  function installStateStoreBridge", bridgeStart);
   const bridge = cloud.slice(bridgeStart, bridgeEnd);
   assert.match(bridge, /detail\.source !== "local"/);
@@ -90,8 +90,8 @@ test("a clean device with confirmed cloud history captures its pre-edit state be
 });
 
 test("a missing baseline is never invented once the device is dirty or lacks a confirmed cloud revision", () => {
-  const start = cloud.indexOf("function captureCleanBaselineBeforeLocalCommit");
-  const end = cloud.indexOf("\n  function handleCanonicalStateCommit", start);
+  const start = cloud.indexOf("async function captureCleanBaselineBeforeLocalCommit");
+  const end = cloud.indexOf("\n  async function handleCanonicalStateCommit", start);
   const body = cloud.slice(start, end);
 
   assert.match(body, /originalGetItem\.call\(localStorage, dirtyKey\(userId\)\) === "1"/);
