@@ -137,7 +137,11 @@
         });
       }
 
-      const normalizedFailed = normalizedResult?.ok === false || Number(normalizedResult?.failed || 0) > 0;
+      const normalizedPendingCount = Math.max(0, Number(normalizedResult?.pending || 0));
+      const normalizedFailed =
+        normalizedResult?.ok === false ||
+        Number(normalizedResult?.failed || 0) > 0 ||
+        normalizedPendingCount > 0;
       if (normalizedFailed) {
         const errorCode = Number(normalizedResult?.conflicts || 0) > 0
           ? "HH_SYNC_RECORD_CONFLICT"
@@ -158,6 +162,7 @@
           verificationPending: false,
           normalizedErrorCode: errorCode,
           normalizedConflicts: Number(normalizedResult?.conflicts || 0),
+          normalizedPendingCount,
           normalizedResult,
           legacyResult
         });
