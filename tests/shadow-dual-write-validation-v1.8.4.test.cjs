@@ -887,3 +887,14 @@ test("restart during rollback resumes to legacy before allowing either writer ag
   assert.equal(h.recordStore.manifest.metadata.legacy_recovery_lock, false);
   assert.equal(h.legacySnapshot.animals[0].weight, 4.4);
 });
+
+
+test("shadow post-legacy status remains pending while worker reports queued work", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const source = fs.readFileSync(path.join(__dirname, "..", "cloud-sync-rollout-runtime-v1.8.4.js"), "utf8");
+  assert.match(
+    source,
+    /normalizedPending:[\s\S]*Number\(normalizedResult\?\.pending \|\| 0\) > 0/
+  );
+});
