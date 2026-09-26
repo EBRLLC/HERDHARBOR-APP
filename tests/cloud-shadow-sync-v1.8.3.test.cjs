@@ -423,3 +423,38 @@ test("shadow controller contains no legacy full-state mutation path", () => {
   assert.match(source, /markVerified/);
   assert.match(source, /normalized-authoritative/);
 });
+
+
+test("first shadow bootstrap can create the manifest from an empty normalized account", async () => {
+  const store = fakeAtomicStore([], null);
+  store.getManifest = async () => {
+    store.calls.push(["getManifest"]);
+    return null;
+  };
+  let createdManifest = null;
+  store.applyBatch = async ({ puts = [], tombstones = [], manifestPatch = {} } = {}) => {
+    store.calls.push(["applyBatch", deepClone({ puts, tombstones, manifestPatch })]);
+    assert.equal(manifestPatch.expectedGeneration, 0);
+    assert.equal(manifestPatch.cutoverStage, "shadow");
+    createdManifest = {
+      cutover_stage: "shadow",
+      sync_generation: 1,
+      metadata: deepClone(manifestPatch.metadata || {})
+    };
+    return { ok: true, generation: 1, puts: puts.length, tombstones: tombstones.length };
+  };
+  const controller = shadow.createShadowSyncController({
+    recordStore: store,
+    normalizer,
+    enabled: true,
+    now: () => "2026-09-25T15:00:00.000Z"
+  });
+
+  const result = await controller.sync(fixture, { previousRows: [] });
+
+  assert.equal(result.skipped, false);
+  assert.equal(result.stage, "shadow");
+  assert.equal(result.generation, 1);
+  assert.ok(result.puts > 0);
+  assert.equal(createdManifest.cutover_stage, "shadow");
+});

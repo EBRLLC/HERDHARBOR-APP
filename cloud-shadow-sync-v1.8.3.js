@@ -204,7 +204,7 @@
 
       const manifest = await store.getManifest();
       const stage = manifestStage(manifest);
-      const generation = manifestGeneration(manifest);
+      const generation = manifest ? manifestGeneration(manifest) : 0;
       if (generation === null) {
         throw controllerError(
           "Shadow sync requires an explicit non-negative manifest generation.",
