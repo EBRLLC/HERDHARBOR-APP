@@ -88,3 +88,19 @@ test("a stale installed PWA cannot resume legacy full-state writes after normali
   assert.match(guard, /current_setting\('herdharbor\.normalized_recovery_write'/i);
   assert.doesNotMatch(guard, /user.agent|app.version|service.worker|client.version/i);
 });
+
+
+test("authority cutover preserves atomic record-group RPC and nonblocking record CAS", () => {
+  const recordWriter = sql.match(/create or replace function public\.herdharbor_sync_apply_record\([\s\S]*?\n\$\$;/i)?.[0] || "";
+  assert.ok(recordWriter, "record CAS function must be present");
+  const manifestReadStart = recordWriter.indexOf("select cutover_stage, metadata");
+  const manifestReadEnd = recordWriter.indexOf("if not found", manifestReadStart);
+  assert.ok(manifestReadStart >= 0 && manifestReadEnd > manifestReadStart);
+  assert.doesNotMatch(recordWriter.slice(manifestReadStart, manifestReadEnd), /for update/i);
+  assert.match(recordWriter, /and cutover_stage = v_stage/i);
+  assert.match(recordWriter, /HH_SYNC_STAGE_CHANGED/i);
+
+  assert.match(sql, /herdharbor_sync_apply_record_group\(jsonb,text\)/i);
+  assert.match(sql, /revoke all on function public\.herdharbor_sync_apply_record_group\([\s\S]*from public, anon, authenticated/i);
+  assert.match(sql, /grant execute on function public\.herdharbor_sync_apply_record_group\([\s\S]*to authenticated/i);
+});
