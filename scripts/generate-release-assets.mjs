@@ -27,17 +27,20 @@ async function walk(dir, base = dir) {
   return files;
 }
 
-function normalizeReference(reference) {
-  return reference
-    .replace(/^\/+/, "")
-    .replace(/^(?:\.\.\/)+/, "")
-    .replace(/^\.\//, "");
+function resolveReference(reference, fromRelative) {
+  const normalizedReference = String(reference || "").replace(/\\/g, "/");
+  if (normalizedReference.startsWith("/")) {
+    return path.posix.normalize(normalizedReference.replace(/^\/+/, ""));
+  }
+  const fromDir = path.posix.dirname(String(fromRelative || "").replace(/\\/g, "/"));
+  const resolved = path.posix.normalize(path.posix.join(fromDir === "." ? "" : fromDir, normalizedReference));
+  return resolved === ".." || resolved.startsWith("../") ? "" : resolved.replace(/^\.\//, "");
 }
 
-function rewriteReferences(text, hashes) {
+function rewriteReferences(text, hashes, fromRelative) {
   return text.replace(URL_PATTERN, (full, reference) => {
-    const normalized = normalizeReference(reference);
-    const digest = hashes.get(normalized);
+    const normalized = resolveReference(reference, fromRelative);
+    const digest = normalized ? hashes.get(normalized) : null;
     if (!digest) return full;
     return `${reference}?rev=${digest}`;
   });
@@ -81,7 +84,7 @@ for (let pass = 0; pass < 8; pass += 1) {
   let changed = false;
   for (const relative of assetFiles) {
     const before = await readText(relative);
-    const after = rewriteReferences(before, hashes);
+    const after = rewriteReferences(before, hashes, relative);
     if (after !== before) {
       await writeText(relative, after);
       changed = true;
@@ -106,7 +109,7 @@ const textFiles = allFiles
 
 for (const relative of textFiles) {
   const before = await readText(relative);
-  const after = rewriteReferences(before, hashes);
+  const after = rewriteReferences(before, hashes, relative);
   if (after !== before) await writeText(relative, after);
 }
 
@@ -141,8 +144,8 @@ for (const relative of textFiles) {
   const content = await readText(relative);
   for (const match of content.matchAll(new RegExp(URL_PATTERN.source, "g"))) {
     const reference = match[1];
-    const normalized = normalizeReference(reference);
-    if (!hashes.has(normalized)) continue;
+    const normalized = resolveReference(reference, relative);
+    if (!normalized || !hashes.has(normalized)) continue;
     const expected = `?rev=${hashes.get(normalized)}`;
     if (!match[0].endsWith(expected)) staleLocalReferences.push(`${relative}: ${match[0]}`);
   }
