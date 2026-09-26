@@ -329,8 +329,10 @@
     const litterId=action.dataset.litterId||"";
     if(kind==="record-birth"){
       rememberReturn(animalId);
-      const opened=root.HerdHarborApp?.openRecordBirth?.(breedingId);
-      if(opened===false){pendingReturn=null;return;}
+      const command=root.HerdHarborApp?.openRecordBirth;
+      if(typeof command!=="function"){pendingReturn=null;return;}
+      const opened=command(breedingId);
+      if(opened!==true){pendingReturn=null;return;}
       waitFor("#litter-form",form=>restoreAfterForm(form));
       return;
     }
