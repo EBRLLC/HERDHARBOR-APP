@@ -10,6 +10,7 @@ const api = require(path.join(root, "cloud-record-store-v1.8.3.js"));
 const adapterSource = fs.readFileSync(path.join(root, "cloud-record-store-v1.8.3.js"), "utf8");
 const schema = fs.readFileSync(path.join(root, "supabase", "v1.8.3-cloud-sync-normalized-records.sql"), "utf8");
 const recordGroupSchema = fs.readFileSync(path.join(root, "supabase", "v1.8.4-normalized-record-group-cas.sql"), "utf8");
+const nonAbortingSchema = fs.readFileSync(path.join(root, "supabase", "v1.8.4-normalized-cas-nonaborting-conflicts.sql"), "utf8");
 
 function makeRpcOnlyStore() {
   let rpcCalls = 0;
@@ -320,4 +321,55 @@ test("record store preserves recovery-in-progress as a stable sync error code", 
     }),
     error=>error?.code==="HH_SYNC_RECOVERY_IN_PROGRESS" && error?.operation==="record-write"
   );
+});
+
+
+test("record store classifies structured non-aborting record conflicts like provider CAS errors", async () => {
+  const client={
+    from(){return{};},
+    async rpc(name){
+      if(name===api.recordRpc) return {data:{ok:false,code:"HH_SYNC_CONFLICT",conflict:true},error:null};
+      if(name===api.recordGroupRpc) return {data:{ok:false,code:"HH_SYNC_STAGE_CHANGED",conflict:true},error:null};
+      throw new Error(`unexpected rpc ${name}`);
+    }
+  };
+  const store=api.createRecordStore({client,userId:"11111111-1111-1111-1111-111111111111"});
+
+  await assert.rejects(
+    ()=>store.applyRecordMutation({
+      namespace:"legacy-state",
+      recordId:"x",
+      payload:{kind:"root_value",key:"x",value:1},
+      payloadChecksum:"hh64:a",
+      expectedVersion:1
+    }),
+    error=>error?.code==="HH_SYNC_CONFLICT" && error?.operation==="record-write"
+  );
+
+  await assert.rejects(
+    ()=>store.applyRecordMutationsAtomic({
+      writerVersion:"record-cas-v1",
+      operations:[{
+        namespace:"legacy-state",
+        recordId:"x",
+        payload:{kind:"root_value",key:"x",value:1},
+        payloadChecksum:"hh64:a",
+        expectedVersion:1
+      }]
+    }),
+    error=>error?.code==="HH_SYNC_STAGE_CHANGED" && error?.operation==="record-group-write"
+  );
+});
+
+test("normalized CAS wrappers rollback expected conflicts inside a subtransaction and return structured JSON", () => {
+  assert.match(nonAbortingSchema,/rename to herdharbor_sync_apply_record_internal_v184/i);
+  assert.match(nonAbortingSchema,/rename to herdharbor_sync_apply_record_group_internal_v184/i);
+  assert.match(nonAbortingSchema,/when sqlstate '40001'/i);
+  assert.match(nonAbortingSchema,/HH_SYNC_CONFLICT/);
+  assert.match(nonAbortingSchema,/HH_SYNC_STAGE_CHANGED/);
+  assert.match(nonAbortingSchema,/jsonb_build_object\([\s\S]*'ok', false[\s\S]*'code', v_message/);
+  assert.match(nonAbortingSchema,/revoke all on function public\.herdharbor_sync_apply_record_internal_v184/);
+  assert.match(nonAbortingSchema,/revoke all on function public\.herdharbor_sync_apply_record_group_internal_v184/);
+  assert.match(nonAbortingSchema,/grant execute on function public\.herdharbor_sync_apply_record\(/);
+  assert.match(nonAbortingSchema,/grant execute on function public\.herdharbor_sync_apply_record_group\(/);
 });
