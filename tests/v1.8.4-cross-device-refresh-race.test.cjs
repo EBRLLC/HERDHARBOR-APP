@@ -126,3 +126,22 @@ test("cross-device refresh fix keeps foreground clients current without requirin
   );
   assert.doesNotMatch(cloud, /beforeunload/);
 });
+
+
+test("cloud checks throttle before normalized cohort lookup and dedupe cohort RPC pressure", () => {
+  const start = cloud.indexOf("async function checkForCloudChanges()");
+  const end = cloud.indexOf("\n  function ensureStyles()", start);
+  assert.ok(start >= 0 && end > start, "checkForCloudChanges is present");
+  const body = cloud.slice(start, end);
+
+  const throttle = body.indexOf("now - lastCloudCheckAt < 15000");
+  const authority = body.indexOf("await checkNormalizedAuthorityChanges()");
+  assert.ok(throttle >= 0, "cloud checks retain their 15 second throttle");
+  assert.ok(authority > throttle, "normalized authority lookup occurs only after the cloud-check throttle");
+
+  assert.match(cloud, /const NORMALIZED_COHORT_STATUS_TTL_MS = 60000;/);
+  assert.match(cloud, /normalizedCohortStatusCache\?\.userId === userId/);
+  assert.match(cloud, /normalizedCohortStatusInFlight\?\.userId === userId/);
+  assert.match(cloud, /return normalizedCohortStatusInFlight\.promise/);
+  assert.match(cloud, /normalizedCohortStatusInFlight = \{ userId, promise: request \}/);
+});
