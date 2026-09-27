@@ -38,3 +38,26 @@ test("monitoring captures the original cloud provider error through the privacy 
   assert.match(instrumentation, /captureOperationalFailure\?\.\("cloud_sync_failure"/);
   assert.match(instrumentation, /reason: code/);
 });
+
+
+test("legacy cloud save fast path uses version CAS without reading the full farm when unchanged", () => {
+  const writeStart = cloud.indexOf("async function writeCloudRecord");
+  const writeEnd = cloud.indexOf("\n  async function syncValueToCloud", writeStart);
+  assert.ok(writeStart >= 0 && writeEnd > writeStart);
+  const writeBlock = cloud.slice(writeStart, writeEnd);
+  assert.match(writeBlock, /\.select\("updated_at"\)/);
+  assert.doesNotMatch(writeBlock, /\.select\("app_state, updated_at"\)/);
+
+  const syncStart = cloud.indexOf("async function syncValueToCloud");
+  const syncEnd = cloud.indexOf("\n  async function drainSyncQueue", syncStart);
+  assert.ok(syncStart >= 0 && syncEnd > syncStart);
+  const syncBlock = cloud.slice(syncStart, syncEnd);
+
+  const versionProbe = syncBlock.indexOf("await fetchCloudVersion(userId)");
+  const fullFetch = syncBlock.indexOf("await fetchCloudRecord(userId)");
+  assert.ok(versionProbe >= 0, "save path probes cloud version first");
+  assert.ok(fullFetch > versionProbe, "full farm fetch remains a fallback after the version probe");
+  assert.match(syncBlock, /!options\.force[\s\S]*knownVersion === remoteVersion/);
+  assert.match(syncBlock, /if \(versionStillCurrent\) \{[\s\S]*remoteRecord = \{ updated_at: remoteVersion \}/);
+  assert.match(syncBlock, /else if \(versionRecord\) \{[\s\S]*await fetchCloudRecord\(userId\)/);
+});
