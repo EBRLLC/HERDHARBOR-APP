@@ -78,6 +78,11 @@
     const known = knownProviderFailure(operation, error); if (known) return known;
     const wrapped = new Error(error?.message || `Normalized cloud ${operation} failed.`); wrapped.name="HerdHarborCloudRecordError"; wrapped.code=String(error?.code||"provider_error"); wrapped.status=Number(error?.status||error?.statusCode||0)||null; wrapped.operation=operation; return wrapped;
   }
+  function structuredProviderError(operation, data) {
+    if (data?.ok !== false) return null;
+    const code = String(data?.code || "provider_result_error");
+    return providerError(operation, { code, message: code });
+  }
   function readLimitError(operation) { const error=new Error(`Normalized cloud ${operation} exceeded the ${MAX_READ_ROWS} row safety limit.`); error.name="HerdHarborCloudRecordError"; error.code="HH_SYNC_READ_LIMIT"; error.operation=operation; return error; }
 
   function batchManifestPatch(patch = {}) {
@@ -125,6 +130,8 @@
         p_writer_version:safeWriterVersion
       });
       if(error) throw providerError("record-write",error);
+      const structuredError=structuredProviderError("record-write",data);
+      if(structuredError) throw structuredError;
       return data||{
         ok:true,
         namespace:safeNamespace,
@@ -166,6 +173,8 @@
         p_writer_version:safeWriterVersion
       });
       if(error) throw providerError("record-group-write",error);
+      const structuredError=structuredProviderError("record-group-write",data);
+      if(structuredError) throw structuredError;
       const results=Array.isArray(data?.operations)?data.operations:[];
       return {
         ...(data||{}),

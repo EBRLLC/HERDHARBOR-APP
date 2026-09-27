@@ -20,7 +20,7 @@ const REQUIRED_SHELL = [
   "./herdharbor-access-cache-v1.6.1.js?v=1.7.1",
   "./cloud-legacy-baseline-v1.8.4.js?v=1",
   "./herdharbor-cloud.js?v=26",
-  "./cloud-sync-rollout-runtime-v1.8.4.js?v=2",
+  "./cloud-sync-rollout-runtime-v1.8.4.js?v=3",
   "./local-cache-v2-v1.8.2.js?v=1",
   "./cloud-sync-v2-flow-v1.8.2.js?v=1",
   "./cloud-sync-v2-diagnostics-v1.8.2.js?v=1",
@@ -48,7 +48,7 @@ const REQUIRED_SHELL = [
 ];
 
 const RUNTIME_CACHE_PATHS = [
-  "./cloud-record-store-v1.8.3.js?v=1",
+  "./cloud-record-store-v1.8.3.js?v=2",
   "./cloud-state-normalizer-v1.8.3.js?v=1",
   "./cloud-record-baseline-v1.8.4.js?v=1",
   "./cloud-record-outbox-worker-v1.8.4.js?v=2",

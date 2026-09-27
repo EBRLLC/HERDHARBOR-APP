@@ -21,7 +21,7 @@
   const WRITER_VERSION = "record-cas-v1";
   const AUTHORITY_VERSION = "record-authority-v1";
   const DEPENDENCIES = Object.freeze([
-    ["hh-normalized-record-store-v183", "cloud-record-store-v1.8.3.js?v=1"],
+    ["hh-normalized-record-store-v183", "cloud-record-store-v1.8.3.js?v=2"],
     ["hh-normalized-state-mapper-v183", "cloud-state-normalizer-v1.8.3.js?v=1"],
     ["hh-normalized-record-baseline-v184", "cloud-record-baseline-v1.8.4.js?v=1"],
     ["hh-normalized-record-worker-v184", "cloud-record-outbox-worker-v1.8.4.js?v=2"],
