@@ -1172,6 +1172,14 @@
       .maybeSingle());
   }
 
+  async function fetchCloudVersion(userId) {
+    return runCloudRequest(() => client
+      .from(TABLE_NAME)
+      .select("updated_at")
+      .eq("user_id", userId)
+      .maybeSingle());
+  }
+
   async function markConflict(userId, localRaw, remoteRecord, message) {
     const remoteRaw = remoteRecord?.app_state
       ? JSON.stringify(remoteRecord.app_state)
@@ -1701,6 +1709,16 @@
 
     if (originalGetItem.call(localStorage, dirtyKey(userId)) === "1") {
       return syncNow();
+    }
+
+    const knownVersion = originalGetItem.call(localStorage, versionKey(userId)) || "";
+    const { data: versionRecord, error: versionError } = await fetchCloudVersion(userId);
+    if (versionError || !versionRecord) return false;
+
+    const remoteVersion = String(versionRecord.updated_at || "");
+    if (knownVersion && remoteVersion && knownVersion === remoteVersion) {
+      setSyncState("Saved to cloud", "success");
+      return false;
     }
 
     const { data, error } = await fetchCloudRecord(userId);
