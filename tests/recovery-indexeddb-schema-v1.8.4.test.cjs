@@ -389,6 +389,43 @@ test("existing snapshots survive the v1 to v2 schema upgrade", async () => {
   assert.deepEqual(indexedDB.records(harness.RECOVERY_DB_NAME, "snapshots"), [existing]);
 });
 
+test("existing v1 snapshots store missing required indexes is repaired without losing records", async () => {
+  const indexedDB = new FakeIndexedDB();
+  const harness = recoveryHarness(indexedDB);
+  const existing = {
+    id: 11,
+    userId: "owner-index-repair",
+    createdAt: "2026-09-10T12:00:00.000Z",
+    reason: "pre-index",
+    rawValue: JSON.stringify({ animals: [{ id: "rabbit-index-repair" }] })
+  };
+  indexedDB.seed(harness.RECOVERY_DB_NAME, 1, {
+    states: {
+      keyPath: "id",
+      autoIncrement: true,
+      records: [{ id: 4, value: "keep-states-too" }]
+    },
+    snapshots: {
+      keyPath: "id",
+      autoIncrement: true,
+      indexes: {},
+      records: [existing]
+    }
+  });
+
+  const database = await harness.openRecoveryDatabase();
+  assert.equal(database.version, 2);
+  const snapshotStore = database.transaction("snapshots", "readonly").objectStore("snapshots");
+  assert.equal(snapshotStore.indexNames.contains("userId"), true);
+  assert.equal(snapshotStore.indexNames.contains("createdAt"), true);
+  database.close();
+
+  assert.deepEqual(indexedDB.records(harness.RECOVERY_DB_NAME, "snapshots"), [existing]);
+  assert.deepEqual(indexedDB.records(harness.RECOVERY_DB_NAME, "states"), [
+    { id: 4, value: "keep-states-too" }
+  ]);
+});
+
 test("fresh recovery storage is created at v2 with a writable validated snapshots schema", async () => {
   const indexedDB = new FakeIndexedDB();
   const harness = recoveryHarness(indexedDB);
