@@ -13,6 +13,7 @@
   const ACTIVE_OWNER_KEY = "herdharbor_active_user_v1";
   const RECOVERY_DB_NAME = "herdharbor_recovery_v1";
   const RECOVERY_STORE_NAME = "snapshots";
+  const RECOVERY_DB_VERSION = 2;
   const MAX_RECOVERY_SNAPSHOTS = 6;
   const MAX_RECOVERY_BYTES = 8_000_000;
   const ACCOUNT_DELETION_REQUEST_URL = "https://formspree.io/f/xpqvpwwb";
@@ -974,6 +975,62 @@
     originalRemoveItem.call(localStorage, key);
   }
 
+  function recoverySchemaError(message, cause = null) {
+    const error = new Error(message);
+    error.name = "HerdHarborRecoverySchemaError";
+    error.code = "HH_RECOVERY_SCHEMA_INVALID";
+    if (cause) error.cause = cause;
+    return error;
+  }
+
+  function ensureRecoverySnapshotSchema(database, upgradeTransaction) {
+    let store = null;
+
+    if (!database.objectStoreNames.contains(RECOVERY_STORE_NAME)) {
+      store = database.createObjectStore(RECOVERY_STORE_NAME, {
+        keyPath: "id",
+        autoIncrement: true
+      });
+    } else if (upgradeTransaction) {
+      store = upgradeTransaction.objectStore(RECOVERY_STORE_NAME);
+    }
+
+    if (!store) return;
+
+    if (!store.indexNames.contains("userId")) {
+      store.createIndex("userId", "userId");
+    }
+    if (!store.indexNames.contains("createdAt")) {
+      store.createIndex("createdAt", "createdAt");
+    }
+  }
+
+  function validateRecoveryDatabase(database) {
+    if (!database.objectStoreNames.contains(RECOVERY_STORE_NAME)) {
+      throw recoverySchemaError(
+        `Recovery storage schema is missing the "${RECOVERY_STORE_NAME}" object store.`
+      );
+    }
+
+    let store;
+    try {
+      const transaction = database.transaction(RECOVERY_STORE_NAME, "readonly");
+      store = transaction.objectStore(RECOVERY_STORE_NAME);
+    } catch (error) {
+      throw recoverySchemaError("Recovery storage schema could not be inspected.", error);
+    }
+
+    for (const indexName of ["userId", "createdAt"]) {
+      if (!store.indexNames.contains(indexName)) {
+        throw recoverySchemaError(
+          `Recovery storage schema is missing the "${indexName}" index.`
+        );
+      }
+    }
+
+    return true;
+  }
+
   function openRecoveryDatabase() {
     return new Promise((resolve, reject) => {
       if (!window.indexedDB) {
@@ -981,20 +1038,33 @@
         return;
       }
 
-      const request = indexedDB.open(RECOVERY_DB_NAME, 1);
+      let upgradeError = null;
+      const request = indexedDB.open(RECOVERY_DB_NAME, RECOVERY_DB_VERSION);
       request.onupgradeneeded = () => {
-        const database = request.result;
-        if (!database.objectStoreNames.contains(RECOVERY_STORE_NAME)) {
-          const store = database.createObjectStore(RECOVERY_STORE_NAME, {
-            keyPath: "id",
-            autoIncrement: true
-          });
-          store.createIndex("userId", "userId");
-          store.createIndex("createdAt", "createdAt");
+        try {
+          ensureRecoverySnapshotSchema(request.result, request.transaction);
+        } catch (error) {
+          upgradeError = recoverySchemaError("Recovery storage schema upgrade failed.", error);
+          try { request.transaction?.abort(); } catch {}
         }
       };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error || new Error("Recovery storage could not open."));
+      request.onsuccess = () => {
+        const database = request.result;
+        try {
+          validateRecoveryDatabase(database);
+          resolve(database);
+        } catch (error) {
+          try { database.close(); } catch {}
+          console.error("HerdHarbor recovery storage schema validation failed:", error);
+          reject(error);
+        }
+      };
+      request.onerror = () => reject(
+        upgradeError || request.error || new Error("Recovery storage could not open.")
+      );
+      request.onblocked = () => reject(
+        new Error("Recovery storage upgrade is blocked by another open HerdHarbor tab.")
+      );
     });
   }
 
