@@ -145,3 +145,26 @@ test("cloud checks throttle before normalized cohort lookup and dedupe cohort RP
   assert.match(cloud, /return normalizedCohortStatusInFlight\.promise/);
   assert.match(cloud, /normalizedCohortStatusInFlight = \{ userId, promise: request \}/);
 });
+
+
+test("foreground cloud checks probe updated_at before loading the full farm state", () => {
+  assert.match(
+    cloud,
+    /async function fetchCloudVersion\(userId\) \{[\s\S]*\.select\("updated_at"\)[\s\S]*\.eq\("user_id", userId\)[\s\S]*\.maybeSingle\(\)/
+  );
+
+  const start = cloud.indexOf("async function checkForCloudChanges()");
+  const end = cloud.indexOf("\n  function ensureStyles()", start);
+  assert.ok(start >= 0 && end > start, "checkForCloudChanges is present");
+  const body = cloud.slice(start, end);
+
+  const versionProbe = body.indexOf("await fetchCloudVersion(userId)");
+  const fullFetch = body.indexOf("await fetchCloudRecord(userId)");
+  assert.ok(versionProbe >= 0, "foreground check reads only cloud version first");
+  assert.ok(fullFetch > versionProbe, "full farm payload is fetched only after the version probe");
+
+  assert.match(
+    body,
+    /knownVersion && remoteVersion && knownVersion === remoteVersion[\s\S]*return false/
+  );
+});
