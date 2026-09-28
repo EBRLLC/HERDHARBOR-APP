@@ -233,11 +233,16 @@ test("clean cloud hydration finishes normalized repair before any reload", () =>
     "  async function hydrateUserData(activeSession)"
   );
 
+  const legacyCloudBranch = hydrateSource.indexOf("if (data?.app_state)");
+  assert.ok(legacyCloudBranch >= 0, "legacy cloud hydration branch must exist");
+
   const normalizedIndex = hydrateSource.indexOf(
-    'setSyncState("Finishing normalized cloud sync…", "working")'
+    'setSyncState("Finishing normalized cloud sync…", "working")',
+    legacyCloudBranch
   );
   const awaitIndex = hydrateSource.indexOf(
-    "const normalized = await normalizedRollout.afterLegacyCommit()"
+    "const normalized = await normalizedRollout.afterLegacyCommit()",
+    legacyCloudBranch
   );
   const reloadIndex = hydrateSource.indexOf(
     "window.location.reload()",
