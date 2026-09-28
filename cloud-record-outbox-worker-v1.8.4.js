@@ -241,6 +241,23 @@
       };
     }
 
+    function sameBaselineContent(remote, baseline) {
+      if (!remote || !baseline) return false;
+      const remoteDeleted = rowDeleted(remote);
+      const baselineDeleted = rowDeleted(baseline);
+      if (remoteDeleted !== baselineDeleted) return false;
+      if (remoteDeleted) return true;
+      const remoteChecksum = rowChecksum(remote);
+      const baselineChecksum = rowChecksum(baseline);
+      return Boolean(remoteChecksum && baselineChecksum && remoteChecksum === baselineChecksum);
+    }
+
+    async function refreshVersionOnlyBaseline(remote) {
+      await baselineStore.put(remote);
+      await rememberLogicalVersion(remote);
+      return remote;
+    }
+
     async function reconcileConflict(operation, mutation, processedRevision) {
       const recordId = rowId(operation.row);
       const remote = await recordStore.get(namespace, recordId, { includeDeleted: true });
@@ -261,6 +278,28 @@
 
       if (rowChecksum(remote) && rowChecksum(remote) === rowChecksum(operation.row)) {
         return acceptRemoteAsCommitted(operation, remote);
+      }
+
+      if (sameBaselineContent(remote, baseline) && rowVersion(remote) !== rowVersion(baseline)) {
+        await refreshVersionOnlyBaseline(remote);
+        try {
+          const retry = await recordStore.applyRecordMutation({
+            namespace,
+            recordId,
+            payload: operation.type === "delete" ? null : operation.row.payload,
+            payloadChecksum: operation.type === "delete" ? null : rowChecksum(operation.row),
+            expectedVersion: rowVersion(remote),
+            deleted: operation.type === "delete",
+            writerVersion
+          });
+          const confirmedRow = await persistConfirmed(operation, retry);
+          return { ok: true, versionRefreshed: true, row: confirmedRow };
+        } catch (error) {
+          if (String(error?.code || "") === "HH_SYNC_CONFLICT") {
+            return { ok: false, retry: true, fields: ["$concurrent_retry"] };
+          }
+          throw error;
+        }
       }
 
       if (!baseline?.payload || rowDeleted(baseline)) {
@@ -385,6 +424,17 @@
 
       if (rowVersion(remote) === rowVersion(baseline)) {
         return { ok: true, operation, input: atomicInput(operation, rowVersion(remote)), merged: false };
+      }
+
+      if (sameBaselineContent(remote, baseline)) {
+        await refreshVersionOnlyBaseline(remote);
+        return {
+          ok: true,
+          operation,
+          input: atomicInput(operation, rowVersion(remote)),
+          merged: false,
+          versionRefreshed: true
+        };
       }
 
       const merged = normalizer.mergeNormalizedPayload(
@@ -611,6 +661,11 @@
       } else {
         const result = await applyOperation(plan.operations[0], mutation, processedRevision);
         if (!result.ok) {
+          if (result.retry) {
+            throw Object.assign(new Error("Normalized record changed again during version-drift reconciliation."), {
+              code: "HH_SYNC_CONFLICT_RETRY"
+            });
+          }
           stateStore.markMutationRetry(mutation.mutationId, {
             retryState: "conflict",
             lastErrorClass: "cas_conflict",
