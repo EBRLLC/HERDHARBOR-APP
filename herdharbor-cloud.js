@@ -98,6 +98,8 @@
   let accessProfile = null;
   let normalizedRollout = null;
   let normalizedRefreshInFlight = null;
+  let hydrationInFlight = null;
+  let hydrationUserId = "";
   let recoveryMode = (() => {
     try {
       const url = new URL(window.location.href);
@@ -526,8 +528,14 @@
     }
   }
 
+  function normalizedRolloutStage() {
+    return String(normalizedRollout?.status?.()?.stage || "legacy");
+  }
+
   function normalizedOutboxPending(userId = session?.user?.id) {
-    if (!userId || !normalizedAuthorityActive() || !canonicalStateStore?.getOutbox) return false;
+    if (!userId || !canonicalStateStore?.getOutbox) return false;
+    const stage = normalizedRolloutStage();
+    if (stage !== "dual_write" && stage !== "normalized") return false;
     return canonicalStateStore.getOutbox(userId).length > 0;
   }
 
@@ -569,16 +577,60 @@
     }
   }
 
-  function dispatchLegacyCloudCommit(sequence, updatedAt) {
+  function dispatchLegacyCloudCommit(sequence, updatedAt, options = {}) {
     try {
       document.dispatchEvent(new CustomEvent("herdharbor:legacy-cloud-commit", {
         detail: {
           sequence: Number(sequence || 0),
           updatedAt: updatedAt || null,
-          userIdPresent: Boolean(session?.user?.id)
+          userIdPresent: Boolean(session?.user?.id),
+          normalizedHandled: options.normalizedHandled === true,
+          normalizedOk: options.normalizedOk === true
         }
       }));
     } catch {}
+  }
+
+  async function completeNormalizedAfterLegacyCommit(sequence, updatedAt) {
+    let normalizedHandled = false;
+    let normalizedResult = null;
+
+    if (normalizedRollout?.afterLegacyCommit) {
+      normalizedHandled = true;
+      try {
+        normalizedResult = await normalizedRollout.afterLegacyCommit();
+      } catch (error) {
+        console.error(
+          "HerdHarbor normalized post-legacy sync failed:",
+          error?.code || error?.message || error
+        );
+        normalizedResult = {
+          ok: false,
+          mode: "dual-write-degraded",
+          normalizedPending: true,
+          normalizedErrorCode: error?.code || "normalized-post-legacy-failed"
+        };
+      }
+    }
+
+    const normalizedOk =
+      !normalizedHandled ||
+      (
+        normalizedResult?.ok !== false &&
+        normalizedResult?.mode !== "dual-write-degraded" &&
+        normalizedResult?.normalizedPending !== true
+      );
+
+    dispatchLegacyCloudCommit(sequence, updatedAt, {
+      normalizedHandled,
+      normalizedOk
+    });
+
+    return {
+      handled: normalizedHandled,
+      ok: normalizedOk,
+      result: normalizedResult
+    };
   }
 
   function safeParse(value) {
@@ -1416,8 +1468,18 @@
         safeStorageSet(dirtyKey(userId), "1");
       }
       syncConflict = null;
+      const normalized = await completeNormalizedAfterLegacyCommit(
+        sequence,
+        remoteRecord.updated_at || null
+      );
+      if (!normalized.ok) {
+        setSyncState(
+          "Legacy cloud is saved; normalized sync is still finishing and will retry.",
+          "error"
+        );
+        return false;
+      }
       setSyncState("Saved to cloud", "success");
-      dispatchLegacyCloudCommit(sequence, remoteRecord.updated_at || null);
       return true;
     }
 
@@ -1566,11 +1628,21 @@
     }
 
     syncConflict = null;
+    const normalized = await completeNormalizedAfterLegacyCommit(
+      sequence,
+      savedRecord?.updated_at || null
+    );
+    if (!normalized.ok) {
+      setSyncState(
+        "Legacy cloud is saved; normalized sync is still finishing and will retry.",
+        "error"
+      );
+      return false;
+    }
     setSyncState(
       autoMerged ? "Device and cloud changes combined and saved" : "Saved to cloud",
       "success"
     );
-    dispatchLegacyCloudCommit(sequence, savedRecord?.updated_at || null);
     return true;
   }
 
@@ -1659,6 +1731,38 @@
       } catch (error) {
         console.error("HerdHarbor normalized cloud save failed:", error);
         setSyncState("Normalized cloud unavailable; local changes remain protected.", "error");
+        return false;
+      }
+    }
+
+    const syncUserId = session?.user?.id;
+    const legacyDirty = syncUserId
+      ? originalGetItem.call(localStorage, dirtyKey(syncUserId)) === "1"
+      : false;
+    if (
+      syncUserId &&
+      normalizedRolloutStage() === "dual_write" &&
+      normalizedOutboxPending(syncUserId) &&
+      !legacyDirty &&
+      !pendingSync &&
+      normalizedRollout?.afterLegacyCommit
+    ) {
+      setSyncState("Finishing normalized cloud sync…", "working");
+      try {
+        const result = await normalizedRollout.afterLegacyCommit();
+        const ok =
+          result?.ok !== false &&
+          result?.mode !== "dual-write-degraded" &&
+          result?.normalizedPending !== true &&
+          !normalizedOutboxPending(syncUserId);
+        setSyncState(
+          ok ? "Saved to cloud" : "Normalized cloud sync is still pending; local changes remain protected.",
+          ok ? "success" : "error"
+        );
+        return ok;
+      } catch (error) {
+        console.error("HerdHarbor normalized retry failed:", error);
+        setSyncState("Normalized cloud sync is still pending; local changes remain protected.", "error");
         return false;
       }
     }
@@ -2679,7 +2783,7 @@
     setSyncState(syncState, syncConflict ? "error" : "success");
   }
 
-  async function hydrateUserData(activeSession) {
+  async function hydrateUserDataOnce(activeSession) {
     session = activeSession;
     dispatchAuthSession();
     await loadAccessProfile();
@@ -2872,6 +2976,23 @@
       safeStorageRemove(dirtyKey(userId));
       syncConflict = null;
 
+      if (rolloutDecision?.active === true && normalizedRollout?.afterLegacyCommit) {
+        setSyncState("Finishing normalized cloud sync…", "working");
+        const normalized = await normalizedRollout.afterLegacyCommit();
+        const normalizedOk =
+          normalized?.ok !== false &&
+          normalized?.mode !== "dual-write-degraded" &&
+          normalized?.normalizedPending !== true;
+        if (!normalizedOk) {
+          unlockApp();
+          setSyncState(
+            "Cloud records loaded, but normalized sync is still pending; local records remain protected.",
+            "error"
+          );
+          return;
+        }
+      }
+
       if (stateChanged) {
         const reloadKey = `hh_cloud_loaded_${userId}_${data.updated_at || "current"}`;
         if (!sessionStorage.getItem(reloadKey)) {
@@ -2883,9 +3004,6 @@
 
       unlockApp();
       setSyncState("Cloud records loaded", "success");
-      if (rolloutDecision?.active === true) {
-        void normalizedRollout?.afterLegacyCommit?.().catch?.(() => {});
-      }
       return;
     }
 
@@ -2911,6 +3029,28 @@
     unlockApp();
     setSyncState("New cloud account ready", "success");
     if (storedActiveRaw) window.location.reload();
+  }
+
+  async function hydrateUserData(activeSession) {
+    const userId = String(activeSession?.user?.id || "");
+    if (!userId) return hydrateUserDataOnce(activeSession);
+
+    if (hydrationInFlight && hydrationUserId === userId) {
+      return hydrationInFlight;
+    }
+
+    const run = hydrateUserDataOnce(activeSession);
+    hydrationUserId = userId;
+    hydrationInFlight = run;
+
+    try {
+      return await run;
+    } finally {
+      if (hydrationInFlight === run) {
+        hydrationInFlight = null;
+        hydrationUserId = "";
+      }
+    }
   }
 
   async function initialize() {
