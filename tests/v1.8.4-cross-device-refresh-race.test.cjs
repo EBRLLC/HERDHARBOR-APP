@@ -69,14 +69,17 @@ test("cloud refresh does not overwrite an edit made during recovery snapshot cre
 
 
 test("a clean device with confirmed cloud history captures its pre-edit state before becoming dirty", () => {
-  const helperStart = cloud.indexOf("async function captureCleanBaselineBeforeLocalCommit");
+  const helperStart = cloud.indexOf("function captureCleanBaselineBeforeLocalCommit");
   const helperEnd = cloud.indexOf("\n  async function handleCanonicalStateCommit", helperStart);
   assert.ok(helperStart >= 0 && helperEnd > helperStart, "baseline capture helper is present");
   const helper = cloud.slice(helperStart, helperEnd);
 
   assert.match(helper, /originalGetItem\.call\(localStorage, dirtyKey\(userId\)\) === "1"/);
   assert.match(helper, /!originalGetItem\.call\(localStorage, versionKey\(userId\)\)/);
-  assert.match(helper, /await writeCloudBaseline\(userId, previousValue\)/);
+  assert.match(helper, /cloudBaselineMemory\.set\(userId, previousValue\)/);
+  assert.match(helper, /void \(async \(\) => \{/);
+  assert.match(helper, /const stored = await writeCloudBaseline\(userId, previousValue\)/);
+  assert.match(helper, /if \(!stored\) return false;\s*dispatchBaselineRestored\(userId, reason\)/);
 
   const bridgeStart = cloud.indexOf("async function handleCanonicalStateCommit(detail)");
   const bridgeEnd = cloud.indexOf("\n  function installStateStoreBridge", bridgeStart);
@@ -85,12 +88,18 @@ test("a clean device with confirmed cloud history captures its pre-edit state be
   assert.match(bridge, /!detail\.cloudRelevant/);
   const captureIndex = bridge.indexOf("captureCleanBaselineBeforeLocalCommit(userId, previousValue)");
   const dirtyIndex = bridge.indexOf('safeStorageSet(dirtyKey(userId), "1")');
-  assert.ok(captureIndex >= 0 && dirtyIndex > captureIndex, "baseline capture runs before dirty state is set");
-  assert.match(bridge, /scheduleCloudSync\(rawValue, writeSequence\)/);
+  assert.ok(captureIndex >= 0 && dirtyIndex > captureIndex, "baseline staging runs before dirty state is set");
+  assert.doesNotMatch(
+    bridge,
+    /await captureCleanBaselineBeforeLocalCommit/,
+    "durable baseline I/O must not block cloud scheduling"
+  );
+  const scheduleIndex = bridge.indexOf("scheduleCloudSync(rawValue, writeSequence)", dirtyIndex);
+  assert.ok(scheduleIndex > dirtyIndex, "cloud save is scheduled immediately after dirty state is recorded");
 });
 
 test("a missing baseline is never invented once the device is dirty or lacks a confirmed cloud revision", () => {
-  const start = cloud.indexOf("async function captureCleanBaselineBeforeLocalCommit");
+  const start = cloud.indexOf("function captureCleanBaselineBeforeLocalCommit");
   const end = cloud.indexOf("\n  async function handleCanonicalStateCommit", start);
   const body = cloud.slice(start, end);
 

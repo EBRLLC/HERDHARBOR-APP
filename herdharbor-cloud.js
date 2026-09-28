@@ -1188,14 +1188,30 @@
     return true;
   }
 
-  async function captureCleanBaselineBeforeLocalCommit(userId, previousValue, reason = "before-local-edit") {
+  function captureCleanBaselineBeforeLocalCommit(userId, previousValue, reason = "before-local-edit") {
     if (!userId || !previousValue || !safeParse(previousValue)) return false;
-    if (await readCloudBaseline(userId)) return false;
+
+    const memoryBaseline = cloudBaselineMemory.get(userId);
+    if (memoryBaseline && safeParse(memoryBaseline)) return false;
+
     if (originalGetItem.call(localStorage, dirtyKey(userId)) === "1") return false;
     if (!originalGetItem.call(localStorage, versionKey(userId))) return false;
-    const stored = await writeCloudBaseline(userId, previousValue);
-    if (!stored) return false;
-    dispatchBaselineRestored(userId, reason);
+
+    // A clean local state immediately before the first edit is a safe merge
+    // baseline. Stage it synchronously so durable IndexedDB latency can never
+    // postpone the cloud-save timer. Persistence continues in the background,
+    // and the baseline-restored event keeps its existing durable-success
+    // semantics.
+    cloudBaselineMemory.set(userId, previousValue);
+    void (async () => {
+      const stored = await writeCloudBaseline(userId, previousValue);
+      if (!stored) return false;
+      dispatchBaselineRestored(userId, reason);
+      return true;
+    })().catch((error) => {
+      console.warn("HerdHarbor could not retain the pre-edit cloud baseline:", error);
+    });
+
     return true;
   }
 
@@ -1221,7 +1237,7 @@
       return true;
     }
 
-    await captureCleanBaselineBeforeLocalCommit(userId, previousValue);
+    captureCleanBaselineBeforeLocalCommit(userId, previousValue);
     safeStorageSet(dirtyKey(userId), "1");
     scheduleCloudSync(rawValue, writeSequence);
     return true;

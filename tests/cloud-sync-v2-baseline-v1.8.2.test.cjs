@@ -46,6 +46,16 @@ const flushAsync = () => new Promise((resolve) => setImmediate(resolve));
 function makeBridge(seed = {}) {
   const storage = new TestStorage({ [OWNER_KEY]: userId, ...seed });
   const baseline = new Map();
+  const cloudBaselineMemory = new Map();
+  const legacyBaselineStore = {
+    async get(id) {
+      return baseline.get(id) || null;
+    },
+    async set(id, raw) {
+      baseline.set(id, raw);
+      return true;
+    }
+  };
   const stateStore = StateStore.create({ storage, indexedDB: null, now: () => "2026-09-24T12:00:00.000Z" });
   const scheduled = [];
   const recovery = [];
@@ -73,6 +83,8 @@ function makeBridge(seed = {}) {
     "canonicalStateStore",
     "ACTIVE_OWNER_KEY",
     "safeParse",
+    "cloudBaselineMemory",
+    "legacyBaselineStore",
     "activeStateRaw",
     "safeStorageSet",
     "readCloudBaseline",
@@ -106,6 +118,8 @@ return {
     stateStore,
     OWNER_KEY,
     safeParse,
+    cloudBaselineMemory,
+    legacyBaselineStore,
     () => stateStore.compatibilitySnapshot(),
     (key, value) => { storage.setItem(key, value); return true; },
     async (id) => {
