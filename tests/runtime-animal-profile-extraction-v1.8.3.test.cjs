@@ -157,3 +157,21 @@ test("Phase 6B extraction remains compatible with formal v1.8.4 and does not act
   }
   assert.match(packageJson.scripts["test:v1.8.3"], /runtime-animal-profile-extraction-v1\.8\.3\.test\.cjs/);
 });
+
+
+test("animal photo save waits for pending preparation before reading form data", () => {
+  assert.match(extractedSource, /let photoPreparationPromise = null;/);
+  assert.match(extractedSource, /const preparation = \(async \(\) => \{/);
+  assert.match(extractedSource, /photoPreparationPromise = preparation;/);
+  assert.match(
+    extractedSource,
+    /addEventListener\("submit", async \(event\) => \{[\s\S]*if \(photoPreparationPromise\) \{[\s\S]*const prepared = await photoPreparationPromise;[\s\S]*if \(!prepared\) return;[\s\S]*new FormData\(form\)/
+  );
+});
+
+test("clearing an animal photo invalidates stale in-flight photo preparation", () => {
+  assert.match(extractedSource, /let photoPreparationToken = 0;/);
+  assert.match(extractedSource, /const token = \+\+photoPreparationToken;/);
+  assert.match(extractedSource, /if \(token !== photoPreparationToken\) return false;/);
+  assert.match(extractedSource, /photoPreparationToken \+= 1;[\s\S]*photoPreparationPromise = null;[\s\S]*pendingPhotoData = "";/);
+});

@@ -130,6 +130,8 @@
       const animal = id ? { ...defaults, ...(existing || {}) } : { ...defaults };
       let pendingPhotoData = animal.photoData || "";
       let pendingPhotoFileName = animal.photoFileName || "";
+      let photoPreparationPromise = null;
+      let photoPreparationToken = 0;
 
       deps.openModal(id ? "Edit animal" : "Add animal", `
         <form id="animal-form">
@@ -235,29 +237,45 @@
       birthWeightUnit?.addEventListener("change", refreshBirthWeightFields);
       refreshBirthWeightFields();
 
-      photoInput?.addEventListener("change", async () => {
+      photoInput?.addEventListener("change", () => {
         const file = photoInput.files?.[0];
         if (!file) return;
-        try {
-          if (photoStatus) photoStatus.textContent = "Preparing photo…";
-          const prepared = await deps.prepareProfileImage(file, {
-            maxDimension: 560,
-            targetBytes: 65000,
-            outputType: "image/jpeg",
-            background: "#ffffff"
-          });
-          pendingPhotoData = prepared.dataUrl;
-          pendingPhotoFileName = prepared.fileName;
-          refreshPhotoPreview();
-          deps.toast(prepared.compressed ? "Animal photo compressed and ready." : "Animal photo ready.", "success");
-        } catch (error) {
-          photoInput.value = "";
-          if (photoStatus) photoStatus.textContent = error.message || "The photo could not be prepared.";
-          deps.toast(photoStatus?.textContent || "The photo could not be prepared.", "error");
-        }
+        const token = ++photoPreparationToken;
+        if (photoStatus) photoStatus.textContent = "Preparing photo…";
+
+        const preparation = (async () => {
+          try {
+            const prepared = await deps.prepareProfileImage(file, {
+              maxDimension: 560,
+              targetBytes: 65000,
+              outputType: "image/jpeg",
+              background: "#ffffff"
+            });
+            if (token !== photoPreparationToken) return false;
+            pendingPhotoData = prepared.dataUrl;
+            pendingPhotoFileName = prepared.fileName;
+            refreshPhotoPreview();
+            deps.toast(prepared.compressed ? "Animal photo compressed and ready." : "Animal photo ready.", "success");
+            return true;
+          } catch (error) {
+            if (token !== photoPreparationToken) return false;
+            photoInput.value = "";
+            if (photoStatus) photoStatus.textContent = error.message || "The photo could not be prepared.";
+            deps.toast(photoStatus?.textContent || "The photo could not be prepared.", "error");
+            return false;
+          } finally {
+            if (token === photoPreparationToken && photoPreparationPromise === preparation) {
+              photoPreparationPromise = null;
+            }
+          }
+        })();
+
+        photoPreparationPromise = preparation;
       });
 
       defaultButton?.addEventListener("click", () => {
+        photoPreparationToken += 1;
+        photoPreparationPromise = null;
         pendingPhotoData = "";
         pendingPhotoFileName = "";
         if (photoInput) photoInput.value = "";
@@ -265,10 +283,18 @@
       });
 
       $("#cancel-modal")?.addEventListener("click", deps.closeModal);
-      $("#animal-form")?.addEventListener("submit", (event) => {
+      $("#animal-form")?.addEventListener("submit", async (event) => {
         event.preventDefault();
+        const form = event.currentTarget;
+
+        if (photoPreparationPromise) {
+          if (photoStatus) photoStatus.textContent = "Finishing photo preparation before saving…";
+          const prepared = await photoPreparationPromise;
+          if (!prepared) return;
+        }
+
         const liveState = stateNow();
-        const data = Object.fromEntries(new FormData(event.currentTarget));
+        const data = Object.fromEntries(new FormData(form));
         data.breed = String(data.breed || "").trim();
         if (String(data.species || "").trim().toLowerCase() !== "cattle") {
           data.earTagNumber = "";
