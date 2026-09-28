@@ -18,14 +18,11 @@ function extractCaptureFactory() {
     "cloudBaselineMemory",
     "originalGetItem",
     "localStorage",
-    "baseKey",
-    "legacyBaselineStore",
-    "safeStorageRemove",
     "console",
     "dirtyKey",
     "versionKey",
+    "writeCloudBaseline",
     "dispatchBaselineRestored",
-    "safeStorageSet",
     `
       "use strict";
       ${source.slice(start, end)}
@@ -34,25 +31,15 @@ function extractCaptureFactory() {
   );
 }
 
-function createHarness({ durableGet = () => new Promise(() => {}), storageValues = {} } = {}) {
+function createHarness({ writeCloudBaseline = () => new Promise(() => {}), storageValues = {} } = {}) {
   const cloudBaselineMemory = new Map();
   const storage = new Map(Object.entries(storageValues));
   const restored = [];
-  const fallbackWrites = [];
-  const durableSets = [];
-  const removes = [];
+  const warnings = [];
 
   const originalGetItem = {
     call(_storage, key) {
       return storage.get(String(key)) ?? null;
-    }
-  };
-
-  const legacyBaselineStore = {
-    get: durableGet,
-    async set(userId, rawValue) {
-      durableSets.push({ userId, rawValue });
-      return true;
     }
   };
 
@@ -68,33 +55,19 @@ function createHarness({ durableGet = () => new Promise(() => {}), storageValues
     cloudBaselineMemory,
     originalGetItem,
     {},
-    (userId) => `base:${userId}`,
-    legacyBaselineStore,
-    (key) => removes.push(key),
-    { warn() {} },
+    { warn: (...args) => warnings.push(args) },
     (userId) => `dirty:${userId}`,
     (userId) => `version:${userId}`,
-    (userId, reason) => restored.push({ userId, reason }),
-    (key, value) => {
-      fallbackWrites.push({ key, value });
-      storage.set(key, value);
-      return true;
-    }
+    writeCloudBaseline,
+    (userId, reason) => restored.push({ userId, reason })
   );
 
-  return {
-    capture,
-    cloudBaselineMemory,
-    restored,
-    fallbackWrites,
-    durableSets,
-    removes
-  };
+  return { capture, cloudBaselineMemory, restored, warnings };
 }
 
-test("first clean local edit stages its merge baseline without waiting for IndexedDB", () => {
+test("first clean local edit stages its merge baseline without waiting for durable persistence", () => {
   const h = createHarness({
-    durableGet: () => new Promise(() => {}),
+    writeCloudBaseline: () => new Promise(() => {}),
     storageValues: {
       "version:owner-1": "2026-09-28T05:00:00.000Z"
     }
@@ -106,11 +79,16 @@ test("first clean local edit stages its merge baseline without waiting for Index
   assert.equal(result, true);
   assert.equal(result instanceof Promise, false);
   assert.equal(h.cloudBaselineMemory.get("owner-1"), previousRaw);
-  assert.deepEqual(h.restored, [{ userId: "owner-1", reason: "before-local-edit" }]);
+  assert.deepEqual(h.restored, [], "durable-success event must not fire while persistence is still pending");
 });
 
 test("an existing in-memory cloud baseline is never replaced by the pre-edit state", () => {
+  let writes = 0;
   const h = createHarness({
+    writeCloudBaseline: async () => {
+      writes += 1;
+      return true;
+    },
     storageValues: {
       "version:owner-1": "2026-09-28T05:00:00.000Z"
     }
@@ -124,24 +102,29 @@ test("an existing in-memory cloud baseline is never replaced by the pre-edit sta
 
   assert.equal(result, false);
   assert.equal(h.cloudBaselineMemory.get("owner-1"), confirmed);
+  assert.equal(writes, 0);
   assert.equal(h.restored.length, 0);
 });
 
-test("a legacy localStorage baseline is promoted to memory synchronously", () => {
-  const legacyRaw = JSON.stringify({ tasks: [{ id: "task-1", title: "legacy-base" }] });
+test("baseline-restored event remains gated on successful durable persistence", async () => {
+  let resolveWrite;
+  const writePromise = new Promise((resolve) => {
+    resolveWrite = resolve;
+  });
   const h = createHarness({
+    writeCloudBaseline: () => writePromise,
     storageValues: {
-      "base:owner-1": legacyRaw,
       "version:owner-1": "2026-09-28T05:00:00.000Z"
     }
   });
 
-  const result = h.capture(
-    "owner-1",
-    JSON.stringify({ tasks: [{ id: "task-1", title: "before" }] }),
-    "before-local-edit"
-  );
+  const previousRaw = JSON.stringify({ tasks: [{ id: "task-1", title: "before" }] });
+  assert.equal(h.capture("owner-1", previousRaw, "before-local-edit"), true);
+  assert.deepEqual(h.restored, []);
 
-  assert.equal(result, false);
-  assert.equal(h.cloudBaselineMemory.get("owner-1"), legacyRaw);
+  resolveWrite(true);
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.deepEqual(h.restored, [{ userId: "owner-1", reason: "before-local-edit" }]);
 });
