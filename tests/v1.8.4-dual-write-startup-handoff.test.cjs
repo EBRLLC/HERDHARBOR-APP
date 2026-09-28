@@ -8,6 +8,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const cloudSource = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const rolloutApi = require(path.join(root, "cloud-sync-rollout-runtime-v1.8.4.js"));
+// Startup handoff regressions mirror the owner-account production failure sequence.
 
 function extract(source, startText, endText) {
   const start = source.indexOf(startText);
