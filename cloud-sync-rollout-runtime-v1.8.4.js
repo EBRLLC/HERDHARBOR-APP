@@ -567,6 +567,66 @@
       });
     }
 
+    async function refreshDualWriteBaseline() {
+      const ctx = await ensureContext();
+      if (!ctx) return Object.freeze({ ok: true, skipped: true, reason: "not-eligible", stage: "legacy" });
+
+      const { stage } = await refreshContextStage(ctx);
+      if (stage !== "dual_write") {
+        return Object.freeze({ ok: true, skipped: true, reason: "not-dual-write", stage });
+      }
+
+      const pending = stateStore.getOutbox(ctx.userId).length;
+      if (pending > 0) {
+        validationPasses = 0;
+        lastValidation = null;
+        const result = Object.freeze({
+          ok: false,
+          skipped: true,
+          stage,
+          reason: "pending-normalized-mutations",
+          pending
+        });
+        emit("dual-write-baseline-refresh-blocked", {
+          stage,
+          reason: result.reason
+        });
+        return result;
+      }
+
+      const primed = await ctx.worker.primeBaseline({ force: true });
+      if (!primed?.ok) {
+        validationPasses = 0;
+        lastValidation = null;
+        const result = Object.freeze({
+          ok: false,
+          skipped: primed?.skipped === true,
+          stage,
+          reason: primed?.reason || "normalized-baseline-unavailable"
+        });
+        emit("dual-write-baseline-refresh-blocked", {
+          stage,
+          reason: result.reason
+        });
+        return result;
+      }
+
+      validationPasses = 0;
+      lastValidation = null;
+      const generation = Number(
+        primed?.manifest?.sync_generation ??
+        primed?.manifest?.syncGeneration
+      );
+      emit("dual-write-baseline-refreshed", { stage, ok: true });
+      return Object.freeze({
+        ok: true,
+        skipped: false,
+        stage,
+        rows: Number(primed?.rows || 0),
+        generation: Number.isSafeInteger(generation) ? generation : null
+      });
+    }
+
     async function syncNormalizedNow() {
       const ctx = await ensureContext();
       if (!ctx) return Object.freeze({ ok: true, skipped: true, reason: "not-eligible" });
@@ -895,6 +955,7 @@
       checkEligibility,
       afterLegacyCommit,
       prepareHydration,
+      refreshDualWriteBaseline,
       syncNormalizedNow,
       refreshAuthoritative,
       isNormalizedAuthority,
