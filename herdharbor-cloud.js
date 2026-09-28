@@ -1894,6 +1894,14 @@
     const confirmedBase = await readCloudBaseline(userId);
 
     if (activeRaw && sameState(activeRaw, remoteRaw)) {
+      const baselineRefresh = await refreshDualWriteBaselineForRemoteState();
+      if (baselineRefresh?.ok === false) {
+        setSyncState(
+          "Cloud records match, but normalized sync protection could not refresh yet.",
+          "error"
+        );
+        return false;
+      }
       await writeCloudBaseline(userId, remoteRaw);
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       setSyncState("Saved to cloud", "success");
@@ -2831,16 +2839,16 @@
         }
         await recordRecoverySnapshot(userId, activeRaw, "Local copy before loading newer cloud records");
       }
-      if (stateChanged) {
-        const baselineRefresh = await refreshDualWriteBaselineForRemoteState();
-        if (baselineRefresh?.ok === false) {
-          setSyncState(
-            "Cloud records are newer, but normalized sync protection could not refresh yet.",
-            "error"
-          );
-          unlockApp();
-          return;
-        }
+      const baselineRefresh = await refreshDualWriteBaselineForRemoteState();
+      if (baselineRefresh?.ok === false) {
+        setSyncState(
+          stateChanged
+            ? "Cloud records are newer, but normalized sync protection could not refresh yet."
+            : "Cloud records loaded, but normalized sync protection could not refresh yet.",
+          "error"
+        );
+        unlockApp();
+        return;
       }
       setActiveUserData(userId, deviceCloudRaw);
       await writeCloudBaseline(userId, cloudRaw);
