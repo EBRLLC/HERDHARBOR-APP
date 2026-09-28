@@ -1041,7 +1041,8 @@
       if (started) return status();
       started = true;
 
-      root?.document?.addEventListener?.("herdharbor:legacy-cloud-commit", () => {
+      root?.document?.addEventListener?.("herdharbor:legacy-cloud-commit", (event) => {
+        if (event?.detail?.normalizedHandled === true) return;
         commitChain = commitChain.then(afterLegacyCommit, afterLegacyCommit);
       });
       root?.document?.addEventListener?.("herdharbor:auth-session", () => {
