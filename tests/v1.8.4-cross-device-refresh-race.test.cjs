@@ -94,7 +94,7 @@ test("a clean device with confirmed cloud history captures its pre-edit state be
     /await captureCleanBaselineBeforeLocalCommit/,
     "durable baseline I/O must not block cloud scheduling"
   );
-  const scheduleIndex = bridge.indexOf("scheduleCloudSync(rawValue, writeSequence)");
+  const scheduleIndex = bridge.indexOf("scheduleCloudSync(rawValue, writeSequence)", dirtyIndex);
   assert.ok(scheduleIndex > dirtyIndex, "cloud save is scheduled immediately after dirty state is recorded");
 });
 
