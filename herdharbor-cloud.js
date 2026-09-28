@@ -595,7 +595,10 @@
     let normalizedHandled = false;
     let normalizedResult = null;
 
-    if (normalizedRollout?.afterLegacyCommit) {
+    if (
+      normalizedRolloutStage() === "dual_write" &&
+      normalizedRollout?.afterLegacyCommit
+    ) {
       normalizedHandled = true;
       try {
         normalizedResult = await normalizedRollout.afterLegacyCommit({ ensureCurrent: true });
@@ -2959,6 +2962,32 @@
         }
         await recordRecoverySnapshot(userId, activeRaw, "Local copy before loading newer cloud records");
       }
+      let normalizedRepairedBeforeHydration = false;
+      if (
+        rolloutDecision?.stage === "dual_write" &&
+        activeRaw &&
+        sameState(activeRaw, cloudRaw) &&
+        normalizedOutboxPending(userId) &&
+        normalizedRollout?.afterLegacyCommit
+      ) {
+        setSyncState("Repairing normalized cloud records…", "working");
+        const repaired = await normalizedRollout.afterLegacyCommit({ ensureCurrent: true });
+        const repairedOk =
+          repaired?.ok !== false &&
+          repaired?.mode !== "dual-write-degraded" &&
+          repaired?.normalizedPending !== true &&
+          !normalizedOutboxPending(userId);
+        if (!repairedOk) {
+          unlockApp();
+          setSyncState(
+            "Cloud records are safe, but normalized sync still needs attention.",
+            "error"
+          );
+          return;
+        }
+        normalizedRepairedBeforeHydration = true;
+      }
+
       const baselineRefresh = await refreshDualWriteBaselineForRemoteState();
       if (baselineRefresh?.ok === false) {
         setSyncState(
@@ -2977,6 +3006,7 @@
       syncConflict = null;
 
       if (
+        !normalizedRepairedBeforeHydration &&
         rolloutDecision?.stage === "dual_write" &&
         normalizedRollout?.afterLegacyCommit
       ) {
