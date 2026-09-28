@@ -598,7 +598,7 @@
     if (normalizedRollout?.afterLegacyCommit) {
       normalizedHandled = true;
       try {
-        normalizedResult = await normalizedRollout.afterLegacyCommit();
+        normalizedResult = await normalizedRollout.afterLegacyCommit({ ensureCurrent: true });
       } catch (error) {
         console.error(
           "HerdHarbor normalized post-legacy sync failed:",
@@ -1749,7 +1749,7 @@
     ) {
       setSyncState("Finishing normalized cloud sync…", "working");
       try {
-        const result = await normalizedRollout.afterLegacyCommit();
+        const result = await normalizedRollout.afterLegacyCommit({ ensureCurrent: true });
         const ok =
           result?.ok !== false &&
           result?.mode !== "dual-write-degraded" &&
@@ -2976,9 +2976,12 @@
       safeStorageRemove(dirtyKey(userId));
       syncConflict = null;
 
-      if (rolloutDecision?.active === true && normalizedRollout?.afterLegacyCommit) {
+      if (
+        rolloutDecision?.stage === "dual_write" &&
+        normalizedRollout?.afterLegacyCommit
+      ) {
         setSyncState("Finishing normalized cloud sync…", "working");
-        const normalized = await normalizedRollout.afterLegacyCommit();
+        const normalized = await normalizedRollout.afterLegacyCommit({ ensureCurrent: true });
         const normalizedOk =
           normalized?.ok !== false &&
           normalized?.mode !== "dual-write-degraded" &&
