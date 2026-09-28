@@ -470,10 +470,14 @@
           ok: true,
           updated_at: null
         });
-        if (
-          result?.legacySaved === true &&
-          (result?.mode === "dual-write-degraded" || result?.normalizedPending === true)
-        ) {
+        const normalizedErrorCode = String(result?.normalizedErrorCode || "");
+        const conflictLikeDegradation =
+          Number(result?.normalizedConflicts || 0) > 0 ||
+          normalizedErrorCode === "HH_SYNC_RECORD_CONFLICT" ||
+          normalizedErrorCode === "HH_SYNC_RECORD_RETRY_PENDING" ||
+          normalizedErrorCode === "HH_SYNC_CONFLICT" ||
+          normalizedErrorCode === "HH_SYNC_CONFLICT_RETRY";
+        if (result?.legacySaved === true && conflictLikeDegradation) {
           result = await reconcileDualWriteFromLegacyAuthority(ctx, result);
         }
       } else {
