@@ -1194,49 +1194,23 @@
     const memoryBaseline = cloudBaselineMemory.get(userId);
     if (memoryBaseline && safeParse(memoryBaseline)) return false;
 
-    const legacyRaw = originalGetItem.call(localStorage, baseKey(userId));
-    if (legacyRaw && safeParse(legacyRaw)) {
-      cloudBaselineMemory.set(userId, legacyRaw);
-      if (legacyBaselineStore) {
-        void legacyBaselineStore.set(userId, legacyRaw)
-          .then(() => safeStorageRemove(baseKey(userId)))
-          .catch((error) => {
-            console.warn("HerdHarbor could not migrate the cloud baseline to durable storage:", error);
-          });
-      }
-      return false;
-    }
-
     if (originalGetItem.call(localStorage, dirtyKey(userId)) === "1") return false;
     if (!originalGetItem.call(localStorage, versionKey(userId))) return false;
 
     // A clean local state immediately before the first edit is a safe merge
-    // baseline. Stage it synchronously so IndexedDB latency can never postpone
-    // the cloud-save timer, then reconcile/persist durable storage in the
-    // background.
+    // baseline. Stage it synchronously so durable IndexedDB latency can never
+    // postpone the cloud-save timer. Persistence continues in the background,
+    // and the baseline-restored event keeps its existing durable-success
+    // semantics.
     cloudBaselineMemory.set(userId, previousValue);
-    dispatchBaselineRestored(userId, reason);
-
-    if (legacyBaselineStore) {
-      void (async () => {
-        try {
-          const durableRaw = await legacyBaselineStore.get(userId);
-          if (durableRaw && safeParse(durableRaw)) {
-            if (cloudBaselineMemory.get(userId) === previousValue) {
-              cloudBaselineMemory.set(userId, durableRaw);
-            }
-            return;
-          }
-          await legacyBaselineStore.set(userId, previousValue);
-          safeStorageRemove(baseKey(userId));
-        } catch (error) {
-          console.warn("HerdHarbor could not retain the durable cloud baseline:", error);
-          safeStorageSet(baseKey(userId), previousValue);
-        }
-      })();
-    } else {
-      safeStorageSet(baseKey(userId), previousValue);
-    }
+    void (async () => {
+      const stored = await writeCloudBaseline(userId, previousValue);
+      if (!stored) return false;
+      dispatchBaselineRestored(userId, reason);
+      return true;
+    })().catch((error) => {
+      console.warn("HerdHarbor could not retain the pre-edit cloud baseline:", error);
+    });
 
     return true;
   }
