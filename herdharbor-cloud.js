@@ -100,6 +100,7 @@
   let normalizedRefreshInFlight = null;
   let hydrationInFlight = null;
   let hydrationUserId = "";
+  let lastHydratedUserId = "";
   let recoveryMode = (() => {
     try {
       const url = new URL(window.location.href);
@@ -3077,7 +3078,13 @@
     hydrationInFlight = run;
 
     try {
-      return await run;
+      const result = await run;
+      const stillCurrentUser = String(session?.user?.id || "") === userId;
+      const appUnlocked = !document.documentElement?.classList?.contains?.("hh-auth-locked");
+      if (stillCurrentUser && appUnlocked && !recoveryMode) {
+        lastHydratedUserId = userId;
+      }
+      return result;
     } finally {
       if (hydrationInFlight === run) {
         hydrationInFlight = null;
@@ -3133,7 +3140,17 @@
         authMessage("Your reset link is valid. Choose a new password.", "info");
         return;
       }
-      hydrateUserData(activeSession);
+
+      const signedInUserId = String(activeSession.user?.id || "");
+      const appUnlocked = !document.documentElement?.classList?.contains?.("hh-auth-locked");
+      if (signedInUserId && signedInUserId === lastHydratedUserId && appUnlocked) {
+        dispatchAuthSession();
+        void loadAccessProfile();
+        void window.HerdHarborBilling?.refresh?.();
+        return;
+      }
+
+      void hydrateUserData(activeSession);
       return;
     }
 
@@ -3149,6 +3166,7 @@
       const previousUserId = session?.user?.id;
       preserveActiveForUser(previousUserId, "Local copy retained after session ended");
       session = null;
+      lastHydratedUserId = "";
       normalizedCohortStatusCache = null;
       normalizedCohortStatusInFlight = null;
       dispatchAuthSession();

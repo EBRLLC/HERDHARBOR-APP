@@ -30,20 +30,38 @@ test("startup hydration dedupes concurrent getSession/SIGNED_IN calls for the sa
 
   const factory = new Function(
     "hydrateUserDataOnce",
+    "session",
+    "document",
+    "recoveryMode",
     `
       "use strict";
       let hydrationInFlight = null;
       let hydrationUserId = "";
+      let lastHydratedUserId = "";
       ${fnSource}
       return hydrateUserData;
     `
   );
 
-  const hydrate = factory(async () => {
-    calls += 1;
-    await gate;
-    return "done";
-  });
+  const sessionState = { user: { id: "owner-1" } };
+  const documentState = {
+    documentElement: {
+      classList: {
+        contains() { return false; }
+      }
+    }
+  };
+
+  const hydrate = factory(
+    async () => {
+      calls += 1;
+      await gate;
+      return "done";
+    },
+    sessionState,
+    documentState,
+    false
+  );
 
   const session = { user: { id: "owner-1" } };
   const first = hydrate(session);
@@ -325,4 +343,35 @@ test("startup repairs a matching pending dual-write outbox before baseline refre
   assert.ok(repairIndex >= 0, "startup must detect and repair a pending dual-write outbox");
   assert.ok(reconcileIndex > repairIndex, "startup repair must await authoritative reconciliation");
   assert.ok(baselineIndex > reconcileIndex, "baseline refresh must wait until pending normalized work is repaired");
+});
+
+
+test("redundant same-user SIGNED_IN does not rehydrate an already unlocked app", () => {
+  const source = cloudSource;
+  assert.match(
+    source,
+    /signedInUserId && signedInUserId === lastHydratedUserId && appUnlocked/
+  );
+  assert.match(
+    source,
+    /dispatchAuthSession\(\);[\s\S]*void loadAccessProfile\(\);[\s\S]*void window\.HerdHarborBilling\?\.refresh\?\.\(\);[\s\S]*return;/
+  );
+  assert.match(
+    source,
+    /lastHydratedUserId = "";/,
+    "sign-out must clear the same-user hydration guard"
+  );
+});
+
+test("completed unlocked hydration records the hydrated user only after the run settles", () => {
+  const fnSource = extract(
+    cloudSource,
+    "  async function hydrateUserData(activeSession)",
+    "  async function initialize()"
+  );
+
+  assert.match(fnSource, /const result = await run;/);
+  assert.match(fnSource, /stillCurrentUser/);
+  assert.match(fnSource, /appUnlocked/);
+  assert.match(fnSource, /lastHydratedUserId = userId;/);
 });
