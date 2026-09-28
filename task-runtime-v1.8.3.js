@@ -203,7 +203,8 @@
       return { label: "Upcoming", tone: "" };
     }
   
-    function syncDerivedAutomation(now = new Date().toISOString()) {
+    function syncDerivedAutomation(now = new Date().toISOString(), options = {}) {
+      const persist = options.persist !== false;
       const automation = root.HerdHarborTaskAutomation;
       if (typeof automation?.deriveTaskDefinitions !== "function") return { changed: false, created: 0, updated: 0, completed: 0, reopened: 0 };
       const state = stateNow();
@@ -297,7 +298,7 @@
         changed = true;
       });
 
-      if (changed) saveState();
+      if (changed && persist) saveState();
       return { changed, created, updated, completed, reopened };
     }
 
@@ -383,8 +384,10 @@
       $$("[data-toggle-task]", root).forEach((box) => box.addEventListener("change", () => {
         const task = stateNow().tasks.find((item) => item.id === box.dataset.toggleTask);
         if (!task) return;
-        const next = setTaskCompleted(task, box.checked);
+        const now = new Date().toISOString();
+        const next = setTaskCompleted(task, box.checked, now);
         recordActivity(`${box.checked ? "Completed" : "Reopened"} task: ${task.title}.`, "task");
+        syncDerivedAutomation(now, { persist: false });
         const message = next
           ? `Task completed. Next task scheduled for ${formatDate(next.dueDate)}.`
           : box.checked ? "Task completed." : "Task reopened.";
@@ -394,9 +397,11 @@
       $$("[data-task-tomorrow]", root).forEach((button) => button.addEventListener("click", () => {
         const task = stateNow().tasks.find((item) => item.id === button.dataset.taskTomorrow);
         if (!task) return;
+        const now = new Date().toISOString();
         task.dueDate = addDays(todayISO(), 1);
-        task.updatedAt = new Date().toISOString();
+        task.updatedAt = now;
         recordActivity(`Moved task to tomorrow: ${task.title}.`, "task");
+        syncDerivedAutomation(now, { persist: false });
         saveState("Task moved to tomorrow.");
         renderTasks();
       }));
@@ -474,13 +479,16 @@
         }
         const next = setTaskCompleted(savedTask, completed, now);
         recordActivity(`${id ? "Updated" : "Added"} task: ${data.title}.`, "task");
+        syncDerivedAutomation(now, { persist: false });
         saveState(next ? `Task saved. Next task scheduled for ${formatDate(next.dueDate)}.` : id ? "Task updated." : "Task added.");
         closeModal();
         renderCurrentView();
       });
       $("#delete-task")?.addEventListener("click", () => {
         if (!confirm("Delete this task? Future recurring tasks already created will remain available.")) return;
+        const now = new Date().toISOString();
         stateNow().tasks = stateNow().tasks.filter((item) => item.id !== id);
+        syncDerivedAutomation(now, { persist: false });
         saveState("Task deleted.");
         closeModal();
         renderCurrentView();
