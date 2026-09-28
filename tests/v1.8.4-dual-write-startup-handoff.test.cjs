@@ -241,7 +241,7 @@ test("clean cloud hydration finishes normalized repair before any reload", () =>
     legacyCloudBranch
   );
   const awaitIndex = hydrateSource.indexOf(
-    "const normalized = await normalizedRollout.afterLegacyCommit()",
+    "const normalized = await normalizedRollout.afterLegacyCommit({ ensureCurrent: true })",
     legacyCloudBranch
   );
   const reloadIndex = hydrateSource.indexOf(
