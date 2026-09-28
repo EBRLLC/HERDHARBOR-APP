@@ -327,7 +327,7 @@
 
     async function reconcileDualWriteFromLegacyAuthority(ctx, degradedResult) {
       const pendingBefore = stateStore.getOutbox(ctx.userId);
-      if (!Array.isArray(pendingBefore) || pendingBefore.length === 0) return degradedResult;
+      if (!Array.isArray(pendingBefore)) return degradedResult;
       if (typeof stateStore.acknowledgeMutations !== "function") return degradedResult;
 
       const legacyRead = await cloud.readLegacySnapshotForNormalizedSync();
@@ -451,7 +451,7 @@
       }
     }
 
-    async function afterLegacyCommit() {
+    async function afterLegacyCommit(options = {}) {
       const ctx = await ensureContext();
       if (!ctx) return { ok: true, skipped: true, reason: "not-eligible" };
 
@@ -477,7 +477,18 @@
           normalizedErrorCode === "HH_SYNC_RECORD_RETRY_PENDING" ||
           normalizedErrorCode === "HH_SYNC_CONFLICT" ||
           normalizedErrorCode === "HH_SYNC_CONFLICT_RETRY";
-        if (result?.legacySaved === true && conflictLikeDegradation) {
+        const noNormalizedWork =
+          result?.mode === "dual-write" &&
+          result?.normalizedPending !== true &&
+          Number(result?.normalizedResult?.processed || 0) === 0 &&
+          Number(result?.normalizedResult?.pending || 0) === 0;
+        if (
+          result?.legacySaved === true &&
+          (
+            conflictLikeDegradation ||
+            (options?.ensureCurrent === true && noNormalizedWork)
+          )
+        ) {
           result = await reconcileDualWriteFromLegacyAuthority(ctx, result);
         }
       } else {
@@ -1030,7 +1041,8 @@
       if (started) return status();
       started = true;
 
-      root?.document?.addEventListener?.("herdharbor:legacy-cloud-commit", () => {
+      root?.document?.addEventListener?.("herdharbor:legacy-cloud-commit", (event) => {
+        if (event?.detail?.normalizedHandled === true) return;
         commitChain = commitChain.then(afterLegacyCommit, afterLegacyCommit);
       });
       root?.document?.addEventListener?.("herdharbor:auth-session", () => {

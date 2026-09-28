@@ -10,7 +10,7 @@ function stable(value) {
   return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stable(value[key])}`).join(",")}}`;
 }
 
-function createHarness({ localState, legacyState, pending = ["m-1"] }) {
+function createHarness({ localState, legacyState, pending = ["m-1"], coordinatorMode = "conflict" }) {
   let outbox = pending.map((mutationId, index) => ({
     mutationId,
     ownerId: "owner-1",
@@ -141,6 +141,30 @@ function createHarness({ localState, legacyState, pending = ["m-1"] }) {
         return {
           async afterLegacySave() {
             calls.push(["afterLegacySave"]);
+            if (coordinatorMode === "no-work") {
+              return {
+                ok: true,
+                mode: "dual-write",
+                legacySaved: true,
+                normalizedSaved: false,
+                normalizedCurrent: true,
+                normalizedVerified: false,
+                normalizedPending: false,
+                verificationPending: true,
+                normalizedPendingCount: 0,
+                normalizedErrorCode: null,
+                normalizedResult: {
+                  ok: true,
+                  processed: 0,
+                  succeeded: 0,
+                  failed: 0,
+                  conflicts: 0,
+                  pending: 0,
+                  results: []
+                },
+                legacyResult: { ok: true }
+              };
+            }
             return {
               ok: false,
               mode: "dual-write-degraded",
@@ -268,4 +292,53 @@ test("dual-write authority repair refuses to acknowledge anything when local sta
   assert.equal(h.getOutbox().length, 1);
   assert.equal(h.calls.some((entry) => entry[0] === "shadowSync"), false);
   assert.equal(h.calls.some((entry) => entry[0] === "acknowledge"), false);
+});
+
+
+test("ensureCurrent reconciles authoritative legacy when the normalized outbox is empty", async () => {
+  const state = {
+    animals: [{ id: "animal-1", name: "Sierra", photoFileName: "IMG_1408-profile.jpg" }]
+  };
+  const h = createHarness({
+    localState: state,
+    legacyState: state,
+    pending: [],
+    coordinatorMode: "no-work"
+  });
+
+  const result = await h.runtime.afterLegacyCommit({ ensureCurrent: true });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.mode, "dual-write");
+  assert.equal(result.normalizedCurrent, true);
+  assert.equal(result.normalizedVerified, true);
+  assert.equal(result.normalizedPending, false);
+  assert.equal(result.authoritativeLegacyReconcile?.ok, true);
+  assert.equal(result.authoritativeLegacyReconcile?.coveredMutations, 0);
+  assert.equal(h.calls.some((entry) => entry[0] === "shadowSync"), true);
+  assert.equal(h.calls.some((entry) => entry[0] === "verify"), true);
+  assert.deepEqual(
+    h.calls.find((entry) => entry[0] === "primeBaseline"),
+    ["primeBaseline", { force: true }]
+  );
+});
+
+test("empty normalized outbox stays lightweight unless ensureCurrent is requested", async () => {
+  const state = {
+    animals: [{ id: "animal-1", name: "Sierra" }]
+  };
+  const h = createHarness({
+    localState: state,
+    legacyState: state,
+    pending: [],
+    coordinatorMode: "no-work"
+  });
+
+  const result = await h.runtime.afterLegacyCommit();
+
+  assert.equal(result.ok, true);
+  assert.equal(result.mode, "dual-write");
+  assert.equal(result.normalizedPending, false);
+  assert.equal(h.calls.some((entry) => entry[0] === "shadowSync"), false);
+  assert.equal(h.calls.some((entry) => entry[0] === "verify"), false);
 });
