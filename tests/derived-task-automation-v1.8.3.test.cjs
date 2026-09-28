@@ -126,6 +126,24 @@ test("TaskRuntime reconciliation is idempotent and creates no duplicate derived 
   assert.equal(getSaves(), 1);
 });
 
+
+
+test("derived automation can be folded into an originating user save without creating a second persistence commit", () => {
+  const state = fixture();
+  const { api, getSaves } = createApi(state);
+
+  const result = api.syncDerivedAutomation("2026-09-22T12:00:00.000Z", { persist: false });
+
+  assert.equal(result.changed, true);
+  assert.equal(result.created, 5);
+  assert.equal(state.tasks.length, 5);
+  assert.equal(getSaves(), 0, "derived changes must not persist separately when folded into an existing save");
+
+  const second = api.syncDerivedAutomation("2026-09-22T12:01:00.000Z");
+  assert.deepEqual(second, { changed: false, created: 0, updated: 0, completed: 0, reopened: 0 });
+  assert.equal(getSaves(), 0, "render reconciliation must remain idempotent after folded automation");
+});
+
 test("existing canonical breeding reminders are not duplicated or adopted by Phase 9F automation", () => {
   const state = fixture();
   state.tasks.push({
