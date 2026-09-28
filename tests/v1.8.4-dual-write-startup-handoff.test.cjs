@@ -30,20 +30,38 @@ test("startup hydration dedupes concurrent getSession/SIGNED_IN calls for the sa
 
   const factory = new Function(
     "hydrateUserDataOnce",
+    "session",
+    "document",
+    "recoveryMode",
     `
       "use strict";
       let hydrationInFlight = null;
       let hydrationUserId = "";
+      let lastHydratedUserId = "";
       ${fnSource}
       return hydrateUserData;
     `
   );
 
-  const hydrate = factory(async () => {
-    calls += 1;
-    await gate;
-    return "done";
-  });
+  const sessionState = { user: { id: "owner-1" } };
+  const documentState = {
+    documentElement: {
+      classList: {
+        contains() { return false; }
+      }
+    }
+  };
+
+  const hydrate = factory(
+    async () => {
+      calls += 1;
+      await gate;
+      return "done";
+    },
+    sessionState,
+    documentState,
+    false
+  );
 
   const session = { user: { id: "owner-1" } };
   const first = hydrate(session);
