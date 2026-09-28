@@ -111,6 +111,7 @@ test("legacy completion awaits normalized handoff before reporting success", asy
 
   const factory = new Function(
     "normalizedRollout",
+    "normalizedRolloutStage",
     "dispatchLegacyCloudCommit",
     "console",
     `
@@ -122,7 +123,8 @@ test("legacy completion awaits normalized handoff before reporting success", asy
 
   const complete = factory(
     {
-      async afterLegacyCommit() {
+      async afterLegacyCommit(options) {
+        assert.deepEqual(options, { ensureCurrent: true });
         await normalizedGate;
         return {
           ok: true,
@@ -131,6 +133,7 @@ test("legacy completion awaits normalized handoff before reporting success", asy
         };
       }
     },
+    () => "dual_write",
     (sequence, updatedAt, options) => {
       events.push({ sequence, updatedAt, options });
     },
@@ -252,4 +255,73 @@ test("clean cloud hydration finishes normalized repair before any reload", () =>
   assert.ok(normalizedIndex >= 0, "hydration must enter normalized repair");
   assert.ok(awaitIndex > normalizedIndex, "hydration must await normalized repair");
   assert.ok(reloadIndex > awaitIndex, "reload must occur only after normalized repair completes");
+});
+
+
+test("shadow-stage legacy completion remains background/event-driven", async () => {
+  const fnSource = extract(
+    cloudSource,
+    "  async function completeNormalizedAfterLegacyCommit",
+    "  function safeParse"
+  );
+
+  let directCalls = 0;
+  const events = [];
+  const factory = new Function(
+    "normalizedRollout",
+    "normalizedRolloutStage",
+    "dispatchLegacyCloudCommit",
+    "console",
+    `
+      "use strict";
+      ${fnSource}
+      return completeNormalizedAfterLegacyCommit;
+    `
+  );
+
+  const complete = factory(
+    {
+      async afterLegacyCommit() {
+        directCalls += 1;
+        return { ok: true };
+      }
+    },
+    () => "shadow",
+    (sequence, updatedAt, options) => events.push({ sequence, updatedAt, options }),
+    { error() {} }
+  );
+
+  const result = await complete(2, "2026-09-28T07:00:00Z");
+  assert.equal(directCalls, 0, "shadow stage must keep the existing event-driven normalized handoff");
+  assert.equal(result.handled, false);
+  assert.equal(result.ok, true);
+  assert.deepEqual(events, [{
+    sequence: 2,
+    updatedAt: "2026-09-28T07:00:00Z",
+    options: { normalizedHandled: false, normalizedOk: true }
+  }]);
+});
+
+test("startup repairs a matching pending dual-write outbox before baseline refresh", () => {
+  const hydrateSource = extract(
+    cloudSource,
+    "  async function hydrateUserDataOnce(activeSession)",
+    "  async function hydrateUserData(activeSession)"
+  );
+
+  const repairIndex = hydrateSource.indexOf(
+    'setSyncState("Repairing normalized cloud records…", "working")'
+  );
+  const reconcileIndex = hydrateSource.indexOf(
+    "await normalizedRollout.afterLegacyCommit({ ensureCurrent: true })",
+    repairIndex
+  );
+  const baselineIndex = hydrateSource.indexOf(
+    "await refreshDualWriteBaselineForRemoteState()",
+    repairIndex
+  );
+
+  assert.ok(repairIndex >= 0, "startup must detect and repair a pending dual-write outbox");
+  assert.ok(reconcileIndex > repairIndex, "startup repair must await authoritative reconciliation");
+  assert.ok(baselineIndex > reconcileIndex, "baseline refresh must wait until pending normalized work is repaired");
 });
