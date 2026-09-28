@@ -325,6 +325,132 @@
       return { ok: true, stage: ctx.stage, result };
     }
 
+    async function reconcileDualWriteFromLegacyAuthority(ctx, degradedResult) {
+      const pendingBefore = stateStore.getOutbox(ctx.userId);
+      if (!Array.isArray(pendingBefore) || pendingBefore.length === 0) return degradedResult;
+      if (typeof stateStore.acknowledgeMutations !== "function") return degradedResult;
+
+      const legacyRead = await cloud.readLegacySnapshotForNormalizedSync();
+      const authoritative = ctx.normalizer.mapLegacySnapshot(legacyRead.snapshot);
+      const local = ctx.normalizer.mapLegacySnapshot(stateStore.getState());
+
+      // The fallback is safe only while the local device still represents the
+      // exact legacy snapshot that just committed. If another local edit is
+      // already ahead of legacy, leave its mutations pending for the next
+      // legacy commit rather than pushing unsaved state into normalized data.
+      if (String(authoritative?.checksum || "") !== String(local?.checksum || "")) {
+        emit("dual-write-authority-reconcile-skipped", {
+          stage: ctx.stage,
+          reason: "local-state-ahead-of-legacy",
+          pending: pendingBefore.length
+        });
+        return {
+          ...degradedResult,
+          authoritativeLegacyReconcile: {
+            ok: false,
+            skipped: true,
+            reason: "local-state-ahead-of-legacy"
+          }
+        };
+      }
+
+      const coveredMutationIds = pendingBefore
+        .map((entry) => String(entry?.mutationId || ""))
+        .filter(Boolean);
+
+      try {
+        const beforeRows = await ctx.recordStore.list(ctx.normalizer.namespace, { includeDeleted: true });
+        const sync = await ctx.shadowController.sync(legacyRead.snapshot, {
+          previousRows: beforeRows,
+          legacySnapshotUpdatedAt: legacyRead.updatedAt || undefined
+        });
+        const verification = await ctx.shadowController.verifyAndRecord(legacyRead.snapshot, {
+          expectedChecksum: sync?.checksum || authoritative?.checksum || undefined
+        });
+        const rows = await ctx.recordStore.list(ctx.normalizer.namespace, { includeDeleted: true });
+        const reconciliation = ctx.reconciliationApi.reconcileSnapshot(
+          ctx.normalizer,
+          legacyRead.snapshot,
+          rows,
+          ctx.metrics.snapshot()
+        );
+        const repaired =
+          verification?.ok === true &&
+          verification?.actualChecksum === verification?.expectedChecksum &&
+          reconciliationPass(reconciliation);
+
+        if (!repaired) {
+          emit("dual-write-authority-reconcile-failed", {
+            stage: ctx.stage,
+            reason: "verification-divergence"
+          });
+          return {
+            ...degradedResult,
+            authoritativeLegacyReconcile: {
+              ok: false,
+              skipped: false,
+              reason: "verification-divergence",
+              verification,
+              reconciliation
+            }
+          };
+        }
+
+        if (coveredMutationIds.length) {
+          stateStore.acknowledgeMutations(coveredMutationIds, ctx.userId);
+        }
+
+        // The shadow reconciliation may have advanced normalized record
+        // versions. Refresh the durable CAS baseline before the next edit.
+        const primed = await ctx.worker.primeBaseline({ force: true });
+        const remaining = stateStore.getOutbox(ctx.userId).length;
+        const ok = remaining === 0 && primed?.ok !== false;
+
+        emit(ok ? "dual-write-authority-reconciled" : "dual-write-authority-reconcile-pending", {
+          stage: ctx.stage,
+          ok,
+          pending: remaining
+        });
+
+        return {
+          ok,
+          mode: ok ? "dual-write" : "dual-write-degraded",
+          legacySaved: true,
+          normalizedSaved: true,
+          normalizedCurrent: true,
+          normalizedVerified: true,
+          normalizedPending: remaining > 0 || primed?.ok === false,
+          verificationPending: false,
+          normalizedPendingCount: remaining,
+          normalizedErrorCode: ok ? null : "HH_SYNC_RECORD_RETRY_PENDING",
+          normalizedResult: degradedResult?.normalizedResult || null,
+          legacyResult: degradedResult?.legacyResult || null,
+          authoritativeLegacyReconcile: {
+            ok: true,
+            skipped: false,
+            checksum: verification?.actualChecksum || authoritative?.checksum || null,
+            reconciliation,
+            coveredMutations: coveredMutationIds.length,
+            remaining,
+            baselinePrimed: primed?.ok !== false
+          }
+        };
+      } catch (error) {
+        emit("dual-write-authority-reconcile-failed", {
+          stage: ctx.stage,
+          reason: error?.code || error?.message || "unknown"
+        });
+        return {
+          ...degradedResult,
+          authoritativeLegacyReconcile: {
+            ok: false,
+            skipped: false,
+            reason: error?.code || "authoritative-legacy-reconcile-failed"
+          }
+        };
+      }
+    }
+
     async function afterLegacyCommit() {
       const ctx = await ensureContext();
       if (!ctx) return { ok: true, skipped: true, reason: "not-eligible" };
@@ -344,6 +470,16 @@
           ok: true,
           updated_at: null
         });
+        const normalizedErrorCode = String(result?.normalizedErrorCode || "");
+        const conflictLikeDegradation =
+          Number(result?.normalizedConflicts || 0) > 0 ||
+          normalizedErrorCode === "HH_SYNC_RECORD_CONFLICT" ||
+          normalizedErrorCode === "HH_SYNC_RECORD_RETRY_PENDING" ||
+          normalizedErrorCode === "HH_SYNC_CONFLICT" ||
+          normalizedErrorCode === "HH_SYNC_CONFLICT_RETRY";
+        if (result?.legacySaved === true && conflictLikeDegradation) {
+          result = await reconcileDualWriteFromLegacyAuthority(ctx, result);
+        }
       } else {
         const normalizedResult = await ctx.worker.drain({ ownerId: ctx.userId });
         result = {
