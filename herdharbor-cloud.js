@@ -10,6 +10,7 @@
   const SYNC_DELAY_MS = 2500;
   const LARGE_STATE_SYNC_DELAY_MS = 5000;
   const LARGE_STATE_THRESHOLD_CHARS = 750000;
+  const MAX_SYNC_DEBOUNCE_MS = 15000;
   const ACTIVE_OWNER_KEY = "herdharbor_active_user_v1";
   const RECOVERY_DB_NAME = "herdharbor_recovery_v1";
   const RECOVERY_STORE_NAME = "snapshots";
@@ -79,6 +80,7 @@
 
   let session = null;
   let syncTimer = null;
+  let syncDebounceStartedAt = 0;
   let syncInFlight = null;
   let pendingSync = null;
   let writeSequence = 0;
@@ -1583,24 +1585,39 @@
     }
   }
 
+  function boundedSyncDelay(baseDelay, startedAt, nowMs = Date.now()) {
+    const safeDelay = Math.max(0, Number(baseDelay || 0));
+    const firstScheduledAt = Number(startedAt || nowMs);
+    const elapsed = Math.max(0, Number(nowMs) - firstScheduledAt);
+    const remaining = Math.max(0, MAX_SYNC_DEBOUNCE_MS - elapsed);
+    return Math.min(safeDelay, remaining);
+  }
+
   function scheduleCloudSync(rawValue, sequence = writeSequence) {
     clearTimeout(syncTimer);
     const delay = String(rawValue || "").length >= LARGE_STATE_THRESHOLD_CHARS
       ? LARGE_STATE_SYNC_DELAY_MS
       : SYNC_DELAY_MS;
+    const nowMs = Date.now();
+    if (!syncDebounceStartedAt) syncDebounceStartedAt = nowMs;
+    const boundedDelay = boundedSyncDelay(delay, syncDebounceStartedAt, nowMs);
 
     if (normalizedAuthorityActive()) {
       pendingSync = null;
       syncTimer = setTimeout(() => {
+        syncTimer = null;
+        syncDebounceStartedAt = 0;
         void syncNow();
-      }, delay);
+      }, boundedDelay);
       return;
     }
 
     pendingSync = { rawValue, sequence };
     syncTimer = setTimeout(() => {
-      drainSyncQueue();
-    }, delay);
+      syncTimer = null;
+      syncDebounceStartedAt = 0;
+      void drainSyncQueue();
+    }, boundedDelay);
   }
 
   async function syncNow() {
@@ -1609,6 +1626,8 @@
     }
     if (normalizedAuthorityActive()) {
       clearTimeout(syncTimer);
+      syncTimer = null;
+      syncDebounceStartedAt = 0;
       pendingSync = null;
       setSyncState("Saving normalized cloud records…", "working");
       try {
@@ -1634,6 +1653,8 @@
       return false;
     }
     clearTimeout(syncTimer);
+    syncTimer = null;
+    syncDebounceStartedAt = 0;
     pendingSync = { rawValue: raw, sequence: writeSequence };
     return drainSyncQueue();
   }
@@ -1799,6 +1820,38 @@
     return normalizedRefreshInFlight;
   }
 
+  async function refreshDualWriteBaselineForRemoteState() {
+    if (!normalizedRollout?.refreshDualWriteBaseline) {
+      return Object.freeze({ ok: true, skipped: true, reason: "rollout-baseline-refresh-unavailable" });
+    }
+
+    const status = normalizedRollout.status?.();
+    if (status?.stage !== "dual_write") {
+      return Object.freeze({ ok: true, skipped: true, reason: "not-dual-write", stage: status?.stage || "legacy" });
+    }
+
+    try {
+      const result = await normalizedRollout.refreshDualWriteBaseline();
+      if (result?.ok === false) {
+        console.warn(
+          "HerdHarbor dual-write baseline refresh was blocked:",
+          result?.reason || "unknown"
+        );
+      }
+      return result;
+    } catch (error) {
+      console.warn(
+        "HerdHarbor dual-write baseline refresh failed:",
+        error?.code || error?.message || error
+      );
+      return Object.freeze({
+        ok: false,
+        skipped: false,
+        reason: error?.code || "dual-write-baseline-refresh-failed"
+      });
+    }
+  }
+
   async function checkForCloudChanges() {
     const userId = session?.user?.id;
     if (!userId || syncInFlight || syncConflict) return false;
@@ -1875,6 +1928,14 @@
           data,
           "Cloud update paused because the incoming records would exceed HerdHarbor Junior's limit of 5 active animals."
         );
+      }
+      const baselineRefresh = await refreshDualWriteBaselineForRemoteState();
+      if (baselineRefresh?.ok === false) {
+        setSyncState(
+          "Newer cloud records found, but normalized sync protection could not refresh yet. Retrying shortly.",
+          "error"
+        );
+        return false;
       }
       setActiveUserData(userId, deviceCloudRaw);
       await writeCloudBaseline(userId, remoteRaw);
@@ -2469,6 +2530,14 @@
       ) {
         return false;
       }
+      const baselineRefresh = await refreshDualWriteBaselineForRemoteState();
+      if (baselineRefresh?.ok === false) {
+        setSyncState(
+          "Cloud copy could not be selected until normalized sync protection refreshes.",
+          "error"
+        );
+        return false;
+      }
       setActiveUserData(conflict.userId, deviceCloudRaw);
       await writeCloudBaseline(conflict.userId, conflict.remoteRaw);
       if (conflict.remoteUpdatedAt) {
@@ -2761,6 +2830,17 @@
           return;
         }
         await recordRecoverySnapshot(userId, activeRaw, "Local copy before loading newer cloud records");
+      }
+      if (stateChanged) {
+        const baselineRefresh = await refreshDualWriteBaselineForRemoteState();
+        if (baselineRefresh?.ok === false) {
+          setSyncState(
+            "Cloud records are newer, but normalized sync protection could not refresh yet.",
+            "error"
+          );
+          unlockApp();
+          return;
+        }
       }
       setActiveUserData(userId, deviceCloudRaw);
       await writeCloudBaseline(userId, cloudRaw);
