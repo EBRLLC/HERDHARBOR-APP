@@ -375,3 +375,39 @@ test("completed unlocked hydration records the hydrated user only after the run 
   assert.match(fnSource, /appUnlocked/);
   assert.match(fnSource, /lastHydratedUserId = userId;/);
 });
+
+
+test("syncNow does not enqueue an identical raw state while that state is already in flight", () => {
+  const source = cloudSource;
+  const declarationIndex = source.indexOf("let syncInFlightRaw = null;");
+  const syncNowIndex = source.indexOf("async function syncNow()");
+  const duplicateGuardIndex = source.indexOf(
+    "if (syncInFlight && syncInFlightRaw && sameState(syncInFlightRaw, raw))",
+    syncNowIndex
+  );
+  const enqueueIndex = source.indexOf(
+    "pendingSync = { rawValue: raw, sequence: writeSequence };",
+    syncNowIndex
+  );
+
+  assert.ok(declarationIndex >= 0, "cloud queue must track the raw snapshot currently in flight");
+  assert.ok(duplicateGuardIndex > syncNowIndex, "syncNow must guard against identical in-flight state");
+  assert.ok(enqueueIndex > duplicateGuardIndex, "duplicate guard must execute before syncNow enqueues raw state");
+  assert.match(
+    source.slice(duplicateGuardIndex, enqueueIndex),
+    /return syncInFlight;/,
+    "identical lifecycle-triggered sync should join the current save instead of queueing a second PATCH"
+  );
+});
+
+test("drainSyncQueue tracks and clears the exact raw snapshot around each cloud write", () => {
+  const source = cloudSource;
+  const drainIndex = source.indexOf("async function drainSyncQueue()");
+  const syncValueIndex = source.indexOf("syncValueToCloud(next.rawValue, next.sequence)", drainIndex);
+  const setRawIndex = source.lastIndexOf('syncInFlightRaw = String(next.rawValue || "");', syncValueIndex);
+  const clearRawIndex = source.indexOf("syncInFlightRaw = null;", syncValueIndex);
+
+  assert.ok(drainIndex >= 0 && syncValueIndex > drainIndex);
+  assert.ok(setRawIndex > drainIndex && setRawIndex < syncValueIndex);
+  assert.ok(clearRawIndex > syncValueIndex, "in-flight raw identity must be cleared after the write settles");
+});
