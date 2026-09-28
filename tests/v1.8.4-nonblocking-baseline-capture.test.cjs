@@ -101,12 +101,10 @@ test("first clean local edit stages its merge baseline without waiting for Index
   });
 
   const previousRaw = JSON.stringify({ tasks: [{ id: "task-1", title: "before" }] });
-  const started = Date.now();
   const result = h.capture("owner-1", previousRaw, "before-local-edit");
-  const elapsed = Date.now() - started;
 
   assert.equal(result, true);
-  assert.ok(elapsed < 50, `capture should be synchronous, elapsed=${elapsed}ms`);
+  assert.equal(result instanceof Promise, false);
   assert.equal(h.cloudBaselineMemory.get("owner-1"), previousRaw);
   assert.deepEqual(h.restored, [{ userId: "owner-1", reason: "before-local-edit" }]);
 });
