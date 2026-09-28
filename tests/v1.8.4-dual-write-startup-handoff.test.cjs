@@ -326,3 +326,34 @@ test("startup repairs a matching pending dual-write outbox before baseline refre
   assert.ok(reconcileIndex > repairIndex, "startup repair must await authoritative reconciliation");
   assert.ok(baselineIndex > reconcileIndex, "baseline refresh must wait until pending normalized work is repaired");
 });
+
+
+test("redundant same-user SIGNED_IN does not rehydrate an already unlocked app", () => {
+  const source = cloudSource;
+  assert.match(
+    source,
+    /signedInUserId && signedInUserId === lastHydratedUserId && appUnlocked/
+  );
+  assert.match(
+    source,
+    /dispatchAuthSession\(\);[\s\S]*void loadAccessProfile\(\);[\s\S]*void window\.HerdHarborBilling\?\.refresh\?\.\(\);[\s\S]*return;/
+  );
+  assert.match(
+    source,
+    /lastHydratedUserId = "";/,
+    "sign-out must clear the same-user hydration guard"
+  );
+});
+
+test("completed unlocked hydration records the hydrated user only after the run settles", () => {
+  const fnSource = extract(
+    cloudSource,
+    "  async function hydrateUserData(activeSession)",
+    "  async function initialize()"
+  );
+
+  assert.match(fnSource, /const result = await run;/);
+  assert.match(fnSource, /stillCurrentUser/);
+  assert.match(fnSource, /appUnlocked/);
+  assert.match(fnSource, /lastHydratedUserId = userId;/);
+});
