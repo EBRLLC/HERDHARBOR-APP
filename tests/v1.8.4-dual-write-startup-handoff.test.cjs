@@ -184,6 +184,7 @@ test("rollout event bridge skips duplicate work when cloud already awaited norma
     root: fakeRoot,
     cloud: {
       getSession: async () => null,
+      syncNow: async () => true,
       getNormalizedSyncCohortStatus: async () => ({
         eligible: false,
         mode: "allowlist",
