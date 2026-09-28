@@ -82,6 +82,7 @@
   let syncTimer = null;
   let syncDebounceStartedAt = 0;
   let syncInFlight = null;
+  let syncInFlightRaw = null;
   let pendingSync = null;
   let writeSequence = 0;
   let lastCloudCheckAt = 0;
@@ -1658,7 +1659,12 @@
       while (pendingSync) {
         const next = pendingSync;
         pendingSync = null;
-        lastResult = await syncValueToCloud(next.rawValue, next.sequence);
+        syncInFlightRaw = String(next.rawValue || "");
+        try {
+          lastResult = await syncValueToCloud(next.rawValue, next.sequence);
+        } finally {
+          syncInFlightRaw = null;
+        }
         if (!lastResult && syncConflict) break;
       }
       return lastResult;
@@ -1668,6 +1674,7 @@
       return await syncInFlight;
     } finally {
       syncInFlight = null;
+      syncInFlightRaw = null;
       if (pendingSync && !syncConflict) {
         queueMicrotask(() => drainSyncQueue());
       } else if (reloadAfterSync && !syncConflict) {
@@ -1776,9 +1783,23 @@
       setSyncState("No HerdHarbor data is available to sync.", "error");
       return false;
     }
+
+    // Lifecycle recovery (for example returning from the iOS photo picker)
+    // can call syncNow() while the exact same state is already being saved.
+    // Do not enqueue that raw state again or the queue will PATCH it a second
+    // time immediately after the first save completes.
+    if (syncInFlight && syncInFlightRaw && sameState(syncInFlightRaw, raw)) {
+      return syncInFlight;
+    }
+
     clearTimeout(syncTimer);
     syncTimer = null;
     syncDebounceStartedAt = 0;
+
+    if (pendingSync && sameState(pendingSync.rawValue, raw)) {
+      return drainSyncQueue();
+    }
+
     pendingSync = { rawValue: raw, sequence: writeSequence };
     return drainSyncQueue();
   }
