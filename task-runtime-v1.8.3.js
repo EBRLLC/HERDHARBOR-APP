@@ -392,7 +392,9 @@
           ? `Task completed. Next task scheduled for ${formatDate(next.dueDate)}.`
           : box.checked ? "Task completed." : "Task reopened.";
         saveState(message);
-        renderTasks();
+        scheduleUiWork("task-toggle-render", () => {
+          if (getCurrentRoute() === "tasks") renderTasks();
+        });
       }));
       $$("[data-task-tomorrow]", root).forEach((button) => button.addEventListener("click", () => {
         const task = stateNow().tasks.find((item) => item.id === button.dataset.taskTomorrow);
