@@ -12,7 +12,7 @@ const instrumentation = fs.readFileSync(path.join(root, "monitoring", "herdharbo
 
 test("cloud hotfix debounces large full-state saves and suppresses stale queued writes", () => {
   assert.match(cloud, /const SYNC_DELAY_MS = 2500/);
-  assert.match(cloud, /const LARGE_STATE_SYNC_DELAY_MS = 5000/);
+  assert.match(cloud, /const LARGE_STATE_SYNC_DELAY_MS = 2500/);
   assert.match(cloud, /LARGE_STATE_THRESHOLD_CHARS = 750000/);
   assert.match(cloud, /sequence < writeSequence && pendingSync && !options\.force/);
   assert.match(cloud, /Newer changes queued; saving the latest copy/);
