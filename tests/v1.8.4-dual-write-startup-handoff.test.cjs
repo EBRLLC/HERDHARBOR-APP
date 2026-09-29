@@ -459,3 +459,27 @@ test("older save does not surface a normalized error when a newer same-device sa
   assert.ok(workingIndex > deferIndex, "deferred older save should remain in working state");
   assert.ok(errorIndex > workingIndex, "real normalized failures must still surface after the deferred-save guard");
 });
+
+
+test("sign-in runs access-profile refresh and rollout hydration concurrently", () => {
+  const source = cloudSource;
+  const hydrateIndex = source.indexOf("async function hydrateUserDataOnce");
+  const accessStartIndex = source.indexOf("const accessProfilePromise", hydrateIndex);
+  const rolloutStartIndex = source.indexOf("const rolloutHydrationPromise", hydrateIndex);
+  const joinIndex = source.indexOf("await Promise.all([", rolloutStartIndex);
+
+  assert.ok(hydrateIndex >= 0, "hydrateUserDataOnce must exist");
+  assert.ok(accessStartIndex > hydrateIndex, "access profile refresh must start during hydration");
+  assert.ok(rolloutStartIndex > accessStartIndex, "rollout hydration promise must be created after local state inspection");
+  assert.ok(joinIndex > rolloutStartIndex, "independent sign-in network phases must be joined concurrently");
+  assert.match(
+    source.slice(joinIndex, joinIndex + 220),
+    /accessProfilePromise[\s\S]*rolloutHydrationPromise/,
+    "sign-in must wait on access and rollout hydration together rather than serially"
+  );
+  assert.doesNotMatch(
+    source.slice(hydrateIndex, accessStartIndex),
+    /await loadAccessProfile\(\)/,
+    "sign-in must not block all hydration behind access-profile network calls"
+  );
+});
