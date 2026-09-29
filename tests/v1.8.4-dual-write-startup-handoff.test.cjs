@@ -248,7 +248,7 @@ test("rollout event bridge skips duplicate work when cloud already awaited norma
   );
 });
 
-test("clean cloud hydration finishes normalized repair before any reload", () => {
+test("clean dual-write hydration does not wait on normalized maintenance before becoming usable", () => {
   const hydrateSource = extract(
     cloudSource,
     "  async function hydrateUserDataOnce(activeSession)",
@@ -258,22 +258,32 @@ test("clean cloud hydration finishes normalized repair before any reload", () =>
   const legacyCloudBranch = hydrateSource.indexOf("if (data?.app_state)");
   assert.ok(legacyCloudBranch >= 0, "legacy cloud hydration branch must exist");
 
-  const normalizedIndex = hydrateSource.indexOf(
-    'setSyncState("Finishing normalized cloud sync…", "working")',
+  const cleanupIndex = hydrateSource.indexOf(
+    "deferNormalizedDualWriteCleanup({",
     legacyCloudBranch
   );
-  const awaitIndex = hydrateSource.indexOf(
-    "const normalized = await normalizedRollout.afterLegacyCommit({ ensureCurrent: true })",
-    legacyCloudBranch
-  );
-  const reloadIndex = hydrateSource.indexOf(
-    "window.location.reload()",
-    awaitIndex
+  const unlockIndex = hydrateSource.indexOf("unlockApp();", cleanupIndex);
+  const successIndex = hydrateSource.indexOf(
+    'setSyncState("Cloud records loaded", "success")',
+    cleanupIndex
   );
 
-  assert.ok(normalizedIndex >= 0, "hydration must enter normalized repair");
-  assert.ok(awaitIndex > normalizedIndex, "hydration must await normalized repair");
-  assert.ok(reloadIndex > awaitIndex, "reload must occur only after normalized repair completes");
+  assert.ok(cleanupIndex >= 0, "hydration schedules normalized maintenance");
+  assert.ok(unlockIndex > cleanupIndex, "hydration continues without awaiting normalized maintenance");
+  assert.ok(successIndex > unlockIndex, "authoritative legacy load ends in a success state");
+  assert.doesNotMatch(
+    hydrateSource.slice(legacyCloudBranch),
+    /await normalizedRollout\.afterLegacyCommit\(\{ ensureCurrent: true \}\)/,
+    "startup must not block on normalized dual-write cleanup"
+  );
+  assert.doesNotMatch(
+    hydrateSource.slice(legacyCloudBranch),
+    /setSyncState\("Finishing normalized cloud sync…", "working"\)/
+  );
+  assert.doesNotMatch(
+    hydrateSource.slice(legacyCloudBranch),
+    /setSyncState\("Repairing normalized cloud records…", "working"\)/
+  );
 });
 
 
@@ -321,28 +331,25 @@ test("shadow-stage legacy completion remains background/event-driven", async () 
   }]);
 });
 
-test("startup repairs a matching pending dual-write outbox before baseline refresh", () => {
+test("startup leaves pending dual-write outbox maintenance in the background", () => {
   const hydrateSource = extract(
     cloudSource,
     "  async function hydrateUserDataOnce(activeSession)",
     "  async function hydrateUserData(activeSession)"
   );
 
-  const repairIndex = hydrateSource.indexOf(
-    'setSyncState("Repairing normalized cloud records…", "working")'
+  assert.match(
+    hydrateSource,
+    /const normalizedCleanupNeeded =[\s\S]*normalizedOutboxPending\(userId\)/
   );
-  const reconcileIndex = hydrateSource.indexOf(
-    "await normalizedRollout.afterLegacyCommit({ ensureCurrent: true })",
-    repairIndex
+  assert.match(
+    hydrateSource,
+    /if \(normalizedCleanupNeeded\) \{[\s\S]*deferNormalizedDualWriteCleanup\(\{[\s\S]*ensureCurrent: true,[\s\S]*reason: "startup-hydration"/
   );
-  const baselineIndex = hydrateSource.indexOf(
-    "await refreshDualWriteBaselineForRemoteState()",
-    repairIndex
+  assert.doesNotMatch(
+    hydrateSource,
+    /await normalizedRollout\.afterLegacyCommit\(\{ ensureCurrent: true \}\)/
   );
-
-  assert.ok(repairIndex >= 0, "startup must detect and repair a pending dual-write outbox");
-  assert.ok(reconcileIndex > repairIndex, "startup repair must await authoritative reconciliation");
-  assert.ok(baselineIndex > reconcileIndex, "baseline refresh must wait until pending normalized work is repaired");
 });
 
 
@@ -427,6 +434,33 @@ test("syncNow prioritizes a pending legacy save before normalized authority read
     source.slice(syncNowIndex, refreshIndex + 80),
     /Boolean\(pendingSync\)[\s\S]*dirtyKey\(syncUserIdAtStart\)[\s\S]*!legacyWritePendingAtStart[\s\S]*refreshNormalizedAuthorityIfEligible/,
     "pending legacy state must bypass readiness refresh and proceed to persistence first"
+  );
+});
+
+
+test("syncNow keeps a clean dual-write account green while normalized outbox cleanup runs", () => {
+  const syncSource = extract(
+    cloudSource,
+    "  async function syncNow()",
+    "  async function invokeFunction"
+  );
+
+  const pendingBranch = syncSource.indexOf("normalizedOutboxPending(syncUserId)");
+  assert.ok(pendingBranch >= 0, "syncNow must detect pending normalized dual-write work");
+
+  const tail = syncSource.slice(pendingBranch);
+  assert.match(
+    tail,
+    /deferNormalizedDualWriteCleanup\(\{[\s\S]*ensureCurrent: true,[\s\S]*reason: "sync-now-clean-legacy"/
+  );
+  assert.match(tail, /setSyncState\("Saved to cloud", "success"\);[\s\S]*return true;/);
+  assert.doesNotMatch(
+    tail,
+    /setSyncState\("Finishing normalized cloud sync…", "working"\)/
+  );
+  assert.doesNotMatch(
+    tail,
+    /await normalizedRollout\.afterLegacyCommit\(\{ ensureCurrent: true \}\)/
   );
 });
 
