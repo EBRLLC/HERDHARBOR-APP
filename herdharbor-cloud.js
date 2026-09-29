@@ -603,7 +603,7 @@
     ) {
       normalizedHandled = true;
       try {
-        normalizedResult = await normalizedRollout.afterLegacyCommit({ ensureCurrent: true });
+        normalizedResult = await normalizedRollout.afterLegacyCommit();
       } catch (error) {
         console.error(
           "HerdHarbor normalized post-legacy sync failed:",
