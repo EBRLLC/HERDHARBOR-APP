@@ -569,6 +569,32 @@
     }
 
     async function processTaskBurstGroup(group) {
+      const ownerId = group.latest.ownerId;
+      const batchRecordIds = new Set(
+        group.originalGroups.map((entry) => String(entry.latest.recordId || ""))
+      );
+      const currentNowMs = Date.parse(now());
+      const unsafePendingTaskMutation = stateStore.getOutbox(ownerId).some((entry) => {
+        if (String(entry?.domain || "") !== "tasks") return false;
+        const recordId = String(entry?.recordId || "");
+        const retryState = String(entry?.retryState || "");
+        const nextRetryAt = parseTime(entry?.nextRetryAt);
+        return (
+          !recordId ||
+          recordId.startsWith("$") ||
+          !batchRecordIds.has(recordId) ||
+          retryState === "conflict" ||
+          nextRetryAt > (Number.isFinite(currentNowMs) ? currentNowMs : Date.now())
+        );
+      });
+      if (unsafePendingTaskMutation) {
+        return {
+          ok: false,
+          fallbackSequential: true,
+          fields: ["$batch_isolation"]
+        };
+      }
+
       const currentState = stateStore.getState?.();
       if (!currentState || typeof currentState !== "object") {
         throw Object.assign(new Error("Local state is unavailable for normalized task batching."), {
@@ -589,13 +615,37 @@
       }
 
       if (!Array.isArray(plan.operations) || plan.operations.length === 0) {
-        stateStore.acknowledgeMutations(group.mutationIds, group.latest.ownerId);
+        stateStore.acknowledgeMutations(group.mutationIds, ownerId);
         return {
           ok: true,
           batched: true,
           acknowledged: group.mutationIds.length,
           operations: 0,
           logicalRecords: group.originalGroups.length
+        };
+      }
+
+      const membershipChange = group.originalGroups.some((entry) =>
+        ["create", "delete"].includes(String(entry.latest.operation || ""))
+      );
+      for (const operation of plan.operations) {
+        const payload = operation?.row?.payload;
+        if (payload?.kind === "array_item") {
+          const logicalId = String(normalizer.logicalIdentityValue(payload.value) || "");
+          if (!batchRecordIds.has(logicalId)) {
+            return {
+              ok: false,
+              fallbackSequential: true,
+              fields: ["$batch_scope"]
+            };
+          }
+          continue;
+        }
+        if (payload?.kind === "array_manifest" && membershipChange) continue;
+        return {
+          ok: false,
+          fallbackSequential: true,
+          fields: ["$batch_scope"]
         };
       }
 
@@ -626,7 +676,7 @@
       }
 
       await persistAtomicResults(entries, response);
-      stateStore.acknowledgeMutations(group.mutationIds, group.latest.ownerId);
+      stateStore.acknowledgeMutations(group.mutationIds, ownerId);
 
       return {
         ok: true,
