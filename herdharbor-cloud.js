@@ -654,6 +654,39 @@
     };
   }
 
+  function deferNormalizedDualWriteCleanup({ ensureCurrent = true, reason = "background-maintenance" } = {}) {
+    if (
+      normalizedRolloutStage() !== "dual_write" ||
+      !normalizedRollout?.afterLegacyCommit
+    ) return false;
+
+    const options = ensureCurrent ? { ensureCurrent: true } : undefined;
+    void normalizedRollout.afterLegacyCommit(options)
+      .then((result) => {
+        const ok =
+          result?.ok !== false &&
+          result?.mode !== "dual-write-degraded" &&
+          result?.normalizedPending !== true;
+        if (!ok) {
+          console.warn(
+            "HerdHarbor normalized background maintenance remains pending:",
+            reason,
+            result?.normalizedErrorCode ||
+            result?.normalizedResult?.reason ||
+            "normalized-pending"
+          );
+        }
+      })
+      .catch((error) => {
+        console.warn(
+          "HerdHarbor normalized background maintenance failed:",
+          reason,
+          error?.code || error?.message || error
+        );
+      });
+    return true;
+  }
+
   function safeParse(value) {
     if (!value) return null;
     try {
@@ -1893,24 +1926,15 @@
       !pendingSync &&
       normalizedRollout?.afterLegacyCommit
     ) {
-      setSyncState("Finishing normalized cloud sync…", "working");
-      try {
-        const result = await normalizedRollout.afterLegacyCommit({ ensureCurrent: true });
-        const ok =
-          result?.ok !== false &&
-          result?.mode !== "dual-write-degraded" &&
-          result?.normalizedPending !== true &&
-          !normalizedOutboxPending(syncUserId);
-        setSyncState(
-          ok ? "Saved to cloud" : "Normalized cloud sync is still pending; local changes remain protected.",
-          ok ? "success" : "error"
-        );
-        return ok;
-      } catch (error) {
-        console.error("HerdHarbor normalized retry failed:", error);
-        setSyncState("Normalized cloud sync is still pending; local changes remain protected.", "error");
-        return false;
-      }
+      // Legacy remains authoritative during dual-write. A stale normalized
+      // outbox must not turn an otherwise clean account yellow or block the
+      // user-facing save state. Repair it in the background.
+      deferNormalizedDualWriteCleanup({
+        ensureCurrent: true,
+        reason: "sync-now-clean-legacy"
+      });
+      setSyncState("Saved to cloud", "success");
+      return true;
     }
 
     const raw = activeStateRaw();
@@ -3130,31 +3154,13 @@
         }
         await recordRecoverySnapshot(userId, activeRaw, "Local copy before loading newer cloud records");
       }
-      let normalizedRepairedBeforeHydration = false;
-      if (
+      const normalizedCleanupNeeded =
         rolloutDecision?.stage === "dual_write" &&
-        activeRaw &&
-        sameState(activeRaw, cloudRaw) &&
-        normalizedOutboxPending(userId) &&
-        normalizedRollout?.afterLegacyCommit
-      ) {
-        setSyncState("Repairing normalized cloud records…", "working");
-        const repaired = await normalizedRollout.afterLegacyCommit({ ensureCurrent: true });
-        const repairedOk =
-          repaired?.ok !== false &&
-          repaired?.mode !== "dual-write-degraded" &&
-          repaired?.normalizedPending !== true &&
-          !normalizedOutboxPending(userId);
-        if (!repairedOk) {
-          unlockApp();
-          setSyncState(
-            "Cloud records are safe, but normalized sync still needs attention.",
-            "error"
-          );
-          return;
-        }
-        normalizedRepairedBeforeHydration = true;
-      }
+        Boolean(normalizedRollout?.afterLegacyCommit) &&
+        (
+          normalizedOutboxPending(userId) ||
+          (activeRaw && sameState(activeRaw, cloudRaw))
+        );
 
       const baselineRefresh = await refreshDualWriteBaselineForRemoteState();
       if (baselineRefresh?.ok === false) {
@@ -3173,25 +3179,11 @@
       safeStorageRemove(dirtyKey(userId));
       syncConflict = null;
 
-      if (
-        !normalizedRepairedBeforeHydration &&
-        rolloutDecision?.stage === "dual_write" &&
-        normalizedRollout?.afterLegacyCommit
-      ) {
-        setSyncState("Finishing normalized cloud sync…", "working");
-        const normalized = await normalizedRollout.afterLegacyCommit({ ensureCurrent: true });
-        const normalizedOk =
-          normalized?.ok !== false &&
-          normalized?.mode !== "dual-write-degraded" &&
-          normalized?.normalizedPending !== true;
-        if (!normalizedOk) {
-          unlockApp();
-          setSyncState(
-            "Cloud records loaded, but normalized sync is still pending; local records remain protected.",
-            "error"
-          );
-          return;
-        }
+      if (normalizedCleanupNeeded) {
+        deferNormalizedDualWriteCleanup({
+          ensureCurrent: true,
+          reason: "startup-hydration"
+        });
       }
 
       if (stateChanged) {
