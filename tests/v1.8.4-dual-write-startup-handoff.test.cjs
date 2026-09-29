@@ -461,6 +461,7 @@ test("older save does not surface a normalized error when a newer same-device sa
 });
 
 
+// Guard the sign-in critical path against reintroducing a serial network waterfall.
 test("sign-in runs access-profile refresh and rollout hydration concurrently", () => {
   const source = cloudSource;
   const hydrateIndex = source.indexOf("async function hydrateUserDataOnce");
