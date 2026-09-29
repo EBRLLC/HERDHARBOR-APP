@@ -58,3 +58,22 @@ test("fingerprinted static assets use cache-first while mutable authority files 
   assert.match(sw, /"\/herdharbor-cloud\.js"/);
   assert.match(sw, /"\/manifest\.json"/);
 });
+
+
+test("canonical commit does not parse its freshly serialized next state a second time", () => {
+  const stateStore = read("herdharbor-state-store-v1.8.4.js");
+  const commitStart = stateStore.indexOf("function commit(nextState");
+  const commitEnd = stateStore.indexOf("function replaceRaw", commitStart);
+  const commitSource = stateStore.slice(commitStart, commitEnd);
+
+  assert.match(commitSource, /const rawValue = JSON\.stringify\(nextState/);
+  assert.match(
+    commitSource,
+    /const nextComparable =\s*nextState && typeof nextState === "object" \? nextState : \{\}/
+  );
+  assert.doesNotMatch(
+    commitSource,
+    /nextComparable\s*=\s*safeParse\(rawValue\)/,
+    "large photo-heavy state must not be reparsed immediately after serialization"
+  );
+});

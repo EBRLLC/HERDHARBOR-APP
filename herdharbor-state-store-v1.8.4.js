@@ -487,7 +487,12 @@
       const revision = getRevision(ownerId) + 1;
       const createdAt = now();
       const previousState = safeParse(previousRaw) || {};
-      const nextComparable = safeParse(rawValue) || {};
+      // nextState is already the canonical in-memory object that produced
+      // rawValue above. Avoid parsing that full JSON payload back into a
+      // second object before diffing; cloudComparableState() clones before
+      // normalization, so the caller's state cannot be mutated here.
+      const nextComparable =
+        nextState && typeof nextState === "object" ? nextState : {};
       const recordVersions = readRecordVersions(ownerId);
       const mutations = source === "local" && commitOptions.cloudRelevant !== false
         ? diffMutations(previousState, nextComparable, { ownerId, revision, createdAt, recordVersions })

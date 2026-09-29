@@ -154,3 +154,21 @@ test("Phase 6E extraction remains compatible with formal v1.8.4 and changes no n
     "cloud-sync-rollout-control-v1.8.3.js"
   ]) assert.doesNotMatch(read("index.html"), new RegExp(asset.replace(/[.]/g, "\\.")));
 });
+
+
+test("rapid task toggles save durably before coalescing the expensive task-page render", () => {
+  const toggleIndex = taskSource.indexOf('$$("[data-toggle-task]"');
+  const saveIndex = taskSource.indexOf("saveState(message);", toggleIndex);
+  const scheduleIndex = taskSource.indexOf('scheduleUiWork("task-toggle-render"', toggleIndex);
+  const renderIndex = taskSource.indexOf("renderTasks();", scheduleIndex);
+
+  assert.ok(toggleIndex >= 0, "task toggle handler must exist");
+  assert.ok(saveIndex > toggleIndex, "task toggle must persist the state");
+  assert.ok(scheduleIndex > saveIndex, "UI batching must happen only after the durable save");
+  assert.ok(renderIndex > scheduleIndex, "full task render must be deferred through scheduleUiWork");
+  assert.doesNotMatch(
+    taskSource.slice(saveIndex, scheduleIndex),
+    /renderTasks\(\)/,
+    "task toggle must not synchronously rebuild the entire task page after each save"
+  );
+});
