@@ -1638,6 +1638,15 @@
       savedRecord?.updated_at || null
     );
     if (!normalized.ok) {
+      const deferredForNewerLocalSave =
+        normalized?.result?.authoritativeLegacyReconcile?.reason === "local-state-ahead-of-legacy" &&
+        (sequence !== writeSequence || Boolean(pendingSync));
+
+      if (deferredForNewerLocalSave) {
+        setSyncState("Saving newer device changes…", "working");
+        return true;
+      }
+
       setSyncState(
         "Legacy cloud is saved; normalized sync is still finishing and will retry.",
         "error"
