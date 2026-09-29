@@ -1572,7 +1572,12 @@
       return true;
     }
 
-    const { data: savedRecord, error, raced, __hhTelemetry: saveTelemetry } = await writeCloudRecord(
+    let {
+      data: savedRecord,
+      error,
+      raced,
+      __hhTelemetry: saveTelemetry
+    } = await writeCloudRecord(
       userId,
       appState,
       remoteRecord || null
@@ -1598,12 +1603,105 @@
         setSyncState("Cloud changed during save; local copy retained.", "error");
         return false;
       }
-      return markConflict(
-        userId,
-        rawValue,
-        latest.data,
-        "Sync paused because another device saved at the same time."
-      );
+
+      // A newer local commit may have landed while this request was in flight.
+      // Let the queue save that newest snapshot instead of turning our own
+      // superseded request into a false cross-device conflict.
+      if (sequence < writeSequence && pendingSync && !options.force) {
+        setSyncState("Newer changes queued; saving the latest copy…", "working");
+        return true;
+      }
+
+      const latestRaw = latest.data?.app_state
+        ? JSON.stringify(latest.data.app_state)
+        : null;
+
+      // If another tab/client already committed the same logical state, accept
+      // that cloud revision as the successful save.
+      if (latestRaw && sameState(latestRaw, rawValue)) {
+        savedRecord = latest.data;
+        raced = false;
+      } else if (latestRaw && confirmedBase && !options.force) {
+        // Close the CAS race window by applying the same protected three-way
+        // merge used during preflight, then retry once against the fresh cloud
+        // revision. Only incompatible same-field edits reach the conflict UI.
+        const raceMerge = mergeRawStates(confirmedBase, rawValue, latestRaw);
+        if (!raceMerge.ok) {
+          const conflictLabel = raceMerge.conflicts?.[0]
+            ? ` The overlapping change is ${raceMerge.conflicts[0]}.`
+            : "";
+          return markConflict(
+            userId,
+            rawValue,
+            latest.data,
+            `Sync paused because the same record changed on two devices.${conflictLabel}`
+          );
+        }
+
+        const rebasedRaw = applyDevicePreferences(raceMerge.rawValue, rawValue);
+        const rebasedState = safeParse(rebasedRaw);
+        if (
+          !rebasedState ||
+          !allowAnimalStateTransition(
+            rawValue,
+            rebasedRaw,
+            "Cloud merge paused: the incoming change would exceed HerdHarbor Junior's limit of 5 active animals."
+          )
+        ) {
+          return markConflict(
+            userId,
+            rawValue,
+            latest.data,
+            "Cloud merge paused because the combined records could not be applied safely."
+          );
+        }
+
+        const retry = await writeCloudRecord(userId, rebasedState, latest.data);
+        if (retry.error) {
+          const failure = reportCloudSyncFailure(
+            "cloud-race-retry",
+            retry.error,
+            serializedStateBytes(rebasedRaw),
+            retry.__hhTelemetry
+          );
+          console.error("HerdHarbor cloud race retry failed:", retry.error);
+          console.warn("HerdHarbor cloud race retry diagnostic:", failure.code, failure.status || "no-status");
+          setSyncState("Cloud save failed; changes are safe on this device and will retry.", "error");
+          return false;
+        }
+
+        if (retry.raced) {
+          const newest = await fetchCloudRecord(userId);
+          if (newest.error) {
+            reportCloudSyncFailure(
+              "cloud-race-retry-reload",
+              newest.error,
+              serializedStateBytes(rebasedRaw),
+              newest.__hhTelemetry
+            );
+            setSyncState("Cloud changed again during save; local copy retained.", "error");
+            return false;
+          }
+          return markConflict(
+            userId,
+            rebasedRaw,
+            newest.data,
+            "Sync paused because cloud records changed again while HerdHarbor was combining updates."
+          );
+        }
+
+        rawValue = rebasedRaw;
+        appState = rebasedState;
+        savedRecord = retry.data;
+        autoMerged = true;
+      } else {
+        return markConflict(
+          userId,
+          rawValue,
+          latest.data,
+          "Sync paused because another device saved at the same time."
+        );
+      }
     }
 
     const savedRaw = savedRecord?.app_state
