@@ -550,9 +550,20 @@
     );
   }
 
+  function hasPendingAuthoritativeCloudMutations(userId = session?.user?.id) {
+    if (!userId) return false;
+    const legacyPending =
+      originalGetItem.call(localStorage, dirtyKey(userId)) === "1" ||
+      Boolean(pendingSync);
+    if (normalizedAuthorityActive()) {
+      return normalizedOutboxPending(userId);
+    }
+    return legacyPending;
+  }
+
   function getSyncDetails() {
     const userId = session?.user?.id || "";
-    const unsynced = hasPendingCloudMutations(userId);
+    const unsynced = hasPendingAuthoritativeCloudMutations(userId);
 
     return {
       message: syncState,
@@ -561,7 +572,10 @@
       email: session?.user?.email || "",
       online: navigator.onLine !== false,
       unsynced,
-      syncing: Boolean(syncInFlight) || syncStateType === "working",
+      syncing: Boolean(syncInFlight) || (
+        syncStateType === "working" &&
+        unsynced
+      ),
       conflict: Boolean(syncConflict),
       lastSyncedAt: userId
         ? originalGetItem.call(localStorage, versionKey(userId)) || ""
@@ -3477,7 +3491,7 @@
     readLegacySnapshotForNormalizedSync,
     getSyncState: () => syncState,
     getSyncDetails,
-    hasUnsyncedChanges: () => hasPendingCloudMutations(session?.user?.id),
+    hasUnsyncedChanges: () => hasPendingAuthoritativeCloudMutations(session?.user?.id),
     hasConflict: () => Boolean(syncConflict),
     downloadSafetyBackup,
     requestAccountDeletion,
