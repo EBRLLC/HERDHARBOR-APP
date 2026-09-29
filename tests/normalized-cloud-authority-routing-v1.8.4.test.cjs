@@ -68,12 +68,15 @@ test("online, foreground, and focus resumes all enter authority-aware sync paths
 });
 
 
-test("normal legacy-save completion does not request an unnecessary ensureCurrent reconcile", () => {
+test("normal legacy-save completion defers normalized dual-write work without blocking success", () => {
   const complete = body(
     "  async function completeNormalizedAfterLegacyCommit(sequence, updatedAt) {",
     "\n  function safeParse(value)"
   );
 
-  assert.match(complete, /normalizedRollout\.afterLegacyCommit\(\)/);
+  assert.match(complete, /void normalizedRollout\.afterLegacyCommit\(\)/);
+  assert.match(complete, /deferred:\s*true/);
+  assert.match(complete, /ok:\s*true/);
+  assert.doesNotMatch(complete, /await normalizedRollout\.afterLegacyCommit/);
   assert.doesNotMatch(complete, /afterLegacyCommit\(\{\s*ensureCurrent:\s*true\s*\}\)/);
 });
