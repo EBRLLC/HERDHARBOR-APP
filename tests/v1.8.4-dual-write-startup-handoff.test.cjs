@@ -429,3 +429,15 @@ test("syncNow prioritizes a pending legacy save before normalized authority read
     "pending legacy state must bypass readiness refresh and proceed to persistence first"
   );
 });
+
+
+test("large-state autosave uses the same 2.5 second debounce as normal state", () => {
+  assert.match(cloudSource, /const SYNC_DELAY_MS = 2500;/);
+  assert.match(cloudSource, /const LARGE_STATE_SYNC_DELAY_MS = 2500;/);
+  assert.match(cloudSource, /const LARGE_STATE_THRESHOLD_CHARS = 750000;/);
+  assert.match(cloudSource, /const MAX_SYNC_DEBOUNCE_MS = 15000;/);
+  assert.match(
+    cloudSource,
+    /String\(rawValue \|\| ""\)\.length >= LARGE_STATE_THRESHOLD_CHARS[\s\S]*\? LARGE_STATE_SYNC_DELAY_MS[\s\S]*: SYNC_DELAY_MS/
+  );
+});

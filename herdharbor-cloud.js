@@ -8,7 +8,7 @@
   const STORAGE_KEY = "herdharbor_pre_alpha_v1";
   const TABLE_NAME = "herdharbor_user_data";
   const SYNC_DELAY_MS = 2500;
-  const LARGE_STATE_SYNC_DELAY_MS = 5000;
+  const LARGE_STATE_SYNC_DELAY_MS = 2500;
   const LARGE_STATE_THRESHOLD_CHARS = 750000;
   const MAX_SYNC_DEBOUNCE_MS = 15000;
   const ACTIVE_OWNER_KEY = "herdharbor_active_user_v1";
