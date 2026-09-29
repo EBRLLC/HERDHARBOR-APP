@@ -80,3 +80,53 @@ test("normal legacy-save completion defers normalized dual-write work without bl
   assert.doesNotMatch(complete, /await normalizedRollout\.afterLegacyCommit/);
   assert.doesNotMatch(complete, /afterLegacyCommit\(\{\s*ensureCurrent:\s*true\s*\}\)/);
 });
+
+
+test("dual-write diagnostics ignore normalized background outbox when legacy authority is clean", () => {
+  const pending = body(
+    "  function hasPendingCloudMutations(userId = session?.user?.id) {",
+    "\n  function getSyncDetails()"
+  );
+  const syncDetails = body(
+    "  function getSyncDetails() {",
+    "\n  function dispatchSyncStatus()"
+  );
+
+  assert.match(
+    pending,
+    /function hasPendingAuthoritativeCloudMutations\(userId = session\?\.user\?\.id\)/
+  );
+  assert.match(
+    pending,
+    /const legacyPending =[\s\S]*dirtyKey\(userId\)[\s\S]*Boolean\(pendingSync\)/
+  );
+  assert.match(
+    pending,
+    /if \(normalizedAuthorityActive\(\)\) \{[\s\S]*return normalizedOutboxPending\(userId\);/
+  );
+  assert.match(pending, /return legacyPending;/);
+
+  assert.match(
+    syncDetails,
+    /const unsynced = hasPendingAuthoritativeCloudMutations\(userId\);/
+  );
+  assert.doesNotMatch(
+    syncDetails,
+    /const unsynced = hasPendingCloudMutations\(userId\);/
+  );
+  assert.match(
+    source,
+    /hasUnsyncedChanges: \(\) => hasPendingAuthoritativeCloudMutations\(session\?\.user\?\.id\)/
+  );
+});
+
+test("internal retry logic still sees normalized dual-write outbox maintenance", () => {
+  const pending = body(
+    "  function hasPendingCloudMutations(userId = session?.user?.id) {",
+    "\n  function getSyncDetails()"
+  );
+  assert.match(
+    pending,
+    /function hasPendingCloudMutations[\s\S]*normalizedOutboxPending\(userId\)/
+  );
+});
