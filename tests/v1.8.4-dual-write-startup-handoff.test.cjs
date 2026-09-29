@@ -441,3 +441,21 @@ test("large-state autosave uses the same 2.5 second debounce as normal state", (
     /String\(rawValue \|\| ""\)\.length >= LARGE_STATE_THRESHOLD_CHARS[\s\S]*\? LARGE_STATE_SYNC_DELAY_MS[\s\S]*: SYNC_DELAY_MS/
   );
 });
+
+
+test("older save does not surface a normalized error when a newer same-device save is already queued", () => {
+  const source = cloudSource;
+  const saveIndex = source.indexOf("const normalized = await completeNormalizedAfterLegacyCommit(", source.indexOf("async function syncValueToCloud"));
+  const deferIndex = source.indexOf("const deferredForNewerLocalSave", saveIndex);
+  const workingIndex = source.indexOf('setSyncState("Saving newer device changes…", "working")', deferIndex);
+  const errorIndex = source.indexOf('"Legacy cloud is saved; normalized sync is still finishing and will retry."', deferIndex);
+
+  assert.ok(saveIndex >= 0, "cloud save path must complete normalized handoff after legacy PATCH");
+  assert.ok(deferIndex > saveIndex, "normalized failure handling must detect a newer queued local save");
+  assert.match(
+    source.slice(deferIndex, workingIndex + 100),
+    /local-state-ahead-of-legacy[\s\S]*sequence !== writeSequence[\s\S]*Boolean\(pendingSync\)/
+  );
+  assert.ok(workingIndex > deferIndex, "deferred older save should remain in working state");
+  assert.ok(errorIndex > workingIndex, "real normalized failures must still surface after the deferred-save guard");
+});
