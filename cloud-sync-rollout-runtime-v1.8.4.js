@@ -477,17 +477,9 @@
           normalizedErrorCode === "HH_SYNC_RECORD_RETRY_PENDING" ||
           normalizedErrorCode === "HH_SYNC_CONFLICT" ||
           normalizedErrorCode === "HH_SYNC_CONFLICT_RETRY";
-        const noNormalizedWork =
-          result?.mode === "dual-write" &&
-          result?.normalizedPending !== true &&
-          Number(result?.normalizedResult?.processed || 0) === 0 &&
-          Number(result?.normalizedResult?.pending || 0) === 0;
         if (
           result?.legacySaved === true &&
-          (
-            conflictLikeDegradation ||
-            (options?.ensureCurrent === true && noNormalizedWork)
-          )
+          conflictLikeDegradation
         ) {
           result = await reconcileDualWriteFromLegacyAuthority(ctx, result);
         }
