@@ -66,3 +66,14 @@ test("online, foreground, and focus resumes all enter authority-aware sync paths
   const refresh = body("  async function checkForCloudChanges() {", "\n  function ensureStyles()");
   assert.ok(refresh.indexOf("checkNormalizedAuthorityChanges()") < refresh.indexOf("fetchCloudRecord(userId)"));
 });
+
+
+test("normal legacy-save completion does not request an unnecessary ensureCurrent reconcile", () => {
+  const complete = body(
+    "  async function completeNormalizedAfterLegacyCommit(sequence, updatedAt) {",
+    "\n  function safeParse(value)"
+  );
+
+  assert.match(complete, /normalizedRollout\.afterLegacyCommit\(\)/);
+  assert.doesNotMatch(complete, /afterLegacyCommit\(\{\s*ensureCurrent:\s*true\s*\}\)/);
+});

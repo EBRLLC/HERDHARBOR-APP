@@ -143,7 +143,7 @@ test("legacy completion awaits normalized handoff before reporting success", asy
   const complete = factory(
     {
       async afterLegacyCommit(options) {
-        assert.deepEqual(options, { ensureCurrent: true });
+        assert.equal(options, undefined);
         await normalizedGate;
         return {
           ok: true,
