@@ -1720,7 +1720,19 @@
   }
 
   async function syncNow() {
-    if (!normalizedAuthorityActive()) {
+    const syncUserIdAtStart = session?.user?.id;
+    const legacyWritePendingAtStart = Boolean(pendingSync) || Boolean(
+      syncUserIdAtStart &&
+      originalGetItem.call(localStorage, dirtyKey(syncUserIdAtStart)) === "1"
+    );
+
+    // In dual-write/legacy authority, never let an authority-readiness check
+    // sit in front of a user save. Mobile photo/file pickers can trigger
+    // lifecycle syncNow() calls; if the eligibility cache is cold, that check
+    // may perform manifest/record verification before the pending legacy write.
+    // Persist the user's dirty snapshot first. Authority readiness can refresh
+    // on the next idle/check path after the save is protected in cloud.
+    if (!normalizedAuthorityActive() && !legacyWritePendingAtStart) {
       await refreshNormalizedAuthorityIfEligible();
     }
     if (normalizedAuthorityActive()) {
