@@ -117,7 +117,7 @@ test("normalized outbox remains pending in dual_write even before normalized aut
   assert.equal(api.normalizedOutboxPending("owner-1"), true);
 });
 
-test("legacy completion awaits normalized handoff before reporting success", async () => {
+test("legacy completion reports success without waiting on normalized handoff", async () => {
   const fnSource = extract(
     cloudSource,
     "  async function completeNormalizedAfterLegacyCommit",
@@ -126,6 +126,7 @@ test("legacy completion awaits normalized handoff before reporting success", asy
 
   const events = [];
   let releaseNormalized;
+  let normalizedStarted = false;
   const normalizedGate = new Promise((resolve) => { releaseNormalized = resolve; });
 
   const factory = new Function(
@@ -144,6 +145,7 @@ test("legacy completion awaits normalized handoff before reporting success", asy
     {
       async afterLegacyCommit(options) {
         assert.equal(options, undefined);
+        normalizedStarted = true;
         await normalizedGate;
         return {
           ok: true,
@@ -156,22 +158,20 @@ test("legacy completion awaits normalized handoff before reporting success", asy
     (sequence, updatedAt, options) => {
       events.push({ sequence, updatedAt, options });
     },
-    { error() {} }
+    { error() {}, warn() {} }
   );
 
-  let settled = false;
-  const pending = complete(7, "2026-09-28T07:00:00Z").then((value) => {
-    settled = true;
-    return value;
-  });
-
-  await Promise.resolve();
-  assert.equal(settled, false, "legacy completion must not finish before normalized handoff");
-
-  releaseNormalized();
-  const result = await pending;
+  const result = await complete(7, "2026-09-28T07:00:00Z");
   assert.equal(result.ok, true);
   assert.equal(result.handled, true);
+  assert.equal(result.deferred, true);
+  assert.equal(normalizedStarted, true);
+  assert.deepEqual(events, [], "normalized completion event waits for background handoff");
+
+  releaseNormalized();
+  await Promise.resolve();
+  await Promise.resolve();
+
   assert.deepEqual(events, [{
     sequence: 7,
     updatedAt: "2026-09-28T07:00:00Z",

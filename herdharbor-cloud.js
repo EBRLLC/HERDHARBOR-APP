@@ -594,47 +594,63 @@
   }
 
   async function completeNormalizedAfterLegacyCommit(sequence, updatedAt) {
-    let normalizedHandled = false;
-    let normalizedResult = null;
-
-    if (
+    const normalizedHandled =
       normalizedRolloutStage() === "dual_write" &&
-      normalizedRollout?.afterLegacyCommit
-    ) {
-      normalizedHandled = true;
-      try {
-        normalizedResult = await normalizedRollout.afterLegacyCommit();
-      } catch (error) {
-        console.error(
-          "HerdHarbor normalized post-legacy sync failed:",
-          error?.code || error?.message || error
-        );
-        normalizedResult = {
-          ok: false,
-          mode: "dual-write-degraded",
-          normalizedPending: true,
-          normalizedErrorCode: error?.code || "normalized-post-legacy-failed"
-        };
-      }
+      Boolean(normalizedRollout?.afterLegacyCommit);
+
+    if (normalizedHandled) {
+      // During dual-write, the legacy row remains authoritative. Do not keep
+      // the user-facing save in "Saving…" while normalized migration/shadow
+      // work waits on a provider RPC. The normalized outbox is durable and
+      // remains available for retry through syncNow()/lifecycle recovery.
+      void normalizedRollout.afterLegacyCommit()
+        .then((normalizedResult) => {
+          const normalizedOk =
+            normalizedResult?.ok !== false &&
+            normalizedResult?.mode !== "dual-write-degraded" &&
+            normalizedResult?.normalizedPending !== true;
+          dispatchLegacyCloudCommit(sequence, updatedAt, {
+            normalizedHandled: true,
+            normalizedOk
+          });
+          if (!normalizedOk) {
+            console.warn(
+              "HerdHarbor normalized post-legacy sync remains pending:",
+              normalizedResult?.normalizedErrorCode ||
+              normalizedResult?.normalizedResult?.reason ||
+              "normalized-pending"
+            );
+          }
+        })
+        .catch((error) => {
+          console.error(
+            "HerdHarbor normalized post-legacy sync failed:",
+            error?.code || error?.message || error
+          );
+          dispatchLegacyCloudCommit(sequence, updatedAt, {
+            normalizedHandled: true,
+            normalizedOk: false
+          });
+        });
+
+      return {
+        handled: true,
+        ok: true,
+        deferred: true,
+        result: null
+      };
     }
 
-    const normalizedOk =
-      !normalizedHandled ||
-      (
-        normalizedResult?.ok !== false &&
-        normalizedResult?.mode !== "dual-write-degraded" &&
-        normalizedResult?.normalizedPending !== true
-      );
-
     dispatchLegacyCloudCommit(sequence, updatedAt, {
-      normalizedHandled,
-      normalizedOk
+      normalizedHandled: false,
+      normalizedOk: true
     });
 
     return {
-      handled: normalizedHandled,
-      ok: normalizedOk,
-      result: normalizedResult
+      handled: false,
+      ok: true,
+      deferred: false,
+      result: null
     };
   }
 

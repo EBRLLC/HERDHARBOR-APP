@@ -972,3 +972,92 @@ test("task batch CAS conflict falls back to existing per-record reconciliation",
   assert.equal(h.recordStore.rowForLogical("tasks", "t2").payload.value.title, "Remote Task 2");
   assert.equal(h.recordStore.rowForLogical("tasks", "t3").payload.value.done, true);
 });
+
+
+test("task burst does not sweep a quarantined task conflict into an unrelated batch", async () => {
+  const initial = animalState({
+    tasks: [
+      { id: "t1", title: "Task 1", done: false },
+      { id: "t2", title: "Task 2", done: false },
+      { id: "t3", title: "Task 3", done: false },
+      { id: "t4", title: "Task 4", done: false }
+    ]
+  });
+  const h = await createHarness(initial);
+
+  const first = clone(initial);
+  first.tasks[3].title = "Local T4";
+  h.save(first);
+  h.recordStore.remoteEdit("tasks", "t4", (payload) => {
+    payload.value.title = "Remote T4";
+  });
+  const conflict = await h.worker.drain();
+  assert.equal(conflict.conflicts, 1);
+  assert.equal(h.outbox().some((entry) => entry.recordId === "t4" && entry.retryState === "conflict"), true);
+
+  const later = h.state();
+  later.tasks[0].done = true;
+  later.tasks[1].done = true;
+  later.tasks[2].done = true;
+  h.save(later);
+
+  const result = await h.worker.drain();
+
+  assert.equal(result.conflicts, 0);
+  assert.equal(
+    h.recordStore.groupCalls.length,
+    0,
+    "a quarantined task conflict must disable the section-batch fast path"
+  );
+  assert.equal(h.recordStore.rowForLogical("tasks", "t1").payload.value.done, true);
+  assert.equal(h.recordStore.rowForLogical("tasks", "t2").payload.value.done, true);
+  assert.equal(h.recordStore.rowForLogical("tasks", "t3").payload.value.done, true);
+  assert.equal(h.recordStore.rowForLogical("tasks", "t4").payload.value.title, "Remote T4");
+  assert.equal(h.outbox().some((entry) => entry.recordId === "t4" && entry.retryState === "conflict"), true);
+});
+
+test("task burst does not bypass retry backoff for another task mutation", async () => {
+  const initial = animalState({
+    tasks: [
+      { id: "t1", title: "Task 1", done: false },
+      { id: "t2", title: "Task 2", done: false },
+      { id: "t3", title: "Task 3", done: false },
+      { id: "t4", title: "Task 4", done: false }
+    ]
+  });
+  const h = await createHarness(initial);
+
+  const t4RecordId = h.recordStore.rowForLogical("tasks", "t4").record_id;
+  h.recordStore.failBeforeCommit.set(
+    t4RecordId,
+    Object.assign(new Error("Failed to fetch"), { code: "network_error" })
+  );
+
+  const first = clone(initial);
+  first.tasks[3].done = true;
+  h.save(first);
+  const failed = await h.worker.drain();
+  assert.equal(failed.failed, 1);
+  assert.equal(h.outbox().some((entry) => entry.recordId === "t4" && entry.retryState === "retry"), true);
+
+  const later = h.state();
+  later.tasks[0].done = true;
+  later.tasks[1].done = true;
+  later.tasks[2].done = true;
+  h.save(later);
+
+  const callsBefore = h.recordStore.groupCalls.length;
+  const result = await h.worker.drain();
+
+  assert.equal(result.ok, true);
+  assert.equal(
+    h.recordStore.groupCalls.length,
+    callsBefore,
+    "a task still in retry backoff must not be pulled into a section batch"
+  );
+  assert.equal(h.recordStore.rowForLogical("tasks", "t1").payload.value.done, true);
+  assert.equal(h.recordStore.rowForLogical("tasks", "t2").payload.value.done, true);
+  assert.equal(h.recordStore.rowForLogical("tasks", "t3").payload.value.done, true);
+  assert.equal(h.recordStore.rowForLogical("tasks", "t4").payload.value.done, false);
+  assert.equal(h.outbox().some((entry) => entry.recordId === "t4"), true);
+});
