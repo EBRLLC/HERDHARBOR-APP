@@ -2832,7 +2832,13 @@
   async function hydrateUserDataOnce(activeSession) {
     session = activeSession;
     dispatchAuthSession();
-    await loadAccessProfile();
+
+    // Access/profile and sync-rollout hydration are independent network
+    // phases. Start the access refresh immediately, but do not serialize the
+    // entire cloud hydration path behind it.
+    const accessProfilePromise = recoveryMode
+      ? Promise.resolve(null)
+      : loadAccessProfile();
     void window.HerdHarborBilling?.refresh?.();
 
     if (recoveryMode) {
@@ -2853,25 +2859,30 @@
     const dirty = originalGetItem.call(localStorage, dirtyKey(userId)) === "1";
     let rolloutDecision = null;
 
-    if (normalizedRollout?.prepareHydration) {
-      try {
-        rolloutDecision = await normalizedRollout.prepareHydration({ legacyDirty: dirty });
-      } catch (error) {
-        console.error("HerdHarbor normalized authority check failed:", error);
-        const offlineRaw = activeRaw || cachedRaw;
-        if (offlineRaw && safeParse(offlineRaw)) {
-          if (!activeRaw) setActiveUserData(userId, offlineRaw, "normalized-authority-offline-copy");
-          unlockApp();
-          setSyncState("Cloud authority could not be verified; this device copy was preserved.", "error");
-          return;
-        }
-        authMessage(
-          "Your account is signed in, but HerdHarbor could not verify the cloud authority. Try again shortly.",
-          "error"
-        );
-        showAuth("signin");
+    try {
+      const rolloutHydrationPromise = normalizedRollout?.prepareHydration
+        ? normalizedRollout.prepareHydration({ legacyDirty: dirty })
+        : Promise.resolve(null);
+      const [, decision] = await Promise.all([
+        accessProfilePromise,
+        rolloutHydrationPromise
+      ]);
+      rolloutDecision = decision;
+    } catch (error) {
+      console.error("HerdHarbor normalized authority check failed:", error);
+      const offlineRaw = activeRaw || cachedRaw;
+      if (offlineRaw && safeParse(offlineRaw)) {
+        if (!activeRaw) setActiveUserData(userId, offlineRaw, "normalized-authority-offline-copy");
+        unlockApp();
+        setSyncState("Cloud authority could not be verified; this device copy was preserved.", "error");
         return;
       }
+      authMessage(
+        "Your account is signed in, but HerdHarbor could not verify the cloud authority. Try again shortly.",
+        "error"
+      );
+      showAuth("signin");
+      return;
     }
 
     if (rolloutDecision?.authoritative === true) {
