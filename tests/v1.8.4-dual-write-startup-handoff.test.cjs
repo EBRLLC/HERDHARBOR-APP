@@ -411,3 +411,21 @@ test("drainSyncQueue tracks and clears the exact raw snapshot around each cloud 
   assert.ok(setRawIndex > drainIndex && setRawIndex < syncValueIndex);
   assert.ok(clearRawIndex > syncValueIndex, "in-flight raw identity must be cleared after the write settles");
 });
+
+
+test("syncNow prioritizes a pending legacy save before normalized authority readiness refresh", () => {
+  const source = cloudSource;
+  const syncNowIndex = source.indexOf("async function syncNow()");
+  const pendingCheckIndex = source.indexOf("const legacyWritePendingAtStart", syncNowIndex);
+  const refreshIndex = source.indexOf("await refreshNormalizedAuthorityIfEligible();", syncNowIndex);
+  const guardIndex = source.indexOf("!legacyWritePendingAtStart", syncNowIndex);
+
+  assert.ok(syncNowIndex >= 0);
+  assert.ok(pendingCheckIndex > syncNowIndex, "syncNow must determine whether legacy work is already pending");
+  assert.ok(guardIndex > pendingCheckIndex && guardIndex < refreshIndex, "authority refresh must be gated by absence of pending legacy work");
+  assert.match(
+    source.slice(syncNowIndex, refreshIndex + 80),
+    /Boolean\(pendingSync\)[\s\S]*dirtyKey\(syncUserIdAtStart\)[\s\S]*!legacyWritePendingAtStart[\s\S]*refreshNormalizedAuthorityIfEligible/,
+    "pending legacy state must bypass readiness refresh and proceed to persistence first"
+  );
+});
