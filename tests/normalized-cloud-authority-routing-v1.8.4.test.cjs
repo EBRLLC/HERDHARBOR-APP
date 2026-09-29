@@ -6,7 +6,6 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const source = fs.readFileSync(path.join(__dirname, "..", "herdharbor-cloud.js"), "utf8");
-const rolloutSource = fs.readFileSync(path.join(__dirname, "..", "cloud-sync-rollout-runtime-v1.8.4.js"), "utf8");
 
 function body(startToken, endToken) {
   const start = source.indexOf(startToken);
@@ -69,17 +68,12 @@ test("online, foreground, and focus resumes all enter authority-aware sync paths
 });
 
 
-test("successful zero-work normalized drain does not trigger authoritative reconciliation", () => {
-  const start = rolloutSource.indexOf("    async function afterLegacyCommit(options = {}) {");
-  const end = rolloutSource.indexOf("\n    async function validateNow()", start);
-  assert.ok(start >= 0 && end > start, "afterLegacyCommit body must be present");
-  const afterLegacy = rolloutSource.slice(start, end);
-
-  assert.doesNotMatch(afterLegacy, /noNormalizedWork/);
-  assert.doesNotMatch(afterLegacy, /ensureCurrent\s*===\s*true/);
-  assert.match(afterLegacy, /conflictLikeDegradation/);
-  assert.match(
-    afterLegacy,
-    /result\?\.legacySaved === true\s*&&\s*conflictLikeDegradation/
+test("normal legacy-save completion does not request an unnecessary ensureCurrent reconcile", () => {
+  const complete = body(
+    "  async function completeNormalizedAfterLegacyCommit(sequence, updatedAt) {",
+    "\n  function safeParse(value)"
   );
+
+  assert.match(complete, /normalizedRollout\.afterLegacyCommit\(\)/);
+  assert.doesNotMatch(complete, /afterLegacyCommit\(\{\s*ensureCurrent:\s*true\s*\}\)/);
 });
