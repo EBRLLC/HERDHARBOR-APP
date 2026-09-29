@@ -177,3 +177,63 @@ test("foreground cloud checks probe updated_at before loading the full farm stat
     /knownVersion && remoteVersion && knownVersion === remoteVersion[\s\S]*return false/
   );
 });
+
+
+test("legacy CAS miss rebases compatible cloud changes instead of immediately pausing", () => {
+  const start = cloud.indexOf("async function syncValueToCloud");
+  const end = cloud.indexOf("\n  async function drainSyncQueue", start);
+  assert.ok(start >= 0 && end > start, "syncValueToCloud is present");
+  const body = cloud.slice(start, end);
+
+  const raced = body.indexOf("if (raced)");
+  const latest = body.indexOf("await fetchCloudRecord(userId)", raced);
+  const newerLocal = body.indexOf("sequence < writeSequence && pendingSync", latest);
+  const raceMerge = body.indexOf("mergeRawStates(confirmedBase, rawValue, latestRaw)", latest);
+  const retry = body.indexOf("await writeCloudRecord(userId, rebasedState, latest.data)", raceMerge);
+  const genericConflict = body.indexOf('"Sync paused because another device saved at the same time."', retry);
+
+  assert.ok(raced >= 0, "CAS-race handling is present");
+  assert.ok(latest > raced, "the newest cloud snapshot is loaded after the CAS miss");
+  assert.ok(newerLocal > latest, "newer local work is detected before conflict handling");
+  assert.ok(raceMerge > newerLocal, "compatible race changes use the protected three-way merge");
+  assert.ok(retry > raceMerge, "a compatible merge retries against the fresh cloud revision");
+  assert.ok(genericConflict > retry, "generic conflict remains only as the final unmergeable fallback");
+});
+
+test("superseded in-flight legacy save yields to the newest queued local snapshot", () => {
+  const start = cloud.indexOf("async function syncValueToCloud");
+  const end = cloud.indexOf("\n  async function drainSyncQueue", start);
+  const body = cloud.slice(start, end);
+  const raced = body.indexOf("if (raced)");
+  const racedBody = body.slice(raced);
+
+  assert.match(
+    racedBody,
+    /if \(sequence < writeSequence && pendingSync && !options\.force\) \{[\s\S]*Newer changes queued; saving the latest copy…[\s\S]*return true;/
+  );
+});
+
+test("same logical state committed by another client is accepted as success after CAS miss", () => {
+  const start = cloud.indexOf("async function syncValueToCloud");
+  const end = cloud.indexOf("\n  async function drainSyncQueue", start);
+  const body = cloud.slice(start, end);
+  const raced = body.indexOf("if (raced)");
+  const racedBody = body.slice(raced);
+
+  assert.match(
+    racedBody,
+    /if \(latestRaw && sameState\(latestRaw, rawValue\)\) \{[\s\S]*savedRecord = latest\.data;[\s\S]*raced = false;/
+  );
+});
+
+test("a second CAS miss still stops instead of silently overwriting a continuously changing cloud record", () => {
+  const start = cloud.indexOf("async function syncValueToCloud");
+  const end = cloud.indexOf("\n  async function drainSyncQueue", start);
+  const body = cloud.slice(start, end);
+
+  assert.match(body, /if \(retry\.raced\) \{/);
+  assert.match(
+    body,
+    /Sync paused because cloud records changed again while HerdHarbor was combining updates\./
+  );
+});
