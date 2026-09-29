@@ -912,3 +912,63 @@ test("shadow order repair refuses to use a stale local snapshot", async () => {
   assert.ok(result.results[0].fields.includes("$order.authority_mismatch"));
   assert.equal(h.outbox().length, 1);
 });
+
+
+test("three or more task record mutations use one atomic Tasks-section RPC", async () => {
+  const initial = animalState({
+    tasks: [
+      { id: "t1", title: "Task 1", done: false },
+      { id: "t2", title: "Task 2", done: false },
+      { id: "t3", title: "Task 3", done: false },
+      { id: "t4", title: "Task 4", done: false }
+    ]
+  });
+  const h = await createHarness(initial);
+  const next = clone(initial);
+  next.tasks.forEach((task) => { task.done = true; });
+  h.save(next);
+
+  assert.equal(h.outbox().filter((entry) => entry.domain === "tasks").length, 4);
+
+  const result = await h.worker.drain();
+
+  assert.equal(result.ok, true);
+  assert.equal(result.succeeded, 4);
+  assert.equal(h.outbox().length, 0);
+  assert.equal(h.recordStore.groupCalls.length, 1, "task burst should use one atomic group RPC");
+  assert.equal(
+    h.recordStore.groupCalls[0].filter((operation) => operation.payload?.kind === "array_item").length,
+    4
+  );
+  for (const task of next.tasks) {
+    assert.equal(h.recordStore.rowForLogical("tasks", task.id).payload.value.done, true);
+  }
+});
+
+test("task batch CAS conflict falls back to existing per-record reconciliation", async () => {
+  const initial = animalState({
+    tasks: [
+      { id: "t1", title: "Task 1", done: false },
+      { id: "t2", title: "Task 2", done: false },
+      { id: "t3", title: "Task 3", done: false }
+    ]
+  });
+  const h = await createHarness(initial);
+  const next = clone(initial);
+  next.tasks.forEach((task) => { task.done = true; });
+  h.save(next);
+
+  h.recordStore.remoteEdit("tasks", "t2", (payload) => {
+    payload.value.title = "Remote Task 2";
+  });
+
+  const result = await h.worker.drain();
+
+  assert.equal(result.ok, true);
+  assert.equal(h.outbox().length, 0);
+  assert.equal(h.recordStore.groupCalls.length, 1, "only the optimistic batch attempt should use the group RPC");
+  assert.equal(h.recordStore.rowForLogical("tasks", "t1").payload.value.done, true);
+  assert.equal(h.recordStore.rowForLogical("tasks", "t2").payload.value.done, true);
+  assert.equal(h.recordStore.rowForLogical("tasks", "t2").payload.value.title, "Remote Task 2");
+  assert.equal(h.recordStore.rowForLogical("tasks", "t3").payload.value.done, true);
+});
