@@ -11,6 +11,7 @@
   const DEFAULT_WRITER_VERSION = "record-cas-v1";
   const DEFAULT_NAMESPACE = "legacy-state";
   const DEFAULT_MAX_GROUPS = 100;
+  const DEFAULT_TASK_BATCH_MIN_RECORDS = 3;
   const DEFAULT_BASE_BACKOFF_MS = 2000;
   const DEFAULT_MAX_BACKOFF_MS = 5 * 60 * 1000;
 
@@ -72,6 +73,54 @@
         logicalKey(left.latest).localeCompare(logicalKey(right.latest))
       )
       .slice(0, Math.max(1, Number(maxGroups) || DEFAULT_MAX_GROUPS));
+  }
+
+  function taskBurstCandidate(group) {
+    const latest = group?.latest;
+    if (!latest || group?.repairOrderConflict === true) return false;
+    const recordId = String(latest.recordId || "");
+    return String(latest.domain || "") === "tasks" &&
+      Boolean(recordId) &&
+      !recordId.startsWith("$");
+  }
+
+  function coalesceTaskBurstGroups(groups, minimumRecords = DEFAULT_TASK_BATCH_MIN_RECORDS) {
+    const list = Array.isArray(groups) ? groups : [];
+    const candidates = list.filter(taskBurstCandidate);
+    if (candidates.length < Math.max(3, Number(minimumRecords) || DEFAULT_TASK_BATCH_MIN_RECORDS)) {
+      return list;
+    }
+
+    const candidateSet = new Set(candidates);
+    const latest = [...candidates]
+      .map((group) => group.latest)
+      .sort((left, right) =>
+        mutationRevision(left) - mutationRevision(right) ||
+        logicalKey(left).localeCompare(logicalKey(right))
+      )
+      .at(-1);
+
+    const batch = {
+      taskBurst: true,
+      originalGroups: candidates,
+      entries: candidates.flatMap((group) => group.entries || []),
+      latest,
+      mutationIds: candidates.flatMap((group) => group.mutationIds || [])
+    };
+
+    const result = [];
+    let inserted = false;
+    for (const group of list) {
+      if (!candidateSet.has(group)) {
+        result.push(group);
+        continue;
+      }
+      if (!inserted) {
+        result.push(batch);
+        inserted = true;
+      }
+    }
+    return result;
   }
 
   function classifyFailure(error) {
@@ -519,6 +568,76 @@
       return { ok: true, atomic: true, reconciled: true };
     }
 
+    async function processTaskBurstGroup(group) {
+      const currentState = stateStore.getState?.();
+      if (!currentState || typeof currentState !== "object") {
+        throw Object.assign(new Error("Local state is unavailable for normalized task batching."), {
+          code: "HH_SYNC_LOCAL_STATE_MISSING"
+        });
+      }
+
+      const baselineRows = await baselineStore.list(namespace);
+      const syntheticMutation = {
+        ...group.latest,
+        domain: "tasks",
+        recordId: "$section",
+        operation: "update"
+      };
+      const plan = normalizer.planLogicalMutation(currentState, baselineRows, syntheticMutation);
+      if (Array.isArray(plan.conflictFields) && plan.conflictFields.length) {
+        return { ok: false, fallbackSequential: true, fields: [...plan.conflictFields] };
+      }
+
+      if (!Array.isArray(plan.operations) || plan.operations.length === 0) {
+        stateStore.acknowledgeMutations(group.mutationIds, group.latest.ownerId);
+        return {
+          ok: true,
+          batched: true,
+          acknowledged: group.mutationIds.length,
+          operations: 0,
+          logicalRecords: group.originalGroups.length
+        };
+      }
+
+      const entries = [];
+      for (const operation of plan.operations) {
+        const baseline = await baselineStore.get(namespace, rowId(operation.row));
+        if (operation.type === "put" && rowDeleted(baseline)) {
+          return { ok: false, fallbackSequential: true, fields: ["$record_deleted"] };
+        }
+        entries.push({
+          operation,
+          input: atomicInput(operation, rowVersion(baseline)),
+          merged: false
+        });
+      }
+
+      let response;
+      try {
+        response = await recordStore.applyRecordMutationsAtomic({
+          operations: entries.map((entry) => entry.input),
+          writerVersion
+        });
+      } catch (error) {
+        if (String(error?.code || "") === "HH_SYNC_CONFLICT") {
+          return { ok: false, fallbackSequential: true, fields: ["$batch_cas"] };
+        }
+        throw error;
+      }
+
+      await persistAtomicResults(entries, response);
+      stateStore.acknowledgeMutations(group.mutationIds, group.latest.ownerId);
+
+      return {
+        ok: true,
+        batched: true,
+        acknowledged: group.mutationIds.length,
+        operations: plan.operations.length,
+        logicalRecords: group.originalGroups.length,
+        snapshotManifestDeferred: plan.snapshotManifestChanged
+      };
+    }
+
     function acknowledgeCommittedRevision(mutation, processedRevision) {
       const committedIds = stateStore.getOutbox(mutation.ownerId)
         .filter((entry) =>
@@ -722,7 +841,7 @@
       const pendingOutbox = stateStore.getOutbox(options.ownerId);
       const groupLimit = options.maxGroups || maxGroups;
       const repairGroups = repairableOrderConflictGroups(pendingOutbox, stage, groupLimit);
-      const groups = [
+      const plannedGroups = [
         ...repairGroups,
         ...groupPendingMutations(
           pendingOutbox,
@@ -730,6 +849,7 @@
           groupLimit
         )
       ].slice(0, Math.max(1, Number(groupLimit) || DEFAULT_MAX_GROUPS));
+      const groups = coalesceTaskBurstGroups(plannedGroups);
       const summary = {
         ok: true,
         skipped: false,
@@ -741,8 +861,7 @@
         results: []
       };
 
-      for (const group of groups) {
-        summary.processed += 1;
+      async function processStandardGroup(group) {
         try {
           const result = await processGroup(group, stage);
           summary.results.push({
@@ -777,6 +896,56 @@
         }
       }
 
+      for (const group of groups) {
+        summary.processed += 1;
+
+        if (!group.taskBurst) {
+          await processStandardGroup(group);
+          continue;
+        }
+
+        try {
+          const result = await processTaskBurstGroup(group);
+          if (result.fallbackSequential) {
+            summary.processed += Math.max(0, group.originalGroups.length - 1);
+            for (const originalGroup of group.originalGroups) {
+              await processStandardGroup(originalGroup);
+            }
+            continue;
+          }
+
+          summary.results.push({
+            domain: "tasks",
+            recordId: "$section",
+            ...result
+          });
+          if (result.ok) summary.succeeded += group.originalGroups.length;
+          else summary.failed += group.originalGroups.length;
+        } catch (error) {
+          const errorClass = classifyFailure(error);
+          const retryAtBase = Number.isFinite(nowMs) ? nowMs : Date.now();
+          for (const originalGroup of group.originalGroups) {
+            const retryCount = Number(originalGroup.latest.retryCount || 0);
+            const delay = retryDelayMs(retryCount, baseBackoffMs, maxBackoffMs);
+            const nextRetryAt = new Date(retryAtBase + delay).toISOString();
+            stateStore.markMutationRetry(originalGroup.latest.mutationId, {
+              retryState: "retry",
+              lastErrorClass: errorClass,
+              nextRetryAt,
+              lastAttemptAt: now()
+            }, originalGroup.latest.ownerId);
+          }
+          summary.failed += group.originalGroups.length;
+          summary.results.push({
+            ok: false,
+            domain: "tasks",
+            recordId: "$section",
+            batched: true,
+            errorClass
+          });
+        }
+      }
+
       summary.pending = stateStore.getOutbox(options.ownerId).length;
       summary.ok = summary.failed === 0;
       return summary;
@@ -799,6 +968,7 @@
     release: RELEASE,
     defaultWriterVersion: DEFAULT_WRITER_VERSION,
     groupPendingMutations,
+    coalesceTaskBurstGroups,
     classifyFailure,
     retryDelayMs,
     create
