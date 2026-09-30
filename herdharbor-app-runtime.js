@@ -210,6 +210,13 @@
     );
   }
 
+  function ensureProfitabilityAnalyticsLoaded() {
+    return loadScriptOnce(
+      "profitability-analytics-v1.8.3.js?v=1",
+      () => typeof window.HerdHarborProfitabilityAnalytics?.operationSummary === "function"
+    );
+  }
+
   function loadState() {
     try {
       const storedState = canonicalStateStore?.load?.();
@@ -2853,7 +2860,15 @@
   }
 
   function renderBudget() {
-    return productionReportingRuntime().renderBudget();
+    if (typeof window.HerdHarborProfitabilityAnalytics?.operationSummary === "function") {
+      return productionReportingRuntime().renderBudget();
+    }
+    renderLazyRoute(
+      "budget",
+      "Budget and cost per head",
+      ensureProfitabilityAnalyticsLoaded,
+      () => productionReportingRuntime().renderBudget()
+    );
   }
 
   function openProductionForm(id = "", options = {}) {
