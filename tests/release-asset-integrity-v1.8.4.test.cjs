@@ -175,7 +175,7 @@ test("noncritical lazy route bundles are not part of the required startup precac
 
   const required = worker.slice(requiredStart, requiredEnd);
   const runtime = worker.slice(runtimeStart, runtimeEnd);
-  for (const asset of ["analytics-v1.6.1.js?v=2", "symptom-guide.js?v=1", "settings-runtime-v1.8.3.js?v=1"]) {
+  for (const asset of ["analytics-v1.6.1.js?v=2", "symptom-guide.js?v=1", "settings-runtime-v1.8.3.js?v=1", "profitability-analytics-v1.8.3.js?v=1"]) {
     assert.ok(!required.includes(asset), asset + " must not block startup precache");
     assert.ok(runtime.includes(asset), asset + " remains available through runtime caching");
   }
