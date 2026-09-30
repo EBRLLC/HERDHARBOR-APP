@@ -173,6 +173,10 @@
     function filterTasks(tasks = stateNow().tasks, filters = taskView) {
       const today = todayISO();
       const query = String(filters.search || "").trim().toLowerCase();
+      const animalNames = query
+        ? new Map((stateNow().animals || []).map((animal) => [animal.id, String(animal.name || "")]))
+        : null;
+
       return tasks.filter((task) => {
         const statusMatch = filters.status === "Completed"
           ? Boolean(task.completed)
@@ -183,15 +187,21 @@
               : filters.status === "Upcoming"
                 ? !task.completed && task.dueDate && task.dueDate > today
                 : !task.completed && task.dueDate && task.dueDate <= today;
+        if (
+          !statusMatch ||
+          (filters.category && task.category !== filters.category) ||
+          (filters.animalId && task.animalId !== filters.animalId)
+        ) return false;
+        if (!query) return true;
+
         const haystack = [
-          task.title, task.notes, task.category,
-          task.animalId ? animalName(task.animalId) : "",
+          task.title,
+          task.notes,
+          task.category,
+          task.animalId ? (animalNames.get(task.animalId) || "") : "",
           taskRecurrenceLabel(task)
         ].join(" ").toLowerCase();
-        return statusMatch
-          && (!filters.category || task.category === filters.category)
-          && (!filters.animalId || task.animalId === filters.animalId)
-          && (!query || haystack.includes(query));
+        return haystack.includes(query);
       }).sort(taskSort);
     }
   
@@ -305,6 +315,16 @@
       return { changed, created, updated, completed, reopened };
     }
 
+    let taskToggleRenderTimer = null;
+
+    function scheduleTaskToggleRender() {
+      if (taskToggleRenderTimer) root.clearTimeout(taskToggleRenderTimer);
+      taskToggleRenderTimer = root.setTimeout(() => {
+        taskToggleRenderTimer = null;
+        if (getCurrentRoute() === "tasks") renderTasks();
+      }, 120);
+    }
+
     function renderTasks() {
       syncDerivedAutomation();
       const today = todayISO();
@@ -395,9 +415,7 @@
           ? `Task completed. Next task scheduled for ${formatDate(next.dueDate)}.`
           : box.checked ? "Task completed." : "Task reopened.";
         saveState(message);
-        scheduleUiWork("task-toggle-render", () => {
-          if (getCurrentRoute() === "tasks") renderTasks();
-        });
+        scheduleTaskToggleRender();
       }));
       $$("[data-task-tomorrow]", root).forEach((button) => button.addEventListener("click", () => {
         const task = stateNow().tasks.find((item) => item.id === button.dataset.taskTomorrow);
