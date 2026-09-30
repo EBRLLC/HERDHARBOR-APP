@@ -270,3 +270,17 @@ test("automation module is definition-only and TaskRuntime remains the state.tas
   assert.match(taskSource, /state\.tasks\.push|stateNow\(\)\.tasks\.push/);
   assert.match(taskSource, /automationManaged/);
 });
+
+
+test("derived task reconciliation indexes existing tasks instead of scanning the full list per definition", () => {
+  const source = read("task-runtime-v1.8.3.js");
+  const start = source.indexOf("    function syncDerivedAutomation(");
+  const end = source.indexOf("\n    function renderTasks()", start);
+  assert.ok(start >= 0 && end > start);
+  const body = source.slice(start, end);
+
+  assert.match(body, /const taskById = new Map\(state\.tasks\.map\(\(task\) => \[task\.id, task\]\)\)/);
+  assert.match(body, /const existing = taskById\.get\(definition\.id\)/);
+  assert.match(body, /taskById\.set\(createdTask\.id, createdTask\)/);
+  assert.doesNotMatch(body, /state\.tasks\.find\(\(task\) => task\.id === definition\.id\)/);
+});
