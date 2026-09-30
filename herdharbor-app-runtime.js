@@ -129,9 +129,10 @@
   function loadState() {
     try {
       const storedState = canonicalStateStore?.load?.();
-      const raw = storedState ? JSON.stringify(storedState) : localStorage.getItem(STORAGE_KEY);
-      if (!raw) return structuredClone(defaultState);
-      const parsed = JSON.parse(raw);
+      const parsed = storedState && typeof storedState === "object"
+        ? storedState
+        : JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+      if (!parsed || typeof parsed !== "object") return structuredClone(defaultState);
       return {
         ...structuredClone(defaultState),
         ...parsed,

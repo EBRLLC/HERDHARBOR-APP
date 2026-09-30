@@ -254,3 +254,36 @@ test("same-revision array membership replacement emits one atomic section mutati
   assert.equal(result.mutations[0].operation, "update");
   assert.equal(store.getOutbox("user-1").length, 1);
 });
+
+
+test("getState returns a fresh parsed object without mutating durable storage", () => {
+  const initial = { animals: [{ id: "a1", name: "Judy" }], settings: { theme: "light" } };
+  const storage = new MemoryStorage({
+    [OWNER_KEY]: "user-1",
+    [STATE_KEY]: JSON.stringify(initial)
+  });
+  const store = createStore(storage);
+
+  const first = store.getState();
+  const second = store.getState();
+
+  assert.deepEqual(first, initial);
+  assert.deepEqual(second, initial);
+  assert.notEqual(first, second, "each read must still return a detached object");
+
+  first.animals[0].name = "Changed only in memory";
+  assert.equal(store.getState().animals[0].name, "Judy");
+  assert.equal(JSON.parse(storage.getItem(STATE_KEY)).animals[0].name, "Judy");
+});
+
+test("startup load path reuses the canonical parsed state instead of stringify-parsing it again", () => {
+  const app = fs.readFileSync(path.join(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
+  const start = app.indexOf("  function loadState()");
+  const end = app.indexOf("\n  function saveState", start);
+  assert.ok(start >= 0 && end > start);
+  const body = app.slice(start, end);
+
+  assert.match(body, /const storedState = canonicalStateStore\?\.load\?\.\(\)/);
+  assert.match(body, /storedState && typeof storedState === "object"/);
+  assert.doesNotMatch(body, /JSON\.stringify\(storedState\)/);
+});

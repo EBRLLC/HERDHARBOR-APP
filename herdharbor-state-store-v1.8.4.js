@@ -283,7 +283,10 @@
     }
 
     function getState() {
-      return cloneJson(safeParse(getRaw()), null);
+      // JSON.parse(getRaw()) already returns a fresh detached object on every
+      // call. Cloning that parsed object again would stringify and parse the
+      // entire farm a second time during startup.
+      return safeParse(getRaw());
     }
 
     function getRevision(ownerId = activeOwnerId()) {
