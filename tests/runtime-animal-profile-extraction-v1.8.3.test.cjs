@@ -178,10 +178,10 @@ test("clearing an animal photo invalidates stale in-flight photo preparation", (
 
 
 test("animal filtering skips search haystack work when search is empty", () => {
-  const start = animalProfileRuntime.indexOf("    function filterAnimals(");
-  const end = animalProfileRuntime.indexOf("\n    function animalCardHtml", start);
+  const start = extractedSource.indexOf("    function filterAnimals(");
+  const end = extractedSource.indexOf("\n    function animalCardHtml", start);
   assert.ok(start >= 0 && end > start);
-  const body = animalProfileRuntime.slice(start, end);
+  const body = extractedSource.slice(start, end);
 
   assert.match(body, /if \(!query\) return true;/);
   const fastPath = body.indexOf("if (!query) return true;");
@@ -199,7 +199,7 @@ test("animal search still covers identity breed breeder location and color field
       species: "Rabbit", sex: "Female", status: "Active"
     }]
   };
-  const api = AnimalProfileRuntime.create(stubDeps(state));
+  const api = extracted.create(stubDeps(state));
   for (const search of ["daisy", "t-22", "44", "blue", "reg123", "d44", "bluegrass", "holland", "barn a", "harlequin"]) {
     assert.equal(api.filterAnimals(state.animals, { search, species: "", sex: "", status: "" }).length, 1, search);
   }
