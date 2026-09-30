@@ -550,6 +550,11 @@
   function renderPanel() {
     if (!panel) return;
     const account = getAccountSnapshot();
+    const experience = window.HerdHarborSubscriptionLaunch?.getExperienceState?.() || null;
+    const protectedAccess = experience?.key === "protected_access";
+    const displayStatus = protectedAccess ? (experience.label || "Protected access") : titleCase(state.status);
+    const displayStatusTone = protectedAccess ? "good" : statusTone();
+    const canManageBilling = providerCapability("createPortalSession") && Boolean(state.providerCustomerId);
     const plans = planCatalog();
     const currentPlan = state.plan || account.tier;
     const plan = plans[currentPlan] || null;
@@ -607,17 +612,19 @@
               <span class="hh-subscription-kicker">Account status</span>
               <div class="hh-subscription-status-line">
                 <h3>${escapeHtml(plan?.label || account.planLabel || "HerdHarbor")}</h3>
-                <span class="hh-subscription-pill" data-tone="${statusTone()}">${escapeHtml(titleCase(state.status))}</span>
+                <span class="hh-subscription-pill" data-tone="${displayStatusTone}">${escapeHtml(displayStatus)}</span>
               </div>
-              <p>${state.cancelAtPeriodEnd
-                ? `Cancellation is scheduled for ${escapeHtml(formatDate(state.currentPeriodEnd))}.`
-                : state.currentPeriodEnd
-                  ? `Current billing period ends ${escapeHtml(formatDate(state.currentPeriodEnd))}.`
-                  : provider ? "Billing provider connected." : "Payment processing is not connected yet; existing access remains unchanged."}</p>
+              <p>${protectedAccess && !state.providerCustomerId
+                ? "Protected access does not require Stripe billing."
+                : state.cancelAtPeriodEnd
+                  ? `Cancellation is scheduled for ${escapeHtml(formatDate(state.currentPeriodEnd))}.`
+                  : state.currentPeriodEnd
+                    ? `Current billing period ends ${escapeHtml(formatDate(state.currentPeriodEnd))}.`
+                    : provider ? "Billing provider connected." : "Payment processing is not connected yet; existing access remains unchanged."}</p>
             </div>
             <div class="hh-subscription-actions">
               <button type="button" class="button button-primary" data-hh-subscription-refresh>Refresh</button>
-              <button type="button" class="button button-ghost" data-hh-subscription-manage ${providerCapability("createPortalSession") ? "" : "disabled"}>Manage billing</button>
+              ${canManageBilling ? '<button type="button" class="button button-ghost" data-hh-subscription-manage>Manage billing</button>' : ""}
             </div>
           </section>
 
