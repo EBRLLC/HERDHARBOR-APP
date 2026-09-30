@@ -300,13 +300,16 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (isNetworkFirstPath(url.pathname)) {
-    event.respondWith(networkFirst(request));
+  // Production JS/CSS is content-fingerprinted by the release builder.
+  // Its URL identity changes whenever its bytes change, so a matching cached
+  // response is exact and can safely bypass the network-first legacy list.
+  if (isImmutableFingerprintAsset(url)) {
+    event.respondWith(cacheFirst(request));
     return;
   }
 
-  if (isImmutableFingerprintAsset(url)) {
-    event.respondWith(cacheFirst(request));
+  if (isNetworkFirstPath(url.pathname)) {
+    event.respondWith(networkFirst(request));
     return;
   }
 
