@@ -492,8 +492,28 @@
     }
   
     function renderLitters() {
-      const rows = stateNow().litters.slice().sort((left, right) => (right.birthDate || "").localeCompare(left.birthDate || ""));
+      const snapshot = stateNow();
+      const rows = snapshot.litters.slice().sort((left, right) => (right.birthDate || "").localeCompare(left.birthDate || ""));
       const totals = breedingReportSnapshot([], rows);
+      const litterIdsByAnimalId = new Map();
+      const offspringIdsByLitterId = new Map(rows.map((litter) => [litter.id, new Set()]));
+
+      for (const litter of rows) {
+        for (const animalId of Array.isArray(litter.offspringIds) ? litter.offspringIds : []) {
+          if (!litterIdsByAnimalId.has(animalId)) litterIdsByAnimalId.set(animalId, new Set());
+          litterIdsByAnimalId.get(animalId).add(litter.id);
+        }
+      }
+
+      for (const animal of snapshot.animals) {
+        const litterIds = new Set(litterIdsByAnimalId.get(animal.id) || []);
+        if (animal.sourceBirthId && offspringIdsByLitterId.has(animal.sourceBirthId)) {
+          litterIds.add(animal.sourceBirthId);
+        }
+        for (const litterId of litterIds) {
+          offspringIdsByLitterId.get(litterId)?.add(animal.id);
+        }
+      }
       $("#view-litters").innerHTML = `
         ${headerHtml(
           "Births and litters",
@@ -507,15 +527,15 @@
           ${statCard("Survival", `${Math.round(totals.survivalRate * 100)}%`, "Born alive to weaned")}
         </div>
         ${rows.length ? `<div class="cards-grid">${rows.map((litter) => {
-          const offspring = offspringForLitter(litter);
+          const offspringCount = offspringIdsByLitterId.get(litter.id)?.size || 0;
           return `<article class="animal-card">
             <div class="animal-card-top"><div class="animal-avatar">◉</div><span class="badge green">${formatDate(litter.birthDate)}</span></div>
             <h3>${esc(animalName(litter.damId))} × ${esc(animalName(litter.sireId))}</h3>
             <div class="meta">${Number(litter.bornAlive || 0)} born alive · ${Number(litter.stillborn || 0)} stillborn · ${Number(litter.fosteredIn || 0)} fostered in</div>
-            <div class="meta">${Number(litter.weaned || 0)} weaned · ${Number(litter.lostBeforeWeaning || 0)} lost · ${offspring.length} offspring record${offspring.length === 1 ? "" : "s"}</div>
+            <div class="meta">${Number(litter.weaned || 0)} weaned · ${Number(litter.lostBeforeWeaning || 0)} lost · ${offspringCount} offspring record${offspringCount === 1 ? "" : "s"}</div>
             <div class="meta">Expected weaning: ${formatDate(litter.expectedWeanDate)}</div>
             <div class="animal-card-footer">
-              <button class="button button-ghost button-small" data-create-offspring="${litter.id}">${offspring.length ? "Add offspring" : "Create offspring"}</button>
+              <button class="button button-ghost button-small" data-create-offspring="${litter.id}">${offspringCount ? "Add offspring" : "Create offspring"}</button>
               <button class="button button-ghost button-small" data-edit-litter="${litter.id}">Edit</button>
             </div>
           </article>`;
