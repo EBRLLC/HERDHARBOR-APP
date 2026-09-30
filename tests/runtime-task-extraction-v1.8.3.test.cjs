@@ -156,19 +156,26 @@ test("Phase 6E extraction remains compatible with formal v1.8.4 and changes no n
 });
 
 
-test("rapid task toggles save durably before coalescing the expensive task-page render", () => {
-  const toggleIndex = taskSource.indexOf('$$("[data-toggle-task]"');
+test("rapid task toggles save durably before debouncing the expensive task-page render", () => {
+  const toggleIndex = taskSource.indexOf('$("[data-toggle-task]"');
   const saveIndex = taskSource.indexOf("saveState(message);", toggleIndex);
-  const scheduleIndex = taskSource.indexOf('scheduleUiWork("task-toggle-render"', toggleIndex);
-  const renderIndex = taskSource.indexOf("renderTasks();", scheduleIndex);
+  const scheduleIndex = taskSource.indexOf("scheduleTaskToggleRender();", toggleIndex);
 
   assert.ok(toggleIndex >= 0, "task toggle handler must exist");
   assert.ok(saveIndex > toggleIndex, "task toggle must persist the state");
-  assert.ok(scheduleIndex > saveIndex, "UI batching must happen only after the durable save");
-  assert.ok(renderIndex > scheduleIndex, "full task render must be deferred through scheduleUiWork");
+  assert.ok(scheduleIndex > saveIndex, "render batching must happen only after the durable save");
   assert.doesNotMatch(
     taskSource.slice(saveIndex, scheduleIndex),
     /renderTasks\(\)/,
     "task toggle must not synchronously rebuild the entire task page after each save"
   );
+
+  const helperStart = taskSource.indexOf("function scheduleTaskToggleRender()");
+  const helperEnd = taskSource.indexOf("\n    function renderTasks()", helperStart);
+  assert.ok(helperStart >= 0 && helperEnd > helperStart);
+  const helper = taskSource.slice(helperStart, helperEnd);
+  assert.match(helper, /clearTimeout\(taskToggleRenderTimer\)/);
+  assert.match(helper, /setTimeout\(\(\) => \{/);
+  assert.match(helper, /\}, 120\)/);
+  assert.match(helper, /if \(getCurrentRoute\(\) === "tasks"\) renderTasks\(\)/);
 });
