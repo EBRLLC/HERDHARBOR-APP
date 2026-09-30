@@ -59,7 +59,7 @@ test("v1.8.3 production subscription completion remains part of the aggregate ga
 
 
 test("Founder eligibility exposes $7.99 checkout before Stripe customer and portal after connection",()=>{
-  assert.match(billing,/protectedAccess && \(storedTier === "founder" \|\| membershipSource === "founder"\)/);
+  assert.match(billing,/founderEligible = membershipSource === "founder" \|\| storedTier === "founder"/);
   assert.match(billing,/effectiveStatus = "founder"/);
   assert.match(billing,/effectivePlan = "founder"/);
   assert.match(engine,/const protectedAccess = experience\?\.key === "protected_access"/);
