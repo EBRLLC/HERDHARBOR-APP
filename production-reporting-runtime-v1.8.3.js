@@ -106,11 +106,15 @@
     }
     
     function annualBudgetPlansFor(year, speciesFilter = "") {
-      return stateNow().annualBudgetPlans.filter((plan) => {
+      const state = stateNow();
+      const animalSpeciesById = speciesFilter
+        ? new Map(state.animals.map((animal) => [animal.id, animal.species || ""]))
+        : null;
+      return state.annualBudgetPlans.filter((plan) => {
         if (Number(plan.year) !== Number(year)) return false;
         if (!speciesFilter) return true;
         if (plan.species === speciesFilter) return true;
-        return stateNow().animals.find((animal) => animal.id === plan.animalId)?.species === speciesFilter;
+        return animalSpeciesById.get(plan.animalId) === speciesFilter;
       });
     }
     
@@ -497,11 +501,16 @@
     }
     
     function latestProductionRecord() {
-      return [...stateNow().productionRecords].sort((left, right) =>
-        String(right.updatedAt || right.createdAt || right.date || "").localeCompare(
-          String(left.updatedAt || left.createdAt || left.date || "")
-        )
-      )[0] || null;
+      let latest = null;
+      let latestKey = "";
+      for (const record of stateNow().productionRecords) {
+        const key = String(record.updatedAt || record.createdAt || record.date || "");
+        if (!latest || key > latestKey) {
+          latest = record;
+          latestKey = key;
+        }
+      }
+      return latest;
     }
     
     function productionDraft(product = "Eggs", sourceRecord = null) {
@@ -1899,9 +1908,11 @@
     }
     
     function exportBudgetCsv(monthKey, speciesFilter = "") {
+      const state = stateNow();
       const rows = monthTransactions(monthKey).filter((transaction) =>
         !speciesFilter || transaction.scope === "Operation" || transactionSpecies(transaction) === speciesFilter
       );
+      const productionById = new Map(state.productionRecords.map((record) => [record.id, record]));
       const headers = [
         "Date", "Type", "Classification", "Category", "Scope", "Species",
         "Animal", "Product", "Quantity Sold", "Unit", "Vendor or Customer",
@@ -1912,7 +1923,7 @@
         headers.map(csvEscape).join(","),
         ...rows.map((transaction) => {
           const production = transaction.sourceType === "production"
-            ? stateNow().productionRecords.find((record) => record.id === transaction.sourceId)
+            ? productionById.get(transaction.sourceId)
             : null;
           return [
             transaction.date,
