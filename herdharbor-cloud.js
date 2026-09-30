@@ -3010,13 +3010,24 @@
     const dirty = originalGetItem.call(localStorage, dirtyKey(userId)) === "1";
     let rolloutDecision = null;
 
-    // Start read-only hydration work together. The legacy cloud read is safe
-    // to prefetch before authority is resolved because normalized authority can
-    // simply discard it. This removes a network waterfall from clean sign-in.
+    // Start read-only hydration work together. When this clean device already
+    // has a confirmed cloud revision, probe only updated_at first. A matching
+    // revision proves the authoritative legacy row has not changed, so the
+    // existing clean local snapshot can be used without downloading app_state.
+    // Normalized authority can discard either legacy prefetch result.
+    const knownCloudVersion =
+      originalGetItem.call(localStorage, versionKey(userId)) || "";
+    const canUseVersionOnlyPrefetch =
+      !dirty &&
+      Boolean(activeRaw && safeParse(activeRaw)) &&
+      Boolean(knownCloudVersion);
     const baselineRestorePromise = restoreMissingCloudBaseline(userId, "hydrate");
+    const legacyCloudPrefetchMode = canUseVersionOnlyPrefetch ? "version" : "record";
     const legacyCloudPrefetchPromise = dirty
       ? null
-      : fetchCloudRecord(userId);
+      : canUseVersionOnlyPrefetch
+        ? fetchCloudVersion(userId)
+        : fetchCloudRecord(userId);
 
     try {
       const rolloutHydrationPromise = normalizedRollout?.prepareHydration
@@ -3126,13 +3137,13 @@
 
     setSyncState("Loading cloud records…", "working");
 
-    const [{ data, error }] = await Promise.all([
+    const [prefetchedLegacy] = await Promise.all([
       legacyCloudPrefetchPromise || fetchCloudRecord(userId),
       baselineRestorePromise
     ]);
 
-    if (error) {
-      console.error("HerdHarbor cloud load failed:", error);
+    if (prefetchedLegacy?.error) {
+      console.error("HerdHarbor cloud load failed:", prefetchedLegacy.error);
 
       const offlineRaw = activeRaw || cachedRaw;
       if (offlineRaw && safeParse(offlineRaw)) {
@@ -3147,6 +3158,57 @@
         "error"
       );
       showAuth("signin");
+      return;
+    }
+
+    let cloudLoadResult = prefetchedLegacy;
+    if (legacyCloudPrefetchMode === "version") {
+      const remoteVersion = String(prefetchedLegacy?.data?.updated_at || "");
+      if (remoteVersion && remoteVersion === knownCloudVersion) {
+        safeStorageRemove(dirtyKey(userId));
+        pendingSync = null;
+        syncConflict = null;
+
+        if (
+          rolloutDecision?.stage === "dual_write" &&
+          normalizedRollout?.afterLegacyCommit &&
+          normalizedOutboxPending(userId)
+        ) {
+          deferNormalizedDualWriteCleanup({
+            ensureCurrent: true,
+            reason: "startup-version-current"
+          });
+        }
+
+        unlockApp();
+        setSyncState("Cloud records loaded", "success");
+        return;
+      }
+
+      cloudLoadResult = await fetchCloudRecord(userId);
+      if (cloudLoadResult?.error) {
+        console.error("HerdHarbor cloud load failed:", cloudLoadResult.error);
+
+        const offlineRaw = activeRaw || cachedRaw;
+        if (offlineRaw && safeParse(offlineRaw)) {
+          setActiveUserData(userId, offlineRaw);
+          unlockApp();
+          setSyncState("Offline copy loaded; changes will sync when connection returns.", "error");
+          return;
+        }
+
+        authMessage(
+          "Your account is signed in, but HerdHarbor could not load the cloud record. Try again shortly.",
+          "error"
+        );
+        showAuth("signin");
+        return;
+      }
+    }
+
+    const { data, error } = cloudLoadResult || {};
+    if (error) {
+      console.error("HerdHarbor cloud load failed:", error);
       return;
     }
 
