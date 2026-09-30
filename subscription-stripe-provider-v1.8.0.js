@@ -8,7 +8,7 @@
   const PLAN_ORDER = ["junior", "founder", "member", "business"];
   const PRICING = Object.freeze({
     junior: Object.freeze({ month: 0, year: 0 }),
-    founder: Object.freeze({ month: 999, year: 11000 }),
+    founder: Object.freeze({ month: 799, year: 11000 }),
     member: Object.freeze({ month: 1499, year: 15000 }),
     business: Object.freeze({ month: 4999, year: 55000 })
   });
@@ -117,7 +117,7 @@
       if (planId === "junior") throw new Error("HerdHarbor Junior is a free youth plan and does not use Stripe checkout.");
       return call("checkout", {
         planId,
-        billingInterval: planId === "member" ? "month" : selectedInterval,
+        billingInterval: ["founder", "member"].includes(planId) ? "month" : selectedInterval,
         origin: appReturnUrl()
       });
     },
@@ -145,7 +145,7 @@
     enhancePanel();
   }
 
-  async function beginMemberCheckout(button) {
+  async function beginCheckout(planId, button) {
     if (checkoutState === "pending") return;
     checkoutState = "pending";
     checkoutError = "";
@@ -155,7 +155,7 @@
     }
     enhancePanel();
     try {
-      const result = await provider.createCheckoutSession({ plan: "member" });
+      const result = await provider.createCheckoutSession({ plan: planId });
       if (!result?.url) throw new Error("Checkout did not return a secure destination.");
       const url = new URL(result.url, window.location.href);
       if (!/^https?:$/.test(url.protocol)) throw new Error("Billing provider returned an unsafe destination.");
@@ -213,7 +213,10 @@
     } else if (experience.key === "junior") {
       detail = "Junior remains a separate youth enrollment state with up to 5 active animals.";
     } else if (experience.key === "protected_access") {
-      detail = "Protected account access takes precedence over trial and Free Adult policy.";
+      const founderEligible = String(window.HerdHarborSubscriptionLaunch?.getAccount?.()?.effectiveMembershipTier || "").toLowerCase() === "founder";
+      detail = founderEligible && !snapshot.providerSubscriptionId
+        ? "Founder pricing is $7.99/month. Set up secure billing to connect your discounted Founder subscription."
+        : "Protected account access takes precedence over trial and Free Adult policy.";
     } else if (experience.key === "status_unavailable") {
       detail = "Subscription status could not be refreshed. HerdHarbor startup and existing local records remain available; retry when connectivity returns.";
     }
@@ -287,6 +290,8 @@
 
     const snapshot = window.HerdHarborSubscriptionEngine?.getState?.() || {};
     const experience = accessExperience();
+    const account = window.HerdHarborSubscriptionLaunch?.getAccount?.() || {};
+    const founderEligible = String(account.effectiveMembershipTier || account.membershipTier || "").toLowerCase() === "founder";
     const status = String(snapshot.status || "").toLowerCase();
     const freeAdult = experience.key === "free_adult";
     ensureFreeAdultCard(grid, freeAdult);
@@ -314,6 +319,24 @@
       }
     }
 
+    const founderCard = panel.querySelector('[data-hh-stripe-plan="founder"]');
+    if (founderEligible && founderCard && !snapshot.providerSubscriptionId) {
+      let founderButton = founderCard.querySelector("[data-hh-founder-checkout]");
+      if (!founderButton) {
+        founderButton = document.createElement("button");
+        founderButton.type = "button";
+        founderButton.className = "button button-primary";
+        founderButton.dataset.hhFounderCheckout = "true";
+        founderCard.appendChild(founderButton);
+      }
+      founderButton.textContent = checkoutState === "pending" ? "Opening secure checkout…" : "Set up Founder billing — $7.99/mo";
+      founderButton.disabled = checkoutState === "pending";
+      if (founderButton.dataset.hhFounderCheckoutBound !== "true") {
+        founderButton.dataset.hhFounderCheckoutBound = "true";
+        founderButton.addEventListener("click", () => void beginCheckout("founder", founderButton));
+      }
+    }
+
     const memberCard = panel.querySelector('[data-hh-stripe-plan="member"]');
     if (freeAdult && memberCard) {
       memberCard.dataset.current = "false";
@@ -338,7 +361,7 @@
       button.disabled = checkoutState === "pending";
       if (button.dataset.hhTrialCheckoutBound !== "true") {
         button.dataset.hhTrialCheckoutBound = "true";
-        button.addEventListener("click", () => void beginMemberCheckout(button));
+        button.addEventListener("click", () => void beginCheckout("member", button));
       }
     }
   }
