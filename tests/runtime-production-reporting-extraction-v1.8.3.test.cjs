@@ -90,7 +90,8 @@ test("Production/Reporting domain has one extracted runtime owner", () => {
 
 test("composition runtime delegates instead of retaining a second production/report implementation", () => {
   assert.match(app, /HerdHarborProductionReportingRuntime\?\.create/);
-  assert.match(app, /function renderBudget\(\) \{\s*return productionReportingRuntime\(\)\.renderBudget\(\);\s*\}/);
+  assert.match(app, /function ensureProfitabilityAnalyticsLoaded\(\)/);
+  assert.match(app, /function renderBudget\(\) \{[\s\S]*ensureProfitabilityAnalyticsLoaded[\s\S]*productionReportingRuntime\(\)\.renderBudget\(\)/);
   assert.match(app, /function openProductionForm\(id = "", options = \{\}\) \{\s*return productionReportingRuntime\(\)\.openProductionForm\(id, options\);\s*\}/);
   assert.match(app, /function openTransactionForm\(id = "", defaultType = "Expense"\) \{\s*return productionReportingRuntime\(\)\.openTransactionForm\(id, defaultType\);\s*\}/);
   assert.match(app, /function syncProductionIncome\(record\) \{\s*return productionReportingRuntime\(\)\.syncProductionIncome\(record\);\s*\}/);
