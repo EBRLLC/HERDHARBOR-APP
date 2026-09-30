@@ -346,10 +346,7 @@ test("array diff avoids whole-array pre-serialization for normal record domains"
 });
 
 test("equal non-record arrays still produce no fallback mutation", () => {
-  const before = {
-    animals: [{ id: "a1", name: "Daisy" }],
-    settings: { customList: ["one", "two", "three"] }
-  };
+  const before = { customRows: ["one", "two", "three"] };
   const after = structuredClone(before);
   const mutations = StateStoreModule.diffMutations(before, after, {
     ownerId: "user-1",
