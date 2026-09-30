@@ -162,3 +162,21 @@ test("service worker preloads fresh navigation without weakening offline fallbac
   assert.match(navigateBlock, /preloaded \|\| await fetch\(request, \{ cache: "no-store" \}\)/);
   assert.match(navigateBlock, /cache\.match\("\.\/index\.html"\)/);
 });
+
+
+test("noncritical lazy route bundles are not part of the required startup precache", () => {
+  const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
+  const requiredStart = worker.indexOf("const REQUIRED_SHELL = [");
+  const requiredEnd = worker.indexOf("];", requiredStart);
+  const runtimeStart = worker.indexOf("const RUNTIME_CACHE_PATHS = [");
+  const runtimeEnd = worker.indexOf("];", runtimeStart);
+  assert.ok(requiredStart >= 0 && requiredEnd > requiredStart);
+  assert.ok(runtimeStart >= 0 && runtimeEnd > runtimeStart);
+
+  const required = worker.slice(requiredStart, requiredEnd);
+  const runtime = worker.slice(runtimeStart, runtimeEnd);
+  for (const asset of ["analytics-v1.6.1.js?v=2", "symptom-guide.js?v=1"]) {
+    assert.ok(!required.includes(asset), asset + " must not block startup precache");
+    assert.ok(runtime.includes(asset), asset + " remains available through runtime caching");
+  }
+});
