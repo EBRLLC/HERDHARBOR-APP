@@ -287,3 +287,45 @@ test("startup load path reuses the canonical parsed state instead of stringify-p
   assert.match(body, /storedState && typeof storedState === "object"/);
   assert.doesNotMatch(body, /JSON\.stringify\(storedState\)/);
 });
+
+
+test("mutation diff uses a non-mutating shallow cloud view instead of deep-cloning whole farms", () => {
+  const before = {
+    animals: [{ id: "a1", name: "Judy", details: { note: "before" } }],
+    settings: { theme: "light", sidebarCollapsed: false, preferredWeightDisplay: "lb" }
+  };
+  const after = structuredClone(before);
+  after.animals[0].details.note = "after";
+  after.settings.theme = "dark";
+  after.settings.sidebarCollapsed = true;
+
+  const beforeSnapshot = structuredClone(before);
+  const afterSnapshot = structuredClone(after);
+  const mutations = StateStoreModule.diffMutations(before, after, {
+    ownerId: "user-1",
+    revision: 2,
+    createdAt: "2026-09-30T12:00:00.000Z",
+    recordVersions: {}
+  });
+
+  assert.equal(mutations.length, 1);
+  assert.equal(mutations[0].domain, "animals");
+  assert.equal(mutations[0].recordId, "a1");
+  assert.equal(mutations[0].operation, "update");
+  assert.deepEqual(before, beforeSnapshot, "diffing must not mutate the previous farm state");
+  assert.deepEqual(after, afterSnapshot, "diffing must not mutate the next farm state");
+});
+
+test("save-path diff no longer deep-clones both complete states before comparison", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "herdharbor-state-store-v1.8.4.js"), "utf8");
+  const start = source.indexOf("  function diffMutations(");
+  const end = source.indexOf("\n  function create(", start);
+  assert.ok(start >= 0 && end > start);
+  const body = source.slice(start, end);
+
+  assert.match(body, /cloudComparableView\(previousState\)/);
+  assert.match(body, /cloudComparableView\(nextState\)/);
+  assert.doesNotMatch(body, /cloudComparableState\(previousState\)/);
+  assert.doesNotMatch(body, /cloudComparableState\(nextState\)/);
+  assert.doesNotMatch(body, /cloneJson\(/);
+});

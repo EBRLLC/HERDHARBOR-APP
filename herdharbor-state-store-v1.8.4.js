@@ -110,6 +110,20 @@
     return safe;
   }
 
+  function cloudComparableView(state) {
+    if (!isPlainObject(state)) return {};
+    const view = { ...state };
+    if (isPlainObject(state.settings)) {
+      const settings = { ...state.settings };
+      DEVICE_LOCAL_SETTINGS.forEach((key) => {
+        delete settings[key];
+      });
+      if (Object.keys(settings).length) view.settings = settings;
+      else delete view.settings;
+    }
+    return view;
+  }
+
   function recordIdentity(value) {
     if (!isPlainObject(value)) return "";
     for (const key of IDENTITY_KEYS) {
@@ -227,8 +241,11 @@
   }
 
   function diffMutations(previousState, nextState, options = {}) {
-    const previous = cloudComparableState(previousState);
-    const next = cloudComparableState(nextState);
+    // The diff is read-only. Use shallow comparison views so removing
+    // device-local settings does not require stringify/parsing both complete
+    // farm snapshots on every local save.
+    const previous = cloudComparableView(previousState);
+    const next = cloudComparableView(nextState);
     const ownerId = String(options.ownerId || "local");
     const revision = Math.max(1, Number(options.revision || 1));
     const createdAt = String(options.createdAt || new Date().toISOString());
