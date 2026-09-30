@@ -173,6 +173,10 @@
     function filterTasks(tasks = stateNow().tasks, filters = taskView) {
       const today = todayISO();
       const query = String(filters.search || "").trim().toLowerCase();
+      const animalNames = query
+        ? new Map((stateNow().animals || []).map((animal) => [animal.id, String(animal.name || "")]))
+        : null;
+
       return tasks.filter((task) => {
         const statusMatch = filters.status === "Completed"
           ? Boolean(task.completed)
@@ -183,15 +187,21 @@
               : filters.status === "Upcoming"
                 ? !task.completed && task.dueDate && task.dueDate > today
                 : !task.completed && task.dueDate && task.dueDate <= today;
+        if (
+          !statusMatch ||
+          (filters.category && task.category !== filters.category) ||
+          (filters.animalId && task.animalId !== filters.animalId)
+        ) return false;
+        if (!query) return true;
+
         const haystack = [
-          task.title, task.notes, task.category,
-          task.animalId ? animalName(task.animalId) : "",
+          task.title,
+          task.notes,
+          task.category,
+          task.animalId ? (animalNames.get(task.animalId) || "") : "",
           taskRecurrenceLabel(task)
         ].join(" ").toLowerCase();
-        return statusMatch
-          && (!filters.category || task.category === filters.category)
-          && (!filters.animalId || task.animalId === filters.animalId)
-          && (!query || haystack.includes(query));
+        return haystack.includes(query);
       }).sort(taskSort);
     }
   
