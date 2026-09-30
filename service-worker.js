@@ -33,7 +33,6 @@ const REQUIRED_SHELL = [
   "./health-runtime-v1.8.3.js?v=1",
   "./task-runtime-v1.8.3.js?v=1",
   "./sales-customer-runtime-v1.8.3.js?v=1",
-  "./profitability-analytics-v1.8.3.js?v=1",
   "./production-reporting-runtime-v1.8.3.js?v=1",
   "./mobile-capture-v1.8.3.js?v=1",
   "./herdharbor-app-runtime.js?v=2",
@@ -45,6 +44,7 @@ const REQUIRED_SHELL = [
 ];
 
 const RUNTIME_CACHE_PATHS = [
+  "./profitability-analytics-v1.8.3.js?v=1",
   "./settings-runtime-v1.8.3.js?v=1",
   "./analytics-v1.6.1.js?v=2",
   "./symptom-guide.js?v=1",

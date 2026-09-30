@@ -96,3 +96,18 @@ test("lazy Settings stays outside required precache but remains runtime-cacheabl
   assert.ok(runtime.includes("settings-runtime-v1.8.3.js?v=1"));
   assert.match(worker, /"\/settings-runtime-v1\.8\.3\.js"/);
 });
+
+
+test("lazy profitability analytics stays outside required startup shell", () => {
+  assert.doesNotMatch(html, /<script[^>]+profitability-analytics-v1\.8\.3\.js/);
+  assert.match(appRuntime, /"profitability-analytics-v1\.8\.3\.js\?v=1"/);
+  const requiredStart = worker.indexOf("const REQUIRED_SHELL = [");
+  const requiredEnd = worker.indexOf("];", requiredStart);
+  const runtimeStart = worker.indexOf("const RUNTIME_CACHE_PATHS = [");
+  const runtimeEnd = worker.indexOf("];", runtimeStart);
+  const required = worker.slice(requiredStart, requiredEnd);
+  const runtime = worker.slice(runtimeStart, runtimeEnd);
+  assert.ok(!required.includes("profitability-analytics-v1.8.3.js"));
+  assert.ok(runtime.includes("profitability-analytics-v1.8.3.js?v=1"));
+  assert.match(worker, /"\/profitability-analytics-v1\.8\.3\.js"/);
+});
