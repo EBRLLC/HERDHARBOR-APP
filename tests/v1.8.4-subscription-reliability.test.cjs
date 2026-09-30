@@ -58,12 +58,15 @@ test("v1.8.3 production subscription completion remains part of the aggregate ga
 });
 
 
-test("protected Founder access does not expose billing portal without a Stripe customer",()=>{
+test("Founder eligibility exposes $7.99 checkout before Stripe customer and portal after connection",()=>{
   assert.match(billing,/protectedAccess && \(storedTier === "founder" \|\| membershipSource === "founder"\)/);
   assert.match(billing,/effectiveStatus = "founder"/);
   assert.match(billing,/effectivePlan = "founder"/);
   assert.match(engine,/const protectedAccess = experience\?\.key === "protected_access"/);
   assert.match(engine,/const canManageBilling = providerCapability\("createPortalSession"\) && Boolean\(state\.providerCustomerId\)/);
-  assert.match(engine,/Protected access does not require Stripe billing/);
+  assert.match(engine,/Founder pricing is \$7\.99\/month/);
+  assert.match(provider,/Set up Founder billing — \$7\.99\/mo/);
+  assert.match(provider,/beginCheckout\("founder"/);
+  assert.match(billing,/Founder pricing is available only to accounts already granted Founder eligibility/);
   assert.match(engine,/\$\{canManageBilling \? '<button[^']*data-hh-subscription-manage/);
 });
