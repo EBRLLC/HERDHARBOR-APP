@@ -518,3 +518,97 @@ test("sign-in runs access-profile refresh and rollout hydration concurrently", (
     "sign-in must not block all hydration behind access-profile network calls"
   );
 });
+
+
+test("clean sign-in starts legacy cloud prefetch before rollout hydration finishes", () => {
+  const hydrateSource = extract(
+    cloudSource,
+    "  async function hydrateUserDataOnce(activeSession)",
+    "  async function hydrateUserData(activeSession)"
+  );
+
+  const prefetchIndex = hydrateSource.indexOf(
+    "const legacyCloudPrefetchPromise = dirty"
+  );
+  const rolloutIndex = hydrateSource.indexOf(
+    "const rolloutHydrationPromise = normalizedRollout?.prepareHydration"
+  );
+  const joinedFetchIndex = hydrateSource.indexOf(
+    "legacyCloudPrefetchPromise || fetchCloudRecord(userId)"
+  );
+
+  assert.ok(prefetchIndex >= 0, "clean sign-in creates a legacy cloud prefetch promise");
+  assert.ok(
+    prefetchIndex < rolloutIndex,
+    "legacy cloud read must start before waiting on rollout hydration"
+  );
+  assert.ok(
+    joinedFetchIndex > rolloutIndex,
+    "the prefetched cloud result is consumed only after authority routing is known"
+  );
+});
+
+test("login cloud prefetch setup remains read-only", () => {
+  const hydrateSource = extract(
+    cloudSource,
+    "  async function hydrateUserDataOnce(activeSession)",
+    "  async function hydrateUserData(activeSession)"
+  );
+  const prefetchIndex = hydrateSource.indexOf("const legacyCloudPrefetchPromise = dirty");
+  const authorityWaitIndex = hydrateSource.indexOf("    try {", prefetchIndex);
+
+  assert.ok(prefetchIndex >= 0 && authorityWaitIndex > prefetchIndex);
+  const prefetchSetup = hydrateSource.slice(prefetchIndex, authorityWaitIndex);
+  assert.match(prefetchSetup, /fetchCloudRecord\(userId\)/);
+  assert.doesNotMatch(prefetchSetup, /writeCloudRecord\(/);
+  assert.doesNotMatch(prefetchSetup, /setActiveUserData\(/);
+});
+
+test("clean sign-in overlaps baseline restoration with the cloud read", () => {
+  const hydrateSource = extract(
+    cloudSource,
+    "  async function hydrateUserDataOnce(activeSession)",
+    "  async function hydrateUserData(activeSession)"
+  );
+
+  const baselineStart = hydrateSource.indexOf(
+    'const baselineRestorePromise = restoreMissingCloudBaseline(userId, "hydrate")'
+  );
+  const cloudStart = hydrateSource.indexOf(
+    "const legacyCloudPrefetchPromise = dirty"
+  );
+  const joinIndex = hydrateSource.indexOf(
+    "const [{ data, error }] = await Promise.all(["
+  );
+
+  assert.ok(baselineStart >= 0 && cloudStart > baselineStart);
+  assert.ok(joinIndex > cloudStart);
+  assert.match(
+    hydrateSource.slice(joinIndex, joinIndex + 240),
+    /legacyCloudPrefetchPromise \|\| fetchCloudRecord\(userId\)[\s\S]*baselineRestorePromise/
+  );
+});
+
+test("dirty startup still prioritizes the protected local snapshot instead of prefetching cloud", () => {
+  const hydrateSource = extract(
+    cloudSource,
+    "  async function hydrateUserDataOnce(activeSession)",
+    "  async function hydrateUserData(activeSession)"
+  );
+
+  assert.match(
+    hydrateSource,
+    /const legacyCloudPrefetchPromise = dirty[\s\S]*\? null[\s\S]*: fetchCloudRecord\(userId\)/
+  );
+  const dirtyIndex = hydrateSource.indexOf("if (dirty) {");
+  const drainIndex = hydrateSource.indexOf("await drainSyncQueue();", dirtyIndex);
+  const normalCloudJoin = hydrateSource.indexOf(
+    "legacyCloudPrefetchPromise || fetchCloudRecord(userId)",
+    dirtyIndex
+  );
+  assert.ok(dirtyIndex >= 0 && drainIndex > dirtyIndex);
+  assert.ok(
+    normalCloudJoin > drainIndex,
+    "dirty startup saves its local copy before entering the normal cloud-load path"
+  );
+});

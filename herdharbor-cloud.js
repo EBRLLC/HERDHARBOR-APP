@@ -3010,6 +3010,14 @@
     const dirty = originalGetItem.call(localStorage, dirtyKey(userId)) === "1";
     let rolloutDecision = null;
 
+    // Start read-only hydration work together. The legacy cloud read is safe
+    // to prefetch before authority is resolved because normalized authority can
+    // simply discard it. This removes a network waterfall from clean sign-in.
+    const baselineRestorePromise = restoreMissingCloudBaseline(userId, "hydrate");
+    const legacyCloudPrefetchPromise = dirty
+      ? null
+      : fetchCloudRecord(userId);
+
     try {
       const rolloutHydrationPromise = normalizedRollout?.prepareHydration
         ? normalizedRollout.prepareHydration({ legacyDirty: dirty })
@@ -3103,9 +3111,8 @@
       return;
     }
 
-    await restoreMissingCloudBaseline(userId, "hydrate");
-
     if (dirty) {
+      await baselineRestorePromise;
       const unsyncedRaw = activeRaw || cachedRaw;
       if (unsyncedRaw && safeParse(unsyncedRaw)) {
         if (!activeRaw) setActiveUserData(userId, unsyncedRaw);
@@ -3119,7 +3126,10 @@
 
     setSyncState("Loading cloud records…", "working");
 
-    const { data, error } = await fetchCloudRecord(userId);
+    const [{ data, error }] = await Promise.all([
+      legacyCloudPrefetchPromise || fetchCloudRecord(userId),
+      baselineRestorePromise
+    ]);
 
     if (error) {
       console.error("HerdHarbor cloud load failed:", error);
