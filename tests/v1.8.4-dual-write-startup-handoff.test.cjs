@@ -548,20 +548,20 @@ test("clean sign-in starts legacy cloud prefetch before rollout hydration finish
   );
 });
 
-test("login prefetch remains read-only before authority selection", () => {
+test("login cloud prefetch setup remains read-only", () => {
   const hydrateSource = extract(
     cloudSource,
     "  async function hydrateUserDataOnce(activeSession)",
     "  async function hydrateUserData(activeSession)"
   );
   const prefetchIndex = hydrateSource.indexOf("const legacyCloudPrefetchPromise = dirty");
-  const authorityBranch = hydrateSource.indexOf("if (rolloutDecision?.authoritative === true)");
+  const authorityWaitIndex = hydrateSource.indexOf("    try {", prefetchIndex);
 
-  assert.ok(prefetchIndex >= 0 && authorityBranch > prefetchIndex);
-  const beforeAuthority = hydrateSource.slice(prefetchIndex, authorityBranch);
-  assert.match(beforeAuthority, /fetchCloudRecord\(userId\)/);
-  assert.doesNotMatch(beforeAuthority, /writeCloudRecord\(/);
-  assert.doesNotMatch(beforeAuthority, /setActiveUserData\(/);
+  assert.ok(prefetchIndex >= 0 && authorityWaitIndex > prefetchIndex);
+  const prefetchSetup = hydrateSource.slice(prefetchIndex, authorityWaitIndex);
+  assert.match(prefetchSetup, /fetchCloudRecord\(userId\)/);
+  assert.doesNotMatch(prefetchSetup, /writeCloudRecord\(/);
+  assert.doesNotMatch(prefetchSetup, /setActiveUserData\(/);
 });
 
 test("clean sign-in overlaps baseline restoration with the cloud read", () => {
