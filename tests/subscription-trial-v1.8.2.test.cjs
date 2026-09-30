@@ -96,7 +96,7 @@ test("billing snapshot persists the authoritative computed subscription status t
 test("early Member checkout is idempotent and keeps the original trusted trial boundary", () => {
   const billing = fs.readFileSync("supabase/functions/subscription-billing/index.ts", "utf8");
   assert.match(billing, /checkoutIdempotencyKey/);
-  assert.match(billing, /"member-checkout"/);
+  assert.match(billing, /\`\$\{planId\}-checkout\`/);
   assert.match(billing, /user\.id/);
   assert.match(billing, /String\(trialEndUnix\)/);
   assert.match(billing, /idempotencyKey:\s*checkoutIdempotencyKey/);
