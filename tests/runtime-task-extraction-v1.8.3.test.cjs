@@ -172,3 +172,23 @@ test("rapid task toggles save durably before coalescing the expensive task-page 
     "task toggle must not synchronously rebuild the entire task page after each save"
   );
 });
+
+
+test("dashboard summarizes tasks and breedings in single passes", () => {
+  const start = appSource.indexOf("  function renderDashboard()");
+  const end = appSource.indexOf("\n  function ", start + 30);
+  assert.ok(start >= 0 && end > start);
+  const body = appSource.slice(start, end);
+
+  assert.match(body, /for \(const task of state\.tasks\)/);
+  assert.match(body, /for \(const breeding of state\.breedings\)/);
+  assert.doesNotMatch(body, /state\.tasks\.filter\(/);
+  assert.doesNotMatch(body, /state\.breedings\.filter\(/);
+  assert.match(body, /task\.dueDate === today/);
+  assert.match(body, /task\.dueDate && task\.dueDate < today/);
+  assert.match(body, /task\.dueDate && task\.dueDate <= today/);
+  assert.match(body, /task\.dueDate > today/);
+  assert.match(body, /daysUntilDue >= 0 && daysUntilDue <= 14/);
+  assert.match(body, /todaysWorkCandidates\.sort\(taskSort\)\.slice\(0, 6\)/);
+  assert.match(body, /upcomingCandidates[\s\S]*\.slice\(0, 6\)/);
+});
