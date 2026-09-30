@@ -157,3 +157,25 @@ test("Production/Reporting remains the visible owner and shell loads profitabili
   assert.match(worker, /"\/profitability-analytics-v1\.8\.3\.js"/);
   assert.match(pkg.scripts["test:v1.8.3"], /profitability-production-analytics-v1\.8\.3\.test\.cjs/);
 });
+
+
+test("profitability analytics is lazy-loaded for Budget while remaining runtime-cacheable", () => {
+  const html = read("index.html");
+  const app = read("herdharbor-app-runtime.js");
+  const worker = read("service-worker.js");
+
+  assert.doesNotMatch(html, /<script[^>]+profitability-analytics-v1\.8\.3\.js/);
+  assert.match(app, /function ensureProfitabilityAnalyticsLoaded\(\)/);
+  assert.match(app, /"profitability-analytics-v1\.8\.3\.js\?v=1"/);
+  assert.match(app, /renderLazyRoute\([\s\S]*"budget"[\s\S]*ensureProfitabilityAnalyticsLoaded/);
+
+  const requiredStart = worker.indexOf("const REQUIRED_SHELL = [");
+  const requiredEnd = worker.indexOf("];", requiredStart);
+  const runtimeStart = worker.indexOf("const RUNTIME_CACHE_PATHS = [");
+  const runtimeEnd = worker.indexOf("];", runtimeStart);
+  assert.ok(requiredStart >= 0 && requiredEnd > requiredStart);
+  assert.ok(runtimeStart >= 0 && runtimeEnd > runtimeStart);
+  assert.doesNotMatch(worker.slice(requiredStart, requiredEnd), /profitability-analytics-v1\.8\.3\.js/);
+  assert.match(worker.slice(runtimeStart, runtimeEnd), /profitability-analytics-v1\.8\.3\.js\?v=1/);
+  assert.match(worker, /"\/profitability-analytics-v1\.8\.3\.js"/);
+});
