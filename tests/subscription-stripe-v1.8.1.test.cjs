@@ -134,7 +134,7 @@ test("Founder and Member checkout are monthly-only with Founder restricted to el
 test("v1.8.3 web runtime loads carried-forward v1.8.1 referral policy before Stripe provider and preserves safe launch order", () => {
   const referralIndex = build.indexOf("subscription-referral-policy-v1.8.1.js?v=2");
   const policyIndex = build.indexOf("subscription-launch-v1.8.1.js?v=3");
-  const engineIndex = build.indexOf("subscription-engine-v1.8.0.js?v=3");
+  const engineIndex = build.indexOf("subscription-engine-v1.8.0.js?v=4");
   const providerIndex = build.indexOf("subscription-stripe-provider-v1.8.0.js?v=3");
   const bridgeIndex = build.indexOf("subscription-stripe-launch-bridge-v1.8.1.js?v=1");
   assert.ok(referralIndex >= 0 && providerIndex > referralIndex);
@@ -143,7 +143,7 @@ test("v1.8.3 web runtime loads carried-forward v1.8.1 referral policy before Str
 });
 
 test("PWA keeps referral, admin-credit and Stripe subscription assets network-first", () => {
-  assert.match(sw, /herdharbor-shell-v1\.8\.4-alpha-v1\.8\.4-release-2/);
+  assert.match(sw, /herdharbor-shell-v1\.8\.4-alpha-v1\.8\.4-release-3/);
   for (const asset of [
     "subscription-referral-policy-v1.8.1.js",
     "subscription-admin-credits-v1.8.1.js",
