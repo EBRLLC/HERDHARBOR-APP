@@ -9,6 +9,7 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Content-Type": "application/json; charset=utf-8"
 };
+const FOUNDER_MONTH = { priceId: "price_1ULUrdGlRukEX5RKGGNnLYR5", cents: 799 };
 const MEMBER_MONTH = { priceId: "price_1UCOjrGlRukEX5RK9my06yUP", cents: 1499 };
 const FREE_ADULT_MAX_ACTIVE_ANIMALS = 5;
 const ACTIVE_SUBSCRIPTION = new Set(["active", "trialing", "past_due"]);
@@ -121,11 +122,10 @@ async function buildSnapshot(admin: ReturnType<typeof createClient>, user: AuthU
     .sort((a, b) => String(a.reserved_for_period_start || "").localeCompare(String(b.reserved_for_period_start || "")))[0] || null;
   const trial = trialSnapshot(user);
   const liveProviderSubscription = Boolean(sub?.provider_subscription_id) && ACTIVE_SUBSCRIPTION.has(normalize(sub?.status));
-  const protectedAccess = role === "owner"
+  const founderEligible = membershipSource === "founder" || storedTier === "founder";
+  const administrativeProtectedAccess = role === "owner"
     || role === "admin"
-    || membershipSource === "manual_override"
-    || membershipSource === "founder"
-    || storedTier === "founder";
+    || membershipSource === "manual_override";
   const juniorAccess = storedTier === "junior" || requestedPlan === "junior";
 
   const nextInvoice = sub?.current_period_end ? {
@@ -144,13 +144,13 @@ async function buildSnapshot(admin: ReturnType<typeof createClient>, user: AuthU
   let subscriptionRequired = false;
   let maxActiveAnimals: number | null = null;
 
-  if (protectedAccess && (storedTier === "founder" || membershipSource === "founder")) {
+  if (administrativeProtectedAccess && founderEligible && !liveProviderSubscription) {
     effectiveStatus = "founder";
     effectivePlan = "founder";
     effectiveTrialEndsAt = null;
-  } else if (!liveProviderSubscription && !protectedAccess && !juniorAccess) {
+  } else if (!liveProviderSubscription && !administrativeProtectedAccess && !juniorAccess) {
     effectiveStatus = trial.active ? "trialing" : "free_adult";
-    effectivePlan = "member";
+    effectivePlan = founderEligible ? "founder" : "member";
     effectiveTrialEndsAt = trial.endsAt;
     initialTrial = trial.active;
     freeAdult = !trial.active;
@@ -178,7 +178,13 @@ async function buildSnapshot(admin: ReturnType<typeof createClient>, user: AuthU
     status: effectiveStatus,
     plan: effectivePlan,
     billingInterval: sub?.billing_interval || "month",
-    priceCents: freeAdult ? 0 : (effectivePlan === "member" ? (sub?.price_cents ?? MEMBER_MONTH.cents) : (sub?.price_cents ?? null)),
+    priceCents: freeAdult
+      ? 0
+      : effectivePlan === "founder"
+        ? (sub?.price_cents ?? FOUNDER_MONTH.cents)
+        : effectivePlan === "member"
+          ? (sub?.price_cents ?? MEMBER_MONTH.cents)
+          : (sub?.price_cents ?? null),
     currency: sub?.currency || "usd",
     currentPeriodStart: liveProviderSubscription ? (sub?.current_period_start || null) : null,
     currentPeriodEnd: liveProviderSubscription ? (sub?.current_period_end || null) : null,
@@ -198,6 +204,7 @@ async function buildSnapshot(admin: ReturnType<typeof createClient>, user: AuthU
     providerCustomerId: sub?.provider_customer_id || null,
     providerSubscriptionId: sub?.provider_subscription_id || null,
     requestedPlan: choiceResult.data?.requested_plan || null,
+    founderEligible,
     nextInvoice: liveProviderSubscription ? nextInvoice : null,
     referral: {
       code,
@@ -328,24 +335,37 @@ Deno.serve(async (req) => {
     if (action === "checkout") {
       const planId = text(body.planId, 20).toLowerCase();
       const billingInterval = text(body.billingInterval, 10).toLowerCase();
-      if (planId === "founder") return json({ error: "Founder access is assigned internally and is not available for public signup." }, 403);
       if (planId === "business") return json({ error: "HerdHarbor Business is coming soon." }, 409);
       if (planId === "junior") return json({ error: "HerdHarbor Junior is free and does not use Stripe checkout." }, 400);
-      if (planId !== "member" || billingInterval !== "month") {
-        return json({ error: "HerdHarbor Member is currently offered month-to-month at $14.99 per month." }, 400);
+      if (!["founder", "member"].includes(planId) || billingInterval !== "month") {
+        return json({ error: "HerdHarbor Founder is $7.99/month and Member is $14.99/month." }, 400);
       }
+
+      const { data: checkoutAccess, error: checkoutAccessError } = await admin
+        .from("account_access")
+        .select("membership_tier,membership_source")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (checkoutAccessError) throw checkoutAccessError;
+      const founderEligible = normalize(checkoutAccess?.membership_tier) === "founder"
+        || normalize(checkoutAccess?.membership_source) === "founder";
+      if (planId === "founder" && !founderEligible) {
+        return json({ error: "Founder pricing is available only to accounts already granted Founder eligibility." }, 403);
+      }
+
       if (ACTIVE_SUBSCRIPTION.has(String(current?.status || "")) && current?.provider_customer_id) {
         return json({ error: "This account already has a subscription. Use Manage billing instead." }, 409);
       }
       const origin = text(body.origin, 500);
       if (!/^https:\/\//i.test(origin) && !/^http:\/\/localhost(?::\d+)?$/i.test(origin)) return json({ error: "A valid HerdHarbor return URL is required." }, 400);
 
+      const price = planId === "founder" ? FOUNDER_MONTH : MEMBER_MONTH;
       const trial = trialSnapshot(user);
       const trialEndUnix = Math.floor(new Date(trial.endsAt).getTime() / 1000);
       const nowUnix = Math.floor(Date.now() / 1000);
       const metadata = {
         herdharbor_user_id: user.id,
-        herdharbor_plan: "member",
+        herdharbor_plan: planId,
         herdharbor_interval: "month",
         herdharbor_initial_trial_end: trial.endsAt
       };
@@ -358,14 +378,14 @@ Deno.serve(async (req) => {
 
       const checkoutIdempotencyKey = [
         "herdharbor",
-        "member-checkout",
+        `${planId}-checkout`,
         user.id,
         String(trialEndUnix)
       ].join(":");
 
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
-        line_items: [{ price: MEMBER_MONTH.priceId, quantity: 1 }],
+        line_items: [{ price: price.priceId, quantity: 1 }],
         success_url: `${origin}?subscription=success&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${origin}?subscription=canceled`,
         customer: current?.provider_customer_id || undefined,
@@ -378,7 +398,12 @@ Deno.serve(async (req) => {
       }, {
         idempotencyKey: checkoutIdempotencyKey
       });
-      return json({ url: session.url, billingStartsAt: trialEndUnix > nowUnix ? trial.endsAt : new Date().toISOString() });
+      return json({
+        url: session.url,
+        plan: planId,
+        priceCents: price.cents,
+        billingStartsAt: trialEndUnix > nowUnix ? trial.endsAt : new Date().toISOString()
+      });
     }
 
     if (!current?.provider_subscription_id && action !== "portal") return json({ error: "No Stripe subscription is connected to this account." }, 409);

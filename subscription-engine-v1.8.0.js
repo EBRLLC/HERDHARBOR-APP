@@ -89,6 +89,7 @@
       provider: "none",
       providerCustomerId: null,
       providerSubscriptionId: null,
+      founderEligible: false,
       nextInvoice: null,
       referral: {
         successfulReferrals: 0,
@@ -125,6 +126,7 @@
       provider: String(input.provider || "none"),
       providerCustomerId: input.providerCustomerId ? String(input.providerCustomerId) : null,
       providerSubscriptionId: input.providerSubscriptionId ? String(input.providerSubscriptionId) : null,
+      founderEligible: input.founderEligible === true,
       referral: {
         successfulReferrals: Math.max(0, Math.floor(finite(referral.successfulReferrals))),
         freeMonthsEarned: Math.max(0, Math.floor(finite(referral.freeMonthsEarned))),
@@ -552,6 +554,7 @@
     const account = getAccountSnapshot();
     const experience = window.HerdHarborSubscriptionLaunch?.getExperienceState?.() || null;
     const protectedAccess = experience?.key === "protected_access";
+    const founderEligible = state.founderEligible === true || account.tier === "founder";
     const displayStatus = protectedAccess ? (experience.label || "Protected access") : titleCase(state.status);
     const displayStatusTone = protectedAccess ? "good" : statusTone();
     const canManageBilling = providerCapability("createPortalSession") && Boolean(state.providerCustomerId);
@@ -577,11 +580,12 @@
       </li>`).join("");
 
     const planCards = PLAN_ORDER.map((id) => {
+      if (id === "founder" && !founderEligible) return "";
       const item = plans[id];
       const active = id === currentPlan;
       const monthly = item.priceMonthly == null ? "Contact us" : item.priceMonthly === 0 ? "Free" : `$${Number(item.priceMonthly).toFixed(2)}/mo`;
       return `
-        <article class="hh-subscription-plan-card" data-current="${active ? "true" : "false"}">
+        <article class="hh-subscription-plan-card" data-hh-plan="${escapeHtml(id)}" data-current="${active ? "true" : "false"}">
           <div>
             <span class="hh-subscription-kicker">${active ? "Current access" : "Plan"}</span>
             <h3>${escapeHtml(item.label)}</h3>
@@ -614,9 +618,11 @@
                 <h3>${escapeHtml(plan?.label || account.planLabel || "HerdHarbor")}</h3>
                 <span class="hh-subscription-pill" data-tone="${displayStatusTone}">${escapeHtml(displayStatus)}</span>
               </div>
-              <p>${protectedAccess && !state.providerCustomerId
-                ? "Protected access does not require Stripe billing."
-                : state.cancelAtPeriodEnd
+              <p>${protectedAccess && founderEligible && !state.providerCustomerId
+                ? "Founder pricing is $7.99/month. Set up billing below to connect your discounted Founder subscription."
+                : protectedAccess && !state.providerCustomerId
+                  ? "Protected administrative access does not use Stripe billing."
+                  : state.cancelAtPeriodEnd
                   ? `Cancellation is scheduled for ${escapeHtml(formatDate(state.currentPeriodEnd))}.`
                   : state.currentPeriodEnd
                     ? `Current billing period ends ${escapeHtml(formatDate(state.currentPeriodEnd))}.`
@@ -689,7 +695,7 @@
             <ul class="hh-subscription-diagnostics">${diagnosticRows}</ul>
           </section>
 
-          <section class="hh-subscription-danger">
+          ${state.providerSubscriptionId ? `<section class="hh-subscription-danger">
             <div>
               <span class="hh-subscription-kicker">Subscription controls</span>
               <h3>${state.cancelAtPeriodEnd ? "Subscription scheduled to end" : "Cancel or reactivate"}</h3>
@@ -698,7 +704,7 @@
             ${state.cancelAtPeriodEnd
               ? `<button type="button" class="button button-ghost" data-hh-subscription-reactivate ${providerCapability("reactivateSubscription") ? "" : "disabled"}>Reactivate</button>`
               : `<button type="button" class="button button-ghost" data-hh-subscription-cancel ${providerCapability("cancelSubscription") ? "" : "disabled"}>Cancel at period end</button>`}
-          </section>
+          </section>` : ""}
         </div>
       </div>`;
 

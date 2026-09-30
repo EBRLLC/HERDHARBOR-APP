@@ -141,8 +141,7 @@
     const status = normalize(account.subscriptionStatus || snapshot.status);
 
     if (["owner", "admin"].includes(normalize(account.accountRole))
-      || ["manual_override", "founder"].includes(normalize(account.membershipSource))
-      || normalize(account.effectiveMembershipTier) === "founder") {
+      || normalize(account.membershipSource) === "manual_override") {
       return Object.freeze({
         key: "protected_access",
         label: normalize(account.effectiveMembershipTier) === "founder" ? "Founder access" : "Protected access",
@@ -175,9 +174,12 @@
 
     if (mode === "paid") {
       const ending = trusted && snapshot.cancelAtPeriodEnd === true;
+      const paidTier = normalize(account.effectiveMembershipTier);
       return Object.freeze({
         key: ending ? "paid_access_ending" : "paid_member",
-        label: ending ? "Member access ending" : "Paid Member",
+        label: ending
+          ? `${paidTier === "founder" ? "Founder" : "Member"} access ending`
+          : `Paid ${paidTier === "founder" ? "Founder" : "Member"}`,
         endsAt: ending ? (snapshot.currentPeriodEnd || null) : null,
         upgradeAvailable: false,
         verified: trusted || hasBackendPaidSubscription(account)
@@ -220,16 +222,6 @@
 
     if (role === "owner" || role === "admin" || currentSource === "manual_override") {
       return { ...base, subscriptionLaunch: policy };
-    }
-
-    if (isFounder(base)) {
-      return {
-        ...base,
-        effectiveMembershipTier: "founder",
-        membershipSource: "founder",
-        maxActiveAnimals: null,
-        subscriptionLaunch: policy
-      };
     }
 
     if (isJunior(base, snapshot)) {

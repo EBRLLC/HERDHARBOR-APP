@@ -21,7 +21,8 @@ test("public signup exposes Junior, Member and Business Coming Soon but never Fo
   assert.match(policy, /<strong>Member<\/strong><small>\$14\.99\/month/);
   assert.match(policy, /<strong>Business<\/strong><small>Coming Soon<\/small>/);
   assert.doesNotMatch(policy, /<strong>Founder<\/strong>/);
-  assert.match(policy, /plans\[1\]\.hidden\s*=\s*true/);
+  assert.match(policy, /data-hh-plan="founder"/);
+  assert.match(policy, /founderPlan\.hidden = !founderEligible/);
   assert.match(policy, /button\.disabled\s*=\s*true/);
   assert.match(policy, /localStorage\.setItem\(INTERVAL_KEY, "month"\)/);
 });
@@ -142,12 +143,14 @@ test("admin can add auditable stackable Member credits without assigning Founder
   assert.doesNotMatch(adminCredits, /MutationObserver/);
 });
 
-test("public checkout is server-enforced as Junior free, Member monthly and Business coming soon", () => {
-  assert.match(billing, /planId === "founder"/);
+test("checkout keeps Founder private at $7.99, Member public at $14.99, Junior free and Business coming soon", () => {
   assert.match(billing, /planId === "business"/);
   assert.match(billing, /planId === "junior"/);
-  assert.match(billing, /planId !== "member" \|\| billingInterval !== "month"/);
+  assert.match(billing, /\["founder", "member"\]\.includes\(planId\)/);
+  assert.match(billing, /planId === "founder" && !founderEligible/);
+  assert.match(billing, /price_1ULUrdGlRukEX5RKGGNnLYR5/);
   assert.match(billing, /price_1UCOjrGlRukEX5RK9my06yUP/);
+  assert.match(billing, /cents:\s*799/);
   assert.match(billing, /cents:\s*1499/);
 });
 
@@ -156,6 +159,6 @@ test("new policy assets load in the build and remain network-first in the PWA", 
     assert.match(build, new RegExp(asset.replaceAll(".", "\\.")));
     assert.match(sw, new RegExp(asset.replaceAll(".", "\\.")));
   }
-  assert.match(sw, /herdharbor-shell-v1\.8\.4-alpha-v1\.8\.4-release-1/);
+  assert.match(sw, /herdharbor-shell-v1\.8\.4-alpha-v1\.8\.4-release-2/);
   assert.match(sw, /NETWORK_FIRST_PATHS/);
 });

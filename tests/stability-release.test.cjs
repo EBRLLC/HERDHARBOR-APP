@@ -35,7 +35,7 @@ if (webVersion === "1.7.1") assert.equal(buildId, "multispecies-genetics-foundat
 if (webVersion === "1.8.0") assert.match(buildId, /^subscription-engine-/);
 if (webVersion === "1.8.1") {
   assert.match(buildId, /^october-subscription-launch-/);
-  assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=2/);
+  assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=3/);
 }
 if (webVersion === "1.8.2") {
   assert.match(buildId, /^cloud-sync-v2-/);
@@ -43,7 +43,7 @@ if (webVersion === "1.8.2") {
 }
 if (webVersion === "1.8.4") {
   assert.equal(buildId, "alpha-v1.8.4-release-1");
-  assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=2/);
+  assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=3/);
 }
 assert.match(html, /HerdHarbor Alpha v1\.8\.4 current application shell/);
 assert.doesNotMatch(appRuntime, /id="settings-sync-now"/);

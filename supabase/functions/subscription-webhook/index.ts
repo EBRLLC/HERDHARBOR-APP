@@ -169,8 +169,7 @@ Deno.serve(async (req) => {
     const role = String(access?.account_role || "user").toLowerCase();
     const source = String(access?.membership_source || "").toLowerCase();
     const protectedAccess = ["owner", "admin"].includes(role)
-      || ["manual_override", "founder"].includes(source)
-      || String(access?.membership_tier || "").toLowerCase() === "founder";
+      || source === "manual_override";
     const patch: Record<string, unknown> = {
       subscription_status: status,
       updated_at: new Date().toISOString()
@@ -590,9 +589,9 @@ Deno.serve(async (req) => {
       if (event.type === "customer.subscription.deleted" && context?.userId) {
         await expireUnqualifiedReferral(context.userId);
         await releaseFutureReservedCredits(context.userId);
-        // Adult paid access degrades to the permanent Free Adult state. This
-        // changes only subscription_status; protected role/founder/manual
-        // membership ownership remains untouched by accessStatus().
+        // Adult paid access degrades to the permanent Free Adult state.
+        // Founder eligibility remains encoded by membership_tier while paid
+        // entitlement is controlled by the Stripe subscription lifecycle.
         await accessStatus(context.userId, "free_adult", context.planId);
         await queueNotification({
           userId: context.userId,

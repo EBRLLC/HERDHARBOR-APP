@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v1.8.4-alpha-v1.8.4-release-1";
+const CACHE_NAME = "herdharbor-shell-v1.8.4-alpha-v1.8.4-release-2";
 const REQUIRED_SHELL = [
   "./",
   "./index.html",
@@ -69,15 +69,15 @@ const RUNTIME_CACHE_PATHS = [
   "./paper-pedigree-import-core-v1.8.2.js?v=1",
   "./paper-pedigree-import-v1.8.2.js?v=2",
   "./registration-safety-v1.8.1.js?v=1",
-  "./subscription-referral-policy-v1.8.1.js?v=1",
+  "./subscription-referral-policy-v1.8.1.js?v=2",
   "./subscription-admin-credits-v1.8.1.js?v=1",
-  "./subscription-launch-v1.8.1.js?v=2",
-  "./subscription-engine-v1.8.0.js?v=2",
+  "./subscription-launch-v1.8.1.js?v=3",
+  "./subscription-engine-v1.8.0.js?v=3",
   "./subscription-engine-v1.8.0.css?v=1",
   "./subscription-member-ui-v1.8.0.css?v=1",
   "./subscription-tab-visibility-v1.8.0.js?v=2",
   "./subscription-header-copy-v1.8.0.js?v=3",
-  "./subscription-stripe-provider-v1.8.0.js?v=2",
+  "./subscription-stripe-provider-v1.8.0.js?v=3",
   "./subscription-stripe-launch-bridge-v1.8.1.js?v=1",
   "./mobile-viewport-hotfix-v1.8.0.css?v=1",
   "./herdharbor-v1.7.1-stability-hotfix.js?v=2",
