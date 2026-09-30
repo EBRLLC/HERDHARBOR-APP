@@ -144,7 +144,11 @@ async function buildSnapshot(admin: ReturnType<typeof createClient>, user: AuthU
   let subscriptionRequired = false;
   let maxActiveAnimals: number | null = null;
 
-  if (!liveProviderSubscription && !protectedAccess && !juniorAccess) {
+  if (protectedAccess && (storedTier === "founder" || membershipSource === "founder")) {
+    effectiveStatus = "founder";
+    effectivePlan = "founder";
+    effectiveTrialEndsAt = null;
+  } else if (!liveProviderSubscription && !protectedAccess && !juniorAccess) {
     effectiveStatus = trial.active ? "trialing" : "free_adult";
     effectivePlan = "member";
     effectiveTrialEndsAt = trial.endsAt;
