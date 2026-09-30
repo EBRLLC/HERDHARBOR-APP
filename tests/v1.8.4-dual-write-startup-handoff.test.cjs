@@ -520,13 +520,16 @@ test("sign-in runs access-profile refresh and rollout hydration concurrently", (
 });
 
 
-test("clean sign-in starts legacy cloud prefetch before rollout hydration finishes", () => {
+test("clean sign-in starts a read-only legacy cloud prefetch before rollout hydration finishes", () => {
   const hydrateSource = extract(
     cloudSource,
     "  async function hydrateUserDataOnce(activeSession)",
     "  async function hydrateUserData(activeSession)"
   );
 
+  const modeIndex = hydrateSource.indexOf(
+    "const canUseVersionOnlyPrefetch"
+  );
   const prefetchIndex = hydrateSource.indexOf(
     "const legacyCloudPrefetchPromise = dirty"
   );
@@ -537,7 +540,7 @@ test("clean sign-in starts legacy cloud prefetch before rollout hydration finish
     "legacyCloudPrefetchPromise || fetchCloudRecord(userId)"
   );
 
-  assert.ok(prefetchIndex >= 0, "clean sign-in creates a legacy cloud prefetch promise");
+  assert.ok(modeIndex >= 0 && prefetchIndex > modeIndex);
   assert.ok(
     prefetchIndex < rolloutIndex,
     "legacy cloud read must start before waiting on rollout hydration"
@@ -545,6 +548,10 @@ test("clean sign-in starts legacy cloud prefetch before rollout hydration finish
   assert.ok(
     joinedFetchIndex > rolloutIndex,
     "the prefetched cloud result is consumed only after authority routing is known"
+  );
+  assert.match(
+    hydrateSource.slice(modeIndex, rolloutIndex),
+    /canUseVersionOnlyPrefetch[\s\S]*fetchCloudVersion\(userId\)[\s\S]*fetchCloudRecord\(userId\)/
   );
 });
 
@@ -554,17 +561,18 @@ test("login cloud prefetch setup remains read-only", () => {
     "  async function hydrateUserDataOnce(activeSession)",
     "  async function hydrateUserData(activeSession)"
   );
-  const prefetchIndex = hydrateSource.indexOf("const legacyCloudPrefetchPromise = dirty");
+  const prefetchIndex = hydrateSource.indexOf("const knownCloudVersion");
   const authorityWaitIndex = hydrateSource.indexOf("    try {", prefetchIndex);
 
   assert.ok(prefetchIndex >= 0 && authorityWaitIndex > prefetchIndex);
   const prefetchSetup = hydrateSource.slice(prefetchIndex, authorityWaitIndex);
+  assert.match(prefetchSetup, /fetchCloudVersion\(userId\)/);
   assert.match(prefetchSetup, /fetchCloudRecord\(userId\)/);
   assert.doesNotMatch(prefetchSetup, /writeCloudRecord\(/);
   assert.doesNotMatch(prefetchSetup, /setActiveUserData\(/);
 });
 
-test("clean sign-in overlaps baseline restoration with the cloud read", () => {
+test("clean sign-in overlaps baseline restoration with the legacy cloud prefetch", () => {
   const hydrateSource = extract(
     cloudSource,
     "  async function hydrateUserDataOnce(activeSession)",
@@ -578,15 +586,88 @@ test("clean sign-in overlaps baseline restoration with the cloud read", () => {
     "const legacyCloudPrefetchPromise = dirty"
   );
   const joinIndex = hydrateSource.indexOf(
-    "const [{ data, error }] = await Promise.all(["
+    "const [prefetchedLegacy] = await Promise.all(["
   );
 
   assert.ok(baselineStart >= 0 && cloudStart > baselineStart);
   assert.ok(joinIndex > cloudStart);
   assert.match(
-    hydrateSource.slice(joinIndex, joinIndex + 240),
+    hydrateSource.slice(joinIndex, joinIndex + 280),
     /legacyCloudPrefetchPromise \|\| fetchCloudRecord\(userId\)[\s\S]*baselineRestorePromise/
   );
+});
+
+test("clean relaunch probes only cloud version when a confirmed revision and local state exist", () => {
+  const hydrateSource = extract(
+    cloudSource,
+    "  async function hydrateUserDataOnce(activeSession)",
+    "  async function hydrateUserData(activeSession)"
+  );
+
+  assert.match(
+    hydrateSource,
+    /const knownCloudVersion =[\s\S]*versionKey\(userId\)/
+  );
+  assert.match(
+    hydrateSource,
+    /const canUseVersionOnlyPrefetch =[\s\S]*!dirty[\s\S]*activeRaw[\s\S]*knownCloudVersion/
+  );
+  assert.match(
+    hydrateSource,
+    /canUseVersionOnlyPrefetch[\s\S]*\? fetchCloudVersion\(userId\)[\s\S]*: fetchCloudRecord\(userId\)/
+  );
+});
+
+test("matching cloud revision unlocks clean local state without downloading full app_state", () => {
+  const hydrateSource = extract(
+    cloudSource,
+    "  async function hydrateUserDataOnce(activeSession)",
+    "  async function hydrateUserData(activeSession)"
+  );
+
+  const versionBranch = hydrateSource.indexOf(
+    'if (legacyCloudPrefetchMode === "version")'
+  );
+  const matchBranch = hydrateSource.indexOf(
+    "if (remoteVersion && remoteVersion === knownCloudVersion)",
+    versionBranch
+  );
+  const fallbackFetch = hydrateSource.indexOf(
+    "cloudLoadResult = await fetchCloudRecord(userId)",
+    matchBranch
+  );
+  const successReturn = hydrateSource.indexOf(
+    'setSyncState("Cloud records loaded", "success")',
+    matchBranch
+  );
+
+  assert.ok(versionBranch >= 0 && matchBranch > versionBranch);
+  assert.ok(successReturn > matchBranch && successReturn < fallbackFetch);
+  assert.match(
+    hydrateSource.slice(matchBranch, fallbackFetch),
+    /unlockApp\(\);[\s\S]*setSyncState\("Cloud records loaded", "success"\);[\s\S]*return;/
+  );
+});
+
+test("changed cloud revision falls back to the full legacy record load", () => {
+  const hydrateSource = extract(
+    cloudSource,
+    "  async function hydrateUserDataOnce(activeSession)",
+    "  async function hydrateUserData(activeSession)"
+  );
+
+  const versionBranch = hydrateSource.indexOf(
+    'if (legacyCloudPrefetchMode === "version")'
+  );
+  const fallbackFetch = hydrateSource.indexOf(
+    "cloudLoadResult = await fetchCloudRecord(userId)",
+    versionBranch
+  );
+  const appStateBranch = hydrateSource.indexOf("if (data?.app_state)", fallbackFetch);
+
+  assert.ok(versionBranch >= 0);
+  assert.ok(fallbackFetch > versionBranch);
+  assert.ok(appStateBranch > fallbackFetch);
 });
 
 test("dirty startup still prioritizes the protected local snapshot instead of prefetching cloud", () => {
@@ -598,7 +679,7 @@ test("dirty startup still prioritizes the protected local snapshot instead of pr
 
   assert.match(
     hydrateSource,
-    /const legacyCloudPrefetchPromise = dirty[\s\S]*\? null[\s\S]*: fetchCloudRecord\(userId\)/
+    /const legacyCloudPrefetchPromise = dirty[\s\S]*\? null[\s\S]*canUseVersionOnlyPrefetch/
   );
   const dirtyIndex = hydrateSource.indexOf("if (dirty) {");
   const drainIndex = hydrateSource.indexOf("await drainSyncQueue();", dirtyIndex);
@@ -612,3 +693,4 @@ test("dirty startup still prioritizes the protected local snapshot instead of pr
     "dirty startup saves its local copy before entering the normal cloud-load path"
   );
 });
+
