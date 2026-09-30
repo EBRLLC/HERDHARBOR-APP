@@ -126,6 +126,83 @@
     });
   }
 
+  const lazyScriptPromises = new Map();
+
+  function loadScriptOnce(src, ready = () => false) {
+    if (ready()) return Promise.resolve(true);
+    if (lazyScriptPromises.has(src)) return lazyScriptPromises.get(src);
+
+    const existing = [...document.scripts].find((script) => {
+      try {
+        return new URL(script.src, window.location.href).pathname === new URL(src, window.location.href).pathname;
+      } catch {
+        return false;
+      }
+    });
+
+    const promise = new Promise((resolve, reject) => {
+      const script = existing || document.createElement("script");
+      const finish = () => {
+        if (ready()) resolve(true);
+        else reject(new Error(`Lazy feature asset loaded without registering: ${src}`));
+      };
+      const fail = () => reject(new Error(`Lazy feature asset could not load: ${src}`));
+
+      script.addEventListener("load", finish, { once: true });
+      script.addEventListener("error", fail, { once: true });
+
+      if (!existing) {
+        script.src = src;
+        script.async = true;
+        script.dataset.hhLazyAsset = "true";
+        document.head.appendChild(script);
+      } else if (ready()) {
+        resolve(true);
+      }
+    }).catch((error) => {
+      lazyScriptPromises.delete(src);
+      throw error;
+    });
+
+    lazyScriptPromises.set(src, promise);
+    return promise;
+  }
+
+  function lazyRouteLoadingMarkup(title) {
+    return `${headerHtml(title, "Loading this feature only when you need it.")}
+      <div class="panel"><p class="muted">Loading…</p></div>`;
+  }
+
+  function renderLazyRoute(route, title, loader, render) {
+    const target = $(`#view-${route}`);
+    if (target) target.innerHTML = lazyRouteLoadingMarkup(title);
+
+    void loader()
+      .then(() => {
+        if (currentRoute === route) render();
+      })
+      .catch((error) => {
+        console.error(`HerdHarbor could not lazy-load ${route}:`, error);
+        if (currentRoute !== route || !target) return;
+        target.innerHTML = `${headerHtml(title, "This feature could not finish loading.")}
+          ${emptyState("Feature unavailable right now.", "Check your connection and try opening this section again.")}`;
+      });
+  }
+
+  function ensureAnalyticsRuntime() {
+    return loadScriptOnce(
+      "analytics-v1.6.1.js?v=2",
+      () => typeof window.HerdHarborAnalytics?.render === "function"
+    );
+  }
+
+  function ensureSymptomGuide() {
+    return loadScriptOnce(
+      "symptom-guide.js?v=1",
+      () => Boolean(window.HERDHARBOR_SYMPTOM_GUIDE?.entries?.length)
+    );
+  }
+
   function loadState() {
     try {
       const storedState = canonicalStateStore?.load?.();
@@ -835,13 +912,30 @@
   function renderCurrentView() {
     const renderers = {
       dashboard: renderDashboard,
-      analytics: () => window.HerdHarborAnalytics?.render?.({ state, saveState, navigate, toast }),
+      analytics: () => {
+        if (typeof window.HerdHarborAnalytics?.render === "function") {
+          window.HerdHarborAnalytics.render({ state, saveState, navigate, toast });
+          return;
+        }
+        renderLazyRoute(
+          "analytics",
+          "Analytics",
+          ensureAnalyticsRuntime,
+          () => window.HerdHarborAnalytics?.render?.({ state, saveState, navigate, toast })
+        );
+      },
       animals: renderAnimals,
       breeding: renderBreedings,
       litters: renderLitters,
       pedigrees: renderPedigrees,
       health: renderHealth,
-      symptoms: renderSymptoms,
+      symptoms: () => {
+        if (window.HERDHARBOR_SYMPTOM_GUIDE?.entries?.length) {
+          renderSymptoms();
+          return;
+        }
+        renderLazyRoute("symptoms", "Symptom guide", ensureSymptomGuide, renderSymptoms);
+      },
       tasks: renderTasks,
       budget: renderBudget,
       sales: renderSales,
