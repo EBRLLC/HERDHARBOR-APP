@@ -203,6 +203,13 @@
     );
   }
 
+  function ensureSettingsRuntimeLoaded() {
+    return loadScriptOnce(
+      "settings-runtime-v1.8.3.js?v=1",
+      () => typeof window.HerdHarborSettingsRuntime?.create === "function"
+    );
+  }
+
   function loadState() {
     try {
       const storedState = canonicalStateStore?.load?.();
@@ -2969,11 +2976,27 @@
   }
 
   function renderSettings() {
-    return settingsRuntime().renderSettings();
+    if (typeof window.HerdHarborSettingsRuntime?.create === "function") {
+      return settingsRuntime().renderSettings();
+    }
+    renderLazyRoute(
+      "settings",
+      "Settings",
+      ensureSettingsRuntimeLoaded,
+      () => settingsRuntime().renderSettings()
+    );
   }
 
   function openFeedbackForm() {
-    return settingsRuntime().openFeedbackForm();
+    if (typeof window.HerdHarborSettingsRuntime?.create === "function") {
+      return settingsRuntime().openFeedbackForm();
+    }
+    void ensureSettingsRuntimeLoaded()
+      .then(() => settingsRuntime().openFeedbackForm())
+      .catch((error) => {
+        console.error("HerdHarbor could not load Settings for feedback:", error);
+        toast("Feedback tools could not load. Check your connection and try again.", "error");
+      });
   }
 
   let voiceAssistedEntryInstance = null;

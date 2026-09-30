@@ -63,8 +63,10 @@ test("Settings domain has one extracted runtime owner", () => {
 
 test("composition runtime delegates Settings instead of retaining a second implementation", () => {
   assert.match(app, /HerdHarborSettingsRuntime\?\.create/);
-  assert.match(app, /function renderSettings\(\) \{\s*return settingsRuntime\(\)\.renderSettings\(\);\s*\}/);
-  assert.match(app, /function openFeedbackForm\(\) \{\s*return settingsRuntime\(\)\.openFeedbackForm\(\);\s*\}/);
+  assert.match(app, /function ensureSettingsRuntimeLoaded\(\)/);
+  assert.match(app, /"settings-runtime-v1\.8\.3\.js\?v=1"/);
+  assert.match(app, /renderLazyRoute\([\s\S]*"settings"[\s\S]*ensureSettingsRuntimeLoaded/);
+  assert.match(app, /ensureSettingsRuntimeLoaded\(\)[\s\S]*settingsRuntime\(\)\.openFeedbackForm\(\)/);
   assert.doesNotMatch(app, /id="market-analytics-consent-form"/);
   assert.doesNotMatch(app, /id="request-account-deletion"/);
   assert.doesNotMatch(app, /id="rabbitry-logo-file"/);
@@ -97,12 +99,17 @@ test("existing extracted runtime public APIs remain intact", () => {
   ]) assert.ok(app.includes(owner + "?.create"), owner + " factory remains composed");
 });
 
-test("Settings shell asset loads after Production/Reporting and before composition", () => {
-  const productionIndex = html.indexOf("production-reporting-runtime-v1.8.3.js?v=1");
-  const settingsIndex = html.indexOf("settings-runtime-v1.8.3.js?v=1");
-  const appIndex = html.indexOf("herdharbor-app-runtime.js?v=2");
-  assert.ok(productionIndex >= 0 && settingsIndex > productionIndex && appIndex > settingsIndex);
-  assert.match(worker, /\.\/settings-runtime-v1\.8\.3\.js\?v=1/);
+test("Settings runtime is lazy-loaded while remaining offline/runtime-cache safe", () => {
+  assert.doesNotMatch(html, /<script[^>]+settings-runtime-v1\.8\.3\.js/);
+  assert.match(app, /"settings-runtime-v1\.8\.3\.js\?v=1"/);
+  const runtimeStart = worker.indexOf("const RUNTIME_CACHE_PATHS = [");
+  const runtimeEnd = worker.indexOf("];", runtimeStart);
+  const requiredStart = worker.indexOf("const REQUIRED_SHELL = [");
+  const requiredEnd = worker.indexOf("];", requiredStart);
+  assert.ok(runtimeStart >= 0 && runtimeEnd > runtimeStart);
+  assert.ok(requiredStart >= 0 && requiredEnd > requiredStart);
+  assert.match(worker.slice(runtimeStart, runtimeEnd), /settings-runtime-v1\.8\.3\.js\?v=1/);
+  assert.doesNotMatch(worker.slice(requiredStart, requiredEnd), /settings-runtime-v1\.8\.3\.js/);
   assert.match(worker, /"\/settings-runtime-v1\.8\.3\.js"/);
 });
 

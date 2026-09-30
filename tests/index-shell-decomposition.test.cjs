@@ -28,7 +28,8 @@ test("index shell keeps only the early bootstrap inline", () => {
   assert.match(html, /herdharbor-index-shell\.css\?v=1/);
   assert.match(html, /animal-profile-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(html, /production-reporting-runtime-v1\.8\.3\.js\?v=1/);
-  assert.match(html, /settings-runtime-v1\.8\.3\.js\?v=1/);
+  assert.doesNotMatch(html, /<script[^>]+settings-runtime-v1\.8\.3\.js/);
+  assert.match(appRuntime, /"settings-runtime-v1\.8\.3\.js\?v=1"/);
   assert.match(html, /herdharbor-app-runtime\.js\?v=2/);
   assert.doesNotMatch(html, /function renderSales\(\)/);
   assert.match(appRuntime, /function renderSales\(\)/);
@@ -71,7 +72,6 @@ test("service worker covers required extracted shell assets", () => {
   for (const { asset, revision } of [
     { asset: "animal-profile-runtime-v1.8.3.js", revision: "1" },
     { asset: "production-reporting-runtime-v1.8.3.js", revision: "1" },
-    { asset: "settings-runtime-v1.8.3.js", revision: "1" },
     { asset: "herdharbor-app-runtime.js", revision: "2" },
     { asset: "herdharbor-index-shell.css", revision: "1" }
   ]) {
@@ -80,4 +80,19 @@ test("service worker covers required extracted shell assets", () => {
     assert.equal((worker.match(new RegExp('"/' + escaped + '"', "g")) || []).length, 1, asset + " has one network-first route");
     assert.ok(exists(asset), `missing extracted asset: ${asset}`);
   }
+});
+
+
+test("lazy Settings stays outside required precache but remains runtime-cacheable and network-first", () => {
+  const requiredStart = worker.indexOf("const REQUIRED_SHELL = [");
+  const requiredEnd = worker.indexOf("];", requiredStart);
+  const runtimeStart = worker.indexOf("const RUNTIME_CACHE_PATHS = [");
+  const runtimeEnd = worker.indexOf("];", runtimeStart);
+  assert.ok(requiredStart >= 0 && requiredEnd > requiredStart);
+  assert.ok(runtimeStart >= 0 && runtimeEnd > runtimeStart);
+  const required = worker.slice(requiredStart, requiredEnd);
+  const runtime = worker.slice(runtimeStart, runtimeEnd);
+  assert.ok(!required.includes("settings-runtime-v1.8.3.js"));
+  assert.ok(runtime.includes("settings-runtime-v1.8.3.js?v=1"));
+  assert.match(worker, /"\/settings-runtime-v1\.8\.3\.js"/);
 });
