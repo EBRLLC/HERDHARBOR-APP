@@ -450,10 +450,13 @@
         }));
     
       const selectedLatest = new Map();
+      const selectedSample = new Map();
       (records || []).forEach((record) => {
         const key = productionSeriesKey(record);
-        if (!selectedLatest.has(key) || String(record.date) > selectedLatest.get(key)) {
-          selectedLatest.set(key, String(record.date));
+        const date = String(record.date || "");
+        if (!selectedLatest.has(key) || date > selectedLatest.get(key)) {
+          selectedLatest.set(key, date);
+          selectedSample.set(key, record);
         }
       });
     
@@ -477,9 +480,7 @@
         if (prior.length < 3) return;
         const average = prior.reduce((sum, quantity) => sum + quantity, 0) / prior.length;
         if (!(average > 0) || current >= average * 0.75) return;
-        const sampleRecord = (records || []).find((record) =>
-          productionSeriesKey(record) === key && record.date === currentDate
-        );
+        const sampleRecord = selectedSample.get(key) || null;
         const identity = sampleRecord ? productionComparisonIdentity(sampleRecord) : { label: "This group" };
         const drop = ((average - current) / average) * 100;
         warnings.push({
