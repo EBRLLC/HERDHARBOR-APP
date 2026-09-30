@@ -55,3 +55,14 @@ test("v1.8.3 production subscription completion remains part of the aggregate ga
   const pkg=JSON.parse(read("package.json"));
   assert.match(pkg.scripts["test:v1.8.3"],/subscription-production-completion-v1\.8\.3\.test\.cjs/);
 });
+
+
+test("protected Founder access does not expose billing portal without a Stripe customer",()=>{
+  assert.match(billing,/protectedAccess && \(storedTier === "founder" \|\| membershipSource === "founder"\)/);
+  assert.match(billing,/effectiveStatus = "founder"/);
+  assert.match(billing,/effectivePlan = "founder"/);
+  assert.match(engine,/const protectedAccess = experience\?\.key === "protected_access"/);
+  assert.match(engine,/const canManageBilling = providerCapability\("createPortalSession"\) && Boolean\(state\.providerCustomerId\)/);
+  assert.match(engine,/Protected access does not require Stripe billing/);
+  assert.match(engine,/\$\{canManageBilling \? '<button[^']*data-hh-subscription-manage/);
+});
