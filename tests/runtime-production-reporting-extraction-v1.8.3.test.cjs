@@ -205,3 +205,16 @@ test("reporting lookup hot paths avoid repeated full-array scans", () => {
   assert.match(csv, /productionById\.get\(transaction\.sourceId\)/);
   assert.doesNotMatch(csv, /stateNow\(\)\.productionRecords\.find/);
 });
+
+
+test("production warnings index the latest selected sample per series", () => {
+  const start = production.indexOf("    function productionWarnings(");
+  const end = production.indexOf("\n    function productionRangeLabel", start);
+  assert.ok(start >= 0 && end > start);
+  const body = production.slice(start, end);
+
+  assert.match(body, /const selectedSample = new Map\(\)/);
+  assert.match(body, /selectedSample\.set\(key, record\)/);
+  assert.match(body, /const sampleRecord = selectedSample\.get\(key\) \|\| null/);
+  assert.doesNotMatch(body, /\(records \|\| \[\]\)\.find/);
+});
