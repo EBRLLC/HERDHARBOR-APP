@@ -211,10 +211,11 @@
       if (!Array.isArray(state.tasks)) state.tasks = [];
       const definitions = automation.deriveTaskDefinitions(state);
       const definitionIds = new Set(definitions.map((definition) => definition.id));
+      const taskById = new Map(state.tasks.map((task) => [task.id, task]));
       let changed = false, created = 0, updated = 0, completed = 0, reopened = 0;
 
       definitions.forEach((definition) => {
-        const existing = state.tasks.find((task) => task.id === definition.id);
+        const existing = taskById.get(definition.id);
         const fingerprint = definition.automationFingerprint || automation.taskFingerprint?.(definition) || "";
         if (!definition.dueDate) {
           if (!existing) return;
@@ -235,14 +236,16 @@
 
         if (!existing) {
           if (definition.completed) return;
-          state.tasks.push({
+          const createdTask = {
             ...definition,
             completed: false,
             automationManaged: true,
             automationFingerprint: fingerprint,
             createdAt: now,
             updatedAt: now
-          });
+          };
+          state.tasks.push(createdTask);
+          taskById.set(createdTask.id, createdTask);
           created += 1;
           changed = true;
           return;
