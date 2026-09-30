@@ -180,3 +180,28 @@ test("Phase 6G extraction remains compatible with formal v1.8.4 and does not act
   assert.doesNotMatch(html, /cloud-sync-rollout-control-v1\.8\.3\.js/);
   assert.match(pkg.scripts["test:v1.8.3"], /runtime-production-reporting-extraction-v1\.8\.3\.test\.cjs/);
 });
+
+
+test("reporting lookup hot paths avoid repeated full-array scans", () => {
+  const annualStart = production.indexOf("    function annualBudgetPlansFor(");
+  const annualEnd = production.indexOf("\n    function annualPlanSummary", annualStart);
+  assert.ok(annualStart >= 0 && annualEnd > annualStart);
+  const annual = production.slice(annualStart, annualEnd);
+  assert.match(annual, /const animalSpeciesById = speciesFilter[\s\S]*new Map/);
+  assert.doesNotMatch(annual, /stateNow\(\)\.animals\.find/);
+
+  const latestStart = production.indexOf("    function latestProductionRecord()");
+  const latestEnd = production.indexOf("\n    function productionDraft", latestStart);
+  assert.ok(latestStart >= 0 && latestEnd > latestStart);
+  const latest = production.slice(latestStart, latestEnd);
+  assert.match(latest, /for \(const record of stateNow\(\)\.productionRecords\)/);
+  assert.doesNotMatch(latest, /\.sort\(/);
+
+  const csvStart = production.indexOf("    function exportBudgetCsv(");
+  const csvEnd = production.indexOf("\n    return Object.freeze", csvStart);
+  assert.ok(csvStart >= 0 && csvEnd > csvStart);
+  const csv = production.slice(csvStart, csvEnd);
+  assert.match(csv, /const productionById = new Map\(state\.productionRecords\.map/);
+  assert.match(csv, /productionById\.get\(transaction\.sourceId\)/);
+  assert.doesNotMatch(csv, /stateNow\(\)\.productionRecords\.find/);
+});
