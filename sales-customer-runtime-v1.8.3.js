@@ -149,23 +149,77 @@
     }
   
     function renderSales() {
+      const snapshot = stateNow();
       const search = salesView.search.toLowerCase();
-      const sales = [...stateNow().sales]
+      const customersById = new Map(snapshot.customers.map((customer) => [customer.id, customer]));
+      const animalsById = new Map(snapshot.animals.map((animal) => [animal.id, animal]));
+      const paidBySaleId = new Map();
+      const saleCountByCustomerId = new Map();
+      let available = 0;
+      let reserved = 0;
+
+      for (const payment of snapshot.payments) {
+        paidBySaleId.set(
+          payment.saleId,
+          (paidBySaleId.get(payment.saleId) || 0) + Number(payment.amount || 0)
+        );
+      }
+      for (const animal of snapshot.animals) {
+        if (animal.status === "For Sale") available += 1;
+        else if (animal.status === "Reserved") reserved += 1;
+      }
+
+      const saleMetrics = new Map();
+      let outstanding = 0;
+      for (const sale of snapshot.sales) {
+        saleCountByCustomerId.set(
+          sale.customerId,
+          (saleCountByCustomerId.get(sale.customerId) || 0) + 1
+        );
+        const total = saleTotal(sale);
+        const paid = paidBySaleId.get(sale.id) || 0;
+        const balance = Math.max(0, total - paid);
+        saleMetrics.set(sale.id, { total, paid, balance });
+        if (sale.status !== "Cancelled") outstanding += balance;
+      }
+
+      const indexedCustomerName = (customerId) =>
+        customersById.get(customerId)?.name || "Unknown customer";
+      const indexedSaleAnimalLabel = (sale) => {
+        const animals = saleItems(sale)
+          .map((item) => animalsById.get(item.animalId))
+          .filter(Boolean);
+        if (!animals.length) return "No animal linked";
+        if (animals.length === 1) return animals[0].name || "Unnamed animal";
+        return `${animals[0].name || "Animal"} + ${animals.length - 1} more`;
+      };
+
+      const sales = [...snapshot.sales]
         .filter((sale) => {
           const matchesStatus = salesView.status === "All" ||
             (salesView.status === "Open" ? ["Draft", "Reserved", "Pending"].includes(sale.status) : sale.status === salesView.status);
-          const haystack = [sale.saleNumber, customerName(sale.customerId), saleAnimalLabel(sale), sale.notes, sale.transferNumber].join(" ").toLowerCase();
-          return matchesStatus && (!search || haystack.includes(search));
+          if (!matchesStatus) return false;
+          if (!search) return true;
+          const haystack = [
+            sale.saleNumber,
+            indexedCustomerName(sale.customerId),
+            indexedSaleAnimalLabel(sale),
+            sale.notes,
+            sale.transferNumber
+          ].join(" ").toLowerCase();
+          return haystack.includes(search);
         })
         .sort((left, right) => String(right.saleDate || "").localeCompare(String(left.saleDate || "")) || String(right.createdAt || "").localeCompare(String(left.createdAt || "")));
-      const customers = [...stateNow().customers]
-        .filter((customer) => !search || [customer.name, customer.email, customer.phone, customer.address].join(" ").toLowerCase().includes(search))
+
+      const customers = [...snapshot.customers]
+        .filter((customer) =>
+          !search ||
+          [customer.name, customer.email, customer.phone, customer.address]
+            .join(" ")
+            .toLowerCase()
+            .includes(search)
+        )
         .sort((left, right) => String(left.name || "").localeCompare(String(right.name || "")));
-      const available = stateNow().animals.filter((animal) => animal.status === "For Sale").length;
-      const reserved = stateNow().animals.filter((animal) => animal.status === "Reserved").length;
-      const outstanding = stateNow().sales
-        .filter((sale) => !["Cancelled"].includes(sale.status))
-        .reduce((sum, sale) => sum + saleBalance(sale), 0);
   
       $("#view-sales").innerHTML = `
         ${headerHtml(
@@ -179,7 +233,7 @@
         <div class="stats-grid">
           ${statCard("Available animals", available, "Status: For Sale")}
           ${statCard("Reserved", reserved, "Held for a buyer")}
-          ${statCard("Customers", stateNow().customers.length, "Buyer and contact records")}
+          ${statCard("Customers", snapshot.customers.length, "Buyer and contact records")}
           ${statCard("Outstanding", formatMoney(outstanding), "Unpaid invoice balances")}
         </div>
         <div class="toolbar">
@@ -190,21 +244,24 @@
           <div class="panel-header"><div><h3>Sales and reservations</h3><small>${sales.length} matching record${sales.length === 1 ? "" : "s"}</small></div></div>
           ${sales.length ? `<div class="data-table-wrap"><table class="data-table">
             <thead><tr><th>Sale</th><th>Customer</th><th>Animal</th><th>Status</th><th>Total</th><th>Paid</th><th>Balance</th><th></th></tr></thead>
-            <tbody>${sales.map((sale) => `<tr>
-              <td><strong>${esc(sale.saleNumber)}</strong><br><small>${esc(formatDate(sale.saleDate))}</small></td>
-              <td>${esc(customerName(sale.customerId))}</td>
-              <td>${esc(saleAnimalLabel(sale))}</td>
-              <td><span class="badge ${sale.status === "Completed" ? "green" : sale.status === "Reserved" ? "warning" : "gray"}">${esc(sale.status)}</span></td>
-              <td>${formatMoney(saleTotal(sale))}</td><td>${formatMoney(salePaid(sale.id))}</td>
-              <td class="transaction-amount ${saleBalance(sale) > 0 ? "expense" : "income"}">${formatMoney(saleBalance(sale))}</td>
-              <td><button class="button button-ghost button-small" data-view-sale="${sale.id}">View</button></td>
-            </tr>`).join("")}</tbody></table></div>` : emptyState("No matching sales.", "Create a sale to reserve an animal, record a deposit, or prepare buyer documents.")}
+            <tbody>${sales.map((sale) => {
+              const metrics = saleMetrics.get(sale.id) || { total: 0, paid: 0, balance: 0 };
+              return `<tr>
+                <td><strong>${esc(sale.saleNumber)}</strong><br><small>${esc(formatDate(sale.saleDate))}</small></td>
+                <td>${esc(indexedCustomerName(sale.customerId))}</td>
+                <td>${esc(indexedSaleAnimalLabel(sale))}</td>
+                <td><span class="badge ${sale.status === "Completed" ? "green" : sale.status === "Reserved" ? "warning" : "gray"}">${esc(sale.status)}</span></td>
+                <td>${formatMoney(metrics.total)}</td><td>${formatMoney(metrics.paid)}</td>
+                <td class="transaction-amount ${metrics.balance > 0 ? "expense" : "income"}">${formatMoney(metrics.balance)}</td>
+                <td><button class="button button-ghost button-small" data-view-sale="${sale.id}">View</button></td>
+              </tr>`;
+            }).join("")}</tbody></table></div>` : emptyState("No matching sales.", "Create a sale to reserve an animal, record a deposit, or prepare buyer documents.")}
         </section>
         <section class="panel">
           <div class="panel-header"><div><h3>Customers</h3><small>${customers.length} matching contact${customers.length === 1 ? "" : "s"}</small></div></div>
           ${customers.length ? `<div class="data-table-wrap"><table class="data-table">
             <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Address</th><th>Sales</th><th></th></tr></thead>
-            <tbody>${customers.map((customer) => `<tr><td><strong>${esc(customer.name)}</strong></td><td>${esc(customer.phone || "—")}</td><td>${esc(customer.email || "—")}</td><td>${esc(customer.address || "—")}</td><td>${stateNow().sales.filter((sale) => sale.customerId === customer.id).length}</td><td><button class="button button-ghost button-small" data-edit-customer="${customer.id}">Edit</button></td></tr>`).join("")}</tbody>
+            <tbody>${customers.map((customer) => `<tr><td><strong>${esc(customer.name)}</strong></td><td>${esc(customer.phone || "—")}</td><td>${esc(customer.email || "—")}</td><td>${esc(customer.address || "—")}</td><td>${saleCountByCustomerId.get(customer.id) || 0}</td><td><button class="button button-ghost button-small" data-edit-customer="${customer.id}">Edit</button></td></tr>`).join("")}</tbody>
           </table></div>` : emptyState("No customers yet.", "Save a buyer once, then reuse the contact on reservations, invoices, receipts, and transfers.")}
         </section>`;
   
