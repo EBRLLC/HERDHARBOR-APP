@@ -26,8 +26,10 @@ for (const asset of [
   "herdharbor-access-cache-v1.6.1.js",
   "market-analytics-v1.6.5.js"
 ]) assert.match(html, new RegExp(`${asset.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}\\?v=1\\.7\\.1`));
-assert.ok(worker.includes("/analytics-v1.6.1.js"), "analytics-v1.6.1.js must remain network-first");
-assert.match(html, /analytics-v1\.6\.1\.js\?v=2/);
+assert.ok(worker.includes("analytics-v1.6.1.js?v=2"), "analytics-v1.6.1.js remains a runtime-cache asset");
+assert.doesNotMatch(html, /<script[^>]+analytics-v1\.6\.1\.js/);
+const appRuntime = fs.readFileSync(path.join(root, "herdharbor-app-runtime.js"), "utf8");
+assert.match(appRuntime, /"analytics-v1\.6\.1\.js\?v=2"/);
 assert.match(html, /herdharbor-build\.js\?v=1\.8\.4/);
 assert.match(html, /cloud-legacy-baseline-v1\.8\.4\.js\?v=1/);
 assert.match(html, /herdharbor-cloud\.js\?v=26/);
