@@ -866,42 +866,56 @@
   function renderDashboard() {
     taskRuntime().syncDerivedAutomation();
     const activeAnimalCount = activeAnimals().length;
-    const openBreedings = state.breedings.filter((record) =>
-      !["Not pregnant", "Delivered", "Cancelled"].includes(normalizeBreedingStatus(record.status))
-    ).length;
-    const openTasks = state.tasks.filter((t) => !t.completed).length;
     const today = todayISO();
-    const todaysWork = state.tasks
-      .filter((task) => !task.completed && task.dueDate && task.dueDate <= today)
-      .sort(taskSort)
-      .slice(0, 6);
-    const overdueTasks = state.tasks.filter((task) =>
-      !task.completed && task.dueDate && task.dueDate < today
-    ).length;
-    const dueTodayTasks = state.tasks.filter((task) =>
-      !task.completed && task.dueDate === today
-    ).length;
-    const dueSoon = state.breedings.filter((b) => {
-      const d = daysFromNow(b.dueDate);
-      return !["Not pregnant", "Delivered", "Cancelled"].includes(normalizeBreedingStatus(b.status)) && d !== null && d >= 0 && d <= 14;
-    }).length;
+    let openTasks = 0;
+    let overdueTasks = 0;
+    let dueTodayTasks = 0;
+    let openBreedings = 0;
+    let dueSoon = 0;
+    const todaysWorkCandidates = [];
+    const upcomingCandidates = [];
 
-    const upcoming = [
-      ...state.tasks.filter((t) => !t.completed && t.dueDate > today).map((t) => ({
-        title: t.title,
-        subtitle: `${t.category || "Task"} · ${formatDate(t.dueDate)}${taskRecurrenceLabel(t) ? ` · ${taskRecurrenceLabel(t)}` : ""}`,
-        date: t.dueDate,
-        icon: "✓",
-        tone: daysFromNow(t.dueDate) < 0 ? "warning" : "teal"
-      })),
-      ...state.breedings.filter((b) => !["Not pregnant", "Delivered", "Cancelled"].includes(normalizeBreedingStatus(b.status))).map((b) => ({
-        title: `${animalName(b.femaleId)} × ${animalName(b.maleId)}`,
-        subtitle: `Due ${formatDate(b.dueDate)}`,
-        date: b.dueDate,
+    for (const task of state.tasks) {
+      if (task.completed) continue;
+      openTasks += 1;
+      if (task.dueDate === today) dueTodayTasks += 1;
+      else if (task.dueDate && task.dueDate < today) overdueTasks += 1;
+
+      if (task.dueDate && task.dueDate <= today) {
+        todaysWorkCandidates.push(task);
+      } else if (task.dueDate > today) {
+        const recurrence = taskRecurrenceLabel(task);
+        upcomingCandidates.push({
+          title: task.title,
+          subtitle: `${task.category || "Task"} · ${formatDate(task.dueDate)}${recurrence ? ` · ${recurrence}` : ""}`,
+          date: task.dueDate,
+          icon: "✓",
+          tone: "teal"
+        });
+      }
+    }
+
+    for (const breeding of state.breedings) {
+      const status = normalizeBreedingStatus(breeding.status);
+      if (["Not pregnant", "Delivered", "Cancelled"].includes(status)) continue;
+      openBreedings += 1;
+      const daysUntilDue = daysFromNow(breeding.dueDate);
+      if (daysUntilDue !== null && daysUntilDue >= 0 && daysUntilDue <= 14) {
+        dueSoon += 1;
+      }
+      upcomingCandidates.push({
+        title: `${animalName(breeding.femaleId)} × ${animalName(breeding.maleId)}`,
+        subtitle: `Due ${formatDate(breeding.dueDate)}`,
+        date: breeding.dueDate,
         icon: "♡",
         tone: "green"
-      }))
-    ].sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999")).slice(0, 6);
+      });
+    }
+
+    const todaysWork = todaysWorkCandidates.sort(taskSort).slice(0, 6);
+    const upcoming = upcomingCandidates
+      .sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999"))
+      .slice(0, 6);
 
     const activity = state.activity.slice(0, 6);
     const finance = budgetSummary(currentMonthKey());
