@@ -150,6 +150,11 @@ test("application shell preconnects to the Supabase API origin", () => {
 
 test("service worker preloads fresh navigation without weakening offline fallback", () => {
   assert.match(workerSource, /navigationPreload\?\.enable\?\.\(\)/);
+  const preloadEnableIndex = workerSource.indexOf("navigationPreload?.enable?.()");
+  const clientsClaimIndex = workerSource.indexOf("self.clients.claim()", preloadEnableIndex);
+  assert.ok(preloadEnableIndex >= 0 && clientsClaimIndex > preloadEnableIndex,
+    "navigation preload is enabled during activation before clients are claimed");
+
   const navigateIndex = workerSource.indexOf('if (request.mode === "navigate")');
   assert.ok(navigateIndex >= 0);
   const navigateBlock = workerSource.slice(navigateIndex, workerSource.indexOf("\n  if (isImmutableFingerprintAsset", navigateIndex));
