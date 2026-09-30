@@ -239,10 +239,13 @@
   function enhancePanel() {
     const panel = document.getElementById("hh-subscription-engine-panel");
     if (!panel || panel.hidden) return;
-    const plans = [...panel.querySelectorAll(".hh-subscription-plan-card")];
-    if (plans[1]) plans[1].hidden = true; // Founder is never a public selection.
-    if (plans[3]) {
-      const button = plans[3].querySelector("[data-hh-subscription-select]");
+    const account = window.HerdHarborSubscriptionLaunch?.getAccount?.() || {};
+    const founderEligible = String(account.effectiveMembershipTier || account.membershipTier || "").toLowerCase() === "founder";
+    const founderPlan = panel.querySelector('[data-hh-plan="founder"]');
+    if (founderPlan) founderPlan.hidden = !founderEligible; // Founder is visible only to accounts already granted Founder eligibility.
+    const businessPlan = panel.querySelector('[data-hh-plan="business"]');
+    if (businessPlan) {
+      const button = businessPlan.querySelector("[data-hh-subscription-select]");
       if (button) { button.disabled = true; button.textContent = "Coming Soon"; button.title = "HerdHarbor Business is coming soon."; }
     }
     panel.querySelector(".hh-subscription-interval-switcher")?.setAttribute("hidden", "");
