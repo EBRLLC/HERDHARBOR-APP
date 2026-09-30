@@ -5,8 +5,12 @@
 begin;
 
 update public.subscription_plans
-set provider_price_id = case id
-  when 'founder' then 'price_1UCOktGlRukEX5RKPo6jm6Vr'
+set price_cents = case id
+      when 'founder' then 799
+      else price_cents
+    end,
+    provider_price_id = case id
+  when 'founder' then 'price_1ULUrdGlRukEX5RKGGNnLYR5'
   when 'member' then 'price_1UCOjrGlRukEX5RK9my06yUP'
   when 'business' then 'price_1UCOuYGlRukEX5RKo6LUWZq3'
   else provider_price_id
@@ -15,8 +19,12 @@ updated_at = now()
 where id in ('founder','member','business');
 
 update public.subscription_plan_prices
-set provider_price_id = case id
-  when 'founder_month' then 'price_1UCOktGlRukEX5RKPo6jm6Vr'
+set price_cents = case id
+      when 'founder_month' then 799
+      else price_cents
+    end,
+    provider_price_id = case id
+  when 'founder_month' then 'price_1ULUrdGlRukEX5RKGGNnLYR5'
   when 'founder_year' then 'price_1UCOwAGlRukEX5RK34xr9dQS'
   when 'member_month' then 'price_1UCOjrGlRukEX5RK9my06yUP'
   when 'member_year' then 'price_1UCOvPGlRukEX5RKJA05lDmb'
