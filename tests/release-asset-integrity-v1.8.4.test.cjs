@@ -146,3 +146,14 @@ test("application shell preconnects to the Supabase API origin", () => {
   const supabaseScriptIndex = html.indexOf('vendor/supabase-2.111.0.js');
   assert.ok(preconnectIndex >= 0 && supabaseScriptIndex > preconnectIndex);
 });
+
+
+test("service worker preloads fresh navigation without weakening offline fallback", () => {
+  assert.match(workerSource, /navigationPreload\?\.enable\?\.\(\)/);
+  const navigateIndex = workerSource.indexOf('if (request.mode === "navigate")');
+  assert.ok(navigateIndex >= 0);
+  const navigateBlock = workerSource.slice(navigateIndex, workerSource.indexOf("\n  if (isImmutableFingerprintAsset", navigateIndex));
+  assert.match(navigateBlock, /await event\.preloadResponse/);
+  assert.match(navigateBlock, /preloaded \|\| await fetch\(request, \{ cache: "no-store" \}\)/);
+  assert.match(navigateBlock, /cache\.match\("\.\/index\.html"\)/);
+});
