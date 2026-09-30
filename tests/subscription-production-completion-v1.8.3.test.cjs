@@ -37,20 +37,21 @@ test("one-month Member trial is automatic and requires no card to begin", () => 
   assert.doesNotMatch(billing.slice(billing.indexOf("async function buildSnapshot"), billing.indexOf('if \(action === "checkout"')), /stripe\.checkout|payment_method/);
 });
 
-test("protected roles and Junior remain outside adult trial/free fallback", () => {
+test("administrative roles stay protected while Founder is paid eligibility and Junior stays separate", () => {
   assert.match(billing, /role === "owner"/);
   assert.match(billing, /role === "admin"/);
   assert.match(billing, /membershipSource === "manual_override"/);
-  assert.match(billing, /membershipSource === "founder"/);
-  assert.match(billing, /storedTier === "founder"/);
+  assert.match(billing, /founderEligible = membershipSource === "founder" \|\| storedTier === "founder"/);
+  assert.match(billing, /administrativeProtectedAccess/);
+  assert.match(billing, /effectivePlan = founderEligible \? "founder" : "member"/);
   assert.match(billing, /juniorAccess = storedTier === "junior" \|\| requestedPlan === "junior"/);
   assert.match(launch, /role === "owner" \|\| role === "admin" \|\| currentSource === "manual_override"/);
-  assert.match(launch, /isFounder\(base\)/);
+  assert.doesNotMatch(launch, /if \(isFounder\(base\)\)/);
   assert.match(launch, /isJunior\(base, snapshot\)/);
   assert.match(webhook, /select\("account_role,membership_source,membership_tier"\)/);
   assert.match(webhook, /\["owner", "admin"\]\.includes\(role\)/);
-  assert.match(webhook, /\["manual_override", "founder"\]\.includes\(source\)/);
-  assert.match(webhook, /membership_tier \|\| ""\)\.toLowerCase\(\) === "founder"/);
+  assert.match(webhook, /source === "manual_override"/);
+  assert.doesNotMatch(webhook, /\["manual_override", "founder"\]\.includes\(source\)/);
 });
 
 test("Free Adult is permanent non-destructive access with a five-active-animal growth ceiling", () => {
@@ -127,9 +128,9 @@ test("backend refresh failure is fail-open for application access", () => {
 
 test("Phase 4 subscription assets remain correct under the formal v1.8.4 release", () => {
   assert.equal(packageJson.version, "1.8.4");
-  assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=2/);
+  assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=3/);
   assert.match(build, /subscription-stripe-provider-v1\.8\.0\.js\?v=3/);
-  assert.match(worker, /\.\/subscription-launch-v1\.8\.1\.js\?v=2/);
+  assert.match(worker, /\.\/subscription-launch-v1\.8\.1\.js\?v=3/);
   assert.match(worker, /\.\/subscription-stripe-provider-v1\.8\.0\.js\?v=3/);
   assert.match(worker, /herdharbor-shell-v1\.8\.4/);
 });
