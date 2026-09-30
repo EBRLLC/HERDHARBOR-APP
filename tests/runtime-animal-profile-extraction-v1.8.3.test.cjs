@@ -175,3 +175,32 @@ test("clearing an animal photo invalidates stale in-flight photo preparation", (
   assert.match(extractedSource, /if \(token !== photoPreparationToken\) return false;/);
   assert.match(extractedSource, /photoPreparationToken \+= 1;[\s\S]*photoPreparationPromise = null;[\s\S]*pendingPhotoData = "";/);
 });
+
+
+test("animal filtering skips search haystack work when search is empty", () => {
+  const start = animalProfileRuntime.indexOf("    function filterAnimals(");
+  const end = animalProfileRuntime.indexOf("\n    function animalCardHtml", start);
+  assert.ok(start >= 0 && end > start);
+  const body = animalProfileRuntime.slice(start, end);
+
+  assert.match(body, /if \(!query\) return true;/);
+  const fastPath = body.indexOf("if (!query) return true;");
+  const haystack = body.indexOf("const haystack =", fastPath);
+  assert.ok(haystack > fastPath, "animal search haystack must be created only for an actual query");
+});
+
+test("animal search still covers identity breed breeder location and color fields", () => {
+  const state = {
+    settings: { species: ["Rabbit"] },
+    animals: [{
+      id: "a1", name: "Daisy", tag: "T-22", earTagNumber: "44", earTagColor: "Blue",
+      registrationNumber: "REG123", tattoo: "D44", breeder: "Bluegrass Farm",
+      breed: "Holland Lop", location: "Barn A", color: "Harlequin",
+      species: "Rabbit", sex: "Female", status: "Active"
+    }]
+  };
+  const api = AnimalProfileRuntime.create(stubDeps(state));
+  for (const search of ["daisy", "t-22", "44", "blue", "reg123", "d44", "bluegrass", "holland", "barn a", "harlequin"]) {
+    assert.equal(api.filterAnimals(state.animals, { search, species: "", sex: "", status: "" }).length, 1, search);
+  }
+});
