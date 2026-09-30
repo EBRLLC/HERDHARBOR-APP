@@ -266,7 +266,12 @@ self.addEventListener("activate", (event) => {
           .filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
           .map((key) => caches.delete(key))
       ))
-      .then(() => self.clients.claim())
+      .then(async () => {
+        try {
+          await self.registration?.navigationPreload?.enable?.();
+        } catch {}
+        return self.clients.claim();
+      })
   );
 });
 
@@ -281,32 +286,35 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request, { cache: "no-store" })
-        .then((response) => {
-          if (response.ok) {
-            const copy = response.clone();
-            event.waitUntil(
-              caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", copy))
-            );
-          }
-          return response;
-        })
-        .catch(async () => {
-          const cache = await caches.open(CACHE_NAME);
-          return (await cache.match("./index.html")) || cache.match("./");
-        })
-    );
+    event.respondWith((async () => {
+      try {
+        const preloaded = await event.preloadResponse;
+        const response = preloaded || await fetch(request, { cache: "no-store" });
+        if (response?.ok) {
+          const copy = response.clone();
+          event.waitUntil(
+            caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", copy))
+          );
+        }
+        return response;
+      } catch {
+        const cache = await caches.open(CACHE_NAME);
+        return (await cache.match("./index.html")) || cache.match("./");
+      }
+    })());
+    return;
+  }
+
+  // Production JS/CSS is content-fingerprinted by the release builder.
+  // Its URL identity changes whenever its bytes change, so a matching cached
+  // response is exact and can safely bypass the network-first legacy list.
+  if (isImmutableFingerprintAsset(url)) {
+    event.respondWith(cacheFirst(request));
     return;
   }
 
   if (isNetworkFirstPath(url.pathname)) {
     event.respondWith(networkFirst(request));
-    return;
-  }
-
-  if (isImmutableFingerprintAsset(url)) {
-    event.respondWith(cacheFirst(request));
     return;
   }
 
