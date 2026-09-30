@@ -38,20 +38,24 @@
     const animalsNow = () => Array.isArray(stateNow().animals) ? stateNow().animals : [];
 
     function filterAnimals(animals = animalsNow(), view = animalView) {
-      const query = String(view.search || "").toLowerCase();
+      const query = String(view.search || "").trim().toLowerCase();
       const species = String(view.species || "");
       const sex = String(view.sex || "");
       const status = String(view.status || "");
       return (Array.isArray(animals) ? animals : []).filter((animal) => {
+        if (
+          (species && animal?.species !== species) ||
+          (sex && animal?.sex !== sex) ||
+          (status && animal?.status !== status)
+        ) return false;
+        if (!query) return true;
+
         const haystack = [
           animal?.name, animal?.tag, animal?.earTagNumber, animal?.earTagColor,
           animal?.registrationNumber, animal?.tattoo, animal?.breeder, animal?.breed,
           animal?.location, animal?.color
         ].join(" ").toLowerCase();
-        return (!query || haystack.includes(query))
-          && (!species || animal?.species === species)
-          && (!sex || animal?.sex === sex)
-          && (!status || animal?.status === status);
+        return haystack.includes(query);
       });
     }
 
