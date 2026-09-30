@@ -237,3 +237,22 @@ test("Phase 6C extraction remains compatible with formal v1.8.4 and does not act
   ]) assert.doesNotMatch(read("index.html"), new RegExp(asset.replace(/[.]/g, "\\.")));
   assert.match(packageJson.scripts["test:v1.8.3"], /runtime-breeding-litter-extraction-v1\.8\.3\.test\.cjs/);
 });
+
+
+test("breeding render indexes animal and birth lookups and summarizes active rows in one pass", () => {
+  const start = extractedSource.indexOf("    function renderBreedings() {");
+  const end = extractedSource.indexOf("\n    function openBreedingForm", start);
+  assert.ok(start >= 0 && end > start);
+  const body = extractedSource.slice(start, end);
+
+  assert.match(body, /const snapshot = stateNow\(\)/);
+  assert.match(body, /const animalsById = new Map\(snapshot\.animals\.map/);
+  assert.match(body, /const linkedBirthByBreedingId = new Map/);
+  assert.match(body, /for \(const record of rows\)/);
+  assert.match(body, /animalsById\.get\(record\.femaleId\)/);
+  assert.match(body, /linkedBirthByBreedingId\.get\(record\.id\)/);
+  assert.doesNotMatch(body, /stateNow\(\)\.animals\.find\(/);
+  assert.doesNotMatch(body, /stateNow\(\)\.litters\.find\(/);
+  assert.doesNotMatch(body, /const active = rows\.filter/);
+  assert.doesNotMatch(body, /const dueSoon = rows\.filter/);
+});
