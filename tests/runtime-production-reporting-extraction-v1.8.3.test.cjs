@@ -183,24 +183,24 @@ test("Phase 6G extraction remains compatible with formal v1.8.4 and does not act
 
 
 test("reporting lookup hot paths avoid repeated full-array scans", () => {
-  const annualStart = productionReportingSource.indexOf("    function annualBudgetPlansFor(");
-  const annualEnd = productionReportingSource.indexOf("\n    function annualPlanSummary", annualStart);
+  const annualStart = production.indexOf("    function annualBudgetPlansFor(");
+  const annualEnd = production.indexOf("\n    function annualPlanSummary", annualStart);
   assert.ok(annualStart >= 0 && annualEnd > annualStart);
-  const annual = productionReportingSource.slice(annualStart, annualEnd);
+  const annual = production.slice(annualStart, annualEnd);
   assert.match(annual, /const animalSpeciesById = speciesFilter[\s\S]*new Map/);
   assert.doesNotMatch(annual, /stateNow\(\)\.animals\.find/);
 
-  const latestStart = productionReportingSource.indexOf("    function latestProductionRecord()");
-  const latestEnd = productionReportingSource.indexOf("\n    function productionDraft", latestStart);
+  const latestStart = production.indexOf("    function latestProductionRecord()");
+  const latestEnd = production.indexOf("\n    function productionDraft", latestStart);
   assert.ok(latestStart >= 0 && latestEnd > latestStart);
-  const latest = productionReportingSource.slice(latestStart, latestEnd);
+  const latest = production.slice(latestStart, latestEnd);
   assert.match(latest, /for \(const record of stateNow\(\)\.productionRecords\)/);
   assert.doesNotMatch(latest, /\.sort\(/);
 
-  const csvStart = productionReportingSource.indexOf("    function exportBudgetCsv(");
-  const csvEnd = productionReportingSource.indexOf("\n    return Object.freeze", csvStart);
+  const csvStart = production.indexOf("    function exportBudgetCsv(");
+  const csvEnd = production.indexOf("\n    return Object.freeze", csvStart);
   assert.ok(csvStart >= 0 && csvEnd > csvStart);
-  const csv = productionReportingSource.slice(csvStart, csvEnd);
+  const csv = production.slice(csvStart, csvEnd);
   assert.match(csv, /const productionById = new Map\(state\.productionRecords\.map/);
   assert.match(csv, /productionById\.get\(transaction\.sourceId\)/);
   assert.doesNotMatch(csv, /stateNow\(\)\.productionRecords\.find/);
