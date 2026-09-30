@@ -138,8 +138,8 @@ test("legitimate Junior enrollment remains Junior", () => {
   assert.equal(resolved.accessMode, "junior");
 });
 
-test("owner, admin, manual override and founder remain untouched by trial/free policy", () => {
-  const free = { status: "free_adult", plan: "member", freeAdult: true, serverNow: "2026-11-01T12:00:00.000Z" };
+test("owner, admin and manual override stay protected while Founder eligibility follows paid/free policy", () => {
+  const free = { status: "free_adult", plan: "founder", founderEligible: true, freeAdult: true, serverNow: "2026-11-01T12:00:00.000Z" };
   const owner = loadPolicy({ accountRole: "owner", membershipTier: "business", effectiveMembershipTier: "business" }, free, true).HerdHarborSubscriptionLaunch.__test.resolveAccount();
   assert.equal(owner.accountRole, "owner");
   assert.equal(owner.effectiveMembershipTier, "business");
@@ -148,7 +148,9 @@ test("owner, admin, manual override and founder remain untouched by trial/free p
   const manual = loadPolicy({ membershipSource: "manual_override", storedMembershipSource: "manual_override", membershipTier: "business", effectiveMembershipTier: "business" }, free, true).HerdHarborSubscriptionLaunch.__test.resolveAccount();
   assert.equal(manual.effectiveMembershipTier, "business");
   const founder = loadPolicy({ membershipSource: "founder", storedMembershipSource: "founder", membershipTier: "founder", effectiveMembershipTier: "founder" }, free, true).HerdHarborSubscriptionLaunch.__test.resolveAccount();
-  assert.equal(founder.effectiveMembershipTier, "founder");
+  assert.equal(founder.membershipSource, "free_adult");
+  assert.equal(founder.accessMode, "free_adult");
+  assert.equal(founder.maxActiveAnimals, 5);
 });
 
 test("verified paid Stripe subscription wins over fallback policy", () => {
