@@ -32,7 +32,7 @@ test("v1.8.1 keeps Founder private at $7.99 monthly while Member remains $14.99 
   assert.match(billing, /FOUNDER_MONTH = \{ priceId: "price_1ULUrdGlRukEX5RKGGNnLYR5", cents: 799 \}/);
   assert.match(billing, /Founder pricing is available only to accounts already granted Founder eligibility/);
   assert.match(billing, /HerdHarbor Business is coming soon/);
-  assert.match(billing, /Member is currently offered month-to-month/);
+  assert.match(billing, /HerdHarbor Founder is \$7\.99\/month and Member is \$14\.99\/month/);
 });
 
 test("Stripe credentials stay server-side and browser billing reuses HerdHarbor auth transport", () => {
@@ -143,7 +143,7 @@ test("v1.8.3 web runtime loads carried-forward v1.8.1 referral policy before Str
 });
 
 test("PWA keeps referral, admin-credit and Stripe subscription assets network-first", () => {
-  assert.match(sw, /herdharbor-shell-v1\.8\.4-alpha-v1\.8\.4-release-1/);
+  assert.match(sw, /herdharbor-shell-v1\.8\.4-alpha-v1\.8\.4-release-2/);
   for (const asset of [
     "subscription-referral-policy-v1.8.1.js",
     "subscription-admin-credits-v1.8.1.js",
