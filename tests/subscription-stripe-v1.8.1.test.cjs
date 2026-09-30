@@ -18,7 +18,7 @@ const correction = read("supabase/v1.8.0-stripe-price-id-correction.sql");
 const memberUi = read("subscription-member-ui-v1.8.0.css");
 
 const PRICE_IDS = [
-  "price_1UCOktGlRukEX5RKPo6jm6Vr",
+  "price_1ULUrdGlRukEX5RKGGNnLYR5",
   "price_1UCOwAGlRukEX5RK34xr9dQS",
   "price_1UCOjrGlRukEX5RK9my06yUP",
   "price_1UCOvPGlRukEX5RKJA05lDmb",
@@ -26,10 +26,11 @@ const PRICE_IDS = [
   "price_1UCOnnGlRukEX5RK36kjzNZ6"
 ];
 
-test("v1.8.1 preserves the six production Stripe prices while public checkout is Member monthly only", () => {
+test("v1.8.1 keeps Founder private at $7.99 monthly while Member remains $14.99 monthly", () => {
   for (const id of PRICE_IDS) assert.match(correction, new RegExp(id));
   assert.match(billing, /price_1UCOjrGlRukEX5RK9my06yUP/);
-  assert.match(billing, /Founder access is assigned internally/);
+  assert.match(billing, /FOUNDER_MONTH = \{ priceId: "price_1ULUrdGlRukEX5RKGGNnLYR5", cents: 799 \}/);
+  assert.match(billing, /Founder pricing is available only to accounts already granted Founder eligibility/);
   assert.match(billing, /HerdHarbor Business is coming soon/);
   assert.match(billing, /Member is currently offered month-to-month/);
 });
@@ -116,24 +117,25 @@ test("auth-settled Stripe launch bridge performs one bounded post-login provider
   assert.doesNotMatch(bridge, /createClient\s*\(/);
 });
 
-test("legacy Stripe catalog remains documented while public Member checkout is hard-locked monthly", () => {
-  assert.match(provider, /founder:[\s\S]*month:\s*999[\s\S]*year:\s*11000/);
+test("Founder and Member checkout are monthly-only with Founder restricted to eligible accounts", () => {
+  assert.match(provider, /founder:[\s\S]*month:\s*799[\s\S]*year:\s*11000/);
   assert.match(provider, /member:[\s\S]*month:\s*1499[\s\S]*year:\s*15000/);
   assert.match(provider, /business:[\s\S]*month:\s*4999[\s\S]*year:\s*55000/);
   assert.match(provider, /let selectedInterval = "month"/);
-  assert.match(provider, /billingInterval:\s*planId === "member" \? "month" : selectedInterval/);
+  assert.match(provider, /billingInterval:\s*\["founder", "member"\]\.includes\(planId\) \? "month" : selectedInterval/);
   assert.doesNotMatch(provider, /data-hh-stripe-interval="year"/);
   assert.match(provider, /Member is currently offered month-to-month at \$14\.99\/month/);
   assert.match(memberUi, /hh-subscription-interval-switcher/);
-  assert.match(referralPolicy, /plans\[1\]\.hidden\s*=\s*true/);
+  assert.match(referralPolicy, /data-hh-plan="founder"/);
+  assert.match(referralPolicy, /founderEligible/);
   assert.match(referralPolicy, /Coming Soon/);
 });
 
 test("v1.8.3 web runtime loads carried-forward v1.8.1 referral policy before Stripe provider and preserves safe launch order", () => {
-  const referralIndex = build.indexOf("subscription-referral-policy-v1.8.1.js?v=1");
+  const referralIndex = build.indexOf("subscription-referral-policy-v1.8.1.js?v=2");
   const policyIndex = build.indexOf("subscription-launch-v1.8.1.js?v=2");
-  const engineIndex = build.indexOf("subscription-engine-v1.8.0.js?v=2");
-  const providerIndex = build.indexOf("subscription-stripe-provider-v1.8.0.js?v=2");
+  const engineIndex = build.indexOf("subscription-engine-v1.8.0.js?v=3");
+  const providerIndex = build.indexOf("subscription-stripe-provider-v1.8.0.js?v=3");
   const bridgeIndex = build.indexOf("subscription-stripe-launch-bridge-v1.8.1.js?v=1");
   assert.ok(referralIndex >= 0 && providerIndex > referralIndex);
   assert.ok(policyIndex >= 0 && engineIndex > policyIndex && providerIndex > engineIndex && bridgeIndex > providerIndex);
@@ -190,9 +192,9 @@ test("payment failure remains recoverable paid access instead of destructive dow
 
 test("updated launch and provider assets are cache-busted under the formal v1.8.4 release", () => {
   assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=2/);
-  assert.match(build, /subscription-stripe-provider-v1\.8\.0\.js\?v=2/);
+  assert.match(build, /subscription-stripe-provider-v1\.8\.0\.js\?v=3/);
   assert.match(sw, /\.\/subscription-launch-v1\.8\.1\.js\?v=2/);
-  assert.match(sw, /\.\/subscription-stripe-provider-v1\.8\.0\.js\?v=2/);
+  assert.match(sw, /\.\/subscription-stripe-provider-v1\.8\.0\.js\?v=3/);
   assert.match(build, /version:\s*"1\.8\.4"/);
   assert.match(sw, /herdharbor-shell-v1\.8\.4/);
 });
