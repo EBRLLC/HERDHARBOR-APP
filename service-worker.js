@@ -25,10 +25,8 @@ const REQUIRED_SHELL = [
   "./cloud-sync-v2-flow-v1.8.2.js?v=1",
   "./cloud-sync-v2-diagnostics-v1.8.2.js?v=1",
   "./herdharbor-admin-v1.6.1.js?v=1.7.1",
-  "./symptom-guide.js?v=1",
   "./pwa.js?v=31",
   "./market-analytics-v1.6.5.js?v=1.7.1",
-  "./analytics-v1.6.1.js?v=2",
   "./animal-profile-runtime-v1.8.3.js?v=1",
   "./breeding-litter-runtime-v1.8.3.js?v=1",
   "./task-automation-v1.8.3.js?v=1",
@@ -48,6 +46,8 @@ const REQUIRED_SHELL = [
 ];
 
 const RUNTIME_CACHE_PATHS = [
+  "./analytics-v1.6.1.js?v=2",
+  "./symptom-guide.js?v=1",
   "./cloud-record-store-v1.8.3.js?v=2",
   "./cloud-state-normalizer-v1.8.3.js?v=1",
   "./cloud-record-baseline-v1.8.4.js?v=1",
