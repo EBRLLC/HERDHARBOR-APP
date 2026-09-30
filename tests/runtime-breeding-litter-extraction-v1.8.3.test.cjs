@@ -237,3 +237,18 @@ test("Phase 6C extraction remains compatible with formal v1.8.4 and does not act
   ]) assert.doesNotMatch(read("index.html"), new RegExp(asset.replace(/[.]/g, "\\.")));
   assert.match(packageJson.scripts["test:v1.8.3"], /runtime-breeding-litter-extraction-v1\.8\.3\.test\.cjs/);
 });
+
+
+test("litter render indexes offspring membership instead of scanning all animals per card", () => {
+  const start = extractedSource.indexOf("    function renderLitters() {");
+  const end = extractedSource.indexOf("\n    function openLitterForm", start);
+  assert.ok(start >= 0 && end > start);
+  const body = extractedSource.slice(start, end);
+
+  assert.match(body, /const offspringIdsByLitterId = new Map/);
+  assert.match(body, /const litterIdsByAnimalId = new Map/);
+  assert.match(body, /for \(const animal of snapshot\.animals\)/);
+  assert.match(body, /offspringIdsByLitterId\.get\(litter\.id\)\?\.size \|\| 0/);
+  assert.doesNotMatch(body, /offspringForLitter\(litter\)/);
+  assert.doesNotMatch(body, /stateNow\(\)\.animals\.filter/);
+});
