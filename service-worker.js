@@ -35,7 +35,6 @@ const REQUIRED_SHELL = [
   "./sales-customer-runtime-v1.8.3.js?v=1",
   "./profitability-analytics-v1.8.3.js?v=1",
   "./production-reporting-runtime-v1.8.3.js?v=1",
-  "./settings-runtime-v1.8.3.js?v=1",
   "./mobile-capture-v1.8.3.js?v=1",
   "./herdharbor-app-runtime.js?v=2",
   "./herdharbor-monitoring-config.js?v=1.8.4",
@@ -46,6 +45,7 @@ const REQUIRED_SHELL = [
 ];
 
 const RUNTIME_CACHE_PATHS = [
+  "./settings-runtime-v1.8.3.js?v=1",
   "./analytics-v1.6.1.js?v=2",
   "./symptom-guide.js?v=1",
   "./cloud-record-store-v1.8.3.js?v=2",
