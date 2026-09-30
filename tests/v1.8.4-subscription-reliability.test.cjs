@@ -29,11 +29,12 @@ test("entitlement transitions preserve records and separate Free Adult from Juni
   assert.doesNotMatch(webhook,/from\("herdharbor_user_data"\)\.delete/);
 });
 
-test("protected/manual/founder authority and trusted backend subscription remain protected",()=>{
+test("administrative authority stays protected while Founder entitlement is Stripe-backed",()=>{
   assert.match(launch,/role === "owner" \|\| role === "admin"/);
   assert.match(launch,/currentSource === "manual_override"/);
-  assert.match(launch,/isFounder\(base\)/);
+  assert.doesNotMatch(launch,/if \(isFounder\(base\)\)/);
   assert.match(launch,/hasBackendPaidSubscription/);
+  assert.match(launch,/hasPaidSubscription/);
   assert.match(launch,/trustedSnapshot/);
 });
 
@@ -60,8 +61,8 @@ test("v1.8.3 production subscription completion remains part of the aggregate ga
 
 test("Founder eligibility exposes $7.99 checkout before Stripe customer and portal after connection",()=>{
   assert.match(billing,/founderEligible = membershipSource === "founder" \|\| storedTier === "founder"/);
-  assert.match(billing,/effectiveStatus = "founder"/);
-  assert.match(billing,/effectivePlan = "founder"/);
+  assert.match(billing,/administrativeProtectedAccess && founderEligible && !liveProviderSubscription/);
+  assert.match(billing,/effectivePlan = founderEligible \? "founder" : "member"/);
   assert.match(engine,/const protectedAccess = experience\?\.key === "protected_access"/);
   assert.match(engine,/const canManageBilling = providerCapability\("createPortalSession"\) && Boolean\(state\.providerCustomerId\)/);
   assert.match(engine,/Founder pricing is \$7\.99\/month/);
