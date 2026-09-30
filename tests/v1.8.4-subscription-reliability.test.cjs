@@ -6,6 +6,7 @@ const path=require("node:path");
 const root=path.resolve(__dirname,"..");
 const read=p=>fs.readFileSync(path.join(root,p),"utf8");
 const launch=read("subscription-launch-v1.8.1.js");
+const engine=read("subscription-engine-v1.8.0.js");
 const provider=read("subscription-stripe-provider-v1.8.0.js");
 const billing=read("supabase/functions/subscription-billing/index.ts");
 const webhook=read("supabase/functions/subscription-webhook/index.ts");
