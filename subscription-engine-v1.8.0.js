@@ -583,7 +583,7 @@
       const active = id === currentPlan;
       const monthly = item.priceMonthly == null ? "Contact us" : item.priceMonthly === 0 ? "Free" : `$${Number(item.priceMonthly).toFixed(2)}/mo`;
       return `
-        <article class="hh-subscription-plan-card" data-current="${active ? "true" : "false"}">
+        <article class="hh-subscription-plan-card" data-hh-plan="${escapeHtml(id)}" data-current="${active ? "true" : "false"}">
           <div>
             <span class="hh-subscription-kicker">${active ? "Current access" : "Plan"}</span>
             <h3>${escapeHtml(item.label)}</h3>
