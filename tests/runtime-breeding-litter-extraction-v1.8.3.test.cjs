@@ -256,3 +256,18 @@ test("breeding render indexes animal and birth lookups and summarizes active row
   assert.doesNotMatch(body, /const active = rows\.filter/);
   assert.doesNotMatch(body, /const dueSoon = rows\.filter/);
 });
+
+
+test("litter render indexes offspring membership instead of scanning all animals per card", () => {
+  const start = extractedSource.indexOf("    function renderLitters() {");
+  const end = extractedSource.indexOf("\n    function openLitterForm", start);
+  assert.ok(start >= 0 && end > start);
+  const body = extractedSource.slice(start, end);
+
+  assert.match(body, /const offspringIdsByLitterId = new Map/);
+  assert.match(body, /const litterIdsByAnimalId = new Map/);
+  assert.match(body, /for \(const animal of snapshot\.animals\)/);
+  assert.match(body, /offspringIdsByLitterId\.get\(litter\.id\)\?\.size \|\| 0/);
+  assert.doesNotMatch(body, /offspringForLitter\(litter\)/);
+  assert.doesNotMatch(body, /stateNow\(\)\.animals\.filter/);
+});
