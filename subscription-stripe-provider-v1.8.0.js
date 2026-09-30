@@ -202,8 +202,8 @@
         : "No credit card is required to use the trial.";
     } else if (experience.key === "paid_member") {
       detail = snapshot.status === "past_due"
-        ? "Member access is still available while Stripe retries payment. Use Manage billing to resolve the payment method."
-        : "Paid Member access is active.";
+        ? "Paid access is still available while Stripe retries payment. Use Manage billing to resolve the payment method."
+        : `Paid ${String(snapshot.plan || "").toLowerCase() === "founder" ? "Founder" : "Member"} access is active.`;
     } else if (experience.key === "paid_access_ending") {
       detail = ends
         ? `Paid Member access remains active through ${ends}. After that, the adult account moves to Free Adult and existing records stay intact.`
@@ -213,7 +213,8 @@
     } else if (experience.key === "junior") {
       detail = "Junior remains a separate youth enrollment state with up to 5 active animals.";
     } else if (experience.key === "protected_access") {
-      const founderEligible = String(window.HerdHarborSubscriptionLaunch?.getAccount?.()?.effectiveMembershipTier || "").toLowerCase() === "founder";
+      const founderEligible = snapshot.founderEligible === true
+        || String(window.HerdHarborSubscriptionLaunch?.getAccount?.()?.membershipTier || "").toLowerCase() === "founder";
       detail = founderEligible && !snapshot.providerSubscriptionId
         ? "Founder pricing is $7.99/month. Set up secure billing to connect your discounted Founder subscription."
         : "Protected account access takes precedence over trial and Free Adult policy.";
@@ -291,7 +292,9 @@
     const snapshot = window.HerdHarborSubscriptionEngine?.getState?.() || {};
     const experience = accessExperience();
     const account = window.HerdHarborSubscriptionLaunch?.getAccount?.() || {};
-    const founderEligible = String(account.effectiveMembershipTier || account.membershipTier || "").toLowerCase() === "founder";
+    const founderEligible = snapshot.founderEligible === true
+      || String(account.membershipTier || "").toLowerCase() === "founder"
+      || String(account.effectiveMembershipTier || "").toLowerCase() === "founder";
     const status = String(snapshot.status || "").toLowerCase();
     const freeAdult = experience.key === "free_adult";
     ensureFreeAdultCard(grid, freeAdult);
