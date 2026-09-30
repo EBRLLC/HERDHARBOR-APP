@@ -89,6 +89,7 @@
       provider: "none",
       providerCustomerId: null,
       providerSubscriptionId: null,
+      founderEligible: false,
       nextInvoice: null,
       referral: {
         successfulReferrals: 0,
@@ -125,6 +126,7 @@
       provider: String(input.provider || "none"),
       providerCustomerId: input.providerCustomerId ? String(input.providerCustomerId) : null,
       providerSubscriptionId: input.providerSubscriptionId ? String(input.providerSubscriptionId) : null,
+      founderEligible: input.founderEligible === true,
       referral: {
         successfulReferrals: Math.max(0, Math.floor(finite(referral.successfulReferrals))),
         freeMonthsEarned: Math.max(0, Math.floor(finite(referral.freeMonthsEarned))),
@@ -552,7 +554,7 @@
     const account = getAccountSnapshot();
     const experience = window.HerdHarborSubscriptionLaunch?.getExperienceState?.() || null;
     const protectedAccess = experience?.key === "protected_access";
-    const founderEligible = account.tier === "founder";
+    const founderEligible = state.founderEligible === true || account.tier === "founder";
     const displayStatus = protectedAccess ? (experience.label || "Protected access") : titleCase(state.status);
     const displayStatusTone = protectedAccess ? "good" : statusTone();
     const canManageBilling = providerCapability("createPortalSession") && Boolean(state.providerCustomerId);
