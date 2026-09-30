@@ -132,7 +132,7 @@ test("legacy Stripe catalog remains documented while public Member checkout is h
 test("v1.8.3 web runtime loads carried-forward v1.8.1 referral policy before Stripe provider and preserves safe launch order", () => {
   const referralIndex = build.indexOf("subscription-referral-policy-v1.8.1.js?v=1");
   const policyIndex = build.indexOf("subscription-launch-v1.8.1.js?v=2");
-  const engineIndex = build.indexOf("subscription-engine-v1.8.0.js?v=1");
+  const engineIndex = build.indexOf("subscription-engine-v1.8.0.js?v=2");
   const providerIndex = build.indexOf("subscription-stripe-provider-v1.8.0.js?v=2");
   const bridgeIndex = build.indexOf("subscription-stripe-launch-bridge-v1.8.1.js?v=1");
   assert.ok(referralIndex >= 0 && providerIndex > referralIndex);

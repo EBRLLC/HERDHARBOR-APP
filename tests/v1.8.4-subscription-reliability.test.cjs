@@ -6,6 +6,7 @@ const path=require("node:path");
 const root=path.resolve(__dirname,"..");
 const read=p=>fs.readFileSync(path.join(root,p),"utf8");
 const launch=read("subscription-launch-v1.8.1.js");
+const engine=read("subscription-engine-v1.8.0.js");
 const provider=read("subscription-stripe-provider-v1.8.0.js");
 const billing=read("supabase/functions/subscription-billing/index.ts");
 const webhook=read("supabase/functions/subscription-webhook/index.ts");
@@ -54,4 +55,15 @@ test("referral and member-month credit contracts remain covered by the current s
 test("v1.8.3 production subscription completion remains part of the aggregate gate",()=>{
   const pkg=JSON.parse(read("package.json"));
   assert.match(pkg.scripts["test:v1.8.3"],/subscription-production-completion-v1\.8\.3\.test\.cjs/);
+});
+
+
+test("protected Founder access does not expose billing portal without a Stripe customer",()=>{
+  assert.match(billing,/protectedAccess && \(storedTier === "founder" \|\| membershipSource === "founder"\)/);
+  assert.match(billing,/effectiveStatus = "founder"/);
+  assert.match(billing,/effectivePlan = "founder"/);
+  assert.match(engine,/const protectedAccess = experience\?\.key === "protected_access"/);
+  assert.match(engine,/const canManageBilling = providerCapability\("createPortalSession"\) && Boolean\(state\.providerCustomerId\)/);
+  assert.match(engine,/Protected access does not require Stripe billing/);
+  assert.match(engine,/\$\{canManageBilling \? '<button[^']*data-hh-subscription-manage/);
 });
