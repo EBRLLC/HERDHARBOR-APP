@@ -123,10 +123,9 @@ async function buildSnapshot(admin: ReturnType<typeof createClient>, user: AuthU
   const trial = trialSnapshot(user);
   const liveProviderSubscription = Boolean(sub?.provider_subscription_id) && ACTIVE_SUBSCRIPTION.has(normalize(sub?.status));
   const founderEligible = membershipSource === "founder" || storedTier === "founder";
-  const protectedAccess = role === "owner"
+  const administrativeProtectedAccess = role === "owner"
     || role === "admin"
-    || membershipSource === "manual_override"
-    || founderEligible;
+    || membershipSource === "manual_override";
   const juniorAccess = storedTier === "junior" || requestedPlan === "junior";
 
   const nextInvoice = sub?.current_period_end ? {
@@ -145,13 +144,13 @@ async function buildSnapshot(admin: ReturnType<typeof createClient>, user: AuthU
   let subscriptionRequired = false;
   let maxActiveAnimals: number | null = null;
 
-  if (founderEligible && !liveProviderSubscription) {
+  if (administrativeProtectedAccess && founderEligible && !liveProviderSubscription) {
     effectiveStatus = "founder";
     effectivePlan = "founder";
     effectiveTrialEndsAt = null;
-  } else if (!liveProviderSubscription && !protectedAccess && !juniorAccess) {
+  } else if (!liveProviderSubscription && !administrativeProtectedAccess && !juniorAccess) {
     effectiveStatus = trial.active ? "trialing" : "free_adult";
-    effectivePlan = "member";
+    effectivePlan = founderEligible ? "founder" : "member";
     effectiveTrialEndsAt = trial.endsAt;
     initialTrial = trial.active;
     freeAdult = !trial.active;
