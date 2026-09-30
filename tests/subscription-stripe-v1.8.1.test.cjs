@@ -191,9 +191,9 @@ test("payment failure remains recoverable paid access instead of destructive dow
 });
 
 test("updated launch and provider assets are cache-busted under the formal v1.8.4 release", () => {
-  assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=2/);
+  assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=3/);
   assert.match(build, /subscription-stripe-provider-v1\.8\.0\.js\?v=3/);
-  assert.match(sw, /\.\/subscription-launch-v1\.8\.1\.js\?v=2/);
+  assert.match(sw, /\.\/subscription-launch-v1\.8\.1\.js\?v=3/);
   assert.match(sw, /\.\/subscription-stripe-provider-v1\.8\.0\.js\?v=3/);
   assert.match(build, /version:\s*"1\.8\.4"/);
   assert.match(sw, /herdharbor-shell-v1\.8\.4/);
