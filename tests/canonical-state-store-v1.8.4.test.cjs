@@ -329,3 +329,45 @@ test("save-path diff no longer deep-clones both complete states before compariso
   assert.doesNotMatch(body, /cloudComparableState\(nextState\)/);
   assert.doesNotMatch(body, /cloneJson\(/);
 });
+
+
+test("array diff avoids whole-array pre-serialization for normal record domains", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "herdharbor-state-store-v1.8.4.js"), "utf8");
+  const start = source.indexOf("  function diffMutations(");
+  const end = source.indexOf("\n  function create(", start);
+  assert.ok(start >= 0 && end > start);
+  const body = source.slice(start, end);
+
+  const arrayBranch = body.indexOf("if (Array.isArray(before) || Array.isArray(after))");
+  const wholeCompare = body.indexOf("stableStringify(before) === stableStringify(after)");
+  assert.ok(arrayBranch >= 0 && wholeCompare > arrayBranch,
+    "record arrays must enter diffArray before any whole-domain stringify comparison");
+  assert.match(body, /mutations\.push\(\.\.\.diffArray\(before, after, context\)\);\s*continue;/);
+});
+
+test("equal non-record arrays still produce no fallback mutation", () => {
+  const before = { customRows: ["one", "two", "three"] };
+  const after = structuredClone(before);
+  const mutations = StateStoreModule.diffMutations(before, after, {
+    ownerId: "user-1",
+    revision: 2,
+    createdAt: "2026-09-30T12:00:00.000Z",
+    recordVersions: {}
+  });
+  assert.deepEqual(mutations, []);
+});
+
+test("changed non-record arrays still use the safe section-level fallback", () => {
+  const before = { customRows: ["one", "two"] };
+  const after = { customRows: ["one", "three"] };
+  const mutations = StateStoreModule.diffMutations(before, after, {
+    ownerId: "user-1",
+    revision: 2,
+    createdAt: "2026-09-30T12:00:00.000Z",
+    recordVersions: {}
+  });
+  assert.equal(mutations.length, 1);
+  assert.equal(mutations[0].domain, "customRows");
+  assert.equal(mutations[0].recordId, "$section");
+  assert.equal(mutations[0].operation, "update");
+});
