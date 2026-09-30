@@ -305,6 +305,16 @@
       return { changed, created, updated, completed, reopened };
     }
 
+    let taskToggleRenderTimer = null;
+
+    function scheduleTaskToggleRender() {
+      if (taskToggleRenderTimer) root.clearTimeout(taskToggleRenderTimer);
+      taskToggleRenderTimer = root.setTimeout(() => {
+        taskToggleRenderTimer = null;
+        if (getCurrentRoute() === "tasks") renderTasks();
+      }, 120);
+    }
+
     function renderTasks() {
       syncDerivedAutomation();
       const today = todayISO();
@@ -395,9 +405,7 @@
           ? `Task completed. Next task scheduled for ${formatDate(next.dueDate)}.`
           : box.checked ? "Task completed." : "Task reopened.";
         saveState(message);
-        scheduleUiWork("task-toggle-render", () => {
-          if (getCurrentRoute() === "tasks") renderTasks();
-        });
+        scheduleTaskToggleRender();
       }));
       $$("[data-task-tomorrow]", root).forEach((button) => button.addEventListener("click", () => {
         const task = stateNow().tasks.find((item) => item.id === button.dataset.taskTomorrow);
