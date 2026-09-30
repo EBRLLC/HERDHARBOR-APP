@@ -280,18 +280,29 @@
     }
 
     function renderBreedings() {
-      const rows = stateNow().breedings
+      const snapshot = stateNow();
+      const rows = snapshot.breedings
         .filter((record) => !breedingViewYear || String(record.breedingDate || "").startsWith(`${breedingViewYear}-`))
         .sort((left, right) => (right.breedingDate || "").localeCompare(left.breedingDate || ""));
-      const reportLitters = stateNow().litters.filter((litter) =>
+      const reportLitters = snapshot.litters.filter((litter) =>
         !breedingViewYear || String(litter.birthDate || "").startsWith(`${breedingViewYear}-`)
       );
       const report = breedingReportSnapshot(rows, reportLitters);
-      const active = rows.filter((record) => !["Not pregnant", "Delivered", "Cancelled"].includes(normalizeBreedingStatus(record.status))).length;
-      const dueSoon = rows.filter((record) => {
+      const animalsById = new Map(snapshot.animals.map((animal) => [animal.id, animal]));
+      const linkedBirthByBreedingId = new Map(
+        snapshot.litters
+          .filter((litter) => litter.breedingId)
+          .map((litter) => [litter.breedingId, litter])
+      );
+      let active = 0;
+      let dueSoon = 0;
+      for (const record of rows) {
+        const status = normalizeBreedingStatus(record.status);
+        if (["Not pregnant", "Delivered", "Cancelled"].includes(status)) continue;
+        active += 1;
         const days = daysFromNow(record.dueDate);
-        return !["Not pregnant", "Delivered", "Cancelled"].includes(normalizeBreedingStatus(record.status)) && days !== null && days >= 0 && days <= 14;
-      }).length;
+        if (days !== null && days >= 0 && days <= 14) dueSoon += 1;
+      }
       $("#view-breeding").innerHTML = `
         ${headerHtml(
           "Breeding and pregnancy",
@@ -312,9 +323,9 @@
           <table class="data-table">
             <thead><tr><th>Pairing</th><th>Method</th><th>Bred</th><th>Pregnancy check</th><th>Prepare</th><th>Due</th><th>Status</th><th></th></tr></thead>
             <tbody>${rows.map((record) => {
-              const female = stateNow().animals.find((animal) => animal.id === record.femaleId);
+              const female = animalsById.get(record.femaleId);
               const status = normalizeBreedingStatus(record.status);
-              const linkedBirth = stateNow().litters.find((litter) => litter.breedingId === record.id);
+              const linkedBirth = linkedBirthByBreedingId.get(record.id);
               return `<tr>
                 <td><strong>${esc(animalName(record.femaleId))}</strong> × ${esc(animalName(record.maleId))}<br><small>${esc(female?.species || "")}</small></td>
                 <td>${esc(record.method || "Natural service")}</td>
@@ -351,10 +362,10 @@
           await spreadsheet.downloadBreedingReport({
             breedings: rows,
             litters: reportLitters,
-            animals: stateNow().animals,
+            animals: snapshot.animals,
             report
           }, {
-            operationName: stateNow().profile?.operationName || "HerdHarbor",
+            operationName: snapshot.profile?.operationName || "HerdHarbor",
             year: breedingViewYear || "All years"
           });
           toast("Breeding and birth report downloaded.", "success");
