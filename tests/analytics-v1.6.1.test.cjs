@@ -96,7 +96,10 @@ test("analytics navigation, responsive assets, and offline shell are wired", () 
   const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
   assert.match(index, /data-route="analytics"/);
   assert.match(index, /id="view-analytics"/);
-  assert.match(index, /analytics-v1\.6\.1\.js/);
+  assert.doesNotMatch(index, /<script[^>]+analytics-v1\.6\.1\.js/);
+  assert.match(appRuntime, /"analytics-v1\.6\.1\.js\?v=2"/);
+  assert.match(appRuntime, /ensureAnalyticsRuntime/);
+  assert.match(appRuntime, /renderLazyRoute\([\s\S]*"analytics"/);
   assert.match(animalProfileRuntime, /detail-analytics/);
   assert.match(css, /@media \(max-width: 430px\)/);
   assert.match(css, /overflow-x: auto/);
