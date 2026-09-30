@@ -59,7 +59,9 @@ assert.doesNotMatch(appRuntime, /id="health-symptom-search"/);
 assert.match(appRuntime, /data-log-symptom/);
 assert.match(appRuntime, /type: "Observation"/);
 assert.match(appRuntime, /symptomView\.species = animal\?\.species/);
-assert.match(html, /symptom-guide\.js\?v=1/);
+assert.doesNotMatch(html, /<script[^>]+symptom-guide\.js/);
+assert.match(appRuntime, /"symptom-guide\.js\?v=1"/);
+assert.match(appRuntime, /ensureSymptomGuide/);
 assert.match(worker, /symptom-guide\.js\?v=1/);
 
 console.log("Alpha v1.2.0 symptom guide safety and coverage tests passed");
