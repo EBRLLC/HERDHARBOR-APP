@@ -274,9 +274,9 @@
       grid.parentElement?.insertBefore(switcher, grid);
     }
 
-    panel.querySelectorAll(".hh-subscription-plan-card:not([data-hh-free-adult-card])").forEach((card, index) => {
-      const planId = PLAN_ORDER[index];
-      if (!planId) return;
+    panel.querySelectorAll(".hh-subscription-plan-card[data-hh-plan]").forEach((card) => {
+      const planId = String(card.dataset.hhPlan || "").toLowerCase();
+      if (!PLAN_ORDER.includes(planId)) return;
       card.dataset.hhStripePlan = planId;
       const price = card.querySelector(".hh-subscription-price");
       if (price) price.textContent = money(PRICING[planId][selectedInterval], selectedInterval);
