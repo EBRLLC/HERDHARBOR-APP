@@ -190,6 +190,10 @@
     const uniqueNext = new Set(nextIds);
 
     if (!allIdentified || uniquePrevious.size !== previousIds.length || uniqueNext.size !== nextIds.length) {
+      // Non-record or duplicate-ID arrays cannot be diffed safely at record
+      // granularity. Preserve the old section-level fallback, but only pay
+      // for a whole-array stringify in this exceptional path.
+      if (stableStringify(previous) === stableStringify(next)) return [];
       return [sectionMutation(previousValue, nextValue, context)];
     }
 
@@ -256,13 +260,16 @@
     for (const domain of keys) {
       const before = previous[domain];
       const after = next[domain];
-      if (stableStringify(before) === stableStringify(after)) continue;
       const context = { ownerId, revision, createdAt, domain, recordVersions };
       if (Array.isArray(before) || Array.isArray(after)) {
+        // diffArray already compares identified records and ordering. Avoid
+        // serializing the complete array first and then serializing the same
+        // records again.
         mutations.push(...diffArray(before, after, context));
-      } else {
-        mutations.push(sectionMutation(before, after, context));
+        continue;
       }
+      if (stableStringify(before) === stableStringify(after)) continue;
+      mutations.push(sectionMutation(before, after, context));
     }
 
     return mutations;
