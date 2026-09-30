@@ -40,7 +40,7 @@ test("monitoring captures the original cloud provider error through the privacy 
 });
 
 
-test("legacy cloud save fast path uses version CAS without reading the full farm when unchanged", () => {
+test("legacy cloud save fast path goes straight to version CAS when a confirmed revision is known", () => {
   const writeStart = cloud.indexOf("async function writeCloudRecord");
   const writeEnd = cloud.indexOf("\n  async function syncValueToCloud", writeStart);
   assert.ok(writeStart >= 0 && writeEnd > writeStart);
@@ -53,11 +53,15 @@ test("legacy cloud save fast path uses version CAS without reading the full farm
   assert.ok(syncStart >= 0 && syncEnd > syncStart);
   const syncBlock = cloud.slice(syncStart, syncEnd);
 
-  const versionProbe = syncBlock.indexOf("await fetchCloudVersion(userId)");
-  const fullFetch = syncBlock.indexOf("await fetchCloudRecord(userId)");
-  assert.ok(versionProbe >= 0, "save path probes cloud version first");
-  assert.ok(fullFetch > versionProbe, "full farm fetch remains a fallback after the version probe");
-  assert.match(syncBlock, /!options\.force[\s\S]*knownVersion === remoteVersion/);
-  assert.match(syncBlock, /if \(versionStillCurrent\) \{[\s\S]*remoteRecord = \{ updated_at: remoteVersion \}/);
-  assert.match(syncBlock, /else if \(versionRecord\) \{[\s\S]*await fetchCloudRecord\(userId\)/);
+  const knownVersionBranch = syncBlock.indexOf("if (!options.force && knownVersion)");
+  const directCas = syncBlock.indexOf("remoteRecord = { updated_at: knownVersion }", knownVersionBranch);
+  const versionProbe = syncBlock.indexOf("await fetchCloudVersion(userId)", knownVersionBranch);
+  const fullFetch = syncBlock.indexOf("await fetchCloudRecord(userId)", versionProbe);
+
+  assert.ok(knownVersionBranch >= 0, "normal saves detect a confirmed local cloud revision");
+  assert.ok(directCas > knownVersionBranch, "known revisions go directly to the CAS PATCH");
+  assert.ok(versionProbe > directCas, "version probing is retained only for force/missing-version fallback");
+  assert.ok(fullFetch > versionProbe, "full farm preflight remains a fallback when no trusted revision is available");
+  assert.match(syncBlock, /if \(raced\) \{[\s\S]*await fetchCloudRecord\(userId\)/);
+  assert.match(syncBlock, /mergeRawStates\(confirmedBase, rawValue, latestRaw\)/);
 });

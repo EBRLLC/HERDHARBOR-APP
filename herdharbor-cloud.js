@@ -1463,46 +1463,45 @@
     setSyncState("Saving to cloud…", "working");
 
     const knownVersion = originalGetItem.call(localStorage, versionKey(userId)) || "";
-    const {
-      data: versionRecord,
-      error: versionError,
-      __hhTelemetry: versionTelemetry
-    } = await fetchCloudVersion(userId);
-
-    if (versionError) {
-      const failure = reportCloudSyncFailure("cloud-preflight-version", versionError, serializedStateBytes(rawValue), versionTelemetry);
-      console.error("HerdHarbor cloud version preflight failed:", versionError);
-      console.warn("HerdHarbor cloud version preflight diagnostic:", failure.code, failure.status || "no-status");
-      setSyncState("Cloud unavailable; changes are safe on this device and will retry.", "error");
-      return false;
-    }
-
     let remoteRecord = null;
-    const remoteVersion = String(versionRecord?.updated_at || "");
-    const versionStillCurrent =
-      !options.force &&
-      Boolean(versionRecord) &&
-      Boolean(knownVersion) &&
-      Boolean(remoteVersion) &&
-      knownVersion === remoteVersion;
 
-    if (versionStillCurrent) {
-      remoteRecord = { updated_at: remoteVersion };
-    } else if (versionRecord) {
+    if (!options.force && knownVersion) {
+      // Fast path: the PATCH below already performs optimistic CAS on updated_at.
+      // Avoid a separate version probe on every normal save. If the CAS misses,
+      // the existing raced-save path reloads the latest cloud snapshot and
+      // performs the protected three-way merge/retry.
+      remoteRecord = { updated_at: knownVersion };
+    } else {
       const {
-        data: loadedRecord,
-        error: loadError,
-        __hhTelemetry: loadTelemetry
-      } = await fetchCloudRecord(userId);
+        data: versionRecord,
+        error: versionError,
+        __hhTelemetry: versionTelemetry
+      } = await fetchCloudVersion(userId);
 
-      if (loadError) {
-        const failure = reportCloudSyncFailure("cloud-preflight", loadError, serializedStateBytes(rawValue), loadTelemetry);
-        console.error("HerdHarbor cloud preflight failed:", loadError);
-        console.warn("HerdHarbor cloud preflight diagnostic:", failure.code, failure.status || "no-status");
+      if (versionError) {
+        const failure = reportCloudSyncFailure("cloud-preflight-version", versionError, serializedStateBytes(rawValue), versionTelemetry);
+        console.error("HerdHarbor cloud version preflight failed:", versionError);
+        console.warn("HerdHarbor cloud version preflight diagnostic:", failure.code, failure.status || "no-status");
         setSyncState("Cloud unavailable; changes are safe on this device and will retry.", "error");
         return false;
       }
-      remoteRecord = loadedRecord || null;
+
+      if (versionRecord) {
+        const {
+          data: loadedRecord,
+          error: loadError,
+          __hhTelemetry: loadTelemetry
+        } = await fetchCloudRecord(userId);
+
+        if (loadError) {
+          const failure = reportCloudSyncFailure("cloud-preflight", loadError, serializedStateBytes(rawValue), loadTelemetry);
+          console.error("HerdHarbor cloud preflight failed:", loadError);
+          console.warn("HerdHarbor cloud preflight diagnostic:", failure.code, failure.status || "no-status");
+          setSyncState("Cloud unavailable; changes are safe on this device and will retry.", "error");
+          return false;
+        }
+        remoteRecord = loadedRecord || null;
+      }
     }
 
     const remoteRaw = remoteRecord?.app_state
