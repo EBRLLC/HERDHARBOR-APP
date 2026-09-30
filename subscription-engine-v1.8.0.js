@@ -555,7 +555,11 @@
     const experience = window.HerdHarborSubscriptionLaunch?.getExperienceState?.() || null;
     const protectedAccess = experience?.key === "protected_access";
     const founderEligible = state.founderEligible === true || account.tier === "founder";
-    const displayStatus = protectedAccess ? (experience.label || "Protected access") : titleCase(state.status);
+    const displayStatus = protectedAccess
+      ? (experience.label || "Protected access")
+      : founderEligible && !state.providerSubscriptionId
+        ? (state.status === "trialing" ? "Founder trial" : "Founder billing required")
+        : titleCase(state.status);
     const displayStatusTone = protectedAccess ? "good" : statusTone();
     const canManageBilling = providerCapability("createPortalSession") && Boolean(state.providerCustomerId);
     const plans = planCatalog();
@@ -584,6 +588,20 @@
       const item = plans[id];
       const active = id === currentPlan;
       const monthly = item.priceMonthly == null ? "Contact us" : item.priceMonthly === 0 ? "Free" : `$${Number(item.priceMonthly).toFixed(2)}/mo`;
+      const founderCheckout = id === "founder"
+        && founderEligible
+        && !state.providerSubscriptionId;
+      const memberCheckout = id === "member"
+        && active
+        && state.status === "trialing"
+        && !state.providerSubscriptionId;
+      const checkoutControl = founderCheckout
+        ? '<button type="button" class="button button-primary" data-hh-subscription-select="founder">Set up Founder billing — $7.99/mo</button>'
+        : memberCheckout
+          ? '<button type="button" class="button button-primary" data-hh-subscription-select="member">Subscribe to Member — $14.99/mo</button>'
+          : active
+            ? '<span class="hh-subscription-current">Current</span>'
+            : `<button type="button" class="button button-ghost" data-hh-subscription-select="${escapeHtml(id)}">Choose ${escapeHtml(item.label)}</button>`;
       return `
         <article class="hh-subscription-plan-card" data-hh-plan="${escapeHtml(id)}" data-current="${active ? "true" : "false"}">
           <div>
@@ -592,9 +610,7 @@
             <p class="hh-subscription-price">${escapeHtml(monthly)}</p>
             <p>${item.maxActiveAnimals ? `Up to ${item.maxActiveAnimals} active animals.` : "Unlimited active animals."}</p>
           </div>
-          ${active
-            ? '<span class="hh-subscription-current">Current</span>'
-            : `<button type="button" class="button button-ghost" data-hh-subscription-select="${escapeHtml(id)}">Choose ${escapeHtml(item.label)}</button>`}
+          ${checkoutControl}
         </article>`;
     }).join("");
 
