@@ -133,7 +133,7 @@ test("Founder and Member checkout are monthly-only with Founder restricted to el
 
 test("v1.8.3 web runtime loads carried-forward v1.8.1 referral policy before Stripe provider and preserves safe launch order", () => {
   const referralIndex = build.indexOf("subscription-referral-policy-v1.8.1.js?v=2");
-  const policyIndex = build.indexOf("subscription-launch-v1.8.1.js?v=2");
+  const policyIndex = build.indexOf("subscription-launch-v1.8.1.js?v=3");
   const engineIndex = build.indexOf("subscription-engine-v1.8.0.js?v=3");
   const providerIndex = build.indexOf("subscription-stripe-provider-v1.8.0.js?v=3");
   const bridgeIndex = build.indexOf("subscription-stripe-launch-bridge-v1.8.1.js?v=1");
