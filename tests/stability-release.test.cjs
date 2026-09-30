@@ -43,7 +43,7 @@ if (webVersion === "1.8.2") {
 }
 if (webVersion === "1.8.4") {
   assert.equal(buildId, "alpha-v1.8.4-release-1");
-  assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=2/);
+  assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=3/);
 }
 assert.match(html, /HerdHarbor Alpha v1\.8\.4 current application shell/);
 assert.doesNotMatch(appRuntime, /id="settings-sync-now"/);
