@@ -100,3 +100,26 @@ test("sales/customer extraction remains compatible with formal v1.8.4",()=>{
  assert.match(sw,/sales-customer-runtime-v1\.8\.3\.js\?v=1/);
  assert.match(pkg.scripts["test:v1.8.3"],/runtime-sales-customer-extraction-v1\.8\.3\.test\.cjs/);
 });
+
+
+test("sales render indexes customers animals payments and customer sale counts once",()=>{
+ const start=sales.indexOf("    function renderSales() {");
+ const end=sales.indexOf("\n    function openCustomerForm",start);
+ assert.ok(start>=0&&end>start);
+ const body=sales.slice(start,end);
+
+ assert.match(body,/const customersById = new Map\(snapshot\.customers\.map/);
+ assert.match(body,/const animalsById = new Map\(snapshot\.animals\.map/);
+ assert.match(body,/const paidBySaleId = new Map\(\)/);
+ assert.match(body,/const saleCountByCustomerId = new Map\(\)/);
+ assert.match(body,/for \(const payment of snapshot\.payments\)/);
+ assert.match(body,/for \(const sale of snapshot\.sales\)/);
+ assert.match(body,/const saleMetrics = new Map\(\)/);
+ assert.match(body,/if \(!search\) return true;/);
+
+ assert.doesNotMatch(body,/salePaid\(sale\.id\)/);
+ assert.doesNotMatch(body,/saleBalance\(sale\)/);
+ assert.doesNotMatch(body,/stateNow\(\)\.sales\.filter\(\(sale\) => sale\.customerId === customer\.id\)/);
+ assert.doesNotMatch(body,/customerName\(sale\.customerId\)/);
+ assert.doesNotMatch(body,/saleAnimalLabel\(sale\)/);
+});
