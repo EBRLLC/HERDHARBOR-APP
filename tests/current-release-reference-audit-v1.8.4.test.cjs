@@ -79,8 +79,8 @@ test("v1.8.4 keeps normalized authority gated and AI expansion deferred", () => 
   assert.match(contract, /does not expand AI functionality/i);
 });
 
-test("formal v1.8.4 release gate composes the stability regression suite", () => {
+test("historical v1.8.4 wrapper still composes its stability regression suite", () => {
   assert.match(pkg.scripts["test:v1.8.4"], /test:v1\.8\.3/);
   assert.match(pkg.scripts["test:v1.8.4"], /test:v1\.8\.4-regression/);
-  assert.match(pkg.scripts["test:release"], /current-release-reference-audit-v1\.8\.4\.test\.cjs/);
+  assert.match(pkg.scripts["test:v1.8.4"], /current-release-reference-audit-v1\.8\.4\.test\.cjs/);
 });
