@@ -38,7 +38,7 @@ const activeV161 = [
 
 for (const file of activeV161) {
   assert.ok(fs.existsSync(path.join(root, file)), "missing consolidated runtime asset: " + file);
-  const cacheVersion = file === "herdharbor-monitoring-config.js" ? "2.0.0" : file === "herdharbor-release-v1.6.1.js" ? "2" : file === "herdharbor-admin-v1.6.1.js" ? "2" : "1.7.1";
+  const cacheVersion = file === "herdharbor-monitoring-config.js" ? "2.0.0" : ["herdharbor-release-v1.6.1.js", "herdharbor-admin-v1.6.1.js", "pedigree-genetics-v1.6.1.js"].includes(file) ? "2" : "1.7.1";
   assert.ok((pwa + "\n" + html).includes(`${file}?v=${cacheVersion}`) || html.includes(file + "?v=1.6.5"), "startup loader does not load current runtime asset " + file);
   assert.ok(worker.includes(`./${file}?v=${cacheVersion}`), "service-worker.js does not precache current runtime asset " + file);
 }
@@ -85,7 +85,7 @@ assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v2\.0\.0-v2\.0\.0-rel
 if (webVersion === "1.8.1") assert.ok(worker.includes("v1.8.1-alpha-october-subscription-launch-"));
 if (webVersion === "1.8.2") assert.match(build, /buildId:\s*"cloud-sync-v2-/);
 if (webVersion === "2.0.0") assert.match(build, /buildId:\s*"v2\.0\.0-release-1"/);
-assert.ok(worker.includes("pwa.js?v=33"));
+assert.ok(worker.includes("pwa.js?v=34"));
 assert.ok(!pwa.includes(";" + String.fromCharCode(92) + "n    if"), "pwa.js contains no literal newline escape in executable source");
 assert.ok(!read("herdharbor-membership-v1.6.1.js").includes(";" + String.fromCharCode(92) + "n    if"), "membership source contains no literal newline escape in executable source");
 assert.ok(!read("pedigree-visual.js").includes(";" + String.fromCharCode(92) + "n    if"), "pedigree source contains no literal newline escape in executable source");
