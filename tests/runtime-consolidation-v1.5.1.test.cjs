@@ -85,7 +85,7 @@ assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v2\.0\.0-v2\.0\.0-rel
 if (webVersion === "1.8.1") assert.ok(worker.includes("v1.8.1-alpha-october-subscription-launch-"));
 if (webVersion === "1.8.2") assert.match(build, /buildId:\s*"cloud-sync-v2-/);
 if (webVersion === "2.0.0") assert.match(build, /buildId:\s*"v2\.0\.0-release-1"/);
-assert.ok(worker.includes("pwa.js?v=33"));
+assert.ok(worker.includes("pwa.js?v=34"));
 assert.ok(!pwa.includes(";" + String.fromCharCode(92) + "n    if"), "pwa.js contains no literal newline escape in executable source");
 assert.ok(!read("herdharbor-membership-v1.6.1.js").includes(";" + String.fromCharCode(92) + "n    if"), "membership source contains no literal newline escape in executable source");
 assert.ok(!read("pedigree-visual.js").includes(";" + String.fromCharCode(92) + "n    if"), "pedigree source contains no literal newline escape in executable source");
