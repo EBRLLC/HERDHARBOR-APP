@@ -33,8 +33,7 @@ jobs:
       - name: Verify reviewed HerdHarbor 2.0.0 release contract before production acceptance
         run: |
           npm ci --no-audit --no-fund
-          npm run test:release
-          npm run test:v2.0.0
+          npm run test:v2.0.0-final
 
       - name: Run membership/RLS production acceptance
         if: ${{ inputs.run_membership }}
