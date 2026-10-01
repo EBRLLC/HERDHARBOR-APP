@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v1.8.4-alpha-v1.8.4-release-4";
+const CACHE_NAME = "herdharbor-shell-v1.8.4-alpha-v1.8.4-release-5";
 const REQUIRED_SHELL = [
   "./",
   "./index.html",
@@ -146,7 +146,7 @@ const RUNTIME_CACHE_PATHS = [
 const NETWORK_FIRST_PATHS = [
   "/manifest.json",
   "/herdharbor-build.js",
-  "/herdharbor-cloud.js",
+  "/herdharbor-cloud.js",\n  "/account-boundary-core-v1.8.4.js",
   "/herdharbor-monitoring-config.js",
   "/herdharbor-release-v1.6.1.js",
   "/herdharbor-membership-v1.6.1.js",
