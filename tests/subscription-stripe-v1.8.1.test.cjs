@@ -143,7 +143,7 @@ test("v1.8.3 web runtime loads carried-forward v1.8.1 referral policy before Str
 });
 
 test("PWA keeps referral, admin-credit and Stripe subscription assets network-first", () => {
-  assert.match(sw, /herdharbor-shell-v1\.8\.4-alpha-v1\.8\.4-release-9/);
+  assert.match(sw, /herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1/);
   for (const asset of [
     "subscription-referral-policy-v1.8.1.js",
     "subscription-admin-credits-v1.8.1.js",
@@ -190,11 +190,11 @@ test("payment failure remains recoverable paid access instead of destructive dow
   assert.match(launch, /ACTIVE_PAID_STATUSES = new Set\(\["active", "trialing", "past_due"/);
 });
 
-test("updated launch and provider assets are cache-busted under the formal v1.8.4 release", () => {
+test("updated launch and provider assets remain cache-busted under the 2.0.0 release", () => {
   assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=3/);
   assert.match(build, /subscription-stripe-provider-v1\.8\.0\.js\?v=3/);
   assert.match(sw, /\.\/subscription-launch-v1\.8\.1\.js\?v=3/);
   assert.match(sw, /\.\/subscription-stripe-provider-v1\.8\.0\.js\?v=3/);
   assert.match(build, /version:\s*"2\.0\.0"/);
-  assert.match(sw, /herdharbor-shell-v1\.8\.4/);
+  assert.match(sw, /herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1/);
 });
