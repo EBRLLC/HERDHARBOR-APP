@@ -15,7 +15,7 @@
   const LEGACY_ACTIVE_OWNER_KEY = "herdharbor_active_user_id";
   const ACCOUNT_BOUNDARY_RECOVERY_MARKER_PREFIX = "herdharbor_account_boundary_recovery_v1";
   const UNATTRIBUTED_RECOVERY_USER_ID = "__unattributed__";
-  const CURRENT_SHELL_CACHE_NAME = "herdharbor-shell-v1.8.4-alpha-v1.8.4-release-7";
+  const CURRENT_SHELL_CACHE_NAME = "herdharbor-shell-v1.8.4-alpha-v1.8.4-release-8";
   const RECOVERY_DB_NAME = "herdharbor_recovery_v1";
   const RECOVERY_STORE_NAME = "snapshots";
   const RECOVERY_DB_VERSION = 2;
@@ -368,6 +368,8 @@
   async function loadAccessProfile() {
     if (!session?.user?.id) return publishAccessProfile(fallbackAccessProfile());
     const userId = session.user.id;
+    const operationToken = captureAccountOperation(userId);
+    const stillCurrent = () => isAccountOperationCurrent(operationToken, userId);
     const cached = () => window.HerdHarborAccessCache?.read?.(userId);
     const initialCachedSnapshot = cached();
     if (initialCachedSnapshot) {
@@ -378,6 +380,7 @@
       });
     }
     const publishCachedOrFallback = () => {
+      if (!stillCurrent()) return accessProfile;
       const snapshot = cached();
       return publishAccessProfile(snapshot
         ? { ...snapshot, backend_ready: false, offline_cached: true }
@@ -392,9 +395,11 @@
         client.rpc("herdharbor_account_role")
       ]);
     } catch {
+      if (!stillCurrent()) return accessProfile;
       reportAccountOperationFailure("load_access");
       return publishCachedOrFallback();
     }
+    if (!stillCurrent()) return accessProfile;
     if (recordResult.error || !recordResult.data) {
       reportAccountOperationFailure("load_access");
       return publishCachedOrFallback();
@@ -410,7 +415,9 @@
       account_role: role,
       last_verified_at: new Date().toISOString()
     };
+    if (!stillCurrent()) return accessProfile;
     const stored = window.HerdHarborAccessCache?.write?.(userId, authoritative);
+    if (!stillCurrent()) return accessProfile;
     return publishAccessProfile({
       ...authoritative,
       ...(stored || {}),
@@ -1289,10 +1296,24 @@
     lastHydratedUserId = "";
     pendingSync = null;
     syncConflict = null;
+    normalizedRefreshInFlight = null;
     normalizedCohortStatusCache = null;
     normalizedCohortStatusInFlight = null;
     accessProfile = null;
     lastCloudCheckAt = 0;
+  }
+
+  function captureAccountOperation(userId = session?.user?.id) {
+    const id = String(userId || "");
+    return accountBoundaryFence?.capture?.(id) || null;
+  }
+
+  function isAccountOperationCurrent(token, userId = token?.userId) {
+    return Boolean(
+      token &&
+      String(userId || "") &&
+      accountBoundaryFence?.isCurrent?.(token, session?.user?.id)
+    );
   }
 
   function clearAccountSessionMarkers(userId) {
@@ -2273,15 +2294,22 @@
   }
 
   async function checkNormalizedAuthorityChanges() {
+    const userIdAtStart = String(session?.user?.id || "");
+    const operationToken = captureAccountOperation(userIdAtStart);
+    const stillCurrent = () => isAccountOperationCurrent(operationToken, userIdAtStart);
+    if (!userIdAtStart || !stillCurrent()) return false;
+
     if (!normalizedAuthorityActive()) {
       await refreshNormalizedAuthorityIfEligible();
+      if (!stillCurrent()) return false;
     }
     if (!normalizedAuthorityActive()) return null;
     if (normalizedRefreshInFlight) return normalizedRefreshInFlight;
 
-    normalizedRefreshInFlight = (async () => {
+    const run = (async () => {
       try {
         const result = await normalizedRollout.refreshAuthoritative();
+        if (!stillCurrent()) return false;
         if (result?.reason === "normalized-not-authoritative") return null;
         if (!result?.ok) {
           setSyncState("Normalized cloud refresh is unavailable; this device copy was not overwritten.", "error");
@@ -2293,10 +2321,10 @@
           return false;
         }
 
-        const userId = session?.user?.id;
-        if (!userId) return false;
+        const userId = userIdAtStart;
         const remoteRaw = JSON.stringify(result.snapshot);
         const activeRaw = activeStateRaw();
+        if (!stillCurrent()) return false;
         if (activeRaw && sameState(activeRaw, remoteRaw)) {
           setSyncState("Saved to cloud", "success");
           return false;
@@ -2321,28 +2349,33 @@
             activeRaw,
             "Local copy before receiving normalized cloud changes"
           );
+          if (!stillCurrent()) return false;
         }
         if (hasPendingCloudMutations(userId)) {
           return false;
         }
+        if (!stillCurrent()) return false;
 
         setActiveUserData(userId, deviceCloudRaw, "normalized-cloud-state-replace");
         safeStorageRemove(dirtyKey(userId));
         setSyncState("Newer normalized cloud records found; reloading…", "success");
-        window.location.reload();
+        if (stillCurrent()) window.location.reload();
         return true;
       } catch (error) {
+        if (!stillCurrent()) return false;
         console.error("HerdHarbor normalized cloud refresh failed:", error);
         setSyncState("Normalized cloud refresh failed; this device copy was not overwritten.", "error");
         return false;
-      } finally {
-        normalizedRefreshInFlight = null;
       }
     })();
 
-    return normalizedRefreshInFlight;
+    normalizedRefreshInFlight = run;
+    try {
+      return await run;
+    } finally {
+      if (normalizedRefreshInFlight === run) normalizedRefreshInFlight = null;
+    }
   }
-
   async function refreshDualWriteBaselineForRemoteState() {
     if (!normalizedRollout?.refreshDualWriteBaseline) {
       return Object.freeze({ ok: true, skipped: true, reason: "rollout-baseline-refresh-unavailable" });
@@ -2376,14 +2409,17 @@
   }
 
   async function checkForCloudChanges() {
-    const userId = session?.user?.id;
-    if (!userId || syncInFlight || syncConflict) return false;
+    const userId = String(session?.user?.id || "");
+    const operationToken = captureAccountOperation(userId);
+    const stillCurrent = () => isAccountOperationCurrent(operationToken, userId);
+    if (!userId || !stillCurrent() || syncInFlight || syncConflict) return false;
 
     const now = Date.now();
     if (now - lastCloudCheckAt < 15000) return false;
     lastCloudCheckAt = now;
 
     const normalizedHandled = await checkNormalizedAuthorityChanges();
+    if (!stillCurrent()) return false;
     if (normalizedHandled !== null) return normalizedHandled;
 
     if (originalGetItem.call(localStorage, dirtyKey(userId)) === "1") {
@@ -2392,6 +2428,7 @@
 
     const knownVersion = originalGetItem.call(localStorage, versionKey(userId)) || "";
     const { data: versionRecord, error: versionError } = await fetchCloudVersion(userId);
+    if (!stillCurrent()) return false;
     if (versionError || !versionRecord) return false;
 
     const remoteVersion = String(versionRecord.updated_at || "");
@@ -2401,6 +2438,7 @@
     }
 
     const { data, error } = await fetchCloudRecord(userId);
+    if (!stillCurrent()) return false;
     if (error || !data?.app_state) return false;
 
     // A local edit can occur while the cloud refresh request is in flight
@@ -2415,9 +2453,11 @@
     const remoteRaw = JSON.stringify(data.app_state);
     const activeRaw = activeStateRaw();
     const confirmedBase = await readCloudBaseline(userId);
+    if (!stillCurrent()) return false;
 
     if (activeRaw && sameState(activeRaw, remoteRaw)) {
       const baselineRefresh = await refreshDualWriteBaselineForRemoteState();
+      if (!stillCurrent()) return false;
       if (baselineRefresh?.ok === false) {
         setSyncState(
           "Cloud records match, but normalized sync protection could not refresh yet.",
@@ -2426,6 +2466,7 @@
         return false;
       }
       await writeCloudBaseline(userId, remoteRaw);
+      if (!stillCurrent()) return false;
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       setSyncState("Saved to cloud", "success");
       return false;
@@ -2433,6 +2474,7 @@
 
     if (confirmedBase && sameState(activeRaw, confirmedBase)) {
       await recordRecoverySnapshot(userId, activeRaw, "Local copy before receiving another device's changes");
+      if (!stillCurrent()) return false;
 
       // The recovery snapshot is asynchronous. A local edit made while it is
       // being stored must not be overwritten by the cloud copy we fetched
@@ -2461,6 +2503,7 @@
         );
       }
       const baselineRefresh = await refreshDualWriteBaselineForRemoteState();
+      if (!stillCurrent()) return false;
       if (baselineRefresh?.ok === false) {
         setSyncState(
           "Newer cloud records found, but normalized sync protection could not refresh yet. Retrying shortly.",
@@ -2468,11 +2511,13 @@
         );
         return false;
       }
+      if (!stillCurrent()) return false;
       setActiveUserData(userId, deviceCloudRaw);
       await writeCloudBaseline(userId, remoteRaw);
+      if (!stillCurrent()) return false;
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       setSyncState("Newer cloud records found; reloading…", "success");
-      window.location.reload();
+      if (stillCurrent()) window.location.reload();
       return true;
     }
 
