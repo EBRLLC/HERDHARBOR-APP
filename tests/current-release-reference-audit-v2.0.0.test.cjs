@@ -18,7 +18,8 @@ const build = read("herdharbor-build.js");
 const gradle = read("android/app/build.gradle");
 const pwa = read("pwa.js");
 const worker = read("service-worker.js");
-const monitoring = read("herdharbor-monitoring-config.js");\nconst index = read("index.html");
+const monitoring = read("herdharbor-monitoring-config.js");
+const index = read("index.html");
 
 test("all authoritative whole-app release owners identify stable 2.0.0", () => {
   assert.equal(pkg.version, "2.0.0");
@@ -49,7 +50,8 @@ test("formal 2.0.0 release artifacts and member-language gates exist", () => {
     "V2.0.0-PRODUCTION-RELEASE-CONTRACT.md",
     "tests/v2.0.0-production-language.test.cjs",
     "tests/v2.0.0-component-language.test.cjs",
-    "tests/v2.0.0-release-contract.test.cjs"
+    "tests/v2.0.0-release-contract.test.cjs",
+    "tests/v2.0.0-pwa-cutover.test.cjs"
   ]) assert.equal(exists(p), true, p);
 });
 
