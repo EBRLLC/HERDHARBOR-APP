@@ -114,7 +114,7 @@ test("top-level external browser endpoints are restricted to current approved se
 
 test("canonical runtime ownership remains singular for state, cloud, PWA and admin APIs", () => {
   const checks = [
-    ["HerdHarborStateStore", /window\.HerdHarborStateStore\s*=/g],
+    ["HerdHarborStateStore", /(?:window|root|globalThis)\.HerdHarborStateStore\s*=/g],
     ["HerdHarborCloud", /window\.HerdHarborCloud\s*=/g],
     ["HerdHarborPWA", /window\.HerdHarborPWA\s*=/g],
     ["HerdHarborAdmin", /window\.HerdHarborAdmin\s*=/g]
