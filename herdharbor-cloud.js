@@ -428,7 +428,12 @@
 
   async function callAdminRpc(name, parameters) {
     if (!session?.user?.id) throw new Error("Sign in before managing members.");
+    const userId = String(session.user.id);
+    const operationToken = captureAccountOperation(userId);
     const { data, error } = await client.rpc(name, parameters);
+    if (!isAccountOperationCurrent(operationToken, userId)) {
+      throw new Error("The signed-in account changed before the request completed.");
+    }
     if (!error) return data;
     reportAccountOperationFailure(name);
     throw new Error(error.message || "The secure member-management request could not be completed.");
