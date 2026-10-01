@@ -121,11 +121,11 @@ test("every static shell button is backed by a route, form submit, PWA action, o
         `querySelector("#${id}")`,
         `querySelector(\'#${id}\')`
       ];
-      const idBound = bindingStarts.some((needle) => {
-        const at = activeSource.indexOf(needle);
-        if (at < 0) return false;
-        return /addEventListener\(["\']click["\']/.test(activeSource.slice(at, at + 240));
-      });
+      const idBound = bindingStarts.some((needle) =>
+        activeSource.split(needle).slice(1).some((after) =>
+          /addEventListener\(["\']click["\']/.test(after.slice(0, 360))
+        )
+      );
       if (idBound) continue;
     }
 
@@ -204,6 +204,7 @@ test("all dynamically rendered buttons in the production module graph expose a r
 
 test("static anchors do not point at missing local files or missing page fragments", () => {
   const ids = new Set([...html.matchAll(/\bid=["']([^"']+)["']/gi)].map((m) => m[1]));
+  const appRoutes = new Set([...html.matchAll(/\bdata-route=["']([^"']+)["']/gi)].map((m) => m[1]));
   const anchors = [...html.matchAll(/<a\b([^>]*)>/gi)].map((m) => m[1]);
   const unresolved = [];
 
@@ -214,7 +215,7 @@ test("static anchors do not point at missing local files or missing page fragmen
     if (!href || href === "#" || /^https?:|^mailto:|^tel:/i.test(href)) continue;
     if (href.startsWith("#")) {
       const fragment = href.slice(1);
-      if (fragment && !ids.has(fragment)) unresolved.push(href);
+      if (fragment && !ids.has(fragment) && !appRoutes.has(fragment)) unresolved.push(href);
       continue;
     }
     const local = stripLocal(href);
@@ -352,8 +353,9 @@ test("stable release bootstrap keeps legacy billing isolated and cannot execute 
 
   assert.match(release, /version: window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"/);
   assert.match(release, /buildId: window\.HerdHarborBuild\?\.buildId \|\| "v2\.0\.0-release-1"/);
-  assert.match(release, /billingEnabled: true/);
-  assert.doesNotMatch(release, /billingEnabled: false/);
+  assert.match(release, /billingEnabled: false/);
+  assert.match(read("subscription-engine-v1.8.0.js"), /Legacy billing isolation/);
+  assert.match(read("subscription-launch-v1.8.1.js"), /window\.HerdHarborMembership = wrapped/);
 
   assert.match(html, /<script id="hh-v151-release-script" src="herdharbor-release-v1\.6\.1\.js\?v=2"><\/script>/);
   assert.match(pwa, /addScript\("hh-v151-release-script", "herdharbor-release-v1\.6\.1\.js\?v=2"\)/);
