@@ -94,7 +94,7 @@ test("legacy transfer compatibility still enforces animal allowance and rollback
 
 test("sales/customer extraction remains compatible with formal v1.8.4",()=>{
  const html=read("index.html"),sw=read("service-worker.js");
- assert.equal(pkg.version,"1.8.4");
+ assert.equal(pkg.version, "2.0.0");
  assert.ok(html.indexOf("task-runtime-v1.8.3.js?v=1")<html.indexOf("sales-customer-runtime-v1.8.3.js?v=1"));
  assert.ok(html.indexOf("sales-customer-runtime-v1.8.3.js?v=1")<html.indexOf("herdharbor-app-runtime.js?v=2"));
  assert.match(sw,/sales-customer-runtime-v1\.8\.3\.js\?v=1/);
