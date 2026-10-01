@@ -13,6 +13,7 @@ const html = read("index.html");
 const appRuntime = read("herdharbor-app-runtime.js");
 const directorySql = read("supabase/v1.5.1-admin-member-directory.sql");
 const activeAdminSql = read("supabase/v1.5.1-active-admin-authorization.sql");
+const liveUsageSql = read("supabase/v1.8.4-admin-live-usage-directory.sql");
 
 const functionBody = (name, nextName) => cloud.slice(
   cloud.indexOf(`async function ${name}`),
@@ -31,7 +32,7 @@ assert.match(membershipMutation, /callAdminRpc\("admin_set_membership", \{\s*tar
 assert.match(automaticMutation, /callAdminRpc\("admin_return_to_automatic_membership", \{\s*target_user: userId,\s*change_reason: safeReason \|\| null\s*\}\)/);
 assert.doesNotMatch([roleMutation, membershipMutation, automaticMutation].join("\n"), /target_user_id|target_account_id|p_target_user_id|new_membership_tier|parameterVariants/);
 assert.doesNotMatch(cloud, /isRpcSignatureError|PGRST202|PGRST203/, "known production RPC signatures are not guessed at runtime");
-assert.match(cloud, /const ADMIN_DIRECTORY_RPC = "admin_member_directory"/);
+assert.match(cloud, /const ADMIN_DIRECTORY_RPC = "admin_member_directory_v2"/);
 assert.match(cloud, /client\.rpc\(ADMIN_DIRECTORY_RPC\)/);
 assert.doesNotMatch(functionBody("listMembers", "listMemberAudit"), /from\(ACCESS_TABLE\)/, "Admin listing comes from the protected directory RPC");
 assert.match(cloud, /from\(ADMIN_AUDIT_TABLE\)[\s\S]*?\.eq\("target_user_id", userId\)[\s\S]*?\.limit\(250\)/, "audit history is filtered per member before the row limit");
@@ -53,6 +54,18 @@ assert.match(directorySql, /revoke all on function public\.admin_member_director
 assert.match(directorySql, /grant execute on function public\.admin_member_directory\(\) to authenticated/i);
 assert.doesNotMatch(directorySql, /herdharbor_user_data|app_state|encrypted_password|confirmation_token|recovery_token|raw_app_meta_data/i);
 assert.doesNotMatch(directorySql, /active_animal_count/i, "directory does not inspect private farm state for usage");
+assert.match(liveUsageSql, /create or replace function public\.admin_member_directory_v2\(\)/i);
+assert.match(liveUsageSql, /security definer/i);
+assert.match(liveUsageSql, /caller\.account_role in \('owner', 'admin'\)/i);
+assert.match(liveUsageSql, /caller\.account_status = 'active'/i);
+assert.match(liveUsageSql, /active_animal_count integer/i);
+assert.match(liveUsageSql, /last_sync_save_at timestamptz/i);
+assert.match(liveUsageSql, /not in \('sold', 'deceased', 'archived', 'ancestor only'\)/i);
+assert.match(liveUsageSql, /herdharbor_sync_records/i);
+assert.match(liveUsageSql, /herdharbor_user_data/i);
+assert.match(liveUsageSql, /grant execute on function public\.admin_member_directory_v2\(\) to authenticated/i);
+assert.doesNotMatch(liveUsageSql, /select\s+.*app_state.*as\s+app_state/is, "Admin directory never returns raw farm state");
+
 assert.match(activeAdminSql, /create or replace function public\.herdharbor_account_role\(\)/i);
 assert.match(activeAdminSql, /aa\.account_status = 'active'/i, "disabled accounts cannot authorize Admin RPCs");
 assert.match(activeAdminSql, /security definer/i);
@@ -103,8 +116,12 @@ assert.match(detailMarkup, /\$\{roleControls\}[\s\S]*form id="hh-admin-membershi
 assert.match(detailMarkup, /form id="hh-admin-membership-form"[\s\S]*Return to Automatic/);
 assert.match(admin, /id="hh-admin-next-role"[^\n]*value="user"[^\n]*value="admin"/, "Owner is never offered as an assignable role");
 assert.doesNotMatch(admin, /id="hh-admin-next-role"[^\n]*value="owner"/);
-assert.match(admin, /Not exposed by the current secure account directory/);
-assert.match(admin, /usage !== null && usage !== undefined && usage !== ""/, "unavailable cross-account usage is not mislabeled as zero");
+assert.match(admin, /Membership & active usage/);
+assert.match(admin, /Active animals/);
+assert.match(admin, /Last login/);
+assert.match(admin, /Last sync save/);
+assert.match(admin, /last_sync_save_at/);
+assert.match(admin, /usage !== null && usage !== undefined && usage !== ""/, "live cross-account usage is normalized safely");
 assert.match(admin, /does not grant access to a member's animals, health records, customers, finances, or farm notes/);
 
 assert.match(cloud, /const STORAGE_KEY = "herdharbor_pre_alpha_v1"/, "protected farm-state key is unchanged");
