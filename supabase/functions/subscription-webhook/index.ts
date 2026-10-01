@@ -236,8 +236,6 @@ Deno.serve(async (req) => {
     const userId = userFromMetadata || existing?.user_id || "";
     if (!userId) throw new Error(`Stripe subscription ${subscription.id} is missing a HerdHarbor user id.`);
 
-    const eventTime = timeValue(eventOccurredAt);
-    const storedTime = timeValue(existing?.provider_updated_at);
     const customerId = stringId(raw.customer);
     const status = String(raw.status || "incomplete");
     const existingSubscriptionId = String(existing?.provider_subscription_id || "");
