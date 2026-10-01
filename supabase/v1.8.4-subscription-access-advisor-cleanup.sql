@@ -21,4 +21,12 @@ create index if not exists admin_audit_log_actor_user_id_idx
 create index if not exists admin_audit_log_target_user_id_idx
   on public.admin_audit_log(target_user_id);
 
+-- Keep the database catalog aligned with the public monthly-only launch.
+-- Business remains visible as Coming Soon, but no Business or annual price is
+-- selectable by backend price lookup until those plans are intentionally launched.
+update public.subscription_plan_prices
+set active = false,
+    updated_at = now()
+where id in ('founder_year', 'member_year', 'business_month', 'business_year');
+
 commit;
