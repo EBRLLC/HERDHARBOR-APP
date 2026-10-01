@@ -1691,6 +1691,9 @@
     }
 
     const userId = session.user.id;
+    const operationToken = captureAccountOperation(userId);
+    const stillCurrent = () => isAccountOperationCurrent(operationToken, userId);
+    if (!stillCurrent()) return false;
     let localRawBeforeMerge = null;
     let autoMerged = false;
     setSyncState("Saving to cloud…", "working");
@@ -1710,6 +1713,7 @@
         error: versionError,
         __hhTelemetry: versionTelemetry
       } = await fetchCloudVersion(userId);
+      if (!stillCurrent()) return false;
 
       if (versionError) {
         const failure = reportCloudSyncFailure("cloud-preflight-version", versionError, serializedStateBytes(rawValue), versionTelemetry);
@@ -1725,6 +1729,7 @@
           error: loadError,
           __hhTelemetry: loadTelemetry
         } = await fetchCloudRecord(userId);
+        if (!stillCurrent()) return false;
 
         if (loadError) {
           const failure = reportCloudSyncFailure("cloud-preflight", loadError, serializedStateBytes(rawValue), loadTelemetry);
@@ -1742,6 +1747,7 @@
       : null;
     const activeRaw = activeStateRaw();
     const confirmedBase = await readCloudBaseline(userId);
+    if (!stillCurrent()) return false;
     const localBaselineRaw = confirmedBase || activeRaw;
 
     if (
@@ -1758,6 +1764,7 @@
 
     if (remoteRaw && sameState(remoteRaw, rawValue)) {
       await writeCloudBaseline(userId, remoteRaw);
+      if (!stillCurrent()) return false;
       if (remoteRecord.updated_at) {
         safeStorageSet(versionKey(userId), remoteRecord.updated_at);
       }
@@ -1772,6 +1779,7 @@
         sequence,
         remoteRecord.updated_at || null
       );
+      if (!stillCurrent()) return false;
       if (!normalized.ok) {
         setSyncState(
           "Legacy cloud is saved; normalized sync is still finishing and will retry.",
@@ -1835,6 +1843,7 @@
           "Cloud copy before automatic device merge"
         )
       ]);
+      if (!stillCurrent()) return false;
       if (sequence === writeSequence) {
         setActiveUserData(userId, rawValue);
       }
@@ -1844,6 +1853,7 @@
 
     if (options.force && remoteRaw) {
       await recordRecoverySnapshot(userId, remoteRaw, "Cloud copy before manual conflict resolution");
+      if (!stillCurrent()) return false;
     }
 
     if (sequence < writeSequence && pendingSync && !options.force) {
@@ -1861,6 +1871,7 @@
       appState,
       remoteRecord || null
     );
+    if (!stillCurrent()) return false;
 
     if (error) {
       const failure = reportCloudSyncFailure("cloud-save", error, serializedStateBytes(rawValue), saveTelemetry);
@@ -1872,6 +1883,7 @@
 
     if (raced) {
       const latest = await fetchCloudRecord(userId);
+      if (!stillCurrent()) return false;
       if (latest.error) {
         reportCloudSyncFailure(
           "cloud-race-reload",
@@ -1936,6 +1948,7 @@
         }
 
         const retry = await writeCloudRecord(userId, rebasedState, latest.data);
+        if (!stillCurrent()) return false;
         if (retry.error) {
           const failure = reportCloudSyncFailure(
             "cloud-race-retry",
@@ -1951,6 +1964,7 @@
 
         if (retry.raced) {
           const newest = await fetchCloudRecord(userId);
+          if (!stillCurrent()) return false;
           if (newest.error) {
             reportCloudSyncFailure(
               "cloud-race-retry-reload",
@@ -1987,6 +2001,7 @@
       ? JSON.stringify(savedRecord.app_state)
       : rawValue;
     await writeCloudBaseline(userId, savedRaw);
+    if (!stillCurrent()) return false;
     if (savedRecord?.updated_at) {
       safeStorageSet(versionKey(userId), savedRecord.updated_at);
     }
@@ -2030,6 +2045,7 @@
       sequence,
       savedRecord?.updated_at || null
     );
+    if (!stillCurrent()) return false;
     if (!normalized.ok) {
       const deferredForNewerLocalSave =
         normalized?.result?.authoritativeLegacyReconcile?.reason === "local-state-ahead-of-legacy" &&
@@ -2056,32 +2072,44 @@
   async function drainSyncQueue() {
     if (syncInFlight) return syncInFlight;
 
-    syncInFlight = (async () => {
+    const userId = String(session?.user?.id || "");
+    const operationToken = captureAccountOperation(userId);
+    const stillCurrent = () => isAccountOperationCurrent(operationToken, userId);
+    if (!userId || !stillCurrent()) return false;
+
+    const run = (async () => {
       let lastResult = true;
-      while (pendingSync) {
+      while (pendingSync && stillCurrent()) {
         const next = pendingSync;
         pendingSync = null;
         syncInFlightRaw = String(next.rawValue || "");
         try {
           lastResult = await syncValueToCloud(next.rawValue, next.sequence);
         } finally {
-          syncInFlightRaw = null;
+          if (stillCurrent()) syncInFlightRaw = null;
         }
+        if (!stillCurrent()) return false;
         if (!lastResult && syncConflict) break;
       }
       return lastResult;
     })();
 
+    syncInFlight = run;
     try {
-      return await syncInFlight;
+      return await run;
     } finally {
-      syncInFlight = null;
-      syncInFlightRaw = null;
+      if (syncInFlight === run) {
+        syncInFlight = null;
+        syncInFlightRaw = null;
+      }
+      if (!stillCurrent()) return;
       if (pendingSync && !syncConflict) {
         queueMicrotask(() => drainSyncQueue());
       } else if (reloadAfterSync && !syncConflict) {
         reloadAfterSync = false;
-        setTimeout(() => window.location.reload(), 0);
+        setTimeout(() => {
+          if (stillCurrent()) window.location.reload();
+        }, 0);
       }
     }
   }
