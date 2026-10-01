@@ -2845,7 +2845,7 @@
       <main class="hh-auth-shell">
         <header class="hh-auth-brand">
           <h1>HerdHarbor</h1>
-          <p>Secure livestock records, available wherever you sign in</p>
+          <p>Secure farm records, available wherever you sign in</p>
         </header>
 
         <section class="hh-auth-card">
