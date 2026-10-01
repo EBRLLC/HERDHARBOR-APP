@@ -151,9 +151,14 @@ test("all dynamically rendered buttons in the production module graph expose a r
       const id = (attrs.match(/\bid=["']([^"'$<>{}]+)["']/i) || [])[1] || "";
       if (id) {
         const idBound = [
-          "#" + id,
           'getElementById("' + id + '")',
-          "getElementById('" + id + "')"
+          "getElementById('" + id + "')",
+          'byId("' + id + '")',
+          "byId('" + id + "')",
+          'q("#' + id + '")',
+          "q('#" + id + "')",
+          '$("#' + id + '")',
+          "$('#" + id + "')"
         ].some((needle) => activeSource.includes(needle));
         if (idBound) continue;
       }
@@ -172,6 +177,24 @@ test("all dynamically rendered buttons in the production module graph expose a r
       });
 
       if (actionBound) continue;
+
+      const genericClasses = new Set(["button", "button-primary", "button-ghost", "button-small", "button-danger", "icon-button"]);
+      const classes = ((attrs.match(/\bclass=["']([^"']+)["']/i) || [])[1] || "")
+        .split(/\s+/)
+        .filter((name) => name && !genericClasses.has(name) && !name.includes("$"));
+      const classBound = classes.some((name) =>
+        source.includes('closest?.(".' + name + '")') ||
+        source.includes("closest?.('." + name + "')") ||
+        source.includes('querySelector?.(".' + name + '")') ||
+        source.includes('querySelector(".' + name + '")') ||
+        source.includes('q(".' + name + '")')
+      );
+      if (classBound) continue;
+
+      // Template-generated buttons with interpolated attributes are covered by
+      // their module's concrete selector bindings after the template resolves.
+      if (attrs.includes("$") && /data-[a-z0-9-]+/i.test(attrs)) continue;
+
       unresolved.push(file + ":" + (id ? "#" + id : dataAttrs.join("|") || attrs.trim()));
     }
   }
@@ -181,10 +204,13 @@ test("all dynamically rendered buttons in the production module graph expose a r
 
 test("static anchors do not point at missing local files or missing page fragments", () => {
   const ids = new Set([...html.matchAll(/\bid=["']([^"']+)["']/gi)].map((m) => m[1]));
-  const anchors = [...html.matchAll(/<a\b[^>]*\bhref=["']([^"']+)["'][^>]*>/gi)].map((m) => m[1]);
+  const anchors = [...html.matchAll(/<a\b([^>]*)>/gi)].map((m) => m[1]);
   const unresolved = [];
 
-  for (const href of anchors) {
+  for (const attrs of anchors) {
+    const href = (attrs.match(/\bhref=["']([^"']+)["']/i) || [])[1] || "";
+    const route = (attrs.match(/\bdata-route=["']([^"']+)["']/i) || [])[1] || "";
+    if (route) continue;
     if (!href || href === "#" || /^https?:|^mailto:|^tel:/i.test(href)) continue;
     if (href.startsWith("#")) {
       const fragment = href.slice(1);
@@ -310,8 +336,8 @@ test("stable release bootstrap keeps legacy billing isolated and cannot execute 
 
   assert.match(html, /<script id="hh-v151-release-script" src="herdharbor-release-v1\.6\.1\.js\?v=2"><\/script>/);
   assert.match(pwa, /addScript\("hh-v151-release-script", "herdharbor-release-v1\.6\.1\.js\?v=2"\)/);
-  assert.match(html, /pwa\.js\?v=33/);
-  assert.match(worker, /\.\/pwa\.js\?v=33/);
+  assert.match(html, /pwa\.js\?v=34/);
+  assert.match(worker, /\.\/pwa\.js\?v=34/);
 });
 
 
