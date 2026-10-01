@@ -187,3 +187,18 @@ test("legacy owned state is preserved to its legacy owner before authenticated r
   assert.equal(harness.state.owner, "A");
   assert.equal(harness.state.legacyOwner, "");
 });
+
+test("failed stale-owner preservation locks without clearing working state", async () => {
+  const harness = storageHarness({ owner: "A", active: '{"animals":[{"id":"a"}]}' });
+  harness.adapters.preserve = async () => false;
+  const result = await Boundary.applyPlan({
+    authenticatedUserId: "B",
+    activeOwnerId: "A",
+    hasActiveState: true
+  }, harness.adapters);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "stale-owner-preserve-failed");
+  assert.equal(harness.state.active, '{"animals":[{"id":"a"}]}');
+  assert.equal(harness.state.owner, "A");
+});
