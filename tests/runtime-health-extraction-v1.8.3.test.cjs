@@ -146,7 +146,7 @@ test("shell loads and caches Health runtime before application composition", () 
   const worker = read("service-worker.js");
   const breeding = html.indexOf("breeding-litter-runtime-v1.8.3.js?v=1");
   const health = html.indexOf("health-runtime-v1.8.3.js?v=1");
-  const composition = html.indexOf("herdharbor-app-runtime.js?v=2");
+  const composition = html.indexOf("herdharbor-app-runtime.js?v=3");
   assert.ok(breeding >= 0 && health > breeding && composition > health);
   assert.match(worker, /\.\/health-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /"\/health-runtime-v1\.8\.3\.js"/);
