@@ -50,6 +50,7 @@
       createdAt: row.created_at || null,
       updatedAt: row.updated_at || null,
       lastLoginAt: row.last_login_at || row.last_sign_in_at || null,
+      lastSyncSaveAt: row.last_sync_save_at || null,
       activeAnimalCount: usage !== null && usage !== undefined && usage !== "" && Number.isFinite(Number(usage))
         ? Number(usage)
         : null
@@ -211,16 +212,17 @@
             <dt>Email</dt><dd>${esc(member.email || "Not exposed by the secure directory")}</dd>
             <dt>Account ID</dt><dd>${esc(member.userId)}</dd>
             <dt>Created</dt><dd>${esc(formatDate(member.createdAt))}</dd>
-            <dt>Last login</dt><dd>${esc(formatDate(member.lastLoginAt))}</dd>
             <dt>Status</dt><dd>${esc(titleCase(member.accountStatus))}</dd>
           </dl></article>
-          <article class="hh-admin-detail-card"><h2>Membership</h2><dl>
+          <article class="hh-admin-detail-card"><h2>Membership & active usage</h2><dl>
             <dt>Current tier</dt><dd>${esc(titleCase(member.membershipTier))}</dd>
             <dt>Source</dt><dd>${esc(titleCase(member.membershipSource))}</dd>
             <dt>Manual override</dt><dd>${esc(member.storedMembershipSource === "manual_override" ? (member.overrideExpired ? "Expired" : "Active") : "Not set")}</dd>
             <dt>Subscription</dt><dd>${esc(titleCase(member.subscriptionStatus))}</dd>
             <dt>Override expires</dt><dd>${esc(formatDate(member.overrideExpiresAt))}</dd>
-            <dt>Active usage</dt><dd>${esc(usage)}</dd>
+            <dt>Active animals</dt><dd>${esc(usage)}</dd>
+            <dt>Last login</dt><dd>${esc(formatDate(member.lastLoginAt))}</dd>
+            <dt>Last sync save</dt><dd>${esc(formatDate(member.lastSyncSaveAt))}</dd>
             <dt>Entitlement</dt><dd>${esc(member.membershipTier === "junior" ? "Core access · 5 active animals" : "Full current access · unlimited animals")}</dd>
           </dl></article>
         </div>

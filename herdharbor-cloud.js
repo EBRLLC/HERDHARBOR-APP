@@ -150,7 +150,7 @@
   const DEVICE_LOCAL_SETTINGS = new Set(["theme", "sidebarCollapsed"]);
   const ACCESS_TABLE = "account_access";
   const ADMIN_AUDIT_TABLE = "admin_audit_log";
-  const ADMIN_DIRECTORY_RPC = "admin_member_directory";
+  const ADMIN_DIRECTORY_RPC = "admin_member_directory_v2";
 
   function fallbackAccessProfile() {
     return {
@@ -453,7 +453,9 @@
       .map((row) => ({
         ...row,
         email: row.email || "",
-        active_animal_count: currentActiveAnimalCount(row.user_id),
+        active_animal_count: Number.isFinite(Number(row.active_animal_count))
+          ? Number(row.active_animal_count)
+          : currentActiveAnimalCount(row.user_id),
         effective_membership_tier: window.HerdHarborMembership?.resolveProfile?.(row, {})?.tier
           || String(row.membership_tier || "member").toLowerCase()
       }))

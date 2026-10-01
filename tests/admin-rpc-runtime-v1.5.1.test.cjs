@@ -22,7 +22,9 @@ const directoryRows = [
     membership_source: "manual_override",
     account_status: "active",
     created_at: "2026-08-01T12:00:00.000Z",
-    last_sign_in_at: "2026-08-29T12:00:00.000Z"
+    last_sign_in_at: "2026-08-29T12:00:00.000Z",
+    active_animal_count: 4,
+    last_sync_save_at: "2026-08-29T12:05:00.000Z"
   }
 ];
 let auditRows = [];
@@ -30,7 +32,7 @@ const client = {
   async rpc(name, parameters) {
     calls.push({ name, parameters });
     if (forcedError) return { data: null, error: forcedError };
-    if (name === "admin_member_directory") return { data: directoryRows, error: null };
+    if (name === "admin_member_directory_v2") return { data: directoryRows, error: null };
     return { data: { ok: true }, error: null };
   },
   from(table) {
@@ -75,7 +77,7 @@ const safeParse = (value) => {
 };
 const STORAGE_KEY = "herdharbor_pre_alpha_v1";
 const activeStateRaw = () => originalGetItem.call(localStorage, STORAGE_KEY);
-const ADMIN_DIRECTORY_RPC = "admin_member_directory";
+const ADMIN_DIRECTORY_RPC = "admin_member_directory_v2";
 
 const build = new Function(
   "client",
@@ -133,13 +135,14 @@ async function main() {
   ], "the running Admin methods send the exact installed Supabase contracts");
 
   const directory = await api.listMembers({ search: "junior tester", role: "user", tier: "junior", status: "active", limit: 250 });
-  assert.equal(calls[6].name, "admin_member_directory");
+  assert.equal(calls[6].name, "admin_member_directory_v2");
   assert.equal(calls[6].parameters, undefined, "the protected directory RPC has no guessed parameters");
   assert.equal(directory.length, 1);
   assert.equal(directory[0].email, "junior@example.com");
   assert.equal(directory[0].display_name, "Junior Tester");
   assert.equal(directory[0].last_sign_in_at, "2026-08-29T12:00:00.000Z");
-  assert.equal(directory[0].active_animal_count, null, "cross-account farm usage is not opened by the directory");
+  assert.equal(directory[0].active_animal_count, 4, "server aggregate usage is preserved for cross-account Admin display");
+  assert.equal(directory[0].last_sync_save_at, "2026-08-29T12:05:00.000Z");
 
   const olderTarget = "00000000-0000-4000-8000-000000000999";
   directoryRows.splice(0, directoryRows.length,
