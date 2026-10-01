@@ -293,6 +293,9 @@ test("current whole-app release fallbacks do not regress to the retired 1.8.4 id
   assert.match(runtime, /APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"/);
   assert.doesNotMatch(runtime, /APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.4"/);
   assert.match(cloud, /CLOUD_SYNC_APP_RELEASE = "2\.0\.0"/);
+  assert.match(cloud, /version: window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"[\s\S]*?backupType: "local-safety-backup"/);
+  assert.match(html, /herdharbor-cloud\.js\?v=35/);
+  assert.match(worker, /\.\/herdharbor-cloud\.js\?v=35/);
 });
 
 
