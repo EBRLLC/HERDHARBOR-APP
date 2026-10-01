@@ -30,7 +30,7 @@ test("index shell keeps only the early bootstrap inline", () => {
   assert.match(html, /production-reporting-runtime-v1\.8\.3\.js\?v=1/);
   assert.doesNotMatch(html, /<script[^>]+settings-runtime-v1\.8\.3\.js/);
   assert.match(appRuntime, /"settings-runtime-v1\.8\.3\.js\?v=1"/);
-  assert.match(html, /herdharbor-app-runtime\.js\?v=3/);
+  assert.match(html, /herdharbor-app-runtime\.js\?v=4/);
   assert.doesNotMatch(html, /function renderSales\(\)/);
   assert.match(appRuntime, /function renderSales\(\)/);
   assert.ok(appRuntime.length < 350000, "composition runtime shrinks as coherent domains are extracted");
@@ -55,7 +55,7 @@ test("classic script and stylesheet order is preserved", () => {
   assert.ok(animalProfileRuntimeIndex >= 0 && appRuntimeIndex > animalProfileRuntimeIndex);
   assert.doesNotMatch(html, /<script[^>]+analytics-v1\.6\.1\.js/);
   assert.match(appRuntime, /"analytics-v1\.6\.1\.js\?v=2"/);
-  assert.doesNotMatch(html, /<script[^>]+src="herdharbor-app-runtime\.js\?v=3"[^>]+(?:async|defer|type="module")/);
+  assert.doesNotMatch(html, /<script[^>]+src="herdharbor-app-runtime\.js\?v=4"[^>]+(?:async|defer|type="module")/);
 });
 
 test("static script and stylesheet references resolve once", () => {
@@ -72,7 +72,7 @@ test("service worker covers required extracted shell assets", () => {
   for (const { asset, revision } of [
     { asset: "animal-profile-runtime-v1.8.3.js", revision: "1" },
     { asset: "production-reporting-runtime-v1.8.3.js", revision: "1" },
-    { asset: "herdharbor-app-runtime.js", revision: "2" },
+    { asset: "herdharbor-app-runtime.js", revision: "4" },
     { asset: "herdharbor-index-shell.css", revision: "1" }
   ]) {
     const escaped = asset.replaceAll(".", "\\.");
