@@ -1346,22 +1346,6 @@
     return `${ACCOUNT_BOUNDARY_RECOVERY_MARKER_PREFIX}_${String(userId || "")}`;
   }
 
-  async function refreshHerdHarborShellCaches() {
-    if (navigator.onLine === false) return false;
-    try {
-      const registration = await navigator.serviceWorker?.getRegistration?.();
-      if (!registration?.update) return false;
-      await registration.update();
-      // Cache generation and retirement are owned by the service worker.
-      // Production publishing replaces CACHE_NAME with a content-derived value,
-      // so Cloud must never guess or delete shell cache generations itself.
-      return true;
-    } catch (error) {
-      console.warn("HerdHarbor could not request a fresh service-worker shell:", error);
-      return false;
-    }
-  }
-
   function showAccountBoundaryRecovery(message = "HerdHarbor is refreshing your account data. Your records are safe.") {
     ensureStyles();
     buildAuthRoot();
@@ -3688,7 +3672,7 @@
 
     if (!alreadyRecovered) {
       clearAccountSessionMarkers(userId);
-      void refreshHerdHarborShellCaches();
+
       safeStorageSet(markerKey, "1");
     }
     return boundary;
