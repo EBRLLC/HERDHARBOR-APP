@@ -26,17 +26,17 @@ assert.equal(manifest.display, "standalone");
 assert.ok(manifest.shortcuts.some((shortcut) => shortcut.url === "./#shows"));
 assert.equal(twa.packageId, "com.ebrllc.herdharbor");
 assert.equal(twa.appVersion, "2.0.0");
-assert.equal(twa.appVersionCode, 18);
+assert.equal(twa.appVersionCode, 19);
 assert.equal(twa.host, "app.herdharbor.com");
 assert.match(appGradle, /applicationId:\s*'com\.ebrllc\.herdharbor'/);
 assert.match(appGradle, /namespace "com\.ebrllc\.herdharbor"/);
 assert.match(appGradle, /applicationId "com\.ebrllc\.herdharbor"/);
 assert.match(appGradle, /compileSdkVersion 36/);
 assert.match(appGradle, /targetSdkVersion 36/);
-assert.match(appGradle, /versionCode 18/);
-assert.match(appGradle, /versionName "1\.8\.4"/);
+assert.match(appGradle, /versionCode 19/);
+assert.match(appGradle, /versionName "2\.0\.0"/);
 assert.match(appGradle, /https:\/\/app\.herdharbor\.com\/manifest\.json/);
-// Verify the current native/TWA package and service worker share the v1.8.4
+// Verify the current native/TWA package and service worker share the current
 // release identity while preserving every older-named domain asset required by
 // the installed TWA.
 assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1|8\.2|8\.3|8\.4)-/);
@@ -45,7 +45,7 @@ assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /shows-v1\.6\.1\.css\?v=1\.7\.1/);
 assert.match(worker, /shows-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /shows-v1\.6\.1-hardening\.js\?v=1\.7\.1/);
-assert.match(pwa, /\$\{APP_VERSION\}-alpha-\$\{BUILD_ID\}/);
+assert.match(pwa, /\$\{APP_VERSION\}-\$\{BUILD_ID\}/);
 assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "v2.0.0-release-1"/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
@@ -76,4 +76,4 @@ assert.ok(fs.statSync(path.join(root, "android/store_icon.png")).size <= 1024 * 
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/app-icon-512.png")));
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/feature-graphic-1024x500.png")));
 
-console.log("Google Play Alpha v1.8.4 native readiness tests passed against current web shell");
+console.log("Google Play 2.0.0 native readiness tests passed against current web shell");
