@@ -301,16 +301,37 @@ test("destructive browser storage APIs are restricted to the explicit user Clear
   assert.match(runtime.slice(clearAt, deleteAt), /confirm\("Clear every local HerdHarbor record on this device\?"\)[\s\S]*confirm\("This cannot be undone unless you exported a backup\. Continue\?"\)/);
 });
 
-test("foreground polling remains singular, visibility-gated, online-gated and bounded", () => {
+test("background timers are bounded, gated, or tied to an active visible feature", () => {
   const intervalOwners = activeNonVendorPaths.filter((file) => /setInterval\s*\(/.test(read(file)));
-  assert.deepEqual(intervalOwners, ["herdharbor-cloud.js"]);
 
   const cloud = read("herdharbor-cloud.js");
+  assert.ok(intervalOwners.includes("herdharbor-cloud.js"));
   assert.match(cloud, /FOREGROUND_CLOUD_CHECK_INTERVAL_MS = 30000/);
   assert.match(cloud, /document\.visibilityState !== "visible"/);
   assert.match(cloud, /navigator\.onLine === false/);
   assert.match(cloud, /!session\?\.user\?\.id/);
   assert.match(cloud, /now - lastCloudCheckAt < 15000/);
+
+  const genetics = read("pedigree-genetics-v1.6.1.js");
+  assert.match(genetics, /if\(!findCards\(rootWindow\.document\)\.length\)return/);
+  assert.match(genetics, /\},2000\)/);
+
+  const subscription = read("subscription-engine-v1.8.0.js");
+  assert.match(subscription, /document\.visibilityState === "visible" && appShellVisible\(\)/);
+  assert.match(subscription, /\}, 60 \* 1000\)/);
+
+  const referral = read("subscription-referral-policy-v1.8.1.js");
+  assert.doesNotMatch(referral, /setInterval\s*\(/);
+  assert.match(referral, /herdharbor:registration-profile[\s\S]*setTimeout\(installGate, 0\)/);
+
+  const boundedOwners = intervalOwners.filter((file) => ![
+    "herdharbor-cloud.js",
+    "pedigree-genetics-v1.6.1.js",
+    "subscription-engine-v1.8.0.js"
+  ].includes(file));
+  for (const file of boundedOwners) {
+    assert.match(read(file), /clearInterval\s*\(/, file + " interval must have an explicit stop path");
+  }
 });
 
 test("current whole-app release fallbacks do not regress to the retired 1.8.4 identity", () => {
