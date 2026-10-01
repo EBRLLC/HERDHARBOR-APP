@@ -52,7 +52,7 @@ test("canonical runtime wrappers stay narrow after Animals/Profile extraction", 
 });
 
 test("animal-first consolidation remains compatible with the formal v1.8.4 release and does not activate normalized-sync rollout infrastructure", () => {
-  assert.equal(packageJson.version, "1.8.4");
+  assert.equal(packageJson.version, "2.0.0");
   const build = read("herdharbor-build.js");
   const index = read("index.html");
   for (const asset of [
