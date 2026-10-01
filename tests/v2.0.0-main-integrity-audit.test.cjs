@@ -75,10 +75,10 @@ test("every static shell button is backed by a route, form submit, or active cli
     const text = match[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
     const id = (attrs.match(/\bid=["']([^"']+)["']/i) || [])[1] || "";
     const route = (attrs.match(/\bdata-route=["']([^"']+)["']/i) || [])[1] || "";
-    const type = ((attrs.match(/\btype=["']([^"']+)["']/i) || [])[1] || "submit").toLowerCase();
+    const explicitType = ((attrs.match(/\btype=["']([^"']+)["']/i) || [])[1] || "").toLowerCase();
 
     if (route) continue;
-    if (type === "submit") continue;
+    if (explicitType === "submit") continue;
     if (/\bdata-pwa-install\b/i.test(attrs) && activeSource.includes("data-pwa-install")) continue;
 
     if (id) {
@@ -124,4 +124,91 @@ test("canonical runtime ownership remains singular for state, cloud, PWA and adm
     const count = (activeSource.match(pattern) || []).length;
     assert.equal(count, 1, name + " must have exactly one active owner, found " + count);
   }
+});
+
+
+test("dynamically rendered runtime buttons have an action handler in their owning module", () => {
+  const runtimeFiles = [
+    "herdharbor-app-runtime.js",
+    "animal-profile-runtime-v1.8.3.js",
+    "breeding-litter-runtime-v1.8.3.js",
+    "task-runtime-v1.8.3.js",
+    "health-runtime-v1.8.3.js",
+    "sales-customer-runtime-v1.8.3.js",
+    "production-reporting-runtime-v1.8.3.js"
+  ];
+  const metadataOnly = new Set(["data-production-history-product", "data-species"]);
+  const unresolved = [];
+
+  const datasetName = (attribute) => attribute
+    .replace(/^data-/, "")
+    .replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+
+  for (const file of runtimeFiles) {
+    const source = read(file);
+    const buttons = [...source.matchAll(/<button\b([^>]*)>/gi)];
+    for (const match of buttons) {
+      const attrs = match[1];
+      const actionAttrs = [...attrs.matchAll(/\b(data-[a-z0-9-]+)=/gi)]
+        .map((entry) => entry[1].toLowerCase())
+        .filter((attribute) => !metadataOnly.has(attribute));
+
+      for (const attribute of actionAttrs) {
+        const dataset = datasetName(attribute);
+        const selectorNeedles = [
+          `[${attribute}]`,
+          `[${attribute}="`,
+          `.${dataset}`,
+          `dataset.${dataset}`
+        ];
+        if (!selectorNeedles.some((needle) => source.includes(needle))) {
+          unresolved.push(`${file}:${attribute}`);
+        }
+      }
+
+      const id = (attrs.match(/\bid=["']([^"'$<>{}]+)["']/i) || [])[1] || "";
+      const explicitType = ((attrs.match(/\btype=["']([^"']+)["']/i) || [])[1] || "").toLowerCase();
+      if (id && explicitType !== "submit") {
+        const bound = [
+          `#${id}`,
+          `getElementById("${id}")`,
+          `getElementById('${id}')`
+        ].some((needle) => source.includes(needle));
+        if (!bound) unresolved.push(`${file}:#${id}`);
+      }
+    }
+  }
+
+  assert.deepEqual([...new Set(unresolved)], [], "unbound runtime controls: " + [...new Set(unresolved)].join(", "));
+});
+
+test("client-invoked Supabase Edge Functions have matching source endpoints", () => {
+  const candidateFiles = [
+    "registration-safety-v1.8.1.js",
+    "subscription-stripe-provider-v1.8.0.js",
+    "market-analytics-v1.6.5.js",
+    "paper-pedigree-import-v1.8.2.js",
+    "photo-assisted-entry-v1.8.3.js",
+    "direct-transfer-core-v1.8.2.js",
+    "herdharbor-cloud.js"
+  ];
+
+  const slugs = new Set();
+  for (const file of candidateFiles) {
+    const source = read(file);
+    for (const match of source.matchAll(/functions\.invoke\(\s*["']([^"']+)["']/g)) slugs.add(match[1]);
+    for (const match of source.matchAll(/invokeFunction(?:WithDiagnostics)?\(\s*["']([^"']+)["']/g)) slugs.add(match[1]);
+
+    // Some core modules call the Edge Function with a literal URL/function slug
+    // through their own wrapper rather than the common invoke helper.
+    for (const known of ["animal-transfer", "registration-referral", "email-engine"]) {
+      if (source.includes(known)) slugs.add(known);
+    }
+  }
+
+  const missing = [...slugs]
+    .filter((slug) => !exists(path.join("supabase", "functions", slug, "index.ts")))
+    .sort();
+
+  assert.deepEqual(missing, [], "client references missing Edge Function sources: " + missing.join(", "));
 });
