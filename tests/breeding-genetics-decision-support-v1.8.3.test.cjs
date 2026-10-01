@@ -143,7 +143,7 @@ test("Phase 9D stays inside the canonical genetics owner and exposes mobile-safe
   assert.match(contract, /does \*\*not\*\* publish an inbreeding or relatedness coefficient/);
   assert.match(contract, /All decision-support calculations are read-only/);
   assert.match(pwa, /rabbit-genetics-v1\.6\.1\.js\?v=3/);
-  assert.match(pwa, /rabbit-genetics-ui-advanced-v1\.6\.1\.js\?v=3/);
+  assert.match(pwa, /rabbit-genetics-ui-advanced-v1\.6\.1\.js\?v=4/);
   assert.equal((worker.match(/\.\/rabbit-genetics-v1\.6\.1\.js\?v=3/g) || []).length, 1);
-  assert.equal((worker.match(/\.\/rabbit-genetics-ui-advanced-v1\.6\.1\.js\?v=3/g) || []).length, 1);
+  assert.equal((worker.match(/\.\/rabbit-genetics-ui-advanced-v1\.6\.1\.js\?v=4/g) || []).length, 1);
 });
