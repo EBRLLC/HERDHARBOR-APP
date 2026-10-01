@@ -15,7 +15,6 @@
   const LEGACY_ACTIVE_OWNER_KEY = "herdharbor_active_user_id";
   const ACCOUNT_BOUNDARY_RECOVERY_MARKER_PREFIX = "herdharbor_account_boundary_recovery_v1";
   const UNATTRIBUTED_RECOVERY_USER_ID = "__unattributed__";
-  const CURRENT_SHELL_CACHE_NAME = "herdharbor-shell-v1.8.4-alpha-v1.8.4-release-9";
   const RECOVERY_DB_NAME = "herdharbor_recovery_v1";
   const RECOVERY_STORE_NAME = "snapshots";
   const RECOVERY_DB_VERSION = 2;
@@ -1351,23 +1350,14 @@
     if (navigator.onLine === false) return false;
     try {
       const registration = await navigator.serviceWorker?.getRegistration?.();
-      await registration?.update?.();
-    } catch (error) {
-      console.warn("HerdHarbor could not request a fresh service-worker shell:", error);
-    }
-
-    if (!window.caches?.keys) return false;
-    try {
-      const keys = await caches.keys();
-      if (!keys.includes(CURRENT_SHELL_CACHE_NAME)) return false;
-      await Promise.all(
-        keys
-          .filter((key) => key.startsWith("herdharbor-shell-") && key !== CURRENT_SHELL_CACHE_NAME)
-          .map((key) => caches.delete(key))
-      );
+      if (!registration?.update) return false;
+      await registration.update();
+      // Cache generation and retirement are owned by the service worker.
+      // Production publishing replaces CACHE_NAME with a content-derived value,
+      // so Cloud must never guess or delete shell cache generations itself.
       return true;
     } catch (error) {
-      console.warn("HerdHarbor could not retire an older shell cache:", error);
+      console.warn("HerdHarbor could not request a fresh service-worker shell:", error);
       return false;
     }
   }
