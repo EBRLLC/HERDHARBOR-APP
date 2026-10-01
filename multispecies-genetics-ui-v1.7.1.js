@@ -76,7 +76,7 @@ if(!Genetics)return;
 const label=s=>Genetics.getAdapter(s)?.label||String(s||'Unknown species');
 
 function statusBadge(adapter){
-  return `<span class="hh-msg-badge ${adapter.status==='production'?'is-production':'is-foundation'}">${adapter.status==='production'?'Production engine':'Foundation ready'}</span>`;
+  return `<span class="hh-msg-badge ${adapter.status==='production'?'is-production':'is-foundation'}">${adapter.status==='production'?'Available':'Records only'}</span>`;
 }
 
 function capabilities(adapter){
