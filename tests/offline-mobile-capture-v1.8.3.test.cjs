@@ -124,7 +124,7 @@ test("canonical cloud retry safeguards remain untouched", () => {
 
 test("mobile capture remains in the core shell while photo AI is live-tester lazy-loaded", () => {
   const mobileIndex = html.indexOf("mobile-capture-v1.8.3.js?v=1");
-  const appIndex = html.indexOf("herdharbor-app-runtime.js?v=3");
+  const appIndex = html.indexOf("herdharbor-app-runtime.js?v=4");
   const optional = read("herdharbor-optional-tools.js");
   assert.ok(mobileIndex >= 0 && appIndex > mobileIndex);
   assert.doesNotMatch(html, /<script[^>]+photo-assisted-entry-v1\.8\.3\.js/);
