@@ -31,7 +31,7 @@ test("production member surfaces do not expose Alpha/tester development language
 
   assert.doesNotMatch(settings, /Alpha limitations|\|\| "Alpha"/);
   assert.doesNotMatch(genetics, /Alpha v\d|Architecture first|Shared engine capabilities|This is intentional for v\d/i);
-  assert.doesNotMatch(appRuntime, /HerdHarbor Alpha|browser-based alpha|this alpha|individual engines/i);
+  assert.doesNotMatch(appRuntime, /HerdHarbor Alpha|browser-based alpha|this alpha|individual engines|in testing/i);
   assert.doesNotMatch(health, /Foundation · v\d/i);
   assert.doesNotMatch(breeding, /Alpha v\$\{RELEASE_VERSION\}|Rabbit genetics v\d/i);
   assert.doesNotMatch(animalProfile, /ask the tester/i);
