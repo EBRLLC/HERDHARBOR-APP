@@ -166,7 +166,7 @@ test("multi-photo merge is explicitly deferred until provenance and conflict con
   assert.doesNotMatch(ui, /type="file"[^>]*\smultiple(?:\s|>)/);
 });
 
-test("changed browser assets remain refreshed under the formal v1.8.4 release", () => {
+test("changed browser assets remain refreshed under the 2.0.0 release", () => {
   const build = read("herdharbor-build.js");
   const index = read("index.html");
   const worker = read("service-worker.js");
@@ -175,7 +175,7 @@ test("changed browser assets remain refreshed under the formal v1.8.4 release", 
   assert.match(worker, /\.\/herdharbor-cloud\.js\?v=32/);
   assert.match(build, /paper-pedigree-import-v1\.8\.2\.js\?v=2/);
   assert.match(worker, /\.\/paper-pedigree-import-v1\.8\.2\.js\?v=2/);
-  assert.match(worker, /herdharbor-shell-v1\.8\.4/);
+  assert.match(worker, /herdharbor-shell-v2\\.0\\.0-v2\\.0\\.0-release-1/);
 });
 
 test("v1.8.3 development gate includes Paper Pedigree AI production hardening", () => {
