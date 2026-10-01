@@ -60,3 +60,34 @@ test('canonical phenotype is distinct from recorded, breed terminology, and regi
   assert.equal(result.registryRecognition.status,'not-evaluated');
   assert.match(Engine.REGISTRIES.arba.scope,/registry recognition never changes biological inheritance/);
 });
+
+test('same-breed Holland Lop pair analysis hides unrelated specialty loci by default',()=>{
+  const core={A:['a','a'],B:['B','B'],C:['C','C'],D:['D','D'],E:['E','E'],V:['V','v'],En:['en','en']};
+  const rabbit=(id,sex)=>({id,name:id,sex,species:'Rabbit',breed:'Holland Lop',color:'Black',genetics:{loci:core}});
+  const result=Engine.analyzePairing(rabbit('buck','Male'),rabbit('doe','Female'),{});
+  assert.equal(result.breedRelevance.mode,'same-breed-defaults');
+  assert.equal(result.breedRelevance.breedId,'holland-lop');
+  for(const locus of ['V','En','W','Rf','Dw','Lop'])assert.ok(result.breedRelevance.visibleLoci.includes(locus),locus);
+  for(const locus of ['Rex1','Rex2','Rex3','Sa','M','Hr'])assert.ok(result.breedRelevance.hiddenLoci.includes(locus),locus);
+});
+
+test('explicit evidence restores a normally hidden locus for a same-breed pair',()=>{
+  const core={A:['a','a'],B:['B','B'],C:['C','C'],D:['D','D'],E:['E','E'],V:['V','V'],En:['en','en']};
+  const buck={id:'buck',name:'buck',sex:'Male',species:'Rabbit',breed:'Holland Lop',color:'Black',genetics:{loci:{...core,Rex1:{alleles:['R1','r1'],status:'confirmed',source:'genetic-test'}}}};
+  const doe={id:'doe',name:'doe',sex:'Female',species:'Rabbit',breed:'Holland Lop',color:'Black',genetics:{loci:core}};
+  const result=Engine.analyzePairing(buck,doe,{});
+  assert.ok(result.breedRelevance.evidenceRelevantLoci.includes('Rex1'));
+  assert.ok(result.breedRelevance.visibleLoci.includes('Rex1'));
+  assert.ok(!result.breedRelevance.hiddenLoci.includes('Rex1'));
+});
+
+test('different, mixed, unknown, or unmapped breeds keep the full tracked-locus analysis',()=>{
+  const core={A:['a','a'],B:['B','B'],C:['C','C'],D:['D','D'],E:['E','E']};
+  const animal=(id,breed)=>({id,name:id,species:'Rabbit',breed,color:'Black',genetics:{loci:core}});
+  for(const pair of [['Holland Lop','Mini Rex'],['Mixed','Mixed'],['American Chinchilla','American Chinchilla']]){
+    const result=Engine.analyzePairing(animal('a',pair[0]),animal('b',pair[1]),{});
+    assert.equal(result.breedRelevance.mode,'all-tracked');
+    assert.equal(result.breedRelevance.hiddenLoci.length,0);
+  }
+});
+
