@@ -1,6 +1,12 @@
 import { createClient } from "npm:@supabase/supabase-js@2.111.0";
 import Stripe from "https://esm.sh/stripe@18?target=denonext";
 import { deliverSubscriptionNotification } from "../_shared/subscription-email.ts";
+import {
+  EVENT_PROCESSING_LEASE_MS,
+  isProcessingLeaseStale,
+  isSubscriptionUpdateStale,
+  shouldIgnorePaymentFailure
+} from "../_shared/subscription-lifecycle-policy.mjs";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -9,8 +15,6 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const ACTIVE = new Set(["active", "trialing"]);
 const PAYMENT_EVENTS = new Set(["invoice.payment_succeeded", "invoice.paid"]);
 const FREE_MONTH_COUPON_ID = "herdharbor-member-free-month";
-const EVENT_PROCESSING_LEASE_MS = 5 * 60 * 1000;
-const LIVE_ACCESS_STATUSES = new Set(["active", "trialing", "past_due"]);
 
 const iso = (seconds: unknown) => Number.isFinite(Number(seconds)) && Number(seconds) > 0
   ? new Date(Number(seconds) * 1000).toISOString()
@@ -76,8 +80,7 @@ Deno.serve(async (req) => {
   if (priorEvent?.id) {
     if (priorEvent.event_status === "processed") return json({ received: true, duplicate: true });
     if (priorEvent.event_status === "processing") {
-      const leaseStarted = timeValue(priorEvent.processing_started_at);
-      const leaseStale = !leaseStarted || leaseStarted <= Date.now() - EVENT_PROCESSING_LEASE_MS;
+      const leaseStale = isProcessingLeaseStale(priorEvent.processing_started_at);
       if (!leaseStale) return json({ received: true, duplicate: true, processing: true });
       const { data: reclaimedProcessing, error: reclaimProcessingError } = await admin
         .from("subscription_events")
@@ -238,13 +241,14 @@ Deno.serve(async (req) => {
     const customerId = stringId(raw.customer);
     const status = String(raw.status || "incomplete");
     const existingSubscriptionId = String(existing?.provider_subscription_id || "");
-    const differentCurrentSubscription = Boolean(existingSubscriptionId) && existingSubscriptionId !== subscription.id;
-    const currentStillLive = LIVE_ACCESS_STATUSES.has(String(existing?.status || "").toLowerCase());
-    const incomingTerminal = ["canceled", "incomplete_expired", "unpaid"].includes(status.toLowerCase());
-    const stale = Boolean(existing?.id) && (
-      storedTime > eventTime
-      || (differentCurrentSubscription && (currentStillLive || incomingTerminal))
-    );
+    const stale = Boolean(existing?.id) && isSubscriptionUpdateStale({
+      existingSubscriptionId,
+      incomingSubscriptionId: subscription.id,
+      existingStatus: existing?.status,
+      incomingStatus: status,
+      storedProviderUpdatedAt: existing?.provider_updated_at,
+      eventOccurredAt
+    });
     if (stale) {
       return {
         userId,
@@ -784,9 +788,11 @@ Deno.serve(async (req) => {
       const invoiceContext = await resolveInvoiceContext(invoice);
       if (invoiceContext) {
         const raw = invoiceRaw(invoice);
-        const storedTime = timeValue(invoiceContext.provider_updated_at);
-        const eventTime = timeValue(eventOccurredAt);
-        if (storedTime > eventTime || ["canceled", "incomplete_expired", "unpaid"].includes(String(invoiceContext.status || "").toLowerCase())) {
+        if (shouldIgnorePaymentFailure({
+          storedProviderUpdatedAt: invoiceContext.provider_updated_at,
+          eventOccurredAt,
+          currentStatus: invoiceContext.status
+        })) {
           context = { userId: invoiceContext.user_id, subscriptionRowId: invoiceContext.id, planId: invoiceContext.plan_id, status: invoiceContext.status, stale: true };
         } else {
           const { error: updateError } = await admin
