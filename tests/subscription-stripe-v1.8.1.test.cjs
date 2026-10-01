@@ -139,7 +139,7 @@ test("v1.8.3 web runtime loads carried-forward v1.8.1 referral policy before Str
   const bridgeIndex = build.indexOf("subscription-stripe-launch-bridge-v1.8.1.js?v=1");
   assert.ok(referralIndex >= 0 && providerIndex > referralIndex);
   assert.ok(policyIndex >= 0 && engineIndex > policyIndex && providerIndex > engineIndex && bridgeIndex > providerIndex);
-  assert.match(build, /version:\s*"1\.8\.4"/);
+  assert.match(build, /version:\s*"2\.0\.0"/);
 });
 
 test("PWA keeps referral, admin-credit and Stripe subscription assets network-first", () => {
@@ -195,6 +195,6 @@ test("updated launch and provider assets are cache-busted under the formal v1.8.
   assert.match(build, /subscription-stripe-provider-v1\.8\.0\.js\?v=3/);
   assert.match(sw, /\.\/subscription-launch-v1\.8\.1\.js\?v=3/);
   assert.match(sw, /\.\/subscription-stripe-provider-v1\.8\.0\.js\?v=3/);
-  assert.match(build, /version:\s*"1\.8\.4"/);
+  assert.match(build, /version:\s*"2\.0\.0"/);
   assert.match(sw, /herdharbor-shell-v1\.8\.4/);
 });
