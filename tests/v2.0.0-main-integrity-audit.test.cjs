@@ -314,8 +314,8 @@ test("background timers are bounded, gated, or tied to an active visible feature
   assert.match(cloud, /now - lastCloudCheckAt < 15000/);
 
   const genetics = read("pedigree-genetics-v1.6.1.js");
-  assert.match(genetics, /if\(!findCards\(rootWindow\.document\)\.length\)return/);
-  assert.match(genetics, /\},2000\)/);
+  assert.doesNotMatch(genetics, /setInterval\s*\(/);
+  assert.match(genetics, /herdharbor:state-committed/);
 
   const subscription = read("subscription-engine-v1.8.0.js");
   assert.match(subscription, /document\.visibilityState === "visible" && appShellVisible\(\)/);
@@ -327,7 +327,6 @@ test("background timers are bounded, gated, or tied to an active visible feature
 
   const boundedOwners = intervalOwners.filter((file) => ![
     "herdharbor-cloud.js",
-    "pedigree-genetics-v1.6.1.js",
     "subscription-engine-v1.8.0.js"
   ].includes(file));
   for (const file of boundedOwners) {
