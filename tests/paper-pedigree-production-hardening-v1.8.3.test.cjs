@@ -170,7 +170,7 @@ test("changed browser assets remain refreshed under the formal v1.8.4 release", 
   const build = read("herdharbor-build.js");
   const index = read("index.html");
   const worker = read("service-worker.js");
-  assert.equal(packageJson.version, "1.8.4");
+  assert.equal(packageJson.version, "2.0.0");
   assert.match(index, /herdharbor-cloud\.js\?v=32/);
   assert.match(worker, /\.\/herdharbor-cloud\.js\?v=32/);
   assert.match(build, /paper-pedigree-import-v1\.8\.2\.js\?v=2/);
