@@ -73,4 +73,4 @@ The production application is served from `https://app.herdharbor.com`.
 
 On iPhone/iPad, Safari can install the web app through **Share → Add to Home Screen**. Other supported browsers can use HerdHarbor's **Install app** control or their browser installation option.
 
-Production deployment is performed from an explicitly reviewed `main` commit through the protected release workflow. A PR or release document alone does not mean that version is live.
+Production static assets are published from the exact reviewed `main` commit through GitHub Pages using the protected release workflow. A PR or release document alone does not mean that version is live.
