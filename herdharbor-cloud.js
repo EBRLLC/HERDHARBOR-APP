@@ -2072,32 +2072,45 @@
   async function drainSyncQueue() {
     if (syncInFlight) return syncInFlight;
 
-    syncInFlight = (async () => {
+    const userId = String(session?.user?.id || "");
+    const operationToken = captureAccountOperation(userId);
+    const stillCurrent = () => isAccountOperationCurrent(operationToken, userId);
+    if (!userId || !stillCurrent()) return false;
+
+    const run = (async () => {
       let lastResult = true;
-      while (pendingSync) {
+      while (pendingSync && stillCurrent()) {
         const next = pendingSync;
         pendingSync = null;
         syncInFlightRaw = String(next.rawValue || "");
         try {
           lastResult = await syncValueToCloud(next.rawValue, next.sequence);
         } finally {
-          syncInFlightRaw = null;
+          if (stillCurrent()) syncInFlightRaw = null;
         }
+        if (!stillCurrent()) return false;
         if (!lastResult && syncConflict) break;
       }
       return lastResult;
     })();
 
+    syncInFlight = run;
     try {
-      return await syncInFlight;
+      return await run;
     } finally {
-      syncInFlight = null;
-      syncInFlightRaw = null;
-      if (pendingSync && !syncConflict) {
-        queueMicrotask(() => drainSyncQueue());
-      } else if (reloadAfterSync && !syncConflict) {
-        reloadAfterSync = false;
-        setTimeout(() => window.location.reload(), 0);
+      if (syncInFlight === run) {
+        syncInFlight = null;
+        syncInFlightRaw = null;
+      }
+      if (stillCurrent()) {
+        if (pendingSync && !syncConflict) {
+          queueMicrotask(() => drainSyncQueue());
+        } else if (reloadAfterSync && !syncConflict) {
+          reloadAfterSync = false;
+          setTimeout(() => {
+            if (stillCurrent()) window.location.reload();
+          }, 0);
+        }
       }
     }
   }
