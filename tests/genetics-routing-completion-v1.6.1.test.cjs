@@ -43,7 +43,7 @@ test("current web release and PWA cache move together while preserving the v1.7.
     assert.match(worker, /herdharbor-shell-v1\.8\.2-alpha-cloud-sync-v2-state-integrity-1/);
   } else {
     assert.equal(buildId, "alpha-v1.8.4-release-1");
-    assert.match(worker, /herdharbor-shell-v1\.8\.4-alpha-v1\.8\.4-release-7/);
+    assert.match(worker, /herdharbor-shell-v1\.8\.4-alpha-v1\.8\.4-release-8/);
   }
   assert.match(worker, /herdharbor-release-v1\.6\.1\.js\?v=1\.7\.1/);
   assert.match(worker, /multispecies-genetics-v1\.7\.1\.js\?v=1\.7\.1/);
