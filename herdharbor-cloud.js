@@ -2412,14 +2412,17 @@
   }
 
   async function checkForCloudChanges() {
-    const userId = session?.user?.id;
-    if (!userId || syncInFlight || syncConflict) return false;
+    const userId = String(session?.user?.id || "");
+    const operationToken = captureAccountOperation(userId);
+    const stillCurrent = () => isAccountOperationCurrent(operationToken, userId);
+    if (!userId || !stillCurrent() || syncInFlight || syncConflict) return false;
 
     const now = Date.now();
     if (now - lastCloudCheckAt < 15000) return false;
     lastCloudCheckAt = now;
 
     const normalizedHandled = await checkNormalizedAuthorityChanges();
+    if (!stillCurrent()) return false;
     if (normalizedHandled !== null) return normalizedHandled;
 
     if (originalGetItem.call(localStorage, dirtyKey(userId)) === "1") {
@@ -2428,6 +2431,7 @@
 
     const knownVersion = originalGetItem.call(localStorage, versionKey(userId)) || "";
     const { data: versionRecord, error: versionError } = await fetchCloudVersion(userId);
+    if (!stillCurrent()) return false;
     if (versionError || !versionRecord) return false;
 
     const remoteVersion = String(versionRecord.updated_at || "");
@@ -2437,6 +2441,7 @@
     }
 
     const { data, error } = await fetchCloudRecord(userId);
+    if (!stillCurrent()) return false;
     if (error || !data?.app_state) return false;
 
     // A local edit can occur while the cloud refresh request is in flight
@@ -2451,9 +2456,11 @@
     const remoteRaw = JSON.stringify(data.app_state);
     const activeRaw = activeStateRaw();
     const confirmedBase = await readCloudBaseline(userId);
+    if (!stillCurrent()) return false;
 
     if (activeRaw && sameState(activeRaw, remoteRaw)) {
       const baselineRefresh = await refreshDualWriteBaselineForRemoteState();
+      if (!stillCurrent()) return false;
       if (baselineRefresh?.ok === false) {
         setSyncState(
           "Cloud records match, but normalized sync protection could not refresh yet.",
@@ -2462,6 +2469,7 @@
         return false;
       }
       await writeCloudBaseline(userId, remoteRaw);
+      if (!stillCurrent()) return false;
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       setSyncState("Saved to cloud", "success");
       return false;
@@ -2469,6 +2477,7 @@
 
     if (confirmedBase && sameState(activeRaw, confirmedBase)) {
       await recordRecoverySnapshot(userId, activeRaw, "Local copy before receiving another device's changes");
+      if (!stillCurrent()) return false;
 
       // The recovery snapshot is asynchronous. A local edit made while it is
       // being stored must not be overwritten by the cloud copy we fetched
@@ -2504,7 +2513,8 @@
         );
         return false;
       }
-      setActiveUserData(userId, deviceCloudRaw);
+      if (!stillCurrent()) return false;
+      if (!setActiveUserData(userId, deviceCloudRaw)) return false;
       await writeCloudBaseline(userId, remoteRaw);
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       setSyncState("Newer cloud records found; reloading…", "success");
