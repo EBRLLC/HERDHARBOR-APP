@@ -37,7 +37,7 @@
     <div class="hero-inner">
       <p class="eyebrow">HerdHarbor How To Center</p>
       <h1>Get the job done without hunting through the app.</h1>
-      <p>Step-by-step help for the current HerdHarbor workflow—from adding an animal and building a pedigree to recording births, health care, genetics, sales, subscriptions, referrals, and cloud sync.</p>
+      <p>Step-by-step help for every main HerdHarbor area—from animals, pedigrees, breeding, births, health, symptoms, genetics, tasks, analytics, budget, sales, account settings, subscriptions, referrals, and cloud sync.</p>
       <div class="search-wrap">
         <label for="guide-search">Search the guides</label>
         <input id="guide-search" class="search" type="search" placeholder="Try pedigree, litter, health, referral, weight…" autocomplete="off">
@@ -49,21 +49,25 @@
     <div class="notice"><strong>HerdHarbor uses an animal-first workflow:</strong> open an animal when the job is specific to that animal, and use Dashboard/Quick Add for day-to-day work.</div>
 
     <nav class="guide-grid" aria-label="How To topics" id="guide-grid">
-      <a class="guide-card" href="#getting-started" data-search="getting started setup farm account quick add dashboard"><span class="guide-icon">01</span><strong>Getting Started</strong><span>Set up your operation and learn the fastest way around HerdHarbor.</span></a>
-      <a class="guide-card" href="#animals" data-search="animal add edit profile status sold archived weight"><span class="guide-icon">02</span><strong>Animals & Profiles</strong><span>Add animals and use the animal profile as your working hub.</span></a>
-      <a class="guide-card" href="#pedigrees" data-search="pedigree ancestry sire dam import document print"><span class="guide-icon">03</span><strong>Create a Pedigree</strong><span>Build, review, save, and print pedigree records.</span></a>
-      <a class="guide-card" href="#breeding" data-search="breeding pairing sire dam bred due pregnancy mating"><span class="guide-icon">04</span><strong>Record a Breeding</strong><span>Create the pairing once and carry it into birth and litter records.</span></a>
-      <a class="guide-card" href="#litters" data-search="litter birth offspring kits weaning born"><span class="guide-icon">05</span><strong>Enter a Birth or Litter</strong><span>Record the birth and create offspring from the existing breeding.</span></a>
-      <a class="guide-card" href="#health" data-search="health medical care medication vaccine episode recheck quarantine"><span class="guide-icon">06</span><strong>Health & Medical Records</strong><span>Add routine care, measurements, episodes, follow-ups, and notes.</span></a>
+      <a class="guide-card" href="#getting-started" data-app-route="dashboard" data-search="getting started setup farm account quick add dashboard"><span class="guide-icon">01</span><strong>Getting Started</strong><span>Set up your operation and learn the fastest way around HerdHarbor.</span></a>
+      <a class="guide-card" href="#animals" data-app-route="animals" data-search="animal add edit profile status sold archived weight"><span class="guide-icon">02</span><strong>Animals & Profiles</strong><span>Add animals and use the animal profile as your working hub.</span></a>
+      <a class="guide-card" href="#pedigrees" data-app-route="pedigrees" data-search="pedigree ancestry sire dam import document print"><span class="guide-icon">03</span><strong>Create a Pedigree</strong><span>Build, review, save, and print pedigree records.</span></a>
+      <a class="guide-card" href="#breeding" data-app-route="breeding" data-search="breeding pairing sire dam bred due pregnancy mating"><span class="guide-icon">04</span><strong>Record a Breeding</strong><span>Create the pairing once and carry it into birth and litter records.</span></a>
+      <a class="guide-card" href="#litters" data-app-route="litters" data-search="litter birth offspring kits weaning born"><span class="guide-icon">05</span><strong>Enter a Birth or Litter</strong><span>Record the birth and create offspring from the existing breeding.</span></a>
+      <a class="guide-card" href="#health" data-app-route="health" data-search="health medical care medication vaccine episode recheck quarantine"><span class="guide-icon">06</span><strong>Health & Medical Records</strong><span>Add routine care, measurements, episodes, follow-ups, and notes.</span></a>
       <a class="guide-card" href="#growth" data-search="weight growth measurement chart analytics"><span class="guide-icon">07</span><strong>Weight & Growth</strong><span>Record weights correctly so growth charts stay useful.</span></a>
       <a class="guide-card" href="#genetics" data-search="genetics rabbit color trait prediction pairing"><span class="guide-icon">08</span><strong>Genetics</strong><span>Open genetics from an animal and use species-appropriate tools.</span></a>
-      <a class="guide-card" href="#tasks" data-search="dashboard today tasks reminder due follow up"><span class="guide-icon">09</span><strong>Dashboard & Tasks</strong><span>Use Today to see what needs attention across the operation.</span></a>
-      <a class="guide-card" href="#analytics" data-search="analytics reports production show sales revenue growth"><span class="guide-icon">10</span><strong>Analytics & Production</strong><span>Turn records into useful trends without entering the same fact twice.</span></a>
-      <a class="guide-card" href="#sales" data-search="sale sold customer payment transfer price"><span class="guide-icon">11</span><strong>Sales & Customers</strong><span>Record buyers, sales, payments, and animal status changes.</span></a>
+      <a class="guide-card" href="#tasks" data-app-route="tasks" data-search="dashboard today tasks reminder due follow up"><span class="guide-icon">09</span><strong>Dashboard & Tasks</strong><span>Use Today to see what needs attention across the operation.</span></a>
+      <a class="guide-card" href="#analytics" data-app-route="analytics" data-search="analytics reports production show sales revenue growth"><span class="guide-icon">10</span><strong>Analytics & Production</strong><span>Turn records into useful trends without entering the same fact twice.</span></a>
+      <a class="guide-card" href="#sales" data-app-route="sales" data-search="sale sold customer payment transfer price"><span class="guide-icon">11</span><strong>Sales & Customers</strong><span>Record buyers, sales, payments, and animal status changes.</span></a>
       <a class="guide-card" href="#subscription" data-search="subscription plan member free adult junior billing stripe trial referral calendar month"><span class="guide-icon">12</span><strong>Trial, Membership & Referrals</strong><span>Understand the launch trial, plans, billing, and referral credits.</span></a>
       <a class="guide-card" href="#sync" data-search="cloud sync offline backup data device"><span class="guide-icon">13</span><strong>Cloud Sync & Offline Use</strong><span>Know what happens online, offline, and when moving between devices.</span></a>
       <a class="guide-card" href="#youth" data-search="junior youth child parent guardian 4-h"><span class="guide-icon">14</span><strong>Youth & Junior Accounts</strong><span>Use HerdHarbor appropriately with adult-managed youth participation.</span></a>
-      <a class="guide-card" href="#workflow-index" data-search="workflow quick guide add animal edit pedigree paper photo pregnancy birth weight health transfer spreadsheet export qr sync backup recovery account trial member free adult"><span class="guide-icon">15</span><strong>Workflow Guide Index</strong><span>Direct links for the core workflows used in the current app.</span></a>
+      <a class="guide-card" href="#symptoms" data-app-route="symptoms" data-search="symptom guide symptoms urgency observation health educational veterinarian"><span class="guide-icon">15</span><strong>Symptom Guide</strong><span>Organize observed signs and understand urgency without treating the guide as a diagnosis.</span></a>
+      <a class="guide-card" href="#budget" data-app-route="budget" data-search="budget expenses income cost feed supplies revenue profitability"><span class="guide-icon">16</span><strong>Budget & Expenses</strong><span>Record operating costs and income so financial summaries use the same underlying records.</span></a>
+      <a class="guide-card" href="#settings" data-app-route="settings" data-search="settings account profile appearance sync backup import export membership subscription referral data delete"><span class="guide-icon">17</span><strong>Settings, Account & Data</strong><span>Manage account details, membership, sync, backups, imports, exports, appearance, and data controls.</span></a>
+      <a class="guide-card" href="#workflow-index" data-search="workflow quick guide add animal edit pedigree paper photo pregnancy birth weight health transfer spreadsheet export qr sync backup recovery account trial member free adult"><span class="guide-icon">18</span><strong>Workflow Guide Index</strong><span>Direct links for the core workflows used in the current app.</span></a>
+      <a class="guide-card" href="#faq" data-search="faq common questions help troubleshooting"><span class="guide-icon">19</span><strong>Common Questions</strong><span>Fast answers to common workflow, sync, health, subscription, and data questions.</span></a>
     </nav>
 
     <section class="section" id="getting-started" data-guide="getting started setup farm operation account dashboard quick add">
@@ -233,8 +237,43 @@
     </section>
 
 
+    <section class="section" id="symptoms" data-guide="symptom guide symptoms observation urgency emergency health veterinarian triage educational">
+      <div class="section-header"><span class="section-number">15</span><div><h2>Symptom Guide</h2><p>Use the Symptom Guide to organize observations and understand urgency without turning the app into a diagnosis tool.</p></div></div>
+      <div class="steps">
+        <div class="step"><strong>Open Symptom Guide from the Management menu.</strong> Choose the animal/species and enter only the signs you actually observe.</div>
+        <div class="step"><strong>Use the guidance to organize what you are seeing.</strong> The guide can help surface urgency cues, questions to ask, and information worth recording before contacting a veterinarian.</div>
+        <div class="step"><strong>Record the actual event in Health.</strong> If the animal needs an ongoing episode, treatment, medication, measurement, quarantine, or follow-up, save that information in the canonical Health workflow rather than leaving it only in the guide.</div>
+        <div class="step"><strong>Do not treat a symptom match as a diagnosis.</strong> The guide is educational. Emergency signs, worsening symptoms, diagnosis, medication selection, dosing, and treatment decisions belong with an appropriate veterinarian.</div>
+      </div>
+      <div class="tip"><a class="route-link" href="/#symptoms">Open Symptom Guide →</a> &nbsp; <a class="route-link" href="/#health">Open Health →</a></div>
+    </section>
+
+    <section class="section" id="budget" data-guide="budget expense income cost feed supplies equipment revenue profitability financial">
+      <div class="section-header"><span class="section-number">16</span><div><h2>Budget & Expenses</h2><p>Use Budget for operation-level money records and let Analytics reuse those records where supported.</p></div></div>
+      <div class="steps">
+        <div class="step"><strong>Open Budget from the Management menu.</strong> Use the existing expense/income controls instead of keeping a second copy of the same transaction elsewhere in HerdHarbor.</div>
+        <div class="step"><strong>Record the real date, amount, and category.</strong> Add vendor, description, animal/litter context, or notes when the workflow provides those fields and the information is known.</div>
+        <div class="step"><strong>Keep animal/customer transactions in Sales & Customers.</strong> Budget is for the operation-level financial view rather than replacing the sale record and customer history.</div>
+        <div class="step"><strong>Review financial summaries in Analytics when available.</strong> Profitability and trend views are only as complete as the underlying recorded income and expenses.</div>
+      </div>
+      <div class="tip"><a class="route-link" href="/#budget">Open Budget →</a> &nbsp; <a class="route-link" href="/#analytics">Open Analytics →</a></div>
+    </section>
+
+    <section class="section" id="settings" data-guide="settings account profile operation membership subscription referral sync cloud backup import export spreadsheet appearance privacy delete data">
+      <div class="section-header"><span class="section-number">17</span><div><h2>Settings, Account & Data</h2><p>Settings is the control center for your account, operation profile, membership, data tools, sync, and app preferences.</p></div></div>
+      <div class="steps">
+        <div class="step"><strong>Open Settings from the Account area.</strong> Review the signed-in account and operation profile before changing account-bound or cloud-related settings.</div>
+        <div class="step"><strong>Use Membership controls for plan and billing actions.</strong> Trial, Member, Free Adult, referral, checkout, and billing-portal information should be handled through the current subscription controls rather than browser storage.</div>
+        <div class="step"><strong>Use Sync controls for cloud status and recovery.</strong> Check the current sync state, retry only when appropriate, and preserve local data if a conflict or provider problem is shown.</div>
+        <div class="step"><strong>Use Data tools for backups, imports, and exports.</strong> Download a safety backup before destructive actions. Spreadsheet imports should be reviewed before confirmation, and exports do not change the underlying records.</div>
+        <div class="step"><strong>Use appearance and profile settings for presentation changes.</strong> These do not replace animal, health, breeding, sales, or other canonical records.</div>
+        <div class="step"><strong>Use the dedicated account-deletion/privacy controls when needed.</strong> Do not clear browser storage as a substitute for signing out, switching accounts, repairing sync, or deleting the account.</div>
+      </div>
+      <div class="tip"><a class="route-link" href="/#settings">Open Settings →</a></div>
+    </section>
+
     <section class="section" id="workflow-index" data-guide="workflow quick guides add animal edit pedigree paper pedigree breeding pregnancy birth litter weight health sale transfer spreadsheet export qr sync retry backup compare recovery trial member free adult account">
-      <div class="section-header"><span class="section-number">15</span><div><h2>Workflow Guide Index</h2><p>Direct guides for the core HerdHarbor workflows. Each guide points back to the existing app area that owns the record.</p></div></div>
+      <div class="section-header"><span class="section-number">18</span><div><h2>Workflow Guide Index</h2><p>Direct guides for the core HerdHarbor workflows. Each guide points back to the existing app area that owns the record.</p></div></div>
       <div class="workflow-index">
         <article class="quick-guide" id="guide-add-animal"><h3>Add an animal</h3><p>Create the animal once, then reuse that record everywhere else.</p><ol><li>Open Animals and choose Add Animal.</li><li>Enter the known identity, species, sex, status, and optional details.</li><li>Save, then open the animal profile for health, pedigree, breeding, and history work.</li></ol><a class="route-link" href="/#animals">Open Animals →</a></article>
         <article class="quick-guide" id="guide-edit-animal"><h3>Edit an animal</h3><p>Use the existing animal record instead of creating a duplicate.</p><ol><li>Open Animals and select the animal.</li><li>Choose Edit from the animal profile.</li><li>Change only the factual fields that need updating and save.</li></ol><a class="route-link" href="/#animals">Open Animals →</a></article>

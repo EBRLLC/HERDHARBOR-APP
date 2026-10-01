@@ -8,6 +8,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const howTo = read("how-to/index.html");
+const appShell = read("index.html");
 const navigation = read("how-to-navigation-v1.8.1.js");
 const build = read("herdharbor-build.js");
 const worker = read("service-worker.js");
@@ -62,7 +63,7 @@ test("every required Phase 7 workflow has a stable direct anchor", () => {
 });
 
 test("workflow guides link back to canonical app areas", () => {
-  for (const route of ["animals", "pedigrees", "breeding", "litters", "health", "sales", "settings"]) {
+  for (const route of ["animals", "pedigrees", "breeding", "litters", "health", "symptoms", "analytics", "budget", "sales", "settings"]) {
     assert.match(howTo, new RegExp('href="/#' + route + '"'), "missing route link #" + route);
   }
   assert.match(howTo, /review draft/i);
@@ -70,6 +71,23 @@ test("workflow guides link back to canonical app areas", () => {
   assert.match(howTo, /Weights belong to the canonical Health record/i);
   assert.match(howTo, /provenance and duplicate protection/i);
   assert.match(howTo, /do not clear local data as a sync repair step/i);
+});
+
+test("How To Center covers every user-facing main navigation route", () => {
+  const navRoutes = [...appShell.matchAll(/<button class="nav-item[^"]*"[^>]*data-route="([^"]+)"/g)]
+    .map((match) => match[1])
+    .filter((route) => route !== "admin");
+  const documentedRoutes = new Set(
+    [...howTo.matchAll(/class="guide-card"[^>]*data-app-route="([^"]+)"/g)]
+      .flatMap((match) => match[1].split(/\s+/).filter(Boolean))
+  );
+  for (const route of navRoutes) {
+    assert.ok(documentedRoutes.has(route), "How To Center is missing main app route: " + route);
+  }
+  for (const id of ["symptoms", "budget", "settings"]) {
+    assert.match(howTo, new RegExp('id="' + id + '"'), "missing detailed guide section #" + id);
+  }
+  assert.match(howTo, /href="#faq"/);
 });
 
 test("Help navigation remains part of the app and offline shell", () => {
