@@ -41,3 +41,24 @@ test("unowned active state fails closed unless it matches the authenticated user
     authenticatedUserId: "A", hasActiveState: true, authenticatedCacheMatchesActive: true
   }).action, "adopt-owner");
 });
+
+
+test("hydration generation fence rejects stale Account A work after switch to Account B", () => {
+  const fence = Boundary.createGenerationFence();
+  fence.advance("A");
+  const aToken = fence.capture("A");
+  assert.equal(fence.isCurrent(aToken, "A"), true);
+
+  fence.advance("B");
+  assert.equal(fence.isCurrent(aToken, "B"), false);
+  const bToken = fence.capture("B");
+  assert.equal(fence.isCurrent(bToken, "B"), true);
+});
+
+test("sign-out invalidates every previously captured hydration token", () => {
+  const fence = Boundary.createGenerationFence();
+  fence.advance("A");
+  const token = fence.capture("A");
+  fence.invalidate();
+  assert.equal(fence.isCurrent(token, "A"), false);
+});
