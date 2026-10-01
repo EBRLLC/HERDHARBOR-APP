@@ -14,7 +14,7 @@ const manifest = JSON.parse(read("manifest.json"));
 const html = read("index.html");
 const build = read("herdharbor-build.js");
 
-// The web runtime uses the stable 2.0.0 identity while the service-worker cache cutover remains separately tested.
+// The web runtime and service-worker shell now share the stable 2.0.0 identity.
 assert.equal(manifest.version, "2.0.0");
 const webVersion = build.match(/version:\s*"([^"]+)"/)?.[1];
 const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
@@ -26,8 +26,8 @@ if (webVersion === "1.8.2") assert.match(buildId, /^cloud-sync-v2-/);
 if (webVersion === "2.0.0") assert.equal(buildId, "v2.0.0-release-1");
 assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"/);
 assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "v2.0.0-release-1"/);
-assert.match(pwa, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
-assert.match(html, /herdharbor-build\.js\?v=1\.8\.4/, "the packaged shell bootstrap uses the v1.8.4 cache identity");
+assert.match(pwa, /Version \$\{APP_VERSION\}/);\nassert.doesNotMatch(pwa, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
+assert.match(html, /herdharbor-build\.js\?v=2\.0\.0/, "the packaged shell bootstrap uses the 2.0.0 cache identity");
 
 // Service-worker discovery is explicit and independent from Cloud Sync.
 assert.match(pwa, /navigatorRef\(\)\.serviceWorker\.register\("service-worker\.js"/);
@@ -64,9 +64,9 @@ assert.match(cloud, /hasUnsyncedChanges/);
 assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
 // Browser/app shell requests favor production over stale frontend caches while retaining offline fallback.
-assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1|8\.2|8\.3|8\.4)-/);
+assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1"/);
 if (webVersion === "1.8.1") assert.match(worker, /herdharbor-shell-v1\.8\.2-alpha-cloud-sync-v2-state-integrity-1/);
-assert.match(worker, /pwa\.js\?v=31/);
+assert.match(worker, /pwa\.js\?v=32/);
 assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
 assert.match(worker, /NETWORK_FIRST_PATHS/);
 assert.match(worker, /\/manifest\.json/);
@@ -79,4 +79,4 @@ assert.match(worker, /caches\.delete\(key\)/);
 assert.match(worker, /self\.clients\.claim\(\)/);
 assert.match(pwa, /manifest\.json\?build=\$\{encodeURIComponent\(PWA_BUILD\)\}/);
 
-console.log(`Alpha v${webVersion} PWA update-regression tests passed`);
+console.log(`HerdHarbor v${webVersion} PWA update-regression tests passed`);
