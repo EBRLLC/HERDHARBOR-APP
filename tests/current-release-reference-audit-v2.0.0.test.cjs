@@ -56,7 +56,7 @@ test("formal 2.0.0 release artifacts and member-language gates exist", () => {
     "tests/v2.0.0-billing-acceptance.test.cjs",
     "tests/v2.0.0-account-sync-acceptance.test.cjs",
     "tests/v2.0.0-ai-production-audit.test.cjs",
-    "tests/v2.0.0-product-positioning.test.cjs"
+    "tests/v2.0.0-product-positioning.test.cjs",\n    "tests/v2.0.0-workflow-cutover.test.cjs"
   ]) assert.equal(exists(p), true, p);
 });
 
@@ -99,8 +99,18 @@ test("PWA shell and bootstrap use the 2.0.0 cutover identity", () => {
   assert.match(pkg.scripts["test:v2.0.0-regression"], /v2\.0\.0-pwa-cutover/);
 });
 
-test("current workflow assertions already validate 2.0.0 while filename cutover remains deferred", () => {
-  const ci = read(".github/workflows/v1.8.4-ci.yml");
+test("current release workflows are stable 2.0.0 workflows", () => {
+  for (const p of [
+    ".github/workflows/v2.0.0-ci.yml",
+    ".github/workflows/v2.0.0-production-pages.yml",
+    ".github/workflows/v2.0.0-production-acceptance.yml"
+  ]) assert.equal(exists(p), true, p);
+  for (const p of [
+    ".github/workflows/v1.8.4-ci.yml",
+    ".github/workflows/v1.8.4-production-pages.yml",
+    ".github/workflows/v1.8.4-production-acceptance.yml"
+  ]) assert.equal(exists(p), false, p);
+  const ci = read(".github/workflows/v2.0.0-ci.yml");
   assert.match(ci, /HerdHarbor@2\.0\.0/);
   assert.match(ci, /versionName "2\.0\.0"/);
   assert.match(ci, /versionCode 19/);
