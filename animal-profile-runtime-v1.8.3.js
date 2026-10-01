@@ -589,7 +589,7 @@
                 <span><strong>${esc(animal.name || "Unnamed animal")}</strong><small>${esc([animal.earTagNumber || animal.tag || animal.tattoo, animal.earTagColor, animal.location, animal.status].filter(Boolean).join(" · ") || animal.species || "Animal")}</small></span>
               </label>`).join("")}
           </div>
-          <p class="budget-note">A phone camera can scan the printed code. HerdHarbor will ask the tester to sign in before showing private farm records.</p>
+          <p class="budget-note">A phone camera can scan the printed code. HerdHarbor will ask the user to sign in before showing private farm records.</p>
           <div class="modal-actions">
             <button type="button" class="button button-ghost" id="cancel-modal">Cancel</button>
             <button type="submit" class="button button-primary">Print selected cards</button>
