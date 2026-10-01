@@ -99,29 +99,27 @@ test("every static navigation route has a real view and routes through the canon
 });
 
 test("every static shell button is backed by a route, form submit, PWA action, or active click binding", () => {
-  const buttonMatches = [...html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/gi)];
+  const buttonMatches = [...html.matchAll(/<button\\b([^>]*)>([\\s\\S]*?)<\\/button>/gi)];
   const unresolved = [];
 
   for (const match of buttonMatches) {
     const attrs = match[1];
-    const text = match[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-    const id = (attrs.match(/\bid=["']([^"']+)["']/i) || [])[1] || "";
-    const route = (attrs.match(/\bdata-route=["']([^"']+)["']/i) || [])[1] || "";
-    const explicitType = ((attrs.match(/\btype=["']([^"']+)["']/i) || [])[1] || "").toLowerCase();
+    const text = match[2].replace(/<[^>]+>/g, " ").replace(/\\s+/g, " ").trim();
+    const id = (attrs.match(/\\bid=["\']([^"\']+)["\']/i) || [])[1] || "";
+    const route = (attrs.match(/\\bdata-route=["\']([^"\']+)["\']/i) || [])[1] || "";
+    const explicitType = ((attrs.match(/\\btype=["\']([^"\']+)["\']/i) || [])[1] || "").toLowerCase();
 
-    if (route || explicitType === "submit" || /\bonclick\s*=/i.test(attrs)) continue;
-    if (/\bdata-pwa-install\b/i.test(attrs) && activeSource.includes("data-pwa-install")) continue;
+    if (route || explicitType === "submit" || /\\bonclick\\s*=/.test(attrs)) continue;
+    if (/\\bdata-pwa-install\\b/i.test(attrs) && activeSource.includes("data-pwa-install")) continue;
 
     if (id) {
-      const bindingNeedles = [
-        '$("#' + id + '").addEventListener',
-        "$('#" + id + "').addEventListener",
-        'getElementById("' + id + '").addEventListener',
-        "getElementById('" + id + "').addEventListener",
-        'querySelector("#' + id + '").addEventListener',
-        "querySelector('#" + id + "').addEventListener"
+      const escapedId = id.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&");
+      const bindingPatterns = [
+        new RegExp('\\$\\(["\\\']#' + escapedId + '["\\\']\\)\\.addEventListener\\(["\\\']click["\\\']'),
+        new RegExp('getElementById\\(["\\\']' + escapedId + '["\\\']\\)[\\s\\S]{0,160}addEventListener\\(["\\\']click["\\\']'),
+        new RegExp('querySelector\\(["\\\']#' + escapedId + '["\\\']\\)[\\s\\S]{0,160}addEventListener\\(["\\\']click["\\\']')
       ];
-      if (bindingNeedles.some((needle) => activeSource.includes(needle))) continue;
+      if (bindingPatterns.some((pattern) => pattern.test(activeSource))) continue;
     }
 
     unresolved.push(id || text || attrs.trim());
