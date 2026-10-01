@@ -138,7 +138,7 @@ test("shell loads and caches extracted runtime before application composition", 
   const html = read("index.html");
   const worker = read("service-worker.js");
   const domainIndex = html.indexOf("animal-profile-runtime-v1.8.3.js?v=1");
-  const compositionIndex = html.indexOf("herdharbor-app-runtime.js?v=2");
+  const compositionIndex = html.indexOf("herdharbor-app-runtime.js?v=3");
   assert.ok(domainIndex >= 0 && compositionIndex > domainIndex);
   assert.match(worker, /\.\/animal-profile-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /"\/animal-profile-runtime-v1\.8\.3\.js"/);
