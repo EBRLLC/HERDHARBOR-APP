@@ -1049,8 +1049,8 @@
           <span>Improved mobile &amp; offline use</span>
         </div>
         <div class="dashboard-ai-soon">
-          <strong>AI-assisted tools · Coming Soon</strong>
-          <span>Paper Pedigree scanning, voice entry, and photo entry are in testing and will be included with HerdHarbor membership at no extra AI charge.</span>
+          <strong>More tools on the way</strong>
+          <span>Additional assisted workflows are being prepared for a future release.</span>
         </div>
       </section>
       <div class="stats-grid">
