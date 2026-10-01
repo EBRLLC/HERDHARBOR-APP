@@ -33,7 +33,7 @@
     "test:v1.8.4": "npm run test:v1.8.3 && npm run test:v1.8.4-regression && node --test tests/current-release-reference-audit-v1.8.4.test.cjs",
     "test:v1.8.4-runtime-efficiency": "node --test tests/v1.8.4-runtime-efficiency.test.cjs",
     "build:release-assets": "node scripts/generate-release-assets.mjs _site",
-    "test:v2.0.0-regression": "npm run test:v1.8.3 && npm run test:v1.8.4-regression && node --test tests/v2.0.0-production-language.test.cjs tests/v2.0.0-component-language.test.cjs tests/v2.0.0-release-contract.test.cjs tests/v2.0.0-pwa-cutover.test.cjs && npm run test:v2.0.0-android && npm run test:v2.0.0-billing && npm run test:v2.0.0-account-sync && npm run test:v2.0.0-ai && npm run test:v2.0.0-positioning && npm run test:v2.0.0-workflows && npm run test:v2.0.0-monitoring",
+    "test:v2.0.0-regression": "npm run test:v1.8.3 && npm run test:v1.8.4-regression && node --test tests/v2.0.0-production-language.test.cjs tests/v2.0.0-component-language.test.cjs tests/v2.0.0-release-contract.test.cjs tests/v2.0.0-pwa-cutover.test.cjs && npm run test:v2.0.0-android && npm run test:v2.0.0-billing && npm run test:v2.0.0-account-sync && npm run test:v2.0.0-ai && npm run test:v2.0.0-positioning && npm run test:v2.0.0-workflows && npm run test:v2.0.0-monitoring && npm run test:v2.0.0-launch-material",
     "test:v2.0.0": "npm run test:v2.0.0-regression && node --test tests/current-release-reference-audit-v2.0.0.test.cjs",
     "test:v2.0.0-android": "node --test tests/v2.0.0-android-release.test.cjs tests/google-play-readiness.test.cjs",
     "test:v2.0.0-billing": "node --test tests/v2.0.0-billing-acceptance.test.cjs tests/v1.8.4-subscription-reliability.test.cjs tests/subscription-lifecycle-hardening-v1.8.4.test.cjs tests/subscription-referrals-credits-v1.8.1.test.cjs tests/subscription-stripe-v1.8.1.test.cjs",
@@ -41,7 +41,8 @@
     "test:v2.0.0-ai": "node --test tests/v2.0.0-ai-production-audit.test.cjs tests/paper-pedigree-production-hardening-v1.8.3.test.cjs tests/voice-assisted-entry-v1.8.3.test.cjs tests/photo-assisted-entry-v1.8.3.test.cjs tests/ai-image-usage-limits-v1.8.3.test.cjs",
     "test:v2.0.0-positioning": "node --test tests/v2.0.0-product-positioning.test.cjs",
     "test:v2.0.0-workflows": "node --test tests/v2.0.0-workflow-cutover.test.cjs",
-    "test:v2.0.0-monitoring": "node --test tests/v2.0.0-monitoring-acceptance.test.cjs tests/monitoring-integration-v1.5.1.test.cjs tests/monitoring-startup-nonblocking-v1.8.3.test.cjs tests/v1.8.4-cloud-telemetry-hardening.test.cjs"
+    "test:v2.0.0-monitoring": "node --test tests/v2.0.0-monitoring-acceptance.test.cjs tests/monitoring-integration-v1.5.1.test.cjs tests/monitoring-startup-nonblocking-v1.8.3.test.cjs tests/v1.8.4-cloud-telemetry-hardening.test.cjs",
+    "test:v2.0.0-launch-material": "node --test tests/v2.0.0-launch-material.test.cjs tests/google-play-readiness.test.cjs"
   },
   "dependencies": {
     "@sentry/browser": "10.71.0"
