@@ -13,6 +13,7 @@ global.localStorage = {
 };
 const market = require("../market-analytics-v1.6.5.js");
 const root = path.resolve(__dirname, "..");
+const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
 const consent = (overrides = {}) => ({
   enabled: true,
   consentVersion: market.CONSENT_VERSION,
