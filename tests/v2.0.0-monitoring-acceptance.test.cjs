@@ -67,8 +67,8 @@ test("monitoring remains privacy-hardened and non-blocking", () => {
 });
 
 test("changed Cloud Sync telemetry runtime uses a revised served identity", () => {
-  assert.match(index, /herdharbor-cloud\.js\?v=33/);
-  assert.match(worker, /\.\/herdharbor-cloud\.js\?v=33/);
+  assert.match(index, /herdharbor-cloud\.js\?v=34/);
+  assert.match(worker, /\.\/herdharbor-cloud\.js\?v=34/);
   assert.doesNotMatch(index, /herdharbor-cloud\.js\?v=32/);
   assert.doesNotMatch(worker, /\.\/herdharbor-cloud\.js\?v=32/);
 });
