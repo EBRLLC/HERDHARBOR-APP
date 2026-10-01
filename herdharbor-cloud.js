@@ -368,6 +368,8 @@
   async function loadAccessProfile() {
     if (!session?.user?.id) return publishAccessProfile(fallbackAccessProfile());
     const userId = session.user.id;
+    const operationToken = captureAccountOperation(userId);
+    const stillCurrent = () => isAccountOperationCurrent(operationToken, userId);
     const cached = () => window.HerdHarborAccessCache?.read?.(userId);
     const initialCachedSnapshot = cached();
     if (initialCachedSnapshot) {
@@ -378,6 +380,7 @@
       });
     }
     const publishCachedOrFallback = () => {
+      if (!stillCurrent()) return accessProfile;
       const snapshot = cached();
       return publishAccessProfile(snapshot
         ? { ...snapshot, backend_ready: false, offline_cached: true }
@@ -392,9 +395,11 @@
         client.rpc("herdharbor_account_role")
       ]);
     } catch {
+      if (!stillCurrent()) return accessProfile;
       reportAccountOperationFailure("load_access");
       return publishCachedOrFallback();
     }
+    if (!stillCurrent()) return accessProfile;
     if (recordResult.error || !recordResult.data) {
       reportAccountOperationFailure("load_access");
       return publishCachedOrFallback();
@@ -410,7 +415,9 @@
       account_role: role,
       last_verified_at: new Date().toISOString()
     };
+    if (!stillCurrent()) return accessProfile;
     const stored = window.HerdHarborAccessCache?.write?.(userId, authoritative);
+    if (!stillCurrent()) return accessProfile;
     return publishAccessProfile({
       ...authoritative,
       ...(stored || {}),
@@ -1284,15 +1291,35 @@
   }
 
   function resetAccountBoundaryRuntime() {
+    clearTimeout(syncTimer);
+    syncTimer = null;
+    syncDebounceStartedAt = 0;
     hydrationInFlight = null;
     hydrationUserId = "";
     lastHydratedUserId = "";
     pendingSync = null;
+    syncInFlight = null;
+    syncInFlightRaw = null;
     syncConflict = null;
+    reloadAfterSync = false;
+    normalizedRefreshInFlight = null;
     normalizedCohortStatusCache = null;
     normalizedCohortStatusInFlight = null;
     accessProfile = null;
     lastCloudCheckAt = 0;
+  }
+
+  function captureAccountOperation(userId = session?.user?.id) {
+    const id = String(userId || "");
+    return accountBoundaryFence?.capture?.(id) || null;
+  }
+
+  function isAccountOperationCurrent(token, userId = token?.userId) {
+    return Boolean(
+      token &&
+      String(userId || "") &&
+      accountBoundaryFence?.isCurrent?.(token, session?.user?.id)
+    );
   }
 
   function clearAccountSessionMarkers(userId) {
@@ -2019,32 +2046,44 @@
   async function drainSyncQueue() {
     if (syncInFlight) return syncInFlight;
 
-    syncInFlight = (async () => {
+    const userId = String(session?.user?.id || "");
+    const operationToken = captureAccountOperation(userId);
+    const stillCurrent = () => isAccountOperationCurrent(operationToken, userId);
+    if (!userId || !stillCurrent()) return false;
+
+    const run = (async () => {
       let lastResult = true;
-      while (pendingSync) {
+      while (pendingSync && stillCurrent()) {
         const next = pendingSync;
         pendingSync = null;
         syncInFlightRaw = String(next.rawValue || "");
         try {
           lastResult = await syncValueToCloud(next.rawValue, next.sequence);
         } finally {
-          syncInFlightRaw = null;
+          if (stillCurrent()) syncInFlightRaw = null;
         }
+        if (!stillCurrent()) return false;
         if (!lastResult && syncConflict) break;
       }
       return lastResult;
     })();
 
+    syncInFlight = run;
     try {
-      return await syncInFlight;
+      return await run;
     } finally {
-      syncInFlight = null;
-      syncInFlightRaw = null;
+      if (syncInFlight === run) {
+        syncInFlight = null;
+        syncInFlightRaw = null;
+      }
+      if (!stillCurrent()) return;
       if (pendingSync && !syncConflict) {
         queueMicrotask(() => drainSyncQueue());
       } else if (reloadAfterSync && !syncConflict) {
         reloadAfterSync = false;
-        setTimeout(() => window.location.reload(), 0);
+        setTimeout(() => {
+          if (stillCurrent()) window.location.reload();
+        }, 0);
       }
     }
   }
@@ -2263,15 +2302,21 @@
   }
 
   async function checkNormalizedAuthorityChanges() {
+    const userIdAtStart = String(session?.user?.id || "");
+    const operationToken = captureAccountOperation(userIdAtStart);
+    const stillCurrent = () => isAccountOperationCurrent(operationToken, userIdAtStart);
+
     if (!normalizedAuthorityActive()) {
       await refreshNormalizedAuthorityIfEligible();
+      if (!stillCurrent()) return false;
     }
     if (!normalizedAuthorityActive()) return null;
     if (normalizedRefreshInFlight) return normalizedRefreshInFlight;
 
-    normalizedRefreshInFlight = (async () => {
+    const run = (async () => {
       try {
         const result = await normalizedRollout.refreshAuthoritative();
+        if (!stillCurrent()) return false;
         if (result?.reason === "normalized-not-authoritative") return null;
         if (!result?.ok) {
           setSyncState("Normalized cloud refresh is unavailable; this device copy was not overwritten.", "error");
@@ -2283,8 +2328,8 @@
           return false;
         }
 
-        const userId = session?.user?.id;
-        if (!userId) return false;
+        const userId = userIdAtStart;
+        if (!userId || !stillCurrent()) return false;
         const remoteRaw = JSON.stringify(result.snapshot);
         const activeRaw = activeStateRaw();
         if (activeRaw && sameState(activeRaw, remoteRaw)) {
@@ -2311,12 +2356,14 @@
             activeRaw,
             "Local copy before receiving normalized cloud changes"
           );
+          if (!stillCurrent()) return false;
         }
-        if (hasPendingCloudMutations(userId)) {
+        if (!stillCurrent() || hasPendingCloudMutations(userId)) {
           return false;
         }
 
-        setActiveUserData(userId, deviceCloudRaw, "normalized-cloud-state-replace");
+        if (!stillCurrent()) return false;
+        if (!setActiveUserData(userId, deviceCloudRaw, "normalized-cloud-state-replace")) return false;
         safeStorageRemove(dirtyKey(userId));
         setSyncState("Newer normalized cloud records found; reloading…", "success");
         window.location.reload();
@@ -2326,11 +2373,12 @@
         setSyncState("Normalized cloud refresh failed; this device copy was not overwritten.", "error");
         return false;
       } finally {
-        normalizedRefreshInFlight = null;
+        if (normalizedRefreshInFlight === run) normalizedRefreshInFlight = null;
       }
     })();
 
-    return normalizedRefreshInFlight;
+    normalizedRefreshInFlight = run;
+    return run;
   }
 
   async function refreshDualWriteBaselineForRemoteState() {
@@ -2366,14 +2414,17 @@
   }
 
   async function checkForCloudChanges() {
-    const userId = session?.user?.id;
-    if (!userId || syncInFlight || syncConflict) return false;
+    const userId = String(session?.user?.id || "");
+    const operationToken = captureAccountOperation(userId);
+    const stillCurrent = () => isAccountOperationCurrent(operationToken, userId);
+    if (!userId || !stillCurrent() || syncInFlight || syncConflict) return false;
 
     const now = Date.now();
     if (now - lastCloudCheckAt < 15000) return false;
     lastCloudCheckAt = now;
 
     const normalizedHandled = await checkNormalizedAuthorityChanges();
+    if (!stillCurrent()) return false;
     if (normalizedHandled !== null) return normalizedHandled;
 
     if (originalGetItem.call(localStorage, dirtyKey(userId)) === "1") {
@@ -2382,6 +2433,7 @@
 
     const knownVersion = originalGetItem.call(localStorage, versionKey(userId)) || "";
     const { data: versionRecord, error: versionError } = await fetchCloudVersion(userId);
+    if (!stillCurrent()) return false;
     if (versionError || !versionRecord) return false;
 
     const remoteVersion = String(versionRecord.updated_at || "");
@@ -2391,6 +2443,7 @@
     }
 
     const { data, error } = await fetchCloudRecord(userId);
+    if (!stillCurrent()) return false;
     if (error || !data?.app_state) return false;
 
     // A local edit can occur while the cloud refresh request is in flight
@@ -2405,9 +2458,11 @@
     const remoteRaw = JSON.stringify(data.app_state);
     const activeRaw = activeStateRaw();
     const confirmedBase = await readCloudBaseline(userId);
+    if (!stillCurrent()) return false;
 
     if (activeRaw && sameState(activeRaw, remoteRaw)) {
       const baselineRefresh = await refreshDualWriteBaselineForRemoteState();
+      if (!stillCurrent()) return false;
       if (baselineRefresh?.ok === false) {
         setSyncState(
           "Cloud records match, but normalized sync protection could not refresh yet.",
@@ -2416,6 +2471,7 @@
         return false;
       }
       await writeCloudBaseline(userId, remoteRaw);
+      if (!stillCurrent()) return false;
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       setSyncState("Saved to cloud", "success");
       return false;
@@ -2423,6 +2479,7 @@
 
     if (confirmedBase && sameState(activeRaw, confirmedBase)) {
       await recordRecoverySnapshot(userId, activeRaw, "Local copy before receiving another device's changes");
+      if (!stillCurrent()) return false;
 
       // The recovery snapshot is asynchronous. A local edit made while it is
       // being stored must not be overwritten by the cloud copy we fetched
@@ -2458,7 +2515,8 @@
         );
         return false;
       }
-      setActiveUserData(userId, deviceCloudRaw);
+      if (!stillCurrent()) return false;
+      if (!setActiveUserData(userId, deviceCloudRaw)) return false;
       await writeCloudBaseline(userId, remoteRaw);
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       setSyncState("Newer cloud records found; reloading…", "success");
@@ -3196,13 +3254,18 @@
     setSyncState(syncState, syncConflict ? "error" : "success");
   }
 
-  async function hydrateUserDataOnce(activeSession) {
+  async function hydrateUserDataOnce(activeSession, hydrationToken = null) {
     const userId = String(activeSession?.user?.id || "");
-    const token = accountBoundaryFence?.capture?.(userId);
+    const token = hydrationToken || accountBoundaryFence?.capture?.(userId);
     const isCurrentHydration = () => Boolean(
       accountBoundaryFence?.isCurrent?.(token, session?.user?.id)
     );
     const staleHydration = () => Object.freeze({ stale: true, userId });
+    const commitHydratedState = (rawValue, reason = "legacy-cloud-state-replace") => {
+      if (!isCurrentHydration()) return false;
+      return setActiveUserData(userId, rawValue, reason);
+    };
+
     if (!userId || !isCurrentHydration()) return staleHydration();
     dispatchAuthSession();
 
@@ -3265,10 +3328,7 @@
       console.error("HerdHarbor normalized authority check failed:", error);
       const offlineRaw = activeRaw || cachedRaw;
       if (offlineRaw && safeParse(offlineRaw)) {
-        if (!activeRaw) {
-          if (!isCurrentHydration()) return staleHydration();
-          setActiveUserData(userId, offlineRaw, "normalized-authority-offline-copy");
-        }
+        if (!activeRaw) commitHydratedState(offlineRaw, "normalized-authority-offline-copy");
         unlockApp();
         setSyncState("Cloud authority could not be verified; this device copy was preserved.", "error");
         return;
@@ -3285,10 +3345,7 @@
       if (!rolloutDecision.ok || !rolloutDecision.snapshot) {
         const protectedRaw = activeRaw || cachedRaw;
         if (protectedRaw && safeParse(protectedRaw)) {
-          if (!activeRaw) {
-            if (!isCurrentHydration()) return staleHydration();
-            setActiveUserData(userId, protectedRaw, "normalized-authority-protected-local");
-          }
+          if (!activeRaw) commitHydratedState(protectedRaw, "normalized-authority-protected-local");
           unlockApp();
           setSyncState(
             rolloutDecision?.reason === "legacy-dirty-without-record-outbox"
@@ -3333,8 +3390,7 @@
         if (!isCurrentHydration()) return staleHydration();
       }
 
-      if (!isCurrentHydration()) return staleHydration();
-      setActiveUserData(userId, deviceCloudRaw, "normalized-authority-hydration");
+      if (!commitHydratedState(deviceCloudRaw, "normalized-authority-hydration")) return staleHydration();
       safeStorageRemove(dirtyKey(userId));
       pendingSync = null;
       syncConflict = null;
@@ -3358,10 +3414,7 @@
       if (!isCurrentHydration()) return staleHydration();
       const unsyncedRaw = activeRaw || cachedRaw;
       if (unsyncedRaw && safeParse(unsyncedRaw)) {
-        if (!activeRaw) {
-          if (!isCurrentHydration()) return staleHydration();
-          setActiveUserData(userId, unsyncedRaw);
-        }
+        if (!activeRaw) commitHydratedState(unsyncedRaw);
         unlockApp();
         setSyncState("Unsynced local changes found; saving…", "working");
         pendingSync = { rawValue: unsyncedRaw, sequence: writeSequence };
@@ -3384,8 +3437,7 @@
 
       const offlineRaw = activeRaw || cachedRaw;
       if (offlineRaw && safeParse(offlineRaw)) {
-        if (!isCurrentHydration()) return staleHydration();
-        setActiveUserData(userId, offlineRaw);
+        commitHydratedState(offlineRaw);
         unlockApp();
         setSyncState("Offline copy loaded; changes will sync when connection returns.", "error");
         return;
@@ -3430,8 +3482,7 @@
 
         const offlineRaw = activeRaw || cachedRaw;
         if (offlineRaw && safeParse(offlineRaw)) {
-          if (!isCurrentHydration()) return staleHydration();
-        setActiveUserData(userId, offlineRaw);
+          commitHydratedState(offlineRaw);
           unlockApp();
           setSyncState("Offline copy loaded; changes will sync when connection returns.", "error");
           return;
@@ -3501,8 +3552,7 @@
         unlockApp();
         return;
       }
-      if (!isCurrentHydration()) return staleHydration();
-      setActiveUserData(userId, deviceCloudRaw);
+      if (!commitHydratedState(deviceCloudRaw)) return staleHydration();
       await writeCloudBaseline(userId, cloudRaw);
       if (!isCurrentHydration()) return staleHydration();
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
@@ -3533,8 +3583,7 @@
     const newUserRaw = cachedRaw || activeRaw;
     if (newUserRaw && safeParse(newUserRaw)) {
       const stateChanged = !activeRaw || !sameState(activeRaw, newUserRaw);
-      if (!isCurrentHydration()) return staleHydration();
-      setActiveUserData(userId, newUserRaw);
+      if (!commitHydratedState(newUserRaw)) return staleHydration();
       pendingSync = { rawValue: newUserRaw, sequence: writeSequence };
       await drainSyncQueue();
       if (!isCurrentHydration()) return staleHydration();
@@ -3557,15 +3606,16 @@
     if (storedActiveRaw) window.location.reload();
   }
 
-  async function hydrateUserData(activeSession) {
+  async function hydrateUserData(activeSession, hydrationToken = null) {
     const userId = String(activeSession?.user?.id || "");
-    if (!userId) return hydrateUserDataOnce(activeSession);
+    if (!userId) return hydrateUserDataOnce(activeSession, hydrationToken);
 
     if (hydrationInFlight && hydrationUserId === userId) {
       return hydrationInFlight;
     }
 
-    const run = hydrateUserDataOnce(activeSession);
+    const token = hydrationToken || accountBoundaryFence?.capture?.(userId);
+    const run = hydrateUserDataOnce(activeSession, token);
     hydrationUserId = userId;
     hydrationInFlight = run;
 
@@ -3630,11 +3680,17 @@
     });
     if (!boundary.ok) return false;
 
-    await hydrateUserData(data.session);
+    await hydrateUserData(data.session, boundary.token);
     return true;
   }
 
   async function initialize() {
+    // v1.8.4 no longer uses the legacy active-user pointer. Remove it before
+    // session hydration so an older cached runtime cannot steer the UI back to
+    // a previously tested account.
+    try {
+      originalRemoveItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY);
+    } catch {}
     installStateStoreBridge();
     ensureStyles();
     document.documentElement.classList.add("hh-auth-locked");
@@ -3664,7 +3720,7 @@
 
     const boundary = await runLegacyAccountBoundaryRecovery(data.session);
     if (!boundary.ok) return;
-    await hydrateUserData(data.session);
+    await hydrateUserData(data.session, boundary.token);
   }
 
   client.auth.onAuthStateChange((event, activeSession) => {
