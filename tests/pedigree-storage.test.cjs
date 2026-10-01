@@ -24,7 +24,7 @@ assert.match(appRuntime, /indexedDB\.deleteDatabase\(ATTACHMENT_DB\)/);
 assert.doesNotMatch(appRuntime, /remove large pedigree documents or animal photos/);
 assert.match(cloud, /async function downloadSafetyBackup\(\)/);
 assert.match(cloud, /HerdHarborAttachments\?\.stateWithPedigreeAttachments/);
-assert.match(cloud, /version: "1\.7\.1"/);
+assert.match(cloud, /version: window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"/);
 assert.match(cloud, /function removeRedundantStateCache\(userId\)/);
 assert.match(cloud, /safeStorageRemove\(cacheKey\(userId\)\)/);
 assert.match(cloud, /function handleCanonicalStateCommit\(detail\)/);
