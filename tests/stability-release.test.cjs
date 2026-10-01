@@ -51,7 +51,7 @@ assert.match(settingsRuntime, /id="settings-sync-now"/);
 assert.match(settingsRuntime, /id="settings-last-synced"/);
 assert.match(settingsRuntime, /id="export-excel"/);
 assert.match(settingsRuntime, /HerdHarbor v\$\{appVersion\(\)\}/);
-assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.4"/);
+assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"/);
 assert.match(appRuntime, /Guided pedigree builder/);
 assert.doesNotMatch(appRuntime, /Guided pedigree builder · v/i);
 assert.doesNotMatch(appRuntime, /let animalView =/);
