@@ -51,6 +51,15 @@ test("email-confirmation signout cannot erase the pending signup choice", () => 
   assert.match(policy, /CHOICE_MAX_AGE_MS\s*=\s*24 \* 60 \* 60 \* 1000/);
 });
 
+test("referral choice attachment is event-driven instead of polling for 30 seconds", () => {
+  assert.doesNotMatch(policy, /setInterval\s*\(/);
+  assert.match(policy, /herdharbor:registration-profile/);
+  assert.match(policy, /complete === true[\s\S]*clearChoice\(\)[\s\S]*setTimeout\(installGate, 0\)/);
+  assert.match(policy, /#hh-signup-tab[\s\S]*setTimeout\(installSignup, 0\)/);
+  assert.match(build, /subscription-referral-policy-v1\.8\.1\.js\?v=3/);
+  assert.match(sw, /subscription-referral-policy-v1\.8\.1\.js\?v=3/);
+});
+
 test("public referral validation is privacy-minimal while secure completion authenticates the member", () => {
   assert.match(registrationFn, /action === "validate"/);
   assert.match(registrationFn, /return json\(\{ valid: Boolean\(data\?\.code\) \}\)/);
