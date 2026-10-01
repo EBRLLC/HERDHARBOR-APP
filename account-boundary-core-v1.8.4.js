@@ -58,5 +58,43 @@
     return Object.freeze({ ok: true, action: "clean-login", reason: "no-active-state", staleOwnerId: "" });
   }
 
-  return Object.freeze({ evaluate });
+  function createGenerationFence() {
+    let generation = 0;
+    let currentUserId = "";
+
+    function advance(userId) {
+      const nextUserId = cleanId(userId);
+      if (nextUserId !== currentUserId) generation += 1;
+      currentUserId = nextUserId;
+      return Object.freeze({ userId: currentUserId, generation });
+    }
+
+    function invalidate() {
+      generation += 1;
+      currentUserId = "";
+      return Object.freeze({ userId: currentUserId, generation });
+    }
+
+    function capture(userId = currentUserId) {
+      return Object.freeze({ userId: cleanId(userId), generation });
+    }
+
+    function isCurrent(token, sessionUserId) {
+      return Boolean(
+        token &&
+        cleanId(token.userId) &&
+        cleanId(token.userId) === currentUserId &&
+        cleanId(token.userId) === cleanId(sessionUserId) &&
+        Number(token.generation) === generation
+      );
+    }
+
+    function status() {
+      return Object.freeze({ userId: currentUserId, generation });
+    }
+
+    return Object.freeze({ advance, invalidate, capture, isCurrent, status });
+  }
+
+  return Object.freeze({ evaluate, createGenerationFence });
 });

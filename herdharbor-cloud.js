@@ -78,6 +78,7 @@
   const originalSetItem = Storage.prototype.setItem;
   const originalRemoveItem = Storage.prototype.removeItem;
   const canonicalStateStore = window.HerdHarborStateStore || null;
+  const accountBoundaryFence = window.HerdHarborAccountBoundaryCore?.createGenerationFence?.() || null;
 
   let session = null;
   let syncTimer = null;
@@ -1255,6 +1256,11 @@
   }
 
   function setActiveUserData(userId, rawValue, reason = "legacy-cloud-state-replace") {
+    const authenticatedUserId = String(session?.user?.id || "");
+    if (authenticatedUserId && String(userId || "") !== authenticatedUserId) {
+      console.warn("HerdHarbor blocked stale cross-account state activation.");
+      return false;
+    }
     try {
       setInternalStorage(STORAGE_KEY, rawValue, reason);
     } catch (error) {
@@ -1266,6 +1272,7 @@
     }
     removeRedundantStateCache(userId);
     setInternalStorage(ACTIVE_OWNER_KEY, userId);
+    return true;
   }
 
   function clearActiveUserData() {
@@ -1296,7 +1303,7 @@
 
   async function ensureAuthenticatedAccountBoundary(activeSession, options = {}) {
     const authenticatedUserId = String(activeSession?.user?.id || "");
-    if (!authenticatedUserId) {
+    if (!authenticatedUserId || !accountBoundaryFence) {
       showAccountBoundaryRecovery("HerdHarbor could not verify the signed-in account. Please sign in again.");
       return Object.freeze({ ok: false, reason: "missing-authenticated-user" });
     }
@@ -1306,6 +1313,7 @@
     }
 
     const run = (async () => {
+      const fenceToken = accountBoundaryFence.advance(authenticatedUserId);
       const activeRaw = activeStateRaw();
       const activeOwnerId = String(originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) || "");
       const legacyOwnerId = String(originalGetItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY) || "");
@@ -1354,7 +1362,8 @@
         ok: true,
         reason: policy.reason,
         action: policy.action,
-        userId: authenticatedUserId
+        userId: authenticatedUserId,
+        token: fenceToken
       });
     })();
 
@@ -3081,7 +3090,13 @@
   }
 
   async function hydrateUserDataOnce(activeSession) {
-    session = activeSession;
+    const userId = String(activeSession?.user?.id || "");
+    const token = accountBoundaryFence?.capture?.(userId);
+    const isCurrentHydration = () => Boolean(
+      accountBoundaryFence?.isCurrent?.(token, session?.user?.id)
+    );
+    const staleHydration = () => Object.freeze({ stale: true, userId });
+    if (!userId || !isCurrentHydration()) return staleHydration();
     dispatchAuthSession();
 
     // Access/profile and sync-rollout hydration are independent network
@@ -3098,7 +3113,6 @@
       return;
     }
 
-    const userId = session.user.id;
     const storedActiveRaw = activeStateRaw();
     const activeOwner = originalGetItem.call(localStorage, ACTIVE_OWNER_KEY);
     const activeRaw =
@@ -3137,12 +3151,17 @@
         accessProfilePromise,
         rolloutHydrationPromise
       ]);
+      if (!isCurrentHydration()) return staleHydration();
       rolloutDecision = decision;
     } catch (error) {
+      if (!isCurrentHydration()) return staleHydration();
       console.error("HerdHarbor normalized authority check failed:", error);
       const offlineRaw = activeRaw || cachedRaw;
       if (offlineRaw && safeParse(offlineRaw)) {
-        if (!activeRaw) setActiveUserData(userId, offlineRaw, "normalized-authority-offline-copy");
+        if (!activeRaw) {
+          if (!isCurrentHydration()) return staleHydration();
+          setActiveUserData(userId, offlineRaw, "normalized-authority-offline-copy");
+        }
         unlockApp();
         setSyncState("Cloud authority could not be verified; this device copy was preserved.", "error");
         return;
@@ -3159,7 +3178,10 @@
       if (!rolloutDecision.ok || !rolloutDecision.snapshot) {
         const protectedRaw = activeRaw || cachedRaw;
         if (protectedRaw && safeParse(protectedRaw)) {
-          if (!activeRaw) setActiveUserData(userId, protectedRaw, "normalized-authority-protected-local");
+          if (!activeRaw) {
+            if (!isCurrentHydration()) return staleHydration();
+            setActiveUserData(userId, protectedRaw, "normalized-authority-protected-local");
+          }
           unlockApp();
           setSyncState(
             rolloutDecision?.reason === "legacy-dirty-without-record-outbox"
@@ -3201,8 +3223,10 @@
           activeRaw,
           "Local copy before loading normalized authoritative records"
         );
+        if (!isCurrentHydration()) return staleHydration();
       }
 
+      if (!isCurrentHydration()) return staleHydration();
       setActiveUserData(userId, deviceCloudRaw, "normalized-authority-hydration");
       safeStorageRemove(dirtyKey(userId));
       pendingSync = null;
@@ -3224,13 +3248,18 @@
 
     if (dirty) {
       await baselineRestorePromise;
+      if (!isCurrentHydration()) return staleHydration();
       const unsyncedRaw = activeRaw || cachedRaw;
       if (unsyncedRaw && safeParse(unsyncedRaw)) {
-        if (!activeRaw) setActiveUserData(userId, unsyncedRaw);
+        if (!activeRaw) {
+          if (!isCurrentHydration()) return staleHydration();
+          setActiveUserData(userId, unsyncedRaw);
+        }
         unlockApp();
         setSyncState("Unsynced local changes found; saving…", "working");
         pendingSync = { rawValue: unsyncedRaw, sequence: writeSequence };
         await drainSyncQueue();
+        if (!isCurrentHydration()) return staleHydration();
         return;
       }
     }
@@ -3241,12 +3270,14 @@
       legacyCloudPrefetchPromise || fetchCloudRecord(userId),
       baselineRestorePromise
     ]);
+    if (!isCurrentHydration()) return staleHydration();
 
     if (prefetchedLegacy?.error) {
       console.error("HerdHarbor cloud load failed:", prefetchedLegacy.error);
 
       const offlineRaw = activeRaw || cachedRaw;
       if (offlineRaw && safeParse(offlineRaw)) {
+        if (!isCurrentHydration()) return staleHydration();
         setActiveUserData(userId, offlineRaw);
         unlockApp();
         setSyncState("Offline copy loaded; changes will sync when connection returns.", "error");
@@ -3286,12 +3317,14 @@
       }
 
       cloudLoadResult = await fetchCloudRecord(userId);
+      if (!isCurrentHydration()) return staleHydration();
       if (cloudLoadResult?.error) {
         console.error("HerdHarbor cloud load failed:", cloudLoadResult.error);
 
         const offlineRaw = activeRaw || cachedRaw;
         if (offlineRaw && safeParse(offlineRaw)) {
-          setActiveUserData(userId, offlineRaw);
+          if (!isCurrentHydration()) return staleHydration();
+        setActiveUserData(userId, offlineRaw);
           unlockApp();
           setSyncState("Offline copy loaded; changes will sync when connection returns.", "error");
           return;
@@ -3334,10 +3367,12 @@
             data,
             "Cloud load paused because the incoming records would exceed HerdHarbor Junior's limit of 5 active animals."
           );
+          if (!isCurrentHydration()) return staleHydration();
           unlockApp();
           return;
         }
         await recordRecoverySnapshot(userId, activeRaw, "Local copy before loading newer cloud records");
+        if (!isCurrentHydration()) return staleHydration();
       }
       const normalizedCleanupNeeded =
         rolloutDecision?.stage === "dual_write" &&
@@ -3348,6 +3383,7 @@
         );
 
       const baselineRefresh = await refreshDualWriteBaselineForRemoteState();
+      if (!isCurrentHydration()) return staleHydration();
       if (baselineRefresh?.ok === false) {
         setSyncState(
           stateChanged
@@ -3358,8 +3394,10 @@
         unlockApp();
         return;
       }
+      if (!isCurrentHydration()) return staleHydration();
       setActiveUserData(userId, deviceCloudRaw);
       await writeCloudBaseline(userId, cloudRaw);
+      if (!isCurrentHydration()) return staleHydration();
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       safeStorageRemove(dirtyKey(userId));
       syncConflict = null;
@@ -3388,9 +3426,11 @@
     const newUserRaw = cachedRaw || activeRaw;
     if (newUserRaw && safeParse(newUserRaw)) {
       const stateChanged = !activeRaw || !sameState(activeRaw, newUserRaw);
+      if (!isCurrentHydration()) return staleHydration();
       setActiveUserData(userId, newUserRaw);
       pendingSync = { rawValue: newUserRaw, sequence: writeSequence };
       await drainSyncQueue();
+      if (!isCurrentHydration()) return staleHydration();
       if (stateChanged) {
         window.location.reload();
         return;
@@ -3402,6 +3442,7 @@
     if (storedActiveRaw && activeOwner && activeOwner !== userId) {
       await recordRecoverySnapshot(activeOwner, storedActiveRaw, "Retained while switching accounts");
     }
+    if (!isCurrentHydration()) return staleHydration();
     clearActiveUserData();
     safeStorageSet(ACTIVE_OWNER_KEY, userId);
     unlockApp();
@@ -3528,6 +3569,7 @@
       preserveActiveForUser(previousUserId, "Local copy retained after session ended");
       clearActiveUserData();
       resetAccountBoundaryRuntime();
+      accountBoundaryFence?.invalidate?.();
       session = null;
       normalizedCohortStatusCache = null;
       normalizedCohortStatusInFlight = null;
