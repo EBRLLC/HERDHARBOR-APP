@@ -293,15 +293,33 @@ Deno.serve(async (req) => {
     const raw = invoiceRaw(invoice);
     const subscriptionId = stringId(raw.subscription) || stringId(raw.parent?.subscription_details?.subscription);
     if (subscriptionId) {
-      const { data, error } = await admin
-        .from("subscriptions")
-        .select("id,user_id,plan_id,billing_interval,current_period_start,current_period_end,provider_subscription_id,provider_updated_at,status")
-        .eq("provider", "stripe")
-        .eq("provider_subscription_id", subscriptionId)
-        .maybeSingle();
-      if (error) throw error;
-      if (data) return { ...data, subscriptionId };
-      return null;
+      const loadByProviderSubscriptionId = async () => {
+        const { data, error } = await admin
+          .from("subscriptions")
+          .select("id,user_id,plan_id,billing_interval,current_period_start,current_period_end,provider_subscription_id,provider_updated_at,status")
+          .eq("provider", "stripe")
+          .eq("provider_subscription_id", subscriptionId)
+          .maybeSingle();
+        if (error) throw error;
+        return data;
+      };
+
+      const existing = await loadByProviderSubscriptionId();
+      if (existing) return { ...existing, subscriptionId };
+
+      // Stripe can deliver invoice.paid / invoice.payment_succeeded before
+      // customer.subscription.created. Recover that race from Stripe itself
+      // instead of marking the payment event processed without a ledger row.
+      const liveSubscription = await stripe.subscriptions.retrieve(subscriptionId);
+      const liveRaw = liveSubscription as unknown as Record<string, any>;
+      const herdHarborUserId = String(liveRaw.metadata?.herdharbor_user_id || "").trim();
+      if (!herdHarborUserId) return null;
+
+      await upsertSubscription(liveSubscription);
+      const recovered = await loadByProviderSubscriptionId();
+      if (recovered) return { ...recovered, subscriptionId };
+
+      throw new Error(`Could not resolve HerdHarbor subscription context for Stripe invoice ${invoice.id}.`);
     }
     const customerId = stringId(raw.customer);
     if (customerId) {
