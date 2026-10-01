@@ -368,6 +368,8 @@
   async function loadAccessProfile() {
     if (!session?.user?.id) return publishAccessProfile(fallbackAccessProfile());
     const userId = session.user.id;
+    const operationToken = captureAccountOperation(userId);
+    const stillCurrent = () => isAccountOperationCurrent(operationToken, userId);
     const cached = () => window.HerdHarborAccessCache?.read?.(userId);
     const initialCachedSnapshot = cached();
     if (initialCachedSnapshot) {
@@ -378,6 +380,7 @@
       });
     }
     const publishCachedOrFallback = () => {
+      if (!stillCurrent()) return accessProfile;
       const snapshot = cached();
       return publishAccessProfile(snapshot
         ? { ...snapshot, backend_ready: false, offline_cached: true }
@@ -392,9 +395,11 @@
         client.rpc("herdharbor_account_role")
       ]);
     } catch {
+      if (!stillCurrent()) return accessProfile;
       reportAccountOperationFailure("load_access");
       return publishCachedOrFallback();
     }
+    if (!stillCurrent()) return accessProfile;
     if (recordResult.error || !recordResult.data) {
       reportAccountOperationFailure("load_access");
       return publishCachedOrFallback();
@@ -410,7 +415,9 @@
       account_role: role,
       last_verified_at: new Date().toISOString()
     };
+    if (!stillCurrent()) return accessProfile;
     const stored = window.HerdHarborAccessCache?.write?.(userId, authoritative);
+    if (!stillCurrent()) return accessProfile;
     return publishAccessProfile({
       ...authoritative,
       ...(stored || {}),
@@ -421,7 +428,11 @@
 
   async function callAdminRpc(name, parameters) {
     if (!session?.user?.id) throw new Error("Sign in before managing members.");
+    const userId = String(session.user.id);
     const { data, error } = await client.rpc(name, parameters);
+    if (String(session?.user?.id || "") !== userId) {
+      throw new Error("The signed-in account changed before the request completed.");
+    }
     if (!error) return data;
     reportAccountOperationFailure(name);
     throw new Error(error.message || "The secure member-management request could not be completed.");
@@ -1284,15 +1295,35 @@
   }
 
   function resetAccountBoundaryRuntime() {
+    clearTimeout(syncTimer);
+    syncTimer = null;
+    syncDebounceStartedAt = 0;
     hydrationInFlight = null;
     hydrationUserId = "";
     lastHydratedUserId = "";
     pendingSync = null;
+    syncInFlight = null;
+    syncInFlightRaw = null;
     syncConflict = null;
+    reloadAfterSync = false;
+    normalizedRefreshInFlight = null;
     normalizedCohortStatusCache = null;
     normalizedCohortStatusInFlight = null;
     accessProfile = null;
     lastCloudCheckAt = 0;
+  }
+
+  function captureAccountOperation(userId = session?.user?.id) {
+    const id = String(userId || "");
+    return accountBoundaryFence?.capture?.(id) || null;
+  }
+
+  function isAccountOperationCurrent(token, userId = token?.userId) {
+    return Boolean(
+      token &&
+      String(userId || "") &&
+      accountBoundaryFence?.isCurrent?.(token, session?.user?.id)
+    );
   }
 
   function clearAccountSessionMarkers(userId) {
@@ -1664,6 +1695,9 @@
     }
 
     const userId = session.user.id;
+    const operationToken = captureAccountOperation(userId);
+    const stillCurrent = () => isAccountOperationCurrent(operationToken, userId);
+    if (!stillCurrent()) return false;
     let localRawBeforeMerge = null;
     let autoMerged = false;
     setSyncState("Saving to cloud…", "working");
@@ -1683,6 +1717,7 @@
         error: versionError,
         __hhTelemetry: versionTelemetry
       } = await fetchCloudVersion(userId);
+      if (!stillCurrent()) return false;
 
       if (versionError) {
         const failure = reportCloudSyncFailure("cloud-preflight-version", versionError, serializedStateBytes(rawValue), versionTelemetry);
@@ -1698,6 +1733,7 @@
           error: loadError,
           __hhTelemetry: loadTelemetry
         } = await fetchCloudRecord(userId);
+        if (!stillCurrent()) return false;
 
         if (loadError) {
           const failure = reportCloudSyncFailure("cloud-preflight", loadError, serializedStateBytes(rawValue), loadTelemetry);
@@ -1715,6 +1751,7 @@
       : null;
     const activeRaw = activeStateRaw();
     const confirmedBase = await readCloudBaseline(userId);
+    if (!stillCurrent()) return false;
     const localBaselineRaw = confirmedBase || activeRaw;
 
     if (
@@ -1731,6 +1768,7 @@
 
     if (remoteRaw && sameState(remoteRaw, rawValue)) {
       await writeCloudBaseline(userId, remoteRaw);
+      if (!stillCurrent()) return false;
       if (remoteRecord.updated_at) {
         safeStorageSet(versionKey(userId), remoteRecord.updated_at);
       }
@@ -1745,6 +1783,7 @@
         sequence,
         remoteRecord.updated_at || null
       );
+      if (!stillCurrent()) return false;
       if (!normalized.ok) {
         setSyncState(
           "Legacy cloud is saved; normalized sync is still finishing and will retry.",
@@ -1808,6 +1847,7 @@
           "Cloud copy before automatic device merge"
         )
       ]);
+      if (!stillCurrent()) return false;
       if (sequence === writeSequence) {
         setActiveUserData(userId, rawValue);
       }
@@ -1817,6 +1857,7 @@
 
     if (options.force && remoteRaw) {
       await recordRecoverySnapshot(userId, remoteRaw, "Cloud copy before manual conflict resolution");
+      if (!stillCurrent()) return false;
     }
 
     if (sequence < writeSequence && pendingSync && !options.force) {
@@ -1834,6 +1875,7 @@
       appState,
       remoteRecord || null
     );
+    if (!stillCurrent()) return false;
 
     if (error) {
       const failure = reportCloudSyncFailure("cloud-save", error, serializedStateBytes(rawValue), saveTelemetry);
@@ -1845,6 +1887,7 @@
 
     if (raced) {
       const latest = await fetchCloudRecord(userId);
+      if (!stillCurrent()) return false;
       if (latest.error) {
         reportCloudSyncFailure(
           "cloud-race-reload",
@@ -1909,6 +1952,7 @@
         }
 
         const retry = await writeCloudRecord(userId, rebasedState, latest.data);
+        if (!stillCurrent()) return false;
         if (retry.error) {
           const failure = reportCloudSyncFailure(
             "cloud-race-retry",
@@ -1924,6 +1968,7 @@
 
         if (retry.raced) {
           const newest = await fetchCloudRecord(userId);
+          if (!stillCurrent()) return false;
           if (newest.error) {
             reportCloudSyncFailure(
               "cloud-race-retry-reload",
@@ -1960,6 +2005,7 @@
       ? JSON.stringify(savedRecord.app_state)
       : rawValue;
     await writeCloudBaseline(userId, savedRaw);
+    if (!stillCurrent()) return false;
     if (savedRecord?.updated_at) {
       safeStorageSet(versionKey(userId), savedRecord.updated_at);
     }
@@ -2003,6 +2049,7 @@
       sequence,
       savedRecord?.updated_at || null
     );
+    if (!stillCurrent()) return false;
     if (!normalized.ok) {
       const deferredForNewerLocalSave =
         normalized?.result?.authoritativeLegacyReconcile?.reason === "local-state-ahead-of-legacy" &&
@@ -2029,32 +2076,45 @@
   async function drainSyncQueue() {
     if (syncInFlight) return syncInFlight;
 
-    syncInFlight = (async () => {
+    const userId = String(session?.user?.id || "");
+    const operationToken = captureAccountOperation(userId);
+    const stillCurrent = () => isAccountOperationCurrent(operationToken, userId);
+    if (!userId || !stillCurrent()) return false;
+
+    const run = (async () => {
       let lastResult = true;
-      while (pendingSync) {
+      while (pendingSync && stillCurrent()) {
         const next = pendingSync;
         pendingSync = null;
         syncInFlightRaw = String(next.rawValue || "");
         try {
           lastResult = await syncValueToCloud(next.rawValue, next.sequence);
         } finally {
-          syncInFlightRaw = null;
+          if (stillCurrent()) syncInFlightRaw = null;
         }
+        if (!stillCurrent()) return false;
         if (!lastResult && syncConflict) break;
       }
       return lastResult;
     })();
 
+    syncInFlight = run;
     try {
-      return await syncInFlight;
+      return await run;
     } finally {
-      syncInFlight = null;
-      syncInFlightRaw = null;
-      if (pendingSync && !syncConflict) {
-        queueMicrotask(() => drainSyncQueue());
-      } else if (reloadAfterSync && !syncConflict) {
-        reloadAfterSync = false;
-        setTimeout(() => window.location.reload(), 0);
+      if (syncInFlight === run) {
+        syncInFlight = null;
+        syncInFlightRaw = null;
+      }
+      if (stillCurrent()) {
+        if (pendingSync && !syncConflict) {
+          queueMicrotask(() => drainSyncQueue());
+        } else if (reloadAfterSync && !syncConflict) {
+          reloadAfterSync = false;
+          setTimeout(() => {
+            if (stillCurrent()) window.location.reload();
+          }, 0);
+        }
       }
     }
   }
@@ -2184,7 +2244,12 @@
 
   async function invokeFunction(name, body = {}) {
     if (!session?.user?.id) throw new Error("Sign in before using this secure service.");
+    const userId = String(session.user.id);
+    const operationToken = captureAccountOperation(userId);
     const { data, error } = await client.functions.invoke(name, { body });
+    if (!isAccountOperationCurrent(operationToken, userId)) {
+      throw new Error("The signed-in account changed before the secure request completed.");
+    }
     if (error) throw new Error(error.message || `The ${name} service could not complete the request.`);
     return data;
   }
@@ -2195,7 +2260,14 @@
       error.code = "authentication_required";
       throw error;
     }
+    const userId = String(session.user.id);
+    const operationToken = captureAccountOperation(userId);
     const { data, error } = await client.functions.invoke(name, { body });
+    if (!isAccountOperationCurrent(operationToken, userId)) {
+      const accountChanged = new Error("The signed-in account changed before the secure request completed.");
+      accountChanged.code = "account_changed";
+      throw accountChanged;
+    }
     if (!error) return data;
 
     let diagnostic = null;
@@ -2234,11 +2306,18 @@
       throw new Error("Connect to the internet before submitting a deletion request.");
     }
 
-    const userId = session.user.id;
+    const userId = String(session.user.id);
+    const userEmail = String(session.user.email);
+    const operationToken = captureAccountOperation(userId);
+    const stillCurrent = () => isAccountOperationCurrent(operationToken, userId);
+    if (!stillCurrent()) throw new Error("The signed-in account changed. Reopen account deletion and try again.");
+
     const dirty = hasPendingCloudMutations(userId);
     if (dirty && !(await syncNow())) {
+      if (!stillCurrent()) throw new Error("The signed-in account changed. Reopen account deletion and try again.");
       throw new Error("Your latest records have not synced. Download a backup, reconnect, and try again.");
     }
+    if (!stillCurrent()) throw new Error("The signed-in account changed. Reopen account deletion and try again.");
 
     let marketCleanup = { backendConfirmed: false, localQueueCleared: true };
     try {
@@ -2246,12 +2325,13 @@
     } catch {
       // Market Analytics cleanup is optional; the canonical deletion request must still proceed.
     }
+    if (!stillCurrent()) throw new Error("The signed-in account changed. Reopen account deletion and try again.");
 
     const formData = new FormData();
     formData.set("_subject", "HerdHarbor account deletion request");
     formData.set("request_type", "Account and associated data deletion");
     formData.set("request_source", "Signed-in HerdHarbor Settings");
-    formData.set("account_email", session.user.email);
+    formData.set("account_email", userEmail);
     formData.set("account_user_id", userId);
     formData.set("confirmation", confirmation);
     formData.set("reason", String(reason || "").slice(0, 1000));
@@ -2265,23 +2345,33 @@
       body: formData,
       headers: { Accept: "application/json" }
     });
+    if (!stillCurrent()) {
+      throw new Error("The signed-in account changed before the deletion request completed.");
+    }
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
+      if (!stillCurrent()) throw new Error("The signed-in account changed before the deletion request completed.");
       throw new Error(payload?.errors?.[0]?.message || "The deletion request could not be submitted.");
     }
-    return { ok: true, email: session.user.email };
+    return { ok: true, email: userEmail };
   }
 
   async function checkNormalizedAuthorityChanges() {
+    const userIdAtStart = String(session?.user?.id || "");
+    const operationToken = captureAccountOperation(userIdAtStart);
+    const stillCurrent = () => isAccountOperationCurrent(operationToken, userIdAtStart);
+
     if (!normalizedAuthorityActive()) {
       await refreshNormalizedAuthorityIfEligible();
+      if (!stillCurrent()) return false;
     }
     if (!normalizedAuthorityActive()) return null;
     if (normalizedRefreshInFlight) return normalizedRefreshInFlight;
 
-    normalizedRefreshInFlight = (async () => {
+    const run = (async () => {
       try {
         const result = await normalizedRollout.refreshAuthoritative();
+        if (!stillCurrent()) return false;
         if (result?.reason === "normalized-not-authoritative") return null;
         if (!result?.ok) {
           setSyncState("Normalized cloud refresh is unavailable; this device copy was not overwritten.", "error");
@@ -2293,8 +2383,8 @@
           return false;
         }
 
-        const userId = session?.user?.id;
-        if (!userId) return false;
+        const userId = userIdAtStart;
+        if (!userId || !stillCurrent()) return false;
         const remoteRaw = JSON.stringify(result.snapshot);
         const activeRaw = activeStateRaw();
         if (activeRaw && sameState(activeRaw, remoteRaw)) {
@@ -2321,26 +2411,30 @@
             activeRaw,
             "Local copy before receiving normalized cloud changes"
           );
+          if (!stillCurrent()) return false;
         }
-        if (hasPendingCloudMutations(userId)) {
+        if (!stillCurrent() || hasPendingCloudMutations(userId)) {
           return false;
         }
 
+        if (!stillCurrent()) return false;
         setActiveUserData(userId, deviceCloudRaw, "normalized-cloud-state-replace");
         safeStorageRemove(dirtyKey(userId));
         setSyncState("Newer normalized cloud records found; reloading…", "success");
-        window.location.reload();
+        if (stillCurrent()) window.location.reload();
         return true;
       } catch (error) {
+        if (!stillCurrent()) return false;
         console.error("HerdHarbor normalized cloud refresh failed:", error);
         setSyncState("Normalized cloud refresh failed; this device copy was not overwritten.", "error");
         return false;
       } finally {
-        normalizedRefreshInFlight = null;
+        if (normalizedRefreshInFlight === run) normalizedRefreshInFlight = null;
       }
     })();
 
-    return normalizedRefreshInFlight;
+    normalizedRefreshInFlight = run;
+    return run;
   }
 
   async function refreshDualWriteBaselineForRemoteState() {
@@ -2376,14 +2470,17 @@
   }
 
   async function checkForCloudChanges() {
-    const userId = session?.user?.id;
-    if (!userId || syncInFlight || syncConflict) return false;
+    const userId = String(session?.user?.id || "");
+    const operationToken = captureAccountOperation(userId);
+    const stillCurrent = () => isAccountOperationCurrent(operationToken, userId);
+    if (!userId || !stillCurrent() || syncInFlight || syncConflict) return false;
 
     const now = Date.now();
     if (now - lastCloudCheckAt < 15000) return false;
     lastCloudCheckAt = now;
 
     const normalizedHandled = await checkNormalizedAuthorityChanges();
+    if (!stillCurrent()) return false;
     if (normalizedHandled !== null) return normalizedHandled;
 
     if (originalGetItem.call(localStorage, dirtyKey(userId)) === "1") {
@@ -2392,6 +2489,7 @@
 
     const knownVersion = originalGetItem.call(localStorage, versionKey(userId)) || "";
     const { data: versionRecord, error: versionError } = await fetchCloudVersion(userId);
+    if (!stillCurrent()) return false;
     if (versionError || !versionRecord) return false;
 
     const remoteVersion = String(versionRecord.updated_at || "");
@@ -2401,6 +2499,7 @@
     }
 
     const { data, error } = await fetchCloudRecord(userId);
+    if (!stillCurrent()) return false;
     if (error || !data?.app_state) return false;
 
     // A local edit can occur while the cloud refresh request is in flight
@@ -2415,9 +2514,11 @@
     const remoteRaw = JSON.stringify(data.app_state);
     const activeRaw = activeStateRaw();
     const confirmedBase = await readCloudBaseline(userId);
+    if (!stillCurrent()) return false;
 
     if (activeRaw && sameState(activeRaw, remoteRaw)) {
       const baselineRefresh = await refreshDualWriteBaselineForRemoteState();
+      if (!stillCurrent()) return false;
       if (baselineRefresh?.ok === false) {
         setSyncState(
           "Cloud records match, but normalized sync protection could not refresh yet.",
@@ -2426,6 +2527,7 @@
         return false;
       }
       await writeCloudBaseline(userId, remoteRaw);
+      if (!stillCurrent()) return false;
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       setSyncState("Saved to cloud", "success");
       return false;
@@ -2433,6 +2535,7 @@
 
     if (confirmedBase && sameState(activeRaw, confirmedBase)) {
       await recordRecoverySnapshot(userId, activeRaw, "Local copy before receiving another device's changes");
+      if (!stillCurrent()) return false;
 
       // The recovery snapshot is asynchronous. A local edit made while it is
       // being stored must not be overwritten by the cloud copy we fetched
@@ -2468,8 +2571,10 @@
         );
         return false;
       }
+      if (!stillCurrent()) return false;
       setActiveUserData(userId, deviceCloudRaw);
       await writeCloudBaseline(userId, remoteRaw);
+      if (!stillCurrent()) return false;
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       setSyncState("Newer cloud records found; reloading…", "success");
       window.location.reload();
