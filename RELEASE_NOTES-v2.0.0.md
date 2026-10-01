@@ -53,7 +53,7 @@ Normal member-facing UI should show product feature names rather than internal e
 - Android package: `com.ebrllc.herdharbor`
 - monitoring release: `HerdHarbor@2.0.0`
 
-The PWA/service-worker cache identity is promoted in the dedicated 2.0.0 PWA cutover phase rather than being changed implicitly by this contract phase.
+The source PWA/service-worker shell now uses the 2.0.0 release identity. The release-asset builder still replaces the source shell name with a content-derived cache generation in the staged production artifact.
 
 ## Release safety
 
