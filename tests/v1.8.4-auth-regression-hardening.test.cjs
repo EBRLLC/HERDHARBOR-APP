@@ -53,3 +53,13 @@ test("account switching fences prior local state and removes the retired active-
   assert.match(cloud,/clearActiveUserData\(\);[\s\S]*safeStorageSet\(ACTIVE_OWNER_KEY, authenticatedUserId\)/);
   assert.match(cloud,/originalRemoveItem\.call\(localStorage, LEGACY_ACTIVE_OWNER_KEY\)/);
 });
+
+
+test("cloud saves and sync queues are fenced to the authenticated account generation",()=>{
+  const cloud=read("herdharbor-cloud.js");
+  assert.match(cloud,/async function syncValueToCloud[\s\S]*captureAccountOperation\(userId\)/);
+  assert.match(cloud,/async function syncValueToCloud[\s\S]*isAccountOperationCurrent\(operationToken, userId\)/);
+  assert.match(cloud,/async function drainSyncQueue[\s\S]*while \(pendingSync && stillCurrent\(\)\)/);
+  assert.match(cloud,/async function markConflict[\s\S]*if \(!stillCurrent\(\)\) return false/);
+  assert.match(cloud,/clearTimeout\(syncTimer\)[\s\S]*syncInFlight = null[\s\S]*reloadAfterSync = false/);
+});
