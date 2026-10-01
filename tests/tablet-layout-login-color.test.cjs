@@ -54,7 +54,7 @@ if(webVersion==="1.8.1")assert.match(worker,/v1\.8\.1-alpha-october-subscription
 assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /herdharbor-cloud\.js\?v=35/);
 assert.match(worker, /pedigree-visual\.css\?v=2/);
-assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=1\.7\.1/);
+assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=2/);
 assert.ok(worker.includes("shows-v1.6.1.css?v=1.7.1"));
 assert.match(worker, /shows-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /shows-v1\.6\.1-hardening\.js\?v=1\.7\.1/);

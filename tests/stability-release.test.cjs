@@ -133,12 +133,14 @@ assert.match(serviceWorker, /settings-runtime-v1\.8\.3\.js\?v=1/);
 assert.match(serviceWorker, /pedigree-visual\.css\?v=2/);
 assert.match(serviceWorker, /pedigree-visual\.js\?v=2/);
 for (const asset of [
-  "pedigree-genetics-v1.6.1.css", "pedigree-genetics-v1.6.1.js", "breeding-intelligence-core-v1.6.1.js",
+  "pedigree-genetics-v1.6.1.css", "breeding-intelligence-core-v1.6.1.js",
   "breeding-intelligence-v1.6.1.css", "breeding-intelligence-v1.6.1.js", "rabbit-records-v1.6.1.js",
   "rabbit-genetics-engine-advanced-v1.6.1.js", "rabbit-genetics-runtime-v1.6.1.js",
   "rabbit-genetics-ui-compat-v1.6.1.js",
-  "herdharbor-release-v1.6.1.js", "shows-v1.6.1.css", "shows-v1.6.1.js", "shows-v1.6.1-hardening.js"
+  "shows-v1.6.1.css", "shows-v1.6.1.js", "shows-v1.6.1-hardening.js"
 ]) assert.ok(serviceWorker.includes(`${asset}?v=1.7.1`), `${asset} is not cached with preserved v1.7.1 identity`);
+assert.match(serviceWorker, /pedigree-genetics-v1\.6\.1\.js\?v=2/);
+assert.match(serviceWorker, /herdharbor-release-v1\.6\.1\.js\?v=2/);
 assert.match(serviceWorker, /rabbit-genetics-v1\.6\.1\.js\?v=2/);
 assert.match(serviceWorker, /rabbit-genetics-ui-advanced-v1\.6\.1\.js\?v=2/);
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);

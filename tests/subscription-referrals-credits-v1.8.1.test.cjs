@@ -47,7 +47,7 @@ test("email-confirmation signout cannot erase the pending signup choice", () => 
   const signedOut = policy.match(/herdharbor:auth-session[\s\S]{0,700}?registration-profile/)?.[0] || "";
   assert.match(signedOut, /signedIn === false/);
   assert.doesNotMatch(signedOut, /clearChoice\s*\(\)/);
-  assert.match(policy, /registration-profile[\s\S]*complete === true\) clearChoice\(\)/);
+  assert.match(policy, /herdharbor:registration-profile[\s\S]*event\.detail\?\.complete === true[\s\S]{0,160}?clearChoice\(\)/);
   assert.match(policy, /CHOICE_MAX_AGE_MS\s*=\s*24 \* 60 \* 60 \* 1000/);
 });
 

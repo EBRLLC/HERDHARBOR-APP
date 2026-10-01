@@ -41,7 +41,7 @@ assert.match(appGradle, /https:\/\/app\.herdharbor\.com\/manifest\.json/);
 // the installed TWA.
 assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1"/);
 assert.match(worker, /rabbit-records-v1\.6\.1\.js\?v=1\.7\.1/);
-assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=1\.7\.1/);
+assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=2/);
 assert.match(worker, /shows-v1\.6\.1\.css\?v=1\.7\.1/);
 assert.match(worker, /shows-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /shows-v1\.6\.1-hardening\.js\?v=1\.7\.1/);

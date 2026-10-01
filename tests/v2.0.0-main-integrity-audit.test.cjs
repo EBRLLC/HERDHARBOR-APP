@@ -162,6 +162,12 @@ test("all dynamically rendered buttons in the production module graph expose a r
           "q('#" + id + "')",
           '$("#' + id + '")',
           "$('#" + id + "')"
+          'querySelector("#' + id + '")',
+          "querySelector('#" + id + "')",
+          'closest?.("#' + id + '")',
+          "closest?.('#" + id + "')",
+          'closest("#' + id + '")',
+          "closest('#" + id + "')"
         ].some((needle) => activeSource.includes(needle));
         if (idBound) continue;
       }
