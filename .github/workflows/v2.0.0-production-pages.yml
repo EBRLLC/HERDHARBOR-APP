@@ -66,8 +66,7 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Verify 2.0.0 release and web regression contract
         run: |
-          npm run test:release
-          npm run test:v2.0.0
+          npm run test:v2.0.0-final
           node --test tests/workflow-phase1-v1.7.1.test.cjs
           npm run test:health
           npm run test:genetics
