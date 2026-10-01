@@ -74,13 +74,13 @@ test("AI provider failures fail closed before canonical farm-state mutation", ()
   assert.doesNotMatch(photoEdge, /commitState|state\.animals|state\.health/);
 });
 
-test("2.0.0 release contract keeps AI visibility classifications explicit", () => {
-  assert.match(contract, /Manual paper pedigree import[\s\S]*production\/public/i);
-  assert.match(contract, /Automatic paper pedigree photo reading[\s\S]*hidden\/testing-only/i);
-  assert.match(contract, /Voice-assisted entry[\s\S]*hidden\/testing-only/i);
-  assert.match(contract, /Photo-assisted record entry[\s\S]*hidden\/testing-only/i);
-  assert.match(contract, /Multi-photo paper-pedigree merge[\s\S]*deferred/i);
-  assert.match(contract, /Autonomous AI mutation of canonical farm records[\s\S]*disabled/i);
+test("2.0.0 release contract keeps AI availability boundaries explicit without tester-facing terminology", () => {
+  assert.match(contract, /Paper Pedigree photo reading[\s\S]*controlled-access/i);
+  assert.match(contract, /standard accounts do not gain the hidden AI read action/i);
+  assert.match(contract, /Voice-assisted entry[\s\S]*production-deployed, controlled-access/i);
+  assert.match(contract, /Photo-assisted entry[\s\S]*production-deployed, controlled-access/i);
+  assert.match(contract, /Multi-photo pedigree merging remains deferred/i);
+  assert.match(contract, /no direct canonical persistence/i);
 });
 
 test("normal member UI does not advertise internal AI engine/model versions", () => {
