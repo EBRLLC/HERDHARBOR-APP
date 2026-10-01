@@ -2,14 +2,14 @@
   "use strict";
 
   const release = Object.freeze({
-    version: window.HerdHarborBuild?.version || "1.7.1",
-    buildId: window.HerdHarborBuild?.buildId || "multispecies-genetics-foundation-1",
-    build: window.HerdHarborBuild?.build || "1.7.1-alpha-multispecies-genetics-foundation-1",
+    version: window.HerdHarborBuild?.version || "2.0.0",
+    buildId: window.HerdHarborBuild?.buildId || "v2.0.0-release-1",
+    build: window.HerdHarborBuild?.build || "2.0.0-v2.0.0-release-1",
     howToUrl: "https://herdharbor.com/how-to/",
     featureFlags: Object.freeze({
       adminMemberManagementEnabled: true,
       juniorPlanEnabled: true,
-      billingEnabled: false
+      billingEnabled: true
     }),
     plans: Object.freeze({
       junior: Object.freeze({ label: "Junior", priceMonthly: 0, maxActiveAnimals: 5 }),
