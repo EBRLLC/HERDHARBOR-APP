@@ -302,3 +302,41 @@ test("stable release bootstrap cannot disable live billing or execute twice thro
   assert.match(html, /pwa\.js\?v=33/);
   assert.match(worker, /\.\/pwa\.js\?v=33/);
 });
+
+
+test("all root browser runtimes avoid stale external origins and missing Edge Function slugs", () => {
+  const browserFiles = fs.readdirSync(root)
+    .filter((name) => name.endsWith(".js"))
+    .filter((name) => !name.startsWith("vendor"))
+    .sort();
+  const approvedOrigins = new Set([
+    "https://okynebbksifqppwicghj.supabase.co",
+    "https://formspree.io",
+    "https://herdharbor.com",
+    "https://app.herdharbor.com"
+  ]);
+  const unexpectedOrigins = new Set();
+  const functionSlugs = new Set();
+
+  for (const file of browserFiles) {
+    const source = read(file);
+    for (const match of source.matchAll(/https?:\/\/[^\s"'\x60)<>{}]+/g)) {
+      try {
+        const origin = new URL(match[0]).origin;
+        if (!approvedOrigins.has(origin)) unexpectedOrigins.add(file + " -> " + origin);
+      } catch {}
+    }
+    for (const match of source.matchAll(/functions\.invoke\(\s*["']([^"']+)["']/g)) {
+      functionSlugs.add(match[1]);
+    }
+    for (const match of source.matchAll(/\/functions\/v1\/([a-z0-9-]+)/gi)) {
+      functionSlugs.add(match[1]);
+    }
+  }
+
+  assert.deepEqual([...unexpectedOrigins].sort(), [], "stale/unapproved browser origins: " + [...unexpectedOrigins].sort().join(", "));
+  const missingFunctions = [...functionSlugs]
+    .filter((slug) => !exists(path.join("supabase", "functions", slug, "index.ts")))
+    .sort();
+  assert.deepEqual(missingFunctions, [], "browser references missing Edge Functions: " + missingFunctions.join(", "));
+});
