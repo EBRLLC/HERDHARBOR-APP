@@ -54,7 +54,7 @@ test("formal 2.0.0 release artifacts and member-language gates exist", () => {
 });
 
 test("2.0.0 inherits the complete 1.8.x stability regression chain", () => {
-  assert.match(pkg.scripts["test:v2.0.0-regression"], /test:v1\.8\.4/);
+  assert.match(pkg.scripts["test:v2.0.0-regression"], /test:v1\.8\.3/);\n  assert.match(pkg.scripts["test:v2.0.0-regression"], /test:v1\.8\.4-regression/);
   assert.match(pkg.scripts["test:v2.0.0-regression"], /v2\.0\.0-production-language/);
   assert.match(pkg.scripts["test:v2.0.0-regression"], /v2\.0\.0-component-language/);
   assert.match(pkg.scripts["test:v2.0.0-regression"], /v2\.0\.0-release-contract/);
