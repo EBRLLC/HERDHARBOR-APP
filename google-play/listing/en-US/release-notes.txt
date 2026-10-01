@@ -1,5 +1,1 @@
-HerdHarbor 2.0.0
-
-Stable farm management release with specialized rabbit-management workflows, protected cloud synchronization, account isolation, subscriptions, reporting, offline recovery, and improved install/update reliability.
-
-This release preserves existing records and established internal component compatibility while promoting HerdHarbor to the stable 2.0.0 application release.
+HerdHarbor is now the stable farm management release, with specialized rabbit-management workflows, protected cloud sync, stronger cross-device account handling, subscription billing, referrals and credits, reporting, and installable web-app support. This Android release keeps the same HerdHarbor account and records used on the web.
