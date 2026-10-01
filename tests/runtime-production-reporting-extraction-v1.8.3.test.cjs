@@ -176,8 +176,8 @@ test("shell loads/caches Production/Reporting before composition runtime", () =>
 });
 
 test("Phase 6G extraction remains compatible with formal v1.8.4 and does not activate normalized sync", () => {
-  assert.equal(pkg.version, "1.8.4");
-  assert.match(read("herdharbor-build.js"), /version:\s*"1\.8\.4"/);
+  assert.equal(pkg.version, "2.0.0");
+  assert.match(read("herdharbor-build.js"), /version:\s*"2\.0\.0"/);
   assert.doesNotMatch(html, /cloud-sync-rollout-control-v1\.8\.3\.js/);
   assert.match(pkg.scripts["test:v1.8.3"], /runtime-production-reporting-extraction-v1\.8\.3\.test\.cjs/);
 });
