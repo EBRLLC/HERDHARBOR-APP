@@ -1284,15 +1284,35 @@
   }
 
   function resetAccountBoundaryRuntime() {
+    clearTimeout(syncTimer);
+    syncTimer = null;
+    syncDebounceStartedAt = 0;
     hydrationInFlight = null;
     hydrationUserId = "";
     lastHydratedUserId = "";
     pendingSync = null;
+    syncInFlight = null;
+    syncInFlightRaw = null;
     syncConflict = null;
+    reloadAfterSync = false;
+    normalizedRefreshInFlight = null;
     normalizedCohortStatusCache = null;
     normalizedCohortStatusInFlight = null;
     accessProfile = null;
     lastCloudCheckAt = 0;
+  }
+
+  function captureAccountOperation(userId = session?.user?.id) {
+    const id = String(userId || "");
+    return accountBoundaryFence?.capture?.(id) || null;
+  }
+
+  function isAccountOperationCurrent(token, userId = token?.userId) {
+    return Boolean(
+      token &&
+      String(userId || "") &&
+      accountBoundaryFence?.isCurrent?.(token, session?.user?.id)
+    );
   }
 
   function clearAccountSessionMarkers(userId) {
@@ -1428,33 +1448,42 @@
         return Object.freeze({ ok: false, reason: policy?.reason || "boundary-policy-unavailable" });
       }
 
-      if (policy.action === "switch-owner") {
-        if (policy.staleOwnerId && activeRaw && safeParse(activeRaw)) {
+      const execution = await window.HerdHarborAccountBoundaryCore?.applyPlan?.({
+        authenticatedUserId,
+        activeOwnerId,
+        legacyOwnerId,
+        hasActiveState: Boolean(activeRaw && safeParse(activeRaw)),
+        authenticatedCacheMatchesActive
+      }, {
+        preserve: async (staleOwnerId) => {
           preserveActiveForUser(
-            policy.staleOwnerId,
+            staleOwnerId,
             options.reason || "Local copy retained before account boundary recovery"
           );
+          clearAccountSessionMarkers(staleOwnerId);
+          clearAccountSessionMarkers(authenticatedUserId);
+          return true;
+        },
+        clearActive: clearActiveUserData,
+        resetRuntime: resetAccountBoundaryRuntime,
+        setOwner: (userId) => safeStorageSet(ACTIVE_OWNER_KEY, userId),
+        removeLegacy: () => {
+          try {
+            originalRemoveItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY);
+          } catch {}
         }
-        clearAccountSessionMarkers(policy.staleOwnerId);
-        clearAccountSessionMarkers(authenticatedUserId);
-        clearActiveUserData();
-        resetAccountBoundaryRuntime();
-        safeStorageSet(ACTIVE_OWNER_KEY, authenticatedUserId);
-      } else if (policy.action === "adopt-owner" || policy.action === "clean-login") {
-        safeStorageSet(ACTIVE_OWNER_KEY, authenticatedUserId);
+      });
+
+      if (!execution?.ok) {
+        showAccountBoundaryRecovery(
+          options.message || "HerdHarbor could not safely refresh the local account boundary. Your records were not removed."
+        );
+        return Object.freeze({ ok: false, reason: execution?.reason || "boundary-transition-failed" });
       }
 
-      try {
-        originalRemoveItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY);
-      } catch {}
-
       return Object.freeze({
-        ok: true,
-        reason: policy.reason,
-        action: policy.action,
-        userId: authenticatedUserId,
-        token: fenceToken,
-        staleOwnerId: policy.staleOwnerId || ""
+        ...execution,
+        token: fenceToken
       });
     })();
 
