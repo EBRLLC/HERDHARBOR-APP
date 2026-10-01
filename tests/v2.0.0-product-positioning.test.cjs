@@ -55,3 +55,16 @@ test("current repository README is stable and contains no Alpha/tester guidance"
   assert.match(readme, /specialized depth in rabbit management/i);
   assert.doesNotMatch(readme, /active alpha development|Tester guidance|Alpha v1\.8\.4/i);
 });
+
+test("onboarding and How To Center avoid tester, version-current, and engine branding", () => {
+  const index = read("index.html");
+  const help = read("how-to/index.html");
+
+  assert.match(index, /AI tools — Coming Soon/);
+  assert.doesNotMatch(index, /being tested before wider release/i);
+
+  assert.doesNotMatch(help, /\bversion-current\b/i);
+  assert.doesNotMatch(help, /species engine|multi-species engine|engines available/i);
+  assert.match(help, /specialized rabbit genetics tools/i);
+  assert.match(help, /appropriate genetics tools/i);
+});
