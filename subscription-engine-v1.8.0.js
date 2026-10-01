@@ -397,7 +397,7 @@
     push("single-panel", duplicatePanels <= 1, "Subscription panel uniqueness", `${duplicatePanels} panel instance${duplicatePanels === 1 ? "" : "s"}.`);
 
     const buildVersion = String(window.HerdHarborBuild?.version || "");
-    push("build-version", buildVersion === VERSION, "Release identity", buildVersion ? `Build reports v${buildVersion}.` : "Build metadata unavailable.");
+    push("build-version", buildVersion === VERSION, "Release identity", buildVersion ? "Release metadata is available." : "Release metadata unavailable.");
 
     const refreshAge = state.refreshedAt ? Date.now() - new Date(state.refreshedAt).getTime() : Infinity;
     push(
@@ -425,7 +425,7 @@
       "legacy-isolation",
       window.HerdHarborBilling !== window.HerdHarborSubscriptionEngine,
       "Legacy billing isolation",
-      "The v1.8.0 engine uses a separate namespace from legacy billing."
+      "Subscription management remains isolated from the retired billing path."
     );
     return results;
   }
