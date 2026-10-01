@@ -2300,15 +2300,21 @@
   }
 
   async function checkNormalizedAuthorityChanges() {
+    const userIdAtStart = String(session?.user?.id || "");
+    const operationToken = captureAccountOperation(userIdAtStart);
+    const stillCurrent = () => isAccountOperationCurrent(operationToken, userIdAtStart);
+
     if (!normalizedAuthorityActive()) {
       await refreshNormalizedAuthorityIfEligible();
+      if (!stillCurrent()) return false;
     }
     if (!normalizedAuthorityActive()) return null;
     if (normalizedRefreshInFlight) return normalizedRefreshInFlight;
 
-    normalizedRefreshInFlight = (async () => {
+    const run = (async () => {
       try {
         const result = await normalizedRollout.refreshAuthoritative();
+        if (!stillCurrent()) return false;
         if (result?.reason === "normalized-not-authoritative") return null;
         if (!result?.ok) {
           setSyncState("Normalized cloud refresh is unavailable; this device copy was not overwritten.", "error");
@@ -2320,8 +2326,8 @@
           return false;
         }
 
-        const userId = session?.user?.id;
-        if (!userId) return false;
+        const userId = userIdAtStart;
+        if (!userId || !stillCurrent()) return false;
         const remoteRaw = JSON.stringify(result.snapshot);
         const activeRaw = activeStateRaw();
         if (activeRaw && sameState(activeRaw, remoteRaw)) {
@@ -2348,12 +2354,14 @@
             activeRaw,
             "Local copy before receiving normalized cloud changes"
           );
+          if (!stillCurrent()) return false;
         }
-        if (hasPendingCloudMutations(userId)) {
+        if (!stillCurrent() || hasPendingCloudMutations(userId)) {
           return false;
         }
 
-        setActiveUserData(userId, deviceCloudRaw, "normalized-cloud-state-replace");
+        if (!stillCurrent()) return false;
+        if (!setActiveUserData(userId, deviceCloudRaw, "normalized-cloud-state-replace")) return false;
         safeStorageRemove(dirtyKey(userId));
         setSyncState("Newer normalized cloud records found; reloading…", "success");
         window.location.reload();
@@ -2363,11 +2371,12 @@
         setSyncState("Normalized cloud refresh failed; this device copy was not overwritten.", "error");
         return false;
       } finally {
-        normalizedRefreshInFlight = null;
+        if (normalizedRefreshInFlight === run) normalizedRefreshInFlight = null;
       }
     })();
 
-    return normalizedRefreshInFlight;
+    normalizedRefreshInFlight = run;
+    return run;
   }
 
   async function refreshDualWriteBaselineForRemoteState() {
