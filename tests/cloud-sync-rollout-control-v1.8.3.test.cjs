@@ -243,7 +243,7 @@ test("controlled rollout runtime is loaded while normalized dependencies stay se
   const indexSource = fs.readFileSync(path.join(root, "index.html"), "utf8");
   const cloudSource = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
   const runtimeSource = fs.readFileSync(path.join(root, "cloud-sync-rollout-runtime-v1.8.4.js"), "utf8");
-  assert.equal(packageJson.version, "1.8.4");
+  assert.equal(packageJson.version, "2.0.0");
   assert.match(indexSource, /cloud-sync-rollout-runtime-v1\.8\.4\.js/);
   assert.doesNotMatch(indexSource, /cloud-sync-reconciliation-v1\.8\.3\.js/);
   assert.doesNotMatch(indexSource, /cloud-sync-rollout-control-v1\.8\.3\.js/);

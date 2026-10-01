@@ -107,6 +107,6 @@ test('release loader and service worker include performance assets under the for
     assert.match(build,new RegExp(asset.replace(/\./g,'\\.')));
     assert.match(sw,new RegExp(asset.replace(/\./g,'\\.')));
   }
-  assert.match(build,/version:\s*"1\.8\.4"/);
-  assert.match(build,/buildId:\s*"alpha-v1\.8\.4-release-1"/);
+  assert.match(build,/version:\s*"2\.0\.0"/);
+  assert.match(build,/buildId:\s*"v2\.0\.0-release-1"/);
 });

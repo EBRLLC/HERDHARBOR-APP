@@ -42,7 +42,7 @@ test("shared genetics UI exposes the v1.7.1 foundation surface", () => {
   assert.equal(typeof UI.renderBreeding, "function");
 });
 
-test("foundation UI clearly reports architecture-only status and preserves unclassified records", () => {
+test("genetics UI uses product-facing availability language and preserves unclassified records", () => {
   const UI = loadUi();
   const html = UI.render({
     id: "c1",
@@ -57,13 +57,13 @@ test("foundation UI clearly reports architecture-only status and preserves uncla
   });
 
   assert.match(html, /Cattle Genetics/);
-  assert.match(html, /Alpha v1\.7\.1 · Shared genetics API/);
-  assert.match(html, /Foundation ready/);
-  assert.match(html, /Architecture first\./);
+  assert.match(html, /<span class="eyebrow">Genetics<\/span>/);
+  assert.match(html, /Records only/);
+  assert.match(html, /Genetics overview\./);
   assert.match(html, /Reviewed loci<\/small><strong>0<\/strong>/);
   assert.match(html, /Reviewed traits<\/small><strong>0<\/strong>/);
-  assert.match(html, /No species-specific gene library bundled yet\./);
-  assert.match(html, /v1\.7\.2/);
+  assert.match(html, /Genetics information is not yet available for this species\./);
+  assert.match(html, /HerdHarbor preserves existing cattle genetics records/);
   assert.match(html, /1<\/strong> unclassified trait record/);
   assert.match(html, /Unknown and partial genetics stay unknown/);
   assert.doesNotMatch(html, /25%|50%|75%|100%/);

@@ -7,7 +7,7 @@
 - **Government app:** No
 - **Health app:** No medical diagnosis or treatment; livestock health notes are user-entered farm records
 - **Financial features:** Farm bookkeeping records only; no loans, banking, investments, money transfer, or payment-card processing
-- **App access:** Review requires a working test account because core cloud features are behind sign-in. Create that account in Play Console's App access section and do not place its password in this public repository.
+- **App access:** Review requires a working review account because core cloud features are behind sign-in. Configure that account in Play Console's App access section and do not place its password in this public repository.
 - **Privacy policy:** `https://herdharbor.com/privacy/`
 - **Account deletion URL:** `https://herdharbor.com/delete-account/`
 - **Support URL:** `https://herdharbor.com/support/`

@@ -186,7 +186,7 @@
   const CLOUD_SYNC_ENGINE = "legacy-full-state";
   const CLOUD_PROVIDER = "supabase";
   const CLOUD_SYNC_COMPONENT_BUILD = "legacy-full-state-observability-3";
-  const CLOUD_SYNC_APP_RELEASE = "1.8.4";
+  const CLOUD_SYNC_APP_RELEASE = "2.0.0";
   const CLOUD_RETRY_DELAYS_MS = [750, 2000];
 
   function sanitizeCloudDiagnosticText(value, maxLength = 240) {
@@ -2845,7 +2845,7 @@
       <main class="hh-auth-shell">
         <header class="hh-auth-brand">
           <h1>HerdHarbor</h1>
-          <p>Secure livestock records, available wherever you sign in</p>
+          <p>Secure farm records, available wherever you sign in</p>
         </header>
 
         <section class="hh-auth-card">

@@ -883,7 +883,7 @@
       email: data.get("email").trim(),
       createdAt: new Date().toISOString()
     };
-    recordActivity("Created the HerdHarbor alpha workspace.", "setup");
+    recordActivity("Created the HerdHarbor workspace.", "setup");
     saveState();
     showApp();
   }
@@ -963,7 +963,7 @@
     return `
       <div class="page-header">
         <div>
-          <p class="eyebrow">HerdHarbor Alpha · v${APP_VERSION}</p>
+          <p class="eyebrow">HerdHarbor</p>
           <h2>${esc(title)}</h2>
           <p>${esc(description)}</p>
         </div>
@@ -1036,11 +1036,11 @@
         `<button class="button button-ghost" data-action="add-task">+ Add task</button>
          <button class="button button-primary" data-action="add-animal">+ Add animal</button>`
       )}
-      <section class="dashboard-release-panel" aria-label="HerdHarbor Alpha v1.8.4 release highlights">
+      <section class="dashboard-release-panel" aria-label="HerdHarbor release highlights">
         <div class="dashboard-release-copy">
-          <p class="eyebrow">What’s new · v${APP_VERSION}</p>
+          <p class="eyebrow">What’s new</p>
           <h3>One connected workflow across HerdHarbor</h3>
-          <p>Animal profiles, breeding and litters, Health, tasks, sales, reporting, and analytics now work together through their individual engines to create a smoother stream from one record to the next.</p>
+          <p>Animal profiles, breeding and litters, Health, tasks, sales, reporting, and analytics now work together together to create a smoother stream from one record to the next.</p>
         </div>
         <div class="dashboard-release-points">
           <span>Animal-first workflows</span>
@@ -1049,8 +1049,8 @@
           <span>Improved mobile &amp; offline use</span>
         </div>
         <div class="dashboard-ai-soon">
-          <strong>AI-assisted tools · Coming Soon</strong>
-          <span>Paper Pedigree scanning, voice entry, and photo entry are in testing and will be included with HerdHarbor membership at no extra AI charge.</span>
+          <strong>More tools on the way</strong>
+          <span>Additional assisted workflows are being prepared for a future release.</span>
         </div>
       </section>
       <div class="stats-grid">
@@ -1505,7 +1505,7 @@
 
         <section class="wizard-panel" data-pedigree-step="1">
           <div class="wizard-heading"><h3>Choose the animal and source</h3><p>Start with the animal receiving this pedigree. A source photo or PDF is optional.</p></div>
-          <div class="pedigree-warning">Images larger than the browser limit are compressed automatically. PDF files must be 1.25 MB or smaller in this alpha.</div>
+          <div class="pedigree-warning">Images larger than the browser limit are compressed automatically. PDF files must be 1.25 MB or smaller.</div>
           <div class="form-grid two">
             <label>Animal receiving this pedigree
               <select name="subjectAnimalId" id="pedigree-subject" required>
@@ -1563,7 +1563,7 @@
           <button type="button" class="button button-primary" id="pedigree-next">Next</button>
           <button type="submit" class="button button-primary hidden" id="pedigree-confirm">Confirm & save pedigree</button>
         </div>
-      </form>`, `Guided pedigree builder · v${APP_VERSION}`);
+      </form>`, `Guided pedigree builder`);
 
     $(".modal").classList.add("modal-wide");
     const form = $("#pedigree-import-form");
@@ -1875,7 +1875,7 @@
     if (!allowed.includes(type)) throw new Error("Use a JPG, PNG, or PDF pedigree.");
 
     if (type === "application/pdf") {
-      if (file.size > 1_250_000) throw new Error("PDF pedigrees must be 1.25 MB or smaller in this browser-based alpha.");
+      if (file.size > 1_250_000) throw new Error("PDF pedigrees must be 1.25 MB or smaller in this browser.");
       return {
         fileName: file.name,
         mimeType: type,
@@ -2467,7 +2467,7 @@
       </section>
 
       <section class="certification"><p>I certify that this pedigree reflects the records entered for this animal to the best of my knowledge.</p><div class="signature">Seller signature / date</div><div class="signature">Buyer signature / date</div></section>
-      <footer class="footer"><span>Created with HerdHarbor · Livestock records without limits.</span><span>HerdHarbor Alpha v${APP_VERSION}</span></footer>
+      <footer class="footer"><span>Created with HerdHarbor · Livestock records without limits.</span><span>HerdHarbor</span></footer>
       <button class="no-print" onclick="window.print()">Print / Save PDF</button>
     </div></body></html>`;
     const mobilePrint = window.matchMedia("(max-width: 760px)").matches ||
@@ -3349,7 +3349,7 @@
   async function exportData() {
     const exportState = await stateWithPedigreeAttachments();
     const payload = JSON.stringify({
-      app: "HerdHarbor Alpha",
+      app: "HerdHarbor",
       version: APP_VERSION,
       exportedAt: new Date().toISOString(),
       data: exportState

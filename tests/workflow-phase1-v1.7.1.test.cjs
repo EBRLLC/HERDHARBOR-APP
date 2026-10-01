@@ -123,7 +123,7 @@ test('sign-in bootstrap keeps the Supabase callback deadlock guard ahead of clou
   const release=fs.readFileSync(path.join(repo,'herdharbor-release-v1.6.1.js'),'utf8');
   const cloud=fs.readFileSync(path.join(repo,'herdharbor-cloud.js'),'utf8');
   assert.ok(html.indexOf('herdharbor-release-v1.6.1.js?v=1.7.1')>=0);
-  assert.ok(html.indexOf('herdharbor-cloud.js?v=32')>html.indexOf('herdharbor-release-v1.6.1.js?v=1.7.1'));
+  assert.ok(html.indexOf('herdharbor-cloud.js?v=33')>html.indexOf('herdharbor-release-v1.6.1.js?v=1.7.1'));
   assert.match(release,/installSupabaseAuthDeadlockGuard\(\);/);
   assert.match(release,/setTimeout\.bind\(window\)|window\.setTimeout/);
   assert.match(cloud,/client\.auth\.onAuthStateChange/);
@@ -136,7 +136,7 @@ test('Phase 1 assets are cache-busted after stability repair, dark mode is expli
   const css=fs.readFileSync(path.join(repo,'workflow-phase1-v1.7.1.css'),'utf8');
   assert.match(build,/workflow-phase1-v1\.7\.1\.css\?v=2/);
   assert.match(build,/herdharbor-v1\.7\.1-stability-hotfix\.js\?v=2[\s\S]*workflow-phase1-v1\.7\.1\.js\?v=2/);
-  assert.match(sw,/const CACHE_NAME = "herdharbor-shell-v1\.(?:8\.0|8\.1|8\.2|8\.3|8\.4)-/);
+  assert.match(sw,/const CACHE_NAME = "herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1"/);
   assert.match(sw,/workflow-phase1-v1\.7\.1\.js\?v=2/);
   assert.match(sw,/herdharbor-v1\.7\.1-stability-hotfix\.js\?v=2/);
   assert.match(sw,/workflow-phase1-v1\.7\.1\.css\?v=2/);

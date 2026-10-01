@@ -1,11 +1,11 @@
 (() => {
   "use strict";
 
-  // Current release contract: const APP_VERSION = "1.8.4";
+  // Current release contract: const APP_VERSION = "2.0.0";
   // Current build contract: const BUILD_ID = "cloud-sync-v2-state-integrity-1";
-  const APP_VERSION = window.HerdHarborBuild?.version || "1.8.4";
-  const BUILD_ID = window.HerdHarborBuild?.buildId || "alpha-v1.8.4-release-1";
-  const PWA_BUILD = `${APP_VERSION}-alpha-${BUILD_ID}`;
+  const APP_VERSION = window.HerdHarborBuild?.version || "2.0.0";
+  const BUILD_ID = window.HerdHarborBuild?.buildId || "v2.0.0-release-1";
+  const PWA_BUILD = `${APP_VERSION}-${BUILD_ID}`;
   const UPDATE_CHECK_MIN_INTERVAL_MS = 60_000;
   const UPDATE_ACTIVATION_TIMEOUT_MS = 8_000;
   let installPrompt = null;
@@ -184,9 +184,9 @@
   }
 
   function loadMonitoring(done) {
-    addOptionalScript("hh-monitoring-config", "herdharbor-monitoring-config.js?v=1.8.4", (configLoaded) => {
+    addOptionalScript("hh-monitoring-config", "herdharbor-monitoring-config.js?v=2.0.0", (configLoaded) => {
       if (!configLoaded) { done?.(); return; }
-      addOptionalScript("hh-monitoring-v151", "vendor/herdharbor-monitoring-v1.6.1.min.js?v=1.8.4", () => done?.());
+      addOptionalScript("hh-monitoring-v151", "vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.0", () => done?.());
     });
   }
 
@@ -275,7 +275,7 @@
     const topButton = document.querySelector("#install-app-button");
     if (topButton) { topButton.hidden = installed || (!installPrompt && !isIos()); topButton.disabled = installed; }
     const note = document.querySelector("#pwa-install-note");
-    const versionText = `Version ${APP_VERSION} · Build ${BUILD_ID}`;
+    const versionText = `Version ${APP_VERSION}`;
     if (note) note.textContent = installed
       ? `This device is running the installed HerdHarbor app. ${versionText}.`
       : isIos()

@@ -2,10 +2,10 @@
   "use strict";
   root.HerdHarborBuild = Object.freeze({
     product: "HerdHarbor",
-    channel: "Alpha",
-    version: "1.8.4",
-    buildId: "alpha-v1.8.4-release-1",
-    build: "1.8.4-alpha-v1.8.4-release-1"
+    channel: "Stable",
+    version: "2.0.0",
+    buildId: "v2.0.0-release-1",
+    build: "2.0.0-v2.0.0-release-1"
   });
 
   // Keep authentication and the first cloud hydration from waiting forever while
@@ -73,7 +73,7 @@
     };
   }
 
-  // Alpha v1.8.3 is the release identity. All current flow layers remain additive UX architecture over the stable domain engines.
+  // HerdHarbor 2.0.0 is the stable application release identity. Established domain component identities remain independently versioned.
   if (!root.document) return;
 
   root.document.addEventListener("submit", (event) => {

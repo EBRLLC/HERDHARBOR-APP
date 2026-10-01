@@ -39,7 +39,8 @@ test("protected cross-origin auth and API traffic is not served from the static 
 });
 
 test("installed/version display and update checks remain release-aware",()=>{
-  assert.match(pwa,/Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
+  assert.match(pwa,/Version \$\{APP_VERSION\}/);
+  assert.doesNotMatch(pwa,/Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
   assert.match(pwa,/registration\.update\(\)/);
   assert.match(pwa,/visibilitychange/);
   assert.match(pwa,/pageshow/);

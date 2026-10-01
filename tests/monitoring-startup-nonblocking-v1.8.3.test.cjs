@@ -209,23 +209,23 @@ test("early listeners are removed once monitoring settles to avoid duplicate glo
   assert.match(pwaSource, /if \(monitoringLoadSettled\) return/);
 });
 
-test("monitoring release/build metadata tracks the formal v1.8.4 release while cloud telemetry behavior remains unchanged", () => {
+test("monitoring release/build metadata tracks the stable v2.0.0 release while cloud telemetry behavior remains unchanged", () => {
   const config = fs.readFileSync(path.join(root, "herdharbor-monitoring-config.js"), "utf8");
   const instrumentation = fs.readFileSync(path.join(root, "monitoring/herdharbor-monitoring-instrumentation.mjs"), "utf8");
-  assert.match(config, /release: "HerdHarbor@1\.8\.4"/);
-  assert.match(config, /build: "alpha-v1.8.4-release-1"/);
+  assert.match(config, /release: "HerdHarbor@2\.0\.0"/);
+  assert.match(config, /build: "v2.0.0-release-1"/);
   assert.match(instrumentation, /herdharbor:cloud-sync-failure/);
   assert.match(instrumentation, /source_error instanceof Error/);
   assert.match(instrumentation, /retry_attempts/);
   assert.match(instrumentation, /session_refresh_result/);
 });
 
-test("PWA asset revision remains current under the formal v1.8.4 release", () => {
+test("PWA asset revision remains current under the 2.0.0 release", () => {
   const index = fs.readFileSync(path.join(root, "index.html"), "utf8");
   const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
-  assert.equal(packageJson.version, "1.8.4");
-  assert.match(index, /pwa\.js\?v=31/);
-  assert.match(worker, /\.\/pwa\.js\?v=31/);
-  assert.match(worker, /herdharbor-shell-v1\.8\.4/);
+  assert.equal(packageJson.version, "2.0.0");
+  assert.match(index, /pwa\.js\?v=32/);
+  assert.match(worker, /\.\/pwa\.js\?v=32/);
+  assert.match(worker, /herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1/);
   assert.match(packageJson.scripts["test:v1.8.3"], /monitoring-startup-nonblocking-v1\.8\.3\.test\.cjs/);
 });

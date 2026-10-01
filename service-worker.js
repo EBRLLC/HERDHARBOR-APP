@@ -1,18 +1,18 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v1.8.4-alpha-v1.8.4-release-9";
+const CACHE_NAME = "herdharbor-shell-v2.0.0-v2.0.0-release-1";
 const REQUIRED_SHELL = [
   "./",
   "./index.html",
-  "./manifest.json?v=1.8.4",
+  "./manifest.json?v=2.0.0",
   "./herdharbor-core-v1.6.1.css?v=1.7.1",
   "./herdharbor-v1.6.1.css?v=1.7.1",
   "./herdharbor-index-shell.css?v=1",
   "./analytics-v1.6.1.css?v=2",
   "./vendor/supabase-2.111.0.js",
   "./herdharbor-optional-tools.js?v=2",
-  "./herdharbor-build.js?v=1.8.4",
+  "./herdharbor-build.js?v=2.0.0",
   "./herdharbor-state-store-v1.8.4.js?v=2",
   "./herdharbor-release-v1.6.1.js?v=1.7.1",
   "./herdharbor-membership-v1.6.1.js?v=1.7.1",
@@ -20,13 +20,13 @@ const REQUIRED_SHELL = [
   "./herdharbor-access-cache-v1.6.1.js?v=1.7.1",
   "./cloud-legacy-baseline-v1.8.4.js?v=1",
   "./account-boundary-core-v1.8.4.js?v=3",
-  "./herdharbor-cloud.js?v=32",
+  "./herdharbor-cloud.js?v=33",
   "./cloud-sync-rollout-runtime-v1.8.4.js?v=3",
   "./local-cache-v2-v1.8.2.js?v=1",
   "./cloud-sync-v2-flow-v1.8.2.js?v=1",
   "./cloud-sync-v2-diagnostics-v1.8.2.js?v=1",
   "./herdharbor-admin-v1.6.1.js?v=1.7.1",
-  "./pwa.js?v=31",
+  "./pwa.js?v=32",
   "./market-analytics-v1.6.5.js?v=1.7.1",
   "./animal-profile-runtime-v1.8.3.js?v=1",
   "./breeding-litter-runtime-v1.8.3.js?v=1",
@@ -37,8 +37,8 @@ const REQUIRED_SHELL = [
   "./production-reporting-runtime-v1.8.3.js?v=1",
   "./mobile-capture-v1.8.3.js?v=1",
   "./herdharbor-app-runtime.js?v=2",
-  "./herdharbor-monitoring-config.js?v=1.8.4",
-  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=1.8.4",
+  "./herdharbor-monitoring-config.js?v=2.0.0",
+  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.0",
   "./how-to/",
   "./icon-192.png",
   "./icon-512.png"

@@ -20,40 +20,39 @@ const worker = read("service-worker.js");
 const index = read("index.html");
 const monitoring = read("herdharbor-monitoring-config.js");
 
-test("all whole-app release owners identify Alpha v1.8.4", () => {
-  assert.equal(pkg.version, "1.8.4");
-  assert.equal(lock.version, "1.8.4");
-  assert.equal(lock.packages[""].version, "1.8.4");
-  assert.equal(manifest.version, "1.8.4");
-  assert.equal(String(twa.appVersion), "1.8.4");
-  assert.equal(Number(twa.appVersionCode), 18);
-  assert.match(build, /version:\s*"1\.8\.4"/);
-  assert.match(build, /buildId:\s*"alpha-v1\.8\.4-release-1"/);
-  assert.match(gradle, /versionName\s+"1\.8\.4"/);
-  assert.match(gradle, /versionCode\s+18/);
+test("all whole-app release owners identify stable v2.0.0", () => {
+  assert.equal(pkg.version, "2.0.0");
+  assert.equal(lock.version, "2.0.0");
+  assert.equal(lock.packages[""].version, "2.0.0");
+  assert.equal(manifest.version, "2.0.0");
+  assert.equal(String(twa.appVersion), "2.0.0");
+  assert.equal(Number(twa.appVersionCode), 19);
+  assert.match(build, /version:\s*"2\.0\.0"/);
+  assert.match(build, /channel:\s*"Stable"/);
+  assert.match(build, /buildId:\s*"v2\.0\.0-release-1"/);
+  assert.match(gradle, /versionName\s+"2\.0\.0"/);
+  assert.match(gradle, /versionCode\s+19/);
 });
 
-test("PWA, shell and monitoring use the v1.8.4 release identity", () => {
-  assert.match(pwa, /version \|\| "1\.8\.4"/);
-  assert.match(pwa, /buildId \|\| "alpha-v1\.8\.4-release-1"/);
-  assert.match(worker, /herdharbor-shell-v1\.8\.4-alpha-v1\.8\.4-release-9/);
-  assert.match(index, /manifest\.json\?v=1\.8\.4/);
-  assert.match(index, /herdharbor-build\.js\?v=1\.8\.4/);
-  assert.match(monitoring, /release:\s*"HerdHarbor@1\.8\.4"/);
-  assert.match(monitoring, /build:\s*"alpha-v1\.8\.4-release-1"/);
+test("runtime and monitoring fallbacks use the v2.0.0 release identity", () => {
+  assert.match(pwa, /version \|\| "2\.0\.0"/);
+  assert.match(pwa, /buildId \|\| "v2\.0\.0-release-1"/);
+  assert.match(pwa, /PWA_BUILD = `\$\{APP_VERSION\}-\$\{BUILD_ID\}`/);
+  assert.match(monitoring, /release:\s*"HerdHarbor@2\.0\.0"/);
+  assert.match(monitoring, /build:\s*"v2\.0\.0-release-1"/);
 });
 
-test("only v1.8.4 release workflows are current", () => {
+test("historical v1.8.4 coverage coexists with the current 2.0.0 workflows", () => {
+  for (const p of [
+    ".github/workflows/v2.0.0-ci.yml",
+    ".github/workflows/v2.0.0-production-pages.yml",
+    ".github/workflows/v2.0.0-production-acceptance.yml"
+  ]) assert.equal(exists(p), true, p);
+
   for (const p of [
     ".github/workflows/v1.8.4-ci.yml",
     ".github/workflows/v1.8.4-production-pages.yml",
     ".github/workflows/v1.8.4-production-acceptance.yml"
-  ]) assert.equal(exists(p), true, p);
-
-  for (const p of [
-    ".github/workflows/v1.8.3-ci.yml",
-    ".github/workflows/v1.8.3-production-pages.yml",
-    ".github/workflows/v1.8.3-production-acceptance.yml"
   ]) assert.equal(exists(p), false, p);
 });
 
@@ -80,8 +79,8 @@ test("v1.8.4 keeps normalized authority gated and AI expansion deferred", () => 
   assert.match(contract, /does not expand AI functionality/i);
 });
 
-test("formal v1.8.4 release gate composes the stability regression suite", () => {
+test("historical v1.8.4 wrapper still composes its stability regression suite", () => {
   assert.match(pkg.scripts["test:v1.8.4"], /test:v1\.8\.3/);
   assert.match(pkg.scripts["test:v1.8.4"], /test:v1\.8\.4-regression/);
-  assert.match(pkg.scripts["test:release"], /current-release-reference-audit-v1\.8\.4\.test\.cjs/);
+  assert.match(pkg.scripts["test:v1.8.4"], /current-release-reference-audit-v1\.8\.4\.test\.cjs/);
 });

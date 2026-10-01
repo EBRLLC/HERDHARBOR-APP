@@ -27,8 +27,8 @@ function loadBuild(){
 
 test('auth resilience stays frozen while the web runtime advances to v1.8.4',()=>{
   const sandbox=loadBuild();
-  assert.equal(sandbox.HerdHarborBuild.version,'1.8.4');
-  assert.equal(sandbox.HerdHarborBuild.buildId,'alpha-v1.8.4-release-1');
+  assert.equal(sandbox.HerdHarborBuild.version,'2.0.0');
+  assert.equal(sandbox.HerdHarborBuild.buildId,'v2.0.0-release-1');
 });
 
 test('auth resilience only bounds critical Supabase auth and first-hydration requests',()=>{

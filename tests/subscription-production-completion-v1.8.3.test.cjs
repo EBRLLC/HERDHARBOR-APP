@@ -126,13 +126,13 @@ test("backend refresh failure is fail-open for application access", () => {
   assert.match(provider, /Subscription status is resolving asynchronously\. HerdHarbor startup and existing records are not blocked by billing/);
 });
 
-test("Phase 4 subscription assets remain correct under the formal v1.8.4 release", () => {
-  assert.equal(packageJson.version, "1.8.4");
+test("carried-forward subscription assets remain correct under the 2.0.0 release", () => {
+  assert.equal(packageJson.version, "2.0.0");
   assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=3/);
   assert.match(build, /subscription-stripe-provider-v1\.8\.0\.js\?v=3/);
   assert.match(worker, /\.\/subscription-launch-v1\.8\.1\.js\?v=3/);
   assert.match(worker, /\.\/subscription-stripe-provider-v1\.8\.0\.js\?v=3/);
-  assert.match(worker, /herdharbor-shell-v1\.8\.4/);
+  assert.match(worker, /herdharbor-shell-v2\.0\.0/);
 });
 
 test("v1.8.3 development gate includes the production subscription completion contract", () => {
