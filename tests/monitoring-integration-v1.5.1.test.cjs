@@ -27,10 +27,10 @@ assert.doesNotMatch(browser, /loader\.js|browser\.sentry-cdn\.com|sentry\.io\/ap
 
 assert.match(config, /dsn: ""/);
 assert.doesNotMatch(config, /https:\/\/[^"']+@[^"']*sentry/i, "DSN is not hard-coded in source");
-assert.match(config, /HerdHarbor@1\.8\.4/);
+assert.match(config, /HerdHarbor@2\.0\.0/);
 assert.match(config, /build: "v2.0.0-release-1"/);
 assert.match(config, /enableTestCrash: false/);
-assert.match(generator, /release: "HerdHarbor@1\.8\.4"/);
+assert.match(generator, /release: "HerdHarbor@2\.0\.0"/);
 assert.match(generator, /v2.0.0-release-1/);
 
 assert.match(core, /beforeSend:/);
