@@ -34,7 +34,7 @@ assert.match(shellCss, /@media \(max-width: 820px\) \{[\s\S]*?#quick-add-button[
 assert.equal(manifest.orientation, "portrait");
 assert.equal(manifest.version, "2.0.0");
 
-assert.match(cloud, /version: "1\.7\.1"/);
+assert.match(cloud, /version: window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"/);
 assert.match(cloud, /html\[data-theme="dark"\] #hh-auth-root/);
 assert.match(cloud, /#hh-auth-root \.hh-auth-form label/);
 assert.match(cloud, /#hh-auth-root \.hh-auth-form input/);
@@ -52,7 +52,7 @@ if(webVersion==="2.0.0")assert.match(build,/buildId:\s*"v2\.0\.0-release-1"/);
 assert.match(worker,/const CACHE_NAME = "herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1"/);
 if(webVersion==="1.8.1")assert.match(worker,/v1\.8\.1-alpha-october-subscription-launch-/);
 assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
-assert.match(worker, /herdharbor-cloud\.js\?v=34/);
+assert.match(worker, /herdharbor-cloud\.js\?v=35/);
 assert.match(worker, /pedigree-visual\.css\?v=2/);
 assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.ok(worker.includes("shows-v1.6.1.css?v=1.7.1"));
