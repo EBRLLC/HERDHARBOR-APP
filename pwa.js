@@ -184,9 +184,9 @@
   }
 
   function loadMonitoring(done) {
-    addOptionalScript("hh-monitoring-config", "herdharbor-monitoring-config.js?v=1.8.4", (configLoaded) => {
+    addOptionalScript("hh-monitoring-config", "herdharbor-monitoring-config.js?v=2.0.0", (configLoaded) => {
       if (!configLoaded) { done?.(); return; }
-      addOptionalScript("hh-monitoring-v151", "vendor/herdharbor-monitoring-v1.6.1.min.js?v=1.8.4", () => done?.());
+      addOptionalScript("hh-monitoring-v151", "vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.0", () => done?.());
     });
   }
 
@@ -275,7 +275,7 @@
     const topButton = document.querySelector("#install-app-button");
     if (topButton) { topButton.hidden = installed || (!installPrompt && !isIos()); topButton.disabled = installed; }
     const note = document.querySelector("#pwa-install-note");
-    const versionText = `Version ${APP_VERSION} · Build ${BUILD_ID}`;
+    const versionText = `Version ${APP_VERSION}`;
     if (note) note.textContent = installed
       ? `This device is running the installed HerdHarbor app. ${versionText}.`
       : isIos()
