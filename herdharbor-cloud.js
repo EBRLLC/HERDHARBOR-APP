@@ -2245,7 +2245,12 @@
 
   async function invokeFunction(name, body = {}) {
     if (!session?.user?.id) throw new Error("Sign in before using this secure service.");
+    const userId = String(session.user.id);
+    const operationToken = captureAccountOperation(userId);
     const { data, error } = await client.functions.invoke(name, { body });
+    if (!isAccountOperationCurrent(operationToken, userId)) {
+      throw new Error("The signed-in account changed before the secure request completed.");
+    }
     if (error) throw new Error(error.message || `The ${name} service could not complete the request.`);
     return data;
   }
@@ -2256,7 +2261,14 @@
       error.code = "authentication_required";
       throw error;
     }
+    const userId = String(session.user.id);
+    const operationToken = captureAccountOperation(userId);
     const { data, error } = await client.functions.invoke(name, { body });
+    if (!isAccountOperationCurrent(operationToken, userId)) {
+      const accountChanged = new Error("The signed-in account changed before the secure request completed.");
+      accountChanged.code = "account_changed";
+      throw accountChanged;
+    }
     if (!error) return data;
 
     let diagnostic = null;
@@ -2295,11 +2307,18 @@
       throw new Error("Connect to the internet before submitting a deletion request.");
     }
 
-    const userId = session.user.id;
+    const userId = String(session.user.id);
+    const userEmail = String(session.user.email);
+    const operationToken = captureAccountOperation(userId);
+    const stillCurrent = () => isAccountOperationCurrent(operationToken, userId);
+    if (!stillCurrent()) throw new Error("The signed-in account changed. Reopen account deletion and try again.");
+
     const dirty = hasPendingCloudMutations(userId);
     if (dirty && !(await syncNow())) {
+      if (!stillCurrent()) throw new Error("The signed-in account changed. Reopen account deletion and try again.");
       throw new Error("Your latest records have not synced. Download a backup, reconnect, and try again.");
     }
+    if (!stillCurrent()) throw new Error("The signed-in account changed. Reopen account deletion and try again.");
 
     let marketCleanup = { backendConfirmed: false, localQueueCleared: true };
     try {
@@ -2307,12 +2326,13 @@
     } catch {
       // Market Analytics cleanup is optional; the canonical deletion request must still proceed.
     }
+    if (!stillCurrent()) throw new Error("The signed-in account changed. Reopen account deletion and try again.");
 
     const formData = new FormData();
     formData.set("_subject", "HerdHarbor account deletion request");
     formData.set("request_type", "Account and associated data deletion");
     formData.set("request_source", "Signed-in HerdHarbor Settings");
-    formData.set("account_email", session.user.email);
+    formData.set("account_email", userEmail);
     formData.set("account_user_id", userId);
     formData.set("confirmation", confirmation);
     formData.set("reason", String(reason || "").slice(0, 1000));
@@ -2326,11 +2346,15 @@
       body: formData,
       headers: { Accept: "application/json" }
     });
+    if (!stillCurrent()) {
+      throw new Error("The signed-in account changed before the deletion request completed.");
+    }
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
+      if (!stillCurrent()) throw new Error("The signed-in account changed before the deletion request completed.");
       throw new Error(payload?.errors?.[0]?.message || "The deletion request could not be submitted.");
     }
-    return { ok: true, email: session.user.email };
+    return { ok: true, email: userEmail };
   }
 
   async function checkNormalizedAuthorityChanges() {
