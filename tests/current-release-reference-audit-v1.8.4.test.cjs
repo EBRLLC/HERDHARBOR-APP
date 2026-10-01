@@ -42,17 +42,17 @@ test("runtime and monitoring fallbacks use the v2.0.0 release identity", () => {
   assert.match(monitoring, /build:\s*"v2\.0\.0-release-1"/);
 });
 
-test("only v1.8.4 release workflows are current", () => {
+test("historical v1.8.4 coverage coexists with the current 2.0.0 workflows", () => {
+  for (const p of [
+    ".github/workflows/v2.0.0-ci.yml",
+    ".github/workflows/v2.0.0-production-pages.yml",
+    ".github/workflows/v2.0.0-production-acceptance.yml"
+  ]) assert.equal(exists(p), true, p);
+
   for (const p of [
     ".github/workflows/v1.8.4-ci.yml",
     ".github/workflows/v1.8.4-production-pages.yml",
     ".github/workflows/v1.8.4-production-acceptance.yml"
-  ]) assert.equal(exists(p), true, p);
-
-  for (const p of [
-    ".github/workflows/v1.8.3-ci.yml",
-    ".github/workflows/v1.8.3-production-pages.yml",
-    ".github/workflows/v1.8.3-production-acceptance.yml"
   ]) assert.equal(exists(p), false, p);
 });
 
