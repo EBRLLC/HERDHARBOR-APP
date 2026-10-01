@@ -56,7 +56,8 @@ test("formal 2.0.0 release artifacts and member-language gates exist", () => {
     "tests/v2.0.0-billing-acceptance.test.cjs",
     "tests/v2.0.0-account-sync-acceptance.test.cjs",
     "tests/v2.0.0-ai-production-audit.test.cjs",
-    "tests/v2.0.0-product-positioning.test.cjs",\n    "tests/v2.0.0-workflow-cutover.test.cjs"
+    "tests/v2.0.0-product-positioning.test.cjs",
+    "tests/v2.0.0-workflow-cutover.test.cjs"
   ]) assert.equal(exists(p), true, p);
 });
 
