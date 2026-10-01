@@ -1,12 +1,12 @@
 # HerdHarbor Google Play submission
 
-This folder contains the submission material for **HerdHarbor Alpha v1.3.0**.
+This folder contains the production submission material for **HerdHarbor 2.0.0**.
 
 ## Android package
 
 - Package ID: `com.ebrllc.herdharbor`
-- Version name: `1.3.0-alpha`
-- Version code: `5`
+- Version name: `2.0.0`
+- Version code: `19`
 - Minimum SDK: `23`
 - Compile and target SDK: `36`
 - Delivery format: signed Android App Bundle (`.aab`)
@@ -23,8 +23,8 @@ The Android source is in `../android/` and is generated from `../twa-manifest.js
 2. Enroll in Play App Signing.
 3. Create a private upload key outside this repository. Never commit a `.jks`, `.keystore`, password, or `keystore.properties` file.
 4. Open `android/` in the current Android Studio, choose **Build > Generate Signed Bundle / APK > Android App Bundle**, and sign the release with the upload key.
-5. Upload the signed `.aab` to the internal or closed alpha track.
-6. Copy the SHA-256 fingerprint for the **Play app-signing certificate** from Play Console. Replace the placeholder in `assetlinks.template.json`, publish the completed file as `https://app.herdharbor.com/.well-known/assetlinks.json`, and verify the association before inviting testers.
+5. Upload the signed `.aab` to the appropriate Play Console rollout track.
+6. Copy the SHA-256 fingerprint for the **Play app-signing certificate** from Play Console. Replace the placeholder in `assetlinks.template.json`, publish the completed file as `https://app.herdharbor.com/.well-known/assetlinks.json`, and verify the association before production rollout.
 7. Complete the store listing, Data safety, account deletion, content rating, target audience, ads, app access, and privacy-policy sections with the prepared material in this folder.
 
 The private signing key and the final Play app-signing fingerprint are account-owned credentials and cannot safely be stored in public Git.
