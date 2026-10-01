@@ -40,7 +40,8 @@ const requiredAnchors = [
 ];
 
 test("Help Center uses current production language and membership guidance", () => {
-  assert.match(howTo, /HerdHarbor How To Center/);\n  assert.doesNotMatch(howTo, /Alpha v\d/i);
+  assert.match(howTo, /HerdHarbor How To Center/);
+  assert.doesNotMatch(howTo, /Alpha v\d/i);
   assert.doesNotMatch(howTo, /Launch trial runs through September 30, 2026/);
   assert.doesNotMatch(howTo, /Paid subscriptions begin October 1, 2026/);
   assert.doesNotMatch(howTo, /fall back to Junior/i);
