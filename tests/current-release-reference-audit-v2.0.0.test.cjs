@@ -105,7 +105,7 @@ test("PWA shell and bootstrap use the 2.0.0 cutover identity", () => {
   assert.doesNotMatch(worker, /const CACHE_NAME = "herdharbor-shell-v1\.8\.4/);
   assert.match(index, /manifest\.json\?v=2\.0\.0/);
   assert.match(index, /herdharbor-build\.js\?v=2\.0\.0/);
-  assert.match(index, /pwa\.js\?v=33/);
+  assert.match(index, /pwa\.js\?v=34/);
   assert.match(pkg.scripts["test:v2.0.0-regression"], /v2\.0\.0-pwa-cutover/);
 });
 
