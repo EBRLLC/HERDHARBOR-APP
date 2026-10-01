@@ -32,7 +32,7 @@ assert.match(shellCss, /\.list-item \{[\s\S]*?max-width: 100%;[\s\S]*?min-width:
 assert.match(shellCss, /\.data-table-wrap \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: auto;[\s\S]*?overscroll-behavior-inline: contain;/);
 assert.match(shellCss, /@media \(max-width: 820px\) \{[\s\S]*?#quick-add-button[\s\S]*?width: 42px;/);
 assert.equal(manifest.orientation, "portrait");
-assert.equal(manifest.version, "1.8.4");
+assert.equal(manifest.version, "2.0.0");
 
 assert.match(cloud, /version: "1\.7\.1"/);
 assert.match(cloud, /html\[data-theme="dark"\] #hh-auth-root/);
@@ -48,7 +48,7 @@ assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog \.hh-account-
 const webVersion=build.match(/version:\s*"([^"]+)"/)?.[1];
 assert.ok(["1.7.1","1.8.0","1.8.1","1.8.2","1.8.3","1.8.4"].includes(webVersion),`unexpected web release ${webVersion}`);
 if(webVersion==="1.8.2")assert.match(build,/buildId:\s*"cloud-sync-v2-/);
-if(webVersion==="1.8.4")assert.match(build,/buildId:\s*"alpha-v1\.8\.4-release-1"/);
+if(webVersion==="2.0.0")assert.match(build,/buildId:\s*"v2\.0\.0-release-1"/);
 assert.match(worker,/const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1|8\.2|8\.3|8\.4)-/);
 if(webVersion==="1.8.1")assert.match(worker,/v1\.8\.1-alpha-october-subscription-launch-/);
 assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
