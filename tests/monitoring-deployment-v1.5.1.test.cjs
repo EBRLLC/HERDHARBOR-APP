@@ -8,9 +8,9 @@ const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
 const config = read("herdharbor-monitoring-config.js");
-const pagesWorkflow = read(".github/workflows/v1.8.4-production-pages.yml");
-const reviewWorkflowPath = ".github/workflows/v1.8.4-ci.yml";
-const productionWorkflowPath = ".github/workflows/v1.8.4-production-acceptance.yml";
+const pagesWorkflow = read(".github/workflows/v2.0.0-production-pages.yml");
+const reviewWorkflowPath = ".github/workflows/v2.0.0-ci.yml";
+const productionWorkflowPath = ".github/workflows/v2.0.0-production-acceptance.yml";
 const instrumentation = read("monitoring/herdharbor-monitoring-instrumentation.mjs");
 const cloud = read("herdharbor-cloud.js");
 const readme = read("README.md");
@@ -28,7 +28,7 @@ assert.match(pagesWorkflow, /ref: \$\{\{ github\.sha \}\}/);
 assert.match(pagesWorkflow, /secrets\.HERDHARBOR_SENTRY_DSN/);
 assert.match(pagesWorkflow, /HERDHARBOR_MONITORING_ENVIRONMENT: production/);
 assert.match(pagesWorkflow, /npm run test:release/);
-assert.match(pagesWorkflow, /npm run test:v1\.8\.4/);
+assert.match(pagesWorkflow, /npm run test:v2\.0\.0/);
 assert.match(pagesWorkflow, /npm run build:monitoring-config/);
 assert.match(pagesWorkflow, /actions\/deploy-pages@v4/);
 for (const asset of ["registration-safety-v1.8.1.js", "subscription-launch-v1.8.1.js", "subscription-referral-policy-v1.8.1.js", "subscription-admin-credits-v1.8.1.js", "subscription-stripe-launch-bridge-v1.8.1.js"]) {
@@ -36,16 +36,16 @@ for (const asset of ["registration-safety-v1.8.1.js", "subscription-launch-v1.8.
   assert.ok(!pagesWorkflow.includes(asset.replace("v1.8.1", "v1.8.2")), `deployment must not invent a v1.8.2 filename for ${asset}`);
 }
 
-assert.ok(fs.existsSync(path.join(root, reviewWorkflowPath)), "v1.8.4 CI workflow must exist");
+assert.ok(fs.existsSync(path.join(root, reviewWorkflowPath)), "2.0.0 CI workflow must exist");
 const reviewWorkflow = read(reviewWorkflowPath);
-assert.match(reviewWorkflow, /name: Alpha v1\.8\.4 CI/);
+assert.match(reviewWorkflow, /name: HerdHarbor 2\.0\.0 CI/);
 assert.match(reviewWorkflow, /android-review:/);
 assert.match(reviewWorkflow, /\.\/gradlew --no-daemon bundleRelease/);
-assert.match(reviewWorkflow, /herdharbor-v1\.8\.4-unsigned-aab/);
+assert.match(reviewWorkflow, /herdharbor-v2\.0\.0-unsigned-aab/);
 assert.match(reviewWorkflow, /npm run test:release/);
 assert.doesNotMatch(reviewWorkflow, /play.*publish|upload.*play|serviceAccountCredentials/i, "review CI must not publish an Android release");
 
-assert.ok(fs.existsSync(path.join(root, productionWorkflowPath)), "protected v1.8.4 production acceptance workflow must exist");
+assert.ok(fs.existsSync(path.join(root, productionWorkflowPath)), "protected 2.0.0 production acceptance workflow must exist");
 const productionWorkflow = read(productionWorkflowPath);
 assert.match(productionWorkflow, /workflow_dispatch:/);
 assert.doesNotMatch(productionWorkflow, /\npush:/);
@@ -63,4 +63,4 @@ assert.doesNotMatch(instrumentation, /localStorage\.getItem|indexedDB\.get|objec
 assert.match(sentryAcceptance, /synthetic-only/);
 assert.match(sentryAcceptance, /no user, farm, animal, customer, request, notes, credentials, or cloud-state data/);
 
-console.log("Alpha v1.8.4 deployment, Android review, protected production acceptance, and IndexedDB guardrails passed");
+console.log("HerdHarbor 2.0.0 deployment, Android review, protected production acceptance, and IndexedDB guardrails passed");
