@@ -17,7 +17,7 @@ const showsCss = fs.readFileSync(path.join(root, "shows-v1.6.1.css"), "utf8");
 const build = fs.readFileSync(path.join(root, "herdharbor-build.js"), "utf8");
 
 // The web runtime may advance independently while the native/PWA shell shares the 2.0.0 identity.
-assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.4"/);
+assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"/);
 assert.match(shellCss, /html \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
 assert.match(shellCss, /body \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
 assert.match(shellCss, /\.app-shell \{[\s\S]*?grid-template-columns: minmax\(0, var\(--sidebar-width\)\) minmax\(0, 1fr\);[\s\S]*?overflow-x: clip;/);
