@@ -619,7 +619,7 @@
       <div class="hh-subscription-shell">
         <header class="hh-subscription-header">
           <div>
-            <span class="hh-subscription-kicker">HerdHarbor Alpha v${VERSION}</span>
+            <span class="hh-subscription-kicker">HerdHarbor</span>
             <h2 id="hh-subscription-title">Subscription</h2>
             <p>Standalone subscription management that reads your HerdHarbor account without replacing existing membership or sign-in systems.</p>
           </div>
