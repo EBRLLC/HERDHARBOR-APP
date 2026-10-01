@@ -103,6 +103,7 @@
   let hydrationInFlight = null;
   let hydrationUserId = "";
   let lastHydratedUserId = "";
+  let accountBoundaryRecoveryInFlight = null;
   let recoveryMode = (() => {
     try {
       const url = new URL(window.location.href);
@@ -1270,6 +1271,101 @@
   function clearActiveUserData() {
     removeInternalStorage(STORAGE_KEY);
     removeInternalStorage(ACTIVE_OWNER_KEY);
+  }
+
+  function resetAccountBoundaryRuntime() {
+    hydrationInFlight = null;
+    hydrationUserId = "";
+    lastHydratedUserId = "";
+    pendingSync = null;
+    syncConflict = null;
+    normalizedCohortStatusCache = null;
+    normalizedCohortStatusInFlight = null;
+    accessProfile = null;
+    lastCloudCheckAt = 0;
+  }
+
+  function showAccountBoundaryRecovery(message = "HerdHarbor is refreshing your account data. Your records are safe.") {
+    ensureStyles();
+    buildAuthRoot();
+    document.documentElement.classList.add("hh-auth-locked");
+    const root = document.querySelector("#hh-auth-root");
+    if (root) root.hidden = false;
+    authMessage(message, "info");
+  }
+
+  async function ensureAuthenticatedAccountBoundary(activeSession, options = {}) {
+    const authenticatedUserId = String(activeSession?.user?.id || "");
+    if (!authenticatedUserId) {
+      showAccountBoundaryRecovery("HerdHarbor could not verify the signed-in account. Please sign in again.");
+      return Object.freeze({ ok: false, reason: "missing-authenticated-user" });
+    }
+
+    if (accountBoundaryRecoveryInFlight?.userId === authenticatedUserId) {
+      return accountBoundaryRecoveryInFlight.promise;
+    }
+
+    const run = (async () => {
+      const activeRaw = activeStateRaw();
+      const activeOwnerId = String(originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) || "");
+      const legacyOwnerId = String(originalGetItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY) || "");
+      const authenticatedCache = originalGetItem.call(localStorage, cacheKey(authenticatedUserId)) || "";
+      const authenticatedCacheMatchesActive = Boolean(
+        activeRaw &&
+        authenticatedCache &&
+        safeParse(activeRaw) &&
+        safeParse(authenticatedCache) &&
+        sameState(activeRaw, authenticatedCache)
+      );
+      const policy = window.HerdHarborAccountBoundaryCore?.evaluate?.({
+        authenticatedUserId,
+        activeOwnerId,
+        legacyOwnerId,
+        hasActiveState: Boolean(activeRaw && safeParse(activeRaw)),
+        authenticatedCacheMatchesActive
+      });
+
+      if (!policy?.ok) {
+        showAccountBoundaryRecovery(
+          options.message || "HerdHarbor found local account data that could not be safely attributed. Your records were not removed."
+        );
+        return Object.freeze({ ok: false, reason: policy?.reason || "boundary-policy-unavailable" });
+      }
+
+      if (policy.action === "switch-owner") {
+        if (policy.staleOwnerId && activeRaw && safeParse(activeRaw)) {
+          preserveActiveForUser(
+            policy.staleOwnerId,
+            options.reason || "Local copy retained before account boundary recovery"
+          );
+        }
+        clearActiveUserData();
+        resetAccountBoundaryRuntime();
+        safeStorageSet(ACTIVE_OWNER_KEY, authenticatedUserId);
+      } else if (policy.action === "adopt-owner" || policy.action === "clean-login") {
+        safeStorageSet(ACTIVE_OWNER_KEY, authenticatedUserId);
+      }
+
+      try {
+        originalRemoveItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY);
+      } catch {}
+
+      return Object.freeze({
+        ok: true,
+        reason: policy.reason,
+        action: policy.action,
+        userId: authenticatedUserId
+      });
+    })();
+
+    accountBoundaryRecoveryInFlight = { userId: authenticatedUserId, promise: run };
+    try {
+      return await run;
+    } finally {
+      if (accountBoundaryRecoveryInFlight?.promise === run) {
+        accountBoundaryRecoveryInFlight = null;
+      }
+    }
   }
 
   function setSyncState(message, type = "info") {
@@ -2689,26 +2785,12 @@
       authMessage("Signing in…", "info");
 
       const submittedEmail = root.querySelector("#hh-signin-email").value.trim();
-      const previousUserId = String(session?.user?.id || "");
-      const { data, error } = await client.auth.signInWithPassword({
+      const { error } = await client.auth.signInWithPassword({
         email: submittedEmail,
         password: root.querySelector("#hh-signin-password").value
       });
 
-      if (error) {
-        authMessage(error.message, "error");
-      } else {
-        const signedInUserId = String(data?.session?.user?.id || "");
-        if (signedInUserId && previousUserId && signedInUserId !== previousUserId) {
-          preserveActiveForUser(previousUserId, "Local copy retained before account switch");
-          clearActiveUserData();
-          safeStorageSet(ACTIVE_OWNER_KEY, signedInUserId);
-          try {
-            originalRemoveItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY);
-          } catch {}
-          lastHydratedUserId = "";
-        }
-      }
+      if (error) authMessage(error.message, "error");
       setFormBusy(form, false);
     });
 
@@ -2985,6 +3067,8 @@
           return;
         }
         preserveActiveForUser(userId, "Local copy retained at sign out");
+        clearActiveUserData();
+        resetAccountBoundaryRuntime();
         accountDialog.hidden = true;
         await client.auth.signOut();
       });
@@ -3387,6 +3471,10 @@
       return;
     }
 
+    const boundary = await ensureAuthenticatedAccountBoundary(data.session, {
+      reason: "Local copy retained during authenticated startup recovery"
+    });
+    if (!boundary.ok) return;
     await hydrateUserData(data.session);
   }
 
@@ -3400,19 +3488,7 @@
     }
 
     if (event === "SIGNED_IN" && activeSession) {
-      const previousUserId = String(session?.user?.id || "");
       const signedInUserId = String(activeSession.user?.id || "");
-
-      if (previousUserId && signedInUserId && previousUserId !== signedInUserId) {
-        preserveActiveForUser(previousUserId, "Local copy retained before authenticated account switch");
-        clearActiveUserData();
-        safeStorageSet(ACTIVE_OWNER_KEY, signedInUserId);
-        try {
-          originalRemoveItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY);
-        } catch {}
-        lastHydratedUserId = "";
-      }
-
       session = activeSession;
       if (recoveryMode) {
         showRecovery();
@@ -3420,15 +3496,22 @@
         return;
       }
 
-      const appUnlocked = !document.documentElement?.classList?.contains?.("hh-auth-locked");
-      if (signedInUserId && signedInUserId === lastHydratedUserId && appUnlocked) {
-        dispatchAuthSession();
-        void loadAccessProfile();
-        void window.HerdHarborBilling?.refresh?.();
-        return;
-      }
+      void (async () => {
+        const boundary = await ensureAuthenticatedAccountBoundary(activeSession, {
+          reason: "Local copy retained before authenticated account switch"
+        });
+        if (!boundary.ok) return;
 
-      void hydrateUserData(activeSession);
+        const appUnlocked = !document.documentElement?.classList?.contains?.("hh-auth-locked");
+        if (signedInUserId && signedInUserId === lastHydratedUserId && appUnlocked) {
+          dispatchAuthSession();
+          void loadAccessProfile();
+          void window.HerdHarborBilling?.refresh?.();
+          return;
+        }
+
+        await hydrateUserData(activeSession);
+      })();
       return;
     }
 
@@ -3443,8 +3526,9 @@
     if (event === "SIGNED_OUT") {
       const previousUserId = session?.user?.id;
       preserveActiveForUser(previousUserId, "Local copy retained after session ended");
+      clearActiveUserData();
+      resetAccountBoundaryRuntime();
       session = null;
-      lastHydratedUserId = "";
       normalizedCohortStatusCache = null;
       normalizedCohortStatusInFlight = null;
       dispatchAuthSession();
