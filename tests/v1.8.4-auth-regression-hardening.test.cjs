@@ -41,3 +41,12 @@ test("existing auth regression gates remain present",()=>{
     "tests/auth-signin-deadlock-v1.6.7.test.cjs"
   ]) assert.equal(fs.existsSync(path.join(root,file)),true,file);
 });
+
+
+test("account switching fences prior local state and removes the retired active-user pointer",()=>{
+  const cloud=read("herdharbor-cloud.js");
+  assert.match(cloud,/LEGACY_ACTIVE_OWNER_KEY = "herdharbor_active_user_id"/);
+  assert.match(cloud,/Local copy retained before authenticated account switch/);
+  assert.match(cloud,/clearActiveUserData\(\);[\s\S]*safeStorageSet\(ACTIVE_OWNER_KEY, signedInUserId\)/);
+  assert.match(cloud,/originalRemoveItem\.call\(localStorage, LEGACY_ACTIVE_OWNER_KEY\)/);
+});
