@@ -48,8 +48,10 @@ test("account switching fences prior local state and removes the retired active-
   assert.match(cloud,/LEGACY_ACTIVE_OWNER_KEY = "herdharbor_active_user_id"/);
   assert.match(cloud,/Local copy retained before authenticated account switch/);
   assert.match(cloud,/async function ensureAuthenticatedAccountBoundary/);
-  assert.match(cloud,/preserveActiveForUser\([\s\S]*policy\.staleOwnerId/);
-  assert.match(cloud,/clearActiveUserData\(\);[\s\S]*safeStorageSet\(ACTIVE_OWNER_KEY, authenticatedUserId\)/);
+  assert.match(cloud,/HerdHarborAccountBoundaryCore\?\.applyPlan/);
+  assert.match(cloud,/preserve:\s*async \(staleOwnerId\)[\s\S]*preserveActiveForUser/);
+  assert.match(cloud,/clearActive:\s*clearActiveUserData/);
+  assert.match(cloud,/setOwner:\s*\(userId\) => safeStorageSet\(ACTIVE_OWNER_KEY, userId\)/);
   assert.match(cloud,/originalRemoveItem\.call\(localStorage, LEGACY_ACTIVE_OWNER_KEY\)/);
 });
 
@@ -87,7 +89,7 @@ test("Phase 4 fences delayed account-scoped work before it can mutate a later lo
   assert.match(cloud,/async function checkNormalizedAuthorityChanges\(\)[\s\S]*userIdAtStart/);
   assert.match(cloud,/async function checkForCloudChanges\(\)[\s\S]*stillCurrent/);
   assert.match(cloud,/async function invokeFunction\([\s\S]*isAccountOperationCurrent/);
-  assert.match(cloud,/async function callAdminRpc\([\s\S]*isAccountOperationCurrent/);
+  assert.match(cloud,/async function callAdminRpc\([\s\S]*String\(session\?\.user\?\.id \|\| ""\) !== userId/);
 });
 
 test("account deletion binds email and user id to one authenticated generation",()=>{
