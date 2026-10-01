@@ -63,5 +63,5 @@ test("durable baseline loader precedes cloud runtime and has fresh cache identit
   assert.ok(cloudAt > baselineAt);
 
   assert.match(worker, /cloud-legacy-baseline-v1\.8\.4\.js\?v=1/);
-  assert.match(worker, /herdharbor-cloud\.js\?v=27/);
+  assert.match(worker, /herdharbor-cloud\.js\?v=28/);
 });
