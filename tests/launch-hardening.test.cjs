@@ -49,7 +49,7 @@ assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1"/);
 assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /herdharbor-cloud\.js\?v=35/);
-assert.match(worker, /pwa\.js\?v=32/);
+assert.match(worker, /pwa\.js\?v=33/);
 assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /rabbit-genetics-runtime-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /shows-v1\.6\.1\.js\?v=1\.7\.1/);
@@ -67,7 +67,7 @@ assert.doesNotMatch(pwa, /HerdHarborCloud/);
 assert.match(release, /Open HerdHarbor How-To Center/);
 assert.match(release, /https:\/\/herdharbor\.com\/how-to\//);
 assert.match(release, /billingEnabled: false/);
-assert.match(release, /1\.7\.1-alpha-multispecies-genetics-foundation-1/);
+assert.match(release, /2\.0\.0-v2\.0\.0-release-1/);
 
 assert.match(shows, /litters\.insertAdjacentElement\('afterend'/);
 assert.match(shows, /state\.transactions\.push\(/);
