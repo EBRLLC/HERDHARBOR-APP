@@ -1,5 +1,7 @@
 "use strict";
 
+// Phase 2 production-language gate: normal member surfaces must read as a finished product.
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
