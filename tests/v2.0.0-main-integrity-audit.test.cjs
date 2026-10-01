@@ -286,3 +286,19 @@ test("current whole-app release fallbacks do not regress to the retired 1.8.4 id
   assert.doesNotMatch(runtime, /APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.4"/);
   assert.match(cloud, /CLOUD_SYNC_APP_RELEASE = "2\.0\.0"/);
 });
+
+
+test("stable release bootstrap cannot disable live billing or execute twice through PWA genetics loading", () => {
+  const release = read("herdharbor-release-v1.6.1.js");
+  const pwa = read("pwa.js");
+
+  assert.match(release, /version: window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"/);
+  assert.match(release, /buildId: window\.HerdHarborBuild\?\.buildId \|\| "v2\.0\.0-release-1"/);
+  assert.match(release, /billingEnabled: true/);
+  assert.doesNotMatch(release, /billingEnabled: false/);
+
+  assert.match(html, /<script id="hh-v151-release-script" src="herdharbor-release-v1\.6\.1\.js\?v=2"><\/script>/);
+  assert.match(pwa, /addScript\("hh-v151-release-script", "herdharbor-release-v1\.6\.1\.js\?v=2"\)/);
+  assert.match(html, /pwa\.js\?v=33/);
+  assert.match(worker, /\.\/pwa\.js\?v=33/);
+});
