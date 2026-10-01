@@ -51,7 +51,8 @@ test("formal 2.0.0 release artifacts and member-language gates exist", () => {
     "tests/v2.0.0-production-language.test.cjs",
     "tests/v2.0.0-component-language.test.cjs",
     "tests/v2.0.0-release-contract.test.cjs",
-    "tests/v2.0.0-pwa-cutover.test.cjs"
+    "tests/v2.0.0-pwa-cutover.test.cjs",
+    "tests/v2.0.0-android-release.test.cjs"
   ]) assert.equal(exists(p), true, p);
 });
 
@@ -61,6 +62,7 @@ test("2.0.0 inherits the complete 1.8.x stability regression chain", () => {
   assert.match(pkg.scripts["test:v2.0.0-regression"], /v2\.0\.0-production-language/);
   assert.match(pkg.scripts["test:v2.0.0-regression"], /v2\.0\.0-component-language/);
   assert.match(pkg.scripts["test:v2.0.0-regression"], /v2\.0\.0-release-contract/);
+  assert.match(pkg.scripts["test:v2.0.0-regression"], /test:v2\.0\.0-android/);
   assert.match(pkg.scripts["test:v2.0.0"], /test:v2\.0\.0-regression/);
   assert.match(pkg.scripts["test:v2.0.0"], /current-release-reference-audit-v2\.0\.0/);
   assert.match(pkg.scripts["test:release"], /current-release-reference-audit-v2\.0\.0/);
