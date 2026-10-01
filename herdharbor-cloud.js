@@ -15,7 +15,7 @@
   const LEGACY_ACTIVE_OWNER_KEY = "herdharbor_active_user_id";
   const ACCOUNT_BOUNDARY_RECOVERY_MARKER_PREFIX = "herdharbor_account_boundary_recovery_v1";
   const UNATTRIBUTED_RECOVERY_USER_ID = "__unattributed__";
-  const CURRENT_SHELL_CACHE_NAME = "herdharbor-shell-v1.8.4-alpha-v1.8.4-release-7";
+  const CURRENT_SHELL_CACHE_NAME = "herdharbor-shell-v1.8.4-alpha-v1.8.4-release-8";
   const RECOVERY_DB_NAME = "herdharbor_recovery_v1";
   const RECOVERY_STORE_NAME = "snapshots";
   const RECOVERY_DB_VERSION = 2;
