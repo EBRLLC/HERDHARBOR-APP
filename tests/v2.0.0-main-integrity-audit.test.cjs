@@ -105,7 +105,8 @@ test("top-level external browser endpoints are restricted to current approved se
   const approved = new Set([
     "https://okynebbksifqppwicghj.supabase.co",
     "https://formspree.io",
-    "https://herdharbor.com",\n    "https://app.herdharbor.com"
+    "https://herdharbor.com",
+    "https://app.herdharbor.com"
   ]);
 
   const unexpected = origins.filter((origin) => !approved.has(origin));
