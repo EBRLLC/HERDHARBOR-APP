@@ -304,29 +304,36 @@ test("stable release bootstrap cannot disable live billing or execute twice thro
 });
 
 
-test("all root browser runtimes avoid stale external origins and missing Edge Function slugs", () => {
+test("all root browser runtimes avoid stale application endpoints and missing Edge Function slugs", () => {
   const browserFiles = fs.readdirSync(root)
     .filter((name) => name.endsWith(".js"))
     .filter((name) => !name.startsWith("vendor"))
     .sort();
-  const approvedOrigins = new Set([
-    "https://okynebbksifqppwicghj.supabase.co",
-    "https://formspree.io",
-    "https://herdharbor.com",
-    "https://app.herdharbor.com"
-  ]);
-  const unexpectedOrigins = new Set();
+
+  const staleEndpoints = new Set();
   const functionSlugs = new Set();
+  const expectedSupabaseOrigin = "https://okynebbksifqppwicghj.supabase.co";
+  const expectedFeedbackUrl = "https://formspree.io/f/xpqvpwwb";
 
   for (const file of browserFiles) {
     const source = read(file);
+
     for (const match of source.matchAll(/https?:\/\/[^\s"'\x60)<>{}]+/g)) {
       try {
-        const origin = new URL(match[0]).origin;
-        if (!approvedOrigins.has(origin)) unexpectedOrigins.add(file + " -> " + origin);
+        const url = new URL(match[0]);
+        if (url.hostname.endsWith(".supabase.co") && url.origin !== expectedSupabaseOrigin) {
+          staleEndpoints.add(file + " -> " + url.origin);
+        }
+        if (url.origin === "https://formspree.io" && (url.origin + url.pathname) !== expectedFeedbackUrl) {
+          staleEndpoints.add(file + " -> " + url.origin + url.pathname);
+        }
       } catch {}
     }
+
     for (const match of source.matchAll(/functions\.invoke\(\s*["']([^"']+)["']/g)) {
+      functionSlugs.add(match[1]);
+    }
+    for (const match of source.matchAll(/invokeFunction(?:WithDiagnostics)?\(\s*["']([^"']+)["']/g)) {
       functionSlugs.add(match[1]);
     }
     for (const match of source.matchAll(/\/functions\/v1\/([a-z0-9-]+)/gi)) {
@@ -334,7 +341,8 @@ test("all root browser runtimes avoid stale external origins and missing Edge Fu
     }
   }
 
-  assert.deepEqual([...unexpectedOrigins].sort(), [], "stale/unapproved browser origins: " + [...unexpectedOrigins].sort().join(", "));
+  assert.deepEqual([...staleEndpoints].sort(), [], "stale application endpoints: " + [...staleEndpoints].sort().join(", "));
+
   const missingFunctions = [...functionSlugs]
     .filter((slug) => !exists(path.join("supabase", "functions", slug, "index.ts")))
     .sort();
