@@ -18,7 +18,7 @@ const build = read("herdharbor-build.js");
 const gradle = read("android/app/build.gradle");
 const pwa = read("pwa.js");
 const worker = read("service-worker.js");
-const monitoring = read("herdharbor-monitoring-config.js");
+const monitoring = read("herdharbor-monitoring-config.js");\nconst index = read("index.html");
 
 test("all authoritative whole-app release owners identify stable 2.0.0", () => {
   assert.equal(pkg.version, "2.0.0");
@@ -78,12 +78,13 @@ test("stable carried-forward component identities remain present", () => {
   ]) assert.equal(exists(p), true, p);
 });
 
-test("PWA shell cutover remains explicitly owned by the next dedicated phase", () => {
-  // Phase 5 establishes the release gate before Phase 6 changes cache identity.
-  // Keeping this assertion here prevents an accidental cache cutover from being
-  // mixed into the release-gate phase without its upgrade-path tests.
-  assert.match(worker, /herdharbor-shell-v1\.8\.4/);
-  assert.doesNotMatch(worker, /herdharbor-shell-v2\.0\.0/);
+test("PWA shell and bootstrap use the 2.0.0 cutover identity", () => {
+  assert.match(worker, /herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1/);
+  assert.doesNotMatch(worker, /const CACHE_NAME = "herdharbor-shell-v1\.8\.4/);
+  assert.match(index, /manifest\.json\?v=2\.0\.0/);
+  assert.match(index, /herdharbor-build\.js\?v=2\.0\.0/);
+  assert.match(index, /pwa\.js\?v=32/);
+  assert.match(pkg.scripts["test:v2.0.0-regression"], /v2\.0\.0-pwa-cutover/);
 });
 
 test("current workflow assertions already validate 2.0.0 while filename cutover remains deferred", () => {
