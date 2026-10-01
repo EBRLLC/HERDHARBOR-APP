@@ -209,10 +209,10 @@ test("early listeners are removed once monitoring settles to avoid duplicate glo
   assert.match(pwaSource, /if \(monitoringLoadSettled\) return/);
 });
 
-test("monitoring release/build metadata tracks the formal v1.8.4 release while cloud telemetry behavior remains unchanged", () => {
+test("monitoring release/build metadata tracks the stable v2.0.0 release while cloud telemetry behavior remains unchanged", () => {
   const config = fs.readFileSync(path.join(root, "herdharbor-monitoring-config.js"), "utf8");
   const instrumentation = fs.readFileSync(path.join(root, "monitoring/herdharbor-monitoring-instrumentation.mjs"), "utf8");
-  assert.match(config, /release: "HerdHarbor@1\.8\.4"/);
+  assert.match(config, /release: "HerdHarbor@2\.0\.0"/);
   assert.match(config, /build: "v2.0.0-release-1"/);
   assert.match(instrumentation, /herdharbor:cloud-sync-failure/);
   assert.match(instrumentation, /source_error instanceof Error/);
