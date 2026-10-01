@@ -171,8 +171,8 @@ test("changed browser assets remain refreshed under the 2.0.0 release", () => {
   const index = read("index.html");
   const worker = read("service-worker.js");
   assert.equal(packageJson.version, "2.0.0");
-  assert.match(index, /herdharbor-cloud\.js\?v=33/);
-  assert.match(worker, /\.\/herdharbor-cloud\.js\?v=33/);
+  assert.match(index, /herdharbor-cloud\.js\?v=34/);
+  assert.match(worker, /\.\/herdharbor-cloud\.js\?v=34/);
   assert.match(build, /paper-pedigree-import-v1\.8\.2\.js\?v=2/);
   assert.match(worker, /\.\/paper-pedigree-import-v1\.8\.2\.js\?v=2/);
   assert.match(worker, /herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1/);
