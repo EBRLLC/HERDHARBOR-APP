@@ -113,7 +113,7 @@ test("Settings runtime is lazy-loaded while remaining offline/runtime-cache safe
   assert.match(worker, /"\/settings-runtime-v1\.8\.3\.js"/);
 });
 
-test("Phase 6H preserves lazy optional tools under the formal v1.8.4 identity", () => {
+test("Phase 6H preserves lazy optional tools under the formal v2.0.0 identity", () => {
   assert.match(settings, /await ensureSpreadsheetToolsReady\(\)/);
   assert.doesNotMatch(html, /<script[^>]+(?:exceljs|jszip|spreadsheet-import)/i);
   assert.equal(pkg.version, "2.0.0");
