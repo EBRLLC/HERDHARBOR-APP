@@ -215,6 +215,18 @@ test("enabled consent from an older language version requires review", () => {
   assert.equal(result.includeHistorical, false);
 });
 
+test("market Edge Function validates aggregate calendar filters before the RPC", () => {
+  const edge = read("supabase/functions/market-contribution/index.ts");
+  assert.match(edge, /function isIsoDate\(value: string\)/);
+  assert.match(edge, /function validateAggregateFilters\(filters: Record<string, string>\)/);
+  assert.match(edge, /filters\.start && filters\.end && filters\.start > filters\.end/);
+  assert.match(edge, /sale_month[\s\S]*Number\(filters\.sale_month\) < 1[\s\S]*Number\(filters\.sale_month\) > 12/);
+  assert.match(edge, /sale_year[\s\S]*Number\(filters\.sale_year\) < 1900[\s\S]*Number\(filters\.sale_year\) > 2200/);
+  assert.match(edge, /const filterError = validateAggregateFilters\(filters\)/);
+  assert.match(edge, /if \(filterError\) return response\(\{ error: filterError \}, 400\)/);
+  assert.match(edge, /p_filters: filters/);
+});
+
 test("aggregate filters reject impossible dates and out-of-range calendar values", () => {
   const filters = market.sanitizeAggregateFilters({
     start: "2026-02-30", end: "2026-03-01", sale_month: "13", sale_year: "1899", breed: "Holland Lop"
