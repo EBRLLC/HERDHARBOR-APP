@@ -294,7 +294,7 @@
     });
     root()?.querySelector("#hh-admin-automatic")?.addEventListener("click", async () => {
       const reason = root().querySelector("#hh-admin-membership-reason").value.trim();
-      if (!window.confirm("Return this account to automatic membership? Until billing launches, Automatic resolves to Member.")) return;
+      if (!window.confirm("Return this account to automatic membership based on its current subscription and account rules?")) return;
       setStatus("Returning membership to Automatic…");
       try {
         await window.HerdHarborCloud.returnMemberToAutomatic(selectedMember.userId, reason);

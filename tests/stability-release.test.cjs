@@ -51,7 +51,7 @@ assert.match(settingsRuntime, /id="settings-sync-now"/);
 assert.match(settingsRuntime, /id="settings-last-synced"/);
 assert.match(settingsRuntime, /id="export-excel"/);
 assert.match(settingsRuntime, /HerdHarbor v\$\{appVersion\(\)\}/);
-assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.4"/);
+assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"/);
 assert.match(appRuntime, /Guided pedigree builder/);
 assert.doesNotMatch(appRuntime, /Guided pedigree builder · v/i);
 assert.doesNotMatch(appRuntime, /let animalView =/);
@@ -121,9 +121,9 @@ if (webVersion === "1.8.1") assert.match(serviceWorker, /v1\.8\.1-alpha-october-
 assert.match(optionalTools, /spreadsheet-import\.js\?v=17/);
 assert.match(serviceWorker, /"\/spreadsheet-import\.js"/);
 assert.match(serviceWorker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
-assert.match(serviceWorker, /herdharbor-cloud\.js\?v=33/);
+assert.match(serviceWorker, /herdharbor-cloud\.js\?v=35/);
 assert.match(serviceWorker, /symptom-guide\.js\?v=1/);
-assert.match(serviceWorker, /pwa\.js\?v=32/);
+assert.match(serviceWorker, /pwa\.js\?v=34/);
 assert.match(serviceWorker, /animal-profile-runtime-v1\.8\.3\.js\?v=1/);
 assert.match(serviceWorker, /breeding-litter-runtime-v1\.8\.3\.js\?v=1/);
 assert.match(serviceWorker, /task-runtime-v1\.8\.3\.js\?v=1/);
@@ -133,12 +133,14 @@ assert.match(serviceWorker, /settings-runtime-v1\.8\.3\.js\?v=1/);
 assert.match(serviceWorker, /pedigree-visual\.css\?v=2/);
 assert.match(serviceWorker, /pedigree-visual\.js\?v=2/);
 for (const asset of [
-  "pedigree-genetics-v1.6.1.css", "pedigree-genetics-v1.6.1.js", "breeding-intelligence-core-v1.6.1.js",
+  "pedigree-genetics-v1.6.1.css", "breeding-intelligence-core-v1.6.1.js",
   "breeding-intelligence-v1.6.1.css", "breeding-intelligence-v1.6.1.js", "rabbit-records-v1.6.1.js",
   "rabbit-genetics-engine-advanced-v1.6.1.js", "rabbit-genetics-runtime-v1.6.1.js",
   "rabbit-genetics-ui-compat-v1.6.1.js",
-  "herdharbor-release-v1.6.1.js", "shows-v1.6.1.css", "shows-v1.6.1.js", "shows-v1.6.1-hardening.js"
+  "shows-v1.6.1.css", "shows-v1.6.1.js", "shows-v1.6.1-hardening.js"
 ]) assert.ok(serviceWorker.includes(`${asset}?v=1.7.1`), `${asset} is not cached with preserved v1.7.1 identity`);
+assert.match(serviceWorker, /pedigree-genetics-v1\.6\.1\.js\?v=2/);
+assert.match(serviceWorker, /herdharbor-release-v1\.6\.1\.js\?v=2/);
 assert.match(serviceWorker, /rabbit-genetics-v1\.6\.1\.js\?v=2/);
 assert.match(serviceWorker, /rabbit-genetics-ui-advanced-v1\.6\.1\.js\?v=2/);
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);

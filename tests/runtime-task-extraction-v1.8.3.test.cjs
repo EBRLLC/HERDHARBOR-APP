@@ -138,7 +138,7 @@ test("shell loads and caches Task runtime before application composition", () =>
   const worker = read("service-worker.js");
   const health = html.indexOf("health-runtime-v1.8.3.js?v=1");
   const task = html.indexOf("task-runtime-v1.8.3.js?v=1");
-  const composition = html.indexOf("herdharbor-app-runtime.js?v=2");
+  const composition = html.indexOf("herdharbor-app-runtime.js?v=4");
   assert.ok(health >= 0 && task > health && composition > task);
   assert.match(worker, /\.\/task-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /"\/task-runtime-v1\.8\.3\.js"/);

@@ -269,7 +269,11 @@ test("production runtime exposes member-safe recovery and targeted legacy cleanu
   assert.match(cloud, /Refresh account data/);
   assert.match(cloud, /HerdHarbor is refreshing your account data\. Your records are safe\./);
   assert.match(cloud, /ACCOUNT_BOUNDARY_RECOVERY_MARKER_PREFIX = "herdharbor_account_boundary_recovery_v1"/);
-  assert.match(cloud, /key\.startsWith\("herdharbor-shell-"\) && key !== CURRENT_SHELL_CACHE_NAME/);
+  assert.doesNotMatch(cloud, /CURRENT_SHELL_CACHE_NAME|caches\.keys\(\)|caches\.delete\(|registration\.update\(\)/);
+  const pwa = fs.readFileSync(path.join(__dirname, "..", "pwa.js"), "utf8");
+  const worker = fs.readFileSync(path.join(__dirname, "..", "service-worker.js"), "utf8");
+  assert.match(pwa, /registration\.update\(\)/);
+  assert.match(worker, /key\.startsWith\(CACHE_PREFIX\) && key !== CACHE_NAME/);
   assert.doesNotMatch(cloud, /localStorage\.clear\(\)|indexedDB\.deleteDatabase\(/);
 });
 

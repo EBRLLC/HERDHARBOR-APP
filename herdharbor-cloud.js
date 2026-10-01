@@ -15,7 +15,6 @@
   const LEGACY_ACTIVE_OWNER_KEY = "herdharbor_active_user_id";
   const ACCOUNT_BOUNDARY_RECOVERY_MARKER_PREFIX = "herdharbor_account_boundary_recovery_v1";
   const UNATTRIBUTED_RECOVERY_USER_ID = "__unattributed__";
-  const CURRENT_SHELL_CACHE_NAME = "herdharbor-shell-v1.8.4-alpha-v1.8.4-release-9";
   const RECOVERY_DB_NAME = "herdharbor_recovery_v1";
   const RECOVERY_STORE_NAME = "snapshots";
   const RECOVERY_DB_VERSION = 2;
@@ -1345,31 +1344,6 @@
 
   function accountBoundaryRecoveryMarkerKey(userId) {
     return `${ACCOUNT_BOUNDARY_RECOVERY_MARKER_PREFIX}_${String(userId || "")}`;
-  }
-
-  async function refreshHerdHarborShellCaches() {
-    if (navigator.onLine === false) return false;
-    try {
-      const registration = await navigator.serviceWorker?.getRegistration?.();
-      await registration?.update?.();
-    } catch (error) {
-      console.warn("HerdHarbor could not request a fresh service-worker shell:", error);
-    }
-
-    if (!window.caches?.keys) return false;
-    try {
-      const keys = await caches.keys();
-      if (!keys.includes(CURRENT_SHELL_CACHE_NAME)) return false;
-      await Promise.all(
-        keys
-          .filter((key) => key.startsWith("herdharbor-shell-") && key !== CURRENT_SHELL_CACHE_NAME)
-          .map((key) => caches.delete(key))
-      );
-      return true;
-    } catch (error) {
-      console.warn("HerdHarbor could not retire an older shell cache:", error);
-      return false;
-    }
   }
 
   function showAccountBoundaryRecovery(message = "HerdHarbor is refreshing your account data. Your records are safe.") {
@@ -3122,7 +3096,7 @@
     }
     const payload = JSON.stringify({
       app: "HerdHarbor",
-      version: "1.7.1",
+      version: window.HerdHarborBuild?.version || "2.0.0",
       backupType: "local-safety-backup",
       exportedAt: new Date().toISOString(),
       data: appState
@@ -3698,7 +3672,7 @@
 
     if (!alreadyRecovered) {
       clearAccountSessionMarkers(userId);
-      void refreshHerdHarborShellCaches();
+
       safeStorageSet(markerKey, "1");
     }
     return boundary;

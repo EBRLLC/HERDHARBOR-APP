@@ -104,7 +104,7 @@ test("heavy spreadsheet and QR assets are absent from unconditional index startu
   }
   assert.match(html, /herdharbor-optional-tools\.js\?v=2/);
   assert.ok(
-    html.indexOf("herdharbor-optional-tools.js?v=2") < html.indexOf("herdharbor-app-runtime.js?v=2"),
+    html.indexOf("herdharbor-optional-tools.js?v=2") < html.indexOf("herdharbor-app-runtime.js?v=4"),
     "optional loader is available before the app runtime"
   );
 });

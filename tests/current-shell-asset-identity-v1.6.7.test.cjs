@@ -20,20 +20,18 @@ for (const asset of [
   assert.ok(worker.includes(`/${asset}`), `${asset} must remain network-first`);
 }
 
-for (const asset of [
-  "herdharbor-release-v1.6.1.js",
-  "herdharbor-membership-v1.6.1.js",
-  "herdharbor-access-cache-v1.6.1.js",
-  "market-analytics-v1.6.5.js"
-]) assert.match(html, new RegExp(`${asset.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}\\?v=1\\.7\\.1`));
+assert.match(html, /herdharbor-release-v1\.6\.1\.js\?v=2/);
+assert.match(html, /herdharbor-membership-v1\.6\.1\.js\?v=1\.7\.1/);
+assert.match(html, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
+assert.match(html, /market-analytics-v1\.6\.5\.js\?v=1\.7\.1/);
 assert.ok(worker.includes("analytics-v1.6.1.js?v=2"), "analytics-v1.6.1.js remains a runtime-cache asset");
 assert.doesNotMatch(html, /<script[^>]+analytics-v1\.6\.1\.js/);
 const appRuntime = fs.readFileSync(path.join(root, "herdharbor-app-runtime.js"), "utf8");
 assert.match(appRuntime, /"analytics-v1\.6\.1\.js\?v=2"/);
 assert.match(html, /herdharbor-build\.js\?v=2\.0\.0/);
 assert.match(html, /cloud-legacy-baseline-v1\.8\.4\.js\?v=1/);
-assert.match(html, /herdharbor-cloud\.js\?v=33/);
-assert.match(html, /pwa\.js\?v=32/);
+assert.match(html, /herdharbor-cloud\.js\?v=35/);
+assert.match(html, /pwa\.js\?v=34/);
 assert.doesNotMatch(html, /(?:herdharbor-release-v1\.6\.1|herdharbor-membership-v1\.6\.1|herdharbor-access-cache-v1\.6\.1|herdharbor-build|pwa|market-analytics-v1\.6\.5|analytics-v1\.6\.1)\.js\?v=1\.6\.5/);
 assert.match(worker, /"\/herdharbor-release-v1\.6\.1\.js"/);
 assert.match(worker, /"\/herdharbor-cloud\.js"/);

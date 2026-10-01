@@ -169,7 +169,7 @@ test("spreadsheet report tooling stays lazy and out of unconditional startup", (
 test("shell loads/caches Production/Reporting before composition runtime", () => {
   const salesIndex = html.indexOf("sales-customer-runtime-v1.8.3.js?v=1");
   const productionIndex = html.indexOf("production-reporting-runtime-v1.8.3.js?v=1");
-  const appIndex = html.indexOf("herdharbor-app-runtime.js?v=2");
+  const appIndex = html.indexOf("herdharbor-app-runtime.js?v=4");
   assert.ok(salesIndex >= 0 && productionIndex > salesIndex && appIndex > productionIndex);
   assert.match(worker, /\.\/production-reporting-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /"\/production-reporting-runtime-v1\.8\.3\.js"/);

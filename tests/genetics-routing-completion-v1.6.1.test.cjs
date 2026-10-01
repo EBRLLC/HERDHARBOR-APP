@@ -45,6 +45,6 @@ test("current web release and PWA cache move together while preserving the v1.7.
     assert.equal(buildId, "v2.0.0-release-1");
     assert.match(worker, /herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1/);
   }
-  assert.match(worker, /herdharbor-release-v1\.6\.1\.js\?v=1\.7\.1/);
+  assert.match(worker, /herdharbor-release-v1\.6\.1\.js\?v=2/);
   assert.match(worker, /multispecies-genetics-v1\.7\.1\.js\?v=1\.7\.1/);
 });

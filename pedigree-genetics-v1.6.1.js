@@ -11,7 +11,7 @@
   const LOCI=['A','B','C','D','E','En','V'];
   const DEFAULTS=Object.freeze({mode:'full',printGenetics:true});
   const KNOWN_SOURCES=new Set(['dna','genetic-test','user','breeder','phenotype','offspring']);
-  let pending=false,observer=null,lastStateSignature='';
+  let pending=false,observer=null;
 
   const clean=v=>String(v==null?'':v).trim();
   const norm=v=>clean(v).toLowerCase().replace(/[’']/g,'').replace(/[^a-z0-9]+/g,' ').trim();
@@ -199,10 +199,12 @@
       observer=new rootWindow.MutationObserver(()=>schedule(rootWindow));
       observer.observe(target,{childList:true,subtree:true});
     }
-    rootWindow.addEventListener('storage',e=>{if(e.key===STATE_KEY||e.key===PREF_KEY)schedule(rootWindow);});
-    rootWindow.addEventListener('herdharbor:genetics-ready',()=>schedule(rootWindow));
-    lastStateSignature=rootWindow.localStorage?.getItem(STATE_KEY)||'';
-    rootWindow.setInterval(()=>{if(!findCards(rootWindow.document).length)return;const sig=rootWindow.localStorage?.getItem(STATE_KEY)||'';if(sig!==lastStateSignature){lastStateSignature=sig;schedule(rootWindow);}},2000);
+    if(!rootWindow.__hhPedigreeGeneticsEventsBound){
+      rootWindow.__hhPedigreeGeneticsEventsBound=true;
+      rootWindow.addEventListener('storage',e=>{if(e.key===STATE_KEY||e.key===PREF_KEY)schedule(rootWindow);});
+      rootWindow.addEventListener('herdharbor:genetics-ready',()=>schedule(rootWindow));
+      rootWindow.addEventListener('herdharbor:state-committed',()=>schedule(rootWindow));
+    }
   }
   return Object.freeze({VERSION,LOCI,DEFAULTS,loadPreferences,readState,profileForAnimal,sourceKind,sourceLabel,pairText,enhanceDocument,start});
 });

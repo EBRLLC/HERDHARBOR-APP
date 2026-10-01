@@ -17,7 +17,7 @@ const showsCss = fs.readFileSync(path.join(root, "shows-v1.6.1.css"), "utf8");
 const build = fs.readFileSync(path.join(root, "herdharbor-build.js"), "utf8");
 
 // The web runtime may advance independently while the native/PWA shell shares the 2.0.0 identity.
-assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.4"/);
+assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"/);
 assert.match(shellCss, /html \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
 assert.match(shellCss, /body \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
 assert.match(shellCss, /\.app-shell \{[\s\S]*?grid-template-columns: minmax\(0, var\(--sidebar-width\)\) minmax\(0, 1fr\);[\s\S]*?overflow-x: clip;/);
@@ -34,7 +34,7 @@ assert.match(shellCss, /@media \(max-width: 820px\) \{[\s\S]*?#quick-add-button[
 assert.equal(manifest.orientation, "portrait");
 assert.equal(manifest.version, "2.0.0");
 
-assert.match(cloud, /version: "1\.7\.1"/);
+assert.match(cloud, /version: window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"/);
 assert.match(cloud, /html\[data-theme="dark"\] #hh-auth-root/);
 assert.match(cloud, /#hh-auth-root \.hh-auth-form label/);
 assert.match(cloud, /#hh-auth-root \.hh-auth-form input/);
@@ -52,9 +52,9 @@ if(webVersion==="2.0.0")assert.match(build,/buildId:\s*"v2\.0\.0-release-1"/);
 assert.match(worker,/const CACHE_NAME = "herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1"/);
 if(webVersion==="1.8.1")assert.match(worker,/v1\.8\.1-alpha-october-subscription-launch-/);
 assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
-assert.match(worker, /herdharbor-cloud\.js\?v=33/);
+assert.match(worker, /herdharbor-cloud\.js\?v=35/);
 assert.match(worker, /pedigree-visual\.css\?v=2/);
-assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=1\.7\.1/);
+assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=2/);
 assert.ok(worker.includes("shows-v1.6.1.css?v=1.7.1"));
 assert.match(worker, /shows-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /shows-v1\.6\.1-hardening\.js\?v=1\.7\.1/);

@@ -130,7 +130,7 @@
   });
   addScript("hh-how-to-navigation-v181", "how-to-navigation-v1.8.1.js?v=1");
   addScript("hh-registration-safety-v181", "registration-safety-v1.8.1.js?v=1", () => {
-    addScript("hh-subscription-referral-policy-v181", "subscription-referral-policy-v1.8.1.js?v=2");
+    addScript("hh-subscription-referral-policy-v181", "subscription-referral-policy-v1.8.1.js?v=3");
   });
   addScript("hh-admin-subscription-credits-v181", "subscription-admin-credits-v1.8.1.js?v=1");
   addScript("hh-arba-v170-registry", "standards-registry-v1.7.0.js?v=1.7.1", () => {

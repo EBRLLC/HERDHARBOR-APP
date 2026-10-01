@@ -89,7 +89,8 @@ assert.match(uiSource, /hh-pedigree-genetics-dialog/, "genetics line opens evide
 assert.match(uiSource, /Entered Genetics remains separate from Inferred Genetics/);
 assert.match(uiSource, /MutationObserver/);
 assert.match(uiSource, /herdharbor:genetics-ready/);
-assert.match(uiSource, /setInterval/, "same-tab record changes trigger automatic pedigree recalculation");
+assert.doesNotMatch(uiSource, /setInterval\s*\(/, "pedigree genetics no longer polls for same-tab record changes");
+assert.match(uiSource, /herdharbor:state-committed/, "same-tab canonical record changes trigger automatic pedigree recalculation");
 
 assert.match(css, /\.hh-genotype-line\{display:flex;flex-wrap:wrap/);
 assert.match(css, /\.hh-genetics-locus\{[^}]*white-space:nowrap[^}]*word-break:keep-all[^}]*overflow-wrap:normal/, "alleles never split inside cchd/cchl");
