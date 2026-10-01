@@ -38,7 +38,7 @@ const activeV161 = [
 
 for (const file of activeV161) {
   assert.ok(fs.existsSync(path.join(root, file)), "missing consolidated runtime asset: " + file);
-  const cacheVersion = file === "herdharbor-monitoring-config.js" ? "2.0.0" : file === "herdharbor-release-v1.6.1.js" ? "2" : file === "herdharbor-admin-v1.6.1.js" ? "2" : "1.7.1";
+  const cacheVersion = file === "herdharbor-monitoring-config.js" ? "2.0.0" : file === "herdharbor-release-v1.6.1.js" ? "2" : file === "herdharbor-admin-v1.6.1.js" ? "2" : file === "pedigree-genetics-v1.6.1.js" ? "2" : "1.7.1";
   assert.ok((pwa + "\n" + html).includes(`${file}?v=${cacheVersion}`) || html.includes(file + "?v=1.6.5"), "startup loader does not load current runtime asset " + file);
   assert.ok(worker.includes(`./${file}?v=${cacheVersion}`), "service-worker.js does not precache current runtime asset " + file);
 }
