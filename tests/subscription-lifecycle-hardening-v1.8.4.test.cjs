@@ -69,13 +69,17 @@ test("Founder migration separates paid eligibility from complimentary override",
   assert.match(migration, /founder_eligibility_granted/);
 });
 
-test("webhook uses lease recovery and guards stale destructive transitions", () => {
+test("webhook uses lease recovery, stale guards, and invoice-before-subscription recovery", () => {
   const webhook = fs.readFileSync(path.join(root, "supabase/functions/subscription-webhook/index.ts"), "utf8");
   assert.match(webhook, /isProcessingLeaseStale/);
   assert.match(webhook, /isSubscriptionUpdateStale/);
   assert.match(webhook, /shouldIgnorePaymentFailure/);
   assert.match(webhook, /customer\.subscription\.deleted" && context\?\.userId && context\.stale !== true/);
-  assert.match(webhook, /return null;\s*}\s*const customerId = stringId\(raw\.customer\)/);
+  assert.match(webhook, /Stripe can deliver invoice\.paid \/ invoice\.payment_succeeded before/);
+  assert.match(webhook, /stripe\.subscriptions\.retrieve\(subscriptionId\)/);
+  assert.match(webhook, /await upsertSubscription\(liveSubscription\)/);
+  assert.match(webhook, /const recovered = await loadByProviderSubscriptionId\(\)/);
+  assert.match(webhook, /Could not resolve HerdHarbor subscription context for Stripe invoice/);
 });
 
 test("checkout restricts return URLs and keeps Founder discount private", () => {
