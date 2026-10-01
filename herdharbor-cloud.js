@@ -368,6 +368,8 @@
   async function loadAccessProfile() {
     if (!session?.user?.id) return publishAccessProfile(fallbackAccessProfile());
     const userId = session.user.id;
+    const operationToken = captureAccountOperation(userId);
+    const stillCurrent = () => isAccountOperationCurrent(operationToken, userId);
     const cached = () => window.HerdHarborAccessCache?.read?.(userId);
     const initialCachedSnapshot = cached();
     if (initialCachedSnapshot) {
@@ -378,6 +380,7 @@
       });
     }
     const publishCachedOrFallback = () => {
+      if (!stillCurrent()) return accessProfile;
       const snapshot = cached();
       return publishAccessProfile(snapshot
         ? { ...snapshot, backend_ready: false, offline_cached: true }
@@ -392,9 +395,11 @@
         client.rpc("herdharbor_account_role")
       ]);
     } catch {
+      if (!stillCurrent()) return accessProfile;
       reportAccountOperationFailure("load_access");
       return publishCachedOrFallback();
     }
+    if (!stillCurrent()) return accessProfile;
     if (recordResult.error || !recordResult.data) {
       reportAccountOperationFailure("load_access");
       return publishCachedOrFallback();
@@ -410,7 +415,9 @@
       account_role: role,
       last_verified_at: new Date().toISOString()
     };
+    if (!stillCurrent()) return accessProfile;
     const stored = window.HerdHarborAccessCache?.write?.(userId, authoritative);
+    if (!stillCurrent()) return accessProfile;
     return publishAccessProfile({
       ...authoritative,
       ...(stored || {}),
