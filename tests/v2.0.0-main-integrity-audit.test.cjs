@@ -113,12 +113,22 @@ test("every static shell button is backed by a route, form submit, PWA action, o
     if (/\bdata-pwa-install\b/i.test(attrs) && activeSource.includes("data-pwa-install")) continue;
 
     if (id) {
+      const escapedId = id.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\    if (id) {
       const selectors = [
         "#" + id,
         'getElementById("' + id + '")',
         "getElementById('" + id + "')"
       ];
       if (selectors.some((needle) => activeSource.includes(needle))) continue;
+    }
+
+    unresolved.push(id || text || attrs.trim());");
+      const bindingPatterns = [
+        new RegExp('\\$\\(["\\\']#' + escapedId + '["\\\']\\)\\.addEventListener\\('),
+        new RegExp('getElementById\\(["\\\']' + escapedId + '["\\\']\\)\\.addEventListener\\('),
+        new RegExp('querySelector\\(["\\\']#' + escapedId + '["\\\']\\)\\.addEventListener\\(')
+      ];
+      if (bindingPatterns.some((pattern) => pattern.test(activeSource))) continue;
     }
 
     unresolved.push(id || text || attrs.trim());
