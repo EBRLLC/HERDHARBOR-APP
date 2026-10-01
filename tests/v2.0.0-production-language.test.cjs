@@ -16,6 +16,9 @@ test("production member surfaces do not expose Alpha/tester development language
   const admin = read("herdharbor-admin-v1.6.1.js");
   const howTo = read("how-to/index.html");
   const genetics = read("multispecies-genetics-ui-v1.7.1.js");
+  const appRuntime = read("herdharbor-app-runtime.js");
+  const health = read("health-intelligence-v1.7.1.js");
+  const breeding = read("breeding-intelligence-v1.6.1.js");
 
   assert.doesNotMatch(index, /HerdHarbor Alpha|Alpha v\d/i);
   assert.doesNotMatch(howTo, /HerdHarbor Alpha|Current for Alpha|Alpha v\d/i);
@@ -26,6 +29,9 @@ test("production member surfaces do not expose Alpha/tester development language
 
   assert.doesNotMatch(settings, /Alpha limitations|\|\| "Alpha"/);
   assert.doesNotMatch(genetics, /Alpha v\d|Architecture first|Shared engine capabilities|This is intentional for v\d/i);
+  assert.doesNotMatch(appRuntime, /HerdHarbor Alpha|browser-based alpha|this alpha|individual engines/i);
+  assert.doesNotMatch(health, /Foundation · v\d/i);
+  assert.doesNotMatch(breeding, /Alpha v\$\{RELEASE_VERSION\}|Rabbit genetics v\d/i);
 });
 
 test("production replacements retain the same underlying features", () => {
