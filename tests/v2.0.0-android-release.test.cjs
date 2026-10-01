@@ -26,12 +26,16 @@ test("Android/TWA package identity is stable HerdHarbor 2.0.0", () => {
   assert.match(gradle, /targetSdkVersion 36/);
 });
 
-test("2.0.0 Play release notes are production-facing", () => {
+test("Play listing is production-facing without tester or component-version language", () => {
   const notes = read("google-play/listing/en-US/release-notes.txt");
-  assert.match(notes, /HerdHarbor 2\.0\.0/);
-  assert.match(notes, /Stable farm management release/i);
+  const description = read("google-play/listing/en-US/full-description.txt");
+
+  assert.match(notes, /stable farm management release/i);
   assert.match(notes, /rabbit-management/i);
-  assert.doesNotMatch(notes, /\bAlpha\b|\bBeta\b|tester/i);
+  assert.doesNotMatch(notes, /\bAlpha\b|\bBeta\b|tester|testing|engine\s+v\d/i);
+  assert.doesNotMatch(description, /\bAlpha\b|\bBeta\b|tester|testing|engine\s+v\d/i);
+  assert.match(description, /production farm management app/i);
+  assert.match(description, /specialized rabbit-management/i);
 });
 
 test("Android web scope stays bound to the production app", () => {
