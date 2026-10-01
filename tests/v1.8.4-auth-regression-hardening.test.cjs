@@ -75,3 +75,25 @@ test("Phase 3 retires only HerdHarbor shell caches and never performs a site-wid
   assert.doesNotMatch(cloud,/sessionStorage\.clear\(\)/);
   assert.doesNotMatch(cloud,/indexedDB\.deleteDatabase/);
 });
+
+
+test("Phase 4 fences delayed account-scoped work before it can mutate a later login",()=>{
+  const cloud=read("herdharbor-cloud.js");
+  assert.match(cloud,/function captureAccountOperation\(/);
+  assert.match(cloud,/function isAccountOperationCurrent\(/);
+  assert.match(cloud,/async function loadAccessProfile\(\)[\s\S]*operationToken = captureAccountOperation\(userId\)/);
+  assert.match(cloud,/async function syncValueToCloud\([\s\S]*operationToken = captureAccountOperation\(userId\)/);
+  assert.match(cloud,/async function drainSyncQueue\(\)[\s\S]*while \(pendingSync && stillCurrent\(\)\)/);
+  assert.match(cloud,/async function checkNormalizedAuthorityChanges\(\)[\s\S]*userIdAtStart/);
+  assert.match(cloud,/async function checkForCloudChanges\(\)[\s\S]*stillCurrent/);
+  assert.match(cloud,/async function invokeFunction\([\s\S]*isAccountOperationCurrent/);
+  assert.match(cloud,/async function callAdminRpc\([\s\S]*isAccountOperationCurrent/);
+});
+
+test("account deletion binds email and user id to one authenticated generation",()=>{
+  const cloud=read("herdharbor-cloud.js");
+  assert.match(cloud,/const userEmail = String\(session\.user\.email\)/);
+  assert.match(cloud,/const operationToken = captureAccountOperation\(userId\)/);
+  assert.match(cloud,/formData\.set\("account_email", userEmail\)/);
+  assert.match(cloud,/return \{ ok: true, email: userEmail \}/);
+});
