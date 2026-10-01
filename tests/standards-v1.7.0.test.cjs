@@ -72,3 +72,12 @@ test("1.7.0 UI integrates Standards browser, optional settings, animal evaluatio
   assert.match(appRuntime,/window\.HerdHarborApp = Object\.freeze/);
   assert.match(appRuntime,/herdharbor:app-ready/);
 });
+
+test("ARBA settings toggle remains compact on web and stacks cleanly on narrow screens",()=>{
+  const css=fs.readFileSync(path.join(__dirname,"..","standards-v1.7.0.css"),"utf8");
+  assert.match(css,/\[data-arba-settings-panel\] \.panel-header > div\s*\{[\s\S]*?min-width\s*:\s*0/);
+  assert.match(css,/\[data-arba-settings-panel\] \.hh-arba-toggle\s*\{[\s\S]*?flex\s*:\s*0 0 auto[\s\S]*?min-width\s*:\s*max-content[\s\S]*?white-space\s*:\s*nowrap/);
+  assert.match(css,/\[data-arba-settings-panel\] \.hh-arba-toggle span\s*\{[\s\S]*?white-space\s*:\s*nowrap/);
+  assert.match(css,/@media \(max-width:700px\)\s*\{[\s\S]*?\[data-arba-settings-panel\] \.panel-header\s*\{[\s\S]*?flex-direction\s*:\s*column/);
+});
+
