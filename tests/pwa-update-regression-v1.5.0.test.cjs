@@ -26,7 +26,8 @@ if (webVersion === "1.8.2") assert.match(buildId, /^cloud-sync-v2-/);
 if (webVersion === "2.0.0") assert.equal(buildId, "v2.0.0-release-1");
 assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"/);
 assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "v2.0.0-release-1"/);
-assert.match(pwa, /Version \$\{APP_VERSION\}/);\nassert.doesNotMatch(pwa, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
+assert.match(pwa, /Version \$\{APP_VERSION\}/);
+assert.doesNotMatch(pwa, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
 assert.match(html, /herdharbor-build\.js\?v=2\.0\.0/, "the packaged shell bootstrap uses the 2.0.0 cache identity");
 
 // Service-worker discovery is explicit and independent from Cloud Sync.
