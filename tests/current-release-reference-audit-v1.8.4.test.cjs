@@ -20,27 +20,25 @@ const worker = read("service-worker.js");
 const index = read("index.html");
 const monitoring = read("herdharbor-monitoring-config.js");
 
-test("all whole-app release owners identify Alpha v1.8.4", () => {
-  assert.equal(pkg.version, "1.8.4");
-  assert.equal(lock.version, "1.8.4");
-  assert.equal(lock.packages[""].version, "1.8.4");
-  assert.equal(manifest.version, "1.8.4");
-  assert.equal(String(twa.appVersion), "1.8.4");
-  assert.equal(Number(twa.appVersionCode), 18);
-  assert.match(build, /version:\s*"1\.8\.4"/);
-  assert.match(build, /buildId:\s*"alpha-v1\.8\.4-release-1"/);
-  assert.match(gradle, /versionName\s+"1\.8\.4"/);
-  assert.match(gradle, /versionCode\s+18/);
+test("all whole-app release owners identify stable v2.0.0", () => {
+  assert.equal(pkg.version, "2.0.0");
+  assert.equal(lock.version, "2.0.0");
+  assert.equal(lock.packages[""].version, "2.0.0");
+  assert.equal(manifest.version, "2.0.0");
+  assert.equal(String(twa.appVersion), "2.0.0");
+  assert.equal(Number(twa.appVersionCode), 19);
+  assert.match(build, /version:\s*"2\.0\.0"/);
+  assert.match(build, /channel:\s*"Stable"/);\n  assert.match(build, /buildId:\s*"v2\.0\.0-release-1"/);
+  assert.match(gradle, /versionName\s+"2\.0\.0"/);
+  assert.match(gradle, /versionCode\s+19/);
 });
 
-test("PWA, shell and monitoring use the v1.8.4 release identity", () => {
-  assert.match(pwa, /version \|\| "1\.8\.4"/);
-  assert.match(pwa, /buildId \|\| "alpha-v1\.8\.4-release-1"/);
-  assert.match(worker, /herdharbor-shell-v1\.8\.4-alpha-v1\.8\.4-release-9/);
-  assert.match(index, /manifest\.json\?v=1\.8\.4/);
-  assert.match(index, /herdharbor-build\.js\?v=1\.8\.4/);
-  assert.match(monitoring, /release:\s*"HerdHarbor@1\.8\.4"/);
-  assert.match(monitoring, /build:\s*"alpha-v1\.8\.4-release-1"/);
+test("runtime and monitoring fallbacks use the v2.0.0 release identity", () => {
+  assert.match(pwa, /version \|\| "2\.0\.0"/);
+  assert.match(pwa, /buildId \|\| "v2\.0\.0-release-1"/);
+  assert.match(pwa, /PWA_BUILD = `\$\{APP_VERSION\}-\$\{BUILD_ID\}`/);
+  assert.match(monitoring, /release:\s*"HerdHarbor@2\.0\.0"/);
+  assert.match(monitoring, /build:\s*"v2\.0\.0-release-1"/);
 });
 
 test("only v1.8.4 release workflows are current", () => {
