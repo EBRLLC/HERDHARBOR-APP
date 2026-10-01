@@ -238,7 +238,7 @@
           <details class="settings-about">
             <summary>About HerdHarbor</summary>
             <div class="detail-grid">
-              ${detailField("Version", `${root.HerdHarborBuild?.channel || "Alpha"} v${appVersion()}`)}
+              ${detailField("Version", `${root.HerdHarborBuild?.channel || "Stable"} v${appVersion()}`)}
               ${detailField("Build", root.HerdHarborBuild?.buildId || "Development")}
               ${detailField("Genetics engine", "Complete Domestic Rabbit Genetics v1.6.1")}
             </div>
