@@ -51,7 +51,7 @@ test("classic script and stylesheet order is preserved", () => {
   assert.ok(baseCss >= 0 && shellCssIndex > baseCss && coreCss > shellCssIndex);
 
   const animalProfileRuntimeIndex = html.indexOf("animal-profile-runtime-v1.8.3.js?v=1");
-  const appRuntimeIndex = html.indexOf("herdharbor-app-runtime.js?v=3");
+  const appRuntimeIndex = html.indexOf("herdharbor-app-runtime.js?v=4");
   assert.ok(animalProfileRuntimeIndex >= 0 && appRuntimeIndex > animalProfileRuntimeIndex);
   assert.doesNotMatch(html, /<script[^>]+analytics-v1\.6\.1\.js/);
   assert.match(appRuntime, /"analytics-v1\.6\.1\.js\?v=2"/);
