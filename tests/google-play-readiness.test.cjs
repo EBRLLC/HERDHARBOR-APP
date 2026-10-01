@@ -39,7 +39,7 @@ assert.match(appGradle, /https:\/\/app\.herdharbor\.com\/manifest\.json/);
 // Verify the current native/TWA package and service worker share the current
 // release identity while preserving every older-named domain asset required by
 // the installed TWA.
-assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v1\.(?:7\.1|8\.0|8\.1|8\.2|8\.3|8\.4)-/);
+assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1"/);
 assert.match(worker, /rabbit-records-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /shows-v1\.6\.1\.css\?v=1\.7\.1/);
