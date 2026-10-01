@@ -143,7 +143,10 @@ test("all dynamically rendered buttons in the production module graph expose a r
 
   for (const file of activeNonVendorPaths) {
     const source = read(file);
-    for (const match of source.matchAll(/<button\b([^>]*)>/gi)) {
+    // Neutralize template expressions before parsing opening tags so comparison
+    // operators such as >= cannot be mistaken for the end of a button tag.
+    const buttonSource = source.replace(/\$\{[^{}]*\}/g, "__EXPR__");
+    for (const match of buttonSource.matchAll(/<button\b([^>]*)>/gi)) {
       const attrs = match[1];
       const explicitType = ((attrs.match(/\btype=["']([^"']+)["']/i) || [])[1] || "").toLowerCase();
       if (explicitType === "submit" || /\bonclick\s*=/i.test(attrs)) continue;
