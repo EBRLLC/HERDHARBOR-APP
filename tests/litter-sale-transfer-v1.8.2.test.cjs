@@ -107,6 +107,6 @@ test('release loader and PWA cache include litter sale-transfer assets under the
     assert.match(build,new RegExp(asset.replace(/\./g,'\\.')));
     assert.match(sw,new RegExp(asset.replace(/\./g,'\\.')));
   }
-  assert.match(build,/version:\s*"1\.8\.4"/);
+  assert.match(build,/version:\s*"2\.0\.0"/);
   assert.match(build,/buildId:\s*"alpha-v1.8.4-release-1"/);
 });
