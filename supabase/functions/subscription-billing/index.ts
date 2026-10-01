@@ -188,17 +188,24 @@ async function buildSnapshot(admin: ReturnType<typeof createClient>, user: AuthU
     if (accessStatusError) throw accessStatusError;
   }
 
+  const providerPriceCents = Number.isFinite(Number(sub?.price_cents))
+    ? Number(sub?.price_cents)
+    : null;
+  const effectivePriceCents = freeAdult || effectivePlan === "junior"
+    ? 0
+    : liveProviderSubscription && providerPriceCents !== null
+      ? providerPriceCents
+      : effectivePlan === "founder"
+        ? FOUNDER_MONTH.cents
+        : effectivePlan === "member"
+          ? MEMBER_MONTH.cents
+          : null;
+
   return {
     status: effectiveStatus,
     plan: effectivePlan,
     billingInterval: sub?.billing_interval || "month",
-    priceCents: freeAdult
-      ? 0
-      : effectivePlan === "founder"
-        ? (sub?.price_cents ?? FOUNDER_MONTH.cents)
-        : effectivePlan === "member"
-          ? (sub?.price_cents ?? MEMBER_MONTH.cents)
-          : (sub?.price_cents ?? null),
+    priceCents: effectivePriceCents,
     currency: sub?.currency || "usd",
     currentPeriodStart: liveProviderSubscription ? (sub?.current_period_start || null) : null,
     currentPeriodEnd: liveProviderSubscription ? (sub?.current_period_end || null) : null,
