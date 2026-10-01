@@ -3089,18 +3089,13 @@
     setSyncState(syncState, syncConflict ? "error" : "success");
   }
 
-  async function hydrateUserDataOnce(activeSession, hydrationToken = null) {
+  async function hydrateUserDataOnce(activeSession) {
     const userId = String(activeSession?.user?.id || "");
-    const token = hydrationToken || accountBoundaryFence?.capture?.(userId);
+    const token = accountBoundaryFence?.capture?.(userId);
     const isCurrentHydration = () => Boolean(
       accountBoundaryFence?.isCurrent?.(token, session?.user?.id)
     );
     const staleHydration = () => Object.freeze({ stale: true, userId });
-    const commitHydratedState = (rawValue, reason = "legacy-cloud-state-replace") => {
-      if (!isCurrentHydration()) return false;
-      return setActiveUserData(userId, rawValue, reason);
-    };
-
     if (!userId || !isCurrentHydration()) return staleHydration();
     dispatchAuthSession();
 
@@ -3163,7 +3158,10 @@
       console.error("HerdHarbor normalized authority check failed:", error);
       const offlineRaw = activeRaw || cachedRaw;
       if (offlineRaw && safeParse(offlineRaw)) {
-        if (!activeRaw) commitHydratedState(offlineRaw, "normalized-authority-offline-copy");
+        if (!activeRaw) {
+          if (!isCurrentHydration()) return staleHydration();
+          setActiveUserData(userId, offlineRaw, "normalized-authority-offline-copy");
+        }
         unlockApp();
         setSyncState("Cloud authority could not be verified; this device copy was preserved.", "error");
         return;
@@ -3180,7 +3178,10 @@
       if (!rolloutDecision.ok || !rolloutDecision.snapshot) {
         const protectedRaw = activeRaw || cachedRaw;
         if (protectedRaw && safeParse(protectedRaw)) {
-          if (!activeRaw) commitHydratedState(protectedRaw, "normalized-authority-protected-local");
+          if (!activeRaw) {
+            if (!isCurrentHydration()) return staleHydration();
+            setActiveUserData(userId, protectedRaw, "normalized-authority-protected-local");
+          }
           unlockApp();
           setSyncState(
             rolloutDecision?.reason === "legacy-dirty-without-record-outbox"
@@ -3225,7 +3226,8 @@
         if (!isCurrentHydration()) return staleHydration();
       }
 
-      if (!commitHydratedState(deviceCloudRaw, "normalized-authority-hydration")) return staleHydration();
+      if (!isCurrentHydration()) return staleHydration();
+      setActiveUserData(userId, deviceCloudRaw, "normalized-authority-hydration");
       safeStorageRemove(dirtyKey(userId));
       pendingSync = null;
       syncConflict = null;
@@ -3249,7 +3251,10 @@
       if (!isCurrentHydration()) return staleHydration();
       const unsyncedRaw = activeRaw || cachedRaw;
       if (unsyncedRaw && safeParse(unsyncedRaw)) {
-        if (!activeRaw) commitHydratedState(unsyncedRaw);
+        if (!activeRaw) {
+          if (!isCurrentHydration()) return staleHydration();
+          setActiveUserData(userId, unsyncedRaw);
+        }
         unlockApp();
         setSyncState("Unsynced local changes found; saving…", "working");
         pendingSync = { rawValue: unsyncedRaw, sequence: writeSequence };
@@ -3272,7 +3277,8 @@
 
       const offlineRaw = activeRaw || cachedRaw;
       if (offlineRaw && safeParse(offlineRaw)) {
-        commitHydratedState(offlineRaw);
+        if (!isCurrentHydration()) return staleHydration();
+        setActiveUserData(userId, offlineRaw);
         unlockApp();
         setSyncState("Offline copy loaded; changes will sync when connection returns.", "error");
         return;
@@ -3317,7 +3323,8 @@
 
         const offlineRaw = activeRaw || cachedRaw;
         if (offlineRaw && safeParse(offlineRaw)) {
-          commitHydratedState(offlineRaw);
+          if (!isCurrentHydration()) return staleHydration();
+        setActiveUserData(userId, offlineRaw);
           unlockApp();
           setSyncState("Offline copy loaded; changes will sync when connection returns.", "error");
           return;
@@ -3387,7 +3394,8 @@
         unlockApp();
         return;
       }
-      if (!commitHydratedState(deviceCloudRaw)) return staleHydration();
+      if (!isCurrentHydration()) return staleHydration();
+      setActiveUserData(userId, deviceCloudRaw);
       await writeCloudBaseline(userId, cloudRaw);
       if (!isCurrentHydration()) return staleHydration();
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
@@ -3418,7 +3426,8 @@
     const newUserRaw = cachedRaw || activeRaw;
     if (newUserRaw && safeParse(newUserRaw)) {
       const stateChanged = !activeRaw || !sameState(activeRaw, newUserRaw);
-      if (!commitHydratedState(newUserRaw)) return staleHydration();
+      if (!isCurrentHydration()) return staleHydration();
+      setActiveUserData(userId, newUserRaw);
       pendingSync = { rawValue: newUserRaw, sequence: writeSequence };
       await drainSyncQueue();
       if (!isCurrentHydration()) return staleHydration();
@@ -3441,16 +3450,15 @@
     if (storedActiveRaw) window.location.reload();
   }
 
-  async function hydrateUserData(activeSession, hydrationToken = null) {
+  async function hydrateUserData(activeSession) {
     const userId = String(activeSession?.user?.id || "");
-    if (!userId) return hydrateUserDataOnce(activeSession, hydrationToken);
+    if (!userId) return hydrateUserDataOnce(activeSession);
 
     if (hydrationInFlight && hydrationUserId === userId) {
       return hydrationInFlight;
     }
 
-    const token = hydrationToken || accountBoundaryFence?.capture?.(userId);
-    const run = hydrateUserDataOnce(activeSession, token);
+    const run = hydrateUserDataOnce(activeSession);
     hydrationUserId = userId;
     hydrationInFlight = run;
 
@@ -3508,7 +3516,7 @@
       reason: "Local copy retained during authenticated startup recovery"
     });
     if (!boundary.ok) return;
-    await hydrateUserData(data.session, boundary.token);
+    await hydrateUserData(data.session);
   }
 
   client.auth.onAuthStateChange((event, activeSession) => {
@@ -3543,7 +3551,7 @@
           return;
         }
 
-        await hydrateUserData(activeSession, boundary.token);
+        await hydrateUserData(activeSession);
       })();
       return;
     }
