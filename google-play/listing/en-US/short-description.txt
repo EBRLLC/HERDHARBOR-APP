@@ -1,1 +1,1 @@
-Farm management for animals, breeding, health, sales, tasks, and rabbit workflows.
+Farm management for animals, breeding, health, sales and rabbit workflows.
