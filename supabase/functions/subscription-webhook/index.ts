@@ -1,6 +1,12 @@
 import { createClient } from "npm:@supabase/supabase-js@2.111.0";
 import Stripe from "https://esm.sh/stripe@18?target=denonext";
 import { deliverSubscriptionNotification } from "../_shared/subscription-email.ts";
+import {
+  EVENT_PROCESSING_LEASE_MS,
+  isProcessingLeaseStale,
+  isSubscriptionUpdateStale,
+  shouldIgnorePaymentFailure
+} from "../_shared/subscription-lifecycle-policy.mjs";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -54,6 +60,7 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false }
   });
   const eventOccurredAt = iso(event.created) || new Date().toISOString();
+  const processingLeaseCutoff = new Date(Date.now() - EVENT_PROCESSING_LEASE_MS).toISOString();
 
   // Stripe retries deliveries and can deliver events out of order. Claim every
   // event before side effects so referral rewards, credits, and notifications
@@ -61,7 +68,7 @@ Deno.serve(async (req) => {
   let eventRowId: string | undefined;
   const { data: priorEvent, error: priorError } = await admin
     .from("subscription_events")
-    .select("id,event_status")
+    .select("id,event_status,processing_started_at")
     .eq("provider", "stripe")
     .eq("provider_event_id", event.id)
     .maybeSingle();
@@ -72,20 +79,38 @@ Deno.serve(async (req) => {
 
   if (priorEvent?.id) {
     if (priorEvent.event_status === "processed") return json({ received: true, duplicate: true });
-    if (priorEvent.event_status === "processing") return json({ received: true, duplicate: true, processing: true });
-    const { data: reclaimed, error: reclaimError } = await admin
-      .from("subscription_events")
-      .update({ event_status: "processing", processed_at: null })
-      .eq("id", priorEvent.id)
-      .eq("event_status", "failed")
-      .select("id")
-      .maybeSingle();
-    if (reclaimError) {
-      console.error("stripe-webhook-reclaim", reclaimError);
-      return json({ error: "Could not reclaim failed webhook event." }, 500);
+    if (priorEvent.event_status === "processing") {
+      const leaseStale = isProcessingLeaseStale(priorEvent.processing_started_at);
+      if (!leaseStale) return json({ received: true, duplicate: true, processing: true });
+      const { data: reclaimedProcessing, error: reclaimProcessingError } = await admin
+        .from("subscription_events")
+        .update({ processing_started_at: new Date().toISOString(), processed_at: null })
+        .eq("id", priorEvent.id)
+        .eq("event_status", "processing")
+        .or(`processing_started_at.is.null,processing_started_at.lt.${processingLeaseCutoff}`)
+        .select("id")
+        .maybeSingle();
+      if (reclaimProcessingError) {
+        console.error("stripe-webhook-processing-reclaim", reclaimProcessingError);
+        return json({ error: "Could not reclaim stale webhook processing lease." }, 500);
+      }
+      if (!reclaimedProcessing?.id) return json({ received: true, duplicate: true, processing: true });
+      eventRowId = reclaimedProcessing.id;
+    } else {
+      const { data: reclaimed, error: reclaimError } = await admin
+        .from("subscription_events")
+        .update({ event_status: "processing", processing_started_at: new Date().toISOString(), processed_at: null })
+        .eq("id", priorEvent.id)
+        .eq("event_status", "failed")
+        .select("id")
+        .maybeSingle();
+      if (reclaimError) {
+        console.error("stripe-webhook-reclaim", reclaimError);
+        return json({ error: "Could not reclaim failed webhook event." }, 500);
+      }
+      if (!reclaimed?.id) return json({ received: true, duplicate: true });
+      eventRowId = reclaimed.id;
     }
-    if (!reclaimed?.id) return json({ received: true, duplicate: true });
-    eventRowId = reclaimed.id;
   } else {
     const { data: claimed, error: claimError } = await admin
       .from("subscription_events")
@@ -94,6 +119,7 @@ Deno.serve(async (req) => {
         provider_event_id: event.id,
         event_type: event.type,
         event_status: "processing",
+        processing_started_at: new Date().toISOString(),
         occurred_at: eventOccurredAt,
         payload: {
           object_id: stringId((event.data.object as { id?: unknown })?.id),
@@ -188,29 +214,48 @@ Deno.serve(async (req) => {
     const priceId = stringId(item?.price);
     const mapped = await lookupPrice(priceId);
     const userFromMetadata = String(raw.metadata?.herdharbor_user_id || "").trim();
-    const existingResult = await admin
+    const bySubscription = await admin
       .from("subscriptions")
-      .select("id,user_id,plan_id,status,provider_updated_at")
+      .select("id,user_id,plan_id,status,provider_subscription_id,provider_updated_at")
       .eq("provider", "stripe")
       .eq("provider_subscription_id", subscription.id)
       .maybeSingle();
-    if (existingResult.error) throw existingResult.error;
-    const userId = userFromMetadata || existingResult.data?.user_id || "";
-    if (!userId) throw new Error(`Stripe subscription ${subscription.id} is missing a HerdHarbor user id.`);
+    if (bySubscription.error) throw bySubscription.error;
 
-    const eventTime = timeValue(eventOccurredAt);
-    const storedTime = timeValue(existingResult.data?.provider_updated_at);
-    if (existingResult.data?.id && storedTime > eventTime) {
-      return {
-        userId,
-        subscriptionRowId: existingResult.data.id,
-        planId: existingResult.data.plan_id,
-        status: existingResult.data.status
-      };
+    let existing = bySubscription.data || null;
+    if (!existing && userFromMetadata) {
+      const byUser = await admin
+        .from("subscriptions")
+        .select("id,user_id,plan_id,status,provider_subscription_id,provider_updated_at")
+        .eq("user_id", userFromMetadata)
+        .maybeSingle();
+      if (byUser.error) throw byUser.error;
+      existing = byUser.data || null;
     }
+
+    const userId = userFromMetadata || existing?.user_id || "";
+    if (!userId) throw new Error(`Stripe subscription ${subscription.id} is missing a HerdHarbor user id.`);
 
     const customerId = stringId(raw.customer);
     const status = String(raw.status || "incomplete");
+    const existingSubscriptionId = String(existing?.provider_subscription_id || "");
+    const stale = Boolean(existing?.id) && isSubscriptionUpdateStale({
+      existingSubscriptionId,
+      incomingSubscriptionId: subscription.id,
+      existingStatus: existing?.status,
+      incomingStatus: status,
+      storedProviderUpdatedAt: existing?.provider_updated_at,
+      eventOccurredAt
+    });
+    if (stale) {
+      return {
+        userId,
+        subscriptionRowId: existing.id,
+        planId: existing.plan_id,
+        status: existing.status,
+        stale: true
+      };
+    }
     const planId = mapped?.plan_id || String(raw.metadata?.herdharbor_plan || "").trim() || null;
     const billingInterval = mapped?.billing_interval || String(raw.metadata?.herdharbor_interval || "month");
     const periodStart = raw.current_period_start ?? item?.current_period_start;
@@ -241,7 +286,7 @@ Deno.serve(async (req) => {
       .single();
     if (error) throw error;
     await accessStatus(userId, status, planId);
-    return { userId, subscriptionRowId: saved.id, planId, status };
+    return { userId, subscriptionRowId: saved.id, planId, status, stale: false };
   }
 
   async function resolveInvoiceContext(invoice: Stripe.Invoice) {
@@ -250,18 +295,19 @@ Deno.serve(async (req) => {
     if (subscriptionId) {
       const { data, error } = await admin
         .from("subscriptions")
-        .select("id,user_id,plan_id,billing_interval,current_period_start,current_period_end,provider_subscription_id")
+        .select("id,user_id,plan_id,billing_interval,current_period_start,current_period_end,provider_subscription_id,provider_updated_at,status")
         .eq("provider", "stripe")
         .eq("provider_subscription_id", subscriptionId)
         .maybeSingle();
       if (error) throw error;
       if (data) return { ...data, subscriptionId };
+      return null;
     }
     const customerId = stringId(raw.customer);
     if (customerId) {
       const { data, error } = await admin
         .from("subscriptions")
-        .select("id,user_id,plan_id,billing_interval,current_period_start,current_period_end,provider_subscription_id")
+        .select("id,user_id,plan_id,billing_interval,current_period_start,current_period_end,provider_subscription_id,provider_updated_at,status")
         .eq("provider", "stripe")
         .eq("provider_customer_id", customerId)
         .maybeSingle();
@@ -582,11 +628,11 @@ Deno.serve(async (req) => {
   }
 
   try {
-    let context: { userId?: string; subscriptionRowId?: string; planId?: string | null; status?: string } | null = null;
+    let context: { userId?: string; subscriptionRowId?: string; planId?: string | null; status?: string; stale?: boolean } | null = null;
 
     if (["customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"].includes(event.type)) {
       context = await upsertSubscription(event.data.object as Stripe.Subscription);
-      if (event.type === "customer.subscription.deleted" && context?.userId) {
+      if (event.type === "customer.subscription.deleted" && context?.userId && context.stale !== true) {
         await expireUnqualifiedReferral(context.userId);
         await releaseFutureReservedCredits(context.userId);
         // Adult paid access degrades to the permanent Free Adult state.
@@ -724,24 +770,37 @@ Deno.serve(async (req) => {
         if (error) throw error;
 
         await markCreditApplied(invoice, invoiceContext.user_id);
+        if (invoiceContext.subscriptionId) {
+          const liveSubscription = await stripe.subscriptions.retrieve(invoiceContext.subscriptionId);
+          const refreshed = await upsertSubscription(liveSubscription);
+          if (refreshed.stale !== true) context = refreshed;
+        }
         // The locked policy qualifies the referral on the first successful
         // monthly renewal. The amount may be $0 because of a legitimate credit;
         // invoice.paid still proves that the renewal itself completed.
         await recordReferralRenewal(invoice, invoiceContext.user_id);
-        context = { userId: invoiceContext.user_id, subscriptionRowId: invoiceContext.id, planId: invoiceContext.plan_id, status: "active" };
+        if (!context) context = { userId: invoiceContext.user_id, subscriptionRowId: invoiceContext.id, planId: invoiceContext.plan_id, status: "active" };
       }
     } else if (event.type === "invoice.payment_failed") {
       const invoice = event.data.object as Stripe.Invoice;
       const invoiceContext = await resolveInvoiceContext(invoice);
       if (invoiceContext) {
         const raw = invoiceRaw(invoice);
-        const { error: updateError } = await admin
-          .from("subscriptions")
-          .update({ status: "past_due", updated_at: new Date().toISOString() })
-          .eq("id", invoiceContext.id);
-        if (updateError) throw updateError;
-        await accessStatus(invoiceContext.user_id, "past_due", invoiceContext.plan_id);
-        await queueNotification({
+        if (shouldIgnorePaymentFailure({
+          storedProviderUpdatedAt: invoiceContext.provider_updated_at,
+          eventOccurredAt,
+          currentStatus: invoiceContext.status
+        })) {
+          context = { userId: invoiceContext.user_id, subscriptionRowId: invoiceContext.id, planId: invoiceContext.plan_id, status: invoiceContext.status, stale: true };
+        } else {
+          const { error: updateError } = await admin
+            .from("subscriptions")
+            .update({ status: "past_due", provider_updated_at: eventOccurredAt, updated_at: new Date().toISOString() })
+            .eq("id", invoiceContext.id)
+            .eq("provider_subscription_id", invoiceContext.subscriptionId);
+          if (updateError) throw updateError;
+          await accessStatus(invoiceContext.user_id, "past_due", invoiceContext.plan_id);
+          await queueNotification({
           userId: invoiceContext.user_id,
           subscriptionId: invoiceContext.id,
           eventType: "payment_failed",
@@ -753,8 +812,9 @@ Deno.serve(async (req) => {
             nextPaymentAttempt: iso(raw.next_payment_attempt),
             plan: invoiceContext.plan_id || "member"
           }
-        });
-        context = { userId: invoiceContext.user_id, subscriptionRowId: invoiceContext.id, planId: invoiceContext.plan_id, status: "past_due" };
+          });
+          context = { userId: invoiceContext.user_id, subscriptionRowId: invoiceContext.id, planId: invoiceContext.plan_id, status: "past_due", stale: false };
+        }
       }
     }
 
@@ -763,7 +823,8 @@ Deno.serve(async (req) => {
         user_id: context?.userId || null,
         subscription_id: context?.subscriptionRowId || null,
         event_status: "processed",
-        processed_at: new Date().toISOString()
+        processed_at: new Date().toISOString(),
+        processing_started_at: null
       }).eq("id", eventRowId);
       if (error) throw error;
     }
@@ -772,7 +833,7 @@ Deno.serve(async (req) => {
     console.error("subscription-webhook", event.type, event.id, error);
     if (eventRowId) {
       await admin.from("subscription_events")
-        .update({ event_status: "failed", processed_at: new Date().toISOString() })
+        .update({ event_status: "failed", processed_at: new Date().toISOString(), processing_started_at: null })
         .eq("id", eventRowId);
     }
     return json({ error: error instanceof Error ? error.message : "Webhook processing failed." }, 500);
