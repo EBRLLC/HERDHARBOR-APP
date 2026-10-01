@@ -75,6 +75,11 @@ test("final v1.6.5 load order installs the authoritative engine before the struc
   assert.ok(runtime>=0&&engine>runtime&&ui>engine);
   assert.doesNotMatch(uiSource,/\bg\.vienna\b|\bg\.modifiers\b|\bnext\.vienna\b|\bnext\.modifiers\b/);
   assert.match(uiSource,/Core\.EDITABLE_LOCI/);
+  assert.match(uiSource,/rows\.slice\(0,10\)/);
+  assert.match(uiSource,/More genetically possible colors/);
+  assert.match(uiSource,/Color names describe coat-color or pattern outcomes, not rabbit breeds or registry\/show recognition/);
+  assert.match(uiSource,/Color \+ breed-aware tracked-locus analysis/);
+  assert.match(uiSource,/direct recorded genetics or trait evidence supports it/);
   assert.match(uiSource,/openPairAnalysis:\(\)=>pair\(\)/);
   assert.match(uiSource,/openGeneticProfile:animalId=>profile\(animalId\|\|""\)/);
   assert.match(pedigreeSource,/engine\.normalizeGenetics/);
