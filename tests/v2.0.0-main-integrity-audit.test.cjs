@@ -161,7 +161,7 @@ test("all dynamically rendered buttons in the production module graph expose a r
           'q("#' + id + '")',
           "q('#" + id + "')",
           '$("#' + id + '")',
-          "$('#" + id + "')"
+          "$('#" + id + "')",
           'querySelector("#' + id + '")',
           "querySelector('#" + id + "')",
           'closest?.("#' + id + '")',
