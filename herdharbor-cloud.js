@@ -3420,7 +3420,6 @@
         return;
       }
 
-      const signedInUserId = String(activeSession.user?.id || "");
       const appUnlocked = !document.documentElement?.classList?.contains?.("hh-auth-locked");
       if (signedInUserId && signedInUserId === lastHydratedUserId && appUnlocked) {
         dispatchAuthSession();
