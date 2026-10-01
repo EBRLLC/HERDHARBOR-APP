@@ -1,1 +1,5 @@
-Alpha v1.8.4 is a production-stability release that hardens cloud-sync readiness and failure telemetry, cross-device record integrity, PWA updates, authentication regressions, subscription/payment-state reliability, and end-to-end release coverage while preserving existing records and stable HerdHarbor engines.
+HerdHarbor 2.0.0
+
+Stable farm management release with specialized rabbit-management workflows, protected cloud synchronization, account isolation, subscriptions, reporting, offline recovery, and improved install/update reliability.
+
+This release preserves existing records and established internal component compatibility while promoting HerdHarbor to the stable 2.0.0 application release.
