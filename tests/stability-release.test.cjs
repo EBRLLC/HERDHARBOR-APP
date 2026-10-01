@@ -142,7 +142,7 @@ for (const asset of [
 assert.match(serviceWorker, /pedigree-genetics-v1\.6\.1\.js\?v=2/);
 assert.match(serviceWorker, /herdharbor-release-v1\.6\.1\.js\?v=2/);
 assert.match(serviceWorker, /rabbit-genetics-v1\.6\.1\.js\?v=3/);
-assert.match(serviceWorker, /rabbit-genetics-ui-advanced-v1\.6\.1\.js\?v=3/);
+assert.match(serviceWorker, /rabbit-genetics-ui-advanced-v1\.6\.1\.js\?v=4/);
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);
 assert.match(serviceWorker, /NETWORK_FIRST_PATHS/);
 assert.match(serviceWorker, /fetch\(request, \{ cache: "no-store" \}\)/);
