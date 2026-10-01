@@ -97,11 +97,11 @@ test("2.0.0 worker still waits for explicit Update Now activation", () => {
 test("2.0.0 shell bootstrap and required precache agree on the release query identity", () => {
   assert.match(index, /manifest\.json\?v=2\.0\.0/);
   assert.match(index, /herdharbor-build\.js\?v=2\.0\.0/);
-  assert.match(index, /pwa\.js\?v=32/);
+  assert.match(index, /pwa\.js\?v=33/);
   assert.match(workerSource, /herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1/);
   assert.match(workerSource, /\.\/manifest\.json\?v=2\.0\.0/);
   assert.match(workerSource, /\.\/herdharbor-build\.js\?v=2\.0\.0/);
-  assert.match(workerSource, /\.\/pwa\.js\?v=32/);
+  assert.match(workerSource, /\.\/pwa\.js\?v=33/);
   assert.match(workerSource, /\.\/herdharbor-monitoring-config\.js\?v=2\.0\.0/);
   assert.match(workerSource, /\.\/vendor\/herdharbor-monitoring-v1\.6\.1\.min\.js\?v=2\.0\.0/);
 });
