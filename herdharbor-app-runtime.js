@@ -809,7 +809,7 @@
       if (window.HerdHarborBilling?.enabled?.()) {
         toast("Member upgrade options are loading. Your current records remain unchanged.", "info");
       } else {
-        toast("Member upgrades are not open yet. Your current records remain safe and available.", "info");
+        toast("Member upgrades are temporarily unavailable. Your current records remain safe and available.", "info");
       }
     });
 
