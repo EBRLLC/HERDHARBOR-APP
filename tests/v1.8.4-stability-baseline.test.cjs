@@ -6,12 +6,12 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
-test("v1.8.4 release closeout owns whole-app v1.8.4 identity", () => {
-  const pkg = JSON.parse(read("package.json"));
-  assert.equal(pkg.version, "1.8.4");
-  assert.match(pkg.description, /Alpha v1\.8\.4/);
-  assert.match(read("herdharbor-build.js"), /version:\s*["\']1\.8\.4["\']/);
-  assert.match(read("manifest.json"), /1\.8\.4/);
+test("v1.8.4 release closeout remains documented as the historical stability baseline", () => {
+  const release = read("RELEASE_NOTES-v1.8.4.md");
+  const contract = read("V1.8.4-STABILITY-RELEASE-CONTRACT.md");
+  assert.match(release, /Alpha v1\.8\.4/);
+  assert.match(contract, /v1\.8\.4/i);
+  assert.match(contract, /stability/i);
 });
 
 test("v1.8.4 contract defines a nine-phase stacked stability release", () => {
