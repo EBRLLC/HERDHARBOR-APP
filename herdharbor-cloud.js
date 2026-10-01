@@ -12,6 +12,7 @@
   const LARGE_STATE_THRESHOLD_CHARS = 750000;
   const MAX_SYNC_DEBOUNCE_MS = 15000;
   const ACTIVE_OWNER_KEY = "herdharbor_active_user_v1";
+  const LEGACY_ACTIVE_OWNER_KEY = "herdharbor_active_user_id";
   const RECOVERY_DB_NAME = "herdharbor_recovery_v1";
   const RECOVERY_STORE_NAME = "snapshots";
   const RECOVERY_DB_VERSION = 2;
@@ -2687,12 +2688,27 @@
       setFormBusy(form, true);
       authMessage("Signing in…", "info");
 
-      const { error } = await client.auth.signInWithPassword({
-        email: root.querySelector("#hh-signin-email").value.trim(),
+      const submittedEmail = root.querySelector("#hh-signin-email").value.trim();
+      const previousUserId = String(session?.user?.id || "");
+      const { data, error } = await client.auth.signInWithPassword({
+        email: submittedEmail,
         password: root.querySelector("#hh-signin-password").value
       });
 
-      if (error) authMessage(error.message, "error");
+      if (error) {
+        authMessage(error.message, "error");
+      } else {
+        const signedInUserId = String(data?.session?.user?.id || "");
+        if (signedInUserId && previousUserId && signedInUserId !== previousUserId) {
+          preserveActiveForUser(previousUserId, "Local copy retained before account switch");
+          clearActiveUserData();
+          safeStorageSet(ACTIVE_OWNER_KEY, signedInUserId);
+          try {
+            originalRemoveItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY);
+          } catch {}
+          lastHydratedUserId = "";
+        }
+      }
       setFormBusy(form, false);
     });
 
@@ -3338,6 +3354,12 @@
   }
 
   async function initialize() {
+    // v1.8.4 no longer uses the legacy active-user pointer. Remove it before
+    // session hydration so an older cached runtime cannot steer the UI back to
+    // a previously tested account.
+    try {
+      originalRemoveItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY);
+    } catch {}
     installStateStoreBridge();
     ensureStyles();
     document.documentElement.classList.add("hh-auth-locked");
@@ -3378,6 +3400,19 @@
     }
 
     if (event === "SIGNED_IN" && activeSession) {
+      const previousUserId = String(session?.user?.id || "");
+      const signedInUserId = String(activeSession.user?.id || "");
+
+      if (previousUserId && signedInUserId && previousUserId !== signedInUserId) {
+        preserveActiveForUser(previousUserId, "Local copy retained before authenticated account switch");
+        clearActiveUserData();
+        safeStorageSet(ACTIVE_OWNER_KEY, signedInUserId);
+        try {
+          originalRemoveItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY);
+        } catch {}
+        lastHydratedUserId = "";
+      }
+
       session = activeSession;
       if (recoveryMode) {
         showRecovery();
@@ -3385,7 +3420,6 @@
         return;
       }
 
-      const signedInUserId = String(activeSession.user?.id || "");
       const appUnlocked = !document.documentElement?.classList?.contains?.("hh-auth-locked");
       if (signedInUserId && signedInUserId === lastHydratedUserId && appUnlocked) {
         dispatchAuthSession();
