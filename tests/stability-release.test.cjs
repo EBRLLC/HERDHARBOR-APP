@@ -45,12 +45,12 @@ if (webVersion === "2.0.0") {
   assert.equal(buildId, "v2.0.0-release-1");
   assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=3/);
 }
-assert.match(html, /HerdHarbor Alpha v1\.8\.4 current application shell/);
+assert.match(html, /HerdHarbor production application shell/);
 assert.doesNotMatch(appRuntime, /id="settings-sync-now"/);
 assert.match(settingsRuntime, /id="settings-sync-now"/);
 assert.match(settingsRuntime, /id="settings-last-synced"/);
 assert.match(settingsRuntime, /id="export-excel"/);
-assert.match(settingsRuntime, /HerdHarbor Alpha v\$\{appVersion\(\)\}/);
+assert.match(settingsRuntime, /HerdHarbor v\$\{appVersion\(\)\}/);
 assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.4"/);
 assert.match(appRuntime, /Guided pedigree builder · v\$\{APP_VERSION\}/);
 assert.doesNotMatch(appRuntime, /Guided pedigree builder · v0\.2\.1/);
