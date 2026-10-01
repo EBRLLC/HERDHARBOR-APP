@@ -20,7 +20,7 @@ function releaseVersion(source) {
 }
 
 test("formal v1.8.4 app release preserves v1.8.2 Cloud Sync V2 component identities", () => {
-  assert.match(build, /version:\s*"1\.8\.4"/);
+  assert.match(build, /version:\s*"2\.0\.0"/);
   assert.match(build, /build:\s*"1\.8\.4-alpha-v1\.8\.4-release-1"/);
   assert.match(syncFlow, /release:\s*"1\.8\.2"/);
   assert.match(localCache, /const RELEASE = "1\.8\.2"/);
