@@ -19,6 +19,20 @@ const text = (value: unknown, max = 120) => typeof value === "string" ? value.tr
 const asInt = (value: unknown) => Number.isFinite(Number(value)) ? Math.trunc(Number(value)) : 0;
 const normalize = (value: unknown) => String(value ?? "").trim().toLowerCase();
 
+function safeReturnOrigin(value: unknown) {
+  const raw = text(value, 500);
+  try {
+    const url = new URL(raw);
+    const hostname = url.hostname.toLowerCase();
+    const local = url.protocol === "http:" && (hostname === "localhost" || hostname === "127.0.0.1");
+    const herdHarbor = url.protocol === "https:" && (hostname === "herdharbor.com" || hostname.endsWith(".herdharbor.com"));
+    if (!local && !herdHarbor) return null;
+    return `${url.origin}${url.pathname}`.replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
+
 type AuthUser = { id: string; email?: string | null; created_at?: string | null };
 
 async function queueNotification(
@@ -356,8 +370,8 @@ Deno.serve(async (req) => {
       if (ACTIVE_SUBSCRIPTION.has(String(current?.status || "")) && current?.provider_customer_id) {
         return json({ error: "This account already has a subscription. Use Manage billing instead." }, 409);
       }
-      const origin = text(body.origin, 500);
-      if (!/^https:\/\//i.test(origin) && !/^http:\/\/localhost(?::\d+)?$/i.test(origin)) return json({ error: "A valid HerdHarbor return URL is required." }, 400);
+      const origin = safeReturnOrigin(body.origin);
+      if (!origin) return json({ error: "A valid HerdHarbor return URL is required." }, 400);
 
       const price = planId === "founder" ? FOUNDER_MONTH : MEMBER_MONTH;
       const trial = trialSnapshot(user);
@@ -391,8 +405,9 @@ Deno.serve(async (req) => {
         customer: current?.provider_customer_id || undefined,
         customer_email: current?.provider_customer_id ? undefined : user.email || undefined,
         client_reference_id: user.id,
-        allow_promotion_codes: true,
+        allow_promotion_codes: planId === "member",
         automatic_tax: { enabled: true },
+        integration_identifier: "herdharbor_sub_qmtzrkpa",
         metadata,
         subscription_data: subscriptionData
       }, {
@@ -410,8 +425,8 @@ Deno.serve(async (req) => {
 
     if (action === "portal") {
       if (!current?.provider_customer_id) return json({ error: "No Stripe customer is connected to this account." }, 409);
-      const origin = text(body.origin, 500);
-      if (!/^https:\/\//i.test(origin) && !/^http:\/\/localhost(?::\d+)?$/i.test(origin)) return json({ error: "A valid HerdHarbor return URL is required." }, 400);
+      const origin = safeReturnOrigin(body.origin);
+      if (!origin) return json({ error: "A valid HerdHarbor return URL is required." }, 400);
       const portal = await stripe.billingPortal.sessions.create({ customer: current.provider_customer_id, return_url: origin });
       return json({ url: portal.url });
     }
