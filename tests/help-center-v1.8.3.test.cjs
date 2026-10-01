@@ -39,8 +39,8 @@ const requiredAnchors = [
   "guide-account-basics"
 ];
 
-test("Help Center is current for the formal v1.8.4 application state", () => {
-  assert.match(howTo, /Alpha v1\.8\.4/);
+test("Help Center uses current production language and membership guidance", () => {
+  assert.match(howTo, /HerdHarbor How To Center/);\n  assert.doesNotMatch(howTo, /Alpha v\d/i);
   assert.doesNotMatch(howTo, /Launch trial runs through September 30, 2026/);
   assert.doesNotMatch(howTo, /Paid subscriptions begin October 1, 2026/);
   assert.doesNotMatch(howTo, /fall back to Junior/i);
