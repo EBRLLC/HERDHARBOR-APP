@@ -2,7 +2,7 @@
   "id": "./",
   "name": "HerdHarbor",
   "short_name": "HerdHarbor",
-  "description": "HerdHarbor 2.0.0 farm management app with protected cloud sync, subscriptions, reporting, and specialized rabbit management workflows.",
+  "description": "Farm management for animal records, breeding, health, tasks, sales, reporting, cloud sync, and specialized rabbit workflows.",
   "version": "2.0.0",
   "start_url": "./",
   "scope": "./",
