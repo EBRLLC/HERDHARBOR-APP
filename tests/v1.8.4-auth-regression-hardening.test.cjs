@@ -52,3 +52,26 @@ test("account switching fences prior local state and removes the retired active-
   assert.match(cloud,/clearActiveUserData\(\);[\s\S]*safeStorageSet\(ACTIVE_OWNER_KEY, authenticatedUserId\)/);
   assert.match(cloud,/originalRemoveItem\.call\(localStorage, LEGACY_ACTIVE_OWNER_KEY\)/);
 });
+
+
+test("legacy poisoned browser state gets one-time safe recovery and member-facing refresh",()=>{
+  const cloud=read("herdharbor-cloud.js");
+  assert.match(cloud,/ACCOUNT_BOUNDARY_RECOVERY_MARKER_PREFIX = "herdharbor_account_boundary_recovery_v1"/);
+  assert.match(cloud,/async function runLegacyAccountBoundaryRecovery\(activeSession\)/);
+  assert.match(cloud,/allowUnownedQuarantine: !alreadyRecovered/);
+  assert.match(cloud,/UNATTRIBUTED_RECOVERY_USER_ID/);
+  assert.match(cloud,/recordRecoverySnapshot\([\s\S]*UNATTRIBUTED_RECOVERY_USER_ID/);
+  assert.match(cloud,/id="hh-refresh-account-data"/);
+  assert.match(cloud,/async function refreshAuthenticatedAccountData\(\)/);
+  assert.match(cloud,/clearAccountSessionMarkers\(userId\)/);
+  assert.doesNotMatch(cloud,/async function initialize\(\) \{[\s\S]{0,500}originalRemoveItem\.call\(localStorage, LEGACY_ACTIVE_OWNER_KEY\)/);
+});
+
+test("Phase 3 retires only HerdHarbor shell caches and never performs a site-wide storage wipe",()=>{
+  const cloud=read("herdharbor-cloud.js");
+  assert.match(cloud,/key\.startsWith\("herdharbor-shell-"\) && key !== CURRENT_SHELL_CACHE_NAME/);
+  assert.match(cloud,/navigator\.serviceWorker\?\.getRegistration/);
+  assert.doesNotMatch(cloud,/localStorage\.clear\(\)/);
+  assert.doesNotMatch(cloud,/sessionStorage\.clear\(\)/);
+  assert.doesNotMatch(cloud,/indexedDB\.deleteDatabase/);
+});
