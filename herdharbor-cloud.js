@@ -3096,7 +3096,7 @@
     }
     const payload = JSON.stringify({
       app: "HerdHarbor",
-      version: "1.7.1",
+      version: window.HerdHarborBuild?.version || "2.0.0",
       backupType: "local-safety-backup",
       exportedAt: new Date().toISOString(),
       data: appState
