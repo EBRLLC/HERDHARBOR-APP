@@ -277,11 +277,6 @@
     styles();
     installSignup();
     installGate();
-    let attempts = 0;
-    const timer = window.setInterval(() => {
-      attempts += 1; installSignup(); installGate();
-      if (attempts >= 120) window.clearInterval(timer);
-    }, 250);
     document.addEventListener("click", (event) => {
       if (event.target?.closest?.("#hh-signup-tab")) setTimeout(installSignup, 0);
       if (event.target?.closest?.("[data-hh-subscription-engine-tab]")) setTimeout(() => void refreshPanel(), 0);
@@ -295,7 +290,13 @@
       } else setTimeout(installGate, 0);
     });
     document.addEventListener("herdharbor:registration-profile", (event) => {
-      if (event.detail?.complete === true) clearChoice();
+      if (event.detail?.complete === true) {
+        clearChoice();
+      } else {
+        // Registration Safety creates the gate before publishing this event,
+        // so the referral layer can attach without background polling.
+        setTimeout(installGate, 0);
+      }
     });
     document.addEventListener("herdharbor:subscription-engine-state", () => setTimeout(enhancePanel, 0));
   }
