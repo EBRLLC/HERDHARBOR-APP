@@ -220,12 +220,12 @@ test("monitoring release/build metadata tracks the stable v2.0.0 release while c
   assert.match(instrumentation, /session_refresh_result/);
 });
 
-test("PWA asset revision remains current under the formal v1.8.4 release", () => {
+test("PWA asset revision remains current under the 2.0.0 release", () => {
   const index = fs.readFileSync(path.join(root, "index.html"), "utf8");
   const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
   assert.equal(packageJson.version, "2.0.0");
-  assert.match(index, /pwa\.js\?v=31/);
-  assert.match(worker, /\.\/pwa\.js\?v=31/);
-  assert.match(worker, /herdharbor-shell-v1\.8\.4/);
+  assert.match(index, /pwa\\.js\\?v=32/);
+  assert.match(worker, /\.\/pwa\\.js\\?v=32/);
+  assert.match(worker, /herdharbor-shell-v2\\.0\\.0-v2\\.0\\.0-release-1/);
   assert.match(packageJson.scripts["test:v1.8.3"], /monitoring-startup-nonblocking-v1\.8\.3\.test\.cjs/);
 });
