@@ -15,17 +15,17 @@ const html = read("index.html");
 const build = read("herdharbor-build.js");
 
 // The web runtime and packaged/PWA shell share the formal v1.8.4 identity.
-assert.equal(manifest.version, "1.8.4");
+assert.equal(manifest.version, "2.0.0");
 const webVersion = build.match(/version:\s*"([^"]+)"/)?.[1];
 const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
-assert.ok(["1.7.1", "1.8.0", "1.8.1", "1.8.2", "1.8.3", "1.8.4"].includes(webVersion), `unexpected web release ${webVersion}`);
+assert.ok(["1.7.1", "1.8.0", "1.8.1", "1.8.2", "1.8.3", "1.8.4", "2.0.0"].includes(webVersion), `unexpected web release ${webVersion}`);
 if (webVersion === "1.7.1") assert.equal(buildId, "multispecies-genetics-foundation-1");
 if (webVersion === "1.8.0") assert.match(buildId, /^subscription-engine-/);
 if (webVersion === "1.8.1") assert.match(buildId, /^october-subscription-launch-/);
 if (webVersion === "1.8.2") assert.match(buildId, /^cloud-sync-v2-/);
-if (webVersion === "1.8.4") assert.equal(buildId, "alpha-v1.8.4-release-1");
+if (webVersion === "2.0.0") assert.equal(buildId, "v2.0.0-release-1");
 assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "1\.8\.4"/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "alpha-v1.8.4-release-1"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "v2.0.0-release-1"/);
 assert.match(pwa, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
 assert.match(html, /herdharbor-build\.js\?v=1\.8\.4/, "the packaged shell bootstrap uses the v1.8.4 cache identity");
 
