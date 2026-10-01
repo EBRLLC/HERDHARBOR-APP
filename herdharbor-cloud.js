@@ -13,6 +13,9 @@
   const MAX_SYNC_DEBOUNCE_MS = 15000;
   const ACTIVE_OWNER_KEY = "herdharbor_active_user_v1";
   const LEGACY_ACTIVE_OWNER_KEY = "herdharbor_active_user_id";
+  const ACCOUNT_BOUNDARY_RECOVERY_MARKER_PREFIX = "herdharbor_account_boundary_recovery_v1";
+  const UNATTRIBUTED_RECOVERY_USER_ID = "__unattributed__";
+  const CURRENT_SHELL_CACHE_NAME = "herdharbor-shell-v1.8.4-alpha-v1.8.4-release-7";
   const RECOVERY_DB_NAME = "herdharbor_recovery_v1";
   const RECOVERY_STORE_NAME = "snapshots";
   const RECOVERY_DB_VERSION = 2;
@@ -1292,12 +1295,64 @@
     lastCloudCheckAt = 0;
   }
 
+  function clearAccountSessionMarkers(userId) {
+    const target = String(userId || "");
+    if (!target) return;
+    try {
+      const removals = [];
+      for (let index = 0; index < sessionStorage.length; index += 1) {
+        const key = sessionStorage.key(index);
+        if (
+          key &&
+          (
+            key.startsWith(`hh_cloud_loaded_${target}_`) ||
+            key.startsWith(`hh_normalized_loaded_${target}_`)
+          )
+        ) removals.push(key);
+      }
+      removals.forEach((key) => sessionStorage.removeItem(key));
+    } catch {}
+  }
+
+  function accountBoundaryRecoveryMarkerKey(userId) {
+    return `${ACCOUNT_BOUNDARY_RECOVERY_MARKER_PREFIX}_${String(userId || "")}`;
+  }
+
+  async function refreshHerdHarborShellCaches() {
+    if (navigator.onLine === false) return false;
+    try {
+      const registration = await navigator.serviceWorker?.getRegistration?.();
+      await registration?.update?.();
+    } catch (error) {
+      console.warn("HerdHarbor could not request a fresh service-worker shell:", error);
+    }
+
+    if (!window.caches?.keys) return false;
+    try {
+      const keys = await caches.keys();
+      if (!keys.includes(CURRENT_SHELL_CACHE_NAME)) return false;
+      await Promise.all(
+        keys
+          .filter((key) => key.startsWith("herdharbor-shell-") && key !== CURRENT_SHELL_CACHE_NAME)
+          .map((key) => caches.delete(key))
+      );
+      return true;
+    } catch (error) {
+      console.warn("HerdHarbor could not retire an older shell cache:", error);
+      return false;
+    }
+  }
+
   function showAccountBoundaryRecovery(message = "HerdHarbor is refreshing your account data. Your records are safe.") {
     ensureStyles();
     buildAuthRoot();
     document.documentElement.classList.add("hh-auth-locked");
     const root = document.querySelector("#hh-auth-root");
-    if (root) root.hidden = false;
+    if (root) {
+      root.hidden = false;
+      const refresh = root.querySelector("#hh-refresh-account-data");
+      if (refresh) refresh.hidden = false;
+    }
     authMessage(message, "info");
   }
 
@@ -1334,6 +1389,39 @@
       });
 
       if (!policy?.ok) {
+        if (
+          policy?.reason === "unowned-active-state" &&
+          options.allowUnownedQuarantine === true &&
+          activeRaw &&
+          safeParse(activeRaw)
+        ) {
+          const preserved = await recordRecoverySnapshot(
+            UNATTRIBUTED_RECOVERY_USER_ID,
+            activeRaw,
+            options.reason || "Unattributed local state retained during account recovery"
+          );
+          if (!preserved) {
+            showAccountBoundaryRecovery(
+              "HerdHarbor could not safely preserve the local recovery copy. Your records were not removed."
+            );
+            return Object.freeze({ ok: false, reason: "unowned-recovery-preserve-failed" });
+          }
+          clearActiveUserData();
+          resetAccountBoundaryRuntime();
+          safeStorageSet(ACTIVE_OWNER_KEY, authenticatedUserId);
+          try {
+            originalRemoveItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY);
+          } catch {}
+          return Object.freeze({
+            ok: true,
+            reason: "unowned-state-quarantined",
+            action: "quarantine-and-recover",
+            userId: authenticatedUserId,
+            token: fenceToken,
+            quarantined: true
+          });
+        }
+
         showAccountBoundaryRecovery(
           options.message || "HerdHarbor found local account data that could not be safely attributed. Your records were not removed."
         );
@@ -1347,6 +1435,8 @@
             options.reason || "Local copy retained before account boundary recovery"
           );
         }
+        clearAccountSessionMarkers(policy.staleOwnerId);
+        clearAccountSessionMarkers(authenticatedUserId);
         clearActiveUserData();
         resetAccountBoundaryRuntime();
         safeStorageSet(ACTIVE_OWNER_KEY, authenticatedUserId);
@@ -1363,7 +1453,8 @@
         reason: policy.reason,
         action: policy.action,
         userId: authenticatedUserId,
-        token: fenceToken
+        token: fenceToken,
+        staleOwnerId: policy.staleOwnerId || ""
       });
     })();
 
@@ -2664,6 +2755,8 @@
         <section class="hh-auth-card">
           <div id="hh-auth-message" class="hh-auth-message" role="status" aria-live="polite"></div>
 
+          <button id="hh-refresh-account-data" class="hh-auth-button hh-auth-primary" type="button" hidden>Refresh account data</button>
+
           <div id="hh-standard-auth">
             <h2 id="hh-auth-title">Sign in</h2>
             <p class="hh-auth-intro">Sign in to load your protected HerdHarbor records.</p>
@@ -2746,6 +2839,9 @@
     standard.hidden = false;
     recovery.hidden = true;
 
+    const refresh = root.querySelector("#hh-refresh-account-data");
+    if (refresh) refresh.hidden = true;
+
     const isSignin = mode === "signin";
     root.querySelector("#hh-signin-form").hidden = !isSignin;
     root.querySelector("#hh-signup-form").hidden = isSignin;
@@ -2785,6 +2881,17 @@
     root.querySelector("#hh-signup-tab").addEventListener("click", () => {
       authMessage();
       showAuth("signup");
+    });
+
+    root.querySelector("#hh-refresh-account-data").addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      authMessage("Refreshing your HerdHarbor account data…", "info");
+      try {
+        await refreshAuthenticatedAccountData();
+      } finally {
+        button.disabled = false;
+      }
     });
 
     root.querySelector("#hh-signin-form").addEventListener("submit", async (event) => {
@@ -3076,6 +3183,7 @@
           return;
         }
         preserveActiveForUser(userId, "Local copy retained at sign out");
+        clearAccountSessionMarkers(userId);
         clearActiveUserData();
         resetAccountBoundaryRuntime();
         accountDialog.hidden = true;
@@ -3470,6 +3578,56 @@
     }
   }
 
+
+  async function runLegacyAccountBoundaryRecovery(activeSession) {
+    const userId = String(activeSession?.user?.id || "");
+    if (!userId) return Object.freeze({ ok: false, reason: "missing-authenticated-user" });
+
+    const markerKey = accountBoundaryRecoveryMarkerKey(userId);
+    const alreadyRecovered = originalGetItem.call(localStorage, markerKey) === "1";
+    const boundary = await ensureAuthenticatedAccountBoundary(activeSession, {
+      reason: alreadyRecovered
+        ? "Local copy retained during authenticated startup recovery"
+        : "Local copy retained during one-time account boundary recovery",
+      allowUnownedQuarantine: !alreadyRecovered
+    });
+    if (!boundary.ok) return boundary;
+
+    if (!alreadyRecovered) {
+      clearAccountSessionMarkers(userId);
+      void refreshHerdHarborShellCaches();
+      safeStorageSet(markerKey, "1");
+    }
+    return boundary;
+  }
+
+  async function refreshAuthenticatedAccountData() {
+    const { data, error } = await client.auth.getSession();
+    if (error || !data?.session?.user?.id) {
+      session = null;
+      accountBoundaryFence?.invalidate?.();
+      resetAccountBoundaryRuntime();
+      showAuth("signin");
+      authMessage(error?.message || "Your session ended. Sign in again to refresh your account data.", "error");
+      return false;
+    }
+
+    const userId = String(data.session.user.id);
+    session = data.session;
+    accountBoundaryFence?.invalidate?.();
+    resetAccountBoundaryRuntime();
+    clearAccountSessionMarkers(userId);
+
+    const boundary = await ensureAuthenticatedAccountBoundary(data.session, {
+      reason: "Local copy retained during member-requested account refresh",
+      allowUnownedQuarantine: true
+    });
+    if (!boundary.ok) return false;
+
+    await hydrateUserData(data.session, boundary.token);
+    return true;
+  }
+
   async function initialize() {
     // v1.8.4 no longer uses the legacy active-user pointer. Remove it before
     // session hydration so an older cached runtime cannot steer the UI back to
@@ -3504,9 +3662,7 @@
       return;
     }
 
-    const boundary = await ensureAuthenticatedAccountBoundary(data.session, {
-      reason: "Local copy retained during authenticated startup recovery"
-    });
+    const boundary = await runLegacyAccountBoundaryRecovery(data.session);
     if (!boundary.ok) return;
     await hydrateUserData(data.session, boundary.token);
   }
