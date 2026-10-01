@@ -97,7 +97,9 @@ test("Rabbit genetics guide explains uncertainty ranges and evidence without ove
   assert.match(howTo, /minimum and maximum across those valid scenarios/i);
   assert.match(howTo, /Uncertainty preserved/);
   assert.match(howTo, /25% V\/V, 50% V\/v, and 25% v\/v/);
-  assert.match(howTo, /No Mendelian percentage/);\n  assert.match(howTo, /Breed context keeps unrelated specialty loci out of the main view/);\n  assert.match(howTo, /two Holland Lops will not have Rex, Satin, Lionhead-mane/);
+  assert.match(howTo, /No Mendelian percentage/); 
+  assert.match(howTo, /Breed context keeps unrelated specialty loci out of the main view/);
+  assert.match(howTo, /two Holland Lops will not have Rex, Satin, Lionhead-mane/);
   assert.match(howTo, /Evidence used/);
   assert.match(howTo, /incomplete pedigree does not prove the pair is unrelated/i);
   assert.match(howTo, /How to make the prediction more precise/);
