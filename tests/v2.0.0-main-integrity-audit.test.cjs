@@ -299,7 +299,7 @@ test("current whole-app release fallbacks do not regress to the retired 1.8.4 id
 });
 
 
-test("stable release bootstrap cannot disable live billing or execute twice through PWA genetics loading", () => {
+test("stable release bootstrap keeps legacy billing isolated and cannot execute twice through PWA genetics loading", () => {
   const release = read("herdharbor-release-v1.6.1.js");
   const pwa = read("pwa.js");
 
