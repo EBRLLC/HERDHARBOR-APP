@@ -24,6 +24,16 @@ test("2.0.0 keeps Founder pricing private and Member pricing public", () => {
   assert.doesNotMatch(referral, /<strong>Founder<\/strong>/);
 });
 
+
+test("billing snapshots ignore stale placeholder prices until a live Stripe subscription exists", () => {
+  assert.match(billing, /const providerPriceCents = Number\.isFinite\(Number\(sub\?\.price_cents\)\)/);
+  assert.match(billing, /freeAdult \|\| effectivePlan === "junior"[\s\S]*\? 0/);
+  assert.match(billing, /liveProviderSubscription && providerPriceCents !== null[\s\S]*\? providerPriceCents/);
+  assert.match(billing, /effectivePlan === "founder"[\s\S]*\? FOUNDER_MONTH\.cents/);
+  assert.match(billing, /effectivePlan === "member"[\s\S]*\? MEMBER_MONTH\.cents/);
+  assert.match(billing, /priceCents: effectivePriceCents/);
+});
+
 test("checkout is monthly, server-authoritative, idempotent, and preserves remaining trial time", () => {
   assert.match(billing, /\["founder", "member"\]\.includes\(planId\)/);
   assert.match(billing, /billingInterval !== "month"/);
