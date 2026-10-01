@@ -143,7 +143,7 @@ test("v1.8.3 web runtime loads carried-forward v1.8.1 referral policy before Str
 });
 
 test("PWA keeps referral, admin-credit and Stripe subscription assets network-first", () => {
-  assert.match(sw, /herdharbor-shell-v1\.8\.4-alpha-v1\.8\.4-release-4/);
+  assert.match(sw, /herdharbor-shell-v1\.8\.4-alpha-v1\.8\.4-release-5/);
   for (const asset of [
     "subscription-referral-policy-v1.8.1.js",
     "subscription-admin-credits-v1.8.1.js",
