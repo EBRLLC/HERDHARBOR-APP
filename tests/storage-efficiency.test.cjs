@@ -14,7 +14,7 @@ const salesCustomerRuntime = fs.readFileSync(path.join(root, "sales-customer-run
 const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
 const stateStore = fs.readFileSync(path.join(root, "herdharbor-state-store-v1.8.4.js"), "utf8");
 
-assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.4"/);
+assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"/);
 assert.match(appRuntime, /const canonicalStateStore = window\.HerdHarborStateStore \|\| null/);
 assert.match(appRuntime, /let lastSavedRaw = canonicalStateStore\?\.getRaw\?\.\(\) \|\| localStorage\.getItem\(STORAGE_KEY\) \|\| ""/);
 assert.match(appRuntime, /canonicalStateStore\.commit\(state,[\s\S]*?lastSavedRaw = result\.rawValue/);
