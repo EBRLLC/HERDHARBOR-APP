@@ -30,7 +30,7 @@ const mobileGrowth = fs.readFileSync(path.join(root, "tests/mobile-growth-layout
 // Current release remains additive: established data/runtime contracts and mobile protections stay intact.
 const webVersion = build.match(/version:\s*"([^"]+)"/)?.[1];
 const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
-assert.ok(["1.7.1", "1.8.0", "1.8.1", "1.8.2", "1.8.3", "1.8.4"].includes(webVersion), `unexpected web release ${webVersion}`);
+assert.ok(["1.7.1", "1.8.0", "1.8.1", "1.8.2", "1.8.3", "1.8.4", "2.0.0"].includes(webVersion), `unexpected web release ${webVersion}`);
 if (webVersion === "1.7.1") assert.equal(buildId, "multispecies-genetics-foundation-1");
 if (webVersion === "1.8.0") assert.match(buildId, /^subscription-engine-/);
 if (webVersion === "1.8.1") {
@@ -41,8 +41,8 @@ if (webVersion === "1.8.2") {
   assert.match(buildId, /^cloud-sync-v2-/);
   assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=2/);
 }
-if (webVersion === "1.8.4") {
-  assert.equal(buildId, "alpha-v1.8.4-release-1");
+if (webVersion === "2.0.0") {
+  assert.equal(buildId, "v2.0.0-release-1");
   assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=3/);
 }
 assert.match(html, /HerdHarbor Alpha v1\.8\.4 current application shell/);
@@ -144,7 +144,7 @@ assert.match(serviceWorker, /rabbit-genetics-ui-advanced-v1\.6\.1\.js\?v=2/);
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);
 assert.match(serviceWorker, /NETWORK_FIRST_PATHS/);
 assert.match(serviceWorker, /fetch\(request, \{ cache: "no-store" \}\)/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "alpha-v1.8.4-release-1"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "v2.0.0-release-1"/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
 assert.match(pwa, /loadShows/);
