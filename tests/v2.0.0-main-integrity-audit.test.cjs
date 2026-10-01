@@ -18,16 +18,33 @@ const worker = read("service-worker.js");
 
 const scriptRefs = [...html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi)].map((m) => m[1]);
 const linkRefs = [...html.matchAll(/<link\b[^>]*\bhref=["']([^"']+)["'][^>]*>/gi)].map((m) => m[1]);
-const localScriptPaths = scriptRefs
+const eagerLocalScripts = scriptRefs
   .map(stripLocal)
   .filter((p) => p && !/^https?:/i.test(p) && !p.startsWith("//") && exists(p));
 
-const activeSource = [
-  html,
-  ...localScriptPaths
-    .filter((p) => !p.startsWith("vendor/"))
-    .map(read)
-].join("\n");
+function discoverProductionScripts(seedScripts) {
+  const seen = new Set();
+  const queue = [...seedScripts];
+
+  while (queue.length) {
+    const file = stripLocal(queue.shift());
+    if (!file || seen.has(file) || !exists(file) || !file.endsWith(".js")) continue;
+    seen.add(file);
+    if (file.startsWith("vendor/")) continue;
+
+    const source = read(file);
+    for (const match of source.matchAll(/["']((?:\.\/)?[A-Za-z0-9_./-]+\.js)(?:\?v=[^"']+)?["']/g)) {
+      const candidate = stripLocal(match[1]);
+      if (candidate && exists(candidate) && !seen.has(candidate)) queue.push(candidate);
+    }
+  }
+
+  return [...seen].sort();
+}
+
+const activeScriptPaths = discoverProductionScripts(eagerLocalScripts);
+const activeNonVendorPaths = activeScriptPaths.filter((p) => !p.startsWith("vendor/"));
+const activeSource = [html, ...activeNonVendorPaths.map(read)].join("\n");
 
 test("main shell has no duplicate DOM ids or duplicate eager script loads", () => {
   const ids = [...html.matchAll(/\bid=["']([^"']+)["']/gi)].map((m) => m[1]);
@@ -57,6 +74,21 @@ test("all static local shell assets and service-worker asset entries resolve", (
   assert.deepEqual([...new Set(missing)], [], "missing local assets: " + [...new Set(missing)].join(", "));
 });
 
+test("recursively reachable production JavaScript references resolve to real local files", () => {
+  const missing = [];
+
+  for (const file of activeNonVendorPaths) {
+    const source = read(file);
+    for (const match of source.matchAll(/["']((?:\.\/)?[A-Za-z0-9_./-]+\.js)(?:\?v=[^"']+)?["']/g)) {
+      const candidate = stripLocal(match[1]);
+      if (!candidate || /^https?:/i.test(candidate)) continue;
+      if (!exists(candidate)) missing.push(file + " -> " + match[1]);
+    }
+  }
+
+  assert.deepEqual([...new Set(missing)], [], "missing reachable JavaScript assets: " + [...new Set(missing)].join(", "));
+});
+
 test("every static navigation route has a real view and routes through the canonical navigator", () => {
   const routes = [...new Set([...html.matchAll(/\bdata-route=["']([^"']+)["']/gi)].map((m) => m[1]))];
   const ids = new Set([...html.matchAll(/\bid=["']([^"']+)["']/gi)].map((m) => m[1]));
@@ -66,7 +98,7 @@ test("every static navigation route has a real view and routes through the canon
   assert.match(runtime, /\$\$\("\.nav-item, \.brand"\)[\s\S]*addEventListener\("click"[\s\S]*navigate\(item\.dataset\.route\)/);
 });
 
-test("every static shell button is backed by a route, form submit, or active click binding", () => {
+test("every static shell button is backed by a route, form submit, PWA action, or active click binding", () => {
   const buttonMatches = [...html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/gi)];
   const unresolved = [];
 
@@ -77,8 +109,7 @@ test("every static shell button is backed by a route, form submit, or active cli
     const route = (attrs.match(/\bdata-route=["']([^"']+)["']/i) || [])[1] || "";
     const explicitType = ((attrs.match(/\btype=["']([^"']+)["']/i) || [])[1] || "").toLowerCase();
 
-    if (route) continue;
-    if (explicitType === "submit") continue;
+    if (route || explicitType === "submit" || /\bonclick\s*=/i.test(attrs)) continue;
     if (/\bdata-pwa-install\b/i.test(attrs) && activeSource.includes("data-pwa-install")) continue;
 
     if (id) {
@@ -96,21 +127,114 @@ test("every static shell button is backed by a route, form submit, or active cli
   assert.deepEqual(unresolved, [], "unbound static buttons: " + unresolved.join(", "));
 });
 
-test("top-level external browser endpoints are restricted to current approved services", () => {
-  const urls = [...activeSource.matchAll(/https?:\/\/[^\s"'\x60)<>{}]+/g)].map((m) => m[0]);
-  const origins = [...new Set(urls.map((raw) => {
-    try { return new URL(raw).origin; } catch { return "invalid:" + raw; }
-  }))].sort();
+test("all dynamically rendered buttons in the production module graph expose a reachable action binding", () => {
+  const unresolved = [];
+  const datasetName = (attribute) => attribute
+    .replace(/^data-/, "")
+    .replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
 
+  for (const file of activeNonVendorPaths) {
+    const source = read(file);
+    for (const match of source.matchAll(/<button\b([^>]*)>/gi)) {
+      const attrs = match[1];
+      const explicitType = ((attrs.match(/\btype=["']([^"']+)["']/i) || [])[1] || "").toLowerCase();
+      if (explicitType === "submit" || /\bonclick\s*=/i.test(attrs)) continue;
+
+      const id = (attrs.match(/\bid=["']([^"'$<>{}]+)["']/i) || [])[1] || "";
+      if (id) {
+        const idBound = [
+          "#" + id,
+          'getElementById("' + id + '")',
+          "getElementById('" + id + "')"
+        ].some((needle) => activeSource.includes(needle));
+        if (idBound) continue;
+      }
+
+      const dataAttrs = [...attrs.matchAll(/\b(data-[a-z0-9-]+)(?:=["'][^"']*["'])?/gi)]
+        .map((entry) => entry[1].toLowerCase());
+
+      const actionBound = dataAttrs.some((attribute) => {
+        const dataset = datasetName(attribute);
+        return [
+          "[" + attribute + "]",
+          "[" + attribute + '="',
+          "dataset." + dataset,
+          "." + dataset
+        ].some((needle) => activeSource.includes(needle));
+      });
+
+      if (actionBound) continue;
+      unresolved.push(file + ":" + (id ? "#" + id : dataAttrs.join("|") || attrs.trim()));
+    }
+  }
+
+  assert.deepEqual([...new Set(unresolved)], [], "unbound dynamic buttons: " + [...new Set(unresolved)].join(", "));
+});
+
+test("static anchors do not point at missing local files or missing page fragments", () => {
+  const ids = new Set([...html.matchAll(/\bid=["']([^"']+)["']/gi)].map((m) => m[1]));
+  const anchors = [...html.matchAll(/<a\b[^>]*\bhref=["']([^"']+)["'][^>]*>/gi)].map((m) => m[1]);
+  const unresolved = [];
+
+  for (const href of anchors) {
+    if (!href || href === "#" || /^https?:|^mailto:|^tel:/i.test(href)) continue;
+    if (href.startsWith("#")) {
+      const fragment = href.slice(1);
+      if (fragment && !ids.has(fragment)) unresolved.push(href);
+      continue;
+    }
+    const local = stripLocal(href);
+    if (!local || exists(local) || exists(path.join(local, "index.html"))) continue;
+    unresolved.push(href);
+  }
+
+  assert.deepEqual([...new Set(unresolved)], [], "unresolved static anchors: " + [...new Set(unresolved)].join(", "));
+});
+
+test("application network endpoint literals are restricted to current approved services", () => {
+  const requestUrls = [];
+  const requestPatterns = [
+    /fetch\(\s*["'](https?:\/\/[^"']+)["']/g,
+    /createClient\(\s*["'](https?:\/\/[^"']+)["']/g
+  ];
+
+  for (const file of activeNonVendorPaths) {
+    const source = read(file);
+    for (const pattern of requestPatterns) {
+      for (const match of source.matchAll(pattern)) requestUrls.push(match[1]);
+    }
+  }
+
+  // Also include named production endpoint constants used by fetch wrappers.
+  for (const match of activeSource.matchAll(/(?:SUPABASE_URL|FEEDBACK_ENDPOINT|FEEDBACK_URL)\s*=\s*["'](https?:\/\/[^"']+)["']/g)) {
+    requestUrls.push(match[1]);
+  }
+
+  const origins = [...new Set(requestUrls.map((raw) => new URL(raw).origin))].sort();
   const approved = new Set([
     "https://okynebbksifqppwicghj.supabase.co",
-    "https://formspree.io",
-    "https://herdharbor.com",
-    "https://app.herdharbor.com"
+    "https://formspree.io"
   ]);
-
   const unexpected = origins.filter((origin) => !approved.has(origin));
-  assert.deepEqual(unexpected, [], "unexpected external browser endpoint origins: " + unexpected.join(", "));
+
+  assert.deepEqual(unexpected, [], "unexpected application network endpoint origins: " + unexpected.join(", "));
+});
+
+test("client-invoked Supabase Edge Functions have matching source endpoints", () => {
+  const slugs = new Set();
+
+  for (const file of activeNonVendorPaths) {
+    const source = read(file);
+    for (const match of source.matchAll(/functions\.invoke\(\s*["']([^"']+)["']/g)) slugs.add(match[1]);
+    for (const match of source.matchAll(/invokeFunction(?:WithDiagnostics)?\(\s*["']([^"']+)["']/g)) slugs.add(match[1]);
+    for (const match of source.matchAll(/\/functions\/v1\/([a-z0-9-]+)/gi)) slugs.add(match[1]);
+  }
+
+  const missing = [...slugs]
+    .filter((slug) => !exists(path.join("supabase", "functions", slug, "index.ts")))
+    .sort();
+
+  assert.deepEqual(missing, [], "client references missing Edge Function sources: " + missing.join(", "));
 });
 
 test("canonical runtime ownership remains singular for state, cloud, PWA and admin APIs", () => {
@@ -127,89 +251,38 @@ test("canonical runtime ownership remains singular for state, cloud, PWA and adm
   }
 });
 
-
-test("dynamically rendered runtime buttons have an action handler in their owning module", () => {
-  const runtimeFiles = [
-    "herdharbor-app-runtime.js",
-    "animal-profile-runtime-v1.8.3.js",
-    "breeding-litter-runtime-v1.8.3.js",
-    "task-runtime-v1.8.3.js",
-    "health-runtime-v1.8.3.js",
-    "sales-customer-runtime-v1.8.3.js",
-    "production-reporting-runtime-v1.8.3.js"
-  ];
-  const metadataOnly = new Set(["data-production-history-product", "data-species"]);
-  const unresolved = [];
-
-  const datasetName = (attribute) => attribute
-    .replace(/^data-/, "")
-    .replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
-
-  for (const file of runtimeFiles) {
+test("destructive browser storage APIs are restricted to the explicit user Clear Data workflow", () => {
+  const hits = [];
+  for (const file of activeNonVendorPaths) {
     const source = read(file);
-    const buttons = [...source.matchAll(/<button\b([^>]*)>/gi)];
-    for (const match of buttons) {
-      const attrs = match[1];
-      const actionAttrs = [...attrs.matchAll(/\b(data-[a-z0-9-]+)=/gi)]
-        .map((entry) => entry[1].toLowerCase())
-        .filter((attribute) => !metadataOnly.has(attribute));
-
-      for (const attribute of actionAttrs) {
-        const dataset = datasetName(attribute);
-        const selectorNeedles = [
-          `[${attribute}]`,
-          `[${attribute}="`,
-          `.${dataset}`,
-          `dataset.${dataset}`
-        ];
-        if (!selectorNeedles.some((needle) => source.includes(needle))) {
-          unresolved.push(`${file}:${attribute}`);
-        }
-      }
-
-      const id = (attrs.match(/\bid=["']([^"'$<>{}]+)["']/i) || [])[1] || "";
-      const explicitType = ((attrs.match(/\btype=["']([^"']+)["']/i) || [])[1] || "").toLowerCase();
-      if (id && explicitType !== "submit") {
-        const bound = [
-          `#${id}`,
-          `getElementById("${id}")`,
-          `getElementById('${id}')`
-        ].some((needle) => source.includes(needle));
-        if (!bound) unresolved.push(`${file}:#${id}`);
-      }
-    }
+    if (/localStorage\.clear\s*\(/.test(source)) hits.push(file + ":localStorage.clear");
+    if (/indexedDB\.deleteDatabase\s*\(/.test(source)) hits.push(file + ":indexedDB.deleteDatabase");
   }
 
-  assert.deepEqual([...new Set(unresolved)], [], "unbound runtime controls: " + [...new Set(unresolved)].join(", "));
+  assert.deepEqual(hits, ["herdharbor-app-runtime.js:indexedDB.deleteDatabase"]);
+  const runtime = read("herdharbor-app-runtime.js");
+  const clearAt = runtime.indexOf("async function clearData()");
+  const deleteAt = runtime.indexOf("indexedDB.deleteDatabase", clearAt);
+  assert.ok(clearAt >= 0 && deleteAt > clearAt);
+  assert.match(runtime.slice(clearAt, deleteAt), /confirm\("Clear every local HerdHarbor record on this device\?"\)[\s\S]*confirm\("This cannot be undone unless you exported a backup\. Continue\?"\)/);
 });
 
-test("client-invoked Supabase Edge Functions have matching source endpoints", () => {
-  const candidateFiles = [
-    "registration-safety-v1.8.1.js",
-    "subscription-stripe-provider-v1.8.0.js",
-    "market-analytics-v1.6.5.js",
-    "paper-pedigree-import-v1.8.2.js",
-    "photo-assisted-entry-v1.8.3.js",
-    "direct-transfer-core-v1.8.2.js",
-    "herdharbor-cloud.js"
-  ];
+test("foreground polling remains singular, visibility-gated, online-gated and bounded", () => {
+  const intervalOwners = activeNonVendorPaths.filter((file) => /setInterval\s*\(/.test(read(file)));
+  assert.deepEqual(intervalOwners, ["herdharbor-cloud.js"]);
 
-  const slugs = new Set();
-  for (const file of candidateFiles) {
-    const source = read(file);
-    for (const match of source.matchAll(/functions\.invoke\(\s*["']([^"']+)["']/g)) slugs.add(match[1]);
-    for (const match of source.matchAll(/invokeFunction(?:WithDiagnostics)?\(\s*["']([^"']+)["']/g)) slugs.add(match[1]);
+  const cloud = read("herdharbor-cloud.js");
+  assert.match(cloud, /FOREGROUND_CLOUD_CHECK_INTERVAL_MS = 30000/);
+  assert.match(cloud, /document\.visibilityState !== "visible"/);
+  assert.match(cloud, /navigator\.onLine === false/);
+  assert.match(cloud, /!session\?\.user\?\.id/);
+  assert.match(cloud, /now - lastCloudCheckAt < 15000/);
+});
 
-    // Some core modules call the Edge Function with a literal URL/function slug
-    // through their own wrapper rather than the common invoke helper.
-    for (const known of ["animal-transfer", "registration-referral", "email-engine"]) {
-      if (source.includes(known)) slugs.add(known);
-    }
-  }
-
-  const missing = [...slugs]
-    .filter((slug) => !exists(path.join("supabase", "functions", slug, "index.ts")))
-    .sort();
-
-  assert.deepEqual(missing, [], "client references missing Edge Function sources: " + missing.join(", "));
+test("current whole-app release fallbacks do not regress to the retired 1.8.4 identity", () => {
+  const runtime = read("herdharbor-app-runtime.js");
+  const cloud = read("herdharbor-cloud.js");
+  assert.match(runtime, /APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"/);
+  assert.doesNotMatch(runtime, /APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.4"/);
+  assert.match(cloud, /CLOUD_SYNC_APP_RELEASE = "2\.0\.0"/);
 });
