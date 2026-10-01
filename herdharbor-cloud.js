@@ -3159,6 +3159,7 @@
       if (!isCurrentHydration()) return staleHydration();
       rolloutDecision = decision;
     } catch (error) {
+      if (!isCurrentHydration()) return staleHydration();
       console.error("HerdHarbor normalized authority check failed:", error);
       const offlineRaw = activeRaw || cachedRaw;
       if (offlineRaw && safeParse(offlineRaw)) {
@@ -3224,7 +3225,7 @@
         if (!isCurrentHydration()) return staleHydration();
       }
 
-      if (!commitHydratedState(deviceCloudRaw, "normalized-authority-hydration");
+      if (!commitHydratedState(deviceCloudRaw, "normalized-authority-hydration")) return staleHydration();
       safeStorageRemove(dirtyKey(userId));
       pendingSync = null;
       syncConflict = null;
@@ -3245,6 +3246,7 @@
 
     if (dirty) {
       await baselineRestorePromise;
+      if (!isCurrentHydration()) return staleHydration();
       const unsyncedRaw = activeRaw || cachedRaw;
       if (unsyncedRaw && safeParse(unsyncedRaw)) {
         if (!activeRaw) commitHydratedState(unsyncedRaw);
@@ -3252,6 +3254,7 @@
         setSyncState("Unsynced local changes found; saving…", "working");
         pendingSync = { rawValue: unsyncedRaw, sequence: writeSequence };
         await drainSyncQueue();
+        if (!isCurrentHydration()) return staleHydration();
         return;
       }
     }
@@ -3357,6 +3360,7 @@
             data,
             "Cloud load paused because the incoming records would exceed HerdHarbor Junior's limit of 5 active animals."
           );
+          if (!isCurrentHydration()) return staleHydration();
           unlockApp();
           return;
         }
@@ -3385,6 +3389,7 @@
       }
       if (!commitHydratedState(deviceCloudRaw)) return staleHydration();
       await writeCloudBaseline(userId, cloudRaw);
+      if (!isCurrentHydration()) return staleHydration();
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       safeStorageRemove(dirtyKey(userId));
       syncConflict = null;
@@ -3416,6 +3421,7 @@
       if (!commitHydratedState(newUserRaw)) return staleHydration();
       pendingSync = { rawValue: newUserRaw, sequence: writeSequence };
       await drainSyncQueue();
+      if (!isCurrentHydration()) return staleHydration();
       if (stateChanged) {
         window.location.reload();
         return;
