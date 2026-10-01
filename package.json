@@ -16,7 +16,7 @@
     "test:phase2": "node --test tests/rabbit-genetics-v1.6.1.test.cjs tests/genetics-release-contract-v1.6.5.test.cjs tests/phase2-release-v1.6.1.test.cjs",
     "test:phase3": "node --test tests/standards-phase3.test.cjs tests/multispecies-genetics-phase3.test.cjs tests/phase3-integration.test.cjs tests/standards-v1.7.0.test.cjs",
     "test:release": "npm run audit:security && node --test tests/current-release-reference-audit-v2.0.0.test.cjs",
-    "test:completion": "npm run test:release && npm run test:state-integrity",
+    "test:completion": "npm run test:v2.0.0-final",
     "test:v1.7.1": "node --test tests/multispecies-genetics-v1.7.1.test.cjs tests/multispecies-genetics-ui-v1.7.1.test.cjs tests/species-context-hardlock-v1.7.1.test.cjs tests/health-intelligence-v1.7.1.test.cjs tests/v1.7.1-stability-hotfix.test.cjs tests/workflow-phase1-v1.7.1.test.cjs tests/phase3-integration.test.cjs",
     "test:v1.8.1": "node --test tests/subscription-engine-v1.8.0.test.cjs tests/subscription-launch-v1.8.1.test.cjs tests/subscription-stripe-v1.8.1.test.cjs tests/subscription-referrals-credits-v1.8.1.test.cjs tests/subscription-email-delivery-v1.8.1.test.cjs tests/registration-safety-v1.8.1.test.cjs tests/email-engine-v1.8.1.test.cjs tests/mobile-viewport-hotfix-v1.8.0.test.cjs tests/app-script-compile.test.cjs tests/auth-signin-deadlock-v1.6.7.test.cjs",
     "test:state-integrity": "node --test tests/state-integrity-e2e-v1.8.2.test.cjs",
@@ -42,7 +42,8 @@
     "test:v2.0.0-positioning": "node --test tests/v2.0.0-product-positioning.test.cjs",
     "test:v2.0.0-workflows": "node --test tests/v2.0.0-workflow-cutover.test.cjs",
     "test:v2.0.0-monitoring": "node --test tests/v2.0.0-monitoring-acceptance.test.cjs tests/monitoring-integration-v1.5.1.test.cjs tests/monitoring-startup-nonblocking-v1.8.3.test.cjs tests/v1.8.4-cloud-telemetry-hardening.test.cjs",
-    "test:v2.0.0-launch-material": "node --test tests/v2.0.0-launch-material.test.cjs tests/google-play-readiness.test.cjs"
+    "test:v2.0.0-launch-material": "node --test tests/v2.0.0-launch-material.test.cjs tests/google-play-readiness.test.cjs",
+    "test:v2.0.0-final": "npm run test:release && npm run test:v2.0.0 && npm run test:state-integrity && node --test tests/v2.0.0-final-release-acceptance.test.cjs"
   },
   "dependencies": {
     "@sentry/browser": "10.71.0"
