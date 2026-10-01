@@ -189,7 +189,7 @@
               <a class="button button-ghost" href="https://herdharbor.com/terms/" target="_blank" rel="noopener">Terms</a>
               <a class="button button-ghost" href="https://herdharbor.com/delete-account/" target="_blank" rel="noopener">Account deletion</a>
             </div>
-            <p class="brand-file-note">Version 1.8.4 is the production-stability release that hardens normalized-sync readiness, cloud telemetry, cross-device integrity, PWA updates, authentication regressions, subscription state, and end-to-end release coverage while preserving established HerdHarbor domain engines.</p>
+            <p class="brand-file-note">HerdHarbor keeps farm records, account access, cloud sync, subscriptions, reporting, and specialized animal workflows connected in one application.</p>
           </article>
 
           <article class="settings-card">
@@ -238,9 +238,7 @@
           <details class="settings-about">
             <summary>About HerdHarbor</summary>
             <div class="detail-grid">
-              ${detailField("Version", `${root.HerdHarborBuild?.channel || "Stable"} v${appVersion()}`)}
-              ${detailField("Build", root.HerdHarborBuild?.buildId || "Development")}
-              ${detailField("Genetics engine", "Complete Domestic Rabbit Genetics v1.6.1")}
+              ${detailField("Version", appVersion())}
             </div>
           </details>
         </div>`;
