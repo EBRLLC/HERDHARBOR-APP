@@ -29,7 +29,7 @@ if (webVersion === "1.8.1") {
 }
 if (webVersion === "1.8.2") assert.equal(buildId, "cloud-sync-v2-state-integrity-1");
 if (webVersion === "2.0.0") assert.equal(buildId, "v2.0.0-release-1");
-assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.4"/);
+assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"/);
 assert.match(settingsRuntime, /id="request-account-deletion"/);
 assert.match(settingsRuntime, /Type DELETE to confirm/);
 assert.match(settingsRuntime, /herdharbor\.com\/delete-account\//);
