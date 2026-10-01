@@ -9,7 +9,7 @@
     featureFlags: Object.freeze({
       adminMemberManagementEnabled: true,
       juniorPlanEnabled: true,
-      billingEnabled: true
+      billingEnabled: false
     }),
     plans: Object.freeze({
       junior: Object.freeze({ label: "Junior", priceMonthly: 0, maxActiveAnimals: 5 }),
