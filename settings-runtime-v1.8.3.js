@@ -46,7 +46,7 @@
         subscriptionStatus: "not_configured"
       };
       $("#view-settings").innerHTML = `
-        ${headerHtml("Settings", "Manage your secure tester workspace, installed app, and safety backups.")}
+        ${headerHtml("Settings", "Manage your account, installed app, and safety backups.")}
         <div class="settings-grid">
           <article class="settings-card">
             <h3>Operation profile</h3>
@@ -174,7 +174,7 @@
           </article>
 
           <article class="settings-card">
-            <h3>Tester feedback</h3>
+            <h3>Feedback</h3>
             <p>Report a bug, confusing workflow, or feature request directly to the HerdHarbor development inbox.</p>
             <div class="action-row"><button class="button button-primary" id="settings-feedback">Send feedback</button></div>
           </article>
@@ -231,8 +231,8 @@
           </article>
 
           <article class="settings-card">
-            <h3>Alpha limitations</h3>
-            <p>This tester build has protected user accounts and cloud sync, plus a durable offline recovery copy for unsynced changes. Online card processing, shared employee access, and OCR are not yet available. Keep periodic exports for important records. Budget results are management estimates and are not tax advice.</p>
+            <h3>Data & availability notes</h3>
+            <p>HerdHarbor includes protected user accounts, cloud sync, and a durable offline recovery copy for unsynced changes. Some tools require an internet connection. Keep periodic exports for important records. Budget results are management estimates and are not tax advice.</p>
           </article>
 
           <details class="settings-about">
@@ -497,17 +497,17 @@
         `Last synced: ${feedbackSync.lastSyncedAt || "not confirmed"}`
       ].join(" | ");
 
-      openModal("Send tester feedback", `
+      openModal("Send feedback", `
         <form id="feedback-form" action="https://formspree.io/f/xpqvpwwb" method="POST">
-          <input type="hidden" name="_subject" value="New HerdHarbor tester feedback">
-          <input type="hidden" name="app_version" value="HerdHarbor Alpha v${appVersion()}">
+          <input type="hidden" name="_subject" value="New HerdHarbor feedback">
+          <input type="hidden" name="app_version" value="HerdHarbor v${appVersion()}">
           <input type="hidden" name="current_url" value="${esc(root.location?.href || "")}">
           <input type="hidden" name="device_details" value="${esc(deviceSummary)}">
           <input type="hidden" name="has_unsynced_changes" value="${feedbackSync.unsynced ? "Yes" : "No"}">
           <input type="hidden" name="has_sync_conflict" value="${feedbackSync.conflict ? "Yes" : "No"}">
           <input type="text" name="_gotcha" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true">
           <div class="form-grid two">
-            ${field("Tester name", "tester_name", state.profile?.ownerName || "", true)}
+            ${field("Name", "name", state.profile?.ownerName || "", true)}
             ${field("Email", "email", state.profile?.email || "", true, "email")}
             ${selectField("Feedback type", "feedback_type", ["Bug", "Confusing workflow", "Feature request", "Missing field", "Mobile display issue", "Other"], "Bug", true)}
             <label>App section
@@ -522,11 +522,11 @@
           ${textareaField("Screenshot, error message, or additional description", "screenshot_description", "")}
           <label>Device type<select name="device_type" required><option value="">Choose one</option><option>Phone</option><option>Tablet</option><option>Desktop or laptop</option><option>Other</option></select></label>
           <label style="display:flex;grid-template-columns:auto 1fr;align-items:flex-start;gap:10px"><input type="checkbox" name="permission_to_contact" value="Yes" style="width:18px;height:18px;margin-top:2px"><span>You may contact me about this feedback.</span></label>
-          <p class="feedback-privacy">This form sends the information above, the current app page, and basic browser/device details to the HerdHarbor tester-feedback inbox. It does not send your livestock records.</p>
+          <p class="feedback-privacy">This form sends the information above, the current app page, and basic browser/device details to the HerdHarbor feedback inbox. It does not send your livestock records.</p>
           <div class="modal-actions"><button type="button" class="button button-ghost" id="cancel-feedback">Cancel</button><button type="submit" class="button button-primary" id="submit-feedback">Send feedback</button></div>
           <p class="feedback-status" id="feedback-status" role="status" aria-live="polite"></p>
         </form>
-      `, "Private tester feedback");
+      `, "Private feedback");
 
       $("#cancel-feedback").addEventListener("click", closeModal);
       $("#feedback-form").addEventListener("submit", async (event) => {
@@ -553,7 +553,7 @@
           }
           status.className = "feedback-status success";
           status.textContent = "Thank you—your feedback was submitted.";
-          recordActivity("Submitted tester feedback.", "feedback");
+          recordActivity("Submitted feedback.", "feedback");
           saveState();
           root.setTimeout(() => {
             closeModal();
