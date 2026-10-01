@@ -27,8 +27,7 @@ assert.match(pagesWorkflow, /push:\s*\n\s*branches: \[main\]/, "Pages deployment
 assert.match(pagesWorkflow, /ref: \$\{\{ github\.sha \}\}/);
 assert.match(pagesWorkflow, /secrets\.HERDHARBOR_SENTRY_DSN/);
 assert.match(pagesWorkflow, /HERDHARBOR_MONITORING_ENVIRONMENT: production/);
-assert.match(pagesWorkflow, /npm run test:release/);
-assert.match(pagesWorkflow, /npm run test:v2\.0\.0/);
+assert.match(pagesWorkflow, /npm run test:v2\.0\.0-final/);
 assert.match(pagesWorkflow, /npm run build:monitoring-config/);
 assert.match(pagesWorkflow, /actions\/deploy-pages@v4/);
 for (const asset of ["registration-safety-v1.8.1.js", "subscription-launch-v1.8.1.js", "subscription-referral-policy-v1.8.1.js", "subscription-admin-credits-v1.8.1.js", "subscription-stripe-launch-bridge-v1.8.1.js"]) {
