@@ -23,6 +23,7 @@ const requiredAnchors = [
   "guide-record-pregnancy",
   "guide-record-birth-litter",
   "guide-record-weights",
+  "guide-rabbit-genetics-pair-analysis",
   "guide-health-basic",
   "guide-health-episode",
   "guide-sell-animal",
@@ -88,6 +89,19 @@ test("Help Center search and mobile navigation remain usable", () => {
   assert.match(howTo, /grid-template-columns:1fr/);
   assert.match(howTo, /scroll-margin-top:90px/);
   assert.match(howTo, /Back to app/);
+});
+
+test("Rabbit genetics guide explains uncertainty ranges and evidence without overstating certainty", () => {
+  assert.match(howTo, /How to Use Rabbit Genetics & Pair Analysis/);
+  assert.match(howTo, /Do not add the displayed ranges together/);
+  assert.match(howTo, /minimum and maximum across those valid scenarios/i);
+  assert.match(howTo, /Uncertainty preserved/);
+  assert.match(howTo, /25% V\/V, 50% V\/v, and 25% v\/v/);
+  assert.match(howTo, /No Mendelian percentage/);
+  assert.match(howTo, /Evidence used/);
+  assert.match(howTo, /incomplete pedigree does not prove the pair is unrelated/i);
+  assert.match(howTo, /How to make the prediction more precise/);
+  assert.match(howTo, /not a DNA test/i);
 });
 
 test("Help documentation does not create a second business-rule engine", () => {
