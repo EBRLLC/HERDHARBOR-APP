@@ -234,7 +234,7 @@
               <label>Tier<select id="hh-admin-next-tier">${["junior", "founder", "member", "business"].map((tier) => `<option value="${tier}" ${member.membershipTier === tier ? "selected" : ""}>${titleCase(tier)}</option>`).join("")}</select></label>
               <label>Override<select id="hh-admin-override-mode"><option value="permanent">Permanent</option><option value="until_date">Until date</option><option value="manual">Until manually removed</option></select></label>
               <label id="hh-admin-expiration-label" hidden>Expiration<input id="hh-admin-override-expires" type="datetime-local"></label>
-              <label>Reason (optional)<textarea id="hh-admin-membership-reason" maxlength="500" placeholder="Founding tester, complimentary access, or support correction"></textarea></label>
+              <label>Reason (optional)<textarea id="hh-admin-membership-reason" maxlength="500" placeholder="Founding member, complimentary access, or support correction"></textarea></label>
               <div class="action-row"><button class="button button-primary" type="submit">Save membership</button><button class="button button-ghost" id="hh-admin-automatic" type="button">Return to Automatic</button></div>
             </form>
           </div>
