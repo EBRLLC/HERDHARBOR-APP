@@ -20,8 +20,8 @@ for (const asset of [
   assert.ok(worker.includes(`/${asset}`), `${asset} must remain network-first`);
 }
 
+assert.match(html, /herdharbor-release-v1\.6\.1\.js\?v=2/);
 for (const asset of [
-  "herdharbor-release-v1.6.1.js",
   "herdharbor-membership-v1.6.1.js",
   "herdharbor-access-cache-v1.6.1.js",
   "market-analytics-v1.6.5.js"
