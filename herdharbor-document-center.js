@@ -467,11 +467,159 @@
   }
 
 
+  function buildRecordDocumentModel(options) {
+    const raw=options && typeof options==="object" ? options : {};
+    const branding=pedigree && pedigree.sanitizeBranding
+      ? pedigree.sanitizeBranding(raw.branding,"private")
+      : Object.assign({},raw.branding||{});
+    const fields=(Array.isArray(raw.fields)?raw.fields:[]).map(function(item){
+      if(!item || item.value===null || item.value===undefined || String(item.value).trim()==="") return null;
+      return {label:asText(item.label),value:asText(item.value)};
+    }).filter(Boolean);
+    return {
+      schemaVersion:1,
+      type:asText(raw.type||"recordDocument"),
+      title:asText(raw.title||"HerdHarbor Record"),
+      subtitle:asText(raw.subtitle||""),
+      geometry:pageGeometry(raw.pageSize||"letter",raw.orientation||"portrait"),
+      branding,
+      fields,
+      notes:asText(raw.notes||""),
+      signatureLabel:raw.signatureLine===false?"":asText(raw.signatureLabel||"Signature"),
+      qrTarget:asText(raw.qrTarget||""),
+      generatedAt:asText(raw.generatedAt||new Date().toISOString())
+    };
+  }
+
+  function renderRecordDocumentHtml(model) {
+    const widthIn=(model.geometry.width/72).toFixed(3);
+    const heightIn=(model.geometry.height/72).toFixed(3);
+    const accent=escapeHtml(model.branding?.accent||"#2E7D7B");
+    const fields=model.fields.map(function(item){
+      return '<div class="rd-field"><span>'+escapeHtml(item.label)+'</span><strong>'+escapeHtml(truncate(item.value,90))+'</strong></div>';
+    }).join("");
+    const contacts=[
+      model.branding?.includeEmail ? model.branding?.email : "",
+      model.branding?.includePhone ? model.branding?.phone : "",
+      model.branding?.website,
+      model.branding?.social
+    ].filter(Boolean).map(escapeHtml).join(" · ");
+    return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+
+      escapeHtml(model.title)+'</title><style>@page{size:'+widthIn+'in '+heightIn+'in;margin:0}*{box-sizing:border-box}html,body{margin:0;background:#fff;color:#263746;font-family:Arial,sans-serif}.page{width:'+widthIn+'in;height:'+heightIn+'in;padding:.42in}.frame{height:100%;border:2px solid '+accent+';border-radius:16px;padding:.3in;display:flex;flex-direction:column}.head{border-bottom:1px solid #d9e1e4;padding-bottom:.15in}.head h1{margin:0;font-size:24px}.head p{margin:5px 0 0;color:#667783}.grid{display:grid;grid-template-columns:1fr 1fr;gap:.1in;margin-top:.22in}.rd-field{padding:.1in;border:1px solid #e0e5e7;border-radius:8px}.rd-field span{display:block;color:#667783;font-size:8px;text-transform:uppercase;font-weight:700}.rd-field strong{display:block;margin-top:3px;font-size:11px;overflow-wrap:anywhere}.notes{margin-top:.18in;padding:.14in;background:#f7f3ea;border-radius:8px;font-size:10px}.foot{margin-top:auto;padding-top:.25in;display:flex;justify-content:space-between;gap:.2in;align-items:end}.sig{min-width:2.1in;border-top:1px solid #263746;padding-top:5px;font-size:8px}.contact{text-align:right;color:#667783;font-size:8px}.qr{margin-top:5px;font-size:7px;font-weight:700}</style></head><body><div class="page"><section class="frame"><header class="head"><h1>'+
+      escapeHtml(model.title)+'</h1><p>'+escapeHtml(model.subtitle)+'</p></header><div class="grid">'+fields+'</div>'+
+      (model.notes?'<div class="notes">'+escapeHtml(model.notes)+'</div>':'')+'<footer class="foot">'+
+      (model.signatureLabel?'<div class="sig">'+escapeHtml(model.signatureLabel)+'</div>':'<div></div>')+
+      '<div class="contact">'+contacts+(model.qrTarget?'<div class="qr" data-qr-target="'+escapeHtml(model.qrTarget)+'">QR-ready transfer link</div>':'')+
+      '</div></footer></section></div></body></html>';
+  }
+
+  function buildRecordDocumentPdfBytes(model) {
+    const encoder=new TextEncoder();
+    const lines=[];
+    const left=42;
+    const top=model.geometry.height-52;
+    lines.push("1.2 w 0.18 0.49 0.48 RG 30 30 "+(model.geometry.width-60).toFixed(2)+" "+(model.geometry.height-60).toFixed(2)+" re S");
+    lines.push("BT /F2 20 Tf "+left+" "+top+" Td ("+pdfText(truncate(model.title,72))+") Tj ET");
+    if(model.subtitle) lines.push("BT /F1 9 Tf "+left+" "+(top-18)+" Td ("+pdfText(truncate(model.subtitle,100))+") Tj ET");
+    let y=top-55;
+    model.fields.forEach(function(item,index){
+      const x=index%2===0?left:Math.max(left+220,model.geometry.width/2+4);
+      if(index%2===0 && index>0)y-=28;
+      lines.push("BT /F1 7 Tf "+x.toFixed(2)+" "+y.toFixed(2)+" Td ("+pdfText(truncate(item.label.toUpperCase(),32))+") Tj ET");
+      lines.push("BT /F2 9 Tf "+x.toFixed(2)+" "+(y-11).toFixed(2)+" Td ("+pdfText(truncate(item.value,52))+") Tj ET");
+    });
+    if(model.notes){
+      y-=42;
+      lines.push("BT /F1 8 Tf "+left+" "+y.toFixed(2)+" Td ("+pdfText(truncate(model.notes,115))+") Tj ET");
+    }
+    if(model.signatureLabel){
+      lines.push(left+" 72 180 0 re S");
+      lines.push("BT /F1 7 Tf "+left+" 60 Td ("+pdfText(model.signatureLabel)+") Tj ET");
+    }
+    if(model.qrTarget) lines.push("BT /F1 6 Tf "+left+" 36 Td (QR-ready transfer link) Tj ET");
+    const content=lines.join("\n")+"\n";
+    const objects=[];
+    objects[1]="<< /Type /Catalog /Pages 2 0 R >>";
+    objects[2]="<< /Type /Pages /Kids [3 0 R] /Count 1 >>";
+    objects[3]="<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "+model.geometry.width.toFixed(2)+" "+model.geometry.height.toFixed(2)+"] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>";
+    objects[4]="<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
+    objects[5]="<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>";
+    objects[6]="<< /Length "+encoder.encode(content).length+" >>\nstream\n"+content+"endstream";
+    const chunks=[encoder.encode("%PDF-1.4\n")],offsets=[0];
+    let total=chunks[0].length;
+    for(let id=1;id<=6;id+=1){offsets[id]=total;const part=encoder.encode(id+" 0 obj\n"+objects[id]+"\nendobj\n");chunks.push(part);total+=part.length;}
+    const xrefOffset=total;
+    let xref="xref\n0 7\n0000000000 65535 f \n";
+    for(let id=1;id<=6;id+=1)xref+=String(offsets[id]).padStart(10,"0")+" 00000 n \n";
+    xref+="trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n"+xrefOffset+"\n%%EOF\n";
+    chunks.push(encoder.encode(xref));
+    const length=chunks.reduce(function(sum,part){return sum+part.length;},0),out=new Uint8Array(length);
+    let cursor=0;chunks.forEach(function(part){out.set(part,cursor);cursor+=part.length;});
+    return out;
+  }
+
+  function buildSaleTransferRecordModel(options) {
+    const raw=options && typeof options==="object" ? options : {};
+    const animal=raw.animal||{};
+    return buildRecordDocumentModel({
+      type:"saleTransferRecord",
+      title:"Sale / Transfer Record",
+      subtitle:raw.sellerName||raw.branding?.rabbitryName||"HerdHarbor",
+      branding:raw.branding,
+      qrTarget:raw.qrTarget,
+      signatureLabel:"Seller / breeder signature",
+      notes:raw.notes||"",
+      fields:[
+        {label:"Animal",value:animal.name},
+        {label:"Animal ID / tattoo",value:animal.tattoo||animal.earTagNumber||animal.tag},
+        {label:"Breed",value:animal.breed},
+        {label:"Sex",value:animal.sex},
+        {label:"Date of birth",value:animal.dob},
+        {label:"Color / variety",value:animal.color||animal.variety},
+        {label:"Buyer",value:raw.buyerName},
+        {label:"Sale date",value:raw.saleDate},
+        {label:"Sale number",value:raw.saleNumber},
+        {label:"Transfer ID",value:raw.transferId},
+        {label:"Pedigree included",value:raw.pedigreeIncluded===false?"No":"Yes"},
+        {label:"Transfer method",value:raw.transferMethod||""}
+      ]
+    });
+  }
+
+  function buildAnimalInformationSheetModel(options) {
+    const raw=options && typeof options==="object" ? options : {};
+    const animal=raw.animal||{};
+    return buildRecordDocumentModel({
+      type:"animalInformationSheet",
+      title:"Animal Information Sheet",
+      subtitle:raw.branding?.rabbitryName||raw.operationName||"HerdHarbor",
+      branding:raw.branding,
+      qrTarget:raw.qrTarget,
+      signatureLine:false,
+      notes:raw.includeNotes===true ? asText(animal.notes||"") : "",
+      fields:[
+        {label:"Animal",value:animal.name},
+        {label:"Species",value:animal.species},
+        {label:"Breed",value:animal.breed},
+        {label:"Sex",value:animal.sex},
+        {label:"Date of birth",value:animal.dob},
+        {label:"Color / variety",value:animal.color||animal.variety},
+        {label:"ID / tattoo",value:animal.tattoo||animal.earTagNumber||animal.tag},
+        {label:"Registration",value:animal.registrationNumber},
+        {label:"Breeder",value:animal.breeder},
+        {label:"Sire",value:raw.sireName},
+        {label:"Dam",value:raw.damName},
+        {label:"Current weight",value:animal.weight||animal.currentWeight}
+      ]
+    });
+  }
+
+
   const DOCUMENT_TYPES = Object.freeze({
     pedigree:Object.freeze({ id:"pedigree", label:"Pedigree", enabled:true }),
     birthCertificate:Object.freeze({ id:"birthCertificate", label:"Birth Certificate", enabled:true }),
-    saleTransferRecord:Object.freeze({ id:"saleTransferRecord", label:"Sale / Transfer Record", enabled:false }),
-    animalInformationSheet:Object.freeze({ id:"animalInformationSheet", label:"Animal Information Sheet", enabled:false }),
+    saleTransferRecord:Object.freeze({ id:"saleTransferRecord", label:"Sale / Transfer Record", enabled:true }),
+    animalInformationSheet:Object.freeze({ id:"animalInformationSheet", label:"Animal Information Sheet", enabled:true }),
     healthSummary:Object.freeze({ id:"healthSummary", label:"Health Summary", enabled:false }),
     breedingRecord:Object.freeze({ id:"breedingRecord", label:"Breeding Record", enabled:false }),
     litterRecord:Object.freeze({ id:"litterRecord", label:"Litter Record", enabled:false })
