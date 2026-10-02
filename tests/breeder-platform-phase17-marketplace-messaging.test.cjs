@@ -50,3 +50,11 @@ test("realtime subscription is scoped to one conversation and message table",()=
  assert.equal(calls[0][1].filter,"conversation_id=eq.c1");
  assert.match(migration,/alter publication supabase_realtime add table public\.marketplace_messages/);
 });
+
+
+test("message threads bound initial history and append realtime events without full refetch loops",()=>{
+ assert.match(source,/\.order\("created_at",\{ascending:false\}\)[\s\S]*\.limit\(200\)/);
+ assert.match(source,/realtime=subscribeConversation\(conversationId,appendMessage,gw\)/);
+ assert.doesNotMatch(source,/subscribeConversation\(conversationId,function\(\)\{void openThread\(conversationId\);\},gw\)/);
+ assert.match(source,/const sent=await sendMessage[\s\S]*appendMessage\(sent\)/);
+});
