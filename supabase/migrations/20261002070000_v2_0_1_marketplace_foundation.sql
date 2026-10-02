@@ -304,11 +304,39 @@ create policy marketplace_messages_sender_update on public.marketplace_messages 
   with check ((select auth.uid())=sender_id and herdharbor_private.marketplace_is_conversation_member(conversation_id));
 
 create policy marketplace_message_attachments_member_select on public.marketplace_message_attachments for select to authenticated
-  using (herdharbor_private.marketplace_is_conversation_member(conversation_id));
+  using (
+    herdharbor_private.marketplace_is_conversation_member(marketplace_message_attachments.conversation_id)
+    and exists (
+      select 1
+      from public.marketplace_messages msg
+      where msg.id=marketplace_message_attachments.message_id
+        and msg.conversation_id=marketplace_message_attachments.conversation_id
+    )
+  );
 create policy marketplace_message_attachments_uploader_insert on public.marketplace_message_attachments for insert to authenticated
-  with check ((select auth.uid())=uploader_id and herdharbor_private.marketplace_is_conversation_member(conversation_id));
+  with check (
+    (select auth.uid())=marketplace_message_attachments.uploader_id
+    and herdharbor_private.marketplace_is_conversation_member(marketplace_message_attachments.conversation_id)
+    and exists (
+      select 1
+      from public.marketplace_messages msg
+      where msg.id=marketplace_message_attachments.message_id
+        and msg.conversation_id=marketplace_message_attachments.conversation_id
+        and msg.sender_id=(select auth.uid())
+    )
+  );
 create policy marketplace_message_attachments_uploader_delete on public.marketplace_message_attachments for delete to authenticated
-  using ((select auth.uid())=uploader_id and herdharbor_private.marketplace_is_conversation_member(conversation_id));
+  using (
+    (select auth.uid())=marketplace_message_attachments.uploader_id
+    and herdharbor_private.marketplace_is_conversation_member(marketplace_message_attachments.conversation_id)
+    and exists (
+      select 1
+      from public.marketplace_messages msg
+      where msg.id=marketplace_message_attachments.message_id
+        and msg.conversation_id=marketplace_message_attachments.conversation_id
+        and msg.sender_id=(select auth.uid())
+    )
+  );
 
 create policy marketplace_blocks_owner_all on public.marketplace_blocks for all to authenticated
   using ((select auth.uid())=blocker_id) with check ((select auth.uid())=blocker_id);

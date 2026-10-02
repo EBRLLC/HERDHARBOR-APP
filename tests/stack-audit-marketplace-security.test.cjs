@@ -71,3 +71,14 @@ test("seller reviews remain RPC-only even for authenticated Marketplace members"
  assert.doesNotMatch(reviews,/grant (?:select|insert|update|delete)[^;]*marketplace_reviews[^;]*authenticated/i);
  for(const fn of ["marketplace_submit_review","marketplace_seller_feedback_summary","marketplace_seller_feedback","marketplace_dispute_review"]) assert.ok(reviews.includes(fn),fn);
 });
+
+
+test("attachment policies bind the message id to the same outer conversation without name-resolution ambiguity",()=>{
+ const start=foundation.indexOf("create policy marketplace_message_attachments_member_select");
+ const end=foundation.indexOf("create policy marketplace_blocks_owner_all",start);
+ const block=foundation.slice(start,end);
+ assert.match(block,/msg\.id=marketplace_message_attachments\.message_id/);
+ assert.match(block,/msg\.conversation_id=marketplace_message_attachments\.conversation_id/);
+ assert.match(block,/msg\.sender_id=\(select auth\.uid\(\)\)/);
+ assert.doesNotMatch(block,/msg\.conversation_id=conversation_id/);
+});
