@@ -132,7 +132,7 @@
     if (ready()) return Promise.resolve(true);
     if (lazyScriptPromises.has(src)) return lazyScriptPromises.get(src);
 
-    const existing = [...document.scripts].find((script) => {
+    let existing = [...document.scripts].find((script) => {
       try {
         return new URL(script.src, window.location.href).pathname === new URL(src, window.location.href).pathname;
       } catch {
@@ -140,8 +140,13 @@
       }
     });
 
+    if (existing && !ready()) {
+      existing.remove();
+      existing = null;
+    }
+
     const promise = new Promise((resolve, reject) => {
-      const script = existing || document.createElement("script");
+      const script = document.createElement("script");
       const finish = () => {
         if (ready()) resolve(true);
         else reject(new Error(`Lazy feature asset loaded without registering: ${src}`));
@@ -150,21 +155,41 @@
 
       script.addEventListener("load", finish, { once: true });
       script.addEventListener("error", fail, { once: true });
-
-      if (!existing) {
-        script.src = src;
-        script.async = true;
-        script.dataset.hhLazyAsset = "true";
-        document.head.appendChild(script);
-      } else if (ready()) {
-        resolve(true);
-      }
+      script.src = src;
+      script.async = true;
+      script.dataset.hhLazyAsset = "true";
+      document.head.appendChild(script);
     }).catch((error) => {
       lazyScriptPromises.delete(src);
       throw error;
     });
 
     lazyScriptPromises.set(src, promise);
+    return promise;
+  }
+
+  const lazyStylePromises = new Map();
+
+  function loadStyleOnce(href) {
+    const absolute = new URL(href, window.location.href).href;
+    const existing = [...document.querySelectorAll('link[rel="stylesheet"]')].find((link) => link.href === absolute);
+    if (existing) return Promise.resolve(true);
+    if (lazyStylePromises.has(absolute)) return lazyStylePromises.get(absolute);
+
+    const promise = new Promise((resolve, reject) => {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = href;
+      link.dataset.hhLazyAsset = "true";
+      link.addEventListener("load", () => resolve(true), { once: true });
+      link.addEventListener("error", () => reject(new Error(`Lazy feature stylesheet could not load: ${href}`)), { once: true });
+      document.head.appendChild(link);
+    }).catch((error) => {
+      lazyStylePromises.delete(absolute);
+      throw error;
+    });
+
+    lazyStylePromises.set(absolute, promise);
     return promise;
   }
 
@@ -202,6 +227,26 @@
       () => typeof window.HerdHarborDocumentCenter?.renderHub === "function"
     );
   }
+
+  async function ensureDirectTransferRuntime() {
+    await Promise.all([
+      loadStyleOnce("direct-transfer-v1.8.2.css?v=1"),
+      loadScriptOnce(
+        "direct-transfer-core-v1.8.2.js?v=1",
+        () => typeof window.HerdHarborDirectTransferCore?.buildTransferPayload === "function"
+      )
+    ]);
+    await loadScriptOnce(
+      "direct-transfer-v1.8.2.js?v=1",
+      () => typeof window.HerdHarborDirectTransfers?.sendSale === "function"
+    );
+    return window.HerdHarborDirectTransfers;
+  }
+
+  const marketplaceActionShims = Object.freeze({
+    ensureDocumentCenter: ensureDocumentCenterRuntime,
+    ensureDirectTransfer: ensureDirectTransferRuntime
+  });
 
   function ensureAnimalProfileRuntimeLoaded() {
     return loadScriptOnce(
@@ -1002,14 +1047,14 @@
       },
       marketplace: () => {
         if (typeof window.HerdHarborMarketplace?.renderMarketplace === "function") {
-          window.HerdHarborMarketplace.renderMarketplace({ target: $("#view-marketplace"), state, toast });
+          window.HerdHarborMarketplace.renderMarketplace({ target: $("#view-marketplace"), state, toast, actions: marketplaceActionShims });
           return;
         }
         renderLazyRoute(
           "marketplace",
           "Marketplace",
           ensureMarketplaceRuntime,
-          () => window.HerdHarborMarketplace?.renderMarketplace?.({ target: $("#view-marketplace"), state, toast })
+          () => window.HerdHarborMarketplace?.renderMarketplace?.({ target: $("#view-marketplace"), state, toast, actions: marketplaceActionShims })
         );
       },
       health: renderHealth,
