@@ -731,5 +731,81 @@ async function renderMarketplaceNotifications(host,customGateway,toast){
  }catch(error){body.innerHTML='<p class="muted">Marketplace notifications could not be loaded.</p>';notify(error?.message||"Notifications unavailable.","error");}
 }
 
-return Object.freeze({VERSION,TABLES,BUCKETS,PUBLIC_PROFILE_FIELDS,LISTING_STATES,LISTING_PUBLIC_FIELDS,PUBLIC_PEDIGREE_FIELDS,createGateway,gateway,browserClient,normalizePublicProfileDraft,saveSellerProfile,getPublicSellerProfile,publicProfilePreview,normalizeListingDraft,buildListingSnapshotFromHerd,listingInsertPayload,createListingFromHerd,createManualListing,deleteListing,listingCreationOptions,publicMediaUrl,searchArgs,searchListings,getListingDetails,saveListing,renderListingCard,renderMarketplace,openSellAnimalDialog,publicPedigreeDepth,buildPublicPedigreeSnapshot,setListingPublicPedigree,getPublicListingPedigree,publicSnapshotToGraph,renderPublicPedigree,openListingConversation,listConversations,listMessages,sendMessage,updateConversationMember,subscribeConversation,renderInbox,submitReport,blockPublicProfile,getModerationQueue,moderateReport,renderModerationQueue,myListings,updateListingState,confirmListing,refreshSellerNotifications,myNotifications,markNotificationRead,myFavorites,removeFavorite,imageFileToUpload,uploadListingPhotos,removeListingPhoto,stateActionsForListing,renderSellerListings,renderFavorites,renderMarketplaceNotifications});
+
+function savedSearchPayloadFromFilters(filters,name,alertsEnabled,searchId){
+ const args=searchArgs(filters||{});
+ return {
+  target_search_id:searchId||null,
+  search_name:textValue(name||"Saved Marketplace search",120),
+  search_text_value:args.search_text||"",
+  species_value:args.species_filter||"",
+  breed_value:args.breed_filter||"",
+  sex_value:args.sex_filter||"",
+  min_price_value:args.min_price_cents,
+  max_price_value:args.max_price_cents,
+  pedigree_value:args.pedigree_filter||"",
+  region_value:args.region_filter||"",
+  alerts_value:alertsEnabled!==false
+ };
+}
+async function saveSearch(filters,name,alertsEnabled,searchId,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_save_search",savedSearchPayloadFromFilters(filters,name,alertsEnabled,searchId));
+ if(result.error)throw result.error;
+ return result.data;
+}
+async function listSavedSearches(customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_saved_searches",{});
+ if(result.error)throw result.error;
+ return Array.isArray(result.data)?result.data:[];
+}
+async function deleteSavedSearch(searchId,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_delete_saved_search",{target_search_id:String(searchId)});
+ if(result.error)throw result.error;
+ return true;
+}
+function filtersFromSavedSearch(row){
+ return {
+  search:row.search_text||"",species:row.species||"",breed:row.breed||"",sex:row.sex||"",
+  minPriceCents:row.min_price_cents,maxPriceCents:row.max_price_cents,pedigreeStatus:row.pedigree_status||"",region:row.region||""
+ };
+}
+function applySavedSearchToForm(form,row){
+ if(!form)return;
+ const values={
+  search:row.search_text||"",species:row.species||"",breed:row.breed||"",sex:row.sex||"",region:row.region||"",
+  minPrice:row.min_price_cents===null||row.min_price_cents===undefined?"":(Number(row.min_price_cents)/100).toFixed(2),
+  maxPrice:row.max_price_cents===null||row.max_price_cents===undefined?"":(Number(row.max_price_cents)/100).toFixed(2)
+ };
+ Object.entries(values).forEach(function(entry){const control=form.elements.namedItem(entry[0]);if(control)control.value=entry[1];});
+}
+async function renderSavedSearches(host,form,runSearch,customGateway,toast){
+ const gw=customGateway||gateway(); const notify=typeof toast==="function"?toast:function(){};
+ host.innerHTML='<section class="panel"><div class="panel-header"><div><h3>Saved Searches</h3><small>Reusable Marketplace filters with optional in-app alerts</small></div><button type="button" class="button button-ghost button-small" id="hh-saved-searches-close">Close</button></div><div id="hh-saved-searches-body" aria-live="polite"><p class="muted">Loading saved searches…</p></div></section>';
+ host.querySelector("#hh-saved-searches-close")?.addEventListener("click",function(){host.innerHTML="";});
+ const body=host.querySelector("#hh-saved-searches-body");
+ async function load(){
+  const rows=await listSavedSearches(gw);
+  body.innerHTML=rows.length?rows.map(function(row){
+   const summary=[row.species,row.breed,row.sex,row.region,row.min_price_cents!==null&&row.min_price_cents!==undefined?"Min "+moneyText(row.min_price_cents,"USD"):"",row.max_price_cents!==null&&row.max_price_cents!==undefined?"Max "+moneyText(row.max_price_cents,"USD"):""].filter(Boolean).join(" · ");
+   return '<article class="list-item"><div class="list-item-main"><strong>'+escapeMarkup(row.name||"Saved search")+'</strong><span>'+escapeMarkup(summary||row.search_text||"All Marketplace listings")+'</span><small>'+(row.alerts_enabled?"In-app alerts on":"Alerts off")+'</small></div><div class="modal-actions"><button type="button" class="button button-ghost button-small" data-run-search="'+escapeMarkup(row.search_id)+'">Run</button><button type="button" class="button button-ghost button-small" data-toggle-search="'+escapeMarkup(row.search_id)+'">'+(row.alerts_enabled?"Turn alerts off":"Turn alerts on")+'</button><button type="button" class="button button-ghost button-small" data-delete-search="'+escapeMarkup(row.search_id)+'">Delete</button></div></article>';
+  }).join(""):'<div class="empty-state"><strong>No saved searches.</strong><span>Use Save Search after setting Marketplace filters.</span></div>';
+  body.onclick=async function(event){
+   const run=event.target.closest("[data-run-search]"),toggle=event.target.closest("[data-toggle-search]"),remove=event.target.closest("[data-delete-search]");
+   const id=run?.dataset.runSearch||toggle?.dataset.toggleSearch||remove?.dataset.deleteSearch;
+   if(!id)return;
+   const row=rows.find(function(item){return String(item.search_id)===String(id);}); if(!row)return;
+   try{
+    if(run){applySavedSearchToForm(form,row);host.innerHTML="";await runSearch();}
+    if(toggle){await saveSearch(filtersFromSavedSearch(row),row.name,!row.alerts_enabled,row.search_id,gw);await load();}
+    if(remove){await deleteSavedSearch(row.search_id,gw);await load();}
+   }catch(error){notify(error?.message||"Saved search could not be updated.","error");}
+  };
+ }
+ try{await load();}catch(error){body.innerHTML='<p class="muted">Saved searches could not be loaded.</p>';notify(error?.message||"Saved searches unavailable.","error");}
+}
+
+return Object.freeze({VERSION,TABLES,BUCKETS,PUBLIC_PROFILE_FIELDS,LISTING_STATES,LISTING_PUBLIC_FIELDS,PUBLIC_PEDIGREE_FIELDS,createGateway,gateway,browserClient,normalizePublicProfileDraft,saveSellerProfile,getPublicSellerProfile,publicProfilePreview,normalizeListingDraft,buildListingSnapshotFromHerd,listingInsertPayload,createListingFromHerd,createManualListing,deleteListing,listingCreationOptions,publicMediaUrl,searchArgs,searchListings,getListingDetails,saveListing,renderListingCard,renderMarketplace,openSellAnimalDialog,publicPedigreeDepth,buildPublicPedigreeSnapshot,setListingPublicPedigree,getPublicListingPedigree,publicSnapshotToGraph,renderPublicPedigree,openListingConversation,listConversations,listMessages,sendMessage,updateConversationMember,subscribeConversation,renderInbox,submitReport,blockPublicProfile,getModerationQueue,moderateReport,renderModerationQueue,myListings,updateListingState,confirmListing,refreshSellerNotifications,myNotifications,markNotificationRead,myFavorites,removeFavorite,imageFileToUpload,uploadListingPhotos,removeListingPhoto,stateActionsForListing,renderSellerListings,renderFavorites,renderMarketplaceNotifications,savedSearchPayloadFromFilters,saveSearch,listSavedSearches,deleteSavedSearch,filtersFromSavedSearch,applySavedSearchToForm,renderSavedSearches});
 });
