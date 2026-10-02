@@ -252,22 +252,6 @@
     });
   }
 
-  let legacyFeatureWarmupScheduled = false;
-  function scheduleLegacyFeatureWarmup() {
-    if (legacyFeatureWarmupScheduled) return;
-    legacyFeatureWarmupScheduled = true;
-    const warm = () => {
-      loadPedigreeVisuals();
-      loadBreedingIntelligence();
-      loadShows();
-    };
-    if (typeof window.requestIdleCallback === "function") {
-      window.requestIdleCallback(warm, { timeout: 1800 });
-    } else {
-      window.setTimeout(warm, 900);
-    }
-  }
-
   function refreshManifestLink() {
     const manifest = document.querySelector('link[rel="manifest"]');
     if (!manifest) return;
@@ -480,7 +464,9 @@
     try {
       monitoring()?.setModule?.("dashboard");
       monitoring()?.addBreadcrumb?.({ module: "dashboard", action: "load_application_modules" });
-      scheduleLegacyFeatureWarmup();
+      loadPedigreeVisuals();
+      loadBreedingIntelligence();
+      loadShows();
       refreshManifestLink();
       refreshInstallUI();
       registerServiceWorker();
