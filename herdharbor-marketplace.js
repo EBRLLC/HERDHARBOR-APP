@@ -508,5 +508,43 @@ async function renderInbox(host,customGateway,toast,selectedConversationId){
  return host;
 }
 
-return Object.freeze({VERSION,TABLES,BUCKETS,PUBLIC_PROFILE_FIELDS,LISTING_STATES,LISTING_PUBLIC_FIELDS,PUBLIC_PEDIGREE_FIELDS,createGateway,gateway,browserClient,normalizePublicProfileDraft,saveSellerProfile,getPublicSellerProfile,publicProfilePreview,normalizeListingDraft,buildListingSnapshotFromHerd,listingInsertPayload,createListingFromHerd,createManualListing,deleteListing,listingCreationOptions,publicMediaUrl,searchArgs,searchListings,getListingDetails,saveListing,renderListingCard,renderMarketplace,openSellAnimalDialog,publicPedigreeDepth,buildPublicPedigreeSnapshot,setListingPublicPedigree,getPublicListingPedigree,publicSnapshotToGraph,renderPublicPedigree,openListingConversation,listConversations,listMessages,sendMessage,updateConversationMember,subscribeConversation,renderInbox});
+
+async function submitReport(targetType,targetId,reason,details,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_submit_report",{report_target_type:String(targetType),report_target_id:String(targetId),report_reason:textValue(reason,240),report_details:textValue(details,2000)});
+ if(result.error)throw result.error;
+ return result.data;
+}
+async function blockPublicProfile(publicId,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_block_profile",{target_public_id:String(publicId)});
+ if(result.error)throw result.error;
+ return true;
+}
+async function getModerationQueue(status,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_moderation_queue",{queue_status:String(status||"open")});
+ if(result.error)throw result.error;
+ return Array.isArray(result.data)?result.data:[];
+}
+async function moderateReport(reportId,action,reason,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_moderate_report",{target_report_id:String(reportId),moderation_action:String(action),moderation_reason:textValue(reason,1000)});
+ if(result.error)throw result.error;
+ return true;
+}
+async function renderModerationQueue(host,customGateway,toast){
+ const gw=customGateway||gateway(); const notify=typeof toast==="function"?toast:function(){};
+ if(!host)return;
+ host.innerHTML='<section class="panel"><div class="panel-header"><div><h3>Marketplace moderation</h3><small>Marketplace-only actions and audit trail</small></div><button type="button" class="button button-ghost button-small" id="hh-moderation-close">Close</button></div><div id="hh-moderation-list"><p class="muted">Loading reports…</p></div></section>';
+ host.querySelector("#hh-moderation-close")?.addEventListener("click",function(){host.innerHTML="";});
+ const list=host.querySelector("#hh-moderation-list");
+ try{
+  const reports=await getModerationQueue("open",gw);
+  list.innerHTML=reports.length?reports.map(function(row){return '<article class="list-item"><div class="list-item-main"><strong>'+escapeMarkup(row.target_type)+' report</strong><span>'+escapeMarkup(row.reason)+'</span><small>'+escapeMarkup(row.details||"")+'</small></div><div class="modal-actions"><button type="button" data-moderate-action="warn" data-report-id="'+escapeMarkup(row.report_id)+'">Warn</button><button type="button" data-moderate-action="hide_listing" data-report-id="'+escapeMarkup(row.report_id)+'">Hide listing</button><button type="button" data-moderate-action="suspend_marketplace" data-report-id="'+escapeMarkup(row.report_id)+'">Suspend Marketplace</button><button type="button" data-moderate-action="dismiss" data-report-id="'+escapeMarkup(row.report_id)+'">Dismiss</button></div></article>';}).join(""):'<p class="muted">No open Marketplace reports.</p>';
+  list.addEventListener("click",async function(event){const button=event.target.closest("[data-moderate-action]");if(!button)return;try{await moderateReport(button.dataset.reportId,button.dataset.moderateAction,"Reviewed in Marketplace moderation queue",gw);notify("Moderation action recorded.","success");await renderModerationQueue(host,gw,notify);}catch(error){notify(error?.message||"Moderation action failed.","error");}});
+ }catch(error){list.innerHTML='<p class="muted">Moderation queue unavailable.</p>';notify(error?.message||"Moderation queue unavailable.","error");}
+}
+
+return Object.freeze({VERSION,TABLES,BUCKETS,PUBLIC_PROFILE_FIELDS,LISTING_STATES,LISTING_PUBLIC_FIELDS,PUBLIC_PEDIGREE_FIELDS,createGateway,gateway,browserClient,normalizePublicProfileDraft,saveSellerProfile,getPublicSellerProfile,publicProfilePreview,normalizeListingDraft,buildListingSnapshotFromHerd,listingInsertPayload,createListingFromHerd,createManualListing,deleteListing,listingCreationOptions,publicMediaUrl,searchArgs,searchListings,getListingDetails,saveListing,renderListingCard,renderMarketplace,openSellAnimalDialog,publicPedigreeDepth,buildPublicPedigreeSnapshot,setListingPublicPedigree,getPublicListingPedigree,publicSnapshotToGraph,renderPublicPedigree,openListingConversation,listConversations,listMessages,sendMessage,updateConversationMember,subscribeConversation,renderInbox,submitReport,blockPublicProfile,getModerationQueue,moderateReport,renderModerationQueue});
 });
