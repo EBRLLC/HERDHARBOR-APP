@@ -63,3 +63,11 @@ test("later Marketplace migrations do not reopen RPC-only moderation or saved-se
  assert.doesNotMatch(saved,/grant (?:select|insert|update|delete)[^;]*marketplace_saved_searches[^;]*authenticated/i);
  for(const fn of ["marketplace_save_search","marketplace_saved_searches","marketplace_delete_saved_search"]) assert.ok(saved.includes(fn),fn);
 });
+
+
+test("seller reviews remain RPC-only even for authenticated Marketplace members",()=>{
+ const reviews=fs.readFileSync(path.join(root,"supabase/migrations/20261002083000_v2_0_1_marketplace_seller_feedback.sql"),"utf8");
+ assert.match(reviews,/revoke all on public\.marketplace_reviews from anon,authenticated;/);
+ assert.doesNotMatch(reviews,/grant (?:select|insert|update|delete)[^;]*marketplace_reviews[^;]*authenticated/i);
+ for(const fn of ["marketplace_submit_review","marketplace_seller_feedback_summary","marketplace_seller_feedback","marketplace_dispute_review"]) assert.ok(reviews.includes(fn),fn);
+});

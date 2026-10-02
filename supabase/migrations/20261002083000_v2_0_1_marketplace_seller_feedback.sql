@@ -18,8 +18,7 @@ create index if not exists marketplace_reviews_seller_idx on public.marketplace_
 create index if not exists marketplace_reviews_listing_idx on public.marketplace_reviews(listing_id);
 
 alter table public.marketplace_reviews enable row level security;
-revoke all on public.marketplace_reviews from anon;
-grant select on public.marketplace_reviews to authenticated;
+revoke all on public.marketplace_reviews from anon,authenticated;
 
 create policy marketplace_reviews_party_select on public.marketplace_reviews for select to authenticated
   using ((select auth.uid()) in (seller_id,reviewer_id));
