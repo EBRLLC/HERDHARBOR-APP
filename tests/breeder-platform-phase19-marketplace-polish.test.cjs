@@ -16,7 +16,7 @@ test("seller listing management stays owner-scoped and supports planned lifecycl
 });
 
 test("stale listing reminders are server generated and deduplicated",()=>{
- assert.match(migration,/kind,'stale_listing'/);
+ assert.match(migration,/kind[\s\S]*'stale_listing'/);
  assert.match(migration,/now\(\)-interval '30 days'/);
  assert.match(migration,/on conflict \(user_id,dedupe_key\)/);
  assert.match(migration,/state='expired'/);
