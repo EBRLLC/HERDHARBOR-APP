@@ -563,5 +563,166 @@ async function renderModerationQueue(host,customGateway,toast){
  }catch(error){list.innerHTML='<p class="muted">Moderation queue unavailable.</p>';notify(error?.message||"Moderation queue unavailable.","error");}
 }
 
-return Object.freeze({VERSION,TABLES,BUCKETS,PUBLIC_PROFILE_FIELDS,LISTING_STATES,LISTING_PUBLIC_FIELDS,PUBLIC_PEDIGREE_FIELDS,createGateway,gateway,browserClient,normalizePublicProfileDraft,saveSellerProfile,getPublicSellerProfile,publicProfilePreview,normalizeListingDraft,buildListingSnapshotFromHerd,listingInsertPayload,createListingFromHerd,createManualListing,deleteListing,listingCreationOptions,publicMediaUrl,searchArgs,searchListings,getListingDetails,saveListing,renderListingCard,renderMarketplace,openSellAnimalDialog,publicPedigreeDepth,buildPublicPedigreeSnapshot,setListingPublicPedigree,getPublicListingPedigree,publicSnapshotToGraph,renderPublicPedigree,openListingConversation,listConversations,listMessages,sendMessage,updateConversationMember,subscribeConversation,renderInbox,submitReport,blockPublicProfile,getModerationQueue,moderateReport,renderModerationQueue});
+
+async function myListings(status,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_my_listings",{status_filter:status||null});
+ if(result.error)throw result.error;
+ return Array.isArray(result.data)?result.data:[];
+}
+async function updateListingState(listingId,state,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_update_listing_state",{target_listing_id:String(listingId),new_state:String(state)});
+ if(result.error)throw result.error;
+ return result.data;
+}
+async function confirmListing(listingId,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_confirm_listing",{target_listing_id:String(listingId)});
+ if(result.error)throw result.error;
+ return result.data;
+}
+async function refreshSellerNotifications(customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_refresh_seller_notifications",{});
+ if(result.error)throw result.error;
+ return Number(result.data||0);
+}
+async function myNotifications(limit,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_my_notifications",{result_limit:Math.min(100,Math.max(1,Number(limit||50)))});
+ if(result.error)throw result.error;
+ return Array.isArray(result.data)?result.data:[];
+}
+async function markNotificationRead(id,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_mark_notification_read",{target_notification_id:String(id)});
+ if(result.error)throw result.error;
+ return true;
+}
+async function myFavorites(limit,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_my_favorites",{result_limit:Math.min(100,Math.max(1,Number(limit||60)))});
+ if(result.error)throw result.error;
+ return Array.isArray(result.data)?result.data:[];
+}
+async function removeFavorite(listingId,customGateway){
+ const gw=customGateway||gateway();
+ const user=await gw.user();
+ const result=await gw.table(TABLES.favorites).delete().eq("user_id",user.id).eq("listing_id",String(listingId));
+ if(result.error)throw result.error;
+ return true;
+}
+async function imageFileToUpload(file){
+ if(!file)throw new Error("Choose an image first.");
+ if(!/^image\/(?:jpeg|png|webp)$/i.test(String(file.type||"")))throw new Error("Marketplace photos must be JPEG, PNG, or WebP.");
+ if(Number(file.size||0)>12*1024*1024)throw new Error("Marketplace photos must be 12 MB or smaller before processing.");
+ if(typeof document==="undefined"||typeof Image==="undefined"||typeof URL==="undefined")return {blob:file,extension:(file.type||"image/jpeg").split("/")[1]||"jpg"};
+ const url=URL.createObjectURL(file);
+ try{
+  const image=new Image(); image.src=url;
+  if(typeof image.decode==="function")await image.decode(); else await new Promise(function(resolve,reject){image.onload=resolve;image.onerror=reject;});
+  const maxSide=1600;
+  const width=image.naturalWidth||image.width||1, height=image.naturalHeight||image.height||1;
+  const scale=Math.min(1,maxSide/Math.max(width,height));
+  const canvas=document.createElement("canvas");
+  canvas.width=Math.max(1,Math.round(width*scale)); canvas.height=Math.max(1,Math.round(height*scale));
+  const ctx=canvas.getContext("2d"); ctx.drawImage(image,0,0,canvas.width,canvas.height);
+  const blob=await new Promise(function(resolve){canvas.toBlob(resolve,"image/webp",0.84);});
+  return {blob:blob||file,extension:blob?"webp":((file.type||"image/jpeg").split("/")[1]||"jpg")};
+ } finally {URL.revokeObjectURL(url);}
+}
+async function uploadListingPhotos(listingId,files,customGateway){
+ const gw=customGateway||gateway();
+ const user=await gw.user();
+ const input=Array.from(files||[]).slice(0,8);
+ if(!input.length)return [];
+ const existing=await gw.table(TABLES.photos).select("id,sort_order").eq("listing_id",String(listingId)).order("sort_order",{ascending:true});
+ if(existing.error)throw existing.error;
+ const start=(existing.data||[]).reduce(function(max,row){return Math.max(max,Number(row.sort_order||0)+1);},0);
+ const uploaded=[];
+ for(let i=0;i<input.length;i+=1){
+  const prepared=await imageFileToUpload(input[i]);
+  const random=(root?.crypto?.randomUUID?.()||String(Date.now())+"-"+Math.random().toString(36).slice(2));
+  const path=user.id+"/"+String(listingId)+"/"+random+"."+prepared.extension;
+  const storage=await gw.bucket(BUCKETS.publicMedia).upload(path,prepared.blob,{upsert:false,contentType:prepared.blob.type||input[i].type||"image/webp"});
+  if(storage.error)throw storage.error;
+  const row=await gw.table(TABLES.photos).insert({listing_id:String(listingId),seller_id:user.id,storage_path:path,sort_order:start+i,alt_text:""}).select("id,storage_path,sort_order").single();
+  if(row.error)throw row.error;
+  uploaded.push(row.data);
+ }
+ return uploaded;
+}
+async function removeListingPhoto(photoId,customGateway){
+ const gw=customGateway||gateway();
+ const user=await gw.user();
+ const lookup=await gw.table(TABLES.photos).select("id,storage_path").eq("id",String(photoId)).eq("seller_id",user.id).single();
+ if(lookup.error)throw lookup.error;
+ const storage=await gw.bucket(BUCKETS.publicMedia).remove([lookup.data.storage_path]);
+ if(storage.error)throw storage.error;
+ const result=await gw.table(TABLES.photos).delete().eq("id",String(photoId)).eq("seller_id",user.id);
+ if(result.error)throw result.error;
+ return true;
+}
+function stateActionsForListing(state){
+ const value=String(state||"draft");
+ if(value==="draft")return ["available","archived"];
+ if(value==="available")return ["pending","sold","archived"];
+ if(value==="pending")return ["available","sold","archived"];
+ if(value==="sold")return ["archived"];
+ if(value==="expired")return ["available","archived"];
+ return [];
+}
+async function renderSellerListings(host,customGateway,toast){
+ const gw=customGateway||gateway(); const notify=typeof toast==="function"?toast:function(){};
+ host.innerHTML='<section class="panel"><div class="panel-header"><div><h3>My Listings</h3><small>Drafts, active listings, pending sales, sold animals, and archived listings</small></div><button type="button" class="button button-ghost button-small" id="hh-my-listings-close">Close</button></div><div id="hh-my-listings-body" aria-live="polite"><p class="muted">Loading listings…</p></div></section>';
+ host.querySelector("#hh-my-listings-close")?.addEventListener("click",function(){host.innerHTML="";});
+ const body=host.querySelector("#hh-my-listings-body");
+ async function load(){
+  const rows=await myListings(null,gw);
+  body.innerHTML=rows.length?rows.map(function(row){
+   const actions=stateActionsForListing(row.state).map(function(next){return '<button type="button" class="button button-ghost button-small" data-listing-state="'+escapeMarkup(next)+'" data-listing-id="'+escapeMarkup(row.listing_id)+'">'+escapeMarkup(next[0].toUpperCase()+next.slice(1))+'</button>';}).join("");
+   return '<article class="list-item hh-my-listing-row"><div class="list-item-main"><strong>'+escapeMarkup(row.animal_name||"Unnamed animal")+'</strong><span>'+escapeMarkup([row.state,row.breed,moneyText(row.price_cents,row.currency)].filter(Boolean).join(" · "))+'</span><small>'+Number(row.photo_count||0)+' photo(s)'+(row.expires_at?' · expires '+escapeMarkup(new Date(row.expires_at).toLocaleDateString()):'')+'</small></div><div class="modal-actions">'+(row.state==="available"?'<button type="button" class="button button-ghost button-small" data-confirm-listing="'+escapeMarkup(row.listing_id)+'">Still available</button>':'')+actions+'<label class="button button-ghost button-small">Add photos<input type="file" data-listing-photo="'+escapeMarkup(row.listing_id)+'" accept="image/jpeg,image/png,image/webp" multiple hidden></label></div></article>';
+  }).join(""):'<div class="empty-state"><strong>No Marketplace listings yet.</strong><span>Use Sell Animal to create a draft or active listing.</span></div>';
+ }
+ body.addEventListener("click",async function(event){
+  const stateButton=event.target.closest("[data-listing-state]");
+  const confirmButton=event.target.closest("[data-confirm-listing]");
+  try{
+   if(stateButton){await updateListingState(stateButton.dataset.listingId,stateButton.dataset.listingState,gw);notify("Listing status updated.","success");await load();}
+   if(confirmButton){await confirmListing(confirmButton.dataset.confirmListing,gw);notify("Listing confirmed as still available.","success");await load();}
+  }catch(error){notify(error?.message||"Listing could not be updated.","error");}
+ });
+ body.addEventListener("change",async function(event){
+  const input=event.target.closest("[data-listing-photo]"); if(!input)return;
+  try{await uploadListingPhotos(input.dataset.listingPhoto,input.files,gw);notify("Listing photo(s) uploaded.","success");await load();}
+  catch(error){notify(error?.message||"Photo upload failed.","error");}
+ });
+ try{await load();}catch(error){body.innerHTML='<p class="muted">Your listings could not be loaded.</p>';notify(error?.message||"Listing management unavailable.","error");}
+}
+async function renderFavorites(host,customGateway,toast){
+ const gw=customGateway||gateway(); const notify=typeof toast==="function"?toast:function(){};
+ host.innerHTML='<section class="panel"><div class="panel-header"><div><h3>Saved Listings</h3><small>Your private Marketplace favorites</small></div><button type="button" class="button button-ghost button-small" id="hh-favorites-close">Close</button></div><div id="hh-favorites-body" class="hh-market-grid" aria-live="polite"><p class="muted">Loading saved listings…</p></div></section>';
+ host.querySelector("#hh-favorites-close")?.addEventListener("click",function(){host.innerHTML="";});
+ const body=host.querySelector("#hh-favorites-body");
+ try{
+  const rows=await myFavorites(60,gw);
+  body.innerHTML=rows.length?rows.map(function(row){return '<article class="hh-market-card"><div class="hh-market-card-copy"><span class="badge">'+escapeMarkup(row.state)+'</span><h3>'+escapeMarkup(row.animal_name||"Unnamed animal")+'</h3><p>'+escapeMarkup([row.breed,row.sex].filter(Boolean).join(" · "))+'</p><strong>'+escapeMarkup(moneyText(row.price_cents,row.currency))+'</strong><button type="button" class="button button-ghost button-small" data-remove-favorite="'+escapeMarkup(row.listing_id)+'">Remove saved listing</button></div></article>';}).join(""):'<div class="empty-state"><strong>No saved listings.</strong><span>Save listings you want to revisit.</span></div>';
+  body.addEventListener("click",async function(event){const button=event.target.closest("[data-remove-favorite]");if(!button)return;try{await removeFavorite(button.dataset.removeFavorite,gw);button.closest(".hh-market-card")?.remove();}catch(error){notify(error?.message||"Saved listing could not be removed.","error");}});
+ }catch(error){body.innerHTML='<p class="muted">Saved listings could not be loaded.</p>';notify(error?.message||"Saved listings unavailable.","error");}
+}
+async function renderMarketplaceNotifications(host,customGateway,toast){
+ const gw=customGateway||gateway(); const notify=typeof toast==="function"?toast:function(){};
+ try{await refreshSellerNotifications(gw);}catch{}
+ host.innerHTML='<section class="panel"><div class="panel-header"><div><h3>Marketplace Notifications</h3><small>Listing reminders and Marketplace activity</small></div><button type="button" class="button button-ghost button-small" id="hh-notifications-close">Close</button></div><div id="hh-notifications-body" aria-live="polite"><p class="muted">Loading notifications…</p></div></section>';
+ host.querySelector("#hh-notifications-close")?.addEventListener("click",function(){host.innerHTML="";});
+ const body=host.querySelector("#hh-notifications-body");
+ try{
+  const rows=await myNotifications(50,gw);
+  body.innerHTML=rows.length?rows.map(function(row){const name=row.payload?.listing_name||"Marketplace update";return '<button type="button" class="hh-notification-row" data-notification-id="'+escapeMarkup(row.notification_id)+'"><strong>'+escapeMarkup(row.kind==="stale_listing"?"Confirm listing availability":row.kind)+'</strong><span>'+escapeMarkup(name)+'</span><small>'+escapeMarkup(new Date(row.created_at).toLocaleString())+(row.read_at?"":" · unread")+'</small></button>';}).join(""):'<div class="empty-state"><strong>No Marketplace notifications.</strong><span>Listing reminders and alerts will appear here.</span></div>';
+  body.addEventListener("click",async function(event){const button=event.target.closest("[data-notification-id]");if(!button)return;try{await markNotificationRead(button.dataset.notificationId,gw);button.classList.add("read");}catch(error){notify(error?.message||"Notification could not be updated.","error");}});
+ }catch(error){body.innerHTML='<p class="muted">Marketplace notifications could not be loaded.</p>';notify(error?.message||"Notifications unavailable.","error");}
+}
+
+return Object.freeze({VERSION,TABLES,BUCKETS,PUBLIC_PROFILE_FIELDS,LISTING_STATES,LISTING_PUBLIC_FIELDS,PUBLIC_PEDIGREE_FIELDS,createGateway,gateway,browserClient,normalizePublicProfileDraft,saveSellerProfile,getPublicSellerProfile,publicProfilePreview,normalizeListingDraft,buildListingSnapshotFromHerd,listingInsertPayload,createListingFromHerd,createManualListing,deleteListing,listingCreationOptions,publicMediaUrl,searchArgs,searchListings,getListingDetails,saveListing,renderListingCard,renderMarketplace,openSellAnimalDialog,publicPedigreeDepth,buildPublicPedigreeSnapshot,setListingPublicPedigree,getPublicListingPedigree,publicSnapshotToGraph,renderPublicPedigree,openListingConversation,listConversations,listMessages,sendMessage,updateConversationMember,subscribeConversation,renderInbox,submitReport,blockPublicProfile,getModerationQueue,moderateReport,renderModerationQueue,myListings,updateListingState,confirmListing,refreshSellerNotifications,myNotifications,markNotificationRead,myFavorites,removeFavorite,imageFileToUpload,uploadListingPhotos,removeListingPhoto,stateActionsForListing,renderSellerListings,renderFavorites,renderMarketplaceNotifications});
 });
