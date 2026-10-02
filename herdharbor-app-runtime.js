@@ -71,7 +71,7 @@
   let state = loadState();
   let lastSavedRaw = canonicalStateStore?.getRaw?.() || localStorage.getItem(STORAGE_KEY) || "";
   const requestedRoute = String(window.location.hash || "").replace(/^#/, "");
-  let currentRoute = ["dashboard", "analytics", "animals", "pedigrees", "documents", "breeding", "litters", "health", "symptoms", "tasks", "budget", "sales", "settings", "admin"].includes(requestedRoute)
+  let currentRoute = ["dashboard", "analytics", "animals", "pedigrees", "documents", "marketplace", "breeding", "litters", "health", "symptoms", "tasks", "budget", "sales", "settings", "admin"].includes(requestedRoute)
     ? requestedRoute
     : "dashboard";
   let symptomView = {
@@ -914,6 +914,7 @@
       litters: "Birth and litter records",
       pedigrees: "Pedigree imports",
       documents: "Animal documents",
+      marketplace: "Marketplace",
       health: "Health and weights",
       symptoms: "Educational symptom guide",
       tasks: "Tasks and reminders",
@@ -944,6 +945,7 @@
       litters: renderLitters,
       pedigrees: renderPedigrees,
       documents: () => window.HerdHarborDocumentCenter?.renderHub?.({ target: $("#view-documents"), state, toast, escapeHtml: esc }),
+      marketplace: () => window.HerdHarborMarketplace?.renderMarketplace?.({ target: $("#view-marketplace"), state, toast }),
       health: renderHealth,
       symptoms: () => {
         if (window.HERDHARBOR_SYMPTOM_GUIDE?.entries?.length) {
