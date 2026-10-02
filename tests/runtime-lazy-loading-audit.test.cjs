@@ -1,0 +1,66 @@
+"use strict";
+const test=require("node:test");
+const assert=require("node:assert/strict");
+const fs=require("node:fs");
+const path=require("node:path");
+const root=path.resolve(__dirname,"..");
+const html=fs.readFileSync(path.join(root,"index.html"),"utf8");
+const app=fs.readFileSync(path.join(root,"herdharbor-app-runtime.js"),"utf8");
+const sw=fs.readFileSync(path.join(root,"service-worker.js"),"utf8");
+
+const lazy=[
+  "animal-profile-runtime-v1.8.3.js?v=1",
+  "health-runtime-v1.8.3.js?v=1",
+  "production-reporting-runtime-v1.8.3.js?v=1"
+];
+
+test("route-only runtimes do not execute eagerly but remain offline-cacheable",()=>{
+  for(const asset of lazy){
+    assert.equal(html.includes('<script src="'+asset+'"></script>'),false,asset+" should not be eager");
+    assert.equal(sw.includes('"./'+asset+'"'),true,asset+" should remain in the offline cache");
+  }
+});
+
+test("dashboard/startup synchronous dependencies remain eager",()=>{
+  for(const asset of [
+    "breeding-litter-runtime-v1.8.3.js?v=1",
+    "task-runtime-v1.8.3.js?v=1",
+    "sales-customer-runtime-v1.8.3.js?v=1"
+  ]) assert.equal(html.includes('<script src="'+asset+'"></script>'),true,asset);
+});
+
+test("lazy route runtimes have guarded loaders",()=>{
+  assert.match(app,/function ensureAnimalProfileRuntimeLoaded\(\)[\s\S]*animal-profile-runtime-v1\.8\.3\.js\?v=1/);
+  assert.match(app,/function ensureHealthRuntimeLoaded\(\)[\s\S]*health-runtime-v1\.8\.3\.js\?v=1/);
+  assert.match(app,/function ensureProductionReportingRuntimeLoaded\(\)[\s\S]*production-reporting-runtime-v1\.8\.3\.js\?v=1/);
+  assert.match(app,/function renderAnimals\(\)[\s\S]*renderLazyRoute\([\s\S]*ensureAnimalProfileRuntimeLoaded/);
+  assert.match(app,/function renderHealth\(\)[\s\S]*renderLazyRoute\([\s\S]*ensureHealthRuntimeLoaded/);
+});
+
+test("cross-route actions wait for lazy dependencies before use",()=>{
+  assert.match(app,/async function openAnimalForm[\s\S]*await ensureAnimalProfileRuntimeLoaded\(\)/);
+  assert.match(app,/async function openAnimalDetail[\s\S]*await ensureAnimalProfileRuntimeLoaded\(\)/);
+  assert.match(app,/async function openHealthForm[\s\S]*await ensureHealthRuntimeLoaded\(\)/);
+  assert.match(app,/async function openPedigreeRecord[\s\S]*await ensureAnimalProfileRuntimeLoaded\(\)/);
+});
+
+test("import and demo workflows load reporting before synchronous accounting hooks",()=>{
+  const importStart=app.indexOf("async function handleSpreadsheetImport");
+  const importEnd=app.indexOf("function loadDemoData",importStart);
+  const importBlock=app.slice(importStart,importEnd);
+  assert.ok(importBlock.indexOf("await ensureProductionReportingRuntimeLoaded()")>=0);
+  assert.ok(importBlock.indexOf("await ensureProductionReportingRuntimeLoaded()")<importBlock.indexOf("syncProductionIncome(record)"));
+
+  const demoStart=app.indexOf("async function loadDemoData");
+  const demoEnd=app.indexOf("async function exportData",demoStart);
+  const demoBlock=app.slice(demoStart,demoEnd);
+  assert.ok(demoBlock.indexOf("await ensureProductionReportingRuntimeLoaded()")>=0);
+  assert.ok(demoBlock.indexOf("await ensureProductionReportingRuntimeLoaded()")<demoBlock.indexOf("syncSalePaymentIncome(demoPayment)"));
+});
+
+test("budget waits for both reporting and profitability modules",()=>{
+  const start=app.indexOf("function renderBudget");
+  const end=app.indexOf("async function openProductionForm",start);
+  const block=app.slice(start,end);
+  assert.match(block,/Promise\.all\(\[ensureProductionReportingRuntimeLoaded\(\), ensureProfitabilityAnalyticsLoaded\(\)\]\)/);
+});
