@@ -203,6 +203,13 @@
     );
   }
 
+  function ensureHealthRuntime() {
+    return loadScriptOnce(
+      "health-runtime-v1.8.3.js?v=1",
+      () => typeof window.HerdHarborHealthRuntime?.create === "function"
+    );
+  }
+
   function ensureMarketplaceRuntime() {
     return loadScriptOnce(
       "herdharbor-marketplace.js?v=1",
@@ -982,7 +989,13 @@
           () => window.HerdHarborMarketplace?.renderMarketplace?.({ target: $("#view-marketplace"), state, toast })
         );
       },
-      health: renderHealth,
+      health: () => {
+        if (typeof window.HerdHarborHealthRuntime?.create === "function") {
+          renderHealth();
+          return;
+        }
+        renderLazyRoute("health", "Health and weights", ensureHealthRuntime, renderHealth);
+      },
       symptoms: () => {
         if (window.HERDHARBOR_SYMPTOM_GUIDE?.entries?.length) {
           renderSymptoms();
@@ -2756,7 +2769,16 @@
   }
 
   function openHealthForm(id = "", defaults = {}) {
-    return healthRuntime().openHealthForm(id, defaults);
+    if (typeof window.HerdHarborHealthRuntime?.create === "function") {
+      return healthRuntime().openHealthForm(id, defaults);
+    }
+    void ensureHealthRuntime()
+      .then(() => healthRuntime().openHealthForm(id, defaults))
+      .catch((error) => {
+        console.error("HerdHarbor could not load Health tools:", error);
+        toast("Health tools could not load. Check your connection and try again.", "error");
+      });
+    return null;
   }
 
   let taskRuntimeInstance = null;
