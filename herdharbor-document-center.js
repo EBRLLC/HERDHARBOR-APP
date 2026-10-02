@@ -466,6 +466,133 @@
     return { model, html:renderBirthCertificateHtml(model) };
   }
 
+
+  const DOCUMENT_TYPES = Object.freeze({
+    pedigree:Object.freeze({ id:"pedigree", label:"Pedigree", enabled:true }),
+    birthCertificate:Object.freeze({ id:"birthCertificate", label:"Birth Certificate", enabled:true }),
+    saleTransferRecord:Object.freeze({ id:"saleTransferRecord", label:"Sale / Transfer Record", enabled:false }),
+    animalInformationSheet:Object.freeze({ id:"animalInformationSheet", label:"Animal Information Sheet", enabled:false }),
+    healthSummary:Object.freeze({ id:"healthSummary", label:"Health Summary", enabled:false }),
+    breedingRecord:Object.freeze({ id:"breedingRecord", label:"Breeding Record", enabled:false }),
+    litterRecord:Object.freeze({ id:"litterRecord", label:"Litter Record", enabled:false })
+  });
+
+  function downloadBytes(bytes, fileName, mimeType) {
+    if (typeof document === "undefined" || typeof URL === "undefined" || typeof Blob === "undefined") throw new Error("Download requires a browser.");
+    const blob=new Blob([bytes],{type:mimeType || "application/octet-stream"});
+    const url=URL.createObjectURL(blob);
+    const anchor=document.createElement("a");
+    anchor.href=url;
+    anchor.download=asText(fileName || "herdharbor-document").replace(/[^a-z0-9._-]+/gi,"-");
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(function(){URL.revokeObjectURL(url);},0);
+    return bytes.length;
+  }
+
+  function activeDocumentTypes() {
+    return Object.values(DOCUMENT_TYPES).filter(function (item) { return item.enabled; });
+  }
+
+  function futureDocumentTypes() {
+    return Object.values(DOCUMENT_TYPES).filter(function (item) { return !item.enabled; });
+  }
+
+  function renderHub(context) {
+    const ctx=context && typeof context === "object" ? context : {};
+    const target=ctx.target;
+    if (!target) throw new Error("Document Center target is required.");
+    const state=ctx.state && typeof ctx.state === "object" ? ctx.state : {};
+    const animals=Array.isArray(state.animals) ? state.animals : [];
+    const esc=typeof ctx.escapeHtml === "function" ? ctx.escapeHtml : escapeHtml;
+    const options=animals.slice().sort(function(a,b){return asText(a.name).localeCompare(asText(b.name));}).map(function(animal){
+      return '<option value="' + esc(animal.id) + '">' + esc(animal.name || animal.tag || "Unnamed animal") + '</option>';
+    }).join("");
+    const future=futureDocumentTypes().map(function(item){return '<span class="badge">' + esc(item.label) + '</span>';}).join("");
+    target.innerHTML=
+      '<div class="page-header"><div><p class="eyebrow">HerdHarbor</p><h2>Documents</h2><p>Create consistent records from the same animal and pedigree data already in HerdHarbor.</p></div></div>' +
+      '<div class="cards-grid hh-document-grid">' +
+        '<article class="panel"><div class="panel-header"><div><h3>Pedigree</h3><small>Customizable pedigree preview, print, and PDF</small></div></div>' +
+          '<label>Animal<select id="hh-document-pedigree-animal"><option value="">Choose an animal</option>' + options + '</select></label>' +
+          '<div class="modal-actions"><button type="button" class="button button-ghost" id="hh-document-pedigree-preview">Preview</button><button type="button" class="button button-primary" id="hh-document-pedigree-pdf">Download PDF</button></div>' +
+        '</article>' +
+        '<article class="panel"><div class="panel-header"><div><h3>Birth Certificate</h3><small>Buyer-ready certificate with privacy-safe contact defaults</small></div></div>' +
+          '<label>Animal<select id="hh-document-birth-animal"><option value="">Choose an animal</option>' + options + '</select></label>' +
+          '<label>New owner (optional)<input id="hh-document-birth-owner" type="text" maxlength="120"></label>' +
+          '<label>Go-home date (optional)<input id="hh-document-birth-date" type="date"></label>' +
+          '<div class="modal-actions"><button type="button" class="button button-ghost" id="hh-document-birth-preview">Preview</button><button type="button" class="button button-primary" id="hh-document-birth-pdf">Download PDF</button></div>' +
+        '</article>' +
+      '</div>' +
+      '<section class="panel"><div class="panel-header"><div><h3>Document foundation</h3><small>Reserved extension points reuse this same engine as they are released.</small></div></div><div class="badge-row">' + future + '</div></section>';
+
+    function selectedAnimal(selectId) {
+      const id=target.querySelector(selectId)?.value || "";
+      return animals.find(function(animal){return String(animal.id)===String(id);}) || null;
+    }
+    function requireAnimal(selectId) {
+      const animal=selectedAnimal(selectId);
+      if (!animal) {
+        if (typeof ctx.toast === "function") ctx.toast("Choose an animal first.","error");
+        return null;
+      }
+      return animal;
+    }
+    function brandingFromState() {
+      return {
+        rabbitryName:state.profile?.operationName || state.profile?.rabbitryName || "",
+        logoData:state.profile?.logoData || "",
+        website:state.profile?.website || "",
+        social:state.profile?.social || "",
+        email:state.profile?.email || "",
+        phone:state.profile?.phone || "",
+        includeEmail:false,
+        includePhone:false
+      };
+    }
+    function pedigreeModel(animal) {
+      if (!pedigree || typeof pedigree.buildPedigreeGraph !== "function") throw new Error("Pedigree engine is unavailable.");
+      const graph=pedigree.buildPedigreeGraph({animals,rootId:animal.id,generations:4});
+      return buildPedigreeLayout(graph,{config:{templateId:"classic",generations:4},branding:brandingFromState()});
+    }
+    function certificateModel(animal) {
+      const sire=animals.find(function(item){return String(item.id)===String(animal.sireId || "");});
+      const dam=animals.find(function(item){return String(item.id)===String(animal.damId || "");});
+      return buildBirthCertificateModel({
+        animal,
+        sireName:sire?.name || "",
+        damName:dam?.name || "",
+        newOwnerName:target.querySelector("#hh-document-birth-owner")?.value || "",
+        goHomeDate:target.querySelector("#hh-document-birth-date")?.value || "",
+        breederName:state.profile?.operationName || state.profile?.rabbitryName || "",
+        branding:brandingFromState()
+      });
+    }
+
+    target.querySelector("#hh-document-pedigree-preview")?.addEventListener("click",function(){
+      const animal=requireAnimal("#hh-document-pedigree-animal"); if(!animal) return;
+      openPrintPreview(pedigreeModel(animal));
+    });
+    target.querySelector("#hh-document-pedigree-pdf")?.addEventListener("click",async function(){
+      const animal=requireAnimal("#hh-document-pedigree-animal"); if(!animal) return;
+      await downloadPdf(pedigreeModel(animal), (animal.name || "animal") + "-pedigree");
+    });
+    target.querySelector("#hh-document-birth-preview")?.addEventListener("click",function(){
+      const animal=requireAnimal("#hh-document-birth-animal"); if(!animal) return;
+      const model=certificateModel(animal);
+      if (typeof window === "undefined") return;
+      const popup=window.open("","_blank");
+      if (!popup) return;
+      popup.document.open(); popup.document.write(renderBirthCertificateHtml(model)); popup.document.close();
+    });
+    target.querySelector("#hh-document-birth-pdf")?.addEventListener("click",function(){
+      const animal=requireAnimal("#hh-document-birth-animal"); if(!animal) return;
+      const bytes=buildBirthCertificatePdfBytes(certificateModel(animal));
+      downloadBytes(bytes,(animal.name || "animal")+"-birth-certificate.pdf","application/pdf");
+    });
+    return target;
+  }
+
   return Object.freeze({
     VERSION,
     PAGE_SIZES,
@@ -482,6 +609,11 @@
     buildBirthCertificateModel,
     renderBirthCertificateHtml,
     buildBirthCertificatePdfBytes,
-    birthCertificatePreview
+    birthCertificatePreview,
+    DOCUMENT_TYPES,
+    activeDocumentTypes,
+    futureDocumentTypes,
+    downloadBytes,
+    renderHub
   });
 });
