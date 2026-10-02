@@ -382,6 +382,15 @@
     }
   }
 
+  function schedulePedigreeAttachmentMigration() {
+    const run = () => { void migratePedigreeAttachments(); };
+    if (typeof window.requestIdleCallback === "function") {
+      window.requestIdleCallback(run, { timeout: 1800 });
+    } else {
+      window.setTimeout(run, 180);
+    }
+  }
+
   async function stateWithPedigreeAttachments() {
     const copy = structuredClone(state);
     for (const record of copy.pedigrees || []) {
@@ -867,7 +876,7 @@
     else showOnboarding();
     refreshSyncStatus();
     requestDurableDeviceStorage();
-    migratePedigreeAttachments();
+    schedulePedigreeAttachmentMigration();
 
   }
 
