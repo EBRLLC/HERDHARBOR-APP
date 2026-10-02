@@ -164,3 +164,28 @@ test("reordering identified animals changes only array and snapshot manifests", 
     ["array_manifest", "snapshot_manifest"]
   );
 });
+
+
+test("cloud bridge does not recanonicalize a committed state change before scheduling sync", () => {
+  const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
+  const start = cloud.indexOf("async function handleCanonicalStateCommit");
+  const end = cloud.indexOf("function installStateStoreBridge", start);
+  assert.ok(start >= 0 && end > start, "canonical commit bridge must remain extractable");
+  const block = cloud.slice(start, end);
+
+  assert.doesNotMatch(block, /sameState\s*\(/);
+  assert.match(block, /if \(previousValue\) \{\s*void recordRecoverySnapshot\(userId, previousValue, "Before local change"\)/);
+});
+
+test("routine recovery throttle runs before full snapshot parsing", () => {
+  const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
+  const start = cloud.indexOf("async function recordRecoverySnapshot");
+  const end = cloud.indexOf("function preserveActiveForUser", start);
+  assert.ok(start >= 0 && end > start, "recovery snapshot helper must remain extractable");
+  const block = cloud.slice(start, end);
+
+  const throttleAt = block.indexOf("snapshotStartedAt - previousStartedAt < ROUTINE_RECOVERY_SNAPSHOT_INTERVAL_MS");
+  const parseAt = block.indexOf("safeParse(rawValue)");
+  assert.ok(throttleAt >= 0, "routine recovery throttle must exist");
+  assert.ok(parseAt > throttleAt, "routine snapshot throttle must run before parsing the full state");
+});
