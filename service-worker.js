@@ -8,6 +8,7 @@ const REQUIRED_SHELL = [
   "./manifest.json?v=2.0.0",
   "./herdharbor-core-v1.6.1.css?v=1.7.1",
   "./herdharbor-v1.6.1.css?v=1.7.1",
+  "./herdharbor-breeder-platform.css?v=1",
   "./herdharbor-index-shell.css?v=1",
   "./analytics-v1.6.1.css?v=2",
   "./vendor/supabase-2.111.0.js",
