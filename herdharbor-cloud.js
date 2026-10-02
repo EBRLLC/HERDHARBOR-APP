@@ -20,6 +20,8 @@
   const RECOVERY_DB_VERSION = 2;
   const MAX_RECOVERY_SNAPSHOTS = 6;
   const MAX_RECOVERY_BYTES = 8_000_000;
+  const ROUTINE_RECOVERY_SNAPSHOT_INTERVAL_MS = 5000;
+  const routineRecoverySnapshotAt = new Map();
   const ACCOUNT_DELETION_REQUEST_URL = "https://formspree.io/f/xpqvpwwb";
 
   if (!window.supabase?.createClient) {
@@ -1207,6 +1209,16 @@
   async function recordRecoverySnapshot(userId, rawValue, reason) {
     if (!userId || !rawValue || !safeParse(rawValue)) return false;
 
+    const isRoutineLocalSnapshot = reason === "Before local change";
+    const snapshotStartedAt = Date.now();
+    if (isRoutineLocalSnapshot) {
+      const previousStartedAt = routineRecoverySnapshotAt.get(userId) || 0;
+      if (snapshotStartedAt - previousStartedAt < ROUTINE_RECOVERY_SNAPSHOT_INTERVAL_MS) {
+        return true;
+      }
+      routineRecoverySnapshotAt.set(userId, snapshotStartedAt);
+    }
+
     try {
       const database = await openRecoveryDatabase();
       await new Promise((resolve, reject) => {
@@ -1252,6 +1264,12 @@
       });
       return true;
     } catch (error) {
+      if (
+        isRoutineLocalSnapshot &&
+        routineRecoverySnapshotAt.get(userId) === snapshotStartedAt
+      ) {
+        routineRecoverySnapshotAt.delete(userId);
+      }
       console.warn("HerdHarbor local recovery snapshot was not stored:", error);
       return false;
     }
@@ -1308,6 +1326,7 @@
     normalizedCohortStatusInFlight = null;
     accessProfile = null;
     lastCloudCheckAt = 0;
+    routineRecoverySnapshotAt.clear();
   }
 
   function captureAccountOperation(userId = session?.user?.id) {
