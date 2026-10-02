@@ -496,6 +496,7 @@
           <button class="button button-ghost" id="detail-close">Close</button>
           <button class="button button-ghost" id="detail-analytics">View analytics</button>
           <button class="button button-ghost" id="detail-print-pedigree">Print sale pedigree</button>
+          <button class="button button-ghost" id="detail-compare-pedigree">Compare With Another Animal</button>
           <button class="button button-ghost" id="detail-print-qr">Print QR card</button>
           <button class="button button-ghost" id="detail-import-pedigree">Build / import pedigree</button>
           <button class="button button-primary" id="detail-edit">Edit animal</button>
@@ -509,6 +510,25 @@
         deps.navigate("analytics");
       });
       $("#detail-print-pedigree")?.addEventListener("click", () => deps.openPrintPedigreeForm(id));
+      $("#detail-compare-pedigree")?.addEventListener("click", () => {
+        const candidates=(state.animals || []).filter((item) => item.id !== id && (!animal.species || !item.species || item.species === animal.species));
+        if (!candidates.length) return deps.toast("No other same-species animals are available to compare.","info");
+        deps.openModal("Compare With Another Animal", '<form id="pedigree-compare-form"><label>Animal to compare<select name="compareId" required><option value="">Choose an animal</option>' +
+          candidates.slice().sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""))).map((item)=>'<option value="'+esc(item.id)+'">'+esc(item.name||item.tag||"Unnamed animal")+'</option>').join("") +
+          '</select></label><div id="pedigree-compare-result" class="panel" style="margin-top:14px"><p class="muted">Choose an animal, then analyze shared ancestry.</p></div><div class="modal-actions"><button type="button" class="button button-ghost" id="pedigree-compare-cancel">Close</button><button type="submit" class="button button-primary">Analyze ancestry</button></div></form>', "Pedigree relationship");
+        const compareForm=$("#pedigree-compare-form");
+        $("#pedigree-compare-cancel")?.addEventListener("click", deps.closeModal);
+        compareForm?.addEventListener("submit",(event)=>{
+          event.preventDefault();
+          const compareId=String(new FormData(event.currentTarget).get("compareId")||"");
+          const analysis=root.HerdHarborPedigreePlatform?.analyzeSharedAncestors?.({animals:state.animals,leftId:id,rightId:compareId,generations:5});
+          const result=$("#pedigree-compare-result");
+          if (!analysis || !result) return deps.toast("Pedigree relationship analysis is unavailable.","error");
+          result.innerHTML='<h3>Shared ancestry</h3><p><strong>'+analysis.sharedAncestorCount+'</strong> shared ancestor'+(analysis.sharedAncestorCount===1?"":"s")+' found in the analyzed pedigree.</p>' +
+            '<p class="muted">Coverage: '+analysis.coverage.left.percent+'% for '+esc(animal.name)+' · '+analysis.coverage.right.percent+'% for '+esc((state.animals||[]).find((item)=>item.id===compareId)?.name||"comparison animal")+'</p>' +
+            (analysis.sharedAncestors.length ? '<div class="list">'+analysis.sharedAncestors.map((entry)=>'<div class="list-item"><div class="list-item-main"><strong>'+esc(entry.name||entry.identityId)+'</strong><span>Closest paths: generation '+entry.closestPath.leftGeneration+' and generation '+entry.closestPath.rightGeneration+'</span></div></div>').join("")+'</div>' : '<p class="muted">No shared ancestors were found in the available pedigree depth.</p>');
+        });
+      });
       $("#detail-print-qr")?.addEventListener("click", (event) => openAnimalQrCardForm(id, event.currentTarget));
       $("#detail-import-pedigree")?.addEventListener("click", () => deps.openPedigreeImport(id));
       $("#detail-edit")?.addEventListener("click", () => openAnimalForm(id));
