@@ -100,6 +100,17 @@ test("Help navigation remains part of the app and offline shell", () => {
   assert.match(settings, /href="\/how-to\/"[^>]*>How To Center/);
 });
 
+test("How To topic cards use the finished website icon system instead of numbered placeholders", () => {
+  assert.match(howTo, /<img class="brand-mark" src="\.\.\/icon-192\.png"/);
+  for (const icon of ["i-start","i-animal","i-pedigree","i-breeding","i-litter","i-health","i-growth","i-genetics","i-tasks","i-analytics","i-sales","i-member","i-cloud","i-youth","i-symptoms","i-budget","i-settings","i-guides","i-help"]) {
+    assert.match(howTo, new RegExp('<symbol id="' + icon + '"'));
+    assert.match(howTo, new RegExp('<use href="#' + icon + '"><\\/use>'));
+  }
+  assert.match(howTo, /\.guide-icon svg\{[^}]*stroke:#fff/);
+  assert.match(howTo, /linear-gradient\(145deg,#2E7D7B,#246866\)/);
+  assert.doesNotMatch(howTo, /<span class="guide-icon">\d{2}<\/span>/);
+});
+
 test("Help Center search and mobile navigation remain usable", () => {
   assert.match(howTo, /id="guide-search"/);
   assert.match(howTo, /id="guide-grid"/);
