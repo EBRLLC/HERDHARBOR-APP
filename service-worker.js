@@ -142,7 +142,6 @@ const RUNTIME_CACHE_PATHS = [
   "./standards-public-reference-v1.7.0.js?v=1.7.1",
   "./shows-youth-guides-v1.7.0.js?v=1.7.1",
   "./reference-guides-v1.7.0.css?v=1.7.1",
-  "./herdharbor-optional-tools.js?v=1"
 ];
 
 const NETWORK_FIRST_PATHS = [
