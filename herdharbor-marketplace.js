@@ -899,5 +899,30 @@ function trustIndicatorsHtml(data){
   '</div><p class="task-repeat-note">These are separate activity indicators. HerdHarbor does not combine them into a trust score.</p></section>';
 }
 
-return Object.freeze({VERSION,TABLES,BUCKETS,PUBLIC_PROFILE_FIELDS,LISTING_STATES,LISTING_PUBLIC_FIELDS,PUBLIC_PEDIGREE_FIELDS,createGateway,gateway,browserClient,normalizePublicProfileDraft,saveSellerProfile,getPublicSellerProfile,publicProfilePreview,normalizeListingDraft,buildListingSnapshotFromHerd,listingInsertPayload,createListingFromHerd,createManualListing,deleteListing,listingCreationOptions,publicMediaUrl,searchArgs,searchListings,getListingDetails,saveListing,renderListingCard,renderMarketplace,openSellAnimalDialog,publicPedigreeDepth,buildPublicPedigreeSnapshot,setListingPublicPedigree,getPublicListingPedigree,publicSnapshotToGraph,renderPublicPedigree,openListingConversation,listConversations,listMessages,sendMessage,updateConversationMember,subscribeConversation,renderInbox,submitReport,blockPublicProfile,getModerationQueue,moderateReport,renderModerationQueue,myListings,updateListingState,confirmListing,refreshSellerNotifications,myNotifications,markNotificationRead,myFavorites,removeFavorite,imageFileToUpload,uploadListingPhotos,removeListingPhoto,stateActionsForListing,renderSellerListings,renderFavorites,renderMarketplaceNotifications,savedSearchPayloadFromFilters,saveSearch,listSavedSearches,deleteSavedSearch,filtersFromSavedSearch,applySavedSearchToForm,renderSavedSearches,submitSellerReview,sellerFeedbackSummary,sellerFeedback,disputeReview,sellerFeedbackHtml,trustIndicators,trustIndicatorsHtml});
+function findCompletedSaleForAnimal(privateState,animalId){
+ const state=privateState&&typeof privateState==="object"?privateState:{};
+ const id=String(animalId||"");
+ if(!id)return null;
+ return (Array.isArray(state.sales)?state.sales:[])
+  .filter(function(sale){return String(sale.status||"").toLowerCase()==="completed" && Array.isArray(sale.items) && sale.items.some(function(item){return String(item?.animalId||"")===id;});})
+  .slice()
+  .sort(function(a,b){return String(b.saleDate||b.updatedAt||"").localeCompare(String(a.saleDate||a.updatedAt||""));})[0]||null;
+}
+function openDirectTransferForListing(listing,privateState,toast){
+ const notify=typeof toast==="function"?toast:function(){};
+ const sourceAnimalId=String(listing?.source_animal_id||"");
+ if(!sourceAnimalId){notify("This manual Marketplace listing is not linked to a private herd animal. Create a sale record first if you want to use HerdHarbor Direct Transfer.","info");return false;}
+ const sale=findCompletedSaleForAnimal(privateState,sourceAnimalId);
+ if(!sale){
+  notify("Create and complete the sale in Sales & Customers before sending the animal through HerdHarbor Direct Transfer.","info");
+  root?.document?.querySelector?.('[data-route="sales"]')?.click?.();
+  return false;
+ }
+ const send=root?.HerdHarborDirectTransfers?.sendSale;
+ if(typeof send!=="function"){notify("HerdHarbor Direct Transfer is not available on this device yet.","error");return false;}
+ send(sale.id);
+ return true;
+}
+
+return Object.freeze({VERSION,TABLES,BUCKETS,PUBLIC_PROFILE_FIELDS,LISTING_STATES,LISTING_PUBLIC_FIELDS,PUBLIC_PEDIGREE_FIELDS,createGateway,gateway,browserClient,normalizePublicProfileDraft,saveSellerProfile,getPublicSellerProfile,publicProfilePreview,normalizeListingDraft,buildListingSnapshotFromHerd,listingInsertPayload,createListingFromHerd,createManualListing,deleteListing,listingCreationOptions,publicMediaUrl,searchArgs,searchListings,getListingDetails,saveListing,renderListingCard,renderMarketplace,openSellAnimalDialog,publicPedigreeDepth,buildPublicPedigreeSnapshot,setListingPublicPedigree,getPublicListingPedigree,publicSnapshotToGraph,renderPublicPedigree,openListingConversation,listConversations,listMessages,sendMessage,updateConversationMember,subscribeConversation,renderInbox,submitReport,blockPublicProfile,getModerationQueue,moderateReport,renderModerationQueue,myListings,updateListingState,confirmListing,refreshSellerNotifications,myNotifications,markNotificationRead,myFavorites,removeFavorite,imageFileToUpload,uploadListingPhotos,removeListingPhoto,stateActionsForListing,renderSellerListings,renderFavorites,renderMarketplaceNotifications,savedSearchPayloadFromFilters,saveSearch,listSavedSearches,deleteSavedSearch,filtersFromSavedSearch,applySavedSearchToForm,renderSavedSearches,submitSellerReview,sellerFeedbackSummary,sellerFeedback,disputeReview,sellerFeedbackHtml,trustIndicators,trustIndicatorsHtml,findCompletedSaleForAnimal,openDirectTransferForListing});
 });
