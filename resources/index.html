@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0D2540">
+<title>Useful Information | HerdHarbor</title><meta name="description" content="Practical, plain-English educational guides for rabbit breeders and livestock keepers from HerdHarbor.">
+<link rel="stylesheet" href="/resources/resources.css"></head><body>
+<header class="topbar"><a class="brand" href="/"><img src="/icon-192.png" alt=""><span><strong>HerdHarbor</strong><span>Useful Information</span></span></a><div class="actions"><a class="button" href="/how-to/">How To</a><a class="button primary" href="/">Open HerdHarbor</a></div></header>
+<section class="hero"><div class="hero-inner"><p class="eyebrow">HerdHarbor Learning Library</p><h1>Useful information without the social-media essay.</h1><p>Detailed, practical reference articles you can save, share, and link directly. These guides are educational and are separate from HerdHarbor's app instructions.</p></div></section>
+<main class="content"><div class="intro"><strong>Built to grow:</strong> new articles are added to a simple article list and receive their own permanent shareable URL. Visitors can read and share these pages, but there are no public editing or submission controls.</div><section class="grid" id="article-grid" aria-live="polite"></section><noscript><p><a href="/resources/line-breeding-rabbits.html">Line Breeding Rabbits: A Practical Genetics Guide</a></p></noscript></main>
+<footer class="footer">HerdHarbor · Practical records and practical learning · <a href="/how-to/">How To Center</a></footer>
+<script>
+fetch('/resources/articles.json',{cache:'no-store'}).then(r=>r.json()).then(items=>{const grid=document.getElementById('article-grid');grid.innerHTML=items.map(a=>'<a class="card" href="'+a.url+'"><span class="tag">'+a.category+'</span><h2>'+a.title+'</h2><p>'+a.summary+'</p></a>').join('')}).catch(()=>{document.getElementById('article-grid').innerHTML='<a class="card" href="/resources/line-breeding-rabbits.html"><span class="tag">Rabbit Breeding</span><h2>Line Breeding Rabbits: A Practical Genetics Guide</h2><p>How line breeding works, what it can accomplish, where the risks come from, and what records a breeder should keep.</p></a>'});
+</script></body></html>
