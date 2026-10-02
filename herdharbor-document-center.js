@@ -326,6 +326,146 @@
     return { html, popup };
   }
 
+
+  function birthCertificateField(label, value) {
+    const text=asText(value).trim();
+    return text ? { label:asText(label), value:text } : null;
+  }
+
+  function buildBirthCertificateModel(options) {
+    const raw=options && typeof options === "object" ? options : {};
+    const animal=raw.animal && typeof raw.animal === "object" ? raw.animal : {};
+    const branding=pedigree && pedigree.sanitizeBranding
+      ? pedigree.sanitizeBranding(raw.branding, "private")
+      : Object.assign({}, raw.branding || {});
+    const geometry=pageGeometry(raw.pageSize || "letter", raw.orientation || "portrait");
+    const fields=[
+      birthCertificateField("Date of birth", animal.dob),
+      birthCertificateField("Sex", animal.sex),
+      birthCertificateField("Breed", animal.breed),
+      birthCertificateField("Color / variety", animal.color || animal.variety),
+      birthCertificateField("ID / tattoo", animal.tattoo || animal.earTagNumber || animal.tag),
+      birthCertificateField("Birth weight", raw.birthWeight || animal.birthWeight),
+      birthCertificateField("Current weight", raw.currentWeight || animal.weight || animal.currentWeight),
+      birthCertificateField("Sire", raw.sireName),
+      birthCertificateField("Dam", raw.damName),
+      birthCertificateField("Go-home date", raw.goHomeDate),
+      birthCertificateField("New owner", raw.newOwnerName)
+    ].filter(Boolean);
+    return {
+      schemaVersion:1,
+      type:"birthCertificate",
+      generatedAt:asText(raw.generatedAt || new Date().toISOString()),
+      title:asText(raw.title || "Birth Certificate"),
+      geometry,
+      branding,
+      animal:{
+        name:asText(animal.name || "Unnamed animal"),
+        photoData:asText(animal.photoData || animal.photoUrl || "")
+      },
+      fields,
+      breederName:asText(raw.breederName || branding.rabbitryName || ""),
+      breederNote:asText(raw.breederNote || ""),
+      signatureLabel:raw.signatureLine === false ? "" : asText(raw.signatureLabel || "Breeder signature"),
+      qrTarget:asText(raw.qrTarget || ""),
+      contact:{
+        email:branding.includeEmail ? asText(branding.email) : "",
+        phone:branding.includePhone ? asText(branding.phone) : "",
+        website:asText(branding.website || ""),
+        social:asText(branding.social || "")
+      }
+    };
+  }
+
+  function renderBirthCertificateHtml(model) {
+    if (!model || model.type !== "birthCertificate") throw new Error("A birth certificate model is required.");
+    const widthIn=(model.geometry.width/72).toFixed(3);
+    const heightIn=(model.geometry.height/72).toFixed(3);
+    const accent=escapeHtml(model.branding && model.branding.accent || "#2E7D7B");
+    const fields=(model.fields || []).map(function (item) {
+      return '<div class="bc-field"><span>' + escapeHtml(item.label) + '</span><strong>' + escapeHtml(truncate(item.value,70)) + '</strong></div>';
+    }).join("");
+    const photo=model.animal && model.animal.photoData
+      ? '<img class="bc-photo" src="' + escapeHtml(model.animal.photoData) + '" alt="">'
+      : '<div class="bc-photo bc-placeholder">HH</div>';
+    const contacts=[
+      model.contact && model.contact.email,
+      model.contact && model.contact.phone,
+      model.contact && model.contact.website,
+      model.contact && model.contact.social
+    ].filter(Boolean).map(escapeHtml).join(" · ");
+    const qrNote=model.qrTarget ? '<div class="bc-qr" data-qr-target="' + escapeHtml(model.qrTarget) + '">QR-ready transfer / animal link</div>' : "";
+    return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' +
+      escapeHtml(model.title) + '</title><style>@page{size:' + widthIn + 'in ' + heightIn + 'in;margin:0}*{box-sizing:border-box}html,body{margin:0;background:#fff;color:#263746;font-family:Arial,sans-serif}.page{width:' +
+      widthIn + 'in;height:' + heightIn + 'in;padding:.42in;display:flex;flex-direction:column}.frame{flex:1;border:3px solid ' + accent +
+      ';border-radius:18px;padding:.34in}.bc-head{text-align:center;border-bottom:1px solid #d9e1e4;padding-bottom:.18in}.bc-head h1{margin:0;font-size:26px}.bc-head p{margin:5px 0 0;color:#667783}.bc-animal{display:grid;grid-template-columns:1.35in 1fr;gap:.22in;align-items:start;padding:.24in 0}.bc-photo{width:1.35in;height:1.35in;object-fit:cover;border-radius:14px;border:1px solid #d9e1e4}.bc-placeholder{display:grid;place-items:center;background:#f1f5f5;color:' +
+      accent + ';font-size:28px;font-weight:900}.bc-name{font-size:24px;margin:0 0 .12in}.bc-grid{display:grid;grid-template-columns:1fr 1fr;gap:.1in}.bc-field{padding:.1in;border:1px solid #e0e5e7;border-radius:9px}.bc-field span{display:block;color:#667783;font-size:8px;font-weight:700;text-transform:uppercase}.bc-field strong{display:block;margin-top:2px;font-size:11px;overflow-wrap:anywhere}.bc-note{margin-top:.18in;padding:.14in;background:#f7f3ea;border-radius:10px;font-size:10px}.bc-footer{margin-top:auto;padding-top:.22in;display:flex;justify-content:space-between;gap:.2in;align-items:end}.bc-signature{min-width:2.1in;border-top:1px solid #263746;padding-top:5px;font-size:8px}.bc-contact{text-align:right;font-size:8px;color:#667783}.bc-qr{margin-top:5px;font-size:7px;font-weight:700}</style></head><body><div class="page"><section class="frame"><header class="bc-head"><h1>' +
+      escapeHtml(model.title) + '</h1><p>' + escapeHtml(model.breederName) + '</p></header><div class="bc-animal">' + photo +
+      '<div><h2 class="bc-name">' + escapeHtml(truncate(model.animal && model.animal.name,80)) + '</h2><div class="bc-grid">' + fields +
+      '</div></div></div>' + (model.breederNote ? '<div class="bc-note">' + escapeHtml(model.breederNote) + '</div>' : '') +
+      '<footer class="bc-footer">' + (model.signatureLabel ? '<div class="bc-signature">' + escapeHtml(model.signatureLabel) + '</div>' : '<div></div>') +
+      '<div class="bc-contact">' + contacts + qrNote + '</div></footer></section></div></body></html>';
+  }
+
+  function buildBirthCertificatePdfBytes(model) {
+    if (!model || model.type !== "birthCertificate") throw new Error("A birth certificate model is required.");
+    const encoder=new TextEncoder();
+    const lines=[];
+    const left=42;
+    const top=model.geometry.height-52;
+    lines.push("1.4 w 0.18 0.49 0.48 RG 30 30 " + (model.geometry.width-60).toFixed(2) + " " + (model.geometry.height-60).toFixed(2) + " re S");
+    lines.push("BT /F2 22 Tf " + left + " " + top + " Td (" + pdfText(truncate(model.title,70)) + ") Tj ET");
+    lines.push("BT /F1 10 Tf " + left + " " + (top-18) + " Td (" + pdfText(truncate(model.breederName,90)) + ") Tj ET");
+    lines.push("BT /F2 18 Tf " + left + " " + (top-58) + " Td (" + pdfText(truncate(model.animal && model.animal.name,70)) + ") Tj ET");
+    let y=top-86;
+    (model.fields || []).forEach(function (item,index) {
+      const x=index % 2 === 0 ? left : Math.max(left+220,model.geometry.width/2+4);
+      if (index % 2 === 0 && index > 0) y-=28;
+      lines.push("BT /F1 7 Tf " + x.toFixed(2) + " " + y.toFixed(2) + " Td (" + pdfText(truncate(item.label.toUpperCase(),30)) + ") Tj ET");
+      lines.push("BT /F2 10 Tf " + x.toFixed(2) + " " + (y-11).toFixed(2) + " Td (" + pdfText(truncate(item.value,48)) + ") Tj ET");
+    });
+    y-=46;
+    if (model.breederNote) lines.push("BT /F1 8 Tf " + left + " " + y.toFixed(2) + " Td (" + pdfText(truncate(model.breederNote,110)) + ") Tj ET");
+    const contacts=[model.contact && model.contact.email,model.contact && model.contact.phone,model.contact && model.contact.website,model.contact && model.contact.social].filter(Boolean).join(" | ");
+    if (contacts) lines.push("BT /F1 7 Tf " + left + " 46 Td (" + pdfText(truncate(contacts,120)) + ") Tj ET");
+    if (model.signatureLabel) {
+      lines.push(left + " 72 180 0 re S");
+      lines.push("BT /F1 7 Tf " + left + " 60 Td (" + pdfText(model.signatureLabel) + ") Tj ET");
+    }
+    if (model.qrTarget) lines.push("BT /F1 6 Tf " + left + " 36 Td (QR-ready transfer / animal link) Tj ET");
+
+    const content=lines.join("\n")+"\n";
+    const objects=[];
+    objects[1]="<< /Type /Catalog /Pages 2 0 R >>";
+    objects[2]="<< /Type /Pages /Kids [3 0 R] /Count 1 >>";
+    objects[3]="<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + model.geometry.width.toFixed(2) + " " + model.geometry.height.toFixed(2) + "] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>";
+    objects[4]="<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
+    objects[5]="<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>";
+    objects[6]="<< /Length " + encoder.encode(content).length + " >>\nstream\n" + content + "endstream";
+    const chunks=[encoder.encode("%PDF-1.4\n")];
+    const offsets=[0];
+    let total=chunks[0].length;
+    for(let id=1;id<=6;id+=1){
+      offsets[id]=total;
+      const part=encoder.encode(id+" 0 obj\n"+objects[id]+"\nendobj\n");
+      chunks.push(part); total+=part.length;
+    }
+    const xrefOffset=total;
+    let xref="xref\n0 7\n0000000000 65535 f \n";
+    for(let id=1;id<=6;id+=1) xref+=String(offsets[id]).padStart(10,"0")+" 00000 n \n";
+    xref+="trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n"+xrefOffset+"\n%%EOF\n";
+    chunks.push(encoder.encode(xref));
+    const length=chunks.reduce(function(sum,part){return sum+part.length;},0);
+    const out=new Uint8Array(length); let cursor=0;
+    chunks.forEach(function(part){out.set(part,cursor);cursor+=part.length;});
+    return out;
+  }
+
+  function birthCertificatePreview(options) {
+    const model=buildBirthCertificateModel(options);
+    return { model, html:renderBirthCertificateHtml(model) };
+  }
+
   return Object.freeze({
     VERSION,
     PAGE_SIZES,
@@ -338,6 +478,10 @@
     prepareDocumentImages,
     buildPdfBytes,
     downloadPdf,
-    openPrintPreview
+    openPrintPreview,
+    buildBirthCertificateModel,
+    renderBirthCertificateHtml,
+    buildBirthCertificatePdfBytes,
+    birthCertificatePreview
   });
 });
