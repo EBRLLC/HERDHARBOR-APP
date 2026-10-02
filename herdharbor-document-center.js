@@ -615,6 +615,152 @@
   }
 
 
+  function buildAgreementSnapshotModel(options) {
+    const raw=options && typeof options==="object" ? options : {};
+    const branding=pedigree && pedigree.sanitizeBranding
+      ? pedigree.sanitizeBranding(raw.branding,"private")
+      : Object.assign({},raw.branding||{});
+    return {
+      schemaVersion:1,
+      type:"marketplaceAgreement",
+      title:asText(raw.title||"Marketplace Agreement"),
+      body:asText(raw.body||""),
+      version:Math.max(1,Number(raw.version||1)),
+      listingName:asText(raw.listingName||""),
+      sellerName:asText(raw.sellerName||branding.rabbitryName||""),
+      buyerName:asText(raw.buyerName||""),
+      effectiveDate:asText(raw.effectiveDate||""),
+      agreementUpdatedAt:asText(raw.agreementUpdatedAt||""),
+      geometry:pageGeometry(raw.pageSize||"letter","portrait"),
+      branding
+    };
+  }
+
+  function agreementBodyParagraphs(body) {
+    return asText(body).replace(/\r\n/g,"\n").split(/\n{2,}/).map(function(part){return part.trim();}).filter(Boolean);
+  }
+
+  function renderAgreementSnapshotHtml(model) {
+    if(!model || model.type!=="marketplaceAgreement") throw new Error("A Marketplace agreement model is required.");
+    const widthIn=(model.geometry.width/72).toFixed(3);
+    const heightIn=(model.geometry.height/72).toFixed(3);
+    const accent=escapeHtml(model.branding?.accent||"#2E7D7B");
+    const meta=[
+      ["Listing",model.listingName],
+      ["Seller / breeder",model.sellerName],
+      ["Buyer",model.buyerName],
+      ["Effective date",model.effectiveDate],
+      ["Agreement version","v"+model.version]
+    ].filter(function(item){return item[1];}).map(function(item){
+      return '<div><span>'+escapeHtml(item[0])+'</span><strong>'+escapeHtml(item[1])+'</strong></div>';
+    }).join("");
+    const body=agreementBodyParagraphs(model.body).map(function(part){
+      return '<p>'+escapeHtml(part).replace(/\n/g,"<br>")+'</p>';
+    }).join("");
+    return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+
+      escapeHtml(model.title)+'</title><style>@page{size:'+widthIn+'in '+heightIn+'in;margin:.45in}*{box-sizing:border-box}body{margin:0;color:#263746;font-family:Arial,sans-serif}.head{border-bottom:3px solid '+accent+';padding-bottom:14px}.head h1{margin:0;font-size:25px}.head small{display:block;margin-top:5px;color:#667783}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:18px 0}.meta div{padding:8px;border:1px solid #dfe6e8;border-radius:8px}.meta span{display:block;color:#667783;font-size:8px;font-weight:700;text-transform:uppercase}.meta strong{display:block;margin-top:2px;font-size:11px}.body{font-size:10.5pt;line-height:1.5}.body p{margin:0 0 12px;white-space:normal}.signatures{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:42px;break-inside:avoid}.sig{border-top:1px solid #263746;padding-top:6px;font-size:9px}.notice{margin-top:18px;padding:10px;background:#f7f3ea;border-radius:8px;font-size:8px;color:#586773}</style></head><body><header class="head"><h1>'+
+      escapeHtml(model.title)+'</h1><small>HerdHarbor Marketplace agreement snapshot'+(model.agreementUpdatedAt?' · snapshot '+escapeHtml(model.agreementUpdatedAt):'')+
+      '</small></header><section class="meta">'+meta+'</section><main class="body">'+body+
+      '</main><section class="signatures"><div class="sig">Seller / breeder signature</div><div class="sig">Buyer signature</div></section>'+
+      '<div class="notice">This file is a snapshot of the agreement attached to the Marketplace listing. HerdHarbor does not process or hold payment under this agreement.</div></body></html>';
+  }
+
+  function wrapAgreementText(text,maxChars) {
+    const limit=Math.max(20,Number(maxChars||86));
+    const lines=[];
+    agreementBodyParagraphs(text).forEach(function(paragraph,index){
+      const words=paragraph.replace(/\s+/g," ").split(" ").filter(Boolean);
+      let line="";
+      words.forEach(function(word){
+        if(word.length>limit){
+          if(line){lines.push(line);line="";}
+          for(let i=0;i<word.length;i+=limit) lines.push(word.slice(i,i+limit));
+          return;
+        }
+        const next=line ? line+" "+word : word;
+        if(next.length>limit){if(line)lines.push(line);line=word;} else line=next;
+      });
+      if(line)lines.push(line);
+      if(index<agreementBodyParagraphs(text).length-1)lines.push("");
+    });
+    return lines;
+  }
+
+  function buildAgreementSnapshotPdfBytes(model) {
+    if(!model || model.type!=="marketplaceAgreement") throw new Error("A Marketplace agreement model is required.");
+    const encoder=new TextEncoder();
+    const width=model.geometry.width,height=model.geometry.height;
+    const bodyLines=wrapAgreementText(model.body,88);
+    const metadata=[
+      model.listingName ? "Listing: "+model.listingName : "",
+      model.sellerName ? "Seller / breeder: "+model.sellerName : "",
+      model.buyerName ? "Buyer: "+model.buyerName : "",
+      model.effectiveDate ? "Effective date: "+model.effectiveDate : "",
+      "Agreement version: v"+model.version
+    ].filter(Boolean);
+    const linesPerPage=45;
+    const chunks=[];
+    for(let i=0;i<bodyLines.length||i===0;i+=linesPerPage) chunks.push(bodyLines.slice(i,i+linesPerPage));
+    const objects=[null];
+    const pageObjectIds=[],contentObjectIds=[];
+    const fontRegularId=3,fontBoldId=4;
+    objects[1]="";
+    objects[2]="";
+    objects[fontRegularId]="<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
+    objects[fontBoldId]="<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>";
+    let nextId=5;
+    chunks.forEach(function(pageLines,pageIndex){
+      const pageId=nextId++,contentId=nextId++;
+      pageObjectIds.push(pageId);contentObjectIds.push(contentId);
+      const commands=[];
+      commands.push("1.4 w 0.18 0.49 0.48 RG 36 "+(height-58).toFixed(2)+" "+(width-72).toFixed(2)+" 0 re S");
+      commands.push("BT /F2 18 Tf 42 "+(height-48).toFixed(2)+" Td ("+pdfText(truncate(model.title,76))+") Tj ET");
+      commands.push("BT /F1 7 Tf 42 "+(height-65).toFixed(2)+" Td (HerdHarbor Marketplace agreement snapshot - page "+(pageIndex+1)+" of "+chunks.length+") Tj ET");
+      let y=height-88;
+      if(pageIndex===0){
+        metadata.forEach(function(item){commands.push("BT /F1 8 Tf 42 "+y.toFixed(2)+" Td ("+pdfText(truncate(item,105))+") Tj ET");y-=12;});
+        y-=8;
+      }
+      pageLines.forEach(function(line){
+        if(line===""){y-=8;return;}
+        commands.push("BT /F1 8.5 Tf 42 "+y.toFixed(2)+" Td ("+pdfText(line)+") Tj ET");
+        y-=11.5;
+      });
+      if(pageIndex===chunks.length-1){
+        y=Math.max(70,y-22);
+        commands.push("42 "+y.toFixed(2)+" 210 0 re S");
+        commands.push("BT /F1 7 Tf 42 "+(y-11).toFixed(2)+" Td (Seller / breeder signature) Tj ET");
+        commands.push((width-252).toFixed(2)+" "+y.toFixed(2)+" 210 0 re S");
+        commands.push("BT /F1 7 Tf "+(width-252).toFixed(2)+" "+(y-11).toFixed(2)+" Td (Buyer signature) Tj ET");
+      }
+      const content=commands.join("\n")+"\n";
+      objects[pageId]="<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "+width.toFixed(2)+" "+height.toFixed(2)+"] /Resources << /Font << /F1 "+fontRegularId+" 0 R /F2 "+fontBoldId+" 0 R >> >> /Contents "+contentId+" 0 R >>";
+      objects[contentId]="<< /Length "+encoder.encode(content).length+" >>\nstream\n"+content+"endstream";
+    });
+    objects[1]="<< /Type /Catalog /Pages 2 0 R >>";
+    objects[2]="<< /Type /Pages /Kids ["+pageObjectIds.map(function(id){return id+" 0 R";}).join(" ")+"] /Count "+pageObjectIds.length+" >>";
+    const fileChunks=[encoder.encode("%PDF-1.4\n")],offsets=[0];
+    let total=fileChunks[0].length;
+    for(let id=1;id<objects.length;id+=1){
+      if(!objects[id])continue;
+      offsets[id]=total;
+      const part=encoder.encode(id+" 0 obj\n"+objects[id]+"\nendobj\n");
+      fileChunks.push(part);total+=part.length;
+    }
+    const xrefOffset=total;
+    let xref="xref\n0 "+objects.length+"\n0000000000 65535 f \n";
+    for(let id=1;id<objects.length;id+=1){
+      xref+=(offsets[id]===undefined?"0000000000 65535 f ":""+String(offsets[id]||0).padStart(10,"0")+" 00000 n ")+"\n";
+    }
+    xref+="trailer\n<< /Size "+objects.length+" /Root 1 0 R >>\nstartxref\n"+xrefOffset+"\n%%EOF\n";
+    fileChunks.push(encoder.encode(xref));
+    const length=fileChunks.reduce(function(sum,part){return sum+part.length;},0);
+    const out=new Uint8Array(length);let cursor=0;
+    fileChunks.forEach(function(part){out.set(part,cursor);cursor+=part.length;});
+    return out;
+  }
+
+
   const DOCUMENT_TYPES = Object.freeze({
     pedigree:Object.freeze({ id:"pedigree", label:"Pedigree", enabled:true }),
     birthCertificate:Object.freeze({ id:"birthCertificate", label:"Birth Certificate", enabled:true }),
@@ -823,6 +969,10 @@
     buildRecordDocumentPdfBytes,
     buildSaleTransferRecordModel,
     buildAnimalInformationSheetModel,
+    buildAgreementSnapshotModel,
+    renderAgreementSnapshotHtml,
+    wrapAgreementText,
+    buildAgreementSnapshotPdfBytes,
     DOCUMENT_TYPES,
     activeDocumentTypes,
     futureDocumentTypes,
