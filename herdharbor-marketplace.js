@@ -310,5 +310,89 @@ function openSellAnimalDialog(context,gw,dialog,toast,refresh){
  if(typeof dialog.showModal==="function")dialog.showModal();else dialog.setAttribute("open","");
 }
 
-return Object.freeze({VERSION,TABLES,BUCKETS,PUBLIC_PROFILE_FIELDS,LISTING_STATES,LISTING_PUBLIC_FIELDS,createGateway,gateway,browserClient,normalizePublicProfileDraft,saveSellerProfile,getPublicSellerProfile,publicProfilePreview,normalizeListingDraft,buildListingSnapshotFromHerd,listingInsertPayload,createListingFromHerd,createManualListing,deleteListing,listingCreationOptions,publicMediaUrl,searchArgs,searchListings,getListingDetails,saveListing,renderListingCard,renderMarketplace,openSellAnimalDialog});
+
+const PUBLIC_PEDIGREE_FIELDS=Object.freeze(["name","rabbitry","sex","dob","breed","variety","color","weight","registrationNumber","gcNumber","photoData"]);
+function publicPedigreeDepth(visibility){
+ const value=String(visibility||"hidden");
+ if(value==="parents")return 2;
+ const numeric=Number(value);
+ return Number.isInteger(numeric)&&numeric>=3&&numeric<=5?numeric:0;
+}
+function buildPublicPedigreeSnapshot(animals,rootId,options){
+ const raw=options&&typeof options==="object"?options:{};
+ const visibility=String(raw.visibility||"hidden");
+ const depth=publicPedigreeDepth(visibility);
+ if(!depth)return {visibility:"hidden",depth:0,pedigree:null};
+ const engine=root?.HerdHarborPedigreePlatform;
+ if(!engine?.buildPedigreeGraph)throw new Error("Pedigree engine is unavailable.");
+ const graph=engine.buildPedigreeGraph({animals:Array.isArray(animals)?animals:[],rootId,generations:depth});
+ const requested=new Set(Array.isArray(raw.ancestorFields)?raw.ancestorFields:PUBLIC_PEDIGREE_FIELDS);
+ const allowed=PUBLIC_PEDIGREE_FIELDS.filter(function(field){return requested.has(field);});
+ const identityAliases=new Map();
+ let aliasCounter=0;
+ const alias=function(identityId){
+  if(!identityId)return "";
+  if(!identityAliases.has(identityId)){aliasCounter+=1;identityAliases.set(identityId,"p"+aliasCounter);}
+  return identityAliases.get(identityId);
+ };
+ const nodes=graph.nodes.map(function(node){
+  let animal=null;
+  if(node.known&&node.animal){
+   animal={};
+   allowed.forEach(function(field){
+    let value=node.animal[field];
+    if(field==="variety")value=node.animal.variety||node.animal.color||"";
+    if(field==="color")value=node.animal.color||node.animal.variety||"";
+    if(value!==""&&value!==null&&value!==undefined)animal[field]=value;
+   });
+  }
+  return {
+   path:node.path,generation:node.generation,relation:node.relation,publicKey:alias(node.identityId),
+   known:Boolean(node.known),cycle:Boolean(node.cycle),missingReference:Boolean(node.missingReference),animal
+  };
+ });
+ return {visibility,depth,pedigree:{schemaVersion:1,generations:depth,nodes}};
+}
+async function setListingPublicPedigree(listingId,snapshot,customGateway){
+ const gw=customGateway||gateway();
+ const safe=snapshot&&typeof snapshot==="object"?snapshot:{visibility:"hidden",depth:0,pedigree:null};
+ const result=await gw.table(TABLES.listings).update({
+  pedigree_visibility:safe.visibility||"hidden",
+  pedigree_depth:Number(safe.depth||0),
+  public_pedigree:safe.pedigree||null
+ }).eq("id",String(listingId)).select("id,pedigree_visibility,pedigree_depth").single();
+ if(result.error)throw result.error;
+ return result.data;
+}
+async function getPublicListingPedigree(listingId,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_public_pedigree",{target_listing_id:String(listingId)});
+ if(result.error)throw result.error;
+ return Array.isArray(result.data)?(result.data[0]||null):result.data||null;
+}
+function publicSnapshotToGraph(payload){
+ const data=payload&&typeof payload==="object"?payload:{};
+ const graph=data.public_pedigree||data;
+ return {
+  version:"public",
+  rootId:"",
+  generations:Number(graph.generations||data.pedigree_depth||3),
+  nodes:Array.isArray(graph.nodes)?graph.nodes.map(function(node){
+    return {
+      path:String(node.path||""),generation:Number(node.generation||0),relation:String(node.relation||""),
+      identityId:String(node.publicKey||""),known:Boolean(node.known),cycle:Boolean(node.cycle),
+      missingReference:Boolean(node.missingReference),expectedSex:"",
+      animal:node.animal&&typeof node.animal==="object"?Object.assign({},node.animal,{id:String(node.publicKey||"")}):null
+    };
+  }):[],
+  repeatedAncestors:[],coverage:{knownAncestorCount:0,expectedAncestorCount:0,ratio:0,percent:0},problems:[]
+ };
+}
+function renderPublicPedigree(payload){
+ const engine=root?.HerdHarborPedigreePlatform;
+ if(!engine?.renderPedigree)return "";
+ return engine.renderPedigree(publicSnapshotToGraph(payload),{mode:"publicMarketplace",expanded:false});
+}
+
+return Object.freeze({VERSION,TABLES,BUCKETS,PUBLIC_PROFILE_FIELDS,LISTING_STATES,LISTING_PUBLIC_FIELDS,PUBLIC_PEDIGREE_FIELDS,createGateway,gateway,browserClient,normalizePublicProfileDraft,saveSellerProfile,getPublicSellerProfile,publicProfilePreview,normalizeListingDraft,buildListingSnapshotFromHerd,listingInsertPayload,createListingFromHerd,createManualListing,deleteListing,listingCreationOptions,publicMediaUrl,searchArgs,searchListings,getListingDetails,saveListing,renderListingCard,renderMarketplace,openSellAnimalDialog,publicPedigreeDepth,buildPublicPedigreeSnapshot,setListingPublicPedigree,getPublicListingPedigree,publicSnapshotToGraph,renderPublicPedigree});
 });
