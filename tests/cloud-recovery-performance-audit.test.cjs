@@ -1,3 +1,4 @@
+// CI validation trigger for audited Phase 24 stack head.
 "use strict";
 const test=require("node:test");
 const assert=require("node:assert/strict");
