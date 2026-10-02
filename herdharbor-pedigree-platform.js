@@ -387,6 +387,75 @@
     return '<div class="hh-pedigree-customized hh-density-' + escapeHtml(plan.config.density) + '">' + rootHtml + ancestorHtml + '</div>';
   }
 
+
+  function sanitizeBranding(input, context) {
+    const raw = input && typeof input === "object" ? input : {};
+    const publicMode = context === "publicMarketplace";
+    return {
+      rabbitryName: String(raw.rabbitryName || raw.operationName || "").trim(),
+      logoData: String(raw.logoData || "").trim(),
+      accent: String(raw.accent || "").trim(),
+      website: String(raw.website || "").trim(),
+      social: String(raw.social || "").trim(),
+      email: publicMode ? "" : (raw.includeEmail === true ? String(raw.email || "").trim() : ""),
+      phone: publicMode ? "" : (raw.includePhone === true ? String(raw.phone || "").trim() : ""),
+      includeEmail: publicMode ? false : raw.includeEmail === true,
+      includePhone: publicMode ? false : raw.includePhone === true
+    };
+  }
+
+  function savedTemplatesFrom(settings) {
+    const list = settings && Array.isArray(settings.pedigreeTemplates) ? settings.pedigreeTemplates : [];
+    return list.filter(function (item) { return item && typeof item === "object" && item.id; }).map(function (item) {
+      return Object.assign({}, item, {
+        config: normalizePedigreeConfig(item.config),
+        branding: sanitizeBranding(item.branding, "private")
+      });
+    });
+  }
+
+  function upsertSavedTemplate(settings, template) {
+    const current = savedTemplatesFrom(settings);
+    const raw = template && typeof template === "object" ? template : {};
+    const id = asId(raw.id) || "pedigree-template-" + Date.now();
+    const normalized = {
+      id,
+      name: String(raw.name || "Untitled pedigree template").trim() || "Untitled pedigree template",
+      config: normalizePedigreeConfig(raw.config),
+      branding: sanitizeBranding(raw.branding, "private"),
+      updatedAt: String(raw.updatedAt || new Date().toISOString())
+    };
+    const next = current.filter(function (item) { return item.id !== id; });
+    next.push(normalized);
+    next.sort(function (a, b) { return a.name.localeCompare(b.name) || a.id.localeCompare(b.id); });
+    return Object.assign({}, settings || {}, { pedigreeTemplates:next });
+  }
+
+  function removeSavedTemplate(settings, templateId) {
+    const id = asId(templateId);
+    return Object.assign({}, settings || {}, {
+      pedigreeTemplates:savedTemplatesFrom(settings).filter(function (item) { return item.id !== id; })
+    });
+  }
+
+  function publicPreviewTemplate(template) {
+    const raw = template && typeof template === "object" ? template : {};
+    return {
+      id: asId(raw.id),
+      name: String(raw.name || ""),
+      config: normalizePedigreeConfig(raw.config),
+      branding: sanitizeBranding(raw.branding, "publicMarketplace"),
+      mode:"publicMarketplace"
+    };
+  }
+
+  const SAVED_TEMPLATE_EXAMPLES = Object.freeze([
+    "Sales Pedigree",
+    "Show Pedigree",
+    "Pet Buyer Pedigree",
+    "Full Breeding Pedigree"
+  ]);
+
   return Object.freeze({
     VERSION,
     DEFAULT_GENERATIONS,
@@ -410,6 +479,12 @@
     PEDIGREE_FIELD_SET,
     normalizePedigreeConfig,
     pedigreeRenderPlan,
-    renderCustomizedPedigree
+    renderCustomizedPedigree,
+    sanitizeBranding,
+    savedTemplatesFrom,
+    upsertSavedTemplate,
+    removeSavedTemplate,
+    publicPreviewTemplate,
+    SAVED_TEMPLATE_EXAMPLES
   });
 });
