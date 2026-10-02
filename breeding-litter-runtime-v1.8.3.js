@@ -409,6 +409,7 @@
             ${selectField("Status", "status", BREEDING_STATUS_OPTIONS, normalizeBreedingStatus(breeding.status), true)}
           </div>
           <p class="task-repeat-note" id="breeding-schedule-note">Choose a dam and breeding date to calculate the schedule.</p>
+          <div class="panel" id="breeding-shared-ancestor-panel"><button type="button" class="button button-ghost button-small" id="analyze-pairing">Analyze Pairing</button><div id="breeding-shared-ancestor-result" class="muted" style="margin-top:8px">Select a doe and buck to compare available pedigree ancestry.</div></div>
           ${textareaField("Notes", "notes", breeding.notes)}
           <div class="modal-actions">
             ${id ? `<button type="button" class="button button-danger" id="delete-breeding">Delete</button>` : ""}
@@ -450,6 +451,16 @@
         if (checkResultInput.value === "Negative") statusInput.value = "Not pregnant";
       });
       calculateDates(false);
+      $("#analyze-pairing")?.addEventListener("click", () => {
+        const result=$("#breeding-shared-ancestor-result");
+        if (!femaleInput.value || !form.elements.maleId?.value) {
+          if (result) result.textContent="Select both animals before analyzing the pairing.";
+          return;
+        }
+        const analysis=root.HerdHarborPedigreePlatform?.analyzePairing?.(stateNow().animals,femaleInput.value,form.elements.maleId.value,5);
+        if (!analysis || !result) return;
+        result.innerHTML='<strong>'+analysis.sharedAncestorCount+' shared ancestor'+(analysis.sharedAncestorCount===1?"":"s")+'</strong><br><span>Pedigree coverage: '+analysis.coverage.left.percent+'% / '+analysis.coverage.right.percent+'% · '+analysis.generations+' generations analyzed.</span>';
+      });
   
       $("#cancel-modal").addEventListener("click", closeModal);
       form.addEventListener("submit", (event) => {
