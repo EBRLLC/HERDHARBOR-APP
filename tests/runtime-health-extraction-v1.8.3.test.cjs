@@ -141,14 +141,23 @@ test("symptom guide remains composition-owned and may still open the extracted h
   assert.doesNotMatch(extractedSource, /function renderSymptoms\(|HERDHARBOR_SYMPTOM_GUIDE/);
 });
 
-test("shell loads and caches Health runtime before application composition", () => {
+test("Health runtime is lazy-loaded instead of blocking application startup", () => {
   const html = read("index.html");
   const worker = read("service-worker.js");
-  const breeding = html.indexOf("breeding-litter-runtime-v1.8.3.js?v=1");
-  const health = html.indexOf("health-runtime-v1.8.3.js?v=1");
-  const composition = html.indexOf("herdharbor-app-runtime.js?v=4");
-  assert.ok(breeding >= 0 && health > breeding && composition > health);
-  assert.match(worker, /\.\/health-runtime-v1\.8\.3\.js\?v=1/);
+  const requiredStart = worker.indexOf("const REQUIRED_SHELL = [");
+  const requiredEnd = worker.indexOf("];", requiredStart);
+  const runtimeStart = worker.indexOf("const RUNTIME_CACHE_PATHS = [");
+  const runtimeEnd = worker.indexOf("];", runtimeStart);
+  const required = worker.slice(requiredStart, requiredEnd);
+  const runtime = worker.slice(runtimeStart, runtimeEnd);
+
+  assert.doesNotMatch(html, /<script[^>]+health-runtime-v1\.8\.3\.js/);
+  assert.match(runtimeSource, /function ensureHealthRuntime\(\)/);
+  assert.match(runtimeSource, /"health-runtime-v1\.8\.3\.js\?v=1"/);
+  assert.match(runtimeSource, /renderLazyRoute\("health", "Health and weights", ensureHealthRuntime, renderHealth\)/);
+  assert.match(runtimeSource, /ensureHealthRuntime\(\)[\s\S]*healthRuntime\(\)\.openHealthForm/);
+  assert.ok(!required.includes("health-runtime-v1.8.3.js"));
+  assert.ok(runtime.includes("health-runtime-v1.8.3.js?v=1"));
   assert.match(worker, /"\/health-runtime-v1\.8\.3\.js"/);
 });
 
