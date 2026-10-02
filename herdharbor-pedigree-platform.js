@@ -81,28 +81,6 @@
     const problems = [];
     let knownAncestorCount = 0;
 
-    function reachablePedigreeHasCycle(startId) {
-      const visiting = new Set();
-      const visited = new Set();
-      function walk(id) {
-        const normalizedId = asId(id);
-        if (!normalizedId || !byId.has(normalizedId)) return false;
-        if (visiting.has(normalizedId)) return true;
-        if (visited.has(normalizedId)) return false;
-        visiting.add(normalizedId);
-        const record = byId.get(normalizedId);
-        for (const parent of PARENT_FIELDS) {
-          if (walk(record ? record[parent.field] : "")) return true;
-        }
-        visiting.delete(normalizedId);
-        visited.add(normalizedId);
-        return false;
-      }
-      return walk(startId);
-    }
-
-    const pedigreeContainsCycle = reachablePedigreeHasCycle(rootId);
-
     function addOccurrence(id, path) {
       if (!id) return;
       if (!occurrences.has(id)) occurrences.set(id, []);
@@ -134,7 +112,6 @@
         return;
       }
       if (missingReference) problems.push({ type: "missing-reference", path, identityId: normalizedId });
-      if (pedigreeContainsCycle && !record) return;
       if (generation >= generations - 1) return;
 
       const nextLineage = new Set(lineage);
@@ -535,6 +512,149 @@
     return analyzeSharedAncestors({animals,leftId,rightId,generations});
   }
 
+
+  function pedigreeOrder(animals, focalIds) {
+    const byId=new Map();
+    (Array.isArray(animals)?animals:[]).forEach(function(animal){
+      const id=identityOf(animal);
+      if (id && !byId.has(id)) byId.set(id,animal);
+    });
+    const visiting=new Set();
+    const visited=new Set();
+    const order=[];
+    function visit(id) {
+      const key=asId(id);
+      if (!key || !byId.has(key) || visited.has(key)) return;
+      if (visiting.has(key)) throw new Error("Circular pedigree prevents relationship calculation at " + key + ".");
+      visiting.add(key);
+      const animal=byId.get(key);
+      visit(animal.sireId);
+      visit(animal.damId);
+      visiting.delete(key);
+      visited.add(key);
+      order.push(key);
+    }
+    (Array.isArray(focalIds)?focalIds:[]).forEach(visit);
+    return {order,byId};
+  }
+
+  function buildNumeratorRelationshipMatrix(animals, focalIds) {
+    const topology=pedigreeOrder(animals,focalIds);
+    const order=topology.order;
+    const byId=topology.byId;
+    const index=new Map(order.map(function(id,i){return [id,i];}));
+    const matrix=Array.from({length:order.length},function(){return Array(order.length).fill(0);});
+    function a(parentId,j) {
+      const id=asId(parentId);
+      const i=index.get(id);
+      return i === undefined ? 0 : matrix[i][j];
+    }
+    for (let i=0;i<order.length;i+=1) {
+      const animal=byId.get(order[i]) || {};
+      const sire=asId(animal.sireId);
+      const dam=asId(animal.damId);
+      for (let j=0;j<i;j+=1) {
+        const value=0.5*(a(sire,j)+a(dam,j));
+        matrix[i][j]=value;
+        matrix[j][i]=value;
+      }
+      const sireIndex=index.get(sire);
+      const damIndex=index.get(dam);
+      matrix[i][i]=1+((sireIndex!==undefined && damIndex!==undefined) ? 0.5*matrix[sireIndex][damIndex] : 0);
+    }
+    return {order,index,matrix,byId};
+  }
+
+  function matrixValue(result,leftId,rightId) {
+    const i=result.index.get(asId(leftId));
+    const j=result.index.get(asId(rightId));
+    return i===undefined || j===undefined ? 0 : result.matrix[i][j];
+  }
+
+  function individualPedigreeCoi(result, animalId) {
+    const i=result.index.get(asId(animalId));
+    return i===undefined ? 0 : Math.max(0,result.matrix[i][i]-1);
+  }
+
+  function identityPath(graph,path) {
+    const parts=String(path||"").split(".");
+    const ids=[];
+    for(let i=0;i<parts.length;i+=1){
+      const prefix=parts.slice(0,i+1).join(".");
+      const node=nodeAt(graph,prefix);
+      if (node?.known && node.identityId) ids.push(node.identityId);
+    }
+    return ids;
+  }
+
+  function relationshipContributionDetails(sharedAnalysis,matrixResult) {
+    if (!sharedAnalysis || !Array.isArray(sharedAnalysis.sharedAncestors)) return [];
+    const output=[];
+    sharedAnalysis.sharedAncestors.forEach(function(entry){
+      const ancestorF=individualPedigreeCoi(matrixResult,entry.identityId);
+      const paths=[];
+      entry.occurrencePairs.forEach(function(pair){
+        const leftIds=identityPath(sharedAnalysis.leftGraph,pair.leftPath);
+        const rightIds=identityPath(sharedAnalysis.rightGraph,pair.rightPath);
+        const leftWithoutAncestor=new Set(leftIds.slice(0,-1));
+        const rightWithoutAncestor=new Set(rightIds.slice(0,-1));
+        const independent=[...leftWithoutAncestor].every(function(id){return !rightWithoutAncestor.has(id);});
+        if (!independent) return;
+        const contribution=Math.pow(0.5,pair.leftGeneration+pair.rightGeneration)*(1+ancestorF);
+        paths.push(Object.assign({},pair,{ancestorInbreeding:ancestorF,contribution}));
+      });
+      if (paths.length) {
+        output.push({
+          identityId:entry.identityId,
+          name:entry.name,
+          ancestorInbreeding:ancestorF,
+          validPathPairs:paths,
+          pathContributionTotal:paths.reduce(function(sum,item){return sum+item.contribution;},0)
+        });
+      }
+    });
+    return output;
+  }
+
+  function calculatePedigreeRelationship(input) {
+    const raw=input && typeof input === "object" ? input : {};
+    const animals=Array.isArray(raw.animals)?raw.animals:[];
+    const leftId=asId(raw.leftId || raw.firstId);
+    const rightId=asId(raw.rightId || raw.secondId);
+    const generations=clampGenerations(raw.generations || 5);
+    const shared=analyzeSharedAncestors({animals,leftId,rightId,generations});
+    const matrix=buildNumeratorRelationshipMatrix(animals,[leftId,rightId]);
+    const numeratorRelationship=matrixValue(matrix,leftId,rightId);
+    const projectedOffspringPedigreeCoi=numeratorRelationship/2;
+    const leftF=individualPedigreeCoi(matrix,leftId);
+    const rightF=individualPedigreeCoi(matrix,rightId);
+    const leftDiagonal=1+leftF;
+    const rightDiagonal=1+rightF;
+    const normalizedRelationship=(leftDiagonal>0 && rightDiagonal>0)
+      ? numeratorRelationship/Math.sqrt(leftDiagonal*rightDiagonal)
+      : 0;
+    return {
+      leftId,
+      rightId,
+      generationsAnalyzed:generations,
+      relationshipCoefficient:numeratorRelationship,
+      numeratorRelationship,
+      normalizedRelationshipCoefficient:normalizedRelationship,
+      projectedOffspringPedigreeCoi,
+      leftPedigreeCoi:leftF,
+      rightPedigreeCoi:rightF,
+      sharedAncestorCount:shared.sharedAncestorCount,
+      sharedAncestors:shared.sharedAncestors,
+      sharedAncestorContributions:relationshipContributionDetails(shared,matrix),
+      pedigreeCompleteness:{
+        left:shared.coverage.left,
+        right:shared.coverage.right
+      },
+      incompletePedigree:shared.coverage.left.percent<100 || shared.coverage.right.percent<100,
+      label:"Pedigree COI"
+    };
+  }
+
   return Object.freeze({
     VERSION,
     DEFAULT_GENERATIONS,
@@ -567,6 +687,12 @@
     SAVED_TEMPLATE_EXAMPLES,
     graphOccurrences,
     analyzeSharedAncestors,
-    analyzePairing
+    analyzePairing,
+    pedigreeOrder,
+    buildNumeratorRelationshipMatrix,
+    matrixValue,
+    individualPedigreeCoi,
+    relationshipContributionDetails,
+    calculatePedigreeRelationship
   });
 });
