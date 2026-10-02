@@ -506,9 +506,9 @@ async function listConversations(folder,customGateway){
 }
 async function listMessages(conversationId,customGateway){
  const gw=customGateway||gateway();
- const result=await gw.table(TABLES.messages).select("id,conversation_id,sender_id,body,created_at,edited_at").eq("conversation_id",String(conversationId)).order("created_at",{ascending:true}).order("id",{ascending:true});
+ const result=await gw.table(TABLES.messages).select("id,conversation_id,sender_id,body,created_at,edited_at").eq("conversation_id",String(conversationId)).order("created_at",{ascending:false}).order("id",{ascending:false}).limit(200);
  if(result.error)throw result.error;
- return Array.isArray(result.data)?result.data:[];
+ return Array.isArray(result.data)?result.data.slice().reverse():[];
 }
 async function sendMessage(conversationId,body,customGateway){
  const gw=customGateway||gateway();
@@ -568,13 +568,24 @@ async function renderInbox(host,customGateway,toast,selectedConversationId){
    const mine=String(message.sender_id)===String(user.id);
    return '<div class="hh-message '+(mine?'mine':'theirs')+'"><span>'+escapeMarkup(message.body)+'</span><small>'+escapeMarkup(new Date(message.created_at).toLocaleString())+'</small></div>';
   }).join(""):'<p class="muted">No messages yet. Start the conversation.</p>')+'</div><form id="hh-message-form"><textarea name="body" maxlength="5000" required placeholder="Message seller"></textarea><div class="modal-actions"><button type="button" class="button button-ghost" id="hh-message-report">Report conversation</button><button type="button" class="button button-ghost" id="hh-message-block">Block user</button><button type="button" class="button button-ghost" id="hh-message-mute">Mute</button><button type="button" class="button button-ghost" id="hh-message-archive">Archive</button><button type="submit" class="button button-primary">Send</button></div></form>';
+  const messageList=thread.querySelector(".hh-message-list");
+  const appendMessage=function(message){
+   if(!message||!messageList)return;
+   const id=String(message.id||"");
+   if(id&&Array.from(messageList.querySelectorAll("[data-message-id]")).some(function(node){return node.dataset.messageId===id;}))return;
+   messageList.querySelector(".muted")?.remove();
+   const mine=String(message.sender_id)===String(user.id);
+   messageList.insertAdjacentHTML("beforeend",'<div class="hh-message '+(mine?'mine':'theirs')+'" data-message-id="'+escapeMarkup(id)+'"><span>'+escapeMarkup(message.body)+'</span><small>'+escapeMarkup(new Date(message.created_at).toLocaleString())+'</small></div>');
+   messageList.scrollTop=messageList.scrollHeight;
+  };
+  messageList?.querySelectorAll(".hh-message").forEach(function(node,index){const message=messages[index];if(message?.id)node.dataset.messageId=String(message.id);});
   const form=thread.querySelector("#hh-message-form");
-  form?.addEventListener("submit",async function(event){event.preventDefault();const data=new FormData(event.currentTarget);try{await sendMessage(conversationId,data.get("body"),gw);event.currentTarget.reset();await openThread(conversationId);}catch(error){notify(error?.message||"Message could not be sent.","error");}});
+  form?.addEventListener("submit",async function(event){event.preventDefault();const data=new FormData(event.currentTarget);try{const sent=await sendMessage(conversationId,data.get("body"),gw);event.currentTarget.reset();appendMessage(sent);}catch(error){notify(error?.message||"Message could not be sent.","error");}});
   thread.querySelector("#hh-message-report")?.addEventListener("click",async function(){const reason=root?.prompt?.("Reason for reporting this conversation:")||"";if(!reason)return;try{await submitReport("conversation",conversationId,reason,"",gw);notify("Conversation reported.","success");}catch(error){notify(error?.message||"Report failed.","error");}});
   thread.querySelector("#hh-message-block")?.addEventListener("click",async function(){if(!conversationRow.other_public_id)return notify("This profile cannot be blocked from this thread.","error");try{await blockPublicProfile(conversationRow.other_public_id,gw);notify("User blocked in Marketplace.","success");await loadInbox();}catch(error){notify(error?.message||"User could not be blocked.","error");}});
   thread.querySelector("#hh-message-mute")?.addEventListener("click",async function(){await updateConversationMember(conversationId,{muted_at:new Date().toISOString()},gw);notify("Conversation muted.","success");});
   thread.querySelector("#hh-message-archive")?.addEventListener("click",async function(){await updateConversationMember(conversationId,{archived_at:new Date().toISOString()},gw);notify("Conversation archived.","success");await loadInbox();});
-  realtime=subscribeConversation(conversationId,function(){void openThread(conversationId);},gw);
+  realtime=subscribeConversation(conversationId,appendMessage,gw);
  }
  host.querySelectorAll("[data-inbox-folder]").forEach(function(button){button.addEventListener("click",function(){folder=button.dataset.inboxFolder||"all";void loadInbox();});});
  list.addEventListener("click",function(event){const button=event.target.closest("[data-inbox-conversation]");if(button)void openThread(button.dataset.inboxConversation);});
