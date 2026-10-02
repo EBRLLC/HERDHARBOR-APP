@@ -3933,6 +3933,7 @@
   }
 
   window.HerdHarborCloud = {
+    getClient: () => client,
     syncNow,
     invokeFunction,
     invokeFunctionWithDiagnostics,
