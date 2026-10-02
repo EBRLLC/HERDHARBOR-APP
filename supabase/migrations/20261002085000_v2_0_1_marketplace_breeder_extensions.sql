@@ -94,8 +94,7 @@ alter table public.marketplace_agreement_templates enable row level security;
 alter table public.marketplace_listing_agreements enable row level security;
 alter table public.marketplace_deposit_records enable row level security;
 
-revoke all on public.marketplace_agreement_templates,public.marketplace_listing_agreements,public.marketplace_deposit_records from anon;
-grant select,insert,update,delete on public.marketplace_agreement_templates,public.marketplace_listing_agreements,public.marketplace_deposit_records to authenticated;
+revoke all on public.marketplace_agreement_templates,public.marketplace_listing_agreements,public.marketplace_deposit_records from anon,authenticated;
 
 create policy marketplace_agreement_templates_owner_all on public.marketplace_agreement_templates for all to authenticated
   using ((select auth.uid())=user_id) with check ((select auth.uid())=user_id);

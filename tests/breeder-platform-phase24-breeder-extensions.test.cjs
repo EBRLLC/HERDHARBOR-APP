@@ -165,3 +165,20 @@ test("obsolete local-cache and cloud-v2 helpers are not mandatory shell download
  assert.doesNotMatch(required,/cloud-sync-v2-flow-v1\.8\.2\.js/);
  assert.doesNotMatch(required,/cloud-sync-v2-diagnostics-v1\.8\.2\.js/);
 });
+
+
+test("stack audit keeps breeder extension SQL executable with valid dollar quoting",()=>{
+ const start=migration.indexOf("create function public.marketplace_my_listings");
+ const end=migration.indexOf("revoke all on function public.marketplace_my_listings",start);
+ const block=migration.slice(start,end);
+ assert.match(block,/set search_path=''\s*as \$\$[\s\S]*\$\$;/);
+ assert.doesNotMatch(block,/\bas \$\s/);
+});
+
+test("stack audit keeps agreement and deposit tables RPC-only for browser roles",()=>{
+ assert.match(migration,/revoke all on public\.marketplace_agreement_templates,public\.marketplace_listing_agreements,public\.marketplace_deposit_records from anon,authenticated;/);
+ assert.doesNotMatch(migration,/grant select,insert,update,delete on public\.marketplace_agreement_templates[\s\S]*to authenticated;/);
+ for(const fn of ["marketplace_save_agreement_template","marketplace_agreement_templates","marketplace_attach_agreement","marketplace_add_deposit_record","marketplace_deposit_records"]){
+   assert.ok(migration.includes(fn),fn);
+ }
+});
