@@ -925,5 +925,133 @@ function openDirectTransferForListing(listing,privateState,toast){
  return true;
 }
 
-return Object.freeze({VERSION,TABLES,BUCKETS,PUBLIC_PROFILE_FIELDS,LISTING_STATES,LISTING_PUBLIC_FIELDS,PUBLIC_PEDIGREE_FIELDS,createGateway,gateway,browserClient,normalizePublicProfileDraft,saveSellerProfile,getPublicSellerProfile,publicProfilePreview,normalizeListingDraft,buildListingSnapshotFromHerd,listingInsertPayload,createListingFromHerd,createManualListing,deleteListing,listingCreationOptions,publicMediaUrl,searchArgs,searchListings,getListingDetails,saveListing,renderListingCard,renderMarketplace,openSellAnimalDialog,publicPedigreeDepth,buildPublicPedigreeSnapshot,setListingPublicPedigree,getPublicListingPedigree,publicSnapshotToGraph,renderPublicPedigree,openListingConversation,listConversations,listMessages,sendMessage,updateConversationMember,subscribeConversation,renderInbox,submitReport,blockPublicProfile,getModerationQueue,moderateReport,renderModerationQueue,myListings,updateListingState,confirmListing,refreshSellerNotifications,myNotifications,markNotificationRead,myFavorites,removeFavorite,imageFileToUpload,uploadListingPhotos,removeListingPhoto,stateActionsForListing,renderSellerListings,renderFavorites,renderMarketplaceNotifications,savedSearchPayloadFromFilters,saveSearch,listSavedSearches,deleteSavedSearch,filtersFromSavedSearch,applySavedSearchToForm,renderSavedSearches,submitSellerReview,sellerFeedbackSummary,sellerFeedback,disputeReview,sellerFeedbackHtml,trustIndicators,trustIndicatorsHtml,findCompletedSaleForAnimal,openDirectTransferForListing});
+
+const LISTING_KINDS=Object.freeze(["individual","future_offspring","litter_announcement"]);
+function normalizeListingKind(value){
+ const kind=String(value||"individual").toLowerCase();
+ return LISTING_KINDS.includes(kind)?kind:"individual";
+}
+async function updateListingExtensions(listingId,kind,availableFrom,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_update_listing_extensions",{
+  target_listing_id:String(listingId),
+  listing_kind_value:normalizeListingKind(kind),
+  available_from_value:availableFrom||null
+ });
+ if(result.error)throw result.error;
+ return true;
+}
+async function getListingExtension(listingId,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_listing_extension",{target_listing_id:String(listingId)});
+ if(result.error)throw result.error;
+ return Array.isArray(result.data)?(result.data[0]||null):result.data||null;
+}
+async function saveAgreementTemplate(id,title,body,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_save_agreement_template",{
+  target_template_id:id||null,
+  template_title:textValue(title,160),
+  template_body:textValue(body,12000)
+ });
+ if(result.error)throw result.error;
+ return result.data;
+}
+async function listAgreementTemplates(customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_agreement_templates",{});
+ if(result.error)throw result.error;
+ return Array.isArray(result.data)?result.data:[];
+}
+async function attachAgreementTemplate(listingId,templateId,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_attach_agreement",{target_listing_id:String(listingId),target_template_id:String(templateId)});
+ if(result.error)throw result.error;
+ return Number(result.data||1);
+}
+async function getPublicAgreement(listingId,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_public_agreement",{target_listing_id:String(listingId)});
+ if(result.error)throw result.error;
+ return Array.isArray(result.data)?(result.data[0]||null):result.data||null;
+}
+async function addDepositRecord(listingId,amountCents,status,note,customGateway){
+ const gw=customGateway||gateway();
+ const amount=cleanPriceCents(amountCents);
+ const result=await gw.rpc("marketplace_add_deposit_record",{
+  target_listing_id:String(listingId),
+  amount_value:amount===null?0:amount,
+  status_value:String(status||"planned"),
+  note_value:textValue(note,1000)
+ });
+ if(result.error)throw result.error;
+ return result.data;
+}
+async function listDepositRecords(listingId,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_deposit_records",{target_listing_id:String(listingId)});
+ if(result.error)throw result.error;
+ return Array.isArray(result.data)?result.data:[];
+}
+function listingKindLabel(kind){
+ const value=normalizeListingKind(kind);
+ if(value==="future_offspring")return "Future offspring";
+ if(value==="litter_announcement")return "Litter announcement";
+ return "Individual animal";
+}
+function agreementSnapshotModel(agreement,listing,buyerName){
+ const docs=root?.HerdHarborDocumentCenter;
+ if(!docs?.buildAgreementSnapshotModel)throw new Error("Agreement document engine is unavailable.");
+ return docs.buildAgreementSnapshotModel({
+  title:agreement?.title||"Marketplace Agreement",
+  body:agreement?.body||"",
+  version:agreement?.version||1,
+  listingName:listing?.animal_name||listing?.listing_name||"",
+  sellerName:listing?.seller_rabbitry_name||listing?.seller_display_name||"",
+  buyerName:buyerName||"",
+  agreementUpdatedAt:agreement?.updated_at||""
+ });
+}
+function downloadAgreementSnapshot(agreement,listing,buyerName){
+ const docs=root?.HerdHarborDocumentCenter;
+ if(!docs?.buildAgreementSnapshotPdfBytes||!docs?.downloadBytes)throw new Error("Agreement PDF export is unavailable.");
+ const model=agreementSnapshotModel(agreement,listing,buyerName);
+ const bytes=docs.buildAgreementSnapshotPdfBytes(model);
+ const name=(listing?.animal_name||"marketplace")+"-agreement-v"+model.version+".pdf";
+ docs.downloadBytes(bytes,name,"application/pdf");
+ return bytes;
+}
+async function renderAgreementTemplateManager(host,customGateway,toast){
+ const gw=customGateway||gateway(); const notify=typeof toast==="function"?toast:function(){};
+ if(!host)return;
+ host.innerHTML='<section class="panel"><div class="panel-header"><div><h3>Agreement Templates</h3><small>Private reusable breeder terms. Templates become public only when attached to a listing.</small></div><button type="button" class="button button-ghost button-small" id="hh-agreements-close">Close</button></div><form id="hh-agreement-template-form"><label>Template name<input name="title" maxlength="160" required></label><label>Agreement text<textarea name="body" maxlength="12000" required></textarea></label><div class="modal-actions"><button class="button button-primary" type="submit">Save template</button></div></form><div id="hh-agreement-template-list" aria-live="polite"></div></section>';
+ host.querySelector("#hh-agreements-close")?.addEventListener("click",function(){host.innerHTML="";});
+ const form=host.querySelector("#hh-agreement-template-form"),list=host.querySelector("#hh-agreement-template-list");
+ async function load(){
+  const rows=await listAgreementTemplates(gw);
+  list.innerHTML=rows.length?rows.map(function(row){return '<article class="list-item"><div class="list-item-main"><strong>'+escapeMarkup(row.title)+'</strong><span>'+escapeMarkup((row.body||"").slice(0,180))+(String(row.body||"").length>180?"…":"")+'</span><small>Updated '+escapeMarkup(new Date(row.updated_at).toLocaleString())+'</small></div></article>';}).join(""):'<p class="muted">No agreement templates yet.</p>';
+ }
+ form?.addEventListener("submit",async function(event){event.preventDefault();const data=new FormData(event.currentTarget);try{await saveAgreementTemplate(null,data.get("title"),data.get("body"),gw);event.currentTarget.reset();notify("Agreement template saved.","success");await load();}catch(error){notify(error?.message||"Agreement template could not be saved.","error");}});
+ try{await load();}catch(error){notify(error?.message||"Agreement templates unavailable.","error");}
+}
+async function renderListingBreederTools(host,listing,customGateway,toast){
+ const gw=customGateway||gateway(); const notify=typeof toast==="function"?toast:function(){};
+ if(!host||!listing)return;
+ const [templates,deposits]=await Promise.all([listAgreementTemplates(gw),listDepositRecords(listing.listing_id,gw)]);
+ host.innerHTML='<section class="panel"><div class="panel-header"><div><h3>Breeder Tools</h3><small>'+escapeMarkup(listing.animal_name||"Marketplace listing")+'</small></div><button type="button" class="button button-ghost button-small" id="hh-breeder-tools-close">Close</button></div>'+
+  '<form id="hh-listing-extension-form"><div class="form-grid two"><label>Listing type<select name="kind"><option value="individual">Individual animal</option><option value="future_offspring">Future offspring</option><option value="litter_announcement">Litter announcement</option></select></label><label>Available from<input name="availableFrom" type="date"></label></div><button class="button button-primary" type="submit">Save availability</button></form>'+
+  '<section class="hh-breeder-tool-section"><h4>Public agreement snapshot</h4><p class="muted">Attaching a template copies its current text to this listing. Future template edits do not silently change the public agreement.</p><form id="hh-attach-agreement-form"><label>Agreement template<select name="templateId"><option value="">Choose a template</option>'+templates.map(function(row){return '<option value="'+escapeMarkup(row.template_id)+'">'+escapeMarkup(row.title)+'</option>';}).join("")+'</select></label><button class="button button-primary" type="submit">Attach public agreement</button></form></section>'+
+  '<section class="hh-breeder-tool-section"><h4>Private deposit tracking</h4><p class="muted">HerdHarbor records deposit status only; it does not process or hold payment.</p><form id="hh-deposit-form"><div class="form-grid two"><label>Amount $<input name="amount" type="number" min="0" step=".01" required></label><label>Status<select name="status"><option value="planned">Planned</option><option value="received">Received</option><option value="applied">Applied</option><option value="refunded">Refunded</option><option value="cancelled">Cancelled</option></select></label></div><label>Private note<input name="note" maxlength="1000"></label><button class="button button-primary" type="submit">Add deposit record</button></form><div id="hh-deposit-list">'+
+  (deposits.length?deposits.map(function(row){return '<div class="list-item"><div class="list-item-main"><strong>'+escapeMarkup(moneyText(row.amount_cents,"USD"))+' · '+escapeMarkup(row.status)+'</strong><span>'+escapeMarkup(row.note||"No note")+'</span><small>'+escapeMarkup(new Date(row.created_at).toLocaleString())+'</small></div></div>';}).join(""):'<p class="muted">No deposit records for this listing.</p>')+
+  '</div></section></section>';
+ host.querySelector("#hh-breeder-tools-close")?.addEventListener("click",function(){host.innerHTML="";});
+ const extForm=host.querySelector("#hh-listing-extension-form");
+ extForm.elements.kind.value=normalizeListingKind(listing.listing_kind);
+ extForm.elements.availableFrom.value=listing.available_from||"";
+ extForm.addEventListener("submit",async function(event){event.preventDefault();const data=new FormData(event.currentTarget);try{await updateListingExtensions(listing.listing_id,data.get("kind"),data.get("availableFrom"),gw);notify("Listing availability updated.","success");}catch(error){notify(error?.message||"Listing availability could not be updated.","error");}});
+ host.querySelector("#hh-attach-agreement-form")?.addEventListener("submit",async function(event){event.preventDefault();const data=new FormData(event.currentTarget);if(!data.get("templateId"))return notify("Choose an agreement template first.","error");try{const version=await attachAgreementTemplate(listing.listing_id,data.get("templateId"),gw);notify("Public agreement attached as version "+version+".","success");}catch(error){notify(error?.message||"Agreement could not be attached.","error");}});
+ host.querySelector("#hh-deposit-form")?.addEventListener("submit",async function(event){event.preventDefault();const data=new FormData(event.currentTarget);try{await addDepositRecord(listing.listing_id,Math.round(Number(data.get("amount")||0)*100),data.get("status"),data.get("note"),gw);notify("Private deposit record added.","success");await renderListingBreederTools(host,listing,gw,notify);}catch(error){notify(error?.message||"Deposit record could not be added.","error");}});
+}
+
+return Object.freeze({VERSION,TABLES,BUCKETS,PUBLIC_PROFILE_FIELDS,LISTING_STATES,LISTING_PUBLIC_FIELDS,PUBLIC_PEDIGREE_FIELDS,createGateway,gateway,browserClient,normalizePublicProfileDraft,saveSellerProfile,getPublicSellerProfile,publicProfilePreview,normalizeListingDraft,buildListingSnapshotFromHerd,listingInsertPayload,createListingFromHerd,createManualListing,deleteListing,listingCreationOptions,publicMediaUrl,searchArgs,searchListings,getListingDetails,saveListing,renderListingCard,renderMarketplace,openSellAnimalDialog,publicPedigreeDepth,buildPublicPedigreeSnapshot,setListingPublicPedigree,getPublicListingPedigree,publicSnapshotToGraph,renderPublicPedigree,openListingConversation,listConversations,listMessages,sendMessage,updateConversationMember,subscribeConversation,renderInbox,submitReport,blockPublicProfile,getModerationQueue,moderateReport,renderModerationQueue,myListings,updateListingState,confirmListing,refreshSellerNotifications,myNotifications,markNotificationRead,myFavorites,removeFavorite,imageFileToUpload,uploadListingPhotos,removeListingPhoto,stateActionsForListing,renderSellerListings,renderFavorites,renderMarketplaceNotifications,savedSearchPayloadFromFilters,saveSearch,listSavedSearches,deleteSavedSearch,filtersFromSavedSearch,applySavedSearchToForm,renderSavedSearches,submitSellerReview,sellerFeedbackSummary,sellerFeedback,disputeReview,sellerFeedbackHtml,trustIndicators,trustIndicatorsHtml,findCompletedSaleForAnimal,openDirectTransferForListing,LISTING_KINDS,normalizeListingKind,updateListingExtensions,getListingExtension,saveAgreementTemplate,listAgreementTemplates,attachAgreementTemplate,getPublicAgreement,addDepositRecord,listDepositRecords,listingKindLabel,agreementSnapshotModel,downloadAgreementSnapshot,renderAgreementTemplateManager,renderListingBreederTools});
 });
