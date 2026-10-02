@@ -409,7 +409,7 @@
             ${selectField("Status", "status", BREEDING_STATUS_OPTIONS, normalizeBreedingStatus(breeding.status), true)}
           </div>
           <p class="task-repeat-note" id="breeding-schedule-note">Choose a dam and breeding date to calculate the schedule.</p>
-          <div class="panel" id="breeding-relationship-panel"><div class="panel-header"><div><h3>Pairing analysis</h3><small>Genetics and pedigree relationship are separate calculations.</small></div></div><div id="breeding-relationship-result" class="muted">Select a doe and buck to calculate pedigree relationship.</div><div class="modal-actions"><button type="button" class="button button-ghost button-small" id="open-genetics-prediction">Genetics Prediction</button><button type="button" class="button button-ghost button-small" id="view-linebreeding-analysis">View Linebreeding Analysis</button></div><div id="breeding-linebreeding-summary" hidden></div></div>
+          <div class="panel" id="breeding-relationship-panel"><div class="panel-header"><div><h3>Pairing analysis</h3><small>Genetics and pedigree relationship are separate calculations.</small></div></div><div id="breeding-relationship-result" class="muted">Select a doe and buck to calculate pedigree relationship.</div><div class="modal-actions"><button type="button" class="button button-ghost button-small" id="analyze-pairing">Analyze Pairing</button><button type="button" class="button button-ghost button-small" id="open-genetics-prediction">Genetics Prediction</button><button type="button" class="button button-ghost button-small" id="view-linebreeding-analysis">View Linebreeding Analysis</button></div><div id="breeding-linebreeding-summary" hidden></div></div>
           ${textareaField("Notes", "notes", breeding.notes)}
           <div class="modal-actions">
             ${id ? `<button type="button" class="button button-danger" id="delete-breeding">Delete</button>` : ""}
@@ -497,6 +497,7 @@
       };
       femaleInput.addEventListener("change",renderRelationshipAnalysis);
       maleInput?.addEventListener("change",renderRelationshipAnalysis);
+      $("#analyze-pairing")?.addEventListener("click",renderRelationshipAnalysis);
       $("#open-genetics-prediction")?.addEventListener("click", () => {
         const opener=root.HerdHarborBreedingIntelligence?.openPairAnalysis || root.HerdHarborBreedingPairHotfix?.openPairAnalysis;
         if (typeof opener === "function") opener();
