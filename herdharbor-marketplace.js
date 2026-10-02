@@ -265,7 +265,6 @@ async function renderMarketplace(context){
  }
  form.addEventListener("submit",function(event){event.preventDefault();void runSearch();});
  form.addEventListener("reset",function(){setTimeout(function(){void runSearch();},0);});
- target.querySelector("#hh-market-reset")?.addEventListener("click",function(){});
  results.addEventListener("click",async function(event){
   const button=event.target.closest("[data-market-open]"); if(!button)return;
   try{
@@ -372,8 +371,9 @@ function openSellAnimalDialog(context,gw,dialog,toast,refresh){
   body.innerHTML='<form id="hh-market-herd-form"><label>Animal<select name="animalId" required><option value="">Choose an animal</option>'+animals.map(function(a){return '<option value="'+escapeMarkup(a.id)+'">'+escapeMarkup(a.name||a.tag||"Unnamed animal")+'</option>';}).join("")+'</select></label><fieldset><legend>Publish from private record</legend>'+["animal_name","species","breed","sex","dob","variety_color","pedigree_status","registration_status"].map(function(field){return '<label><input type="checkbox" name="field" value="'+field+'" checked> '+escapeMarkup(field.replaceAll("_"," "))+'</label>';}).join("")+'</fieldset><label>Public pedigree<select name="pedigreeVisibility"><option value="hidden">Hidden</option><option value="parents">Parents only</option><option value="3">3 generations</option><option value="4">4 generations</option><option value="5">5 generations</option></select></label><fieldset><legend>Public ancestor fields</legend>'+PUBLIC_PEDIGREE_FIELDS.filter(function(field){return field!=="photoData";}).map(function(field){return '<label><input type="checkbox" name="pedigreeField" value="'+escapeMarkup(field)+'" checked> '+escapeMarkup(field)+'</label>';}).join("")+'<label><input type="checkbox" name="pedigreeField" value="photoData"> Photos</label></fieldset>'+commonFields()+'<button class="button button-primary" type="submit">Create listing</button></form>';
   body.querySelector("#hh-market-herd-form")?.addEventListener("submit",async function(event){
    event.preventDefault();const data=new FormData(event.currentTarget);const animal=animals.find(function(a){return String(a.id)===String(data.get("animalId"));});
+   let created=null;
    try{
-    const created=await createListingFromHerd(animal,{selectedFields:data.getAll("field").concat(["price_cents","currency","location_city","location_region","description"]),state:data.get("state"),overrides:{price_cents:Math.round(Number(data.get("price")||0)*100),currency:"USD",location_city:data.get("city"),location_region:data.get("region"),description:data.get("description")}},gw);
+    created=await createListingFromHerd(animal,{selectedFields:data.getAll("field").concat(["price_cents","currency","location_city","location_region","description"]),state:data.get("state"),overrides:{price_cents:Math.round(Number(data.get("price")||0)*100),currency:"USD",location_city:data.get("city"),location_region:data.get("region"),description:data.get("description")}},gw);
     await updateListingExtensions(created.id,data.get("listingKind"),data.get("availableFrom"),gw);
     const visibility=String(data.get("pedigreeVisibility")||"hidden");
     if(created?.id&&visibility!=="hidden"){
@@ -381,14 +381,25 @@ function openSellAnimalDialog(context,gw,dialog,toast,refresh){
       await setListingPublicPedigree(created.id,snapshot,gw);
     }
     toast("Marketplace listing created.","success");dialog.close();await refresh();
-   }catch(error){toast(error?.message||"Listing could not be created.","error");}
+   }catch(error){
+    if(created?.id)await deleteListing(created.id,gw).catch(function(){});
+    toast(error?.message||"Listing could not be created.","error");
+   }
   });
  });
  dialog.querySelector("#hh-market-manual")?.addEventListener("click",function(){
   body.innerHTML='<form id="hh-market-manual-form"><div class="form-grid two"><label>Listing title / animal name<input name="animal_name" required maxlength="160"></label><label>Species<input name="species" required maxlength="120"></label><label>Breed<input name="breed" maxlength="160"></label><label>Sex<select name="sex"><option value="">Not listed</option><option>Female</option><option>Male</option></select></label><label>Color / variety<input name="variety_color" maxlength="160"></label></div>'+commonFields()+'<button class="button button-primary" type="submit">Create listing</button></form>';
   body.querySelector("#hh-market-manual-form")?.addEventListener("submit",async function(event){
    event.preventDefault();const data=Object.fromEntries(new FormData(event.currentTarget));data.price_cents=Math.round(Number(data.price||0)*100);data.location_city=data.city;data.location_region=data.region;
-   try{const created=await createManualListing(data,gw);await updateListingExtensions(created.id,data.listingKind,data.availableFrom,gw);toast("Marketplace listing created.","success");dialog.close();await refresh();}catch(error){toast(error?.message||"Listing could not be created.","error");}
+   let created=null;
+   try{
+    created=await createManualListing(data,gw);
+    await updateListingExtensions(created.id,data.listingKind,data.availableFrom,gw);
+    toast("Marketplace listing created.","success");dialog.close();await refresh();
+   }catch(error){
+    if(created?.id)await deleteListing(created.id,gw).catch(function(){});
+    toast(error?.message||"Listing could not be created.","error");
+   }
   });
  });
  dialog.querySelector("#hh-market-sell-close")?.addEventListener("click",function(){dialog.close();});
@@ -699,7 +710,10 @@ async function uploadListingPhotos(listingId,files,customGateway){
   const storage=await gw.bucket(BUCKETS.publicMedia).upload(path,prepared.blob,{upsert:false,contentType:prepared.blob.type||input[i].type||"image/webp"});
   if(storage.error)throw storage.error;
   const row=await gw.table(TABLES.photos).insert({listing_id:String(listingId),seller_id:user.id,storage_path:path,sort_order:start+i,alt_text:""}).select("id,storage_path,sort_order").single();
-  if(row.error)throw row.error;
+  if(row.error){
+   await gw.bucket(BUCKETS.publicMedia).remove([path]).catch(function(){});
+   throw row.error;
+  }
   uploaded.push(row.data);
  }
  return uploaded;
