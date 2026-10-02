@@ -293,11 +293,11 @@ async function renderMarketplace(context){
    }
    detail.querySelector("#hh-market-seller-profile")?.addEventListener("click",async function(){
     try{
-      const [profile,summary,reviews]=await Promise.all([getPublicSellerProfile(row.seller_public_id,gw),sellerFeedbackSummary(row.seller_public_id,gw),sellerFeedback(row.seller_public_id,20,0,gw)]);
+      const [profile,summary,reviews,trust]=await Promise.all([getPublicSellerProfile(row.seller_public_id,gw),sellerFeedbackSummary(row.seller_public_id,gw),sellerFeedback(row.seller_public_id,20,0,gw),trustIndicators(row.seller_public_id,gw)]);
       if(!profile)return;
       const host=detail.querySelector(".hh-market-seller-card");
       if(host&&!host.querySelector(".hh-seller-profile-expanded")){
-        host.insertAdjacentHTML("beforeend",'<div class="hh-seller-profile-expanded"><p>'+escapeMarkup(profile.about||"No public seller description.")+'</p><small>Member since '+escapeMarkup(new Date(profile.member_since).toLocaleDateString())+' · '+Number(profile.active_listing_count||0)+' active listing(s)</small>'+sellerFeedbackHtml(summary,reviews)+'</div>');
+        host.insertAdjacentHTML("beforeend",'<div class="hh-seller-profile-expanded"><p>'+escapeMarkup(profile.about||"No public seller description.")+'</p><small>Member since '+escapeMarkup(new Date(profile.member_since).toLocaleDateString())+' · '+Number(profile.active_listing_count||0)+' active listing(s)</small>'+trustIndicatorsHtml(trust)+sellerFeedbackHtml(summary,reviews)+'</div>');
         host.querySelector(".hh-seller-profile-expanded")?.addEventListener("click",async function(event){
           const report=event.target.closest("[data-report-review]"); if(!report)return;
           const reason=root?.prompt?.("Reason for reporting this review:")||""; if(!reason)return;
@@ -871,5 +871,31 @@ function sellerFeedbackHtml(summary,reviews){
   '</section>';
 }
 
-return Object.freeze({VERSION,TABLES,BUCKETS,PUBLIC_PROFILE_FIELDS,LISTING_STATES,LISTING_PUBLIC_FIELDS,PUBLIC_PEDIGREE_FIELDS,createGateway,gateway,browserClient,normalizePublicProfileDraft,saveSellerProfile,getPublicSellerProfile,publicProfilePreview,normalizeListingDraft,buildListingSnapshotFromHerd,listingInsertPayload,createListingFromHerd,createManualListing,deleteListing,listingCreationOptions,publicMediaUrl,searchArgs,searchListings,getListingDetails,saveListing,renderListingCard,renderMarketplace,openSellAnimalDialog,publicPedigreeDepth,buildPublicPedigreeSnapshot,setListingPublicPedigree,getPublicListingPedigree,publicSnapshotToGraph,renderPublicPedigree,openListingConversation,listConversations,listMessages,sendMessage,updateConversationMember,subscribeConversation,renderInbox,submitReport,blockPublicProfile,getModerationQueue,moderateReport,renderModerationQueue,myListings,updateListingState,confirmListing,refreshSellerNotifications,myNotifications,markNotificationRead,myFavorites,removeFavorite,imageFileToUpload,uploadListingPhotos,removeListingPhoto,stateActionsForListing,renderSellerListings,renderFavorites,renderMarketplaceNotifications,savedSearchPayloadFromFilters,saveSearch,listSavedSearches,deleteSavedSearch,filtersFromSavedSearch,applySavedSearchToForm,renderSavedSearches,submitSellerReview,sellerFeedbackSummary,sellerFeedback,disputeReview,sellerFeedbackHtml});
+
+async function trustIndicators(publicId,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_trust_indicators",{target_public_id:String(publicId)});
+ if(result.error)throw result.error;
+ return Array.isArray(result.data)?(result.data[0]||null):result.data||null;
+}
+function trustIndicatorsHtml(data){
+ if(!data)return '<p class="muted">Trust indicators are unavailable.</p>';
+ const verification=String(data.verification_status||"none");
+ const verificationLabel=verification==="verified"?"Identity verification: verified":verification==="pending"?"Identity verification: pending":"Identity verification: not verified";
+ const sold=Number(data.sold_listing_count||0);
+ const transfers=Number(data.accepted_transfer_count||0);
+ const repeats=Number(data.repeat_transfer_recipient_count||0);
+ const reviews=Number(data.verified_review_count||0);
+ const average=data.average_rating===null||data.average_rating===undefined?null:Number(data.average_rating);
+ return '<section class="hh-trust-indicators"><h4>Trust indicators</h4><div class="detail-grid">'+
+  '<div><span>Marketplace member since</span><strong>'+escapeMarkup(new Date(data.marketplace_member_since).toLocaleDateString())+'</strong></div>'+
+  '<div><span>Verification</span><strong>'+escapeMarkup(verificationLabel.replace("Identity verification: ",""))+'</strong></div>'+
+  '<div><span>Sold Marketplace listings</span><strong>'+sold+'</strong></div>'+
+  '<div><span>Accepted HerdHarbor transfers</span><strong>'+transfers+'</strong></div>'+
+  '<div><span>Repeat transfer partners</span><strong>'+repeats+'</strong></div>'+
+  '<div><span>Verified transaction reviews</span><strong>'+reviews+(average===null?"":" · "+average.toFixed(1)+" / 5")+'</strong></div>'+
+  '</div><p class="task-repeat-note">These are separate activity indicators. HerdHarbor does not combine them into a trust score.</p></section>';
+}
+
+return Object.freeze({VERSION,TABLES,BUCKETS,PUBLIC_PROFILE_FIELDS,LISTING_STATES,LISTING_PUBLIC_FIELDS,PUBLIC_PEDIGREE_FIELDS,createGateway,gateway,browserClient,normalizePublicProfileDraft,saveSellerProfile,getPublicSellerProfile,publicProfilePreview,normalizeListingDraft,buildListingSnapshotFromHerd,listingInsertPayload,createListingFromHerd,createManualListing,deleteListing,listingCreationOptions,publicMediaUrl,searchArgs,searchListings,getListingDetails,saveListing,renderListingCard,renderMarketplace,openSellAnimalDialog,publicPedigreeDepth,buildPublicPedigreeSnapshot,setListingPublicPedigree,getPublicListingPedigree,publicSnapshotToGraph,renderPublicPedigree,openListingConversation,listConversations,listMessages,sendMessage,updateConversationMember,subscribeConversation,renderInbox,submitReport,blockPublicProfile,getModerationQueue,moderateReport,renderModerationQueue,myListings,updateListingState,confirmListing,refreshSellerNotifications,myNotifications,markNotificationRead,myFavorites,removeFavorite,imageFileToUpload,uploadListingPhotos,removeListingPhoto,stateActionsForListing,renderSellerListings,renderFavorites,renderMarketplaceNotifications,savedSearchPayloadFromFilters,saveSearch,listSavedSearches,deleteSavedSearch,filtersFromSavedSearch,applySavedSearchToForm,renderSavedSearches,submitSellerReview,sellerFeedbackSummary,sellerFeedback,disputeReview,sellerFeedbackHtml,trustIndicators,trustIndicatorsHtml});
 });
