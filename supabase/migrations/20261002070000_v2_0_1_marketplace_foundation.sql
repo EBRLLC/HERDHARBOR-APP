@@ -209,15 +209,37 @@ revoke all on public.marketplace_public_profiles, public.marketplace_listings, p
   public.marketplace_listing_attributes, public.marketplace_favorites, public.marketplace_conversations,
   public.marketplace_conversation_members, public.marketplace_messages, public.marketplace_message_attachments,
   public.marketplace_blocks, public.marketplace_reports, public.marketplace_moderation_actions,
-  public.marketplace_notifications from anon;
-revoke all on public.marketplace_moderation_actions from authenticated;
-grant select,insert,update,delete on public.marketplace_public_profiles, public.marketplace_listings,
-  public.marketplace_listing_photos, public.marketplace_listing_attributes, public.marketplace_favorites,
-  public.marketplace_conversations, public.marketplace_conversation_members, public.marketplace_messages,
-  public.marketplace_message_attachments, public.marketplace_blocks, public.marketplace_reports,
-  public.marketplace_notifications to authenticated;
-revoke insert,update,delete on public.marketplace_conversations from authenticated;
-revoke insert,delete on public.marketplace_conversation_members from authenticated;
+  public.marketplace_notifications from anon,authenticated;
+
+-- Browser access is intentionally limited to the six tables the client touches directly.
+-- Everything else is reachable only through the owner-checked Marketplace RPC boundary.
+grant select on public.marketplace_public_profiles, public.marketplace_listings,
+  public.marketplace_listing_photos, public.marketplace_favorites, public.marketplace_messages
+  to authenticated;
+grant select (conversation_id,user_id) on public.marketplace_conversation_members to authenticated;
+
+grant insert (user_id,display_name,rabbitry_name,avatar_path,city,region,about,species_breeds)
+  on public.marketplace_public_profiles to authenticated;
+grant update (user_id,display_name,rabbitry_name,avatar_path,city,region,about,species_breeds)
+  on public.marketplace_public_profiles to authenticated;
+
+grant insert (seller_id,source_animal_id,state,animal_name,species,breed,sex,dob,variety_color,price_cents,currency,
+  location_city,location_region,description,pedigree_status,registration_status,public_snapshot)
+  on public.marketplace_listings to authenticated;
+grant update (pedigree_visibility,pedigree_depth,public_pedigree)
+  on public.marketplace_listings to authenticated;
+grant delete on public.marketplace_listings to authenticated;
+
+grant insert (listing_id,seller_id,storage_path,sort_order,alt_text)
+  on public.marketplace_listing_photos to authenticated;
+grant delete on public.marketplace_listing_photos to authenticated;
+
+grant select,insert,delete on public.marketplace_favorites to authenticated;
+grant update (user_id,listing_id) on public.marketplace_favorites to authenticated;
+
+grant insert (conversation_id,sender_id,body) on public.marketplace_messages to authenticated;
+grant update (unread_count,muted_at,archived_at)
+  on public.marketplace_conversation_members to authenticated;
 
 create policy marketplace_profiles_owner_select on public.marketplace_public_profiles for select to authenticated using ((select auth.uid())=user_id);
 create policy marketplace_profiles_owner_insert on public.marketplace_public_profiles for insert to authenticated with check ((select auth.uid())=user_id);
@@ -230,9 +252,39 @@ create policy marketplace_listings_owner_update on public.marketplace_listings f
 create policy marketplace_listings_owner_delete on public.marketplace_listings for delete to authenticated using ((select auth.uid())=seller_id);
 
 create policy marketplace_listing_photos_owner_all on public.marketplace_listing_photos for all to authenticated
-  using ((select auth.uid())=seller_id) with check ((select auth.uid())=seller_id);
+  using (
+    (select auth.uid())=seller_id
+    and exists (
+      select 1 from public.marketplace_listings l
+      where l.id=marketplace_listing_photos.listing_id
+        and l.seller_id=(select auth.uid())
+    )
+  )
+  with check (
+    (select auth.uid())=seller_id
+    and exists (
+      select 1 from public.marketplace_listings l
+      where l.id=marketplace_listing_photos.listing_id
+        and l.seller_id=(select auth.uid())
+    )
+  );
 create policy marketplace_listing_attributes_owner_all on public.marketplace_listing_attributes for all to authenticated
-  using ((select auth.uid())=seller_id) with check ((select auth.uid())=seller_id);
+  using (
+    (select auth.uid())=seller_id
+    and exists (
+      select 1 from public.marketplace_listings l
+      where l.id=marketplace_listing_attributes.listing_id
+        and l.seller_id=(select auth.uid())
+    )
+  )
+  with check (
+    (select auth.uid())=seller_id
+    and exists (
+      select 1 from public.marketplace_listings l
+      where l.id=marketplace_listing_attributes.listing_id
+        and l.seller_id=(select auth.uid())
+    )
+  );
 create policy marketplace_favorites_owner_all on public.marketplace_favorites for all to authenticated
   using ((select auth.uid())=user_id) with check ((select auth.uid())=user_id);
 
