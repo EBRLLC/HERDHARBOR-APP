@@ -231,7 +231,9 @@
     const mode = normalizeRenderMode(options && options.mode);
     const fields = permittedFields(mode, options && options.fields);
     const expanded = Boolean(options && options.expanded);
+    const sharedAncestorIds = options && options.sharedAncestorIds instanceof Set ? options.sharedAncestorIds : new Set(Array.isArray(options && options.sharedAncestorIds) ? options.sharedAncestorIds : []);
     const animal = node && node.animal;
+    const shared = Boolean(animal && node && sharedAncestorIds.has(node.identityId));
     const unknownLabel = node && node.missingReference ? "Unavailable ancestor" : "Unknown ancestor";
     if (!animal) {
       return '<article class="hh-pedigree-card hh-pedigree-card-unknown" data-path="' + escapeHtml(node && node.path) + '">' +
@@ -254,11 +256,12 @@
       ? '<img class="hh-pedigree-photo" src="' + escapeHtml(animal.photoData) + '" alt="">'
       : '<span class="hh-pedigree-photo hh-pedigree-photo-placeholder" aria-hidden="true">HH</span>';
 
-    return '<article class="hh-pedigree-card" data-path="' + escapeHtml(node.path) + '" data-identity-id="' + escapeHtml(node.identityId) + '">' +
+    return '<article class="hh-pedigree-card' + (shared ? ' hh-pedigree-shared' : '') + '" data-path="' + escapeHtml(node.path) + '" data-identity-id="' + escapeHtml(node.identityId) + '"' + (shared ? ' data-shared-ancestor="true"' : '') + '>' +
       '<div class="hh-pedigree-card-head">' + photo +
       '<div class="hh-pedigree-title"><span class="hh-pedigree-relation">' + escapeHtml(node.relation) + '</span><strong>' +
       escapeHtml(animal.name || "Unnamed animal") + '</strong></div>' +
       '<span class="hh-pedigree-sex">' + escapeHtml(animal.sex || node.expectedSex || "Unknown") + '</span></div>' +
+      (shared ? '<span class="hh-pedigree-shared-marker" aria-label="Shared ancestor">&#9670; Shared ancestor</span>' : '') +
       (detailRows ? '<details class="hh-pedigree-details"' + (expanded ? ' open' : '') + '><summary>Details</summary><dl>' + detailRows + '</dl></details>' : '') +
       '</article>';
   }
@@ -655,6 +658,53 @@
     };
   }
 
+
+  function renderLinebreedingAnalysis(input) {
+    const raw=input && typeof input === "object" ? input : {};
+    const relationship=calculatePedigreeRelationship(raw);
+    const sharedIds=new Set(relationship.sharedAncestors.map(function(entry){return entry.identityId;}));
+    const leftName=relationship.leftGraph.nodes.find(function(node){return node.generation===0;})?.animal?.name || "First animal";
+    const rightName=relationship.rightGraph.nodes.find(function(node){return node.generation===0;})?.animal?.name || "Second animal";
+    const sharedButtons=relationship.sharedAncestors.length
+      ? relationship.sharedAncestors.map(function(entry,index){
+          const closest=entry.closestPath;
+          return '<button type="button" class="hh-shared-ancestor-button" data-focus-shared="' + escapeHtml(entry.identityId) + '">' +
+            '<span class="hh-shared-index">' + (index+1) + '</span><span><strong>' + escapeHtml(entry.name || entry.identityId) + '</strong>' +
+            '<small>Closest paths: generation ' + escapeHtml(closest?.leftGeneration ?? "") + ' / generation ' + escapeHtml(closest?.rightGeneration ?? "") +
+            ' · occurrences ' + entry.leftOccurrences.length + ' / ' + entry.rightOccurrences.length + '</small></span></button>';
+        }).join("")
+      : '<p class="muted">No shared ancestors were found in the available pedigree depth.</p>';
+    const options={mode:"relationshipAnalysis",expanded:false,sharedAncestorIds:sharedIds};
+    return {
+      relationship,
+      html:'<div class="hh-linebreeding-analysis">' +
+        '<div class="hh-linebreeding-summary"><div><span>Pedigree relationship</span><strong>' + (relationship.relationshipCoefficient*100).toFixed(2) + '%</strong></div>' +
+        '<div><span>Projected offspring Pedigree COI</span><strong>' + (relationship.projectedOffspringPedigreeCoi*100).toFixed(2) + '%</strong></div>' +
+        '<div><span>Shared ancestors</span><strong>' + relationship.sharedAncestorCount + '</strong></div>' +
+        '<div><span>Generations analyzed</span><strong>' + relationship.generationsAnalyzed + '</strong></div></div>' +
+        '<section class="hh-shared-ancestor-index"><h4>Shared ancestor index</h4>' + sharedButtons + '</section>' +
+        '<div class="hh-linebreeding-pedigrees"><section><h4>' + escapeHtml(leftName) + '</h4>' + renderPedigree(relationship.leftGraph,options) + '</section>' +
+        '<section><h4>' + escapeHtml(rightName) + '</h4>' + renderPedigree(relationship.rightGraph,options) + '</section></div></div>'
+    };
+  }
+
+  function mountLinebreedingAnalysis(target,input) {
+    if (!target || typeof target !== "object") throw new Error("A linebreeding analysis target is required.");
+    const rendered=renderLinebreedingAnalysis(input);
+    target.innerHTML=rendered.html;
+    target.querySelectorAll?.("[data-focus-shared]").forEach(function(button){
+      button.addEventListener("click",function(){
+        const id=button.dataset.focusShared || "";
+        target.querySelectorAll?.(".hh-pedigree-occurrence-active").forEach(function(card){card.classList.remove("hh-pedigree-occurrence-active");});
+        const occurrences=[...target.querySelectorAll?.('[data-identity-id="' + (typeof CSS!=="undefined" && CSS.escape ? CSS.escape(id) : id.replace(/"/g,"")) + '"]') || []];
+        occurrences.forEach(function(card){card.classList.add("hh-pedigree-occurrence-active");});
+        target.querySelectorAll?.("[data-focus-shared]").forEach(function(item){item.setAttribute("aria-pressed",item===button ? "true" : "false");});
+        occurrences[0]?.scrollIntoView?.({block:"nearest",behavior:"smooth"});
+      });
+    });
+    return rendered.relationship;
+  }
+
   return Object.freeze({
     VERSION,
     DEFAULT_GENERATIONS,
@@ -693,6 +743,8 @@
     matrixValue,
     individualPedigreeCoi,
     relationshipContributionDetails,
-    calculatePedigreeRelationship
+    calculatePedigreeRelationship,
+    renderLinebreedingAnalysis,
+    mountLinebreedingAnalysis
   });
 });
