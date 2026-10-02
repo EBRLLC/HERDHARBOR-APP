@@ -264,7 +264,7 @@ async function renderMarketplace(context){
   finally{results.setAttribute("aria-busy","false");}
  }
  form.addEventListener("submit",function(event){event.preventDefault();void runSearch();});
- form.addEventListener("reset",function(){setTimeout(function(){void runSearch();},0);});
+ target.querySelector("#hh-market-reset")?.addEventListener("click",function(){setTimeout(function(){void runSearch();},0);});
  results.addEventListener("click",async function(event){
   const button=event.target.closest("[data-market-open]"); if(!button)return;
   try{
