@@ -133,14 +133,19 @@ test("existing breeding and birth reminder producers remain outside Task runtime
   assert.doesNotMatch(taskSource, /function syncBreedingReminders\(|function syncBirthReminder\(/);
 });
 
-test("shell loads and caches Task runtime before application composition", () => {
+test("Task runtime stays startup-required while Health remains lazy", () => {
   const html = read("index.html");
   const worker = read("service-worker.js");
-  const health = html.indexOf("health-runtime-v1.8.3.js?v=1");
   const task = html.indexOf("task-runtime-v1.8.3.js?v=1");
   const composition = html.indexOf("herdharbor-app-runtime.js?v=4");
-  assert.ok(health >= 0 && task > health && composition > task);
-  assert.match(worker, /\.\/task-runtime-v1\.8\.3\.js\?v=1/);
+  assert.ok(task >= 0 && composition > task);
+  assert.doesNotMatch(html, /<script[^>]+health-runtime-v1\.8\.3\.js/);
+
+  const required = worker.slice(worker.indexOf("const REQUIRED_SHELL = ["), worker.indexOf("];", worker.indexOf("const REQUIRED_SHELL = [")));
+  const runtime = worker.slice(worker.indexOf("const RUNTIME_CACHE_PATHS = ["), worker.indexOf("];", worker.indexOf("const RUNTIME_CACHE_PATHS = [")));
+  assert.ok(required.includes("task-runtime-v1.8.3.js?v=1"));
+  assert.ok(!required.includes("health-runtime-v1.8.3.js"));
+  assert.ok(runtime.includes("health-runtime-v1.8.3.js?v=1"));
   assert.match(worker, /"\/task-runtime-v1\.8\.3\.js"/);
 });
 
