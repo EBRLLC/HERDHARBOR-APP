@@ -244,7 +244,7 @@ async function renderMarketplace(context){
  if(!target)throw new Error("Marketplace target is required.");
  const toast=typeof ctx.toast==="function"?ctx.toast:function(){};
  const gw=ctx.gateway||gateway();
- target.innerHTML='<div class="page-header"><div><p class="eyebrow">HerdHarbor</p><h2>Marketplace</h2><p>Browse animals published by HerdHarbor members without exposing private herd records.</p></div><div class="header-actions"><button class="button button-ghost" type="button" id="hh-market-moderation">Moderation</button><button class="button button-ghost" type="button" id="hh-market-messages">Messages</button><button class="button button-primary" type="button" id="hh-market-sell">Sell Animal</button></div></div>'+
+ target.innerHTML='<div class="page-header"><div><p class="eyebrow">HerdHarbor</p><h2>Marketplace</h2><p>Browse animals published by HerdHarbor members without exposing private herd records.</p></div><div class="header-actions"><button class="button button-ghost" type="button" id="hh-market-notifications">Notifications</button><button class="button button-ghost" type="button" id="hh-market-saved">Saved</button><button class="button button-ghost" type="button" id="hh-market-my-listings">My Listings</button><button class="button button-ghost" type="button" id="hh-market-moderation">Moderation</button><button class="button button-ghost" type="button" id="hh-market-messages">Messages</button><button class="button button-primary" type="button" id="hh-market-sell">Sell Animal</button></div></div>'+
   '<form id="hh-market-search" class="panel hh-market-filters"><input name="search" placeholder="Search animals, breeds, descriptions"><input name="species" placeholder="Species"><input name="breed" placeholder="Breed"><select name="sex"><option value="">Any sex</option><option>Female</option><option>Male</option></select><input name="region" placeholder="State / region"><input name="minPrice" type="number" min="0" step="1" placeholder="Min $"><input name="maxPrice" type="number" min="0" step="1" placeholder="Max $"><button class="button button-primary" type="submit">Search</button></form>'+
   '<div id="hh-market-results" class="hh-market-grid"><p class="muted">Loading Marketplace…</p></div><div id="hh-market-detail"></div><dialog id="hh-market-sell-dialog"></dialog>';
  const form=target.querySelector("#hh-market-search");
@@ -254,14 +254,17 @@ async function renderMarketplace(context){
   const data=Object.fromEntries(new FormData(form));
   const filters={search:data.search,species:data.species,breed:data.breed,sex:data.sex,region:data.region,
    minPriceCents:data.minPrice===""?null:Math.round(Number(data.minPrice)*100),
-   maxPriceCents:data.maxPrice===""?null:Math.round(Number(data.maxPrice)*100)};
+   maxPriceCents:data.maxPrice===""?null:Math.round(Number(data.maxPrice)*100),limit:36};
+  results.setAttribute("aria-busy","true");
   results.innerHTML='<p class="muted">Searching Marketplace…</p>';
   try{
    const rows=await searchListings(filters,gw);
    results.innerHTML=rows.length?rows.map(function(row){return renderListingCard(row,gw);}).join(""):'<div class="empty-state"><strong>No listings found.</strong><span>Try changing the search or filters.</span></div>';
-  }catch(error){results.innerHTML='<p class="muted">Marketplace listings could not be loaded.</p>';toast(error?.message||"Marketplace search failed.","error");}
+  }catch(error){results.innerHTML='<div class="empty-state"><strong>Marketplace listings could not be loaded.</strong><span>Try again or check your connection.</span></div>';toast(error?.message||"Marketplace search failed.","error");}
+  finally{results.setAttribute("aria-busy","false");}
  }
  form.addEventListener("submit",function(event){event.preventDefault();void runSearch();});
+ form.addEventListener("reset",function(){setTimeout(function(){void runSearch();},0);});
  results.addEventListener("click",async function(event){
   const button=event.target.closest("[data-market-open]"); if(!button)return;
   try{
@@ -272,7 +275,7 @@ async function renderMarketplace(context){
     '<h2>'+escapeMarkup(row.animal_name||"Unnamed animal")+'</h2><strong>'+escapeMarkup(moneyText(row.price_cents,row.currency))+'</strong>'+
     '<p>'+escapeMarkup([row.species,row.breed,row.sex,row.variety_color].filter(Boolean).join(" · "))+'</p><p>'+escapeMarkup(row.description||"")+'</p>'+
     '<div class="detail-grid"><div><span>Status</span><strong>'+escapeMarkup(row.state)+'</strong></div><div><span>Pedigree</span><strong>'+escapeMarkup(row.pedigree_status||"Not listed")+'</strong></div><div><span>Registration</span><strong>'+escapeMarkup(row.registration_status||"Not listed")+'</strong></div><div><span>Location</span><strong>'+escapeMarkup([row.location_city,row.location_region].filter(Boolean).join(", "))+'</strong></div></div>'+
-    '<div class="hh-market-seller-card"><span>Seller</span><strong>'+escapeMarkup(row.seller_rabbitry_name||row.seller_display_name||"HerdHarbor member")+'</strong><small>'+escapeMarkup([row.seller_city,row.seller_region].filter(Boolean).join(", "))+'</small></div>'+
+    '<div class="hh-market-seller-card"><span>Seller</span><strong>'+escapeMarkup(row.seller_rabbitry_name||row.seller_display_name||"HerdHarbor member")+'</strong><small>'+escapeMarkup([row.seller_city,row.seller_region].filter(Boolean).join(", "))+'</small><button type="button" class="button button-ghost button-small" id="hh-market-seller-profile">View seller profile</button></div>'+
     '<div id="hh-market-pedigree-view"></div><div class="modal-actions"><button type="button" class="button button-ghost" id="hh-market-pedigree" hidden>View HerdHarbor Pedigree</button><button type="button" class="button button-ghost" id="hh-market-save">Save listing</button><button type="button" class="button button-ghost" id="hh-market-report">Report listing</button><button type="button" class="button button-ghost" id="hh-market-block">Block seller</button><button type="button" class="button button-primary" id="hh-market-message">Message Seller</button></div></section>';
    detail.querySelector("#hh-market-detail-close")?.addEventListener("click",function(){detail.innerHTML="";});
    let publicPedigree=null;
@@ -288,6 +291,7 @@ async function renderMarketplace(context){
       host.scrollIntoView?.({block:"start",behavior:"smooth"});
     });
    }
+   detail.querySelector("#hh-market-seller-profile")?.addEventListener("click",async function(){try{const profile=await getPublicSellerProfile(row.seller_public_id,gw);if(!profile)return;const host=detail.querySelector(".hh-market-seller-card");if(host&&!host.querySelector(".hh-seller-profile-expanded"))host.insertAdjacentHTML("beforeend",'<div class="hh-seller-profile-expanded"><p>'+escapeMarkup(profile.about||"No public seller description.")+'</p><small>Member since '+escapeMarkup(new Date(profile.member_since).toLocaleDateString())+' · '+Number(profile.active_listing_count||0)+' active listing(s)</small></div>');}catch(error){toast(error?.message||"Seller profile could not be loaded.","error");}});
    detail.querySelector("#hh-market-save")?.addEventListener("click",async function(){try{await saveListing(row.listing_id,gw);toast("Listing saved.","success");}catch(error){toast(error?.message||"Sign in to save listings.","error");}});
    detail.querySelector("#hh-market-report")?.addEventListener("click",async function(){
     const reason=root?.prompt?.("Reason for reporting this listing:")||"";
@@ -309,6 +313,9 @@ async function renderMarketplace(context){
    });
   }catch(error){toast(error?.message||"Listing could not be loaded.","error");}
  });
+ target.querySelector("#hh-market-notifications")?.addEventListener("click",function(){void renderMarketplaceNotifications(detail,gw,toast);});
+ target.querySelector("#hh-market-saved")?.addEventListener("click",function(){void renderFavorites(detail,gw,toast);});
+ target.querySelector("#hh-market-my-listings")?.addEventListener("click",function(){void renderSellerListings(detail,gw,toast);});
  target.querySelector("#hh-market-moderation")?.addEventListener("click",function(){void renderModerationQueue(detail,gw,toast);});
  target.querySelector("#hh-market-messages")?.addEventListener("click",function(){void renderInbox(detail,gw,toast);});
  target.querySelector("#hh-market-sell")?.addEventListener("click",function(){openSellAnimalDialog(ctx,gw,target.querySelector("#hh-market-sell-dialog"),toast,runSearch);});
