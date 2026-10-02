@@ -26,9 +26,11 @@ test("index shell keeps only the early bootstrap inline", () => {
   assert.match(inlineScripts[0], /herdharbor_theme/);
   assert.equal((html.match(/<style\b/gi) || []).length, 0, "page-owned CSS is external");
   assert.match(html, /herdharbor-index-shell\.css\?v=1/);
-  assert.match(html, /animal-profile-runtime-v1\.8\.3\.js\?v=1/);
-  assert.match(html, /production-reporting-runtime-v1\.8\.3\.js\?v=1/);
+  assert.doesNotMatch(html, /<script[^>]+animal-profile-runtime-v1\.8\.3\.js/);
+  assert.doesNotMatch(html, /<script[^>]+production-reporting-runtime-v1\.8\.3\.js/);
   assert.doesNotMatch(html, /<script[^>]+settings-runtime-v1\.8\.3\.js/);
+  assert.match(appRuntime, /"animal-profile-runtime-v1\.8\.3\.js\?v=1"/);
+  assert.match(appRuntime, /"production-reporting-runtime-v1\.8\.3\.js\?v=1"/);
   assert.match(appRuntime, /"settings-runtime-v1\.8\.3\.js\?v=1"/);
   assert.match(html, /herdharbor-app-runtime\.js\?v=4/);
   assert.doesNotMatch(html, /function renderSales\(\)/);
@@ -50,10 +52,15 @@ test("classic script and stylesheet order is preserved", () => {
   const coreCss = html.indexOf("herdharbor-core-v1.6.1.css?v=1.7.1");
   assert.ok(baseCss >= 0 && shellCssIndex > baseCss && coreCss > shellCssIndex);
 
-  const animalProfileRuntimeIndex = html.indexOf("animal-profile-runtime-v1.8.3.js?v=1");
   const appRuntimeIndex = html.indexOf("herdharbor-app-runtime.js?v=4");
-  assert.ok(animalProfileRuntimeIndex >= 0 && appRuntimeIndex > animalProfileRuntimeIndex);
+  assert.ok(appRuntimeIndex >= 0);
+  assert.doesNotMatch(html, /<script[^>]+animal-profile-runtime-v1\.8\.3\.js/);
+  assert.doesNotMatch(html, /<script[^>]+health-runtime-v1\.8\.3\.js/);
+  assert.doesNotMatch(html, /<script[^>]+production-reporting-runtime-v1\.8\.3\.js/);
   assert.doesNotMatch(html, /<script[^>]+analytics-v1\.6\.1\.js/);
+  assert.match(appRuntime, /"animal-profile-runtime-v1\.8\.3\.js\?v=1"/);
+  assert.match(appRuntime, /"health-runtime-v1\.8\.3\.js\?v=1"/);
+  assert.match(appRuntime, /"production-reporting-runtime-v1\.8\.3\.js\?v=1"/);
   assert.match(appRuntime, /"analytics-v1\.6\.1\.js\?v=2"/);
   assert.doesNotMatch(html, /<script[^>]+src="herdharbor-app-runtime\.js\?v=4"[^>]+(?:async|defer|type="module")/);
 });
@@ -68,20 +75,38 @@ test("static script and stylesheet references resolve once", () => {
   }
 });
 
-test("service worker covers required extracted shell assets", () => {
-  for (const { asset, revision } of [
-    { asset: "animal-profile-runtime-v1.8.3.js", revision: "1" },
-    { asset: "production-reporting-runtime-v1.8.3.js", revision: "1" },
-    { asset: "herdharbor-app-runtime.js", revision: "4" },
-    { asset: "herdharbor-index-shell.css", revision: "1" }
-  ]) {
-    const escaped = asset.replaceAll(".", "\\.");
-    assert.equal((worker.match(new RegExp("\\./" + escaped + "\\?v=" + revision, "g")) || []).length, 1, asset + " has one precache entry");
-    assert.equal((worker.match(new RegExp('"/' + escaped + '"', "g")) || []).length, 1, asset + " has one network-first route");
-    assert.ok(exists(asset), `missing extracted asset: ${asset}`);
-  }
-});
+test("service worker separates lazy domain runtimes from the required shell", () => {
+  const requiredStart = worker.indexOf("const REQUIRED_SHELL = [");
+  const requiredEnd = worker.indexOf("];", requiredStart);
+  const runtimeStart = worker.indexOf("const RUNTIME_CACHE_PATHS = [");
+  const runtimeEnd = worker.indexOf("];", runtimeStart);
+  const required = worker.slice(requiredStart, requiredEnd);
+  const runtime = worker.slice(runtimeStart, runtimeEnd);
 
+  for (const asset of [
+    "animal-profile-runtime-v1.8.3.js?v=1",
+    "health-runtime-v1.8.3.js?v=1",
+    "production-reporting-runtime-v1.8.3.js?v=1"
+  ]) {
+    assert.ok(!required.includes(asset), asset + " must not block required shell install");
+    assert.ok(runtime.includes(asset), asset + " remains runtime-cacheable");
+  }
+
+  for (const asset of [
+    "breeding-litter-runtime-v1.8.3.js?v=1",
+    "task-automation-v1.8.3.js?v=1",
+    "task-runtime-v1.8.3.js?v=1",
+    "herdharbor-app-runtime.js?v=4"
+  ]) assert.ok(required.includes(asset), asset + " remains startup-required");
+
+  for (const asset of [
+    "animal-profile-runtime-v1.8.3.js",
+    "health-runtime-v1.8.3.js",
+    "production-reporting-runtime-v1.8.3.js",
+    "herdharbor-app-runtime.js",
+    "herdharbor-index-shell.css"
+  ]) assert.ok(exists(asset), `missing extracted asset: ${asset}`);
+});
 
 test("lazy Settings stays outside required precache but remains runtime-cacheable and network-first", () => {
   const requiredStart = worker.indexOf("const REQUIRED_SHELL = [");
