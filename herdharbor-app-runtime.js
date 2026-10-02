@@ -196,6 +196,20 @@
     );
   }
 
+  function ensureDocumentCenterRuntime() {
+    return loadScriptOnce(
+      "herdharbor-document-center.js?v=1",
+      () => typeof window.HerdHarborDocumentCenter?.renderHub === "function"
+    );
+  }
+
+  function ensureMarketplaceRuntime() {
+    return loadScriptOnce(
+      "herdharbor-marketplace.js?v=1",
+      () => typeof window.HerdHarborMarketplace?.renderMarketplace === "function"
+    );
+  }
+
   function ensureSymptomGuide() {
     return loadScriptOnce(
       "symptom-guide.js?v=1",
@@ -944,8 +958,30 @@
       breeding: renderBreedings,
       litters: renderLitters,
       pedigrees: renderPedigrees,
-      documents: () => window.HerdHarborDocumentCenter?.renderHub?.({ target: $("#view-documents"), state, toast, escapeHtml: esc }),
-      marketplace: () => window.HerdHarborMarketplace?.renderMarketplace?.({ target: $("#view-marketplace"), state, toast }),
+      documents: () => {
+        if (typeof window.HerdHarborDocumentCenter?.renderHub === "function") {
+          window.HerdHarborDocumentCenter.renderHub({ target: $("#view-documents"), state, toast, escapeHtml: esc });
+          return;
+        }
+        renderLazyRoute(
+          "documents",
+          "Documents",
+          ensureDocumentCenterRuntime,
+          () => window.HerdHarborDocumentCenter?.renderHub?.({ target: $("#view-documents"), state, toast, escapeHtml: esc })
+        );
+      },
+      marketplace: () => {
+        if (typeof window.HerdHarborMarketplace?.renderMarketplace === "function") {
+          window.HerdHarborMarketplace.renderMarketplace({ target: $("#view-marketplace"), state, toast });
+          return;
+        }
+        renderLazyRoute(
+          "marketplace",
+          "Marketplace",
+          ensureMarketplaceRuntime,
+          () => window.HerdHarborMarketplace?.renderMarketplace?.({ target: $("#view-marketplace"), state, toast })
+        );
+      },
       health: renderHealth,
       symptoms: () => {
         if (window.HERDHARBOR_SYMPTOM_GUIDE?.entries?.length) {
