@@ -2,7 +2,7 @@ name: HerdHarbor 2.0.0 CI
 
 on:
   pull_request:
-    branches: [main, 'release-2.0.0-phase-*']
+    branches: [main, 'release-2.0.0-phase-*', 'feature/breeder-platform-rebuild-phase-*']
   workflow_dispatch:
 
 permissions:
