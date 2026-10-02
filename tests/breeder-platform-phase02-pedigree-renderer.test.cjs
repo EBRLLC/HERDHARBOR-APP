@@ -1,3 +1,4 @@
+// Phase 2 gated after green Phase 1.
 // Clean-stack CI gate.
 "use strict";
 const test = require("node:test");
