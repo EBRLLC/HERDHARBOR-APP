@@ -409,7 +409,7 @@
             ${selectField("Status", "status", BREEDING_STATUS_OPTIONS, normalizeBreedingStatus(breeding.status), true)}
           </div>
           <p class="task-repeat-note" id="breeding-schedule-note">Choose a dam and breeding date to calculate the schedule.</p>
-          <div class="panel" id="breeding-shared-ancestor-panel"><button type="button" class="button button-ghost button-small" id="analyze-pairing">Analyze Pairing</button><div id="breeding-shared-ancestor-result" class="muted" style="margin-top:8px">Select a doe and buck to compare available pedigree ancestry.</div></div>
+          <div class="panel" id="breeding-relationship-panel"><div class="panel-header"><div><h3>Pairing analysis</h3><small>Genetics and pedigree relationship are separate calculations.</small></div></div><div id="breeding-relationship-result" class="muted">Select a doe and buck to calculate pedigree relationship.</div><div class="modal-actions"><button type="button" class="button button-ghost button-small" id="open-genetics-prediction">Genetics Prediction</button><button type="button" class="button button-ghost button-small" id="view-linebreeding-analysis">View Linebreeding Analysis</button></div><div id="breeding-linebreeding-summary" hidden></div></div>
           ${textareaField("Notes", "notes", breeding.notes)}
           <div class="modal-actions">
             ${id ? `<button type="button" class="button button-danger" id="delete-breeding">Delete</button>` : ""}
@@ -451,16 +451,74 @@
         if (checkResultInput.value === "Negative") statusInput.value = "Not pregnant";
       });
       calculateDates(false);
-      $("#analyze-pairing")?.addEventListener("click", () => {
-        const result=$("#breeding-shared-ancestor-result");
-        if (!femaleInput.value || !form.elements.maleId?.value) {
-          if (result) result.textContent="Select both animals before analyzing the pairing.";
+      const maleInput=$('[name="maleId"]', form);
+      let currentPedigreeRelationship=null;
+      const renderRelationshipAnalysis=() => {
+        const result=$("#breeding-relationship-result");
+        const linebreedingButton=$("#view-linebreeding-analysis");
+        if (!result) return null;
+        if (!femaleInput.value || !maleInput?.value) {
+          currentPedigreeRelationship=null;
+          result.textContent="Select a doe and buck to calculate pedigree relationship.";
+          if (linebreedingButton) linebreedingButton.disabled=true;
+          return null;
+        }
+        try {
+          currentPedigreeRelationship=root.HerdHarborPedigreePlatform?.calculatePedigreeRelationship?.({
+            animals:stateNow().animals,
+            leftId:femaleInput.value,
+            rightId:maleInput.value,
+            generations:5
+          }) || null;
+        } catch (error) {
+          currentPedigreeRelationship=null;
+          result.textContent=error?.message || "Pedigree relationship could not be calculated.";
+          if (linebreedingButton) linebreedingButton.disabled=true;
+          return null;
+        }
+        if (!currentPedigreeRelationship) {
+          result.textContent="Pedigree relationship analysis is unavailable.";
+          if (linebreedingButton) linebreedingButton.disabled=true;
+          return null;
+        }
+        const relationship=(currentPedigreeRelationship.relationshipCoefficient*100).toFixed(2);
+        const offspringCoi=(currentPedigreeRelationship.projectedOffspringPedigreeCoi*100).toFixed(2);
+        const leftCoverage=currentPedigreeRelationship.pedigreeCompleteness.left.percent.toFixed(2);
+        const rightCoverage=currentPedigreeRelationship.pedigreeCompleteness.right.percent.toFixed(2);
+        result.innerHTML='<div class="detail-grid">' +
+          '<div><span>Pedigree relationship</span><strong>'+relationship+'%</strong></div>' +
+          '<div><span>Projected offspring Pedigree COI</span><strong>'+offspringCoi+'%</strong></div>' +
+          '<div><span>Shared ancestors</span><strong>'+currentPedigreeRelationship.sharedAncestorCount+'</strong></div>' +
+          '<div><span>Pedigree completeness</span><strong>'+leftCoverage+'% / '+rightCoverage+'%</strong></div>' +
+          '<div><span>Generations analyzed</span><strong>'+currentPedigreeRelationship.generationsAnalyzed+'</strong></div>' +
+          '</div><p class="task-repeat-note">Pedigree COI is calculated from the ancestry recorded in HerdHarbor. It is not genomic COI.</p>';
+        if (linebreedingButton) linebreedingButton.disabled=false;
+        return currentPedigreeRelationship;
+      };
+      femaleInput.addEventListener("change",renderRelationshipAnalysis);
+      maleInput?.addEventListener("change",renderRelationshipAnalysis);
+      $("#open-genetics-prediction")?.addEventListener("click", () => {
+        const opener=root.HerdHarborBreedingIntelligence?.openPairAnalysis || root.HerdHarborBreedingPairHotfix?.openPairAnalysis;
+        if (typeof opener === "function") opener();
+        else toast("The genetics prediction engine is not available yet.","error");
+      });
+      $("#view-linebreeding-analysis")?.addEventListener("click", () => {
+        const analysis=currentPedigreeRelationship || renderRelationshipAnalysis();
+        const target=$("#breeding-linebreeding-summary");
+        if (!analysis || !target) return;
+        if (typeof root.HerdHarborPedigreePlatform?.mountLinebreedingAnalysis === "function") {
+          target.hidden=false;
+          root.HerdHarborPedigreePlatform.mountLinebreedingAnalysis(target,{
+            animals:stateNow().animals,leftId:femaleInput.value,rightId:maleInput.value,generations:analysis.generationsAnalyzed
+          });
           return;
         }
-        const analysis=root.HerdHarborPedigreePlatform?.analyzePairing?.(stateNow().animals,femaleInput.value,form.elements.maleId.value,5);
-        if (!analysis || !result) return;
-        result.innerHTML='<strong>'+analysis.sharedAncestorCount+' shared ancestor'+(analysis.sharedAncestorCount===1?"":"s")+'</strong><br><span>Pedigree coverage: '+analysis.coverage.left.percent+'% / '+analysis.coverage.right.percent+'% · '+analysis.generations+' generations analyzed.</span>';
+        target.hidden=false;
+        target.innerHTML=analysis.sharedAncestors.length
+          ? '<div class="list">'+analysis.sharedAncestors.map((entry)=>'<div class="list-item"><div class="list-item-main"><strong>'+esc(entry.name||entry.identityId)+'</strong><span>'+entry.leftOccurrences.length+' occurrence(s) in doe pedigree · '+entry.rightOccurrences.length+' occurrence(s) in buck pedigree</span></div></div>').join("")+'</div>'
+          : '<p class="muted">No shared ancestors were found in the available pedigree.</p>';
       });
+      renderRelationshipAnalysis();
   
       $("#cancel-modal").addEventListener("click", closeModal);
       form.addEventListener("submit", (event) => {
