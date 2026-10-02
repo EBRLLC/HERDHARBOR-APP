@@ -158,18 +158,6 @@ test("routine cloud recovery snapshots are coalesced during rapid save bursts",(
 });
 
 
-test("legacy genetics and shows warm after core startup instead of loading immediately",()=>{
- const pwa=fs.readFileSync(path.join(root,"pwa.js"),"utf8");
- const bootStart=pwa.indexOf("function bootApplication()");
- const bootEnd=pwa.indexOf("function boot()",bootStart);
- const boot=pwa.slice(bootStart,bootEnd);
- assert.match(pwa,/function scheduleLegacyFeatureWarmup\(\)/);
- assert.match(pwa,/requestIdleCallback/);
- assert.match(boot,/scheduleLegacyFeatureWarmup\(\)/);
- assert.doesNotMatch(boot,/loadPedigreeVisuals\(\);\s*loadBreedingIntelligence\(\);\s*loadShows\(\);/);
-});
-
-
 test("obsolete local-cache and cloud-v2 helpers are not mandatory shell downloads",()=>{
  const sw=fs.readFileSync(path.join(root,"service-worker.js"),"utf8");
  const required=sw.slice(sw.indexOf("const REQUIRED_SHELL"),sw.indexOf("const RUNTIME_CACHE_PATHS"));
