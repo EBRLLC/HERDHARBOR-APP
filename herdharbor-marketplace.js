@@ -273,8 +273,21 @@ async function renderMarketplace(context){
     '<p>'+escapeMarkup([row.species,row.breed,row.sex,row.variety_color].filter(Boolean).join(" · "))+'</p><p>'+escapeMarkup(row.description||"")+'</p>'+
     '<div class="detail-grid"><div><span>Status</span><strong>'+escapeMarkup(row.state)+'</strong></div><div><span>Pedigree</span><strong>'+escapeMarkup(row.pedigree_status||"Not listed")+'</strong></div><div><span>Registration</span><strong>'+escapeMarkup(row.registration_status||"Not listed")+'</strong></div><div><span>Location</span><strong>'+escapeMarkup([row.location_city,row.location_region].filter(Boolean).join(", "))+'</strong></div></div>'+
     '<div class="hh-market-seller-card"><span>Seller</span><strong>'+escapeMarkup(row.seller_rabbitry_name||row.seller_display_name||"HerdHarbor member")+'</strong><small>'+escapeMarkup([row.seller_city,row.seller_region].filter(Boolean).join(", "))+'</small></div>'+
-    '<div class="modal-actions"><button type="button" class="button button-ghost" id="hh-market-save">Save listing</button><button type="button" class="button button-ghost" id="hh-market-report">Report</button><button type="button" class="button button-primary" id="hh-market-message">Message Seller</button></div></section>';
+    '<div id="hh-market-pedigree-view"></div><div class="modal-actions"><button type="button" class="button button-ghost" id="hh-market-pedigree" hidden>View HerdHarbor Pedigree</button><button type="button" class="button button-ghost" id="hh-market-save">Save listing</button><button type="button" class="button button-ghost" id="hh-market-report">Report</button><button type="button" class="button button-primary" id="hh-market-message">Message Seller</button></div></section>';
    detail.querySelector("#hh-market-detail-close")?.addEventListener("click",function(){detail.innerHTML="";});
+   let publicPedigree=null;
+   try{publicPedigree=await getPublicListingPedigree(row.listing_id,gw);}catch{}
+   const pedigreeButton=detail.querySelector("#hh-market-pedigree");
+   if(publicPedigree&&pedigreeButton){
+    pedigreeButton.hidden=false;
+    pedigreeButton.addEventListener("click",function(){
+      const host=detail.querySelector("#hh-market-pedigree-view");
+      if(!host)return;
+      host.innerHTML='<section class="hh-market-pedigree-panel"><div class="panel-header"><div><h3>HerdHarbor Pedigree</h3><small>Seller-controlled public pedigree snapshot</small></div><button type="button" class="button button-ghost button-small" id="hh-market-pedigree-close">Close pedigree</button></div>'+renderPublicPedigree(publicPedigree)+'</section>';
+      host.querySelector("#hh-market-pedigree-close")?.addEventListener("click",function(){host.innerHTML="";});
+      host.scrollIntoView?.({block:"start",behavior:"smooth"});
+    });
+   }
    detail.querySelector("#hh-market-save")?.addEventListener("click",async function(){try{await saveListing(row.listing_id,gw);toast("Listing saved.","success");}catch(error){toast(error?.message||"Sign in to save listings.","error");}});
    detail.querySelector("#hh-market-report")?.addEventListener("click",function(){toast("Marketplace reporting is being enabled with the moderation rollout.","info");});
    detail.querySelector("#hh-market-message")?.addEventListener("click",function(){toast("Marketplace messaging is being enabled in the messaging rollout.","info");});
@@ -293,10 +306,18 @@ function openSellAnimalDialog(context,gw,dialog,toast,refresh){
   return '<div class="form-grid two"><label>Price $<input name="price" type="number" min="0" step=".01"></label><label>City<input name="city" maxlength="120"></label><label>State / region<input name="region" maxlength="120"></label><label>Listing status<select name="state"><option value="draft">Draft</option><option value="available">Available</option></select></label></div><label>Description<textarea name="description" maxlength="5000"></textarea></label>';
  }
  dialog.querySelector("#hh-market-from-herd")?.addEventListener("click",function(){
-  body.innerHTML='<form id="hh-market-herd-form"><label>Animal<select name="animalId" required><option value="">Choose an animal</option>'+animals.map(function(a){return '<option value="'+escapeMarkup(a.id)+'">'+escapeMarkup(a.name||a.tag||"Unnamed animal")+'</option>';}).join("")+'</select></label><fieldset><legend>Publish from private record</legend>'+["animal_name","species","breed","sex","dob","variety_color","pedigree_status","registration_status"].map(function(field){return '<label><input type="checkbox" name="field" value="'+field+'" checked> '+escapeMarkup(field.replaceAll("_"," "))+'</label>';}).join("")+'</fieldset>'+commonFields()+'<button class="button button-primary" type="submit">Create listing</button></form>';
+  body.innerHTML='<form id="hh-market-herd-form"><label>Animal<select name="animalId" required><option value="">Choose an animal</option>'+animals.map(function(a){return '<option value="'+escapeMarkup(a.id)+'">'+escapeMarkup(a.name||a.tag||"Unnamed animal")+'</option>';}).join("")+'</select></label><fieldset><legend>Publish from private record</legend>'+["animal_name","species","breed","sex","dob","variety_color","pedigree_status","registration_status"].map(function(field){return '<label><input type="checkbox" name="field" value="'+field+'" checked> '+escapeMarkup(field.replaceAll("_"," "))+'</label>';}).join("")+'</fieldset><label>Public pedigree<select name="pedigreeVisibility"><option value="hidden">Hidden</option><option value="parents">Parents only</option><option value="3">3 generations</option><option value="4">4 generations</option><option value="5">5 generations</option></select></label><fieldset><legend>Public ancestor fields</legend>'+PUBLIC_PEDIGREE_FIELDS.filter(function(field){return field!=="photoData";}).map(function(field){return '<label><input type="checkbox" name="pedigreeField" value="'+escapeMarkup(field)+'" checked> '+escapeMarkup(field)+'</label>';}).join("")+'<label><input type="checkbox" name="pedigreeField" value="photoData"> Photos</label></fieldset>'+commonFields()+'<button class="button button-primary" type="submit">Create listing</button></form>';
   body.querySelector("#hh-market-herd-form")?.addEventListener("submit",async function(event){
    event.preventDefault();const data=new FormData(event.currentTarget);const animal=animals.find(function(a){return String(a.id)===String(data.get("animalId"));});
-   try{await createListingFromHerd(animal,{selectedFields:data.getAll("field").concat(["price_cents","currency","location_city","location_region","description"]),state:data.get("state"),overrides:{price_cents:Math.round(Number(data.get("price")||0)*100),currency:"USD",location_city:data.get("city"),location_region:data.get("region"),description:data.get("description")}},gw);toast("Marketplace listing created.","success");dialog.close();await refresh();}catch(error){toast(error?.message||"Listing could not be created.","error");}
+   try{
+    const created=await createListingFromHerd(animal,{selectedFields:data.getAll("field").concat(["price_cents","currency","location_city","location_region","description"]),state:data.get("state"),overrides:{price_cents:Math.round(Number(data.get("price")||0)*100),currency:"USD",location_city:data.get("city"),location_region:data.get("region"),description:data.get("description")}},gw);
+    const visibility=String(data.get("pedigreeVisibility")||"hidden");
+    if(created?.id&&visibility!=="hidden"){
+      const snapshot=buildPublicPedigreeSnapshot(animals,animal.id,{visibility,ancestorFields:data.getAll("pedigreeField")});
+      await setListingPublicPedigree(created.id,snapshot,gw);
+    }
+    toast("Marketplace listing created.","success");dialog.close();await refresh();
+   }catch(error){toast(error?.message||"Listing could not be created.","error");}
   });
  });
  dialog.querySelector("#hh-market-manual")?.addEventListener("click",function(){
