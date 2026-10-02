@@ -672,6 +672,8 @@
       sharedAncestorCount:shared.sharedAncestorCount,
       sharedAncestors:shared.sharedAncestors,
       sharedAncestorContributions:relationshipContributionDetails(shared,matrix),
+      leftGraph:shared.leftGraph,
+      rightGraph:shared.rightGraph,
       pedigreeCompleteness:{
         left:shared.coverage.left,
         right:shared.coverage.right
