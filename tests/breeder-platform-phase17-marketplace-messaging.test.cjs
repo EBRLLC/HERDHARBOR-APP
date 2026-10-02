@@ -1,0 +1,52 @@
+"use strict";
+const test=require("node:test");
+const assert=require("node:assert/strict");
+const fs=require("node:fs");
+const path=require("node:path");
+const market=require("../herdharbor-marketplace.js");
+const root=path.resolve(__dirname,"..");
+const migration=fs.readFileSync(path.join(root,"supabase/migrations/20261002075000_v2_0_1_marketplace_messaging.sql"),"utf8");
+const source=fs.readFileSync(path.join(root,"herdharbor-marketplace.js"),"utf8");
+
+test("listing conversation membership is created server-side from authenticated caller and listing seller",()=>{
+ const block=migration.slice(migration.indexOf("marketplace_open_listing_conversation"),migration.indexOf("create or replace function public.marketplace_inbox"));
+ assert.match(block,/caller uuid := \(select auth\.uid\(\)\)/);
+ assert.match(block,/select l\.seller_id into seller/);
+ assert.match(block,/values \(new_id,caller,'buyer'\),\(new_id,seller,'seller'\)/);
+ assert.doesNotMatch(block,/target_seller|seller_id uuid default/);
+});
+
+test("blocked users cannot open Marketplace conversations",()=>{
+ assert.match(migration,/marketplace_blocks[\s\S]*blocker_id=caller[\s\S]*blocked_id=seller/);
+ assert.match(migration,/conversation unavailable/);
+});
+
+test("inbox RPC is scoped to auth.uid and supports Buying Selling Unread filters",()=>{
+ const block=migration.slice(migration.indexOf("create or replace function public.marketplace_inbox"),migration.indexOf("create or replace function herdharbor_private.marketplace_message_unread"));
+ assert.match(block,/m\.user_id=\(select auth\.uid\(\)\)/);
+ assert.match(block,/lower\(folder\)='buying'/);
+ assert.match(block,/lower\(folder\)='selling'/);
+ assert.match(block,/lower\(folder\)='unread'/);
+});
+
+test("message sending stays in Marketplace tables and never invokes private herd sync",async()=>{
+ assert.doesNotMatch(source,/HerdHarborStateStore|commitState|saveState/);
+ const calls=[];
+ const chain={select(){return this;},single(){return Promise.resolve({data:{id:"m1"},error:null});}};
+ const fake={async user(){return {id:"u1"};},table(name){return {insert(payload){calls.push([name,payload]);return chain;}};}};
+ await market.sendMessage("c1","hello",fake);
+ assert.equal(calls[0][0],"marketplace_messages");
+ assert.equal(calls[0][1].conversation_id,"c1");
+ assert.equal(calls[0][1].sender_id,"u1");
+});
+
+test("realtime subscription is scoped to one conversation and message table",()=>{
+ const calls=[];
+ const channel={on(event,filter,handler){calls.push([event,filter]);return this;},subscribe(){calls.push(["subscribe"]);return this;}};
+ const fake={channel(){return channel;}};
+ market.subscribeConversation("c1",()=>{},fake);
+ assert.equal(calls[0][0],"postgres_changes");
+ assert.equal(calls[0][1].table,"marketplace_messages");
+ assert.equal(calls[0][1].filter,"conversation_id=eq.c1");
+ assert.match(migration,/alter publication supabase_realtime add table public\.marketplace_messages/);
+});
