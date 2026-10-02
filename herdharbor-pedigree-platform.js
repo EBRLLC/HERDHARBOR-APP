@@ -291,6 +291,79 @@
     return target;
   }
 
+
+  const PEDIGREE_TEMPLATES = Object.freeze({
+    classic: Object.freeze({ id:"classic", label:"Classic", generations:4, rootFields:["name","sex","dob","breed","variety","registrationNumber","photoData"], ancestorFields:["name","sex","dob","breed","variety","registrationNumber"], photos:true, showUnknown:true, density:"comfortable" }),
+    minimal: Object.freeze({ id:"minimal", label:"Minimal", generations:3, rootFields:["name","sex","breed","variety"], ancestorFields:["name","sex","breed","variety"], photos:false, showUnknown:true, density:"compact" }),
+    professional: Object.freeze({ id:"professional", label:"Professional", generations:4, rootFields:["name","rabbitry","sex","dob","breed","variety","registrationNumber","gcNumber","photoData"], ancestorFields:["name","rabbitry","sex","dob","breed","variety","registrationNumber","gcNumber"], photos:true, showUnknown:true, density:"comfortable" }),
+    buyer: Object.freeze({ id:"buyer", label:"Buyer", generations:3, rootFields:["name","rabbitry","sex","dob","breed","variety","registrationNumber","photoData"], ancestorFields:["name","rabbitry","sex","breed","variety","registrationNumber"], photos:true, showUnknown:true, density:"comfortable" }),
+    rabbitryBranded: Object.freeze({ id:"rabbitryBranded", label:"Rabbitry Branded", generations:4, rootFields:["name","rabbitry","sex","dob","breed","variety","registrationNumber","photoData"], ancestorFields:["name","rabbitry","sex","dob","breed","variety","registrationNumber"], photos:true, showUnknown:true, density:"comfortable", branding:true })
+  });
+  const PEDIGREE_FIELD_SET = Object.freeze(["name","rabbitry","sex","dob","breed","variety","color","weight","registrationNumber","gcNumber","genotype","photoData"]);
+
+  function uniqueFields(fields, fallback) {
+    const allowed = new Set(PEDIGREE_FIELD_SET);
+    const source = Array.isArray(fields) ? fields : fallback;
+    return [...new Set((source || []).filter(function (field) { return allowed.has(field); }))];
+  }
+
+  function normalizePedigreeConfig(config) {
+    const raw = config && typeof config === "object" ? config : {};
+    const preset = PEDIGREE_TEMPLATES[raw.templateId] || PEDIGREE_TEMPLATES.classic;
+    const generations = Math.max(3, Math.min(5, Math.trunc(Number(raw.generations || preset.generations || 4))));
+    const rootFields = uniqueFields(raw.rootFields, preset.rootFields);
+    const ancestorFields = uniqueFields(raw.ancestorFields, preset.ancestorFields);
+    const photos = raw.photos === undefined ? preset.photos !== false : Boolean(raw.photos);
+    const showUnknown = raw.showUnknown === undefined ? preset.showUnknown !== false : Boolean(raw.showUnknown);
+    const density = raw.density === "compact" ? "compact" : "comfortable";
+    if (!photos) {
+      return {
+        templateId: raw.templateId && PEDIGREE_TEMPLATES[raw.templateId] ? raw.templateId : preset.id,
+        generations,
+        rootFields: rootFields.filter(function (field) { return field !== "photoData"; }),
+        ancestorFields: ancestorFields.filter(function (field) { return field !== "photoData"; }),
+        photos:false,
+        showUnknown,
+        density
+      };
+    }
+    return {
+      templateId: raw.templateId && PEDIGREE_TEMPLATES[raw.templateId] ? raw.templateId : preset.id,
+      generations,
+      rootFields,
+      ancestorFields,
+      photos:true,
+      showUnknown,
+      density
+    };
+  }
+
+  function pedigreeRenderPlan(graph, config, mode) {
+    const normalized = normalizePedigreeConfig(config);
+    const renderMode = normalizeRenderMode(mode || "privateHerd");
+    const filteredNodes = (graph && Array.isArray(graph.nodes) ? graph.nodes : []).filter(function (node) {
+      if (node.generation >= normalized.generations) return false;
+      return normalized.showUnknown || node.known;
+    });
+    return {
+      graph: Object.assign({}, graph || {}, { generations:normalized.generations, nodes:filteredNodes }),
+      rootOptions: { mode:renderMode, fields:normalized.rootFields, expanded:normalized.density !== "compact" },
+      ancestorOptions: { mode:renderMode, fields:normalized.ancestorFields, expanded:false },
+      config:normalized
+    };
+  }
+
+  function renderCustomizedPedigree(graph, config, mode) {
+    const plan = pedigreeRenderPlan(graph, config, mode);
+    const root = plan.graph.nodes.filter(function (node) { return node.generation === 0; });
+    const ancestors = plan.graph.nodes.filter(function (node) { return node.generation > 0; });
+    const merged = Object.assign({}, plan.graph, { nodes:root });
+    const rootHtml = renderPedigree(merged, plan.rootOptions);
+    const ancestorGraph = Object.assign({}, plan.graph, { nodes:ancestors });
+    const ancestorHtml = ancestors.length ? renderPedigree(ancestorGraph, plan.ancestorOptions) : "";
+    return '<div class="hh-pedigree-customized hh-density-' + escapeHtml(plan.config.density) + '">' + rootHtml + ancestorHtml + '</div>';
+  }
+
   return Object.freeze({
     VERSION,
     DEFAULT_GENERATIONS,
@@ -309,6 +382,11 @@
     permittedFields,
     renderPedigreeNode,
     renderPedigree,
-    mountPedigree
+    mountPedigree,
+    PEDIGREE_TEMPLATES,
+    PEDIGREE_FIELD_SET,
+    normalizePedigreeConfig,
+    pedigreeRenderPlan,
+    renderCustomizedPedigree
   });
 });
