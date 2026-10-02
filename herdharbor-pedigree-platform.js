@@ -81,28 +81,6 @@
     const problems = [];
     let knownAncestorCount = 0;
 
-    function reachablePedigreeHasCycle(startId) {
-      const visiting = new Set();
-      const visited = new Set();
-      function walk(id) {
-        const normalizedId = asId(id);
-        if (!normalizedId || !byId.has(normalizedId)) return false;
-        if (visiting.has(normalizedId)) return true;
-        if (visited.has(normalizedId)) return false;
-        visiting.add(normalizedId);
-        const record = byId.get(normalizedId);
-        for (const parent of PARENT_FIELDS) {
-          if (walk(record ? record[parent.field] : "")) return true;
-        }
-        visiting.delete(normalizedId);
-        visited.add(normalizedId);
-        return false;
-      }
-      return walk(startId);
-    }
-
-    const pedigreeContainsCycle = reachablePedigreeHasCycle(rootId);
-
     function addOccurrence(id, path) {
       if (!id) return;
       if (!occurrences.has(id)) occurrences.set(id, []);
@@ -134,7 +112,6 @@
         return;
       }
       if (missingReference) problems.push({ type: "missing-reference", path, identityId: normalizedId });
-      if (pedigreeContainsCycle && !record) return;
       if (generation >= generations - 1) return;
 
       const nextLineage = new Set(lineage);
@@ -662,8 +639,6 @@
     return {
       leftId,
       rightId,
-      leftGraph:shared.leftGraph,
-      rightGraph:shared.rightGraph,
       generationsAnalyzed:generations,
       relationshipCoefficient:numeratorRelationship,
       numeratorRelationship,
