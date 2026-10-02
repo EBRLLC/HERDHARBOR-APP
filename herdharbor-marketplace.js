@@ -243,6 +243,7 @@ async function renderMarketplace(context){
  const target=ctx.target;
  if(!target)throw new Error("Marketplace target is required.");
  const toast=typeof ctx.toast==="function"?ctx.toast:function(){};
+ const actions=ctx.actions&&typeof ctx.actions==="object"?ctx.actions:{};
  const gw=ctx.gateway||gateway();
  target.innerHTML='<div class="page-header"><div><p class="eyebrow">HerdHarbor</p><h2>Marketplace</h2><p>Browse animals published by HerdHarbor members without exposing private herd records.</p></div><div class="header-actions"><button class="button button-ghost" type="button" id="hh-market-notifications">Notifications</button><button class="button button-ghost" type="button" id="hh-market-saved-searches">Saved Searches</button><button class="button button-ghost" type="button" id="hh-market-saved">Saved</button><button class="button button-ghost" type="button" id="hh-market-my-listings">My Listings</button><button class="button button-ghost" type="button" id="hh-market-agreements">Agreements</button><button class="button button-ghost" type="button" id="hh-market-moderation">Moderation</button><button class="button button-ghost" type="button" id="hh-market-messages">Messages</button><button class="button button-primary" type="button" id="hh-market-sell">Sell Animal</button></div></div>'+
   '<form id="hh-market-search" class="panel hh-market-filters" aria-label="Marketplace search filters"><label>Search<input name="search" placeholder="Animals, breeds, descriptions"></label><label>Species<input name="species" placeholder="Species"></label><label>Breed<input name="breed" placeholder="Breed"></label><label>Sex<select name="sex"><option value="">Any sex</option><option>Female</option><option>Male</option></select></label><label>State / region<input name="region" placeholder="State / region"></label><label>Min price<input name="minPrice" type="number" min="0" step="1" placeholder="$"></label><label>Max price<input name="maxPrice" type="number" min="0" step="1" placeholder="$"></label><div class="hh-market-filter-actions"><button class="button button-ghost" type="button" id="hh-market-save-search">Save Search</button><button class="button button-ghost" type="reset" id="hh-market-reset">Reset</button><button class="button button-primary" type="submit">Search</button></div></form>'+
@@ -300,7 +301,7 @@ async function renderMarketplace(context){
     const host=detail.querySelector("#hh-market-agreement-view"); if(!host)return;
     host.innerHTML='<section class="hh-market-agreement-panel"><div class="panel-header"><div><h3>'+escapeMarkup(agreement.title)+'</h3><small>Public agreement snapshot · version '+Number(agreement.version||1)+'</small></div><button type="button" class="button button-ghost button-small" id="hh-market-agreement-close">Close</button></div><div class="hh-market-agreement-body">'+escapeMarkup(agreement.body||"").replace(/\n/g,"<br>")+'</div><div class="modal-actions"><button type="button" class="button button-primary" id="hh-market-agreement-download">Download PDF snapshot</button></div></section>';
     host.querySelector("#hh-market-agreement-close")?.addEventListener("click",function(){host.innerHTML="";});
-    host.querySelector("#hh-market-agreement-download")?.addEventListener("click",function(){try{downloadAgreementSnapshot(agreement,row,"");}catch(error){toast(error?.message||"Agreement could not be downloaded.","error");}});
+    host.querySelector("#hh-market-agreement-download")?.addEventListener("click",async function(){try{if(typeof actions.ensureDocumentCenter==="function")await actions.ensureDocumentCenter();downloadAgreementSnapshot(agreement,row,"");}catch(error){toast(error?.message||"Agreement could not be downloaded.","error");}});
     host.scrollIntoView?.({block:"start",behavior:"smooth"});
    });
    detail.querySelector("#hh-market-seller-profile")?.addEventListener("click",async function(){
@@ -351,7 +352,7 @@ async function renderMarketplace(context){
  target.querySelector("#hh-market-saved-searches")?.addEventListener("click",function(){void renderSavedSearches(detail,form,runSearch,gw,toast);});
  target.querySelector("#hh-market-save-search")?.addEventListener("click",async function(){const data=Object.fromEntries(new FormData(form));const filters={search:data.search,species:data.species,breed:data.breed,sex:data.sex,region:data.region,minPriceCents:data.minPrice===""?null:Math.round(Number(data.minPrice)*100),maxPriceCents:data.maxPrice===""?null:Math.round(Number(data.maxPrice)*100)};const name=root?.prompt?.("Name this saved search:","Marketplace search")||"";if(!name)return;try{await saveSearch(filters,name,true,null,gw);toast("Search saved with in-app alerts.","success");}catch(error){toast(error?.message||"Search could not be saved.","error");}});
  target.querySelector("#hh-market-saved")?.addEventListener("click",function(){void renderFavorites(detail,gw,toast);});
- target.querySelector("#hh-market-my-listings")?.addEventListener("click",function(){void renderSellerListings(detail,gw,toast,ctx.state);});
+ target.querySelector("#hh-market-my-listings")?.addEventListener("click",function(){void renderSellerListings(detail,gw,toast,ctx.state,actions);});
  target.querySelector("#hh-market-agreements")?.addEventListener("click",function(){void renderAgreementTemplateManager(detail,gw,toast);});
  target.querySelector("#hh-market-moderation")?.addEventListener("click",function(){void renderModerationQueue(detail,gw,toast);});
  target.querySelector("#hh-market-messages")?.addEventListener("click",function(){void renderInbox(detail,gw,toast);});
@@ -749,7 +750,7 @@ function stateActionsForListing(state){
  if(value==="expired")return ["available","archived"];
  return [];
 }
-async function renderSellerListings(host,customGateway,toast,privateState){
+async function renderSellerListings(host,customGateway,toast,privateState,actions){
  const gw=customGateway||gateway(); const notify=typeof toast==="function"?toast:function(){};
  host.innerHTML='<section class="panel"><div class="panel-header"><div><h3>My Listings</h3><small>Drafts, active listings, pending sales, sold animals, and archived listings</small></div><button type="button" class="button button-ghost button-small" id="hh-my-listings-close">Close</button></div><div id="hh-my-listings-body" aria-live="polite"><p class="muted">Loading listings…</p></div></section>';
  host.querySelector("#hh-my-listings-close")?.addEventListener("click",function(){host.innerHTML="";});
@@ -768,7 +769,7 @@ async function renderSellerListings(host,customGateway,toast,privateState){
   const breederToolsButton=event.target.closest("[data-breeder-tools]");
   try{
    if(breederToolsButton){await renderListingBreederTools(host,{listing_id:breederToolsButton.dataset.breederTools,animal_name:breederToolsButton.dataset.listingName,listing_kind:breederToolsButton.dataset.listingKind,available_from:breederToolsButton.dataset.availableFrom},gw,notify);return;}
-   if(transferButton){openDirectTransferForListing({listing_id:transferButton.dataset.transferListing,source_animal_id:transferButton.dataset.transferAnimal},privateState,notify);return;}
+   if(transferButton){if(typeof actions?.ensureDirectTransfer==="function")await actions.ensureDirectTransfer();openDirectTransferForListing({listing_id:transferButton.dataset.transferListing,source_animal_id:transferButton.dataset.transferAnimal},privateState,notify);return;}
    if(stateButton){await updateListingState(stateButton.dataset.listingId,stateButton.dataset.listingState,gw);notify("Listing status updated.","success");await load();}
    if(confirmButton){await confirmListing(confirmButton.dataset.confirmListing,gw);notify("Listing confirmed as still available.","success");await load();}
   }catch(error){notify(error?.message||"Listing could not be updated.","error");}
