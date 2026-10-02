@@ -52,3 +52,14 @@ test("messages can be inserted and read but not directly edited or deleted by th
  assert.doesNotMatch(foundation,/grant update[^;]*on public\.marketplace_messages/i);
  assert.doesNotMatch(foundation,/grant delete[^;]*on public\.marketplace_messages/i);
 });
+
+
+test("later Marketplace migrations do not reopen RPC-only moderation or saved-search tables",()=>{
+ const moderation=fs.readFileSync(path.join(root,"supabase/migrations/20261002080000_v2_0_1_marketplace_moderation.sql"),"utf8");
+ const saved=fs.readFileSync(path.join(root,"supabase/migrations/20261002082000_v2_0_1_marketplace_saved_searches.sql"),"utf8");
+ assert.match(moderation,/revoke all on public\.marketplace_moderation_actions from authenticated;/);
+ assert.doesNotMatch(moderation,/grant (?:select|insert|update|delete)[^;]*marketplace_moderation_actions[^;]*authenticated/i);
+ assert.match(saved,/revoke all on public\.marketplace_saved_searches from anon,authenticated;/);
+ assert.doesNotMatch(saved,/grant (?:select|insert|update|delete)[^;]*marketplace_saved_searches[^;]*authenticated/i);
+ for(const fn of ["marketplace_save_search","marketplace_saved_searches","marketplace_delete_saved_search"]) assert.ok(saved.includes(fn),fn);
+});

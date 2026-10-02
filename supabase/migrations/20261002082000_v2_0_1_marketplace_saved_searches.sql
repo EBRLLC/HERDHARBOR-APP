@@ -22,8 +22,7 @@ create index if not exists marketplace_saved_searches_user_idx on public.marketp
 create index if not exists marketplace_saved_searches_alert_idx on public.marketplace_saved_searches(alerts_enabled,user_id) where alerts_enabled=true;
 
 alter table public.marketplace_saved_searches enable row level security;
-revoke all on public.marketplace_saved_searches from anon;
-grant select,insert,update,delete on public.marketplace_saved_searches to authenticated;
+revoke all on public.marketplace_saved_searches from anon,authenticated;
 
 create policy marketplace_saved_searches_owner_select on public.marketplace_saved_searches for select to authenticated
   using ((select auth.uid())=user_id);

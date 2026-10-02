@@ -130,7 +130,7 @@ create policy marketplace_moderation_admin_select on public.marketplace_moderati
   using (herdharbor_private.marketplace_is_admin());
 create policy marketplace_moderation_admin_insert on public.marketplace_moderation_actions for insert to authenticated
   with check (herdharbor_private.marketplace_is_admin() and moderator_id=(select auth.uid()));
-grant select,insert on public.marketplace_moderation_actions to authenticated;
+revoke all on public.marketplace_moderation_actions from authenticated;
 
 create or replace function public.marketplace_moderation_queue(queue_status text default 'open')
 returns table (
