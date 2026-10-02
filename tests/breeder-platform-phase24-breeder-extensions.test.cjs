@@ -135,3 +135,24 @@ test("stack audit removes redundant reset listener and rolls back partial listin
 test("stack audit removes uploaded object when photo metadata insert fails",()=>{
  assert.match(source,/if\(row\.error\)\{[\s\S]*BUCKETS\.publicMedia\)\.remove\(\[path\]\)[\s\S]*throw row\.error/);
 });
+
+
+test("lazy Marketplace and Documents are runtime cached instead of required shell precache",()=>{
+ const sw=fs.readFileSync(path.join(root,"service-worker.js"),"utf8");
+ const required=sw.slice(sw.indexOf("const REQUIRED_SHELL"),sw.indexOf("const RUNTIME_CACHE_PATHS"));
+ const runtime=sw.slice(sw.indexOf("const RUNTIME_CACHE_PATHS"),sw.indexOf("const NETWORK_FIRST_PATHS"));
+ assert.doesNotMatch(required,/herdharbor-document-center\.js/);
+ assert.doesNotMatch(required,/herdharbor-marketplace\.js/);
+ assert.match(runtime,/herdharbor-document-center\.js/);
+ assert.match(runtime,/herdharbor-marketplace\.js/);
+});
+
+test("routine cloud recovery snapshots are coalesced during rapid save bursts",()=>{
+ const cloud=fs.readFileSync(path.join(root,"herdharbor-cloud.js"),"utf8");
+ assert.match(cloud,/ROUTINE_RECOVERY_SNAPSHOT_INTERVAL_MS = 5000/);
+ assert.match(cloud,/reason === "Before local change"/);
+ assert.match(cloud,/snapshotStartedAt - previousStartedAt < ROUTINE_RECOVERY_SNAPSHOT_INTERVAL_MS/);
+ assert.match(cloud,/routineRecoverySnapshotAt\.clear\(\)/);
+ assert.match(cloud,/Local copy saved during sync conflict/);
+ assert.match(cloud,/Local copy retained at sign out/);
+});
