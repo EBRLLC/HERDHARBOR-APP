@@ -176,11 +176,13 @@ begin
   select * into report_row from public.marketplace_reports where id=target_report_id for update;
   if not found then raise exception 'report unavailable'; end if;
 
-  if moderation_action='hide_listing' and report_row.target_type='listing' then
+  if moderation_action='hide_listing' then
+    if report_row.target_type<>'listing' then raise exception 'hide_listing requires a listing report'; end if;
     update public.marketplace_listings set state='removed',updated_at=now() where id=report_row.target_id::uuid;
-  elsif moderation_action='suspend_marketplace' and report_row.target_type='user' then
+  elsif moderation_action='suspend_marketplace' then
+    if report_row.target_type<>'user' then raise exception 'suspend_marketplace requires a user report'; end if;
     update public.marketplace_public_profiles set marketplace_status='suspended',updated_at=now() where public_id=report_row.target_id::uuid;
-  elsif moderation_action not in ('warn','dismiss','hide_listing','suspend_marketplace') then
+  elsif moderation_action not in ('warn','dismiss') then
     raise exception 'unsupported moderation action';
   end if;
 
