@@ -34,3 +34,24 @@ test("account-boundary reset cancels deferred routine recovery work",()=>{
   const end=cloud.indexOf("function captureAccountOperation",start);
   assert.match(cloud.slice(start,end),/cancelRoutineRecoverySnapshots\(\)/);
 });
+
+
+test("canonical bridge does not recanonicalize full snapshots already diffed by StateStore",()=>{
+  const start=cloud.indexOf("async function handleCanonicalStateCommit");
+  const end=cloud.indexOf("function installStateStoreBridge",start);
+  const block=cloud.slice(start,end);
+  assert.ok(start>=0&&end>start);
+  assert.doesNotMatch(block,/sameState\s*\(/);
+  assert.match(block,/if \(previousValue\) \{\s*scheduleRoutineRecoverySnapshot\(userId, previousValue\)/);
+});
+
+test("routine snapshot throttle runs before full JSON validation",()=>{
+  const start=cloud.indexOf("async function recordRecoverySnapshot");
+  const end=cloud.indexOf("function scheduleRoutineRecoverySnapshot",start);
+  const block=cloud.slice(start,end);
+  assert.ok(start>=0&&end>start);
+  const throttleAt=block.indexOf("snapshotStartedAt - previousStartedAt < ROUTINE_RECOVERY_SNAPSHOT_INTERVAL_MS");
+  const parseAt=block.indexOf("safeParse(rawValue)");
+  assert.ok(throttleAt>=0);
+  assert.ok(parseAt>throttleAt,"throttled routine backups should return before parsing the entire state");
+});
