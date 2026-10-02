@@ -9,9 +9,10 @@ const root=path.resolve(__dirname,"..");
 const html=fs.readFileSync(path.join(root,"index.html"),"utf8");
 const runtime=fs.readFileSync(path.join(root,"herdharbor-app-runtime.js"),"utf8");
 
-test("Document Center registry has live initial types and reserved extension points",()=>{
- assert.deepEqual(docs.activeDocumentTypes().map(x=>x.id),["pedigree","birthCertificate"]);
- assert.deepEqual(docs.futureDocumentTypes().map(x=>x.id),["saleTransferRecord","animalInformationSheet","healthSummary","breedingRecord","litterRecord"]);
+test("Document Center registry preserves initial types as later reserved types go live",()=>{
+ const active=docs.activeDocumentTypes().map(x=>x.id);
+ for(const id of ["pedigree","birthCertificate","saleTransferRecord","animalInformationSheet"])assert.ok(active.includes(id),id);
+ assert.deepEqual(docs.futureDocumentTypes().map(x=>x.id),["healthSummary","breedingRecord","litterRecord"]);
 });
 
 test("Documents is a canonical app route with a real view container",()=>{
