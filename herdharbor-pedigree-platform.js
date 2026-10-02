@@ -84,13 +84,11 @@
     function reachablePedigreeHasCycle(startId) {
       const visiting = new Set();
       const visited = new Set();
-
       function walk(id) {
         const normalizedId = asId(id);
         if (!normalizedId || !byId.has(normalizedId)) return false;
         if (visiting.has(normalizedId)) return true;
         if (visited.has(normalizedId)) return false;
-
         visiting.add(normalizedId);
         const record = byId.get(normalizedId);
         for (const parent of PARENT_FIELDS) {
@@ -100,7 +98,6 @@
         visited.add(normalizedId);
         return false;
       }
-
       return walk(startId);
     }
 
@@ -137,10 +134,6 @@
         return;
       }
       if (missingReference) problems.push({ type: "missing-reference", path, identityId: normalizedId });
-
-      // Preserve the complete placeholder shape for ordinary incomplete pedigrees.
-      // If the reachable pedigree is circular, stop unknown branches here so
-      // malformed ancestry cannot expand exponentially while reporting the cycle.
       if (pedigreeContainsCycle && !record) return;
       if (generation >= generations - 1) return;
 
@@ -206,6 +199,121 @@
     });
   }
 
+
+  const RENDER_MODES = Object.freeze({
+    privateHerd: Object.freeze({ fields: ["name","rabbitry","sex","dob","breed","variety","color","weight","registrationNumber","gcNumber","genotype","photoData"] }),
+    printablePreview: Object.freeze({ fields: ["name","rabbitry","sex","dob","breed","variety","color","weight","registrationNumber","gcNumber","genotype","photoData"] }),
+    publicMarketplace: Object.freeze({ fields: ["name","rabbitry","sex","dob","breed","variety","color","weight","registrationNumber","gcNumber","photoData"] }),
+    transferPreview: Object.freeze({ fields: ["name","rabbitry","sex","dob","breed","variety","color","weight","registrationNumber","gcNumber","genotype","photoData"] }),
+    relationshipAnalysis: Object.freeze({ fields: ["name","rabbitry","sex","dob","breed","variety","color","registrationNumber","gcNumber","photoData"] })
+  });
+  const FIELD_LABELS = Object.freeze({
+    rabbitry: "Rabbitry / prefix",
+    sex: "Sex",
+    dob: "DOB",
+    breed: "Breed",
+    variety: "Variety",
+    color: "Color",
+    weight: "Weight",
+    registrationNumber: "Registration",
+    gcNumber: "GC number",
+    genotype: "Genotype"
+  });
+
+  function escapeHtml(value) {
+    return String(value === null || value === undefined ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function normalizeRenderMode(value) {
+    const mode = String(value || "privateHerd");
+    return Object.prototype.hasOwnProperty.call(RENDER_MODES, mode) ? mode : "privateHerd";
+  }
+
+  function permittedFields(mode, requestedFields) {
+    const normalizedMode = normalizeRenderMode(mode);
+    const allowed = new Set(RENDER_MODES[normalizedMode].fields);
+    const requested = Array.isArray(requestedFields) && requestedFields.length
+      ? requestedFields
+      : RENDER_MODES[normalizedMode].fields;
+    return requested.filter(function (field) { return allowed.has(field); });
+  }
+
+  function fieldValue(animal, field) {
+    if (!animal) return "";
+    if (field === "variety") return animal.variety || animal.color || "";
+    if (field === "color") return animal.color || animal.variety || "";
+    return animal[field] === null || animal[field] === undefined ? "" : animal[field];
+  }
+
+  function renderPedigreeNode(node, options) {
+    const mode = normalizeRenderMode(options && options.mode);
+    const fields = permittedFields(mode, options && options.fields);
+    const expanded = Boolean(options && options.expanded);
+    const animal = node && node.animal;
+    const unknownLabel = node && node.missingReference ? "Unavailable ancestor" : "Unknown ancestor";
+    if (!animal) {
+      return '<article class="hh-pedigree-card hh-pedigree-card-unknown" data-path="' + escapeHtml(node && node.path) + '">' +
+        '<div class="hh-pedigree-card-head"><span class="hh-pedigree-relation">' + escapeHtml(node && node.relation) + '</span>' +
+        '<strong>' + escapeHtml(unknownLabel) + '</strong></div>' +
+        (node && node.cycle ? '<span class="hh-pedigree-marker" aria-label="Circular pedigree reference">Circular reference</span>' : '') +
+        '</article>';
+    }
+
+    const detailRows = fields.filter(function (field) {
+      return field !== "name" && field !== "photoData";
+    }).map(function (field) {
+      const value = fieldValue(animal, field);
+      if (value === "") return "";
+      return '<div class="hh-pedigree-field" data-field="' + escapeHtml(field) + '"><dt>' +
+        escapeHtml(FIELD_LABELS[field] || field) + '</dt><dd>' + escapeHtml(value) + '</dd></div>';
+    }).join("");
+
+    const photo = fields.includes("photoData") && animal.photoData
+      ? '<img class="hh-pedigree-photo" src="' + escapeHtml(animal.photoData) + '" alt="">'
+      : '<span class="hh-pedigree-photo hh-pedigree-photo-placeholder" aria-hidden="true">HH</span>';
+
+    return '<article class="hh-pedigree-card" data-path="' + escapeHtml(node.path) + '" data-identity-id="' + escapeHtml(node.identityId) + '">' +
+      '<div class="hh-pedigree-card-head">' + photo +
+      '<div class="hh-pedigree-title"><span class="hh-pedigree-relation">' + escapeHtml(node.relation) + '</span><strong>' +
+      escapeHtml(animal.name || "Unnamed animal") + '</strong></div>' +
+      '<span class="hh-pedigree-sex">' + escapeHtml(animal.sex || node.expectedSex || "Unknown") + '</span></div>' +
+      (detailRows ? '<details class="hh-pedigree-details"' + (expanded ? ' open' : '') + '><summary>Details</summary><dl>' + detailRows + '</dl></details>' : '') +
+      '</article>';
+  }
+
+  function renderPedigree(graph, options) {
+    if (!graph || !Array.isArray(graph.nodes)) return "";
+    const settings = options && typeof options === "object" ? options : {};
+    const mode = normalizeRenderMode(settings.mode);
+    const groups = new Map();
+    graph.nodes.forEach(function (node) {
+      if (!groups.has(node.generation)) groups.set(node.generation, []);
+      groups.get(node.generation).push(node);
+    });
+    const body = [...groups.entries()].sort(function (a, b) { return a[0] - b[0]; }).map(function (entry) {
+      const generation = entry[0];
+      const label = generation === 0 ? "Animal" : generation === 1 ? "Parents" : "Generation " + (generation + 1);
+      return '<section class="hh-pedigree-generation" data-generation="' + generation + '">' +
+        '<h3>' + escapeHtml(label) + '</h3><div class="hh-pedigree-generation-grid">' +
+        entry[1].map(function (node) { return renderPedigreeNode(node, settings); }).join("") +
+        '</div></section>';
+    }).join("");
+
+    return '<div class="hh-pedigree-renderer" data-mode="' + escapeHtml(mode) + '" data-generations="' +
+      escapeHtml(graph.generations) + '">' + body + '</div>';
+  }
+
+  function mountPedigree(target, graph, options) {
+    if (!target || typeof target !== "object") throw new Error("A pedigree render target is required.");
+    target.innerHTML = renderPedigree(graph, options);
+    return target;
+  }
+
   return Object.freeze({
     VERSION,
     DEFAULT_GENERATIONS,
@@ -216,6 +324,14 @@
     expectedAncestorSlots,
     buildPedigreeGraph,
     nodeAt,
-    occurrencesOf
+    occurrencesOf,
+    RENDER_MODES,
+    FIELD_LABELS,
+    escapeHtml,
+    normalizeRenderMode,
+    permittedFields,
+    renderPedigreeNode,
+    renderPedigree,
+    mountPedigree
   });
 });
