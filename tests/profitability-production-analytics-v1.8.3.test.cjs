@@ -143,21 +143,23 @@ test("profitability analytics are read-only and contain no persistence path", ()
   assert.doesNotMatch(source, /state\.(?:animals|transactions|sales|payments|litters|productionRecords)\s*=|state\.(?:animals|transactions|sales|payments|litters|productionRecords)\.(?:push|splice)\(/);
 });
 
-test("Production/Reporting remains the visible owner and shell loads profitability before it", () => {
+test("Production/Reporting remains the visible owner while both reporting and profitability can load lazily", () => {
   const runtime = read("production-reporting-runtime-v1.8.3.js");
+  const app = read("herdharbor-app-runtime.js");
   const html = read("index.html");
   const worker = read("service-worker.js");
   const pkg = JSON.parse(read("package.json"));
   assert.match(runtime, /Recorded profitability/);
   assert.match(runtime, /HerdHarborProfitabilityAnalytics/);
-  assert.match(runtime, /Recorded profitability/);
   assert.match(runtime, /recorded data only/);
-  assert.ok(html.indexOf("profitability-analytics-v1.8.3.js?v=1") < html.indexOf("production-reporting-runtime-v1.8.3.js?v=1"));
-  assert.match(worker, /\.\/profitability-analytics-v1\.8\.3\.js\?v=1/);
+  assert.doesNotMatch(html, /<script[^>]+production-reporting-runtime-v1\.8\.3\.js/);
+  assert.doesNotMatch(html, /<script[^>]+profitability-analytics-v1\.8\.3\.js/);
+  assert.match(app, /function ensureProductionReportingRuntimeLoaded\(\)/);
+  assert.match(app, /function ensureProfitabilityAnalyticsLoaded\(\)/);
+  assert.match(worker, /"\/production-reporting-runtime-v1\.8\.3\.js"/);
   assert.match(worker, /"\/profitability-analytics-v1\.8\.3\.js"/);
   assert.match(pkg.scripts["test:v1.8.3"], /profitability-production-analytics-v1\.8\.3\.test\.cjs/);
 });
-
 
 test("profitability analytics is lazy-loaded for Budget while remaining runtime-cacheable", () => {
   const html = read("index.html");
