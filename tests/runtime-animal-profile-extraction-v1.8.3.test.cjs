@@ -129,8 +129,10 @@ test("Phase 3 modern profile and shared animal-action router remain authoritativ
   assert.match(flowSource, /#view-animal-profile/);
   assert.match(routerSource, /HerdHarborApp\?\.openAnimalEditor/);
   assert.match(routerSource, /HerdHarborApp\?\.openAnimalPedigreePrint/);
-  assert.match(runtimeSource, /openAnimalEditor:\s*\(animalId\) => animalProfileRuntime\(\)\.openEditor\(animalId\)/);
-  assert.match(runtimeSource, /openAnimalPedigreePrint:\s*\(animalId\) => animalProfileRuntime\(\)\.openPedigreePrint\(animalId\)/);
+  assert.match(runtimeSource, /function launchLazyAnimalProfileAction\(method, animalId, unavailableMessage\)/);
+  assert.match(runtimeSource, /ensureAnimalProfileRuntimeLoaded\(\)[\s\S]*\.then\(run\)/);
+  assert.match(runtimeSource, /openAnimalEditor:\s*\(animalId\) => launchLazyAnimalProfileAction\([\s\S]*"openEditor"[\s\S]*animalId/);
+  assert.match(runtimeSource, /openAnimalPedigreePrint:\s*\(animalId\) => launchLazyAnimalProfileAction\([\s\S]*"openPedigreePrint"[\s\S]*animalId/);
   assert.doesNotMatch(extractedSource, /function renderProfile\(|function profileHash\(|data-hh-p2-tab/);
 });
 
