@@ -809,5 +809,40 @@ async function renderSavedSearches(host,form,runSearch,customGateway,toast){
  try{await load();}catch(error){body.innerHTML='<p class="muted">Saved searches could not be loaded.</p>';notify(error?.message||"Saved searches unavailable.","error");}
 }
 
-return Object.freeze({VERSION,TABLES,BUCKETS,PUBLIC_PROFILE_FIELDS,LISTING_STATES,LISTING_PUBLIC_FIELDS,PUBLIC_PEDIGREE_FIELDS,createGateway,gateway,browserClient,normalizePublicProfileDraft,saveSellerProfile,getPublicSellerProfile,publicProfilePreview,normalizeListingDraft,buildListingSnapshotFromHerd,listingInsertPayload,createListingFromHerd,createManualListing,deleteListing,listingCreationOptions,publicMediaUrl,searchArgs,searchListings,getListingDetails,saveListing,renderListingCard,renderMarketplace,openSellAnimalDialog,publicPedigreeDepth,buildPublicPedigreeSnapshot,setListingPublicPedigree,getPublicListingPedigree,publicSnapshotToGraph,renderPublicPedigree,openListingConversation,listConversations,listMessages,sendMessage,updateConversationMember,subscribeConversation,renderInbox,submitReport,blockPublicProfile,getModerationQueue,moderateReport,renderModerationQueue,myListings,updateListingState,confirmListing,refreshSellerNotifications,myNotifications,markNotificationRead,myFavorites,removeFavorite,imageFileToUpload,uploadListingPhotos,removeListingPhoto,stateActionsForListing,renderSellerListings,renderFavorites,renderMarketplaceNotifications,savedSearchPayloadFromFilters,saveSearch,listSavedSearches,deleteSavedSearch,filtersFromSavedSearch,applySavedSearchToForm,renderSavedSearches});
+
+async function submitSellerReview(listingId,rating,feedback,customGateway){
+ const gw=customGateway||gateway();
+ const numeric=Number(rating);
+ if(!Number.isInteger(numeric)||numeric<1||numeric>5)throw new Error("Seller rating must be a whole number from 1 to 5.");
+ const result=await gw.rpc("marketplace_submit_review",{target_listing_id:String(listingId),review_rating:numeric,review_feedback:textValue(feedback,2500)});
+ if(result.error)throw result.error;
+ return result.data;
+}
+async function sellerFeedbackSummary(publicId,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_seller_feedback_summary",{target_public_id:String(publicId)});
+ if(result.error)throw result.error;
+ return Array.isArray(result.data)?(result.data[0]||{review_count:0,average_rating:null,verified_review_count:0}):result.data||{review_count:0,average_rating:null,verified_review_count:0};
+}
+async function sellerFeedback(publicId,limit,offset,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_seller_feedback",{target_public_id:String(publicId),result_limit:Math.min(50,Math.max(1,Number(limit||20))),result_offset:Math.max(0,Number(offset||0))});
+ if(result.error)throw result.error;
+ return Array.isArray(result.data)?result.data:[];
+}
+async function disputeReview(reviewId,reason,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_dispute_review",{target_review_id:String(reviewId),dispute_reason:textValue(reason,2000)});
+ if(result.error)throw result.error;
+ return result.data;
+}
+function sellerFeedbackHtml(summary,reviews){
+ const count=Number(summary?.review_count||0);
+ const average=summary?.average_rating===null||summary?.average_rating===undefined?null:Number(summary.average_rating);
+ return '<section class="hh-seller-feedback"><div class="panel-header"><div><h4>Seller feedback</h4><small>'+count+' verified transaction review'+(count===1?"":"s")+'</small></div>'+(average===null?'':'<strong aria-label="Average seller rating '+average.toFixed(2)+' out of 5">'+average.toFixed(1)+' / 5</strong>')+'</div>'+
+  (reviews&&reviews.length?'<div class="list">'+reviews.map(function(review){return '<article class="list-item" data-review-id="'+escapeMarkup(review.review_id)+'"><div class="list-item-main"><strong>'+Number(review.rating)+' / 5 · '+escapeMarkup(review.reviewer_label||"Verified buyer")+'</strong><span>'+escapeMarkup(review.feedback||"No written feedback.")+'</span><small>'+(review.verified_transaction?"Verified Marketplace transaction · ":"")+escapeMarkup(new Date(review.created_at).toLocaleDateString())+'</small></div><button type="button" class="button button-ghost button-small" data-report-review="'+escapeMarkup(review.review_id)+'">Report</button></article>';}).join("")+'</div>':'<p class="muted">No verified seller feedback yet.</p>')+
+  '</section>';
+}
+
+return Object.freeze({VERSION,TABLES,BUCKETS,PUBLIC_PROFILE_FIELDS,LISTING_STATES,LISTING_PUBLIC_FIELDS,PUBLIC_PEDIGREE_FIELDS,createGateway,gateway,browserClient,normalizePublicProfileDraft,saveSellerProfile,getPublicSellerProfile,publicProfilePreview,normalizeListingDraft,buildListingSnapshotFromHerd,listingInsertPayload,createListingFromHerd,createManualListing,deleteListing,listingCreationOptions,publicMediaUrl,searchArgs,searchListings,getListingDetails,saveListing,renderListingCard,renderMarketplace,openSellAnimalDialog,publicPedigreeDepth,buildPublicPedigreeSnapshot,setListingPublicPedigree,getPublicListingPedigree,publicSnapshotToGraph,renderPublicPedigree,openListingConversation,listConversations,listMessages,sendMessage,updateConversationMember,subscribeConversation,renderInbox,submitReport,blockPublicProfile,getModerationQueue,moderateReport,renderModerationQueue,myListings,updateListingState,confirmListing,refreshSellerNotifications,myNotifications,markNotificationRead,myFavorites,removeFavorite,imageFileToUpload,uploadListingPhotos,removeListingPhoto,stateActionsForListing,renderSellerListings,renderFavorites,renderMarketplaceNotifications,savedSearchPayloadFromFilters,saveSearch,listSavedSearches,deleteSavedSearch,filtersFromSavedSearch,applySavedSearchToForm,renderSavedSearches,submitSellerReview,sellerFeedbackSummary,sellerFeedback,disputeReview,sellerFeedbackHtml});
 });
