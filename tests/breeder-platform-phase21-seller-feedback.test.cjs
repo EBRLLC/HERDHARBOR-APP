@@ -31,7 +31,7 @@ test("public seller feedback exposes verified review content without reviewer ac
 
 test("review disputes create moderation reports and review reports can be hidden",()=>{
  assert.match(migration,/marketplace_dispute_review/);
- assert.match(migration,/target_type,'review'/);
+ assert.match(migration,/values\(caller,'review'/);
  assert.match(migration,/status='disputed'/);
  assert.match(migration,/moderation_action='hide_review'/);
  assert.match(migration,/marketplace_reviews set status='hidden'/);
@@ -43,7 +43,7 @@ test("client review submission validates rating and uses server RPC",async()=>{
  await market.submitSellerReview("l1",5,"Good transaction",fake);
  assert.equal(calls[0][0],"marketplace_submit_review");
  assert.equal(calls[0][1].review_rating,5);
- assert.throws(()=>market.submitSellerReview("l1",6,"",fake),/1 to 5/);
+ await assert.rejects(()=>market.submitSellerReview("l1",6,"",fake),/1 to 5/);
 });
 
 test("seller profile feedback UI labels reviews as verified transactions",()=>{
