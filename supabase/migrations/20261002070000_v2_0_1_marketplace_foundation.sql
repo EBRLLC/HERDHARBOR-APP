@@ -216,6 +216,8 @@ grant select,insert,update,delete on public.marketplace_public_profiles, public.
   public.marketplace_conversations, public.marketplace_conversation_members, public.marketplace_messages,
   public.marketplace_message_attachments, public.marketplace_blocks, public.marketplace_reports,
   public.marketplace_notifications to authenticated;
+revoke insert,update,delete on public.marketplace_conversations from authenticated;
+revoke insert,delete on public.marketplace_conversation_members from authenticated;
 
 create policy marketplace_profiles_owner_select on public.marketplace_public_profiles for select to authenticated using ((select auth.uid())=user_id);
 create policy marketplace_profiles_owner_insert on public.marketplace_public_profiles for insert to authenticated with check ((select auth.uid())=user_id);
@@ -236,16 +238,8 @@ create policy marketplace_favorites_owner_all on public.marketplace_favorites fo
 
 create policy marketplace_conversations_member_select on public.marketplace_conversations for select to authenticated
   using (herdharbor_private.marketplace_is_conversation_member(id));
-create policy marketplace_conversations_creator_insert on public.marketplace_conversations for insert to authenticated
-  with check ((select auth.uid())=created_by);
-create policy marketplace_conversations_member_update on public.marketplace_conversations for update to authenticated
-  using (herdharbor_private.marketplace_is_conversation_member(id))
-  with check (herdharbor_private.marketplace_is_conversation_member(id));
-
 create policy marketplace_conversation_members_member_select on public.marketplace_conversation_members for select to authenticated
   using (herdharbor_private.marketplace_is_conversation_member(conversation_id));
-create policy marketplace_conversation_members_self_insert on public.marketplace_conversation_members for insert to authenticated
-  with check ((select auth.uid())=user_id);
 create policy marketplace_conversation_members_self_update on public.marketplace_conversation_members for update to authenticated
   using ((select auth.uid())=user_id) with check ((select auth.uid())=user_id);
 
