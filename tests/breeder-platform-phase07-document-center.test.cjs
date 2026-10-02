@@ -19,7 +19,9 @@ test("Documents is a canonical app route with a real view container",()=>{
  assert.match(html,/data-route="documents"/);
  assert.match(html,/id="view-documents"/);
  assert.match(runtime,/documents: "Animal documents"/);
- assert.match(runtime,/documents: \(\) => window\.HerdHarborDocumentCenter\?\.renderHub/);
+ assert.match(runtime,/documents: \(\) => \{/);
+ assert.match(runtime,/ensureDocumentCenterRuntime/);
+ assert.match(runtime,/renderLazyRoute\([\s\S]*"documents"/);
 });
 
 test("document hub exports both Pedigree and Birth Certificate actions from one renderer",()=>{
