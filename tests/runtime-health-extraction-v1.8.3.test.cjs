@@ -71,8 +71,8 @@ test("Health records have one extracted runtime owner", () => {
   assert.match(extractedSource, /function openHealthForm\(id = "", defaults = \{\}\)/);
   assert.match(extractedSource, /function normalizeHealthFormData\(data\)/);
   assert.match(runtimeSource, /HerdHarborHealthRuntime\?\.create/);
-  assert.match(runtimeSource, /function renderHealth\(\) \{\s*return healthRuntime\(\)\.renderHealth\(\);\s*\}/);
-  assert.match(runtimeSource, /function openHealthForm\(id = "", defaults = \{\}\) \{\s*return healthRuntime\(\)\.openHealthForm\(id, defaults\);\s*\}/);
+  assert.match(runtimeSource, /function renderHealth\(\)[\s\S]*ensureHealthRuntimeLoaded[\s\S]*healthRuntime\(\)\.renderHealth\(\)/);
+  assert.match(runtimeSource, /async function openHealthForm\(id = "", defaults = \{\}\)[\s\S]*await ensureHealthRuntimeLoaded\(\)[\s\S]*healthRuntime\(\)\.openHealthForm\(id, defaults\)/);
   assert.doesNotMatch(runtimeSource, /id="health-weight-ounces-field"/);
   assert.doesNotMatch(runtimeSource, /data-edit-health=/);
 });
@@ -141,13 +141,12 @@ test("symptom guide remains composition-owned and may still open the extracted h
   assert.doesNotMatch(extractedSource, /function renderSymptoms\(|HERDHARBOR_SYMPTOM_GUIDE/);
 });
 
-test("shell loads and caches Health runtime before application composition", () => {
+test("Health runtime is lazy-loaded by composition and remains offline-cacheable", () => {
   const html = read("index.html");
   const worker = read("service-worker.js");
-  const breeding = html.indexOf("breeding-litter-runtime-v1.8.3.js?v=1");
-  const health = html.indexOf("health-runtime-v1.8.3.js?v=1");
-  const composition = html.indexOf("herdharbor-app-runtime.js?v=4");
-  assert.ok(breeding >= 0 && health > breeding && composition > health);
+  assert.equal(html.indexOf("health-runtime-v1.8.3.js?v=1"), -1);
+  assert.match(runtimeSource, /function ensureHealthRuntimeLoaded\(\)/);
+  assert.match(runtimeSource, /"health-runtime-v1\.8\.3\.js\?v=1"/);
   assert.match(worker, /\.\/health-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /"\/health-runtime-v1\.8\.3\.js"/);
 });
