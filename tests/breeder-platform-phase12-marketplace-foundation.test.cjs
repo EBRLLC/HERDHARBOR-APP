@@ -36,7 +36,9 @@ test("ownership and conversation policies enforce server-side authorization",()=
  assert.match(migration,/marketplace_listings_owner_update[\s\S]*auth\.uid\(\)\)=seller_id[\s\S]*with check/);
  assert.match(migration,/marketplace_messages_member_select[\s\S]*marketplace_is_conversation_member/);
  assert.match(migration,/marketplace_messages_member_insert[\s\S]*auth\.uid\(\)\)=sender_id[\s\S]*marketplace_is_conversation_member/);
- assert.match(migration,/marketplace_conversation_members_self_insert[\s\S]*auth\.uid\(\)\)=user_id/);
+ assert.doesNotMatch(migration,/marketplace_conversation_members_self_insert/);
+ assert.match(migration,/revoke insert,delete on public\.marketplace_conversation_members from authenticated/);
+ assert.match(migration,/revoke insert,update,delete on public\.marketplace_conversations from authenticated/);
 });
 
 test("public source animal ids cannot be enumerated because listing table has no anon read grant or policy",()=>{
