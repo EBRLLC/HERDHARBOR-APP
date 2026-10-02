@@ -168,3 +168,12 @@ test("legacy genetics and shows warm after core startup instead of loading immed
  assert.match(boot,/scheduleLegacyFeatureWarmup\(\)/);
  assert.doesNotMatch(boot,/loadPedigreeVisuals\(\);\s*loadBreedingIntelligence\(\);\s*loadShows\(\);/);
 });
+
+
+test("obsolete local-cache and cloud-v2 helpers are not mandatory shell downloads",()=>{
+ const sw=fs.readFileSync(path.join(root,"service-worker.js"),"utf8");
+ const required=sw.slice(sw.indexOf("const REQUIRED_SHELL"),sw.indexOf("const RUNTIME_CACHE_PATHS"));
+ assert.doesNotMatch(required,/local-cache-v2-v1\.8\.2\.js/);
+ assert.doesNotMatch(required,/cloud-sync-v2-flow-v1\.8\.2\.js/);
+ assert.doesNotMatch(required,/cloud-sync-v2-diagnostics-v1\.8\.2\.js/);
+});
