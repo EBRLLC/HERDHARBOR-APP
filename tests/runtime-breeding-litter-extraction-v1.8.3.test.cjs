@@ -216,14 +216,19 @@ test("manual offspring creator remains compatibility fallback behind canonical l
   assert.match(lifecycleSource, /autoCreateBornOffspring\(state,litter\)/);
 });
 
-test("shell loads and caches Breeding/Litter runtime before application composition", () => {
+test("Breeding/Litter remains startup-required while Animal/Profile may load lazily", () => {
   const html = read("index.html");
   const worker = read("service-worker.js");
-  const animal = html.indexOf("animal-profile-runtime-v1.8.3.js?v=1");
-  const breeding = html.indexOf("breeding-litter-runtime-v1.8.3.js?v=1");
   const composition = html.indexOf("herdharbor-app-runtime.js?v=4");
-  assert.ok(animal >= 0 && breeding > animal && composition > breeding);
-  assert.match(worker, /\.\/breeding-litter-runtime-v1\.8\.3\.js\?v=1/);
+  const breeding = html.indexOf("breeding-litter-runtime-v1.8.3.js?v=1");
+  assert.ok(breeding >= 0 && composition > breeding);
+  assert.doesNotMatch(html, /<script[^>]+animal-profile-runtime-v1\.8\.3\.js/);
+
+  const required = worker.slice(worker.indexOf("const REQUIRED_SHELL = ["), worker.indexOf("];", worker.indexOf("const REQUIRED_SHELL = [")));
+  const runtime = worker.slice(worker.indexOf("const RUNTIME_CACHE_PATHS = ["), worker.indexOf("];", worker.indexOf("const RUNTIME_CACHE_PATHS = [")));
+  assert.ok(required.includes("breeding-litter-runtime-v1.8.3.js?v=1"));
+  assert.ok(!required.includes("animal-profile-runtime-v1.8.3.js"));
+  assert.ok(runtime.includes("animal-profile-runtime-v1.8.3.js?v=1"));
   assert.match(worker, /"\/breeding-litter-runtime-v1\.8\.3\.js"/);
 });
 
