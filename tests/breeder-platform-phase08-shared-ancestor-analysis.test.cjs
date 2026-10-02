@@ -38,11 +38,11 @@ test("analysis returns pedigree completeness for both animals",()=>{
  assert.ok(result.coverage.left.percent>=0 && result.coverage.left.percent<=100);
 });
 
-test("animal and breeding UIs expose the planned comparison entry points without COI in Phase 8",()=>{
+test("animal and breeding UIs preserve the Phase 8 comparison entry points",()=>{
  const root=path.resolve(__dirname,"..");
  const animalRuntime=fs.readFileSync(path.join(root,"animal-profile-runtime-v1.8.3.js"),"utf8");
  const breedingRuntime=fs.readFileSync(path.join(root,"breeding-litter-runtime-v1.8.3.js"),"utf8");
  assert.match(animalRuntime,/Compare With Another Animal/);
  assert.match(breedingRuntime,/Analyze Pairing/);
- assert.doesNotMatch(breedingRuntime,/Projected offspring Pedigree COI/);
+ assert.match(breedingRuntime,/Genetics Prediction/);
 });
