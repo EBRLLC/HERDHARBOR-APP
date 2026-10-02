@@ -203,6 +203,27 @@
     );
   }
 
+  function ensureAnimalProfileRuntimeLoaded() {
+    return loadScriptOnce(
+      "animal-profile-runtime-v1.8.3.js?v=1",
+      () => typeof window.HerdHarborAnimalProfileRuntime?.create === "function"
+    );
+  }
+
+  function ensureHealthRuntimeLoaded() {
+    return loadScriptOnce(
+      "health-runtime-v1.8.3.js?v=1",
+      () => typeof window.HerdHarborHealthRuntime?.create === "function"
+    );
+  }
+
+  function ensureProductionReportingRuntimeLoaded() {
+    return loadScriptOnce(
+      "production-reporting-runtime-v1.8.3.js?v=1",
+      () => typeof window.HerdHarborProductionReportingRuntime?.create === "function"
+    );
+  }
+
   function ensureMarketplaceRuntime() {
     return loadScriptOnce(
       "herdharbor-marketplace.js?v=1",
@@ -1239,15 +1260,37 @@
   }
 
   function renderAnimals() {
-    return animalProfileRuntime().renderAnimals();
+    if (typeof window.HerdHarborAnimalProfileRuntime?.create === "function") {
+      return animalProfileRuntime().renderAnimals();
+    }
+    renderLazyRoute(
+      "animals",
+      "Animal records",
+      ensureAnimalProfileRuntimeLoaded,
+      () => animalProfileRuntime().renderAnimals()
+    );
   }
 
-  function openAnimalForm(id = "", defaults = {}) {
-    return animalProfileRuntime().openAnimalForm(id, defaults);
+  async function openAnimalForm(id = "", defaults = {}) {
+    try {
+      await ensureAnimalProfileRuntimeLoaded();
+      return animalProfileRuntime().openAnimalForm(id, defaults);
+    } catch (error) {
+      console.error("HerdHarbor could not load Animal records:", error);
+      toast("Animal tools could not load. Check your connection and try again.", "error");
+      return false;
+    }
   }
 
-  function openAnimalDetail(id) {
-    return animalProfileRuntime().openAnimalDetail(id);
+  async function openAnimalDetail(id) {
+    try {
+      await ensureAnimalProfileRuntimeLoaded();
+      return animalProfileRuntime().openAnimalDetail(id);
+    } catch (error) {
+      console.error("HerdHarbor could not load Animal records:", error);
+      toast("Animal details could not load. Check your connection and try again.", "error");
+      return false;
+    }
   }
 
   function pedigreeRecordPreviewHtml(subject, record = null) {
@@ -2224,6 +2267,13 @@
   }
 
   async function openPedigreeRecord(id) {
+    try {
+      await ensureAnimalProfileRuntimeLoaded();
+    } catch (error) {
+      console.error("HerdHarbor could not load Animal records for pedigree preview:", error);
+      toast("Pedigree preview could not load. Check your connection and try again.", "error");
+      return;
+    }
     const record = state.pedigrees.find((p) => p.id === id);
     if (!record) return;
     const subject = state.animals.find((a) => a.id === record.subjectAnimalId);
@@ -2590,7 +2640,15 @@
   }
 
   function renderHealth() {
-    return healthRuntime().renderHealth();
+    if (typeof window.HerdHarborHealthRuntime?.create === "function") {
+      return healthRuntime().renderHealth();
+    }
+    renderLazyRoute(
+      "health",
+      "Health and weights",
+      ensureHealthRuntimeLoaded,
+      () => healthRuntime().renderHealth()
+    );
   }
 
   function symptomUrgencyClass(urgency = "") {
@@ -2755,8 +2813,15 @@
     });
   }
 
-  function openHealthForm(id = "", defaults = {}) {
-    return healthRuntime().openHealthForm(id, defaults);
+  async function openHealthForm(id = "", defaults = {}) {
+    try {
+      await ensureHealthRuntimeLoaded();
+      return healthRuntime().openHealthForm(id, defaults);
+    } catch (error) {
+      console.error("HerdHarbor could not load Health:", error);
+      toast("Health tools could not load. Check your connection and try again.", "error");
+      return false;
+    }
   }
 
   let taskRuntimeInstance = null;
@@ -2900,23 +2965,40 @@
   }
 
   function renderBudget() {
-    if (typeof window.HerdHarborProfitabilityAnalytics?.operationSummary === "function") {
+    if (
+      typeof window.HerdHarborProductionReportingRuntime?.create === "function" &&
+      typeof window.HerdHarborProfitabilityAnalytics?.operationSummary === "function"
+    ) {
       return productionReportingRuntime().renderBudget();
     }
     renderLazyRoute(
       "budget",
       "Budget and cost per head",
-      ensureProfitabilityAnalyticsLoaded,
+      () => Promise.all([ensureProductionReportingRuntimeLoaded(), ensureProfitabilityAnalyticsLoaded()]),
       () => productionReportingRuntime().renderBudget()
     );
   }
 
-  function openProductionForm(id = "", options = {}) {
-    return productionReportingRuntime().openProductionForm(id, options);
+  async function openProductionForm(id = "", options = {}) {
+    try {
+      await ensureProductionReportingRuntimeLoaded();
+      return productionReportingRuntime().openProductionForm(id, options);
+    } catch (error) {
+      console.error("HerdHarbor could not load Production/Reporting:", error);
+      toast("Production tools could not load. Check your connection and try again.", "error");
+      return false;
+    }
   }
 
-  function openTransactionForm(id = "", defaultType = "Expense") {
-    return productionReportingRuntime().openTransactionForm(id, defaultType);
+  async function openTransactionForm(id = "", defaultType = "Expense") {
+    try {
+      await ensureProductionReportingRuntimeLoaded();
+      return productionReportingRuntime().openTransactionForm(id, defaultType);
+    } catch (error) {
+      console.error("HerdHarbor could not load Production/Reporting:", error);
+      toast("Budget tools could not load. Check your connection and try again.", "error");
+      return false;
+    }
   }
 
   function syncProductionIncome(record) {
@@ -3219,6 +3301,7 @@
     input.disabled = true;
     try {
       toast("Preparing Excel import…");
+      await ensureProductionReportingRuntimeLoaded();
       const spreadsheet = await ensureSpreadsheetToolsReady({ importSupport: true });
       toast("Reading Excel workbook…");
       await spreadsheet.openImport({
@@ -3322,8 +3405,15 @@
     }
   }
 
-  function loadDemoData() {
+  async function loadDemoData() {
     if (!confirm("Add sample rabbits, breeding records, health records, and tasks?")) return;
+    try {
+      await ensureProductionReportingRuntimeLoaded();
+    } catch (error) {
+      console.error("HerdHarbor could not load Production/Reporting for demo data:", error);
+      toast("Demo data could not load its reporting tools. Check your connection and try again.", "error");
+      return;
+    }
     const buckId = uid("animal");
     const doeId = uid("animal");
     const doe2Id = uid("animal");
