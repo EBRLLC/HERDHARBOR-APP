@@ -72,9 +72,9 @@ test("Animals/Profile domain has one extracted runtime owner", () => {
 test("composition runtime delegates animal behavior instead of retaining a second implementation", () => {
   assert.match(runtimeSource, /function animalProfileRuntime\(\)/);
   assert.match(runtimeSource, /HerdHarborAnimalProfileRuntime\?\.create/);
-  assert.match(runtimeSource, /function renderAnimals\(\) \{\s*return animalProfileRuntime\(\)\.renderAnimals\(\);\s*\}/);
-  assert.match(runtimeSource, /function openAnimalForm\(id = "", defaults = \{\}\) \{\s*return animalProfileRuntime\(\)\.openAnimalForm\(id, defaults\);\s*\}/);
-  assert.match(runtimeSource, /function openAnimalDetail\(id\) \{\s*return animalProfileRuntime\(\)\.openAnimalDetail\(id\);\s*\}/);
+  assert.match(runtimeSource, /function renderAnimals\(\) \{[\s\S]*ensureAnimalProfileRuntimeLoaded[\s\S]*animalProfileRuntime\(\)\.renderAnimals\(\)/);
+  assert.match(runtimeSource, /async function openAnimalForm\(id = "", defaults = \{\}\) \{[\s\S]*await ensureAnimalProfileRuntimeLoaded\(\)[\s\S]*animalProfileRuntime\(\)\.openAnimalForm\(id, defaults\)/);
+  assert.match(runtimeSource, /async function openAnimalDetail\(id\) \{[\s\S]*await ensureAnimalProfileRuntimeLoaded\(\)[\s\S]*animalProfileRuntime\(\)\.openAnimalDetail\(id\)/);
   assert.match(runtimeSource, /function pedigreeRecordPreviewHtml\(subject, record = null\) \{\s*return animalProfileRuntime\(\)\.pedigreeRecordPreviewHtml\(subject, record\);\s*\}/);
   assert.doesNotMatch(runtimeSource, /let animalView =/);
   assert.doesNotMatch(runtimeSource, /let qrToolActionPending =/);
@@ -134,13 +134,16 @@ test("Phase 3 modern profile and shared animal-action router remain authoritativ
   assert.doesNotMatch(extractedSource, /function renderProfile\(|function profileHash\(|data-hh-p2-tab/);
 });
 
-test("shell loads and caches extracted runtime before application composition", () => {
+test("Animal/Profile runtime is lazy-loaded and remains runtime-cacheable", () => {
   const html = read("index.html");
   const worker = read("service-worker.js");
-  const domainIndex = html.indexOf("animal-profile-runtime-v1.8.3.js?v=1");
-  const compositionIndex = html.indexOf("herdharbor-app-runtime.js?v=4");
-  assert.ok(domainIndex >= 0 && compositionIndex > domainIndex);
-  assert.match(worker, /\.\/animal-profile-runtime-v1\.8\.3\.js\?v=1/);
+  assert.doesNotMatch(html, /<script[^>]+animal-profile-runtime-v1\.8\.3\.js/);
+  assert.match(runtimeSource, /function ensureAnimalProfileRuntimeLoaded\(\)/);
+  assert.match(runtimeSource, /"animal-profile-runtime-v1\.8\.3\.js\?v=1"/);
+  const required = worker.slice(worker.indexOf("const REQUIRED_SHELL = ["), worker.indexOf("];", worker.indexOf("const REQUIRED_SHELL = [")));
+  const runtime = worker.slice(worker.indexOf("const RUNTIME_CACHE_PATHS = ["), worker.indexOf("];", worker.indexOf("const RUNTIME_CACHE_PATHS = [")));
+  assert.ok(!required.includes("animal-profile-runtime-v1.8.3.js"));
+  assert.ok(runtime.includes("animal-profile-runtime-v1.8.3.js?v=1"));
   assert.match(worker, /"\/animal-profile-runtime-v1\.8\.3\.js"/);
 });
 
