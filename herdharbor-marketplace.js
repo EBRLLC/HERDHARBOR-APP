@@ -276,7 +276,7 @@ async function renderMarketplace(context){
     '<p>'+escapeMarkup([row.species,row.breed,row.sex,row.variety_color].filter(Boolean).join(" · "))+'</p><p>'+escapeMarkup(row.description||"")+'</p>'+
     '<div class="detail-grid"><div><span>Status</span><strong>'+escapeMarkup(row.state)+'</strong></div><div><span>Pedigree</span><strong>'+escapeMarkup(row.pedigree_status||"Not listed")+'</strong></div><div><span>Registration</span><strong>'+escapeMarkup(row.registration_status||"Not listed")+'</strong></div><div><span>Location</span><strong>'+escapeMarkup([row.location_city,row.location_region].filter(Boolean).join(", "))+'</strong></div></div>'+
     '<div class="hh-market-seller-card"><span>Seller</span><strong>'+escapeMarkup(row.seller_rabbitry_name||row.seller_display_name||"HerdHarbor member")+'</strong><small>'+escapeMarkup([row.seller_city,row.seller_region].filter(Boolean).join(", "))+'</small><button type="button" class="button button-ghost button-small" id="hh-market-seller-profile">View seller profile</button></div>'+
-    '<div id="hh-market-pedigree-view"></div><div class="modal-actions"><button type="button" class="button button-ghost" id="hh-market-pedigree" hidden>View HerdHarbor Pedigree</button><button type="button" class="button button-ghost" id="hh-market-save">Save listing</button><button type="button" class="button button-ghost" id="hh-market-report">Report listing</button><button type="button" class="button button-ghost" id="hh-market-block">Block seller</button><button type="button" class="button button-primary" id="hh-market-message">Message Seller</button></div></section>';
+    '<div id="hh-market-pedigree-view"></div><div class="modal-actions"><button type="button" class="button button-ghost" id="hh-market-pedigree" hidden>View HerdHarbor Pedigree</button><button type="button" class="button button-ghost" id="hh-market-save">Save listing</button><button type="button" class="button button-ghost" id="hh-market-report">Report listing</button><button type="button" class="button button-ghost" id="hh-market-block">Block seller</button>'+(row.state==="sold"?'<button type="button" class="button button-ghost" id="hh-market-review">Leave seller feedback</button>':"")+'<button type="button" class="button button-primary" id="hh-market-message">Message Seller</button></div></section>';
    detail.querySelector("#hh-market-detail-close")?.addEventListener("click",function(){detail.innerHTML="";});
    let publicPedigree=null;
    try{publicPedigree=await getPublicListingPedigree(row.listing_id,gw);}catch{}
@@ -291,7 +291,22 @@ async function renderMarketplace(context){
       host.scrollIntoView?.({block:"start",behavior:"smooth"});
     });
    }
-   detail.querySelector("#hh-market-seller-profile")?.addEventListener("click",async function(){try{const profile=await getPublicSellerProfile(row.seller_public_id,gw);if(!profile)return;const host=detail.querySelector(".hh-market-seller-card");if(host&&!host.querySelector(".hh-seller-profile-expanded"))host.insertAdjacentHTML("beforeend",'<div class="hh-seller-profile-expanded"><p>'+escapeMarkup(profile.about||"No public seller description.")+'</p><small>Member since '+escapeMarkup(new Date(profile.member_since).toLocaleDateString())+' · '+Number(profile.active_listing_count||0)+' active listing(s)</small></div>');}catch(error){toast(error?.message||"Seller profile could not be loaded.","error");}});
+   detail.querySelector("#hh-market-seller-profile")?.addEventListener("click",async function(){
+    try{
+      const [profile,summary,reviews]=await Promise.all([getPublicSellerProfile(row.seller_public_id,gw),sellerFeedbackSummary(row.seller_public_id,gw),sellerFeedback(row.seller_public_id,20,0,gw)]);
+      if(!profile)return;
+      const host=detail.querySelector(".hh-market-seller-card");
+      if(host&&!host.querySelector(".hh-seller-profile-expanded")){
+        host.insertAdjacentHTML("beforeend",'<div class="hh-seller-profile-expanded"><p>'+escapeMarkup(profile.about||"No public seller description.")+'</p><small>Member since '+escapeMarkup(new Date(profile.member_since).toLocaleDateString())+' · '+Number(profile.active_listing_count||0)+' active listing(s)</small>'+sellerFeedbackHtml(summary,reviews)+'</div>');
+        host.querySelector(".hh-seller-profile-expanded")?.addEventListener("click",async function(event){
+          const report=event.target.closest("[data-report-review]"); if(!report)return;
+          const reason=root?.prompt?.("Reason for reporting this review:")||""; if(!reason)return;
+          try{await submitReport("review",report.dataset.reportReview,reason,"",gw);toast("Review report submitted.","success");}
+          catch(error){toast(error?.message||"Review could not be reported.","error");}
+        });
+      }
+    }catch(error){toast(error?.message||"Seller profile could not be loaded.","error");}
+   });
    detail.querySelector("#hh-market-save")?.addEventListener("click",async function(){try{await saveListing(row.listing_id,gw);toast("Listing saved.","success");}catch(error){toast(error?.message||"Sign in to save listings.","error");}});
    detail.querySelector("#hh-market-report")?.addEventListener("click",async function(){
     const reason=root?.prompt?.("Reason for reporting this listing:")||"";
@@ -304,6 +319,13 @@ async function renderMarketplace(context){
     if(root?.confirm&&!root.confirm("Block this Marketplace seller? Existing and future Marketplace messaging will be unavailable."))return;
     try{await blockPublicProfile(row.seller_public_id,gw);toast("Seller blocked in Marketplace.","success");detail.innerHTML="";}
     catch(error){toast(error?.message||"Seller could not be blocked.","error");}
+   });
+   detail.querySelector("#hh-market-review")?.addEventListener("click",async function(){
+    const rawRating=root?.prompt?.("Seller rating from 1 to 5:","5"); if(rawRating===null||rawRating==="")return;
+    const rating=Number(rawRating);
+    const feedback=root?.prompt?.("Optional feedback:","")||"";
+    try{await submitSellerReview(row.listing_id,rating,feedback,gw);toast("Seller feedback submitted.","success");}
+    catch(error){toast(error?.message||"Feedback could not be submitted.","error");}
    });
    detail.querySelector("#hh-market-message")?.addEventListener("click",async function(){
     try{
@@ -567,7 +589,12 @@ async function renderModerationQueue(host,customGateway,toast){
  const list=host.querySelector("#hh-moderation-list");
  try{
   const reports=await getModerationQueue("open",gw);
-  list.innerHTML=reports.length?reports.map(function(row){return '<article class="list-item"><div class="list-item-main"><strong>'+escapeMarkup(row.target_type)+' report</strong><span>'+escapeMarkup(row.reason)+'</span><small>'+escapeMarkup(row.details||"")+'</small></div><div class="modal-actions"><button type="button" data-moderate-action="warn" data-report-id="'+escapeMarkup(row.report_id)+'">Warn</button><button type="button" data-moderate-action="hide_listing" data-report-id="'+escapeMarkup(row.report_id)+'">Hide listing</button><button type="button" data-moderate-action="suspend_marketplace" data-report-id="'+escapeMarkup(row.report_id)+'">Suspend Marketplace</button><button type="button" data-moderate-action="dismiss" data-report-id="'+escapeMarkup(row.report_id)+'">Dismiss</button></div></article>';}).join(""):'<p class="muted">No open Marketplace reports.</p>';
+  list.innerHTML=reports.length?reports.map(function(row){
+    const targetAction=row.target_type==="listing"?'<button type="button" data-moderate-action="hide_listing" data-report-id="'+escapeMarkup(row.report_id)+'">Hide listing</button>':
+      row.target_type==="review"?'<button type="button" data-moderate-action="hide_review" data-report-id="'+escapeMarkup(row.report_id)+'">Hide review</button>':
+      row.target_type==="user"?'<button type="button" data-moderate-action="suspend_marketplace" data-report-id="'+escapeMarkup(row.report_id)+'">Suspend Marketplace</button>':"";
+    return '<article class="list-item"><div class="list-item-main"><strong>'+escapeMarkup(row.target_type)+' report</strong><span>'+escapeMarkup(row.reason)+'</span><small>'+escapeMarkup(row.details||"")+'</small></div><div class="modal-actions"><button type="button" data-moderate-action="warn" data-report-id="'+escapeMarkup(row.report_id)+'">Warn</button>'+targetAction+'<button type="button" data-moderate-action="dismiss" data-report-id="'+escapeMarkup(row.report_id)+'">Dismiss</button></div></article>';
+  }).join(""):'<p class="muted">No open Marketplace reports.</p>';
   list.addEventListener("click",async function(event){const button=event.target.closest("[data-moderate-action]");if(!button)return;try{await moderateReport(button.dataset.reportId,button.dataset.moderateAction,"Reviewed in Marketplace moderation queue",gw);notify("Moderation action recorded.","success");await renderModerationQueue(host,gw,notify);}catch(error){notify(error?.message||"Moderation action failed.","error");}});
  }catch(error){list.innerHTML='<p class="muted">Moderation queue unavailable.</p>';notify(error?.message||"Moderation queue unavailable.","error");}
 }
