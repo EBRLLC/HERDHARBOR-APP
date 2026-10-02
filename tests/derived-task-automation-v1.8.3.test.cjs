@@ -249,15 +249,23 @@ test("Health form validates recurring-care metadata and uses no separate reminde
   assert.doesNotMatch(source, /reminderStore|notificationStore|localStorage|indexedDB/);
 });
 
-test("Phase 9F shell loads Task automation before Health and Task runtimes and keeps it offline-safe", () => {
+test("Task automation stays startup-required while Health is lazy and offline-cacheable", () => {
   const html = read("index.html");
+  const app = read("herdharbor-app-runtime.js");
   const worker = read("service-worker.js");
   const pkg = JSON.parse(read("package.json"));
   const automationIndex = html.indexOf("task-automation-v1.8.3.js?v=1");
-  assert.ok(automationIndex >= 0);
-  assert.ok(automationIndex < html.indexOf("health-runtime-v1.8.3.js?v=1"));
-  assert.ok(automationIndex < html.indexOf("task-runtime-v1.8.3.js?v=1"));
-  assert.match(worker, /\.\/task-automation-v1\.8\.3\.js\?v=1/);
+  const taskIndex = html.indexOf("task-runtime-v1.8.3.js?v=1");
+  assert.ok(automationIndex >= 0 && taskIndex > automationIndex);
+  assert.doesNotMatch(html, /<script[^>]+health-runtime-v1\.8\.3\.js/);
+  assert.match(app, /function ensureHealthRuntimeLoaded\(\)/);
+
+  const required = worker.slice(worker.indexOf("const REQUIRED_SHELL = ["), worker.indexOf("];", worker.indexOf("const REQUIRED_SHELL = [")));
+  const runtime = worker.slice(worker.indexOf("const RUNTIME_CACHE_PATHS = ["), worker.indexOf("];", worker.indexOf("const RUNTIME_CACHE_PATHS = [")));
+  assert.ok(required.includes("task-automation-v1.8.3.js?v=1"));
+  assert.ok(required.includes("task-runtime-v1.8.3.js?v=1"));
+  assert.ok(!required.includes("health-runtime-v1.8.3.js"));
+  assert.ok(runtime.includes("health-runtime-v1.8.3.js?v=1"));
   assert.match(worker, /"\/task-automation-v1\.8\.3\.js"/);
   assert.match(pkg.scripts["test:v1.8.3"], /derived-task-automation-v1\.8\.3\.test\.cjs/);
 });
