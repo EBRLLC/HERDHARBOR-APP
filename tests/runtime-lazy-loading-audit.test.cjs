@@ -7,6 +7,7 @@ const root=path.resolve(__dirname,"..");
 const html=fs.readFileSync(path.join(root,"index.html"),"utf8");
 const app=fs.readFileSync(path.join(root,"herdharbor-app-runtime.js"),"utf8");
 const sw=fs.readFileSync(path.join(root,"service-worker.js"),"utf8");
+const market=fs.readFileSync(path.join(root,"herdharbor-marketplace.js"),"utf8");
 
 const lazy=[
   "animal-profile-runtime-v1.8.3.js?v=1",
@@ -74,4 +75,34 @@ test("legacy pedigree attachment migration waits for idle time",()=>{
   const initBlock=app.slice(initStart,initEnd);
   assert.match(initBlock,/schedulePedigreeAttachmentMigration\(\)/);
   assert.doesNotMatch(initBlock,/\bmigratePedigreeAttachments\(\)/);
+});
+
+
+test("failed route script registrations can be retried instead of hanging on stale script tags",()=>{
+  assert.match(app,/if \(existing && !ready\(\)\) \{[\s\S]*existing\.remove\(\);[\s\S]*existing = null;/);
+  assert.match(app,/lazyScriptPromises\.delete\(src\)/);
+});
+
+test("Marketplace cross-feature actions await their lazy dependencies",()=>{
+  assert.match(app,/function ensureDirectTransferRuntime\(\)[\s\S]*direct-transfer-core-v1\.8\.2\.js\?v=1[\s\S]*direct-transfer-v1\.8\.2\.js\?v=1/);
+  assert.match(app,/loadStyleOnce\("direct-transfer-v1\.8\.2\.css\?v=1"\)/);
+  assert.match(app,/const marketplaceActionShims = Object\.freeze\([\s\S]*ensureDocumentCenter:[\s\S]*ensureDirectTransfer:/);
+  assert.match(app,/renderMarketplace\(\{ target:[\s\S]*actions: marketplaceActionShims/);
+  assert.match(market,/await actions\.ensureDocumentCenter\(\)/);
+  assert.match(market,/await actions\.ensureDirectTransfer\(\)/);
+});
+
+test("lazy Marketplace dependencies remain offline-cacheable without returning to eager startup",()=>{
+  for(const asset of [
+    "herdharbor-document-center.js?v=1",
+    "herdharbor-marketplace.js?v=1",
+    "direct-transfer-core-v1.8.2.js?v=1",
+    "direct-transfer-v1.8.2.js?v=1",
+    "direct-transfer-v1.8.2.css?v=1"
+  ]){
+    assert.equal(sw.includes('"./'+asset+'"'),true,asset+" should remain runtime-cacheable");
+  }
+  assert.equal(html.includes('<script src="herdharbor-document-center.js?v=1"></script>'),false);
+  assert.equal(html.includes('<script src="herdharbor-marketplace.js?v=1"></script>'),false);
+  assert.equal(html.includes('<script src="direct-transfer-v1.8.2.js?v=1"></script>'),false);
 });
