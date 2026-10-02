@@ -14,6 +14,49 @@ create index if not exists marketplace_listings_available_from_idx
   on public.marketplace_listings(available_from)
   where state='available' and available_from is not null;
 
+
+drop function if exists public.marketplace_my_listings(text);
+create function public.marketplace_my_listings(status_filter text default null)
+returns table (
+  listing_id uuid,
+  source_animal_id text,
+  state text,
+  listing_kind text,
+  available_from date,
+  animal_name text,
+  species text,
+  breed text,
+  sex text,
+  price_cents bigint,
+  currency text,
+  location_city text,
+  location_region text,
+  pedigree_status text,
+  published_at timestamptz,
+  expires_at timestamptz,
+  last_confirmed_at timestamptz,
+  sold_at timestamptz,
+  created_at timestamptz,
+  updated_at timestamptz,
+  photo_count bigint
+)
+language sql
+stable
+security definer
+set search_path=''
+as $
+  select l.id,l.source_animal_id,l.state,l.listing_kind,l.available_from,l.animal_name,l.species,l.breed,l.sex,l.price_cents,l.currency,
+         l.location_city,l.location_region,l.pedigree_status,l.published_at,l.expires_at,l.last_confirmed_at,
+         l.sold_at,l.created_at,l.updated_at,
+         (select count(*) from public.marketplace_listing_photos p where p.listing_id=l.id)
+  from public.marketplace_listings l
+  where l.seller_id=(select auth.uid())
+    and (nullif(trim(status_filter),'') is null or l.state=lower(trim(status_filter)))
+  order by l.updated_at desc,l.id;
+$;
+revoke all on function public.marketplace_my_listings(text) from public,anon;
+grant execute on function public.marketplace_my_listings(text) to authenticated;
+
 create table if not exists public.marketplace_agreement_templates (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
