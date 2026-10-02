@@ -26,13 +26,10 @@ const REQUIRED_SHELL = [
   "./herdharbor-admin-v1.6.1.js?v=2",
   "./pwa.js?v=34",
   "./market-analytics-v1.6.5.js?v=1.7.1",
-  "./animal-profile-runtime-v1.8.3.js?v=1",
   "./breeding-litter-runtime-v1.8.3.js?v=1",
   "./task-automation-v1.8.3.js?v=1",
-  "./health-runtime-v1.8.3.js?v=1",
   "./task-runtime-v1.8.3.js?v=1",
   "./sales-customer-runtime-v1.8.3.js?v=1",
-  "./production-reporting-runtime-v1.8.3.js?v=1",
   "./mobile-capture-v1.8.3.js?v=1",
   "./herdharbor-pedigree-platform.js?v=1",
   "./herdharbor-app-runtime.js?v=4",
@@ -44,6 +41,9 @@ const REQUIRED_SHELL = [
 ];
 
 const RUNTIME_CACHE_PATHS = [
+  "./animal-profile-runtime-v1.8.3.js?v=1",
+  "./health-runtime-v1.8.3.js?v=1",
+  "./production-reporting-runtime-v1.8.3.js?v=1",
   "./herdharbor-document-center.js?v=1",
   "./herdharbor-marketplace.js?v=1",
   "./profitability-analytics-v1.8.3.js?v=1",
