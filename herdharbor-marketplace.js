@@ -244,7 +244,7 @@ async function renderMarketplace(context){
  if(!target)throw new Error("Marketplace target is required.");
  const toast=typeof ctx.toast==="function"?ctx.toast:function(){};
  const gw=ctx.gateway||gateway();
- target.innerHTML='<div class="page-header"><div><p class="eyebrow">HerdHarbor</p><h2>Marketplace</h2><p>Browse animals published by HerdHarbor members without exposing private herd records.</p></div><div class="header-actions"><button class="button button-ghost" type="button" id="hh-market-messages">Messages</button><button class="button button-primary" type="button" id="hh-market-sell">Sell Animal</button></div></div>'+
+ target.innerHTML='<div class="page-header"><div><p class="eyebrow">HerdHarbor</p><h2>Marketplace</h2><p>Browse animals published by HerdHarbor members without exposing private herd records.</p></div><div class="header-actions"><button class="button button-ghost" type="button" id="hh-market-moderation">Moderation</button><button class="button button-ghost" type="button" id="hh-market-messages">Messages</button><button class="button button-primary" type="button" id="hh-market-sell">Sell Animal</button></div></div>'+
   '<form id="hh-market-search" class="panel hh-market-filters"><input name="search" placeholder="Search animals, breeds, descriptions"><input name="species" placeholder="Species"><input name="breed" placeholder="Breed"><select name="sex"><option value="">Any sex</option><option>Female</option><option>Male</option></select><input name="region" placeholder="State / region"><input name="minPrice" type="number" min="0" step="1" placeholder="Min $"><input name="maxPrice" type="number" min="0" step="1" placeholder="Max $"><button class="button button-primary" type="submit">Search</button></form>'+
   '<div id="hh-market-results" class="hh-market-grid"><p class="muted">Loading Marketplace…</p></div><div id="hh-market-detail"></div><dialog id="hh-market-sell-dialog"></dialog>';
  const form=target.querySelector("#hh-market-search");
@@ -273,7 +273,7 @@ async function renderMarketplace(context){
     '<p>'+escapeMarkup([row.species,row.breed,row.sex,row.variety_color].filter(Boolean).join(" · "))+'</p><p>'+escapeMarkup(row.description||"")+'</p>'+
     '<div class="detail-grid"><div><span>Status</span><strong>'+escapeMarkup(row.state)+'</strong></div><div><span>Pedigree</span><strong>'+escapeMarkup(row.pedigree_status||"Not listed")+'</strong></div><div><span>Registration</span><strong>'+escapeMarkup(row.registration_status||"Not listed")+'</strong></div><div><span>Location</span><strong>'+escapeMarkup([row.location_city,row.location_region].filter(Boolean).join(", "))+'</strong></div></div>'+
     '<div class="hh-market-seller-card"><span>Seller</span><strong>'+escapeMarkup(row.seller_rabbitry_name||row.seller_display_name||"HerdHarbor member")+'</strong><small>'+escapeMarkup([row.seller_city,row.seller_region].filter(Boolean).join(", "))+'</small></div>'+
-    '<div id="hh-market-pedigree-view"></div><div class="modal-actions"><button type="button" class="button button-ghost" id="hh-market-pedigree" hidden>View HerdHarbor Pedigree</button><button type="button" class="button button-ghost" id="hh-market-save">Save listing</button><button type="button" class="button button-ghost" id="hh-market-report">Report</button><button type="button" class="button button-primary" id="hh-market-message">Message Seller</button></div></section>';
+    '<div id="hh-market-pedigree-view"></div><div class="modal-actions"><button type="button" class="button button-ghost" id="hh-market-pedigree" hidden>View HerdHarbor Pedigree</button><button type="button" class="button button-ghost" id="hh-market-save">Save listing</button><button type="button" class="button button-ghost" id="hh-market-report">Report listing</button><button type="button" class="button button-ghost" id="hh-market-block">Block seller</button><button type="button" class="button button-primary" id="hh-market-message">Message Seller</button></div></section>';
    detail.querySelector("#hh-market-detail-close")?.addEventListener("click",function(){detail.innerHTML="";});
    let publicPedigree=null;
    try{publicPedigree=await getPublicListingPedigree(row.listing_id,gw);}catch{}
@@ -289,7 +289,18 @@ async function renderMarketplace(context){
     });
    }
    detail.querySelector("#hh-market-save")?.addEventListener("click",async function(){try{await saveListing(row.listing_id,gw);toast("Listing saved.","success");}catch(error){toast(error?.message||"Sign in to save listings.","error");}});
-   detail.querySelector("#hh-market-report")?.addEventListener("click",function(){toast("Marketplace reporting is being enabled with the moderation rollout.","info");});
+   detail.querySelector("#hh-market-report")?.addEventListener("click",async function(){
+    const reason=root?.prompt?.("Reason for reporting this listing:")||"";
+    if(!reason)return;
+    try{await submitReport("listing",row.listing_id,reason,"",gw);toast("Report submitted for review.","success");}
+    catch(error){toast(error?.message||"Report could not be submitted.","error");}
+   });
+   detail.querySelector("#hh-market-block")?.addEventListener("click",async function(){
+    if(!row.seller_public_id)return;
+    if(root?.confirm&&!root.confirm("Block this Marketplace seller? Existing and future Marketplace messaging will be unavailable."))return;
+    try{await blockPublicProfile(row.seller_public_id,gw);toast("Seller blocked in Marketplace.","success");detail.innerHTML="";}
+    catch(error){toast(error?.message||"Seller could not be blocked.","error");}
+   });
    detail.querySelector("#hh-market-message")?.addEventListener("click",async function(){
     try{
       const conversationId=await openListingConversation(row.listing_id,gw);
@@ -298,6 +309,7 @@ async function renderMarketplace(context){
    });
   }catch(error){toast(error?.message||"Listing could not be loaded.","error");}
  });
+ target.querySelector("#hh-market-moderation")?.addEventListener("click",function(){void renderModerationQueue(detail,gw,toast);});
  target.querySelector("#hh-market-messages")?.addEventListener("click",function(){void renderInbox(detail,gw,toast);});
  target.querySelector("#hh-market-sell")?.addEventListener("click",function(){openSellAnimalDialog(ctx,gw,target.querySelector("#hh-market-sell-dialog"),toast,runSearch);});
  await runSearch();
@@ -480,8 +492,10 @@ async function renderInbox(host,customGateway,toast,selectedConversationId){
  const thread=host.querySelector("#hh-inbox-thread");
  let folder="all";
  let realtime=null;
+ let inboxRows=[];
  async function loadInbox(){
   const rows=await listConversations(folder,gw);
+  inboxRows=rows;
   list.innerHTML=rows.length?rows.map(function(row){
    return '<button type="button" class="hh-inbox-row" data-inbox-conversation="'+escapeMarkup(row.conversation_id)+'"><strong>'+escapeMarkup(row.other_rabbitry_name||row.other_display_name||"HerdHarbor member")+'</strong><span>'+escapeMarkup(row.listing_name||"Marketplace listing")+'</span><small>'+escapeMarkup(row.last_message_preview||"No messages yet")+(row.unread_count?' · '+row.unread_count+' unread':'')+'</small></button>';
   }).join(""):'<p class="muted">No conversations in this view.</p>';
@@ -492,12 +506,15 @@ async function renderInbox(host,customGateway,toast,selectedConversationId){
   const messages=await listMessages(conversationId,gw);
   const user=await gw.user();
   await updateConversationMember(conversationId,{unread_count:0},gw).catch(function(){});
+  const conversationRow=inboxRows.find(function(row){return String(row.conversation_id)===String(conversationId);})||{};
   thread.innerHTML='<div class="hh-message-list">'+(messages.length?messages.map(function(message){
    const mine=String(message.sender_id)===String(user.id);
    return '<div class="hh-message '+(mine?'mine':'theirs')+'"><span>'+escapeMarkup(message.body)+'</span><small>'+escapeMarkup(new Date(message.created_at).toLocaleString())+'</small></div>';
-  }).join(""):'<p class="muted">No messages yet. Start the conversation.</p>')+'</div><form id="hh-message-form"><textarea name="body" maxlength="5000" required placeholder="Message seller"></textarea><div class="modal-actions"><button type="button" class="button button-ghost" id="hh-message-mute">Mute</button><button type="button" class="button button-ghost" id="hh-message-archive">Archive</button><button type="submit" class="button button-primary">Send</button></div></form>';
+  }).join(""):'<p class="muted">No messages yet. Start the conversation.</p>')+'</div><form id="hh-message-form"><textarea name="body" maxlength="5000" required placeholder="Message seller"></textarea><div class="modal-actions"><button type="button" class="button button-ghost" id="hh-message-report">Report conversation</button><button type="button" class="button button-ghost" id="hh-message-block">Block user</button><button type="button" class="button button-ghost" id="hh-message-mute">Mute</button><button type="button" class="button button-ghost" id="hh-message-archive">Archive</button><button type="submit" class="button button-primary">Send</button></div></form>';
   const form=thread.querySelector("#hh-message-form");
   form?.addEventListener("submit",async function(event){event.preventDefault();const data=new FormData(event.currentTarget);try{await sendMessage(conversationId,data.get("body"),gw);event.currentTarget.reset();await openThread(conversationId);}catch(error){notify(error?.message||"Message could not be sent.","error");}});
+  thread.querySelector("#hh-message-report")?.addEventListener("click",async function(){const reason=root?.prompt?.("Reason for reporting this conversation:")||"";if(!reason)return;try{await submitReport("conversation",conversationId,reason,"",gw);notify("Conversation reported.","success");}catch(error){notify(error?.message||"Report failed.","error");}});
+  thread.querySelector("#hh-message-block")?.addEventListener("click",async function(){if(!conversationRow.other_public_id)return notify("This profile cannot be blocked from this thread.","error");try{await blockPublicProfile(conversationRow.other_public_id,gw);notify("User blocked in Marketplace.","success");await loadInbox();}catch(error){notify(error?.message||"User could not be blocked.","error");}});
   thread.querySelector("#hh-message-mute")?.addEventListener("click",async function(){await updateConversationMember(conversationId,{muted_at:new Date().toISOString()},gw);notify("Conversation muted.","success");});
   thread.querySelector("#hh-message-archive")?.addEventListener("click",async function(){await updateConversationMember(conversationId,{archived_at:new Date().toISOString()},gw);notify("Conversation archived.","success");await loadInbox();});
   realtime=subscribeConversation(conversationId,function(){void openThread(conversationId);},gw);
@@ -508,5 +525,44 @@ async function renderInbox(host,customGateway,toast,selectedConversationId){
  return host;
 }
 
-return Object.freeze({VERSION,TABLES,BUCKETS,PUBLIC_PROFILE_FIELDS,LISTING_STATES,LISTING_PUBLIC_FIELDS,PUBLIC_PEDIGREE_FIELDS,createGateway,gateway,browserClient,normalizePublicProfileDraft,saveSellerProfile,getPublicSellerProfile,publicProfilePreview,normalizeListingDraft,buildListingSnapshotFromHerd,listingInsertPayload,createListingFromHerd,createManualListing,deleteListing,listingCreationOptions,publicMediaUrl,searchArgs,searchListings,getListingDetails,saveListing,renderListingCard,renderMarketplace,openSellAnimalDialog,publicPedigreeDepth,buildPublicPedigreeSnapshot,setListingPublicPedigree,getPublicListingPedigree,publicSnapshotToGraph,renderPublicPedigree,openListingConversation,listConversations,listMessages,sendMessage,updateConversationMember,subscribeConversation,renderInbox});
+
+async function submitReport(targetType,targetId,reason,details,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_submit_report",{report_target_type:String(targetType),report_target_id:String(targetId),report_reason:textValue(reason,240),report_details:textValue(details,2000)});
+ if(result.error)throw result.error;
+ return result.data;
+}
+async function blockPublicProfile(publicId,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_block_profile",{target_public_id:String(publicId)});
+ if(result.error)throw result.error;
+ return true;
+}
+async function getModerationQueue(status,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_moderation_queue",{queue_status:String(status||"open")});
+ if(result.error)throw result.error;
+ return Array.isArray(result.data)?result.data:[];
+}
+async function moderateReport(reportId,action,reason,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_moderate_report",{target_report_id:String(reportId),moderation_action:String(action),moderation_reason:textValue(reason,1000)});
+ if(result.error)throw result.error;
+ return true;
+}
+async function renderModerationQueue(host,customGateway,toast){
+ const gw=customGateway||gateway(); const notify=typeof toast==="function"?toast:function(){};
+ if(!host)return;
+ host.innerHTML='<section class="panel"><div class="panel-header"><div><h3>Marketplace moderation</h3><small>Marketplace-only actions and audit trail</small></div><button type="button" class="button button-ghost button-small" id="hh-moderation-close">Close</button></div><div id="hh-moderation-list"><p class="muted">Loading reports…</p></div></section>';
+ host.querySelector("#hh-moderation-close")?.addEventListener("click",function(){host.innerHTML="";});
+ const list=host.querySelector("#hh-moderation-list");
+ try{
+  const reports=await getModerationQueue("open",gw);
+  list.innerHTML=reports.length?reports.map(function(row){return '<article class="list-item"><div class="list-item-main"><strong>'+escapeMarkup(row.target_type)+' report</strong><span>'+escapeMarkup(row.reason)+'</span><small>'+escapeMarkup(row.details||"")+'</small></div><div class="modal-actions"><button type="button" data-moderate-action="warn" data-report-id="'+escapeMarkup(row.report_id)+'">Warn</button><button type="button" data-moderate-action="hide_listing" data-report-id="'+escapeMarkup(row.report_id)+'">Hide listing</button><button type="button" data-moderate-action="suspend_marketplace" data-report-id="'+escapeMarkup(row.report_id)+'">Suspend Marketplace</button><button type="button" data-moderate-action="dismiss" data-report-id="'+escapeMarkup(row.report_id)+'">Dismiss</button></div></article>';}).join(""):'<p class="muted">No open Marketplace reports.</p>';
+  list.addEventListener("click",async function(event){const button=event.target.closest("[data-moderate-action]");if(!button)return;try{await moderateReport(button.dataset.reportId,button.dataset.moderateAction,"Reviewed in Marketplace moderation queue",gw);notify("Moderation action recorded.","success");await renderModerationQueue(host,gw,notify);}catch(error){notify(error?.message||"Moderation action failed.","error");}});
+ }catch(error){list.innerHTML='<p class="muted">Moderation queue unavailable.</p>';notify(error?.message||"Moderation queue unavailable.","error");}
+}
+
+
+return Object.freeze({VERSION,TABLES,BUCKETS,PUBLIC_PROFILE_FIELDS,LISTING_STATES,LISTING_PUBLIC_FIELDS,PUBLIC_PEDIGREE_FIELDS,createGateway,gateway,browserClient,normalizePublicProfileDraft,saveSellerProfile,getPublicSellerProfile,publicProfilePreview,normalizeListingDraft,buildListingSnapshotFromHerd,listingInsertPayload,createListingFromHerd,createManualListing,deleteListing,listingCreationOptions,publicMediaUrl,searchArgs,searchListings,getListingDetails,saveListing,renderListingCard,renderMarketplace,openSellAnimalDialog,publicPedigreeDepth,buildPublicPedigreeSnapshot,setListingPublicPedigree,getPublicListingPedigree,publicSnapshotToGraph,renderPublicPedigree,openListingConversation,listConversations,listMessages,sendMessage,updateConversationMember,subscribeConversation,renderInbox,submitReport,blockPublicProfile,getModerationQueue,moderateReport,renderModerationQueue});
 });
