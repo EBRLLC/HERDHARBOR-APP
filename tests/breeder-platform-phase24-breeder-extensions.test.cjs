@@ -9,6 +9,8 @@ const market=require("../herdharbor-marketplace.js");
 const root=path.resolve(__dirname,"..");
 const migration=fs.readFileSync(path.join(root,"supabase/migrations/20261002085000_v2_0_1_marketplace_breeder_extensions.sql"),"utf8");
 const source=fs.readFileSync(path.join(root,"herdharbor-marketplace.js"),"utf8");
+const appRuntime=fs.readFileSync(path.join(root,"herdharbor-app-runtime.js"),"utf8");
+const appHtml=fs.readFileSync(path.join(root,"index.html"),"utf8");
 
 test("Phase 24 supports individual future-offspring and litter-announcement listing types",()=>{
  assert.deepEqual(market.LISTING_KINDS,["individual","future_offspring","litter_announcement"]);
@@ -113,4 +115,23 @@ test("Breeder Tools exposes availability agreements and private deposits from My
  for(const term of ["Breeder Tools","Public agreement snapshot","Private deposit tracking","does not process or hold payment","Agreement Templates"]) assert.ok(source.includes(term),term);
  assert.match(source,/data-breeder-tools/);
  assert.match(source,/id="hh-market-agreements"/);
+});
+
+
+test("stack audit lazy-loads heavy Documents and Marketplace bundles",()=>{
+ assert.doesNotMatch(appHtml,/<script src="herdharbor-document-center\.js/);
+ assert.doesNotMatch(appHtml,/<script src="herdharbor-marketplace\.js/);
+ assert.match(appRuntime,/function ensureDocumentCenterRuntime/);
+ assert.match(appRuntime,/function ensureMarketplaceRuntime/);
+ assert.match(appRuntime,/renderLazyRoute\([\s\S]*"documents"/);
+ assert.match(appRuntime,/renderLazyRoute\([\s\S]*"marketplace"/);
+});
+
+test("stack audit removes redundant reset listener and rolls back partial listing creation",()=>{
+ assert.doesNotMatch(source,/hh-market-reset"\)\?\.addEventListener\("click",function\(\)\{\}\)/);
+ assert.match(source,/if\(created\?\.id\)await deleteListing\(created\.id,gw\)\.catch/);
+});
+
+test("stack audit removes uploaded object when photo metadata insert fails",()=>{
+ assert.match(source,/if\(row\.error\)\{[\s\S]*BUCKETS\.publicMedia\)\.remove\(\[path\]\)[\s\S]*throw row\.error/);
 });
