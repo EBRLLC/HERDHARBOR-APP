@@ -671,6 +671,19 @@
           '<label>Go-home date (optional)<input id="hh-document-birth-date" type="date"></label>' +
           '<div class="modal-actions"><button type="button" class="button button-ghost" id="hh-document-birth-preview">Preview</button><button type="button" class="button button-primary" id="hh-document-birth-pdf">Download PDF</button></div>' +
         '</article>' +
+        '<article class="panel"><div class="panel-header"><div><h3>Sale / Transfer Record</h3><small>Printable buyer handoff and transfer documentation</small></div></div>' +
+          '<label>Animal<select id="hh-document-transfer-animal"><option value="">Choose an animal</option>' + options + '</select></label>' +
+          '<label>Buyer name (optional)<input id="hh-document-transfer-buyer" type="text" maxlength="120"></label>' +
+          '<label>Sale date (optional)<input id="hh-document-transfer-date" type="date"></label>' +
+          '<label>Sale number (optional)<input id="hh-document-transfer-number" type="text" maxlength="120"></label>' +
+          '<label>Secure transfer / QR URL (optional)<input id="hh-document-transfer-qr" type="url" maxlength="800"></label>' +
+          '<div class="modal-actions"><button type="button" class="button button-ghost" id="hh-document-transfer-preview">Preview</button><button type="button" class="button button-primary" id="hh-document-transfer-pdf">Download PDF</button></div>' +
+        '</article>' +
+        '<article class="panel"><div class="panel-header"><div><h3>Animal Information Sheet</h3><small>Buyer-ready animal identity and parentage summary</small></div></div>' +
+          '<label>Animal<select id="hh-document-info-animal"><option value="">Choose an animal</option>' + options + '</select></label>' +
+          '<label><input id="hh-document-info-notes" type="checkbox"> Include private animal notes</label>' +
+          '<div class="modal-actions"><button type="button" class="button button-ghost" id="hh-document-info-preview">Preview</button><button type="button" class="button button-primary" id="hh-document-info-pdf">Download PDF</button></div>' +
+        '</article>' +
       '</div>' +
       '<section class="panel"><div class="panel-header"><div><h3>Document foundation</h3><small>Reserved extension points reuse this same engine as they are released.</small></div></div><div class="badge-row">' + future + '</div></section>';
 
@@ -717,6 +730,37 @@
       });
     }
 
+    function transferModel(animal) {
+      return buildSaleTransferRecordModel({
+        animal,
+        buyerName:target.querySelector("#hh-document-transfer-buyer")?.value || "",
+        saleDate:target.querySelector("#hh-document-transfer-date")?.value || "",
+        saleNumber:target.querySelector("#hh-document-transfer-number")?.value || "",
+        sellerName:state.profile?.operationName || state.profile?.ownerName || "",
+        branding:brandingFromState(),
+        qrTarget:target.querySelector("#hh-document-transfer-qr")?.value || "",
+        transferMethod:"HerdHarbor Direct / documented handoff"
+      });
+    }
+    function informationModel(animal) {
+      const sire=animals.find(function(item){return String(item.id)===String(animal.sireId || "");});
+      const dam=animals.find(function(item){return String(item.id)===String(animal.damId || "");});
+      return buildAnimalInformationSheetModel({
+        animal,
+        sireName:sire?.name || "",
+        damName:dam?.name || "",
+        operationName:state.profile?.operationName || "",
+        branding:brandingFromState(),
+        includeNotes:Boolean(target.querySelector("#hh-document-info-notes")?.checked)
+      });
+    }
+    function previewRecord(model) {
+      if (typeof window === "undefined") return;
+      const popup=window.open("","_blank");
+      if (!popup) return;
+      popup.document.open(); popup.document.write(renderRecordDocumentHtml(model)); popup.document.close();
+    }
+
     target.querySelector("#hh-document-pedigree-preview")?.addEventListener("click",function(){
       const animal=requireAnimal("#hh-document-pedigree-animal"); if(!animal) return;
       openPrintPreview(pedigreeModel(animal));
@@ -738,6 +782,22 @@
       const bytes=buildBirthCertificatePdfBytes(certificateModel(animal));
       downloadBytes(bytes,(animal.name || "animal")+"-birth-certificate.pdf","application/pdf");
     });
+    target.querySelector("#hh-document-transfer-preview")?.addEventListener("click",function(){
+      const animal=requireAnimal("#hh-document-transfer-animal"); if(!animal) return;
+      previewRecord(transferModel(animal));
+    });
+    target.querySelector("#hh-document-transfer-pdf")?.addEventListener("click",function(){
+      const animal=requireAnimal("#hh-document-transfer-animal"); if(!animal) return;
+      downloadBytes(buildRecordDocumentPdfBytes(transferModel(animal)),(animal.name||"animal")+"-sale-transfer-record.pdf","application/pdf");
+    });
+    target.querySelector("#hh-document-info-preview")?.addEventListener("click",function(){
+      const animal=requireAnimal("#hh-document-info-animal"); if(!animal) return;
+      previewRecord(informationModel(animal));
+    });
+    target.querySelector("#hh-document-info-pdf")?.addEventListener("click",function(){
+      const animal=requireAnimal("#hh-document-info-animal"); if(!animal) return;
+      downloadBytes(buildRecordDocumentPdfBytes(informationModel(animal)),(animal.name||"animal")+"-information-sheet.pdf","application/pdf");
+    });
     return target;
   }
 
@@ -758,6 +818,11 @@
     renderBirthCertificateHtml,
     buildBirthCertificatePdfBytes,
     birthCertificatePreview,
+    buildRecordDocumentModel,
+    renderRecordDocumentHtml,
+    buildRecordDocumentPdfBytes,
+    buildSaleTransferRecordModel,
+    buildAnimalInformationSheetModel,
     DOCUMENT_TYPES,
     activeDocumentTypes,
     futureDocumentTypes,
