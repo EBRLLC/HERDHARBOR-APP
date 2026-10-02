@@ -38,8 +38,6 @@ const REQUIRED_SHELL = [
   "./production-reporting-runtime-v1.8.3.js?v=1",
   "./mobile-capture-v1.8.3.js?v=1",
   "./herdharbor-pedigree-platform.js?v=1",
-  "./herdharbor-document-center.js?v=1",
-  "./herdharbor-marketplace.js?v=1",
   "./herdharbor-app-runtime.js?v=4",
   "./herdharbor-monitoring-config.js?v=2.0.0",
   "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.0",
@@ -49,6 +47,8 @@ const REQUIRED_SHELL = [
 ];
 
 const RUNTIME_CACHE_PATHS = [
+  "./herdharbor-document-center.js?v=1",
+  "./herdharbor-marketplace.js?v=1",
   "./profitability-analytics-v1.8.3.js?v=1",
   "./settings-runtime-v1.8.3.js?v=1",
   "./analytics-v1.6.1.js?v=2",
