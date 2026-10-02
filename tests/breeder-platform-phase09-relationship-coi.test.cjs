@@ -1,3 +1,4 @@
+// Rebuilt current-main Phase 9 CI gate.
 "use strict";
 const test=require("node:test");
 const assert=require("node:assert/strict");
