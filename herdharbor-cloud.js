@@ -22,6 +22,7 @@
   const MAX_RECOVERY_BYTES = 8_000_000;
   const ROUTINE_RECOVERY_SNAPSHOT_INTERVAL_MS = 5000;
   const routineRecoverySnapshotAt = new Map();
+  const routineRecoveryPending = new Map();
   const ACCOUNT_DELETION_REQUEST_URL = "https://formspree.io/f/xpqvpwwb";
 
   if (!window.supabase?.createClient) {
@@ -1275,6 +1276,42 @@
     }
   }
 
+  function scheduleRoutineRecoverySnapshot(userId, rawValue) {
+    const id = String(userId || "");
+    if (!id || !rawValue) return false;
+
+    // Keep the first pre-change snapshot in a burst. That preserves the state
+    // from before the user started editing while avoiding repeated parse/IDB
+    // work on the same interaction burst.
+    if (routineRecoveryPending.has(id)) return true;
+
+    const pending = { rawValue: String(rawValue), cancelled: false };
+    routineRecoveryPending.set(id, pending);
+
+    const run = () => {
+      if (pending.cancelled || routineRecoveryPending.get(id) !== pending) return;
+      routineRecoveryPending.delete(id);
+      void recordRecoverySnapshot(id, pending.rawValue, "Before local change");
+    };
+
+    if (typeof window.requestIdleCallback === "function") {
+      pending.handle = window.requestIdleCallback(run, { timeout: 1200 });
+      pending.cancel = () => window.cancelIdleCallback?.(pending.handle);
+    } else {
+      pending.handle = window.setTimeout(run, 120);
+      pending.cancel = () => window.clearTimeout(pending.handle);
+    }
+    return true;
+  }
+
+  function cancelRoutineRecoverySnapshots() {
+    routineRecoveryPending.forEach((pending) => {
+      pending.cancelled = true;
+      try { pending.cancel?.(); } catch {}
+    });
+    routineRecoveryPending.clear();
+  }
+
   function preserveActiveForUser(userId, reason) {
     if (!userId) return;
     const activeRaw = activeStateRaw();
@@ -1327,6 +1364,7 @@
     accessProfile = null;
     lastCloudCheckAt = 0;
     routineRecoverySnapshotAt.clear();
+    cancelRoutineRecoverySnapshots();
   }
 
   function captureAccountOperation(userId = session?.user?.id) {
@@ -1576,7 +1614,7 @@
     writeSequence += 1;
     syncConflict = null;
     if (previousValue && !sameState(previousValue, rawValue)) {
-      void recordRecoverySnapshot(userId, previousValue, "Before local change");
+      scheduleRoutineRecoverySnapshot(userId, previousValue);
     }
 
     if (normalizedAuthorityActive()) {
