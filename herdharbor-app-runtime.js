@@ -3563,6 +3563,27 @@
     toast("Local data cleared.");
   }
 
+  function launchLazyAnimalProfileAction(method, animalId, unavailableMessage) {
+    const run = () => {
+      const runtime = animalProfileRuntime();
+      const action = runtime?.[method];
+      if (typeof action !== "function") throw new Error(`Animal/Profile action is unavailable: ${method}`);
+      return action.call(runtime, animalId);
+    };
+
+    if (typeof window.HerdHarborAnimalProfileRuntime?.create === "function") {
+      return run();
+    }
+
+    void ensureAnimalProfileRuntimeLoaded()
+      .then(run)
+      .catch((error) => {
+        console.error(`HerdHarbor could not lazy-load Animal/Profile action ${method}:`, error);
+        toast(unavailableMessage, "error");
+      });
+    return true;
+  }
+
   window.HerdHarborApp = Object.freeze({
     getState: () => state,
     commitState: (next, message = "") => {
@@ -3574,8 +3595,16 @@
     toast,
     getAnimalById: animalById,
     getCurrentRoute: () => currentRoute,
-    openAnimalEditor: (animalId) => animalProfileRuntime().openEditor(animalId),
-    openAnimalPedigreePrint: (animalId) => animalProfileRuntime().openPedigreePrint(animalId),
+    openAnimalEditor: (animalId) => launchLazyAnimalProfileAction(
+      "openEditor",
+      animalId,
+      "Animal editing could not load. Check your connection and try again."
+    ),
+    openAnimalPedigreePrint: (animalId) => launchLazyAnimalProfileAction(
+      "openPedigreePrint",
+      animalId,
+      "Pedigree printing could not load. Check your connection and try again."
+    ),
     openRecordBirth: (breedingId) => openRecordBirth(breedingId)
   });
   try { window.dispatchEvent(new CustomEvent("herdharbor:app-ready")); } catch {}
