@@ -1208,7 +1208,7 @@
   }
 
   async function recordRecoverySnapshot(userId, rawValue, reason) {
-    if (!userId || !rawValue || !safeParse(rawValue)) return false;
+    if (!userId || !rawValue) return false;
 
     const isRoutineLocalSnapshot = reason === "Before local change";
     const snapshotStartedAt = Date.now();
@@ -1217,6 +1217,10 @@
       if (snapshotStartedAt - previousStartedAt < ROUTINE_RECOVERY_SNAPSHOT_INTERVAL_MS) {
         return true;
       }
+    }
+
+    if (!safeParse(rawValue)) return false;
+    if (isRoutineLocalSnapshot) {
       routineRecoverySnapshotAt.set(userId, snapshotStartedAt);
     }
 
@@ -1613,7 +1617,10 @@
 
     writeSequence += 1;
     syncConflict = null;
-    if (previousValue && !sameState(previousValue, rawValue)) {
+    // CanonicalStateStore already proved this was a committed cloud-relevant
+    // mutation before notifying the bridge. Avoid canonicalizing both complete
+    // state snapshots again on the UI save path.
+    if (previousValue) {
       scheduleRoutineRecoverySnapshot(userId, previousValue);
     }
 
