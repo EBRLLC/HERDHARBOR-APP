@@ -26,8 +26,10 @@ test("index shell keeps only the early bootstrap inline", () => {
   assert.match(inlineScripts[0], /herdharbor_theme/);
   assert.equal((html.match(/<style\b/gi) || []).length, 0, "page-owned CSS is external");
   assert.match(html, /herdharbor-index-shell\.css\?v=1/);
-  assert.match(html, /animal-profile-runtime-v1\.8\.3\.js\?v=1/);
-  assert.match(html, /production-reporting-runtime-v1\.8\.3\.js\?v=1/);
+  assert.doesNotMatch(html, /<script[^>]+animal-profile-runtime-v1\.8\.3\.js\?v=1/);
+  assert.doesNotMatch(html, /<script[^>]+production-reporting-runtime-v1\.8\.3\.js\?v=1/);
+  assert.match(appRuntime, /"animal-profile-runtime-v1\.8\.3\.js\?v=1"/);
+  assert.match(appRuntime, /"production-reporting-runtime-v1\.8\.3\.js\?v=1"/);
   assert.doesNotMatch(html, /<script[^>]+settings-runtime-v1\.8\.3\.js/);
   assert.match(appRuntime, /"settings-runtime-v1\.8\.3\.js\?v=1"/);
   assert.match(html, /herdharbor-app-runtime\.js\?v=4/);
@@ -50,9 +52,12 @@ test("classic script and stylesheet order is preserved", () => {
   const coreCss = html.indexOf("herdharbor-core-v1.6.1.css?v=1.7.1");
   assert.ok(baseCss >= 0 && shellCssIndex > baseCss && coreCss > shellCssIndex);
 
-  const animalProfileRuntimeIndex = html.indexOf("animal-profile-runtime-v1.8.3.js?v=1");
   const appRuntimeIndex = html.indexOf("herdharbor-app-runtime.js?v=4");
-  assert.ok(animalProfileRuntimeIndex >= 0 && appRuntimeIndex > animalProfileRuntimeIndex);
+  assert.ok(appRuntimeIndex >= 0);
+  assert.equal(html.indexOf("animal-profile-runtime-v1.8.3.js?v=1"), -1);
+  assert.equal(html.indexOf("production-reporting-runtime-v1.8.3.js?v=1"), -1);
+  assert.match(appRuntime, /ensureAnimalProfileRuntimeLoaded/);
+  assert.match(appRuntime, /ensureProductionReportingRuntimeLoaded/);
   assert.doesNotMatch(html, /<script[^>]+analytics-v1\.6\.1\.js/);
   assert.match(appRuntime, /"analytics-v1\.6\.1\.js\?v=2"/);
   assert.doesNotMatch(html, /<script[^>]+src="herdharbor-app-runtime\.js\?v=4"[^>]+(?:async|defer|type="module")/);
