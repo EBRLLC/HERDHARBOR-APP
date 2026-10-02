@@ -433,6 +433,85 @@
     "Full Breeding Pedigree"
   ]);
 
+
+  function graphOccurrences(graph) {
+    const result=new Map();
+    if (!graph || !Array.isArray(graph.nodes)) return result;
+    graph.nodes.forEach(function(node){
+      if (!node.known || !node.identityId || node.generation === 0) return;
+      if (!result.has(node.identityId)) result.set(node.identityId,[]);
+      result.get(node.identityId).push({path:node.path,generation:node.generation,relation:node.relation});
+    });
+    for (const occurrences of result.values()) {
+      occurrences.sort(function(a,b){return a.generation-b.generation || a.path.localeCompare(b.path);});
+    }
+    return result;
+  }
+
+  function analyzeSharedAncestors(input) {
+    const raw=input && typeof input === "object" ? input : {};
+    const animals=Array.isArray(raw.animals) ? raw.animals : [];
+    const generations=clampGenerations(raw.generations || 5);
+    const leftId=asId(raw.leftId || raw.firstId);
+    const rightId=asId(raw.rightId || raw.secondId);
+    const leftGraph=buildPedigreeGraph({animals,rootId:leftId,generations});
+    const rightGraph=buildPedigreeGraph({animals,rootId:rightId,generations});
+    const left=graphOccurrences(leftGraph);
+    const right=graphOccurrences(rightGraph);
+    const shared=[];
+    for (const id of [...left.keys()].filter(function(candidate){return right.has(candidate);}).sort()) {
+      const leftPaths=left.get(id);
+      const rightPaths=right.get(id);
+      const pairs=[];
+      leftPaths.forEach(function(l){
+        rightPaths.forEach(function(r){
+          pairs.push({
+            leftPath:l.path,
+            rightPath:r.path,
+            leftGeneration:l.generation,
+            rightGeneration:r.generation,
+            pathLength:l.generation+r.generation
+          });
+        });
+      });
+      pairs.sort(function(a,b){
+        return a.pathLength-b.pathLength || a.leftPath.localeCompare(b.leftPath) || a.rightPath.localeCompare(b.rightPath);
+      });
+      const animal=animals.find(function(item){return identityOf(item)===id;}) || null;
+      shared.push({
+        identityId:id,
+        name:animal ? String(animal.name || "") : "",
+        leftOccurrences:leftPaths,
+        rightOccurrences:rightPaths,
+        occurrencePairs:pairs,
+        closestPath:pairs[0] || null
+      });
+    }
+    shared.sort(function(a,b){
+      const left=a.closestPath ? a.closestPath.pathLength : Infinity;
+      const right=b.closestPath ? b.closestPath.pathLength : Infinity;
+      return left-right || a.identityId.localeCompare(b.identityId);
+    });
+    return {
+      leftId,
+      rightId,
+      generations,
+      leftGraph,
+      rightGraph,
+      sharedAncestors:shared,
+      sharedAncestorCount:shared.length,
+      closestSharedAncestor:shared[0] || null,
+      coverage:{
+        left:leftGraph.coverage,
+        right:rightGraph.coverage
+      }
+    };
+  }
+
+  function analyzePairing(animals, leftId, rightId, generations) {
+    return analyzeSharedAncestors({animals,leftId,rightId,generations});
+  }
+
   return Object.freeze({
     VERSION,
     DEFAULT_GENERATIONS,
@@ -462,6 +541,9 @@
     upsertSavedTemplate,
     removeSavedTemplate,
     publicPreviewTemplate,
-    SAVED_TEMPLATE_EXAMPLES
+    SAVED_TEMPLATE_EXAMPLES,
+    graphOccurrences,
+    analyzeSharedAncestors,
+    analyzePairing
   });
 });
