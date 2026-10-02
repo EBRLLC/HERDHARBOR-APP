@@ -64,3 +64,14 @@ test("budget waits for both reporting and profitability modules",()=>{
   const block=app.slice(start,end);
   assert.match(block,/Promise\.all\(\[ensureProductionReportingRuntimeLoaded\(\), ensureProfitabilityAnalyticsLoaded\(\)\]\)/);
 });
+
+
+test("legacy pedigree attachment migration waits for idle time",()=>{
+  assert.match(app,/function schedulePedigreeAttachmentMigration\(\)/);
+  assert.match(app,/requestIdleCallback\(run, \{ timeout: 1800 \}\)/);
+  const initStart=app.indexOf("function initialize()");
+  const initEnd=app.indexOf("function showOnboarding",initStart);
+  const initBlock=app.slice(initStart,initEnd);
+  assert.match(initBlock,/schedulePedigreeAttachmentMigration\(\)/);
+  assert.doesNotMatch(initBlock,/\bmigratePedigreeAttachments\(\)/);
+});
