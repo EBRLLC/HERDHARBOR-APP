@@ -662,6 +662,8 @@
     return {
       leftId,
       rightId,
+      leftGraph:shared.leftGraph,
+      rightGraph:shared.rightGraph,
       generationsAnalyzed:generations,
       relationshipCoefficient:numeratorRelationship,
       numeratorRelationship,
