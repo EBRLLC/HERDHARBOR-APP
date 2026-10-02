@@ -340,7 +340,7 @@ async function renderMarketplace(context){
  target.querySelector("#hh-market-saved-searches")?.addEventListener("click",function(){void renderSavedSearches(detail,form,runSearch,gw,toast);});
  target.querySelector("#hh-market-save-search")?.addEventListener("click",async function(){const data=Object.fromEntries(new FormData(form));const filters={search:data.search,species:data.species,breed:data.breed,sex:data.sex,region:data.region,minPriceCents:data.minPrice===""?null:Math.round(Number(data.minPrice)*100),maxPriceCents:data.maxPrice===""?null:Math.round(Number(data.maxPrice)*100)};const name=root?.prompt?.("Name this saved search:","Marketplace search")||"";if(!name)return;try{await saveSearch(filters,name,true,null,gw);toast("Search saved with in-app alerts.","success");}catch(error){toast(error?.message||"Search could not be saved.","error");}});
  target.querySelector("#hh-market-saved")?.addEventListener("click",function(){void renderFavorites(detail,gw,toast);});
- target.querySelector("#hh-market-my-listings")?.addEventListener("click",function(){void renderSellerListings(detail,gw,toast);});
+ target.querySelector("#hh-market-my-listings")?.addEventListener("click",function(){void renderSellerListings(detail,gw,toast,ctx.state);});
  target.querySelector("#hh-market-moderation")?.addEventListener("click",function(){void renderModerationQueue(detail,gw,toast);});
  target.querySelector("#hh-market-messages")?.addEventListener("click",function(){void renderInbox(detail,gw,toast);});
  target.querySelector("#hh-market-sell")?.addEventListener("click",function(){openSellAnimalDialog(ctx,gw,target.querySelector("#hh-market-sell-dialog"),toast,runSearch);});
@@ -710,7 +710,7 @@ function stateActionsForListing(state){
  if(value==="expired")return ["available","archived"];
  return [];
 }
-async function renderSellerListings(host,customGateway,toast){
+async function renderSellerListings(host,customGateway,toast,privateState){
  const gw=customGateway||gateway(); const notify=typeof toast==="function"?toast:function(){};
  host.innerHTML='<section class="panel"><div class="panel-header"><div><h3>My Listings</h3><small>Drafts, active listings, pending sales, sold animals, and archived listings</small></div><button type="button" class="button button-ghost button-small" id="hh-my-listings-close">Close</button></div><div id="hh-my-listings-body" aria-live="polite"><p class="muted">Loading listings…</p></div></section>';
  host.querySelector("#hh-my-listings-close")?.addEventListener("click",function(){host.innerHTML="";});
@@ -719,13 +719,15 @@ async function renderSellerListings(host,customGateway,toast){
   const rows=await myListings(null,gw);
   body.innerHTML=rows.length?rows.map(function(row){
    const actions=stateActionsForListing(row.state).map(function(next){return '<button type="button" class="button button-ghost button-small" data-listing-state="'+escapeMarkup(next)+'" data-listing-id="'+escapeMarkup(row.listing_id)+'">'+escapeMarkup(next[0].toUpperCase()+next.slice(1))+'</button>';}).join("");
-   return '<article class="list-item hh-my-listing-row"><div class="list-item-main"><strong>'+escapeMarkup(row.animal_name||"Unnamed animal")+'</strong><span>'+escapeMarkup([row.state,row.breed,moneyText(row.price_cents,row.currency)].filter(Boolean).join(" · "))+'</span><small>'+Number(row.photo_count||0)+' photo(s)'+(row.expires_at?' · expires '+escapeMarkup(new Date(row.expires_at).toLocaleDateString()):'')+'</small></div><div class="modal-actions">'+(row.state==="available"?'<button type="button" class="button button-ghost button-small" data-confirm-listing="'+escapeMarkup(row.listing_id)+'">Still available</button>':'')+actions+'<label class="button button-ghost button-small">Add photos<input type="file" data-listing-photo="'+escapeMarkup(row.listing_id)+'" accept="image/jpeg,image/png,image/webp" multiple hidden></label></div></article>';
+   return '<article class="list-item hh-my-listing-row"><div class="list-item-main"><strong>'+escapeMarkup(row.animal_name||"Unnamed animal")+'</strong><span>'+escapeMarkup([row.state,row.breed,moneyText(row.price_cents,row.currency)].filter(Boolean).join(" · "))+'</span><small>'+Number(row.photo_count||0)+' photo(s)'+(row.expires_at?' · expires '+escapeMarkup(new Date(row.expires_at).toLocaleDateString()):'')+'</small></div><div class="modal-actions">'+(row.state==="available"?'<button type="button" class="button button-ghost button-small" data-confirm-listing="'+escapeMarkup(row.listing_id)+'">Still available</button>':'')+(row.state==="sold"&&row.source_animal_id?'<button type="button" class="button button-primary button-small" data-transfer-listing="'+escapeMarkup(row.listing_id)+'" data-transfer-animal="'+escapeMarkup(row.source_animal_id)+'">Transfer to Buyer</button>':'')+actions+'<label class="button button-ghost button-small">Add photos<input type="file" data-listing-photo="'+escapeMarkup(row.listing_id)+'" accept="image/jpeg,image/png,image/webp" multiple hidden></label></div></article>';
   }).join(""):'<div class="empty-state"><strong>No Marketplace listings yet.</strong><span>Use Sell Animal to create a draft or active listing.</span></div>';
  }
  body.addEventListener("click",async function(event){
   const stateButton=event.target.closest("[data-listing-state]");
   const confirmButton=event.target.closest("[data-confirm-listing]");
+  const transferButton=event.target.closest("[data-transfer-listing]");
   try{
+   if(transferButton){openDirectTransferForListing({listing_id:transferButton.dataset.transferListing,source_animal_id:transferButton.dataset.transferAnimal},privateState,notify);return;}
    if(stateButton){await updateListingState(stateButton.dataset.listingId,stateButton.dataset.listingState,gw);notify("Listing status updated.","success");await load();}
    if(confirmButton){await confirmListing(confirmButton.dataset.confirmListing,gw);notify("Listing confirmed as still available.","success");await load();}
   }catch(error){notify(error?.message||"Listing could not be updated.","error");}
