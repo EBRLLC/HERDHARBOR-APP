@@ -156,3 +156,15 @@ test("routine cloud recovery snapshots are coalesced during rapid save bursts",(
  assert.match(cloud,/Local copy saved during sync conflict/);
  assert.match(cloud,/Local copy retained at sign out/);
 });
+
+
+test("legacy genetics and shows warm after core startup instead of loading immediately",()=>{
+ const pwa=fs.readFileSync(path.join(root,"pwa.js"),"utf8");
+ const bootStart=pwa.indexOf("function bootApplication()");
+ const bootEnd=pwa.indexOf("function boot()",bootStart);
+ const boot=pwa.slice(bootStart,bootEnd);
+ assert.match(pwa,/function scheduleLegacyFeatureWarmup\(\)/);
+ assert.match(pwa,/requestIdleCallback/);
+ assert.match(boot,/scheduleLegacyFeatureWarmup\(\)/);
+ assert.doesNotMatch(boot,/loadPedigreeVisuals\(\);\s*loadBreedingIntelligence\(\);\s*loadShows\(\);/);
+});
