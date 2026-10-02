@@ -244,7 +244,7 @@ async function renderMarketplace(context){
  if(!target)throw new Error("Marketplace target is required.");
  const toast=typeof ctx.toast==="function"?ctx.toast:function(){};
  const gw=ctx.gateway||gateway();
- target.innerHTML='<div class="page-header"><div><p class="eyebrow">HerdHarbor</p><h2>Marketplace</h2><p>Browse animals published by HerdHarbor members without exposing private herd records.</p></div><div class="header-actions"><button class="button button-primary" type="button" id="hh-market-sell">Sell Animal</button></div></div>'+
+ target.innerHTML='<div class="page-header"><div><p class="eyebrow">HerdHarbor</p><h2>Marketplace</h2><p>Browse animals published by HerdHarbor members without exposing private herd records.</p></div><div class="header-actions"><button class="button button-ghost" type="button" id="hh-market-messages">Messages</button><button class="button button-primary" type="button" id="hh-market-sell">Sell Animal</button></div></div>'+
   '<form id="hh-market-search" class="panel hh-market-filters"><input name="search" placeholder="Search animals, breeds, descriptions"><input name="species" placeholder="Species"><input name="breed" placeholder="Breed"><select name="sex"><option value="">Any sex</option><option>Female</option><option>Male</option></select><input name="region" placeholder="State / region"><input name="minPrice" type="number" min="0" step="1" placeholder="Min $"><input name="maxPrice" type="number" min="0" step="1" placeholder="Max $"><button class="button button-primary" type="submit">Search</button></form>'+
   '<div id="hh-market-results" class="hh-market-grid"><p class="muted">Loading Marketplace…</p></div><div id="hh-market-detail"></div><dialog id="hh-market-sell-dialog"></dialog>';
  const form=target.querySelector("#hh-market-search");
@@ -290,9 +290,15 @@ async function renderMarketplace(context){
    }
    detail.querySelector("#hh-market-save")?.addEventListener("click",async function(){try{await saveListing(row.listing_id,gw);toast("Listing saved.","success");}catch(error){toast(error?.message||"Sign in to save listings.","error");}});
    detail.querySelector("#hh-market-report")?.addEventListener("click",function(){toast("Marketplace reporting is being enabled with the moderation rollout.","info");});
-   detail.querySelector("#hh-market-message")?.addEventListener("click",function(){toast("Marketplace messaging is being enabled in the messaging rollout.","info");});
+   detail.querySelector("#hh-market-message")?.addEventListener("click",async function(){
+    try{
+      const conversationId=await openListingConversation(row.listing_id,gw);
+      await renderInbox(detail,gw,toast,conversationId);
+    }catch(error){toast(error?.message||"Conversation could not be opened.","error");}
+   });
   }catch(error){toast(error?.message||"Listing could not be loaded.","error");}
  });
+ target.querySelector("#hh-market-messages")?.addEventListener("click",function(){void renderInbox(detail,gw,toast);});
  target.querySelector("#hh-market-sell")?.addEventListener("click",function(){openSellAnimalDialog(ctx,gw,target.querySelector("#hh-market-sell-dialog"),toast,runSearch);});
  await runSearch();
  return target;
@@ -415,5 +421,92 @@ function renderPublicPedigree(payload){
  return engine.renderPedigree(publicSnapshotToGraph(payload),{mode:"publicMarketplace",expanded:false});
 }
 
-return Object.freeze({VERSION,TABLES,BUCKETS,PUBLIC_PROFILE_FIELDS,LISTING_STATES,LISTING_PUBLIC_FIELDS,PUBLIC_PEDIGREE_FIELDS,createGateway,gateway,browserClient,normalizePublicProfileDraft,saveSellerProfile,getPublicSellerProfile,publicProfilePreview,normalizeListingDraft,buildListingSnapshotFromHerd,listingInsertPayload,createListingFromHerd,createManualListing,deleteListing,listingCreationOptions,publicMediaUrl,searchArgs,searchListings,getListingDetails,saveListing,renderListingCard,renderMarketplace,openSellAnimalDialog,publicPedigreeDepth,buildPublicPedigreeSnapshot,setListingPublicPedigree,getPublicListingPedigree,publicSnapshotToGraph,renderPublicPedigree});
+
+async function openListingConversation(listingId,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.rpc("marketplace_open_listing_conversation",{target_listing_id:String(listingId)});
+ if(result.error)throw result.error;
+ return result.data;
+}
+async function listConversations(folder,customGateway){
+ const gw=customGateway||gateway();
+ const value=["all","buying","selling","unread"].includes(String(folder||"").toLowerCase())?String(folder).toLowerCase():"all";
+ const result=await gw.rpc("marketplace_inbox",{folder:value});
+ if(result.error)throw result.error;
+ return Array.isArray(result.data)?result.data:[];
+}
+async function listMessages(conversationId,customGateway){
+ const gw=customGateway||gateway();
+ const result=await gw.table(TABLES.messages).select("id,conversation_id,sender_id,body,created_at,edited_at").eq("conversation_id",String(conversationId)).order("created_at",{ascending:true}).order("id",{ascending:true});
+ if(result.error)throw result.error;
+ return Array.isArray(result.data)?result.data:[];
+}
+async function sendMessage(conversationId,body,customGateway){
+ const gw=customGateway||gateway();
+ const user=await gw.user();
+ const message=textValue(body,5000);
+ if(!message)throw new Error("Enter a message before sending.");
+ const result=await gw.table(TABLES.messages).insert({conversation_id:String(conversationId),sender_id:user.id,body:message}).select("id,conversation_id,sender_id,body,created_at").single();
+ if(result.error)throw result.error;
+ return result.data;
+}
+async function updateConversationMember(conversationId,changes,customGateway){
+ const gw=customGateway||gateway();
+ const user=await gw.user();
+ const allowed={};
+ if(Object.prototype.hasOwnProperty.call(changes||{},"unread_count"))allowed.unread_count=Math.max(0,Number(changes.unread_count||0));
+ if(Object.prototype.hasOwnProperty.call(changes||{},"muted_at"))allowed.muted_at=changes.muted_at||null;
+ if(Object.prototype.hasOwnProperty.call(changes||{},"archived_at"))allowed.archived_at=changes.archived_at||null;
+ const result=await gw.table(TABLES.members).update(allowed).eq("conversation_id",String(conversationId)).eq("user_id",user.id);
+ if(result.error)throw result.error;
+ return true;
+}
+function subscribeConversation(conversationId,handler,customGateway){
+ const gw=customGateway||gateway();
+ const channel=gw.channel("marketplace-conversation-"+String(conversationId));
+ channel.on("postgres_changes",{event:"INSERT",schema:"public",table:TABLES.messages,filter:"conversation_id=eq."+String(conversationId)},function(payload){
+  if(typeof handler==="function")handler(payload.new||payload);
+ });
+ channel.subscribe();
+ return channel;
+}
+async function renderInbox(host,customGateway,toast,selectedConversationId){
+ if(!host)throw new Error("Marketplace inbox host is required.");
+ const gw=customGateway||gateway();
+ const notify=typeof toast==="function"?toast:function(){};
+ host.innerHTML='<section class="panel hh-market-inbox"><div class="panel-header"><div><h3>Marketplace Messages</h3><small>Private listing-linked conversations</small></div><button type="button" class="button button-ghost button-small" id="hh-inbox-close">Close</button></div><div class="hh-inbox-filters"><button type="button" data-inbox-folder="all">All</button><button type="button" data-inbox-folder="buying">Buying</button><button type="button" data-inbox-folder="selling">Selling</button><button type="button" data-inbox-folder="unread">Unread</button></div><div class="hh-inbox-layout"><div id="hh-inbox-list"></div><div id="hh-inbox-thread"><p class="muted">Choose a conversation.</p></div></div></section>';
+ host.querySelector("#hh-inbox-close")?.addEventListener("click",function(){host.innerHTML="";});
+ const list=host.querySelector("#hh-inbox-list");
+ const thread=host.querySelector("#hh-inbox-thread");
+ let folder="all";
+ let realtime=null;
+ async function loadInbox(){
+  const rows=await listConversations(folder,gw);
+  list.innerHTML=rows.length?rows.map(function(row){
+   return '<button type="button" class="hh-inbox-row" data-inbox-conversation="'+escapeMarkup(row.conversation_id)+'"><strong>'+escapeMarkup(row.other_rabbitry_name||row.other_display_name||"HerdHarbor member")+'</strong><span>'+escapeMarkup(row.listing_name||"Marketplace listing")+'</span><small>'+escapeMarkup(row.last_message_preview||"No messages yet")+(row.unread_count?' · '+row.unread_count+' unread':'')+'</small></button>';
+  }).join(""):'<p class="muted">No conversations in this view.</p>';
+  if(selectedConversationId){const id=selectedConversationId;selectedConversationId=null;await openThread(id);}
+ }
+ async function openThread(conversationId){
+  realtime?.unsubscribe?.(); realtime=null;
+  const messages=await listMessages(conversationId,gw);
+  const user=await gw.user();
+  await updateConversationMember(conversationId,{unread_count:0},gw).catch(function(){});
+  thread.innerHTML='<div class="hh-message-list">'+(messages.length?messages.map(function(message){
+   const mine=String(message.sender_id)===String(user.id);
+   return '<div class="hh-message '+(mine?'mine':'theirs')+'"><span>'+escapeMarkup(message.body)+'</span><small>'+escapeMarkup(new Date(message.created_at).toLocaleString())+'</small></div>';
+  }).join(""):'<p class="muted">No messages yet. Start the conversation.</p>')+'</div><form id="hh-message-form"><textarea name="body" maxlength="5000" required placeholder="Message seller"></textarea><div class="modal-actions"><button type="button" class="button button-ghost" id="hh-message-mute">Mute</button><button type="button" class="button button-ghost" id="hh-message-archive">Archive</button><button type="submit" class="button button-primary">Send</button></div></form>';
+  const form=thread.querySelector("#hh-message-form");
+  form?.addEventListener("submit",async function(event){event.preventDefault();const data=new FormData(event.currentTarget);try{await sendMessage(conversationId,data.get("body"),gw);event.currentTarget.reset();await openThread(conversationId);}catch(error){notify(error?.message||"Message could not be sent.","error");}});
+  thread.querySelector("#hh-message-mute")?.addEventListener("click",async function(){await updateConversationMember(conversationId,{muted_at:new Date().toISOString()},gw);notify("Conversation muted.","success");});
+  thread.querySelector("#hh-message-archive")?.addEventListener("click",async function(){await updateConversationMember(conversationId,{archived_at:new Date().toISOString()},gw);notify("Conversation archived.","success");await loadInbox();});
+  realtime=subscribeConversation(conversationId,function(){void openThread(conversationId);},gw);
+ }
+ host.querySelectorAll("[data-inbox-folder]").forEach(function(button){button.addEventListener("click",function(){folder=button.dataset.inboxFolder||"all";void loadInbox();});});
+ list.addEventListener("click",function(event){const button=event.target.closest("[data-inbox-conversation]");if(button)void openThread(button.dataset.inboxConversation);});
+ try{await loadInbox();}catch(error){notify(error?.message||"Marketplace messages could not be loaded.","error");}
+ return host;
+}
+
+return Object.freeze({VERSION,TABLES,BUCKETS,PUBLIC_PROFILE_FIELDS,LISTING_STATES,LISTING_PUBLIC_FIELDS,PUBLIC_PEDIGREE_FIELDS,createGateway,gateway,browserClient,normalizePublicProfileDraft,saveSellerProfile,getPublicSellerProfile,publicProfilePreview,normalizeListingDraft,buildListingSnapshotFromHerd,listingInsertPayload,createListingFromHerd,createManualListing,deleteListing,listingCreationOptions,publicMediaUrl,searchArgs,searchListings,getListingDetails,saveListing,renderListingCard,renderMarketplace,openSellAnimalDialog,publicPedigreeDepth,buildPublicPedigreeSnapshot,setListingPublicPedigree,getPublicListingPedigree,publicSnapshotToGraph,renderPublicPedigree,openListingConversation,listConversations,listMessages,sendMessage,updateConversationMember,subscribeConversation,renderInbox});
 });
