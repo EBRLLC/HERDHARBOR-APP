@@ -309,7 +309,16 @@
       <h4>Document branding</h4>
       <div class="form-grid two">
         <label>Rabbitry / operation name<input id="hh-pedigree-brand-name" value="${escapeHtml(normalized.branding.rabbitryName)}" placeholder="${escapeHtml(profile?.operationName || "Rabbitry name")}"></label>
-        <label>Branding line<input id="hh-pedigree-brand-text" value="${escapeHtml(normalized.branding.rabbitryText)}" maxlength="120" placeholder="Optional subtitle or contact line"></label>
+        <label>Branding line<input id="hh-pedigree-brand-text" value="${escapeHtml(normalized.branding.rabbitryText)}" maxlength="120" placeholder="Optional subtitle"></label>
+        <label>Accent color<input id="hh-pedigree-brand-accent" type="color" value="${escapeHtml(normalized.branding.accent)}"></label>
+        <label>Website<input id="hh-pedigree-brand-website" value="${escapeHtml(normalized.branding.website)}" placeholder="Optional website"></label>
+        <label>Social information<input id="hh-pedigree-brand-social" value="${escapeHtml(normalized.branding.social)}" placeholder="Optional social handle or page"></label>
+      </div>
+      <div class="hh-pedigree-contact-options">
+        <p class="muted"><strong>Optional private/printed contact information</strong><br>Nothing from your account is inserted automatically. Enter a value and enable it only if you want it printed.</p>
+        <label class="hh-pedigree-contact-row"><input type="checkbox" id="hh-pedigree-brand-email-on" ${normalized.branding.contact.includeEmail ? "checked" : ""}><span>Email</span><input id="hh-pedigree-brand-email" value="${escapeHtml(normalized.branding.contact.email)}" placeholder="Email to print"></label>
+        <label class="hh-pedigree-contact-row"><input type="checkbox" id="hh-pedigree-brand-phone-on" ${normalized.branding.contact.includePhone ? "checked" : ""}><span>Phone</span><input id="hh-pedigree-brand-phone" value="${escapeHtml(normalized.branding.contact.phone)}" placeholder="Phone to print"></label>
+        <label class="hh-pedigree-contact-row"><input type="checkbox" id="hh-pedigree-brand-address-on" ${normalized.branding.contact.includeAddress ? "checked" : ""}><span>Address</span><input id="hh-pedigree-brand-address" value="${escapeHtml(normalized.branding.contact.address)}" placeholder="Address to print"></label>
       </div>
       <div class="hh-pedigree-brand-logo">
         <div class="hh-pedigree-brand-logo-preview">${branding.logoData ? `<img src="${escapeHtml(branding.logoData)}" alt="">` : '<span>No logo</span>'}</div>
@@ -395,12 +404,31 @@
     const persistBrandText = () => {
       store = updateBranding(store, {
         rabbitryName: manager.querySelector("#hh-pedigree-brand-name")?.value,
-        rabbitryText: manager.querySelector("#hh-pedigree-brand-text")?.value
+        rabbitryText: manager.querySelector("#hh-pedigree-brand-text")?.value,
+        accent: manager.querySelector("#hh-pedigree-brand-accent")?.value,
+        website: manager.querySelector("#hh-pedigree-brand-website")?.value,
+        social: manager.querySelector("#hh-pedigree-brand-social")?.value,
+        contact: {
+          includeEmail: manager.querySelector("#hh-pedigree-brand-email-on")?.checked === true,
+          email: manager.querySelector("#hh-pedigree-brand-email")?.value,
+          includePhone: manager.querySelector("#hh-pedigree-brand-phone-on")?.checked === true,
+          phone: manager.querySelector("#hh-pedigree-brand-phone")?.value,
+          includeAddress: manager.querySelector("#hh-pedigree-brand-address-on")?.checked === true,
+          address: manager.querySelector("#hh-pedigree-brand-address")?.value
+        }
       });
       persistCanonicalStore(store, "Pedigree branding updated.");
+      root.dispatchEvent(new CustomEvent("herdharbor:pedigree-branding-change", {
+        detail: { branding: resolveBranding(store, state.profile || {}) }
+      }));
     };
-    manager.querySelector("#hh-pedigree-brand-name")?.addEventListener("change", persistBrandText);
-    manager.querySelector("#hh-pedigree-brand-text")?.addEventListener("change", persistBrandText);
+    [
+      "#hh-pedigree-brand-name", "#hh-pedigree-brand-text", "#hh-pedigree-brand-accent",
+      "#hh-pedigree-brand-website", "#hh-pedigree-brand-social",
+      "#hh-pedigree-brand-email-on", "#hh-pedigree-brand-email",
+      "#hh-pedigree-brand-phone-on", "#hh-pedigree-brand-phone",
+      "#hh-pedigree-brand-address-on", "#hh-pedigree-brand-address"
+    ].forEach((selector) => manager.querySelector(selector)?.addEventListener("change", persistBrandText));
 
     manager.querySelector("#hh-pedigree-brand-logo-clear")?.addEventListener("click", () => {
       store = updateBranding(store, { logoData: "", logoFileName: "" });
