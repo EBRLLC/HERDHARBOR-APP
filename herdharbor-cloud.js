@@ -727,7 +727,18 @@
     }
   }
 
+  function animalLimitApplies() {
+    const membership = window.HerdHarborMembership;
+    const validator = membership?.validateAnimalTransition;
+    if (typeof validator !== "function") return false;
+    const getTier = membership?.getTier;
+    if (typeof getTier !== "function") return true;
+    return String(getTier.call(membership) || "").toLowerCase() === "junior";
+  }
+
   function animalStateTransitionResult(beforeRaw, afterRaw) {
+    if (!animalLimitApplies()) return { allowed: true };
+
     const beforeState = safeParse(beforeRaw);
     const afterState = safeParse(afterRaw);
     if (!beforeState || !afterState) return { allowed: true };
@@ -1817,6 +1828,7 @@
 
     if (
       localBaselineRaw &&
+      animalLimitApplies() &&
       !sameState(localBaselineRaw, rawValue) &&
       !allowAnimalStateTransition(
         localBaselineRaw,
