@@ -310,10 +310,9 @@
   }
 
   function enhance(){enhanceAnimalProfile();enhanceDashboard();enhanceQuickAdd();}
-  function observeEnhanceTargets(){if(!observer)return;const dashboard=root.document?.querySelector('#view-dashboard'),modal=root.document?.querySelector('#modal-content');if(dashboard)observer.observe(dashboard,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});if(modal)observer.observe(modal,{childList:true,subtree:true});}
-  function runEnhance(){queued=false;if(!appReady)return;if(observer)observer.disconnect();try{enhance();}finally{observeEnhanceTargets();}}
+  function runEnhance(){queued=false;if(!appReady)return;const body=root.document?.body;if(observer&&body)observer.disconnect();try{enhance();}finally{if(observer&&body)observer.observe(body,{childList:true,subtree:true});}}
   function scheduleEnhance(){if(!appReady||queued)return;queued=true;if(typeof root.requestAnimationFrame==='function')root.requestAnimationFrame(runEnhance);else root.setTimeout?.(runEnhance,0);}
-  function startObserver(){if(observer||typeof root.MutationObserver!=='function')return;observer=new root.MutationObserver(scheduleEnhance);observeEnhanceTargets();}
+  function startObserver(){if(observer||!root.document?.body||typeof root.MutationObserver!=='function')return;observer=new root.MutationObserver(scheduleEnhance);observer.observe(root.document.body,{childList:true,subtree:true});}
   function markAppReady(){if(appReady)return;appReady=true;startObserver();scheduleEnhance();}
   function install(){
     if(installed)return API;installed=true;root.__hhPhase1WorkflowInstalled=true;

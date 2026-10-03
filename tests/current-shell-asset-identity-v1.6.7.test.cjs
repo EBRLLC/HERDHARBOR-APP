@@ -8,9 +8,9 @@ const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 
-// Mutable executable assets must keep one current release identity whether
-// they load in the core shell or through a lazy route. A mixed query-string
-// set can make installed PWA/TWA clients load incompatible combinations.
+// Every executable shell asset must use the same current release identity. A
+// mixed query-string set can make installed PWA/TWA clients load incompatible
+// combinations of the shell, auth, and optional modules.
 for (const asset of [
   "herdharbor-release-v1.6.1.js",
   "herdharbor-membership-v1.6.1.js",
@@ -23,12 +23,10 @@ for (const asset of [
 assert.match(html, /herdharbor-release-v1\.6\.1\.js\?v=2/);
 assert.match(html, /herdharbor-membership-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(html, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
-assert.doesNotMatch(html, /<script[^>]+market-analytics-v1\.6\.5\.js/);
-assert.ok(worker.includes("market-analytics-v1.6.5.js?v=1.7.1"), "Market Analytics remains runtime-cacheable");
+assert.match(html, /market-analytics-v1\.6\.5\.js\?v=1\.7\.1/);
 assert.ok(worker.includes("analytics-v1.6.1.js?v=2"), "analytics-v1.6.1.js remains a runtime-cache asset");
 assert.doesNotMatch(html, /<script[^>]+analytics-v1\.6\.1\.js/);
 const appRuntime = fs.readFileSync(path.join(root, "herdharbor-app-runtime.js"), "utf8");
-assert.match(appRuntime, /"market-analytics-v1\.6\.5\.js\?v=1\.7\.1"/);
 assert.match(appRuntime, /"analytics-v1\.6\.1\.js\?v=2"/);
 assert.match(html, /herdharbor-build\.js\?v=2\.0\.0/);
 assert.match(html, /cloud-legacy-baseline-v1\.8\.4\.js\?v=1/);

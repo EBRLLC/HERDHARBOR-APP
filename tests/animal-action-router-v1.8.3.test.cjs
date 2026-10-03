@@ -83,13 +83,11 @@ test('PWA shell caches and network-refreshes the v1.8.3 router', () => {
 });
 
 
-test('core runtime exposes lazy-safe canonical edit and pedigree-print entry points for the router', () => {
+test('core runtime exposes narrow canonical edit and pedigree-print entry points for the router', () => {
   const appRuntime = read('herdharbor-app-runtime.js');
   const animalProfileRuntime = read('animal-profile-runtime-v1.8.3.js');
-  assert.match(appRuntime, /function launchLazyAnimalProfileAction\(method, animalId, unavailableMessage\)/);
-  assert.match(appRuntime, /ensureAnimalProfileRuntimeLoaded\(\)[\s\S]*\.then\(run\)/);
-  assert.match(appRuntime, /openAnimalEditor:\s*\(animalId\) => launchLazyAnimalProfileAction\([\s\S]*"openEditor"[\s\S]*animalId/);
-  assert.match(appRuntime, /openAnimalPedigreePrint:\s*\(animalId\) => launchLazyAnimalProfileAction\([\s\S]*"openPedigreePrint"[\s\S]*animalId/);
+  assert.match(appRuntime, /openAnimalEditor:\s*\(animalId\)\s*=>\s*animalProfileRuntime\(\)\.openEditor\(animalId\)/);
+  assert.match(appRuntime, /openAnimalPedigreePrint:\s*\(animalId\)\s*=>\s*animalProfileRuntime\(\)\.openPedigreePrint\(animalId\)/);
   assert.match(animalProfileRuntime, /function openEditor\(animalId\)/);
   assert.match(animalProfileRuntime, /openAnimalForm\(id\)/);
   assert.match(animalProfileRuntime, /function openPedigreePrint\(animalId\)/);

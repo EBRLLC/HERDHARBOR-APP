@@ -78,7 +78,7 @@ test("a clean device with confirmed cloud history captures its pre-edit state be
   assert.match(helper, /!originalGetItem\.call\(localStorage, versionKey\(userId\)\)/);
   assert.match(helper, /cloudBaselineMemory\.set\(userId, previousValue\)/);
   assert.match(helper, /void \(async \(\) => \{/);
-  assert.match(helper, /const stored = await writeCloudBaseline\(userId, previousValue, \{ validated: true \}\)/);
+  assert.match(helper, /const stored = await writeCloudBaseline\(userId, previousValue\)/);
   assert.match(helper, /if \(!stored\) return false;\s*dispatchBaselineRestored\(userId, reason\)/);
 
   const bridgeStart = cloud.indexOf("async function handleCanonicalStateCommit(detail)");

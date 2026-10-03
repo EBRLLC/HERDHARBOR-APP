@@ -99,8 +99,6 @@ test("analytics navigation, responsive assets, and offline shell are wired", () 
   assert.doesNotMatch(index, /<script[^>]+analytics-v1\.6\.1\.js/);
   assert.match(appRuntime, /"analytics-v1\.6\.1\.js\?v=2"/);
   assert.match(appRuntime, /ensureAnalyticsRuntime/);
-  assert.match(appRuntime, /loadStyleOnce\("analytics-v1\.6\.1\.css\?v=2"\)/);
-  assert.match(appRuntime, /loadScriptOnce\([\s\S]*"analytics-v1\.6\.1\.js\?v=2"/);
   assert.match(appRuntime, /renderLazyRoute\([\s\S]*"analytics"/);
   assert.match(animalProfileRuntime, /detail-analytics/);
   assert.match(css, /@media \(max-width: 430px\)/);

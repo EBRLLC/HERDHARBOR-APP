@@ -133,13 +133,13 @@ test("existing breeding and birth reminder producers remain outside Task runtime
   assert.doesNotMatch(taskSource, /function syncBreedingReminders\(|function syncBirthReminder\(/);
 });
 
-test("Task runtime remains eager before composition while lazy Health no longer controls its order", () => {
+test("shell loads and caches Task runtime before application composition", () => {
   const html = read("index.html");
   const worker = read("service-worker.js");
+  const health = html.indexOf("health-runtime-v1.8.3.js?v=1");
   const task = html.indexOf("task-runtime-v1.8.3.js?v=1");
   const composition = html.indexOf("herdharbor-app-runtime.js?v=4");
-  assert.ok(task >= 0 && composition > task);
-  assert.equal(html.indexOf("health-runtime-v1.8.3.js?v=1"), -1);
+  assert.ok(health >= 0 && task > health && composition > task);
   assert.match(worker, /\.\/task-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /"\/task-runtime-v1\.8\.3\.js"/);
 });

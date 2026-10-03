@@ -27,7 +27,7 @@ test("2.0.0 workflows are the only active current-release workflow files", () =>
 
 test("CI presents stable 2.0.0 names and still validates stacked release PRs", () => {
   assert.match(ci, /^name: HerdHarbor 2\.0\.0 CI$/m);
-  assert.match(ci, /branches: \[main, 'release-2\.0\.0-phase-\*', 'feature\/breeder-platform-rebuild-phase-\*'\]/);
+  assert.match(ci, /branches: \[main, 'release-2\.0\.0-phase-\*'\]/);
   assert.match(ci, /group: herdharbor-v2\.0\.0-ci-/);
   assert.match(ci, /Verify current 2\.0\.0 release contract/);
   assert.match(ci, /Android 2\.0\.0 review bundle/);

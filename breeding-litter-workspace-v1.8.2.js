@@ -277,7 +277,7 @@
     });
   }
   function schedule(){if(queued)return;queued=true;(root.requestAnimationFrame||root.setTimeout)(()=>{queued=false;enhanceLittersView();},0);}
-  function install(){if(installed||!root.document)return API;installed=true;root.addEventListener("click",onClick,true);root.addEventListener("submit",onSubmit,true);const littersView=root.document.querySelector("#view-litters");observer=new root.MutationObserver(schedule);if(littersView)observer.observe(littersView,{childList:true,subtree:true,attributes:true,attributeFilter:["class"]});schedule();return API;}
+  function install(){if(installed||!root.document)return API;installed=true;root.addEventListener("click",onClick,true);root.addEventListener("submit",onSubmit,true);observer=new root.MutationObserver(schedule);if(root.document.body)observer.observe(root.document.body,{childList:true,subtree:true});schedule();return API;}
   function uninstall(){observer?.disconnect?.();observer=null;root.removeEventListener?.("click",onClick,true);root.removeEventListener?.("submit",onSubmit,true);installed=false;queued=false;close();}
 
   const API=Object.freeze({VERSION,litterById,offspringForLitter,liveAvailable,applyIdentityUpdates,addBulkWeights,addBulkHealth,recordLoss,weanSelected,setDisposition,summary,open,close,install,uninstall});
