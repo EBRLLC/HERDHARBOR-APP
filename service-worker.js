@@ -28,7 +28,9 @@ const REQUIRED_SHELL = [
   "./herdharbor-admin-v1.6.1.js?v=2",
   "./pwa.js?v=34",
   "./market-analytics-v1.6.5.js?v=1.7.1",
-  "./pedigree-engine-v2.0.0.js?v=1",\n  "./pedigree-renderer-v2.0.0.css?v=1",\n  "./pedigree-renderer-v2.0.0.js?v=1",
+  "./pedigree-engine-v2.0.0.js?v=1",
+  "./pedigree-renderer-v2.0.0.css?v=1",
+  "./pedigree-renderer-v2.0.0.js?v=1",
   "./animal-profile-runtime-v1.8.3.js?v=1",
   "./breeding-litter-runtime-v1.8.3.js?v=1",
   "./task-automation-v1.8.3.js?v=1",
@@ -174,7 +176,9 @@ const NETWORK_FIRST_PATHS = [
   "/subscription-header-copy-v1.8.0.js",
   "/subscription-stripe-provider-v1.8.0.js",
   "/subscription-stripe-launch-bridge-v1.8.1.js",
-  "/pedigree-engine-v2.0.0.js",\n  "/pedigree-renderer-v2.0.0.css",\n  "/pedigree-renderer-v2.0.0.js",
+  "/pedigree-engine-v2.0.0.js",
+  "/pedigree-renderer-v2.0.0.css",
+  "/pedigree-renderer-v2.0.0.js",
   "/animal-profile-runtime-v1.8.3.js",
   "/animal-action-router-v1.8.3.js",
   "/breeding-litter-runtime-v1.8.3.js",
@@ -254,7 +258,8 @@ self.addEventListener("install", (event) => {
       const fatal = requiredFailures.filter((path) =>
         path.endsWith("index.html") ||
         path.endsWith("herdharbor-build.js") ||
-        path.endsWith("pedigree-engine-v2.0.0.js") ||\n        path.endsWith("pedigree-renderer-v2.0.0.js") ||
+        path.endsWith("pedigree-engine-v2.0.0.js") ||
+        path.endsWith("pedigree-renderer-v2.0.0.js") ||
         path.endsWith("herdharbor-app-runtime.js") ||
         path.endsWith("herdharbor-cloud.js")
       );
