@@ -296,14 +296,13 @@
     const branding = resolveBranding(normalized, profile);
     return `<section class="hh-pedigree-document-manager" data-hh-pedigree-document-manager>
       <h4>Saved templates</h4>
-      <p class="muted">Save the current pedigree setup, reuse it later, or make it the default for a document type.</p>
+      <p class="muted">Save pedigree setups for reuse. Standard always remains the default print pedigree.</p>
       <div class="hh-pedigree-template-save">
         <input type="text" id="hh-pedigree-template-name" maxlength="60" placeholder="Template name">
         <button type="button" class="button button-primary button-small" id="hh-pedigree-template-save">Save current</button>
       </div>
       <div data-hh-template-rows>${renderTemplateRows(normalized)}</div>
       <div class="form-grid two hh-pedigree-defaults">
-        <label>Default pedigree template<select id="hh-default-pedigree-template">${templateOptions(normalized, normalized.defaults.pedigree)}</select></label>
         <label>Default birth certificate template<select id="hh-default-birth-template">${templateOptions(normalized, normalized.defaults.birthCertificate)}</select></label>
       </div>
       <h4>Document branding</h4>
@@ -344,9 +343,7 @@
     const rerenderRows = () => {
       const rowHost = manager.querySelector("[data-hh-template-rows]");
       if (rowHost) rowHost.innerHTML = renderTemplateRows(store);
-      const pedigreeDefault = manager.querySelector("#hh-default-pedigree-template");
       const birthDefault = manager.querySelector("#hh-default-birth-template");
-      if (pedigreeDefault) pedigreeDefault.innerHTML = templateOptions(store, store.defaults.pedigree);
       if (birthDefault) birthDefault.innerHTML = templateOptions(store, store.defaults.birthCertificate);
     };
 
@@ -392,10 +389,6 @@
       }
     });
 
-    manager.querySelector("#hh-default-pedigree-template")?.addEventListener("change", (event) => {
-      store = setDefaultTemplate(store, "pedigree", event.currentTarget.value);
-      persistCanonicalStore(store, "Default pedigree template updated.");
-    });
     manager.querySelector("#hh-default-birth-template")?.addEventListener("change", (event) => {
       store = setDefaultTemplate(store, "birthCertificate", event.currentTarget.value);
       persistCanonicalStore(store, "Default birth certificate template updated.");
