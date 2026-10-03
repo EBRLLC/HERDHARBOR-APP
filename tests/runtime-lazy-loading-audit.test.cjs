@@ -212,3 +212,12 @@ test("public animal actions require the pedigree dependency before taking the fa
   assert.match(block,/HerdHarborAnimalProfileRuntime\?\.create[\s\S]*HerdHarborPedigreePlatform\?\.buildPedigreeGraph[\s\S]*return run\(\)/);
   assert.match(block,/ensureAnimalProfileRuntimeLoaded\(\)[\s\S]*\.then\(run\)/);
 });
+
+
+test("deferred legacy asset loaders can retry after a script fetch failure",()=>{
+  assert.match(pwa,/function addScript\(id, src, onload\)[\s\S]*script\.addEventListener\("error"[\s\S]*script\.remove\(\)[\s\S]*herdharbor:dynamic-asset-error/);
+  assert.match(pwa,/window\.addEventListener\("herdharbor:dynamic-asset-error"[\s\S]*pedigreeVisualsLoadStarted = false/);
+  assert.match(pwa,/herdharbor:dynamic-asset-error[\s\S]*breedingIntelligenceLoadStarted = false/);
+  assert.match(pwa,/if \(pedigreeVisualsLoadStarted\) return;/);
+  assert.match(pwa,/if \(breedingIntelligenceLoadStarted\) return;/);
+});
