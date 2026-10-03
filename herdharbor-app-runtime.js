@@ -2388,9 +2388,12 @@
       </div>`, "Mobile print preview");
     $(".modal").classList.add("modal-wide");
     const frame = $("#pedigree-print-preview");
-    frame.srcdoc = printableHtml;
+    const exporter = window.HerdHarborDocumentExport;
+    if (!exporter?.loadFrame?.(frame, printableHtml)) frame.srcdoc = printableHtml;
     $("#close-mobile-print").addEventListener("click", closeModal);
     $("#run-mobile-print").addEventListener("click", () => {
+      const exporter = window.HerdHarborDocumentExport;
+      if (exporter?.printFrame?.(frame)) return;
       const printWindow = frame.contentWindow;
       if (!printWindow) return toast("The print preview is still loading. Try again.", "error");
       printWindow.focus();
