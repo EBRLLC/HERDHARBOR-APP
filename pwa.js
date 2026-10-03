@@ -75,6 +75,15 @@
     script.src = src;
     script.async = false;
     if (onload) script.addEventListener("load", onload, { once: true });
+    script.addEventListener("error", () => {
+      pendingDynamicNodes.delete(id);
+      script.remove();
+      try {
+        window.dispatchEvent(new CustomEvent("herdharbor:dynamic-asset-error", {
+          detail: { id, src }
+        }));
+      } catch {}
+    }, { once: true });
     appendDynamicNode(id, script);
   }
 
@@ -451,6 +460,20 @@
 
   let pedigreeVisualsLoadStarted = false;
   let breedingIntelligenceLoadStarted = false;
+
+  window.addEventListener("herdharbor:dynamic-asset-error", (event) => {
+    const id = String(event?.detail?.id || "");
+    if (id === "hh-pedigree-visual-script") pedigreeVisualsLoadStarted = false;
+    if (
+      id.startsWith("hh-rabbit-") ||
+      id.startsWith("hh-breeding-") ||
+      id.startsWith("hh-standards-") ||
+      id.startsWith("hh-multispecies-") ||
+      id === "hh-pedigree-genetics-v151-script"
+    ) {
+      breedingIntelligenceLoadStarted = false;
+    }
+  });
 
   function ensurePedigreeVisuals() {
     if (pedigreeVisualsLoadStarted) return;
