@@ -22,7 +22,7 @@
       "textareaField", "speciesIcon", "breedOptionsFor", "prepareProfileImage", "toast",
       "allowsAnimalTransition", "uid", "rememberBreed", "recordActivity", "saveState",
       "renderCurrentView", "completeWorkflowTasks", "formatDate", "formatMoney",
-      "detailField", "navigate", "openPrintPedigreeForm", "ensureQrToolsReady", "getPedigreeCustomization", "getPedigreeDocumentContext"
+      "detailField", "navigate", "openPrintPedigreeForm", "openBirthCertificateForm", "ensureQrToolsReady", "getPedigreeCustomization", "getPedigreeDocumentContext"
     ];
     for (const name of required) {
       if (typeof deps[name] !== "function") throw new Error(`Animal/Profile runtime requires ${name}().`);
@@ -458,6 +458,7 @@
           <button class="button button-ghost" id="detail-close">Close</button>
           <button class="button button-ghost" id="detail-analytics">View analytics</button>
           <button class="button button-ghost" id="detail-print-pedigree">Print sale pedigree</button>
+          <button class="button button-ghost" id="detail-birth-certificate">Birth Certificate</button>
           <button class="button button-ghost" id="detail-print-qr">Print QR card</button>
           <button class="button button-ghost" id="detail-import-pedigree">Build / import pedigree</button>
           <button class="button button-primary" id="detail-edit">Edit animal</button>
@@ -471,6 +472,7 @@
         deps.navigate("analytics");
       });
       $("#detail-print-pedigree")?.addEventListener("click", () => deps.openPrintPedigreeForm(id));
+      $("#detail-birth-certificate")?.addEventListener("click", () => deps.openBirthCertificateForm(id));
       $("#detail-print-qr")?.addEventListener("click", (event) => openAnimalQrCardForm(id, event.currentTarget));
       $("#detail-import-pedigree")?.addEventListener("click", () => deps.openPedigreeImport(id));
       $("#detail-edit")?.addEventListener("click", () => openAnimalForm(id));

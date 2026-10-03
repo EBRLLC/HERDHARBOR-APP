@@ -1214,6 +1214,7 @@
       detailField,
       navigate,
       openPrintPedigreeForm,
+      openBirthCertificateForm,
       ensureQrToolsReady,
       getPedigreeCustomization: () => window.HerdHarborPedigreeCustomization?.loadPreferences?.(localStorage) || { generations: 3 },
       getPedigreeDocumentContext: (fallbackConfig) => window.HerdHarborPedigreeDocuments?.resolveDocumentContext?.(
@@ -2404,6 +2405,89 @@
     });
   }
 
+  function birthCertificateHtml(animalId, options = {}) {
+    const animal = state.animals.find((item) => item.id === animalId);
+    if (!animal) return "";
+    const birthCertificate = window.HerdHarborBirthCertificate;
+    const exporter = window.HerdHarborDocumentExport;
+    const documents = window.HerdHarborPedigreeDocuments;
+    if (!birthCertificate?.buildCertificateHtml || !exporter?.buildDocumentHtml) return "";
+
+    const sire = state.animals.find((item) => item.id === animal.sireId) || null;
+    const dam = state.animals.find((item) => item.id === animal.damId) || null;
+    const documentContext = documents?.resolveDocumentContext?.(
+      state.settings?.pedigreeDocuments,
+      "birthCertificate",
+      state.profile || {},
+      {}
+    ) || { branding: null };
+
+    return birthCertificate.buildCertificateHtml({
+      animal,
+      sire,
+      dam,
+      branding: documentContext.branding || null,
+      options,
+      exporter,
+      formatDate,
+      generatedLabel: `Generated ${new Date().toLocaleDateString()}`
+    });
+  }
+
+  function openBirthCertificateForm(animalId) {
+    const animal = state.animals.find((item) => item.id === animalId);
+    const birthCertificate = window.HerdHarborBirthCertificate;
+    const exporter = window.HerdHarborDocumentExport;
+    if (!animal) return toast("The animal record could not be found.", "error");
+    if (!birthCertificate?.controlsHtml || !exporter?.loadFrame || !exporter?.printFrame) {
+      return toast("The birth certificate tools did not finish loading.", "error");
+    }
+
+    let options = birthCertificate.normalizeOptions({});
+    openModal("Birth Certificate", `
+      <form id="birth-certificate-form">
+        <div class="pedigree-warning">Preview shows exactly what will print. Email, phone, and exact address are excluded unless you explicitly enabled document branding contact in Settings.</div>
+        <div id="birth-certificate-controls" style="margin-top:14px">${birthCertificate.controlsHtml(options)}</div>
+        <div class="hh-birth-preview-wrap">
+          <h3>Preview</h3>
+          <iframe id="birth-certificate-preview" title="Birth Certificate preview for ${esc(animal.name)}"></iframe>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="button button-ghost" id="close-birth-certificate">Close</button>
+          <button type="submit" class="button button-primary">Print / Save PDF</button>
+        </div>
+      </form>
+    `, `${animal.name} · Birth Certificate`);
+    $(".modal")?.classList.add("modal-wide");
+
+    const form = $("#birth-certificate-form");
+    const controls = $("#birth-certificate-controls");
+    const frame = $("#birth-certificate-preview");
+
+    const updatePreview = () => {
+      options = birthCertificate.readControls(controls, options);
+      const html = birthCertificateHtml(animalId, options);
+      if (!html) return;
+      exporter.loadFrame(frame, html);
+    };
+
+    controls?.querySelectorAll("input,textarea,select").forEach((control) => {
+      control.addEventListener("input", updatePreview);
+      control.addEventListener("change", updatePreview);
+    });
+    $("#close-birth-certificate")?.addEventListener("click", closeModal);
+    form?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      updatePreview();
+      if (!exporter.printFrame(frame)) {
+        toast("The certificate preview is still loading. Try again.", "error");
+        return;
+      }
+      recordActivity(`Opened a Birth Certificate for ${animal.name}.`, "document");
+    });
+    updatePreview();
+  }
+
   let healthRuntimeInstance = null;
 
   function healthRuntime() {
@@ -3327,6 +3411,7 @@
     getCurrentRoute: () => currentRoute,
     openAnimalEditor: (animalId) => animalProfileRuntime().openEditor(animalId),
     openAnimalPedigreePrint: (animalId) => animalProfileRuntime().openPedigreePrint(animalId),
+    openAnimalBirthCertificate: (animalId) => openBirthCertificateForm(animalId),
     prepareDocumentImage: (file) => prepareProfileImage(file, { maxDimension: 900, targetBytes: 140000 }),
     openRecordBirth: (breedingId) => openRecordBirth(breedingId)
   });
