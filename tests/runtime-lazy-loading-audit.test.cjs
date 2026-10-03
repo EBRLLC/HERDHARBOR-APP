@@ -190,3 +190,16 @@ test("pedigree platform is route-loaded once and dependency-ordered before consu
   assert.match(renderers,/breeding:[\s\S]*ensurePedigreePlatformRuntime/);
   assert.match(renderers,/pedigrees:[\s\S]*ensurePedigreePlatformRuntime/);
 });
+
+
+test("optional monitoring assets do not block service-worker installation",()=>{
+  const required=sw.slice(sw.indexOf("const REQUIRED_SHELL"),sw.indexOf("const RUNTIME_CACHE_PATHS"));
+  const runtimeCache=sw.slice(sw.indexOf("const RUNTIME_CACHE_PATHS"),sw.indexOf("const NETWORK_FIRST_PATHS"));
+  for(const asset of [
+    "herdharbor-monitoring-config.js?v=2.0.0",
+    "vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.0"
+  ]){
+    assert.equal(required.includes(asset),false,asset+" must not block install");
+    assert.equal(runtimeCache.includes(asset),true,asset+" should cache after optional load");
+  }
+});

@@ -32,14 +32,14 @@ const REQUIRED_SHELL = [
   "./sales-customer-runtime-v1.8.3.js?v=1",
   "./mobile-capture-v1.8.3.js?v=1",
   "./herdharbor-app-runtime.js?v=4",
-  "./herdharbor-monitoring-config.js?v=2.0.0",
-  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.0",
   "./how-to/",
   "./icon-192.png",
   "./icon-512.png"
 ];
 
 const RUNTIME_CACHE_PATHS = [
+  "./herdharbor-monitoring-config.js?v=2.0.0",
+  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.0",
   "./herdharbor-pedigree-platform.js?v=1",
   "./animal-profile-runtime-v1.8.3.js?v=1",
   "./health-runtime-v1.8.3.js?v=1",
