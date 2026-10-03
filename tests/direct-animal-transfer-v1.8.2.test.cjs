@@ -145,17 +145,15 @@ test("direct transfer backend is authenticated, service mediated, and browser ta
   assert.match(sql, /revoke all on function public\.herdharbor_direct_transfer_resolve\(text\) from public, anon, authenticated/i);
 });
 
-test("Direct Transfer is lazy-loaded by the app runtime without creating another browser Supabase client", () => {
+test("guarded app loader exposes the direct-transfer core and UI without creating another browser Supabase client", () => {
   const build = read("herdharbor-build.js");
   const app = read("herdharbor-app-runtime.js");
-  const worker = read("service-worker.js");
   const ui = read("direct-transfer-v1.8.2.js");
-  assert.doesNotMatch(build, /direct-transfer-core-v1\.8\.2\.js/);
-  assert.doesNotMatch(build, /direct-transfer-v1\.8\.2\.js/);
-  assert.match(app, /ensureDirectTransferRuntime[\s\S]*direct-transfer-core-v1\.8\.2\.js[\s\S]*direct-transfer-v1\.8\.2\.js/);
-  assert.match(app, /loadStyleOnce\("direct-transfer-v1\.8\.2\.css\?v=1"\)/);
-  assert.match(worker, /\.\/direct-transfer-core-v1\.8\.2\.js\?v=1/);
-  assert.match(worker, /\.\/direct-transfer-v1\.8\.2\.js\?v=1/);
+  assert.doesNotMatch(build, /addScript\("hh-direct-transfer-core-v182"/);
+  assert.doesNotMatch(build, /addStyle\("hh-direct-transfer-v182-style"/);
+  assert.match(app, /direct-transfer-core-v1\.8\.2\.js\?v=1/);
+  assert.match(app, /direct-transfer-v1\.8\.2\.js\?v=1/);
+  assert.match(app, /direct-transfer-v1\.8\.2\.css\?v=1/);
   assert.match(ui, /HerdHarborCloud\.invokeFunction|HerdHarborCloud\?\.invokeFunction/);
   assert.doesNotMatch(ui, /createClient\s*\(/);
 });

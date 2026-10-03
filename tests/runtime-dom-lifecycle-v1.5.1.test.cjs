@@ -127,7 +127,7 @@ function pwaContext() {
   });
   vm.runInContext(read("pwa.js"), context, { filename: "pwa.js" });
   assert.ok(inserted.some((node) => node.id === "hh-monitoring-config"), "monitoring config falls back when head is unavailable");
-  assert.equal(inserted.some((node) => node.id === "hh-pedigree-visual-script"), false, "route-only pedigree script stays deferred during fallback startup");
+  assert.equal(inserted.some((node) => node.id === "hh-pedigree-visual-script"), false, "pedigree script stays deferred until a relevant route");
   assert.equal(new Set(inserted.map((node) => node.id)).size, inserted.length, "dynamic fallback does not duplicate nodes");
 }
 

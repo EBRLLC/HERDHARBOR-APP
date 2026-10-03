@@ -37,9 +37,11 @@ test("ownership and conversation policies enforce server-side authorization",()=
  assert.match(migration,/marketplace_messages_member_select[\s\S]*marketplace_is_conversation_member/);
  assert.match(migration,/marketplace_messages_member_insert[\s\S]*auth\.uid\(\)\)=sender_id[\s\S]*marketplace_is_conversation_member/);
  assert.doesNotMatch(migration,/marketplace_conversation_members_self_insert/);
- assert.doesNotMatch(migration,/grant insert[^;]*on public\.marketplace_conversation_members[^;]*to authenticated/i);
- assert.doesNotMatch(migration,/grant delete[^;]*on public\.marketplace_conversation_members[^;]*to authenticated/i);
- assert.doesNotMatch(migration,/grant (?:insert|update|delete)[^;]*on public\.marketplace_conversations[^;]*to authenticated/i);
+ assert.match(migration,/revoke all on public\.marketplace_public_profiles[\s\S]*public\.marketplace_conversation_members[\s\S]*from anon,authenticated;/);
+ assert.match(migration,/grant update \(unread_count,muted_at,archived_at\)[\s\S]*on public\.marketplace_conversation_members to authenticated/);
+ assert.doesNotMatch(migration,/grant insert[^;]*on public\.marketplace_conversation_members/i);
+ assert.doesNotMatch(migration,/grant delete[^;]*on public\.marketplace_conversation_members/i);
+ assert.doesNotMatch(migration,/grant (?:insert|update|delete)[^;]*on public\.marketplace_conversations/i);
 });
 
 test("public source animal ids cannot be enumerated because listing table has no anon read grant or policy",()=>{

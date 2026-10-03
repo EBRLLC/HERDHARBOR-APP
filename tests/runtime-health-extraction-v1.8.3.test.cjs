@@ -147,10 +147,9 @@ test("Health runtime is lazy-loaded by composition and remains offline-cacheable
   assert.equal(html.indexOf("health-runtime-v1.8.3.js?v=1"), -1);
   assert.match(runtimeSource, /function ensureHealthRuntimeLoaded\(\)/);
   assert.match(runtimeSource, /"health-runtime-v1\.8\.3\.js\?v=1"/);
-  const runtimeCache=worker.slice(worker.indexOf("const RUNTIME_CACHE_PATHS"),worker.indexOf("const NETWORK_FIRST_PATHS"));
-  const networkFirst=worker.slice(worker.indexOf("const NETWORK_FIRST_PATHS"),worker.indexOf("function isNetworkFirstPath"));
-  assert.match(runtimeCache, /health-runtime-v1\.8\.3\.js\?v=1/);
-  assert.doesNotMatch(networkFirst, /health-runtime-v1\.8\.3\.js/);
+  assert.match(worker, /\.\/health-runtime-v1\.8\.3\.js\?v=1/);
+  const required = worker.slice(worker.indexOf("const REQUIRED_SHELL"), worker.indexOf("const RUNTIME_CACHE_PATHS"));
+  assert.equal(required.includes("health-runtime-v1.8.3.js"), false);
 });
 
 test("Phase 6D extraction remains compatible with formal v1.8.4 and leaves normalized-sync authority unchanged", () => {
