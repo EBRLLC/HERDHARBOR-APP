@@ -143,7 +143,8 @@ test("Animal/Profile runtime is lazy-loaded by composition and remains offline-c
   assert.match(runtimeSource, /function ensureAnimalProfileRuntimeLoaded\(\)/);
   assert.match(runtimeSource, /"animal-profile-runtime-v1\.8\.3\.js\?v=1"/);
   assert.match(worker, /\.\/animal-profile-runtime-v1\.8\.3\.js\?v=1/);
-  assert.match(worker, /"\/animal-profile-runtime-v1\.8\.3\.js"/);
+  const required = worker.slice(worker.indexOf("const REQUIRED_SHELL"), worker.indexOf("const RUNTIME_CACHE_PATHS"));
+  assert.equal(required.includes("animal-profile-runtime-v1.8.3.js"), false);
 });
 
 test("Phase 6B extraction remains compatible with formal v1.8.4 and does not activate normalized-sync authority", () => {
