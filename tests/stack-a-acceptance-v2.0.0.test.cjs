@@ -42,7 +42,7 @@ test("3 4 and 5 generation customization remains supported", () => {
   assert.match(customization, /GENERATION_OPTIONS = Object\.freeze\(\[3, 4, 5\]\)/);
   assert.match(standardPrint, /generations === 3/);
   assert.match(standardPrint, /generations === 5/);
-  assert.match(standardPrint, /2 \* generation/);
+  assert.match(standardPrint, /generation \* 2/);
 });
 
 test("original four-generation standard geometry is protected", () => {
