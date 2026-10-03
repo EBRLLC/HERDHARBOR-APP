@@ -151,22 +151,22 @@ test("application boot is structurally independent from monitoring completion", 
   );
 });
 
-test("slow monitoring does not delay normal application module loading", () => {
+test("slow monitoring does not force deferred route bundles back onto startup", () => {
   const harness = createHarness();
   assert.ok(harness.nodes.has("hh-monitoring-config"), "monitoring config begins loading immediately");
   assert.equal(harness.nodes.has("hh-monitoring-v151"), false, "SDK waits for its config");
-  harness.fireDocument("DOMContentLoaded");
-  assert.ok(harness.nodes.has("hh-pedigree-visual-script"));
-  assert.ok(harness.nodes.has("hh-rabbit-records-v151"));
-  assert.ok(harness.nodes.has("hh-shows-v151-script"));
+  assert.doesNotThrow(() => harness.fireDocument("DOMContentLoaded"));
+  assert.equal(harness.nodes.has("hh-pedigree-visual-script"), false);
+  assert.equal(harness.nodes.has("hh-rabbit-records-v151"), false);
+  assert.equal(harness.nodes.has("hh-shows-v151-script"), false);
 });
 
-test("unavailable monitoring configuration is fail-open", () => {
+test("unavailable monitoring configuration is fail-open without starting deferred route bundles", () => {
   const harness = createHarness();
   harness.fireNode("hh-monitoring-config", "error");
   assert.doesNotThrow(() => harness.fireDocument("DOMContentLoaded"));
-  assert.ok(harness.nodes.has("hh-pedigree-visual-script"));
-  assert.ok(harness.nodes.has("hh-shows-v151-script"));
+  assert.equal(harness.nodes.has("hh-pedigree-visual-script"), false);
+  assert.equal(harness.nodes.has("hh-shows-v151-script"), false);
 });
 
 test("monitoring bundle load failure cannot block or restart application boot", () => {
@@ -174,9 +174,9 @@ test("monitoring bundle load failure cannot block or restart application boot", 
   harness.fireNode("hh-monitoring-config", "load");
   assert.ok(harness.nodes.has("hh-monitoring-v151"));
   harness.fireDocument("DOMContentLoaded");
-  const firstPedigreeNode = harness.nodes.get("hh-pedigree-visual-script");
+  assert.equal(harness.nodes.has("hh-pedigree-visual-script"), false);
   assert.doesNotThrow(() => harness.fireNode("hh-monitoring-v151", "error"));
-  assert.equal(harness.nodes.get("hh-pedigree-visual-script"), firstPedigreeNode);
+  assert.equal(harness.nodes.has("hh-pedigree-visual-script"), false);
 });
 
 test("bounded early bootstrap failures flush after monitoring attaches", () => {

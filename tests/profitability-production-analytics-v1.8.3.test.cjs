@@ -160,7 +160,10 @@ test("Production/Reporting remains the visible owner and Budget loads reporting 
   assert.match(worker, /\.\/profitability-analytics-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /\.\/production-reporting-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /"\/profitability-analytics-v1\.8\.3\.js"/);
-  assert.match(worker, /"\/production-reporting-runtime-v1\.8\.3\.js"/);
+  const runtimeCache=worker.slice(worker.indexOf("const RUNTIME_CACHE_PATHS"),worker.indexOf("const NETWORK_FIRST_PATHS"));
+  const networkFirst=worker.slice(worker.indexOf("const NETWORK_FIRST_PATHS"),worker.indexOf("function isNetworkFirstPath"));
+  assert.match(runtimeCache, /production-reporting-runtime-v1\.8\.3\.js\?v=1/);
+  assert.doesNotMatch(networkFirst, /production-reporting-runtime-v1\.8\.3\.js/);
   assert.match(pkg.scripts["test:v1.8.3"], /profitability-production-analytics-v1\.8\.3\.test\.cjs/);
 });
 
