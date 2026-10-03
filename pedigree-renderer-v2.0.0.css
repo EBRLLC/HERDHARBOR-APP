@@ -234,6 +234,10 @@ html[data-theme="dark"] .hh-pedigree-toggle {
 }
 
 @media (max-width: 760px) {
+  .hh-pedigree-renderer {
+    scroll-snap-type: x proximity;
+  }
+
   .hh-pedigree-columns {
     grid-template-columns: repeat(var(--hh-pedigree-generations, 3), minmax(176px, 82vw));
     scroll-snap-type: x proximity;
