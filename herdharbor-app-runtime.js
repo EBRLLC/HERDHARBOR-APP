@@ -74,6 +74,7 @@
   let currentRoute = ["dashboard", "analytics", "animals", "pedigrees", "documents", "marketplace", "breeding", "litters", "health", "symptoms", "tasks", "budget", "sales", "settings", "admin"].includes(requestedRoute)
     ? requestedRoute
     : "dashboard";
+  let pendingAdminRoute = requestedRoute === "admin";
   let symptomView = {
     animalId: "",
     species: "",
@@ -916,7 +917,15 @@
       refreshSyncStatus(event.detail);
     });
     document.addEventListener("herdharbor:membership-change", () => {
-      syncAdminNavigation();
+      const account = window.HerdHarborMembership?.getAccount?.() || {};
+      const allowed = syncAdminNavigation();
+      if (pendingAdminRoute && account.backendReady === true) {
+        pendingAdminRoute = false;
+        if (allowed) {
+          navigate("admin");
+          return;
+        }
+      }
       if (currentRoute === "settings") renderSettings();
       if (currentRoute === "admin") renderCurrentView();
     });
@@ -1005,22 +1014,31 @@
   }
 
   function syncAdminNavigation() {
+    const account = window.HerdHarborMembership?.getAccount?.() || {};
     const allowed = window.HerdHarborMembership?.canAccessAdmin?.() === true;
     const nav = document.querySelector('[data-route="admin"]');
     if (nav) {
       nav.hidden = !allowed;
       nav.setAttribute("aria-hidden", String(!allowed));
     }
-    if (!allowed && currentRoute === "admin") {
+    if (!allowed && account.backendReady === true && currentRoute === "admin") {
+      pendingAdminRoute = false;
       navigate("dashboard");
     }
     return allowed;
   }
 
   function navigate(route) {
+    if (route !== "admin" && pendingAdminRoute) pendingAdminRoute = false;
     if (route === "admin" && window.HerdHarborMembership?.canAccessAdmin?.() !== true) {
+      const account = window.HerdHarborMembership?.getAccount?.() || {};
       currentRoute = "dashboard";
-      toast("Admin Members is available only to authorized Owner and Admin accounts.", "error");
+      if (account.backendReady !== true) {
+        pendingAdminRoute = true;
+      } else {
+        pendingAdminRoute = false;
+        toast("Admin Members is available only to authorized Owner and Admin accounts.", "error");
+      }
       route = "dashboard";
     }
     currentRoute = route || "dashboard";
