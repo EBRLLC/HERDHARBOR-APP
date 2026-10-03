@@ -76,13 +76,14 @@ assert.equal(row(offspringProfile, "B").kind, "proven", "offspring-proven eviden
 const offProfile = PedigreeGenetics.profileForAnimal(annie, { animals: [annie], births: [] }, Engine, "off");
 assert.equal(offProfile.rows.length, 0, "Off hides pedigree genetics");
 const fakeStorage = { getItem: () => null };
-assert.deepEqual(PedigreeGenetics.loadPreferences(fakeStorage), { mode: "full", printGenetics: true }, "rabbit pedigree genetics defaults to Full Inferred and print On");
+assert.deepEqual(PedigreeGenetics.loadPreferences(fakeStorage), { mode: "full", printGenetics: false }, "rabbit pedigree genetics stays available but printed genetics defaults Off");
 
 assert.match(uiSource, /Show Genetics on Pedigree/);
 assert.match(uiSource, />Off<\/option>/);
 assert.match(uiSource, />Known Only<\/option>/);
 assert.match(uiSource, />Full Inferred<\/option>/);
 assert.match(uiSource, /Include Genetics on Printed Pedigree/);
+assert.match(uiSource, /Off by default on printed pedigrees/);
 assert.match(uiSource, /smallestContaining\(card,'COLOR'\)/, "on-screen genetics is anchored under the color/identity area");
 assert.match(uiSource, /enhanceDocument\(child\.document,true/, "printed pedigrees receive genetics before print");
 assert.match(uiSource, /hh-pedigree-genetics-dialog/, "genetics line opens evidence detail panel");

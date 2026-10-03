@@ -162,7 +162,7 @@ assert.doesNotMatch(records, /\/male\|buck\//);
 assert.match(genetics, /Genetic conflict detected/);
 assert.match(runtime, /Unknown alleles widen named offspring-color ranges/);
 assert.match(runtime, /visible non-white|whiteMask|V\/V/);
-assert.match(pedigreeGenetics, /DEFAULTS=Object\.freeze\(\{mode:'full',printGenetics:true\}\)/);
+assert.match(pedigreeGenetics, /DEFAULTS=Object\.freeze\(\{mode:'full',printGenetics:false\}\)/);
 assert.match(pedigreeGenetics, /refineAnimalGenetics/);
 assert.match(pedigreeGenetics, /applyEvidenceToGenetics/);
 assert.match(pedigreeGenetics, /Entered Genetics remains separate from Inferred Genetics/);
