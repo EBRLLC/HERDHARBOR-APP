@@ -55,7 +55,23 @@
       pedigreeDocuments: {
         templates: [],
         defaults: { pedigree: "", birthCertificate: "" },
-        branding: { rabbitryName: "", rabbitryText: "", logoData: "", logoFileName: "" }
+        branding: {
+          rabbitryName: "",
+          rabbitryText: "",
+          logoData: "",
+          logoFileName: "",
+          accent: "#2e7d7b",
+          website: "",
+          social: "",
+          contact: {
+            includeEmail: false,
+            email: "",
+            includePhone: false,
+            phone: "",
+            includeAddress: false,
+            address: ""
+          }
+        }
       },
       marketAnalyticsConsent: {
         enabled: false,
