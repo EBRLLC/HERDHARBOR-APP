@@ -8,11 +8,18 @@ const root=path.resolve(__dirname,"..");
 const migration=fs.readFileSync(path.join(root,"supabase/migrations/20261002083000_v2_0_1_marketplace_seller_feedback.sql"),"utf8");
 const source=fs.readFileSync(path.join(root,"herdharbor-marketplace.js"),"utf8");
 
-test("seller reviews require a sold listing and verified buyer conversation membership",()=>{
+test("seller reviews require the sold listing buyer conversation and accepted animal transfer",()=>{
  const block=migration.slice(migration.indexOf("marketplace_submit_review"),migration.indexOf("marketplace_seller_feedback_summary"));
  assert.match(block,/l\.state='sold'/);
+ assert.match(block,/l\.source_animal_id into seller,source_animal/);
  assert.match(block,/m\.user_id=caller/);
  assert.match(block,/m\.role='buyer'/);
+ assert.match(block,/herdharbor_direct_animal_transfers t/);
+ assert.match(block,/t\.sender_id=seller/);
+ assert.match(block,/t\.recipient_id=caller/);
+ assert.match(block,/t\.status='accepted'/);
+ assert.match(block,/t\.accepted_at is not null/);
+ assert.match(block,/payload->'subjectIds'[\s\S]*\? source_animal/);
  assert.match(block,/verified_transaction\)\s*values[\s\S]*true/);
 });
 

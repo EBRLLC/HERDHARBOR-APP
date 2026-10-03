@@ -41,16 +41,19 @@ set search_path=''
 as $$
 declare caller uuid := (select auth.uid());
 declare seller uuid;
+declare source_animal text;
 declare review_id uuid;
 begin
   if caller is null then raise exception 'authentication required' using errcode='42501'; end if;
   if review_rating is null or review_rating<1 or review_rating>5 then raise exception 'rating must be between 1 and 5'; end if;
 
-  select l.seller_id into seller
+  select l.seller_id,l.source_animal_id into seller,source_animal
   from public.marketplace_listings l
   where l.id=target_listing_id and l.state='sold';
 
-  if seller is null or seller=caller then raise exception 'verified transaction unavailable' using errcode='42501'; end if;
+  if seller is null or seller=caller or nullif(trim(source_animal),'') is null then
+    raise exception 'verified transaction unavailable' using errcode='42501';
+  end if;
 
   if not exists (
     select 1
@@ -61,6 +64,18 @@ begin
       and m.role='buyer'
   ) then
     raise exception 'verified transaction unavailable' using errcode='42501';
+  end if;
+
+  if not exists (
+    select 1
+    from public.herdharbor_direct_animal_transfers t
+    where t.sender_id=seller
+      and t.recipient_id=caller
+      and t.status='accepted'
+      and t.accepted_at is not null
+      and coalesce(t.payload->'subjectIds','[]'::jsonb) ? source_animal
+  ) then
+    raise exception 'verified transfer unavailable' using errcode='42501';
   end if;
 
   insert into public.marketplace_reviews(listing_id,seller_id,reviewer_id,rating,feedback,verified_transaction)
