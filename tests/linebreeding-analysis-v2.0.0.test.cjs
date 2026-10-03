@@ -131,3 +131,32 @@ test("B4 canonical cycle protection and incomplete pedigree reporting survive re
   assert.ok(result.pedigreeCompleteness.animalA.coverage < 1);
   assert.equal(result.pedigreeCompleteness.animalB.coverage, 0);
 });
+
+
+test("B4 relationship annotations cannot leak into normal pedigree modes", () => {
+  const animals = [
+    rabbit("shared"),
+    rabbit("p1", { sireId: "shared" }),
+    rabbit("p2", { damId: "shared" }),
+    rabbit("subject", { sireId: "p1", damId: "p2" })
+  ];
+  const graph = Engine.buildGraph({ animals, subjectId: "subject", generations: 4 });
+  const sharedNode = graph.nodes.find((node) => node.animalId === "shared");
+  assert.ok(sharedNode);
+
+  const html = Renderer.render({
+    graph,
+    mode: "private-herd",
+    relationship: {
+      sharedIdentities: [sharedNode.identity],
+      closestKeys: [sharedNode.key],
+      occurrenceCounts: { [sharedNode.identity]: 2 }
+    }
+  });
+
+  assert.match(html, /mode-private-herd/);
+  assert.doesNotMatch(html, /is-shared-ancestor/);
+  assert.doesNotMatch(html, /Shared ancestor/);
+  assert.doesNotMatch(html, /Closest path/);
+  assert.doesNotMatch(html, /data-hh-shared-identity=/);
+});
