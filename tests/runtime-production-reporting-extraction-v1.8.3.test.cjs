@@ -171,7 +171,8 @@ test("Production/Reporting runtime is lazy-loaded by composition and remains off
   assert.match(app, /function ensureProductionReportingRuntimeLoaded\(\)/);
   assert.match(app, /"production-reporting-runtime-v1\.8\.3\.js\?v=1"/);
   assert.match(worker, /\.\/production-reporting-runtime-v1\.8\.3\.js\?v=1/);
-  assert.match(worker, /"\/production-reporting-runtime-v1\.8\.3\.js"/);
+  const required = worker.slice(worker.indexOf("const REQUIRED_SHELL"), worker.indexOf("const RUNTIME_CACHE_PATHS"));
+  assert.equal(required.includes("production-reporting-runtime-v1.8.3.js"), false);
 });
 
 test("Phase 6G extraction remains compatible with formal v2.0.0 and does not activate normalized sync", () => {
