@@ -388,62 +388,31 @@
       return true;
     }
 
-    function pedigreePreviewCardHtml(animal, relation, subject = false) {
-      const sex = animal?.sex === "Male"
-        ? (animal?.species === "Rabbit" ? "♂ Buck" : "♂ Male")
-        : animal?.sex === "Female"
-          ? (animal?.species === "Rabbit" ? "♀ Doe" : "♀ Female")
-          : "Unknown";
-      return `<article class="pedigree-preview-card ${subject ? "subject" : ""} ${animal ? "" : "unknown"}">
-        <div class="pedigree-preview-heading">
-          <div><small>${esc(relation)}</small><strong>${esc(animal?.name || "Unknown")}</strong></div>
-          <span class="pedigree-preview-sex">${esc(sex)}</span>
-        </div>
-        <div class="pedigree-preview-details">
-          <span data-field="id"><b>ID:</b> ${esc(animal?.earTagNumber || animal?.tag || animal?.tattoo || "—")}</span>
-          <span data-field="dob"><b>DOB:</b> ${esc(animal?.dob ? deps.formatDate(animal.dob) : "—")}</span>
-          <span data-field="color"><b>COLOR:</b> ${esc(animal?.color || "—")}</span>
-          <span data-field="breed"><b>BREED:</b> ${esc(animal?.breed || "—")}</span>
-        </div>
-      </article>`;
-    }
-
     function pedigreeRecordPreviewHtml(subject, record = null) {
       const state = stateNow();
-      const byId = (id) => (state.animals || []).find((animal) => animal.id === id) || null;
-      const ids = record?.ancestorIds || {};
-      const sire = byId(ids.sire || subject?.sireId);
-      const dam = byId(ids.dam || subject?.damId);
-      const sireSire = byId(ids.sireSire || sire?.sireId);
-      const sireDam = byId(ids.sireDam || sire?.damId);
-      const damSire = byId(ids.damSire || dam?.sireId);
-      const damDam = byId(ids.damDam || dam?.damId);
-      return `<div class="pedigree-preview-scroll" aria-label="Pedigree chart for ${esc(subject?.name || "animal")}">
-        <div class="pedigree-preview-tree">
-          <div class="pedigree-preview-node" style="grid-column:1;grid-row:1 / 5">${pedigreePreviewCardHtml(subject, "Animal", true)}</div>
-          <div class="pedigree-preview-branch" style="grid-column:2;grid-row:1 / 5"><span class="pedigree-preview-arm top"></span><span class="pedigree-preview-arm bottom"></span></div>
-          <div class="pedigree-preview-node" style="grid-column:3;grid-row:1 / 3">${pedigreePreviewCardHtml(sire, "Sire")}</div>
-          <div class="pedigree-preview-node" style="grid-column:3;grid-row:3 / 5">${pedigreePreviewCardHtml(dam, "Dam")}</div>
-          <div class="pedigree-preview-branch" style="grid-column:4;grid-row:1 / 3"><span class="pedigree-preview-arm top"></span><span class="pedigree-preview-arm bottom"></span></div>
-          <div class="pedigree-preview-branch" style="grid-column:4;grid-row:3 / 5"><span class="pedigree-preview-arm top"></span><span class="pedigree-preview-arm bottom"></span></div>
-          <div class="pedigree-preview-node" style="grid-column:5;grid-row:1">${pedigreePreviewCardHtml(sireSire, "Sire's sire")}</div>
-          <div class="pedigree-preview-node" style="grid-column:5;grid-row:2">${pedigreePreviewCardHtml(sireDam, "Sire's dam")}</div>
-          <div class="pedigree-preview-node" style="grid-column:5;grid-row:3">${pedigreePreviewCardHtml(damSire, "Dam's sire")}</div>
-          <div class="pedigree-preview-node" style="grid-column:5;grid-row:4">${pedigreePreviewCardHtml(damDam, "Dam's dam")}</div>
-        </div>
-      </div>`;
+      const engine = root.HerdHarborPedigreeEngine;
+      const renderer = root.HerdHarborPedigreeRenderer;
+      if (!engine?.buildGraph || !renderer?.render) {
+        return '<p class="muted">Pedigree preview is unavailable until the pedigree tools finish loading.</p>';
+      }
+      const graph = engine.buildGraph({
+        animals: state.animals || [],
+        subject,
+        subjectId: subject?.id,
+        ancestorIds: record?.ancestorIds || {},
+        generations: 3
+      });
+      return renderer.render({
+        graph,
+        mode: "private-herd",
+        formatDate: deps.formatDate
+      });
     }
 
     function openAnimalDetail(id) {
       const state = stateNow();
       const animal = (state.animals || []).find((item) => item.id === id);
       if (!animal) return false;
-      const sire = (state.animals || []).find((item) => item.id === animal.sireId);
-      const dam = (state.animals || []).find((item) => item.id === animal.damId);
-      const sireSire = sire ? (state.animals || []).find((item) => item.id === sire.sireId) : null;
-      const sireDam = sire ? (state.animals || []).find((item) => item.id === sire.damId) : null;
-      const damSire = dam ? (state.animals || []).find((item) => item.id === dam.sireId) : null;
-      const damDam = dam ? (state.animals || []).find((item) => item.id === dam.damId) : null;
       const health = (state.health || []).filter((record) => record.animalId === id).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
       const breedings = (state.breedings || []).filter((record) => record.femaleId === id || record.maleId === id);
       const pedigreeImports = (state.pedigrees || []).filter((record) => record.subjectAnimalId === id);
@@ -474,20 +443,7 @@
           ${deps.detailField("Asking price", animal.askingPrice ? deps.formatMoney(animal.askingPrice) : "—")}
         </div>
         <h3 style="margin-top:22px">Pedigree preview</h3>
-        <div class="pedigree-preview-scroll">
-          <div class="pedigree-preview-tree">
-            <div class="pedigree-preview-node" style="grid-column:1;grid-row:1 / 5">${pedigreePreviewCardHtml(animal, "Animal", true)}</div>
-            <div class="pedigree-preview-branch" style="grid-column:2;grid-row:1 / 5"><span class="pedigree-preview-arm top"></span><span class="pedigree-preview-arm bottom"></span></div>
-            <div class="pedigree-preview-node" style="grid-column:3;grid-row:1 / 3">${pedigreePreviewCardHtml(sire, "Sire")}</div>
-            <div class="pedigree-preview-node" style="grid-column:3;grid-row:3 / 5">${pedigreePreviewCardHtml(dam, "Dam")}</div>
-            <div class="pedigree-preview-branch" style="grid-column:4;grid-row:1 / 3"><span class="pedigree-preview-arm top"></span><span class="pedigree-preview-arm bottom"></span></div>
-            <div class="pedigree-preview-branch" style="grid-column:4;grid-row:3 / 5"><span class="pedigree-preview-arm top"></span><span class="pedigree-preview-arm bottom"></span></div>
-            <div class="pedigree-preview-node" style="grid-column:5;grid-row:1">${pedigreePreviewCardHtml(sireSire, "Sire's sire")}</div>
-            <div class="pedigree-preview-node" style="grid-column:5;grid-row:2">${pedigreePreviewCardHtml(sireDam, "Sire's dam")}</div>
-            <div class="pedigree-preview-node" style="grid-column:5;grid-row:3">${pedigreePreviewCardHtml(damSire, "Dam's sire")}</div>
-            <div class="pedigree-preview-node" style="grid-column:5;grid-row:4">${pedigreePreviewCardHtml(damDam, "Dam's dam")}</div>
-          </div>
-        </div>
+        ${pedigreeRecordPreviewHtml(animal, pedigreeImports.slice().sort((left, right) => String(right.importedAt || "").localeCompare(String(left.importedAt || "")))[0] || null)}
         <h3 style="margin-top:22px">Notes</h3>
         <p class="muted">${esc(animal.notes || "No notes recorded.")}</p>
         <h3 style="margin-top:22px">Record summary</h3>
