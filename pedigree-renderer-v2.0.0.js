@@ -209,7 +209,7 @@
     const canExpand = options.interactive && Boolean(detailRows || node?.issue);
     const summarySex = isKnown && fields.includes("sex") ? sexLabel(animal) : "";
     const repeat = node?.status === "repeat" && node?.repeatOf
-      ? `<span class="hh-pedigree-repeat">Repeated occurrence · also appears as ${escapeHtml(node.repeatOf)}</span>`
+      ? `<span class="hh-pedigree-repeat">Repeated occurrence · Also appears as ${escapeHtml(node.repeatOf)}</span>`
       : "";
     const sharedMarker = relationship.shared
       ? `<button type="button" class="hh-pedigree-shared-marker" data-hh-shared-identity="${escapeHtml(relationship.identity)}" aria-pressed="false"><span aria-hidden="true">↔</span> Shared ancestor${relationship.occurrenceCount > 1 ? ` · ${relationship.occurrenceCount} appearances` : ""}</button>`
