@@ -172,14 +172,15 @@
   function renderCard(node, options) {
     const animal = node?.animal || null;
     const isKnown = Boolean(animal) && ["known", "repeat"].includes(node?.status);
-    const fields = options.fields;
+    const subject = Number(node?.generation || 0) === 0;
+    const fields = subject ? options.rootFields : options.ancestorFields;
     const photo = fields.includes("photo") && isKnown ? fieldValue(animal, "photo") : "";
+    const blankUnknown = !isKnown && node?.status === "unknown" && options.unknownDisplay === "blank";
     const name = isKnown && fields.includes("name")
       ? fieldValue(animal, "name")
-      : (isKnown ? "Recorded ancestor" : "Unknown");
+      : (isKnown ? "Recorded ancestor" : (blankUnknown ? "—" : "Unknown"));
     const relation = clean(node?.relation) || "Ancestor";
-    const status = statusLabel(node);
-    const subject = Number(node?.generation || 0) === 0;
+    const status = blankUnknown ? "" : statusLabel(node);
     const expanded = !options.interactive || subject || options.expandedKeys.has(clean(node?.key));
     const detailRows = isKnown ? renderFieldRows(animal, fields, options.formatDate) : "";
     const canExpand = options.interactive && Boolean(detailRows || node?.issue);
@@ -215,8 +216,13 @@
     }
     const mode = normalizeMode(options.mode);
     const modeConfig = MODES[mode];
-    const fields = normalizeFields(options.fields, mode);
+    const sharedFields = normalizeFields(options.fields, mode);
+    const rootFields = normalizeFields(options.rootFields || sharedFields, mode);
+    const ancestorFields = normalizeFields(options.ancestorFields || sharedFields, mode);
     const density = ["compact", "comfortable"].includes(options.density) ? options.density : modeConfig.density;
+    const unknownDisplay = ["label", "blank"].includes(options.unknownDisplay) ? options.unknownDisplay : "label";
+    const layout = ["balanced", "columns"].includes(options.layout) ? options.layout : "balanced";
+    const style = ["classic", "minimal", "professional", "buyer", "rabbitry-branded"].includes(options.style) ? options.style : "classic";
     const interactive = options.interactive == null ? modeConfig.interactive : options.interactive === true;
     const expandedKeys = new Set(Array.isArray(options.expandedKeys) ? options.expandedKeys.map(clean) : []);
     const generations = Math.max(1, Number(graph.generations || 1));
@@ -228,13 +234,13 @@
       columns.push(`<section class="hh-pedigree-generation" data-generation="${generation}" aria-label="${generation === 0 ? "Animal" : `Generation ${generation + 1}`}">
         <div class="hh-pedigree-generation-label">${generation === 0 ? "Animal" : generation === 1 ? "Parents" : generation === 2 ? "Grandparents" : `Generation ${generation + 1}`}</div>
         <div class="hh-pedigree-generation-cards">
-          ${nodes.map((node) => renderCard(node, { fields, density, interactive, expandedKeys, formatDate: options.formatDate })).join("")}
+          ${nodes.map((node) => renderCard(node, { rootFields, ancestorFields, density, unknownDisplay, interactive, expandedKeys, formatDate: options.formatDate })).join("")}
         </div>
       </section>`);
     }
 
     const subjectName = graph.root?.animal ? fieldValue(graph.root.animal, "name") : "animal";
-    return `<div class="hh-pedigree-renderer density-${escapeHtml(density)} mode-${escapeHtml(mode)}" data-hh-pedigree-renderer data-pedigree-mode="${escapeHtml(mode)}" style="--hh-pedigree-generations:${columns.length}" aria-label="Pedigree chart for ${escapeHtml(subjectName || "animal")}">
+    return `<div class="hh-pedigree-renderer density-${escapeHtml(density)} mode-${escapeHtml(mode)} layout-${escapeHtml(layout)} style-${escapeHtml(style)}" data-hh-pedigree-renderer data-pedigree-mode="${escapeHtml(mode)}" data-pedigree-layout="${escapeHtml(layout)}" data-pedigree-style="${escapeHtml(style)}" data-unknown-display="${escapeHtml(unknownDisplay)}" style="--hh-pedigree-generations:${columns.length}" aria-label="Pedigree chart for ${escapeHtml(subjectName || "animal")}">
       <div class="hh-pedigree-columns">${columns.join("")}</div>
     </div>`;
   }
