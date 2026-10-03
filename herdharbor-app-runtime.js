@@ -1003,7 +1003,9 @@
       nav.hidden = !allowed;
       nav.setAttribute("aria-hidden", String(!allowed));
     }
-    if (!allowed && currentRoute === "admin") currentRoute = "dashboard";
+    if (!allowed && currentRoute === "admin") {
+      navigate("dashboard");
+    }
     return allowed;
   }
 
