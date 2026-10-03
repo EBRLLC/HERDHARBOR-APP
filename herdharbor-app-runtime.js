@@ -2273,11 +2273,10 @@
     if (!subject) return null;
 
     const engine = window.HerdHarborPedigreeEngine;
-    const renderer = window.HerdHarborPedigreeRenderer;
     const customization = window.HerdHarborPedigreeCustomization;
     const documents = window.HerdHarborPedigreeDocuments;
-    const exporter = window.HerdHarborDocumentExport;
-    if (!engine?.buildGraph || !renderer?.render || !exporter?.buildDocumentHtml) return null;
+    const standardPrint = window.HerdHarborStandardPedigreePrint;
+    if (!engine?.buildGraph || !standardPrint?.buildHtml) return null;
 
     const savedPedigree = state.pedigrees
       .filter((record) => record.subjectAnimalId === animalId)
@@ -2303,24 +2302,12 @@
       generations: config.generations || 4
     });
 
-    const rendererOptions = customization?.rendererOptions
-      ? customization.rendererOptions(config, formatDate)
-      : { mode: "print-preview", interactive: false, formatDate };
-
-    const pedigreeHtml = renderer.render({
-      graph,
-      ...rendererOptions,
-      mode: "print-preview",
-      interactive: false,
-      branding: documentContext.branding || null
-    });
-
     return {
       subject,
+      graph,
       config,
       branding: documentContext.branding || null,
-      exporter,
-      pedigreeHtml
+      standardPrint
     };
   }
 
@@ -2328,30 +2315,17 @@
     const context = pedigreeExportContext(animalId, overrideConfig);
     if (!context) return "";
 
-    const salePrice = sale.salePrice ? `$${sale.salePrice}` : "";
-    const metadata = [
-      { label: "Seller", value: sale.sellerName },
-      { label: "Seller contact", value: sale.sellerContact },
-      { label: "Buyer", value: sale.buyerName },
-      { label: "Sale / transfer date", value: sale.saleDate ? formatDate(sale.saleDate) : "" },
-      { label: "Sale price", value: salePrice },
-      { label: "Transfer number", value: sale.transferNumber }
-    ];
-
-    return context.exporter.buildDocumentHtml({
-      title: `${context.subject.name} Pedigree`,
-      documentType: "Pedigree",
-      page: context.exporter.pedigreePageOptions?.(context.config.generations || 4) || {
-        pageSize: "letter",
-        orientation: "landscape",
-        margin: ".3in"
-      },
-      bodyHtml: context.pedigreeHtml,
-      metadata,
-      notes: sale.saleNotes || "",
-      generatedLabel: `Generated ${new Date().toLocaleDateString()}`,
-      footerLeft: "Created with HerdHarbor · Livestock records without limits.",
-      footerRight: context.branding?.rabbitryName || state.profile?.operationName || "HerdHarbor"
+    return context.standardPrint.buildHtml({
+      subject: context.subject,
+      graph: context.graph,
+      config: context.config,
+      branding: context.branding || null,
+      operationName: state.profile?.operationName || "HerdHarbor Breeder",
+      defaultLogo: state.profile?.logoData || defaultHerdHarborLogo(),
+      sale,
+      generatedDate: new Date().toLocaleDateString(),
+      formatDate,
+      speciesIcon
     });
   }
 
@@ -2456,14 +2430,18 @@
     if (mobilePrint) {
       openMobilePrintPreview(printableHtml, context.subject.name);
     } else {
-      const popup = context.exporter.openPrintWindow?.(printableHtml);
+      const popup = window.open("", "_blank");
       if (!popup) {
         openMobilePrintPreview(printableHtml, context.subject.name);
       } else {
+        popup.document.open();
+        popup.document.write(printableHtml);
+        popup.document.close();
         try {
           window.HerdHarborPedigreeGenetics?.enhanceDocument?.(popup.document, true, window);
         } catch {}
         closeModal();
+        setTimeout(() => popup.focus(), 150);
       }
     }
 
