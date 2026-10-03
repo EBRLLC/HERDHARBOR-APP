@@ -101,6 +101,7 @@ assert.match(appRuntime, /if \(route === "admin" && window\.HerdHarborMembership
 assert.match(appRuntime, /function ensureAdminRuntimeLoaded\(\)/);
 assert.match(appRuntime, /"herdharbor-admin-v1\.6\.1\.js\?v=2"/);
 assert.match(appRuntime, /function syncAdminNavigation\(\)/);
+assert.match(appRuntime, /if \(!allowed && currentRoute === "admin"\) \{\s*navigate\("dashboard"\);\s*\}/);
 assert.match(appRuntime, /HerdHarborMembership\?\.canAccessAdmin\?\.\(\) === true/);
 assert.match(appRuntime, /renderLazyRoute\([\s\S]*"admin"[\s\S]*ensureAdminRuntimeLoaded[\s\S]*HerdHarborAdmin\?\.render\?\.\(\)/);
 assert.match(admin, /Supabase also enforces this permission through Row Level Security/);
