@@ -1338,26 +1338,13 @@
   ];
 
   function existingPedigreeAncestry(subjectId) {
-    const animalsById = new Map(state.animals.map((animal) => [animal.id, animal]));
-    const ancestorIds = {};
-    const queue = [{ key: "subject", id: subjectId, path: new Set(subjectId ? [subjectId] : []) }];
-
-    while (queue.length) {
-      const current = queue.shift();
-      const animal = animalsById.get(current.id);
-      if (!animal) continue;
-
-      PEDIGREE_RELATIONS
-        .filter(([ownerKey]) => ownerKey === current.key)
-        .forEach(([, relationField, parentKey]) => {
-          const parentId = String(animal[relationField] || "").trim();
-          if (!parentId || !animalsById.has(parentId) || current.path.has(parentId)) return;
-          ancestorIds[parentKey] = parentId;
-          queue.push({ key: parentKey, id: parentId, path: new Set([...current.path, parentId]) });
-        });
-    }
-
-    return ancestorIds;
+    const engine = globalThis.HerdHarborPedigreeEngine;
+    if (!engine?.legacyAncestorIds) return {};
+    return engine.legacyAncestorIds({
+      animals: state.animals,
+      subjectId,
+      generations: 4
+    });
   }
 
   function renderPedigrees() {
