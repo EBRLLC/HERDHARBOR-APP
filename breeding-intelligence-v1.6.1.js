@@ -114,7 +114,7 @@
   }
 
   function relationshipAnalysis(animalA, animalB, state, generations = 4) {
-    return Pedigree.sharedAncestorAnalysis({
+    return Pedigree.pedigreeRelationshipAnalysis({
       animals: state.animals || [],
       animalA,
       animalB,
@@ -133,18 +133,34 @@
           const repeats = row.animalARepeated || row.animalBRepeated
             ? ` · repeated occurrence${row.pathPairCount === 1 ? "" : "s"}: ${row.pathPairCount} path pair${row.pathPairCount === 1 ? "" : "s"}`
             : "";
-          return `<li><strong>${esc(row.name || "Shared ancestor")}</strong> — ${esc(pathText)}${esc(repeats)}</li>`;
+          const ancestorCoi = row.animalId
+            ? analysis.sharedAncestryUsed.find((item) => item.animalId === row.animalId)?.ancestorPedigreeCoi
+            : null;
+          return `<li><strong>${esc(row.name || "Shared ancestor")}</strong> — ${esc(pathText)}${esc(repeats)}${ancestorCoi ? ` · ancestor Pedigree COI ${percentage(ancestorCoi)}` : ""}</li>`;
         }).join("")}</ul>`
-      : `<p>No shared ancestors are recorded within ${analysis.maxAncestorDepth} analyzed ancestor generation${analysis.maxAncestorDepth === 1 ? "" : "s"}.</p>`;
+      : `<p>No shared ancestors are recorded within ${analysis.ancestorGenerationsAnalyzed} analyzed ancestor generation${analysis.ancestorGenerationsAnalyzed === 1 ? "" : "s"}.</p>`;
+
+    const direct = analysis.directAncestryUsed?.length
+      ? `<div class="hh-bi-evidence-panel"><h4>Direct ancestry</h4><ul>${analysis.directAncestryUsed.map((row) =>
+          `<li><strong>${esc(row.name || "Recorded ancestor")}</strong> — direct ancestor of ${row.ancestorOf === "animalA" ? esc(labelA) : esc(labelB)} at generation ${row.closestDepth}</li>`
+        ).join("")}</ul></div>`
+      : "";
 
     return `<div class="hh-bi-pedigree-summary">
-      <div class="hh-bi-two-col">
-        <div><h4>${esc(labelA)}</h4><p>${percentage(analysis.completeness.animalA.coverage)} pedigree coverage · ${analysis.completeness.animalA.knownAncestorSlots}/${analysis.completeness.animalA.expectedAncestorSlots} recorded slots</p></div>
-        <div><h4>${esc(labelB)}</h4><p>${percentage(analysis.completeness.animalB.coverage)} pedigree coverage · ${analysis.completeness.animalB.knownAncestorSlots}/${analysis.completeness.animalB.expectedAncestorSlots} recorded slots</p></div>
+      <div class="hh-bi-metrics">
+        <div><strong>${percentage(analysis.relationshipCoefficient)}</strong><span>Relationship coefficient</span></div>
+        <div><strong>${percentage(analysis.projectedOffspringPedigreeCoi)}</strong><span>Projected offspring Pedigree COI</span></div>
+        <div><strong>${analysis.sharedAncestorCount}</strong><span>Shared ancestors</span></div>
       </div>
-      <p class="hh-bi-note">Analyzed through ${analysis.maxAncestorDepth} ancestor generation${analysis.maxAncestorDepth === 1 ? "" : "s"}. Shared ancestors are matched by canonical animal identity and every recorded occurrence/path is preserved.</p>
+      <div class="hh-bi-two-col">
+        <div><h4>${esc(labelA)}</h4><p>${percentage(analysis.pedigreeCompleteness.animalA.coverage)} pedigree coverage · ${analysis.pedigreeCompleteness.animalA.knownAncestorSlots}/${analysis.pedigreeCompleteness.animalA.expectedAncestorSlots} recorded slots</p></div>
+        <div><h4>${esc(labelB)}</h4><p>${percentage(analysis.pedigreeCompleteness.animalB.coverage)} pedigree coverage · ${analysis.pedigreeCompleteness.animalB.knownAncestorSlots}/${analysis.pedigreeCompleteness.animalB.expectedAncestorSlots} recorded slots</p></div>
+      </div>
+      <p class="hh-bi-note">Analyzed through ${analysis.ancestorGenerationsAnalyzed} ancestor generation${analysis.ancestorGenerationsAnalyzed === 1 ? "" : "s"} using recorded pedigree parentage. Relationship coefficient and projected offspring Pedigree COI are separate values. This is pedigree-based, not genomic COI.</p>
+      ${direct}
       <h4>Shared ancestors (${analysis.sharedAncestorCount})</h4>
       ${shared}
+      <p class="hh-bi-note">${esc(analysis.assumptions.missingAncestry)}</p>
     </div>`;
   }
 
