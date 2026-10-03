@@ -2268,46 +2268,16 @@
   }
 
 
-  function openPrintPedigreeForm(animalId) {
-    const animal = state.animals.find((item) => item.id === animalId);
-    if (!animal) return toast("The animal record could not be found.", "error");
-    openModal("Print sale pedigree", `
-      <form id="print-pedigree-form">
-        <div class="pedigree-warning">The printed pedigree always uses a clean white page, even when HerdHarbor is in dark mode.</div>
-        <div class="form-grid two" style="margin-top:14px">
-          ${field("Seller name", "sellerName", state.profile?.ownerName || "", true)}
-          ${field("Seller contact", "sellerContact", "")}
-          ${field("Buyer name", "buyerName", "")}
-          ${field("Sale / transfer date", "saleDate", todayISO(), false, "date")}
-          ${field("Sale price (optional)", "salePrice", "")}
-          ${field("Certificate or transfer number", "transferNumber", "")}
-        </div>
-        ${textareaField("Sale notes", "saleNotes", "")}
-        <div class="modal-actions">
-          <button type="button" class="button button-ghost" id="cancel-print-pedigree">Cancel</button>
-          <button type="submit" class="button button-primary">Open printable pedigree</button>
-        </div>
-      </form>`, `${animal.name} · Sale pedigree`);
-    $("#cancel-print-pedigree").addEventListener("click", closeModal);
-    $("#print-pedigree-form").addEventListener("submit", (event) => {
-      event.preventDefault();
-      const sale = Object.fromEntries(new FormData(event.currentTarget));
-      printSalePedigree(animalId, sale);
-    });
-  }
-
-  function printSalePedigree(animalId, sale = {}) {
+  function pedigreeExportContext(animalId, overrideConfig = null) {
     const subject = state.animals.find((item) => item.id === animalId);
-    if (!subject) return toast("The animal record could not be found.", "error");
+    if (!subject) return null;
 
     const engine = window.HerdHarborPedigreeEngine;
     const renderer = window.HerdHarborPedigreeRenderer;
     const customization = window.HerdHarborPedigreeCustomization;
     const documents = window.HerdHarborPedigreeDocuments;
     const exporter = window.HerdHarborDocumentExport;
-    if (!engine?.buildGraph || !renderer?.render || !exporter?.buildDocumentHtml) {
-      return toast("The pedigree export tools did not finish loading.", "error");
-    }
+    if (!engine?.buildGraph || !renderer?.render || !exporter?.buildDocumentHtml) return null;
 
     const savedPedigree = state.pedigrees
       .filter((record) => record.subjectAnimalId === animalId)
@@ -2320,7 +2290,11 @@
       state.profile || {},
       currentConfig
     ) || { config: currentConfig, branding: null };
-    const config = documentContext.config || currentConfig;
+
+    const config = overrideConfig && customization?.normalize
+      ? customization.normalize(overrideConfig)
+      : (overrideConfig || documentContext.config || currentConfig);
+
     const graph = engine.buildGraph({
       animals: state.animals || [],
       subject,
@@ -2328,9 +2302,11 @@
       ancestorIds: savedPedigree?.ancestorIds || {},
       generations: config.generations || 4
     });
+
     const rendererOptions = customization?.rendererOptions
       ? customization.rendererOptions(config, formatDate)
       : { mode: "print-preview", interactive: false, formatDate };
+
     const pedigreeHtml = renderer.render({
       graph,
       ...rendererOptions,
@@ -2338,6 +2314,19 @@
       interactive: false,
       branding: documentContext.branding || null
     });
+
+    return {
+      subject,
+      config,
+      branding: documentContext.branding || null,
+      exporter,
+      pedigreeHtml
+    };
+  }
+
+  function buildPedigreePrintableHtml(animalId, sale = {}, overrideConfig = null) {
+    const context = pedigreeExportContext(animalId, overrideConfig);
+    if (!context) return "";
 
     const salePrice = sale.salePrice ? `$${sale.salePrice}` : "";
     const metadata = [
@@ -2349,27 +2338,127 @@
       { label: "Transfer number", value: sale.transferNumber }
     ];
 
-    const printableHtml = exporter.buildDocumentHtml({
-      title: `${subject.name} Pedigree`,
+    return context.exporter.buildDocumentHtml({
+      title: `${context.subject.name} Pedigree`,
       documentType: "Pedigree",
-      page: exporter.pedigreePageOptions?.(config.generations || 4) || { pageSize: "letter", orientation: "landscape", margin: ".3in" },
-      bodyHtml: pedigreeHtml,
+      page: context.exporter.pedigreePageOptions?.(context.config.generations || 4) || {
+        pageSize: "letter",
+        orientation: "landscape",
+        margin: ".3in"
+      },
+      bodyHtml: context.pedigreeHtml,
       metadata,
       notes: sale.saleNotes || "",
       generatedLabel: `Generated ${new Date().toLocaleDateString()}`,
       footerLeft: "Created with HerdHarbor · Livestock records without limits.",
-      footerRight: documentContext.branding?.rabbitryName || state.profile?.operationName || "HerdHarbor"
+      footerRight: context.branding?.rabbitryName || state.profile?.operationName || "HerdHarbor"
     });
+  }
+
+  function openPrintPedigreeForm(animalId) {
+    const animal = state.animals.find((item) => item.id === animalId);
+    if (!animal) return toast("The animal record could not be found.", "error");
+
+    const customization = window.HerdHarborPedigreeCustomization;
+    if (!customization?.controlsHtml || !customization?.readControls) {
+      return toast("Pedigree customization did not finish loading.", "error");
+    }
+
+    const initialContext = pedigreeExportContext(animalId);
+    if (!initialContext) return toast("The pedigree export tools did not finish loading.", "error");
+    let config = initialContext.config;
+
+    openModal("Customize pedigree", `
+      <form id="print-pedigree-form">
+        <div class="pedigree-warning">Customize this pedigree below. Changes here apply to this export only; Settings controls your default pedigree configuration.</div>
+        <h3 style="margin-top:18px">Pedigree layout</h3>
+        <div id="pedigree-export-customization">${customization.controlsHtml(config)}</div>
+
+        <h3 style="margin-top:18px">Sale / transfer details</h3>
+        <div class="form-grid two" style="margin-top:10px">
+          ${field("Seller name", "sellerName", state.profile?.ownerName || "", true)}
+          ${field("Seller contact", "sellerContact", "")}
+          ${field("Buyer name", "buyerName", "")}
+          ${field("Sale / transfer date", "saleDate", todayISO(), false, "date")}
+          ${field("Sale price (optional)", "salePrice", "")}
+          ${field("Certificate or transfer number", "transferNumber", "")}
+        </div>
+        ${textareaField("Sale notes", "saleNotes", "")}
+
+        <h3 style="margin-top:18px">Preview</h3>
+        <iframe id="pedigree-export-preview" title="Pedigree export preview for ${esc(animal.name)}" style="width:100%;height:58dvh;border:1px solid var(--border);border-radius:10px;background:#fff"></iframe>
+
+        <div class="modal-actions">
+          <button type="button" class="button button-ghost" id="cancel-print-pedigree">Cancel</button>
+          <button type="submit" class="button button-primary">Print / Save PDF</button>
+        </div>
+      </form>`, `${animal.name} · Pedigree`);
+
+    $(".modal").classList.add("modal-wide");
+
+    const form = $("#print-pedigree-form");
+    const configHost = $("#pedigree-export-customization");
+    const preview = $("#pedigree-export-preview");
+    let previewTimer = 0;
+
+    const saleValues = () => Object.fromEntries(new FormData(form));
+
+    const renderPreview = () => {
+      window.clearTimeout(previewTimer);
+      previewTimer = window.setTimeout(() => {
+        const html = buildPedigreePrintableHtml(animalId, saleValues(), config);
+        const exporter = window.HerdHarborDocumentExport;
+        if (!exporter?.loadFrame?.(preview, html)) preview.srcdoc = html;
+      }, 60);
+    };
+
+    const bindCustomization = () => {
+      configHost.querySelectorAll("input,select").forEach((control) => {
+        control.addEventListener("change", (event) => {
+          if (event.currentTarget?.name === "template") {
+            config = customization.templateConfig(event.currentTarget.value);
+            configHost.innerHTML = customization.controlsHtml(config);
+            bindCustomization();
+          } else {
+            config = customization.readControls(configHost, config);
+          }
+          renderPreview();
+        });
+      });
+    };
+
+    bindCustomization();
+    form.querySelectorAll('input[name],textarea[name]').forEach((control) => {
+      control.addEventListener("input", renderPreview);
+      control.addEventListener("change", renderPreview);
+    });
+
+    $("#cancel-print-pedigree").addEventListener("click", closeModal);
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      config = customization.readControls(configHost, config);
+      printSalePedigree(animalId, saleValues(), config);
+    });
+
+    renderPreview();
+  }
+
+  function printSalePedigree(animalId, sale = {}, overrideConfig = null) {
+    const context = pedigreeExportContext(animalId, overrideConfig);
+    if (!context) return toast("The pedigree export tools did not finish loading.", "error");
+
+    const printableHtml = buildPedigreePrintableHtml(animalId, sale, context.config);
+    if (!printableHtml) return toast("The pedigree could not be prepared.", "error");
 
     const mobilePrint = window.matchMedia("(max-width: 760px)").matches ||
       window.matchMedia("(display-mode: standalone)").matches ||
       Boolean(window.navigator.standalone);
     if (mobilePrint) {
-      openMobilePrintPreview(printableHtml, subject.name);
+      openMobilePrintPreview(printableHtml, context.subject.name);
     } else {
-      const popup = exporter.openPrintWindow?.(printableHtml);
+      const popup = context.exporter.openPrintWindow?.(printableHtml);
       if (!popup) {
-        openMobilePrintPreview(printableHtml, subject.name);
+        openMobilePrintPreview(printableHtml, context.subject.name);
       } else {
         try {
           window.HerdHarborPedigreeGenetics?.enhanceDocument?.(popup.document, true, window);
@@ -2378,7 +2467,7 @@
       }
     }
 
-    recordActivity(`Opened a printable pedigree for ${subject.name}.`, "pedigree");
+    recordActivity(`Opened a printable pedigree for ${context.subject.name}.`, "pedigree");
     saveState();
   }
 
