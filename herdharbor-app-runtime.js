@@ -293,6 +293,13 @@
     );
   }
 
+  function ensureAdminRuntimeLoaded() {
+    return loadScriptOnce(
+      "herdharbor-admin-v1.6.1.js?v=2",
+      () => typeof window.HerdHarborAdmin?.render === "function"
+    );
+  }
+
   function ensureSettingsRuntimeLoaded() {
     return loadScriptOnce(
       "settings-runtime-v1.8.3.js?v=1",
@@ -901,8 +908,9 @@
       refreshSyncStatus(event.detail);
     });
     document.addEventListener("herdharbor:membership-change", () => {
+      syncAdminNavigation();
       if (currentRoute === "settings") renderSettings();
-      if (currentRoute === "admin") window.HerdHarborAdmin?.render?.();
+      if (currentRoute === "admin") renderCurrentView();
     });
     document.addEventListener("herdharbor:request-upgrade", () => {
       if (window.HerdHarborBilling?.enabled?.()) {
@@ -930,6 +938,7 @@
     if (state.profile) showApp();
     else showOnboarding();
     refreshSyncStatus();
+    syncAdminNavigation();
     requestDurableDeviceStorage();
     schedulePedigreeAttachmentMigration();
 
@@ -985,6 +994,17 @@
     recordActivity("Created the HerdHarbor workspace.", "setup");
     saveState();
     showApp();
+  }
+
+  function syncAdminNavigation() {
+    const allowed = window.HerdHarborMembership?.canAccessAdmin?.() === true;
+    const nav = document.querySelector('[data-route="admin"]');
+    if (nav) {
+      nav.hidden = !allowed;
+      nav.setAttribute("aria-hidden", String(!allowed));
+    }
+    if (!allowed && currentRoute === "admin") currentRoute = "dashboard";
+    return allowed;
   }
 
   function navigate(route) {
@@ -1097,7 +1117,18 @@
         });
       },
       settings: renderSettings,
-      admin: () => window.HerdHarborAdmin?.render?.()
+      admin: () => {
+        if (typeof window.HerdHarborAdmin?.render === "function") {
+          window.HerdHarborAdmin.render();
+          return;
+        }
+        renderLazyRoute(
+          "admin",
+          "Admin",
+          ensureAdminRuntimeLoaded,
+          () => window.HerdHarborAdmin?.render?.()
+        );
+      }
     };
     renderers[currentRoute]?.();
   }
