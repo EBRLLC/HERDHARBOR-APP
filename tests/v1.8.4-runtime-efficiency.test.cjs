@@ -83,3 +83,14 @@ test("canonical commit does not parse its freshly serialized next state a second
     "large photo-heavy state must not be reparsed immediately after serialization"
   );
 });
+
+
+test("legacy stability compatibility patches lazy spreadsheets without a perpetual polling loop", () => {
+  const optional = read("herdharbor-optional-tools.js");
+  const stability = read("herdharbor-v1.7.1-stability-hotfix.js");
+  assert.match(optional, /herdharbor:spreadsheet-ready/);
+  assert.match(optional, /window\.dispatchEvent\(new CustomEvent\("herdharbor:spreadsheet-ready"\)\)/);
+  assert.match(stability, /addEventListener\?\.\('herdharbor:spreadsheet-ready',installSpreadsheetPatch\)/);
+  assert.doesNotMatch(stability, /setInterval\?\.\(\(\)=>\{patchCurrentDom\(\)/);
+  assert.doesNotMatch(stability, /,150\)/);
+});
