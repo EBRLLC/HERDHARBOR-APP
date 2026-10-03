@@ -175,6 +175,12 @@ begin
   from public.marketplace_saved_searches s
   where s.alerts_enabled=true
     and s.user_id<>new.seller_id
+    and exists (
+      select 1
+      from public.marketplace_public_profiles subscriber
+      where subscriber.user_id=s.user_id
+        and subscriber.marketplace_status='active'
+    )
     and (nullif(trim(s.search_text),'') is null or
          new.animal_name ilike '%'||trim(s.search_text)||'%' or
          new.breed ilike '%'||trim(s.search_text)||'%' or

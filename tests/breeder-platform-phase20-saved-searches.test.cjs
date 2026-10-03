@@ -60,3 +60,13 @@ test("saved-search alerts only target listings that remain publicly visible",()=
  assert.match(block,/p\.user_id=new\.seller_id/);
  assert.match(block,/p\.marketplace_status='active'/);
 });
+
+
+test("saved-search alerts skip suspended recipients",()=>{
+ const start=migration.indexOf("marketplace_notify_saved_searches()");
+ const end=migration.indexOf("drop trigger if exists marketplace_notify_saved_searches",start);
+ const block=migration.slice(start,end);
+ assert.match(block,/marketplace_public_profiles subscriber/);
+ assert.match(block,/subscriber\.user_id=s\.user_id/);
+ assert.match(block,/subscriber\.marketplace_status='active'/);
+});
