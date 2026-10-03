@@ -254,6 +254,7 @@ self.addEventListener("install", (event) => {
       const fatal = requiredFailures.filter((path) =>
         path.endsWith("index.html") ||
         path.endsWith("herdharbor-build.js") ||
+        path.endsWith("pedigree-engine-v2.0.0.js") ||
         path.endsWith("herdharbor-app-runtime.js") ||
         path.endsWith("herdharbor-cloud.js")
       );
