@@ -646,7 +646,7 @@
   }
 
   function greatPyreneesOutline() {
-    return `<img class="species-outline species-outline-dog" src="great-pyrenees-outline-d7c57423367e.png" alt="Great Pyrenees default image">`;
+    return `<img class="species-outline species-outline-dog" src="great-pyrenees-outline-d7c57423367e.png" alt="Great Pyrenees default image" loading="lazy" decoding="async">`;
   }
 
   function speciesIcon(species = "") {
