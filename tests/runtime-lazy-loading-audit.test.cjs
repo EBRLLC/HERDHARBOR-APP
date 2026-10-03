@@ -164,3 +164,13 @@ test("route-only runtimes are runtime-cached rather than mandatory service-worke
     "cloud-sync-v2-diagnostics-v1.8.2.js"
   ]) assert.equal(networkFirst.includes(obsolete),false,obsolete+" must not remain an active fetch classification");
 });
+
+
+test("route-change instrumentation preserves multi-view navigation",()=>{
+  const navStart=app.indexOf("function navigate(");
+  const navEnd=app.indexOf("function render",navStart);
+  const block=app.slice(navStart,navEnd);
+  assert.match(block,/\$\$\("\.view"\)\.forEach\(\(view\) => view\.classList\.remove\("active"\)\)/);
+  assert.doesNotMatch(block,/(?<!\$)\$\("\.view"\)\.forEach/);
+  assert.match(block,/herdharbor:route-change/);
+});
