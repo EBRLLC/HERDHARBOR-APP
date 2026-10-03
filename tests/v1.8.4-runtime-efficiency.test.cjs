@@ -10,9 +10,13 @@ const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
 test("AI live-test modules are not eagerly loaded for every account", () => {
   const index = read("index.html");
+  const build = read("herdharbor-build.js");
   const optional = read("herdharbor-optional-tools.js");
   assert.doesNotMatch(index, /<script[^>]+voice-assisted-entry-v1\.8\.3\.js/);
   assert.doesNotMatch(index, /<script[^>]+photo-assisted-entry-v1\.8\.3\.js/);
+  assert.doesNotMatch(build, /addScript\("hh-paper-pedigree-core-v182"/);
+  assert.match(optional, /paperPedigreeCore:\s*"paper-pedigree-import-core-v1\.8\.2\.js\?v=1"/);
+  assert.match(optional, /paperPedigreeUi:\s*"paper-pedigree-import-v1\.8\.2\.js\?v=2"/);
   assert.match(optional, /herdharbor_ai_live_tester_v1/);
   assert.match(optional, /ensureAiLiveTools/);
   assert.match(optional, /isAiLiveTester/);
@@ -25,6 +29,8 @@ test("AI tester tools load concurrently only after explicit tester enablement", 
   const optional = read("herdharbor-optional-tools.js");
   assert.match(optional, /if \(!isAiLiveTester\(\)\) throw new Error/);
   assert.match(optional, /Promise\.all\(\[/);
+  assert.match(optional, /HerdHarborPaperPedigreeImportCore/);
+  assert.match(optional, /HerdHarborPaperPedigreeImport/);
   assert.match(optional, /HerdHarborVoiceAssistedEntry/);
   assert.match(optional, /HerdHarborPhotoAssistedEntry/);
 });
@@ -37,7 +43,7 @@ test("service worker precache is bounded to the operational shell", () => {
   assert.ok(block, "required shell declaration");
   const entries = [...block[1].matchAll(/"([^"]+)"/g)].map((match) => match[1]);
   assert.ok(entries.length <= 45, "required shell should stay bounded");
-  assert.ok(!entries.some((entry) => /voice-assisted-entry|photo-assisted-entry/.test(entry)), "AI tester assets are not precached globally");
+  assert.ok(!entries.some((entry) => /voice-assisted-entry|photo-assisted-entry|paper-pedigree-import/.test(entry)), "AI tester assets are not precached globally");
 });
 
 test("service worker install tolerates optional cache failures but protects core shell", () => {
