@@ -1,0 +1,86 @@
+.hh-pedigree-config {
+  display: grid;
+  gap: 14px;
+}
+
+.hh-pedigree-config-photo {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 800;
+}
+
+.hh-pedigree-config-photo input,
+.hh-pedigree-config-check input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.hh-pedigree-config-fields {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 14px;
+}
+
+.hh-pedigree-config-fields fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.hh-pedigree-config-fields legend {
+  padding: 0 6px;
+  color: var(--navy);
+  font-weight: 900;
+}
+
+.hh-pedigree-config-checks {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 7px;
+}
+
+.hh-pedigree-config-check {
+  min-height: 40px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  background: rgba(13,37,64,.035);
+  border-radius: 8px;
+  font-size: .78rem;
+  font-weight: 750;
+}
+
+.hh-pedigree-customization-preview {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.hh-pedigree-customization-preview > h3 {
+  margin: 0 0 4px;
+}
+
+.hh-pedigree-customization-preview > p {
+  margin: 0 0 8px;
+}
+
+@media (max-width: 760px) {
+  .hh-pedigree-config-fields,
+  .hh-pedigree-config-checks {
+    grid-template-columns: 1fr;
+  }
+}
+
+html[data-theme="dark"] .hh-pedigree-config-fields legend {
+  color: #F1F5F7;
+}
+
+html[data-theme="dark"] .hh-pedigree-config-check {
+  background: rgba(255,255,255,.055);
+}
