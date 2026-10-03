@@ -73,17 +73,22 @@ test("static script and stylesheet references resolve once", () => {
   }
 });
 
-test("service worker covers required extracted shell assets", () => {
-  for (const { asset, revision } of [
-    { asset: "animal-profile-runtime-v1.8.3.js", revision: "1" },
-    { asset: "production-reporting-runtime-v1.8.3.js", revision: "1" },
-    { asset: "herdharbor-app-runtime.js", revision: "4" },
-    { asset: "herdharbor-index-shell.css", revision: "1" }
-  ]) {
-    const escaped = asset.replaceAll(".", "\\.");
-    assert.equal((worker.match(new RegExp("\\./" + escaped + "\\?v=" + revision, "g")) || []).length, 1, asset + " has one precache entry");
-    assert.equal((worker.match(new RegExp('"/' + escaped + '"', "g")) || []).length, 1, asset + " has one network-first route");
-    assert.ok(exists(asset), `missing extracted asset: ${asset}`);
+test("service worker classifies eager shell and lazy extracted runtimes without duplicate fetch routes", () => {
+  const required = worker.slice(worker.indexOf("const REQUIRED_SHELL"), worker.indexOf("const RUNTIME_CACHE_PATHS"));
+  const runtime = worker.slice(worker.indexOf("const RUNTIME_CACHE_PATHS"), worker.indexOf("const NETWORK_FIRST_PATHS"));
+  const network = worker.slice(worker.indexOf("const NETWORK_FIRST_PATHS"), worker.indexOf("function isNetworkFirstPath"));
+
+  for (const asset of ["animal-profile-runtime-v1.8.3.js","production-reporting-runtime-v1.8.3.js"]) {
+    assert.equal(required.includes(asset), false, asset + " stays out of mandatory install");
+    assert.equal(runtime.includes(asset), true, asset + " remains runtime-cacheable");
+    assert.equal(network.includes(asset), false, asset + " has no duplicate explicit network-first route");
+    assert.ok(exists(asset), "missing extracted asset: " + asset);
+  }
+
+  for (const asset of ["herdharbor-app-runtime.js","herdharbor-index-shell.css"]) {
+    assert.equal(required.includes(asset), true, asset + " remains in the required shell");
+    assert.equal(network.includes(asset), true, asset + " remains explicitly network-first");
+    assert.ok(exists(asset), "missing extracted asset: " + asset);
   }
 });
 
