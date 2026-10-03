@@ -14,10 +14,12 @@ function storage(initial = null) {
   };
 }
 
-test("A3 exposes the five required starter templates", () => {
+test("customization exposes Standard plus the existing starter templates", () => {
   assert.deepEqual(Object.keys(Customization.TEMPLATES), [
-    "Classic", "Minimal", "Professional", "Buyer", "Rabbitry Branded"
+    "Standard", "Classic", "Minimal", "Professional", "Buyer", "Rabbitry Branded"
   ]);
+  assert.equal(Customization.DEFAULT_TEMPLATE, "Standard");
+  assert.equal(Customization.templateConfig().template, "Standard");
 });
 
 test("generation customization is limited to 3, 4, or 5 generations", () => {
@@ -42,7 +44,7 @@ test("legacy pedigree appearance preferences migrate through the existing storag
   const value = Customization.loadPreferences(store);
   assert.equal(Customization.PREF_KEY, "herdharbor_pedigree_visuals_v1");
   assert.equal(value.photos, true);
-  assert.equal(value.template, "Classic");
+  assert.equal(value.template, "Standard");
 });
 
 test("saving customization preserves legacy preference data instead of creating a parallel store", () => {
@@ -96,4 +98,17 @@ test("A3 shell loads customization before the renderer and caches both assets", 
   assert.match(worker, /\.\/pedigree-customization-v2\.0\.0\.css\?v=1/);
   assert.match(worker, /\.\/pedigree-customization-v2\.0\.0\.js\?v=1/);
   assert.match(worker, /"\/pedigree-customization-v2\.0\.0\.js"/);
+});
+
+
+test("print controls keep the standard layout fixed while exposing content customization", () => {
+  const html = Customization.printControlsHtml(Customization.templateConfig("Standard"));
+  for (const token of [
+    'name="template"', 'name="generations"', 'name="rootFields"',
+    'name="ancestorFields"', 'name="photos"', 'name="unknownDisplay"'
+  ]) assert.ok(html.includes(token), token);
+  assert.ok(html.includes("Standard is the default HerdHarbor pedigree layout"));
+  assert.ok(!html.includes('name="density"'));
+  assert.ok(!html.includes('name="layout"'));
+  assert.ok(!html.includes('name="style"'));
 });
