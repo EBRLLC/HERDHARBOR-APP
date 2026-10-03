@@ -164,3 +164,18 @@ test("Market Analytics stays off global startup but remains available for opted-
   assert.equal(required.includes("market-analytics-v1.6.5.js"), false);
   assert.equal(runtime.includes("./market-analytics-v1.6.5.js?v=1.7.1"), true);
 });
+
+test("Marketplace stays off startup and loads only through Marketplace navigation", () => {
+  const index = read("index.html");
+  const app = read("herdharbor-app-runtime.js");
+  const sw = read("service-worker.js");
+  const required = sw.slice(sw.indexOf("const REQUIRED_SHELL"), sw.indexOf("const RUNTIME_CACHE_PATHS"));
+  const runtime = sw.slice(sw.indexOf("const RUNTIME_CACHE_PATHS"), sw.indexOf("const NETWORK_FIRST_PATHS"));
+
+  assert.doesNotMatch(index, /<script[^>]+herdharbor-marketplace\.js/);
+  assert.match(app, /\$\$\("\.nav-item, \.brand"\)[\s\S]*addEventListener\("click"[\s\S]*navigate\(item\.dataset\.route\)/);
+  assert.match(app, /async function ensureMarketplaceRuntime\(\)[\s\S]*herdharbor-marketplace\.js\?v=1/);
+  assert.match(app, /marketplace:\s*\(\) => \{[\s\S]*renderLazyRoute\([\s\S]*"marketplace"[\s\S]*ensureMarketplaceRuntime/);
+  assert.equal(required.includes("herdharbor-marketplace.js"), false, "Marketplace must not block startup or service-worker install");
+  assert.equal(runtime.includes("./herdharbor-marketplace.js?v=1"), true, "Marketplace remains cacheable after first navigation");
+});
