@@ -8,7 +8,6 @@ const REQUIRED_SHELL = [
   "./manifest.json?v=2.0.0",
   "./herdharbor-core-v1.6.1.css?v=1.7.1",
   "./herdharbor-v1.6.1.css?v=1.7.1",
-  "./herdharbor-breeder-platform.css?v=1",
   "./herdharbor-index-shell.css?v=1",
   "./vendor/supabase-2.111.0.js",
   "./herdharbor-optional-tools.js?v=2",
@@ -33,6 +32,7 @@ const REQUIRED_SHELL = [
 ];
 
 const RUNTIME_CACHE_PATHS = [
+  "./herdharbor-breeder-platform.css?v=1",
   "./analytics-v1.6.1.css?v=2",
   "./mobile-capture-v1.8.3.js?v=1",
   "./herdharbor-admin-v1.6.1.js?v=2",
