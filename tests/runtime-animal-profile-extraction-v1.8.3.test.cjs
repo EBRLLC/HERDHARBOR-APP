@@ -70,8 +70,8 @@ test("Animals/Profile domain has one extracted runtime owner", () => {
   assert.match(extractedSource, /function openAnimalQrCardForm\(/);
   assert.match(extractedSource, /function printAnimalQrCards\(/);
   assert.match(extractedSource, /function pedigreeRecordPreviewHtml\(/);
-  assert.match(extractedSource, /id="detail-birth-certificate"/);
-  assert.match(extractedSource, /deps\.openBirthCertificateForm\(id\)/);
+  assert.match(extractedSource, /HerdHarborAnimalDocuments\?\.centerHtml/);
+  assert.match(extractedSource, /openBirthCertificate: \(\) => deps\.openBirthCertificateForm\(id\)/);
 });
 
 test("composition runtime delegates animal behavior instead of retaining a second implementation", () => {
