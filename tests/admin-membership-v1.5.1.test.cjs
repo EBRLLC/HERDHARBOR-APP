@@ -101,6 +101,13 @@ assert.match(appRuntime, /if \(route === "admin" && window\.HerdHarborMembership
 assert.match(appRuntime, /function ensureAdminRuntimeLoaded\(\)/);
 assert.match(appRuntime, /"herdharbor-admin-v1\.6\.1\.js\?v=2"/);
 assert.match(appRuntime, /function syncAdminNavigation\(\)/);
+
+assert.match(appRuntime, /let pendingAdminRoute = requestedRoute === "admin"/);
+assert.match(appRuntime, /if \(route === "admin" && window\.HerdHarborMembership\?\.canAccessAdmin\?\.\(\) !== true\)[\s\S]*account\.backendReady !== true[\s\S]*pendingAdminRoute = true/);
+assert.match(appRuntime, /pendingAdminRoute && account\.backendReady === true[\s\S]*if \(allowed\)[\s\S]*navigate\("admin"\)/);
+assert.match(appRuntime, /if \(route !== "admin" && pendingAdminRoute\) pendingAdminRoute = false/);
+assert.match(appRuntime, /!allowed && account\.backendReady === true && currentRoute === "admin"[\s\S]*navigate\("dashboard"\)/);
+
 assert.match(appRuntime, /if \(!allowed && currentRoute === "admin"\) \{\s*navigate\("dashboard"\);\s*\}/);
 assert.match(appRuntime, /HerdHarborMembership\?\.canAccessAdmin\?\.\(\) === true/);
 assert.match(appRuntime, /renderLazyRoute\([\s\S]*"admin"[\s\S]*ensureAdminRuntimeLoaded[\s\S]*HerdHarborAdmin\?\.render\?\.\(\)/);
