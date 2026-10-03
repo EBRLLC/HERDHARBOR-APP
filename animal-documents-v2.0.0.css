@@ -1,0 +1,75 @@
+.hh-animal-documents {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.hh-animal-documents-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hh-animal-documents-heading h3 {
+  margin: 0;
+}
+
+.hh-animal-documents-heading p,
+.hh-animal-documents-heading small {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.hh-animal-document-grid {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.hh-animal-document-card {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.hh-animal-document-card strong {
+  color: var(--navy);
+}
+
+.hh-animal-document-card p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: .82rem;
+  line-height: 1.35;
+}
+
+html[data-theme="dark"] .hh-animal-document-card strong {
+  color: #F1F5F7;
+}
+
+@media (max-width: 760px) {
+  .hh-animal-documents-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .hh-animal-document-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hh-animal-document-card {
+    grid-template-columns: 1fr;
+  }
+
+  .hh-animal-document-card .button {
+    width: 100%;
+    min-height: 44px;
+  }
+}
