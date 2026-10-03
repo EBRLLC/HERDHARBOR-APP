@@ -1,17 +1,21 @@
+"use strict";
+
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const Engine = require("../pedigree-engine-v2.0.0.js");
 
-const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 const appRuntime = fs.readFileSync(path.join(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
-const start = appRuntime.indexOf("  const PEDIGREE_SLOTS =");
-const end = appRuntime.indexOf("  function renderPedigrees()", start);
-assert.ok(start >= 0 && end > start, "pedigree ancestry source is present");
 
-const source = appRuntime.slice(start, end);
-const buildResolver = new Function(
-  "state",
-  `${source}\nreturn existingPedigreeAncestry;`
+assert.match(
+  appRuntime,
+  /HerdHarborPedigreeEngine/,
+  "the pedigree builder routes ancestry traversal through the canonical engine"
+);
+assert.match(
+  appRuntime,
+  /engine\.legacyAncestorIds\(\{[\s\S]*animals: state\.animals[\s\S]*subjectId[\s\S]*generations: 4/,
+  "the existing four-generation builder uses the canonical engine with current animal records"
 );
 
 const animals = [
@@ -25,8 +29,7 @@ const animals = [
   { id: "great-dam", sireId: "", damId: "" }
 ];
 
-const resolve = buildResolver({ animals });
-const ancestry = resolve("child");
+const ancestry = Engine.legacyAncestorIds({ animals, subjectId: "child", generations: 4 });
 
 assert.equal(ancestry.sire, "sire");
 assert.equal(ancestry.dam, "dam");
@@ -35,13 +38,16 @@ assert.equal(ancestry.damDam, "shared-grandsire", "linebred ancestors remain in 
 assert.equal(ancestry.sireSireSire, "great-sire");
 assert.equal(ancestry.damDamDam, "great-dam");
 
-const cyclicResolve = buildResolver({
+const cyclic = Engine.buildGraph({
   animals: [
     { id: "child", sireId: "sire", damId: "" },
     { id: "sire", sireId: "child", damId: "" }
-  ]
+  ],
+  subjectId: "child",
+  generations: 4
 });
-assert.deepEqual(cyclicResolve("child"), { sire: "sire" }, "cycles stop at the repeated animal");
+assert.equal(cyclic.byKey.sireSire.status, "cycle", "cycles stop at the repeated animal");
+assert.equal(cyclic.ancestorIds.sireSire, undefined);
 
 assert.match(
   appRuntime,
@@ -49,5 +55,4 @@ assert.match(
   "saving a pedigree does not erase an existing parent link with a blank value"
 );
 
-console.log("pedigree inheritance tests passed");
-
+console.log("canonical pedigree inheritance tests passed");
