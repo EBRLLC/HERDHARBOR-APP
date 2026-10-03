@@ -189,20 +189,66 @@
   }
 
   function modifierRows(analysis){return Object.entries(analysis.modifierCrosses||{}).map(([locus,cross])=>`<details class="hh-bi-trait-result"><summary><strong>${esc(locus)} · ${esc(cross.name)}</strong><span>${cross.exact?"Calculated":"Unknown alleles"}</span></summary>${cross.exact?cross.outcomes.map(row=>`<div class="hh-bi-result-row"><div><strong>${esc(row.expression.label)}</strong><span>${esc(row.alleles.join("/"))}</span></div><b>${(row.probability*100).toFixed((row.probability*100)%1?1:0)}%</b></div>`).join(""):'<p class="hh-bi-note">Add both parental genotypes to calculate percentages. Unknown alleles were not guessed.</p>'}</details>`).join("");}
+  function plannerPedigreeMetrics(analysis) {
+    if (!analysis) return "";
+    const coverageA = percentage(analysis.pedigreeCompleteness?.animalA?.coverage);
+    const coverageB = percentage(analysis.pedigreeCompleteness?.animalB?.coverage);
+    return `<div class="hh-bi-planner-metrics">
+      <div><span>Relationship coefficient</span><strong>${percentage(analysis.relationshipCoefficient)}</strong></div>
+      <div><span>Projected offspring Pedigree COI</span><strong>${percentage(analysis.projectedOffspringPedigreeCoi)}</strong></div>
+      <div><span>Shared ancestors</span><strong>${analysis.sharedAncestorCount}</strong></div>
+      <div><span>Pedigree completeness</span><strong>${coverageA} / ${coverageB}</strong></div>
+      <div><span>Generations analyzed</span><strong>${analysis.ancestorGenerationsAnalyzed}</strong></div>
+    </div>`;
+  }
+
   function renderPairModal(buckId, doeId) {
     lastAnalysis=null; lastPair=null;
     const state=readState(), rabbits=rabbitAnimals(state), bucks=rabbits.filter((a)=>sexIs(a,"male")), does=rabbits.filter((a)=>sexIs(a,"female")), buck=bucks.find((a)=>String(a.id)===String(buckId))||bucks[0], doe=does.find((a)=>String(a.id)===String(doeId))||does[0];
-    let analysisHtml='<div class="hh-bi-empty">Choose a buck and doe, then run Pair Analysis.</div>';
+    let analysisHtml='<div class="hh-bi-empty">Choose a buck and doe, then run Analyze Pairing.</div>';
     if (buck && doe && buckId && doeId) {
-      lastAnalysis=Core.analyzePairing(buck,doe,state); lastPair={buckId:buck.id,doeId:doe.id};
-      const pedigreeAnalysis=relationshipAnalysis(buck,doe,state,4), shared=relationshipSummaryHtml(pedigreeAnalysis,buck.name||"Buck",doe.name||"Doe"), previous=lastAnalysis.previousOffspring.length?lastAnalysis.previousOffspring.map((r)=>`${esc(r.color)} × ${r.count}`).join(" · "):"No recorded offspring colors for this pairing yet.";
-      const health=(lastAnalysis.healthNotices||[]).length?`<div class="hh-bi-warning"><h3>Breeding health notices</h3><ul>${lastAnalysis.healthNotices.map(n=>`<li><strong>${esc(n.locus)} · ${n.probability==null?"Possible":`${(n.probability*100).toFixed(0)}%`}</strong> — ${esc(n.message)}</li>`).join("")}</ul><p>Informational only; consult a rabbit-savvy veterinarian for health decisions.</p></div>`:"";
-      analysisHtml=`<div class="hh-bi-analysis-header"><div><span class="hh-bi-kicker">Possible offspring colors</span><h3>${lastAnalysis.exact?"Exact core-locus probabilities":"Possible outcomes with current evidence"}</h3></div><span class="hh-bi-confidence ${lastAnalysis.exact?"exact":"conditional"}">${lastAnalysis.exact?"Complete A/B/C/D/E":`${lastAnalysis.incompleteLoci.length} unknown locus entries`}</span></div><div class="hh-bi-results">${resultRows(lastAnalysis)||'<p>No supported core-color outcome could be resolved from the current records.</p>'}</div>${lastAnalysis.modifierCrosses?`<div class="hh-bi-evidence-panel"><h3>Pattern, coat & conformation traits</h3><p class="hh-bi-note">Each tracked locus is calculated independently. Registry recognition is not implied.</p>${modifierRows(lastAnalysis)}</div>`:""}${health}<div class="hh-bi-explain"><h3>Why these results?</h3><p>${esc(lastAnalysis.explanation)}</p><p>${esc(lastAnalysis.disclaimer)}</p></div><div class="hh-bi-two-col"><div><h3>Pedigree comparison</h3>${shared}</div><div><h3>Previous offspring</h3><p>${previous}</p></div></div><div class="hh-bi-two-col"><div><h3>${esc(buck.name||"Buck")} performance</h3><p>${esc(performanceSummary(state,buck))}</p></div><div><h3>${esc(doe.name||"Doe")} performance</h3><p>${esc(performanceSummary(state,doe))}</p></div></div><div class="hh-bi-modal-actions"><button type="button" class="primary" id="bi-save-analysis">Save Prediction Snapshot</button></div><p class="hh-bi-save-confirmation" id="bi-save-confirmation" role="status" aria-live="polite" hidden></p>`;
+      const geneticsAnalysis=Core.analyzePairing(buck,doe,state);
+      const pedigreeAnalysis=relationshipAnalysis(buck,doe,state,4);
+      lastAnalysis=geneticsAnalysis; lastPair={buckId:buck.id,doeId:doe.id};
+
+      const previous=geneticsAnalysis.previousOffspring.length
+        ? geneticsAnalysis.previousOffspring.map((r)=>`${esc(r.color)} × ${r.count}`).join(" · ")
+        : "No recorded offspring colors for this pairing yet.";
+      const health=(geneticsAnalysis.healthNotices||[]).length
+        ? `<div class="hh-bi-warning"><h3>Breeding health notices</h3><ul>${geneticsAnalysis.healthNotices.map(n=>`<li><strong>${esc(n.locus)} · ${n.probability==null?"Possible":`${(n.probability*100).toFixed(0)}%`}</strong> — ${esc(n.message)}</li>`).join("")}</ul><p>Informational only; consult a rabbit-savvy veterinarian for health decisions.</p></div>`
+        : "";
+
+      const geneticsSection=`<section class="hh-bi-planner-section" data-bi-planner-section="genetics">
+        <header class="hh-bi-planner-section-header"><div><span class="hh-bi-kicker">GENETICS</span><h3>What could this pairing produce?</h3></div><span class="hh-bi-confidence ${geneticsAnalysis.exact?"exact":"conditional"}">${geneticsAnalysis.exact?"Complete A/B/C/D/E":`${geneticsAnalysis.incompleteLoci.length} unknown locus entries`}</span></header>
+        <div class="hh-bi-results">${resultRows(geneticsAnalysis)||'<p>No supported core-color outcome could be resolved from the current records.</p>'}</div>
+        ${geneticsAnalysis.modifierCrosses?`<div class="hh-bi-evidence-panel"><h3>Pattern, coat & conformation traits</h3><p class="hh-bi-note">Each tracked locus is calculated independently. Registry recognition is not implied.</p>${modifierRows(geneticsAnalysis)}</div>`:""}
+        ${health}
+        <div class="hh-bi-explain"><h3>How the genetics result was calculated</h3><p>${esc(geneticsAnalysis.explanation)}</p><p>${esc(geneticsAnalysis.disclaimer)}</p></div>
+      </section>`;
+
+      const pedigreeSection=`<section class="hh-bi-planner-section" data-bi-planner-section="pedigree">
+        <header class="hh-bi-planner-section-header"><div><span class="hh-bi-kicker">PEDIGREE</span><h3>How closely related are these animals?</h3></div></header>
+        ${plannerPedigreeMetrics(pedigreeAnalysis)}
+        <p class="hh-bi-note">Relationship coefficient and projected offspring Pedigree COI are different values. This analysis uses recorded pedigree parentage and is not genomic COI.</p>
+        <div class="hh-bi-two-col">
+          <div><h4>${esc(buck.name||"Buck")} pedigree coverage</h4><p>${percentage(pedigreeAnalysis.pedigreeCompleteness.animalA.coverage)} · ${pedigreeAnalysis.pedigreeCompleteness.animalA.knownAncestorSlots}/${pedigreeAnalysis.pedigreeCompleteness.animalA.expectedAncestorSlots} recorded ancestor slots</p></div>
+          <div><h4>${esc(doe.name||"Doe")} pedigree coverage</h4><p>${percentage(pedigreeAnalysis.pedigreeCompleteness.animalB.coverage)} · ${pedigreeAnalysis.pedigreeCompleteness.animalB.knownAncestorSlots}/${pedigreeAnalysis.pedigreeCompleteness.animalB.expectedAncestorSlots} recorded ancestor slots</p></div>
+        </div>
+        <div class="hh-bi-pedigree-actions"><button type="button" class="primary" id="bi-view-linebreeding">View Linebreeding Analysis</button></div>
+      </section>`;
+
+      analysisHtml=`${geneticsSection}${pedigreeSection}<section class="hh-bi-planner-section" data-bi-planner-section="history">
+        <div class="hh-bi-two-col"><div><h3>Previous offspring</h3><p>${previous}</p></div><div><h3>Recorded performance</h3><p><strong>${esc(buck.name||"Buck")}:</strong> ${esc(performanceSummary(state,buck))}</p><p><strong>${esc(doe.name||"Doe")}:</strong> ${esc(performanceSummary(state,doe))}</p></div></div>
+      </section>
+      <div class="hh-bi-modal-actions"><button type="button" class="primary" id="bi-save-analysis">Save Prediction Snapshot</button></div><p class="hh-bi-save-confirmation" id="bi-save-confirmation" role="status" aria-live="polite" hidden></p>`;
     }
+
     const generatedAnalysis=lastAnalysis, generatedPair=lastPair;
-    openModal("Breeding Pair Analysis", `<div class="hh-bi-pair-selectors"><label>Buck<select id="bi-pair-buck">${selectOptions(bucks,buck?.id)}</select></label><label>Doe<select id="bi-pair-doe">${selectOptions(does,doe?.id)}</select></label><button type="button" class="primary" id="bi-run-analysis">Analyze pairing</button></div>${analysisHtml}`);
+    openModal("Breeding Planner", `<div class="hh-bi-pair-selectors"><label>Buck<select id="bi-pair-buck">${selectOptions(bucks,buck?.id)}</select></label><label>Doe<select id="bi-pair-doe">${selectOptions(does,doe?.id)}</select></label><button type="button" class="primary" id="bi-run-analysis">Analyze Pairing</button></div>${analysisHtml}`);
     lastAnalysis=generatedAnalysis; lastPair=generatedPair;
+
     modal.querySelector("#bi-run-analysis")?.addEventListener("click",()=>renderPairModal(modal.querySelector("#bi-pair-buck").value,modal.querySelector("#bi-pair-doe").value));
+    modal.querySelector("#bi-view-linebreeding")?.addEventListener("click",()=>renderRelationshipComparison(buck?.id||"",doe?.id||""));
     modal.querySelector("#bi-save-analysis")?.addEventListener("click", async(event)=>{const button=event.currentTarget,confirmation=modal.querySelector("#bi-save-confirmation");if(button.disabled||!lastAnalysis||!lastPair)return;const prediction={analysis:deepClone(lastAnalysis),generatedAt:new Date().toISOString(),buck:{id:buck.id,name:buck.name||"Buck",color:buck.color||buck.variety||"",genetics:geneticsSnapshotForAnimal(buck,state)},doe:{id:doe.id,name:doe.name||"Doe",color:doe.color||doe.variety||"",genetics:geneticsSnapshotForAnimal(doe,state)}};button.disabled=true;button.textContent="Saving…";try{await savePredictionSnapshot(prediction);button.textContent="Prediction Saved";confirmation.hidden=false;confirmation.textContent="Prediction saved to history.";lastAnalysis=null;lastPair=null;}catch(error){console.error("Prediction snapshot could not be saved:",error);button.disabled=false;button.textContent="Save Prediction Snapshot";confirmation.hidden=false;confirmation.textContent="Prediction could not be saved. Try again.";confirmation.classList.add("error");}});
   }
 
