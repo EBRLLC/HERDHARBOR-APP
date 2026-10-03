@@ -28,7 +28,7 @@ test("foundation enables RLS on every Marketplace table and grants no anon table
  Object.values(marketplace.TABLES).forEach((table)=>{
    assert.ok(migration.includes("alter table public."+table+" enable row level security"),table);
  });
- assert.match(migration,/revoke all on public\.marketplace_public_profiles[\s\S]*from anon;/);
+ assert.match(migration,/revoke all on public\.marketplace_public_profiles[\s\S]*from anon,authenticated;/);
  assert.doesNotMatch(migration,/grant [^;]* on public\.marketplace_[^;]* to anon;/i);
 });
 
@@ -37,8 +37,11 @@ test("ownership and conversation policies enforce server-side authorization",()=
  assert.match(migration,/marketplace_messages_member_select[\s\S]*marketplace_is_conversation_member/);
  assert.match(migration,/marketplace_messages_member_insert[\s\S]*auth\.uid\(\)\)=sender_id[\s\S]*marketplace_is_conversation_member/);
  assert.doesNotMatch(migration,/marketplace_conversation_members_self_insert/);
- assert.match(migration,/revoke insert,delete on public\.marketplace_conversation_members from authenticated/);
- assert.match(migration,/revoke insert,update,delete on public\.marketplace_conversations from authenticated/);
+ assert.match(migration,/revoke all on public\.marketplace_public_profiles[\s\S]*public\.marketplace_conversation_members[\s\S]*from anon,authenticated;/);
+ assert.match(migration,/grant update \(unread_count,muted_at,archived_at\)[\s\S]*on public\.marketplace_conversation_members to authenticated/);
+ assert.doesNotMatch(migration,/grant insert[^;]*on public\.marketplace_conversation_members/i);
+ assert.doesNotMatch(migration,/grant delete[^;]*on public\.marketplace_conversation_members/i);
+ assert.doesNotMatch(migration,/grant (?:insert|update|delete)[^;]*on public\.marketplace_conversations/i);
 });
 
 test("public source animal ids cannot be enumerated because listing table has no anon read grant or policy",()=>{
