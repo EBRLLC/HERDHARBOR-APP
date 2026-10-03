@@ -45,7 +45,8 @@
     "test:v2.0.0-launch-material": "node --test tests/v2.0.0-launch-material.test.cjs tests/google-play-readiness.test.cjs",
     "test:v2.0.0-final": "npm run test:release && npm run test:v2.0.0 && npm run test:state-integrity && node --test tests/v2.0.0-final-release-acceptance.test.cjs",
     "test:v2.0.0-main-integrity": "node --test tests/v2.0.0-main-integrity-audit.test.cjs",
-    "test:stack-a1": "node --test tests/pedigree-engine-v2.0.0.test.cjs tests/pedigree-inheritance.test.cjs tests/pedigree-storage.test.cjs"
+    "test:stack-a1": "node --test tests/pedigree-engine-v2.0.0.test.cjs tests/pedigree-inheritance.test.cjs tests/pedigree-storage.test.cjs",
+    "test:stack-a2": "node --test tests/pedigree-engine-v2.0.0.test.cjs tests/pedigree-inheritance.test.cjs tests/pedigree-renderer-v2.0.0.test.cjs tests/mobile-pedigree.test.cjs tests/runtime-animal-profile-extraction-v1.8.3.test.cjs tests/pedigree-visual-cards.test.cjs"
   },
   "dependencies": {
     "@sentry/browser": "10.71.0"
