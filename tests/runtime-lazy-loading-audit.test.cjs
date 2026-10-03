@@ -144,3 +144,23 @@ test("unused Shows legacy bundle is no longer started during application boot",(
   const boot=pwa.slice(pwa.indexOf("function bootApplication()"),pwa.indexOf("function boot()",pwa.indexOf("function bootApplication()")));
   assert.doesNotMatch(boot,/loadShows\(\)/);
 });
+
+
+test("route-only runtimes are runtime-cached rather than mandatory service-worker install assets",()=>{
+  const required=sw.slice(sw.indexOf("const REQUIRED_SHELL"),sw.indexOf("const RUNTIME_CACHE_PATHS"));
+  const runtimeCache=sw.slice(sw.indexOf("const RUNTIME_CACHE_PATHS"),sw.indexOf("const NETWORK_FIRST_PATHS"));
+  const networkFirst=sw.slice(sw.indexOf("const NETWORK_FIRST_PATHS"),sw.indexOf("function isNetworkFirstPath"));
+  for(const asset of [
+    "animal-profile-runtime-v1.8.3.js?v=1",
+    "health-runtime-v1.8.3.js?v=1",
+    "production-reporting-runtime-v1.8.3.js?v=1"
+  ]){
+    assert.equal(required.includes(asset),false,asset+" must not block service-worker install");
+    assert.equal(runtimeCache.includes(asset),true,asset+" remains available after first use");
+  }
+  for(const obsolete of [
+    "local-cache-v2-v1.8.2.js",
+    "cloud-sync-v2-flow-v1.8.2.js",
+    "cloud-sync-v2-diagnostics-v1.8.2.js"
+  ]) assert.equal(networkFirst.includes(obsolete),false,obsolete+" must not remain an active fetch classification");
+});
