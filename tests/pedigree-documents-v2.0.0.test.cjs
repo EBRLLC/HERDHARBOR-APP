@@ -77,9 +77,11 @@ test("settings manager includes template CRUD defaults branding and logo upload 
   const html = Docs.managerHtml(store, { operationName: "Rabbitry" });
   for (const token of [
     "Save current", "Apply", "Rename", "Duplicate", "Delete",
-    "Default pedigree template", "Default birth certificate template",
+    "Default birth certificate template",
     "Rabbitry / operation name", "Branding line", "Upload document logo", "Use operation logo"
   ]) assert.ok(html.includes(token), token);
+  assert.ok(html.includes("Standard always remains the default print pedigree"));
+  assert.ok(!html.includes("Default pedigree template"));
 });
 
 
