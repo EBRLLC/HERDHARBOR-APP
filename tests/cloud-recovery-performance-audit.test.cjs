@@ -143,3 +143,21 @@ test("lifecycle sync dedupe checks byte-identical snapshots before canonical par
   assert.ok(block.indexOf("syncInFlightRaw === raw") < block.indexOf("sameState(syncInFlightRaw, raw)"));
   assert.ok(block.indexOf("pendingSync.rawValue === raw") < block.indexOf("sameState(pendingSync.rawValue, raw)"));
 });
+
+
+test("non-Junior cloud saves bypass full-state animal-limit parsing and canonical comparison",()=>{
+  const helperStart=cloud.indexOf("function animalLimitApplies()");
+  const helperEnd=cloud.indexOf("function canonicalize",helperStart);
+  const helper=cloud.slice(helperStart,helperEnd);
+  assert.match(helper,/membership\?\.getTier/);
+  assert.match(helper,/toLowerCase\(\) === "junior"/);
+  assert.match(helper,/if \(!animalLimitApplies\(\)\) return \{ allowed: true \}/);
+
+  const saveStart=cloud.indexOf("async function syncValueToCloud");
+  const saveEnd=cloud.indexOf("async function drainSyncQueue",saveStart);
+  const save=cloud.slice(saveStart,saveEnd);
+  const limitAt=save.indexOf("animalLimitApplies()");
+  const sameAt=save.indexOf("sameState(localBaselineRaw, rawValue)");
+  const transitionAt=save.indexOf("allowAnimalStateTransition(",sameAt);
+  assert.ok(limitAt>=0&&sameAt>limitAt&&transitionAt>sameAt);
+});
