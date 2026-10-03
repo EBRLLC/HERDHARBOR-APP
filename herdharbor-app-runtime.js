@@ -225,11 +225,15 @@
     return window.HerdHarborAnalytics;
   }
 
-  function ensurePedigreePlatformRuntime() {
-    return loadScriptOnce(
-      "herdharbor-pedigree-platform.js?v=1",
-      () => typeof window.HerdHarborPedigreePlatform?.buildPedigreeGraph === "function"
-    );
+  async function ensurePedigreePlatformRuntime() {
+    await Promise.all([
+      loadStyleOnce("herdharbor-breeder-platform.css?v=1"),
+      loadScriptOnce(
+        "herdharbor-pedigree-platform.js?v=1",
+        () => typeof window.HerdHarborPedigreePlatform?.buildPedigreeGraph === "function"
+      )
+    ]);
+    return window.HerdHarborPedigreePlatform;
   }
 
   async function ensureDocumentCenterRuntime() {
