@@ -2273,27 +2273,31 @@
     if (!subject) return null;
 
     const engine = window.HerdHarborPedigreeEngine;
-    const renderer = window.HerdHarborPedigreeRenderer;
     const customization = window.HerdHarborPedigreeCustomization;
     const documents = window.HerdHarborPedigreeDocuments;
-    const exporter = window.HerdHarborDocumentExport;
-    if (!engine?.buildGraph || !renderer?.render || !exporter?.buildDocumentHtml) return null;
+    const standardPrint = window.HerdHarborStandardPedigreePrint;
+    if (!engine?.buildGraph || !standardPrint?.buildHtml) return null;
 
     const savedPedigree = state.pedigrees
       .filter((record) => record.subjectAnimalId === animalId)
       .sort((left, right) => String(right.importedAt || "").localeCompare(String(left.importedAt || "")))[0] || null;
 
-    const currentConfig = customization?.loadPreferences?.(localStorage) || { generations: 4 };
-    const documentContext = documents?.resolveDocumentContext?.(
+    const standardConfig = customization?.templateConfig?.("Standard") || {
+      template: "Standard",
+      generations: 4,
+      rootFields: ["name", "sex", "dob", "breed", "color", "registrationNumber", "prefix"],
+      ancestorFields: ["name", "sex", "dob", "breed", "color", "registrationNumber", "prefix"],
+      photos: true,
+      unknownDisplay: "label"
+    };
+    const branding = documents?.resolveBranding?.(
       state.settings?.pedigreeDocuments,
-      "pedigree",
-      state.profile || {},
-      currentConfig
-    ) || { config: currentConfig, branding: null };
+      state.profile || {}
+    ) || null;
 
     const config = overrideConfig && customization?.normalize
       ? customization.normalize(overrideConfig)
-      : (overrideConfig || documentContext.config || currentConfig);
+      : (overrideConfig || standardConfig);
 
     const graph = engine.buildGraph({
       animals: state.animals || [],
@@ -2303,24 +2307,12 @@
       generations: config.generations || 4
     });
 
-    const rendererOptions = customization?.rendererOptions
-      ? customization.rendererOptions(config, formatDate)
-      : { mode: "print-preview", interactive: false, formatDate };
-
-    const pedigreeHtml = renderer.render({
-      graph,
-      ...rendererOptions,
-      mode: "print-preview",
-      interactive: false,
-      branding: documentContext.branding || null
-    });
-
     return {
       subject,
+      graph,
       config,
-      branding: documentContext.branding || null,
-      exporter,
-      pedigreeHtml
+      branding,
+      standardPrint
     };
   }
 
@@ -2328,30 +2320,17 @@
     const context = pedigreeExportContext(animalId, overrideConfig);
     if (!context) return "";
 
-    const salePrice = sale.salePrice ? `$${sale.salePrice}` : "";
-    const metadata = [
-      { label: "Seller", value: sale.sellerName },
-      { label: "Seller contact", value: sale.sellerContact },
-      { label: "Buyer", value: sale.buyerName },
-      { label: "Sale / transfer date", value: sale.saleDate ? formatDate(sale.saleDate) : "" },
-      { label: "Sale price", value: salePrice },
-      { label: "Transfer number", value: sale.transferNumber }
-    ];
-
-    return context.exporter.buildDocumentHtml({
-      title: `${context.subject.name} Pedigree`,
-      documentType: "Pedigree",
-      page: context.exporter.pedigreePageOptions?.(context.config.generations || 4) || {
-        pageSize: "letter",
-        orientation: "landscape",
-        margin: ".3in"
-      },
-      bodyHtml: context.pedigreeHtml,
-      metadata,
-      notes: sale.saleNotes || "",
-      generatedLabel: `Generated ${new Date().toLocaleDateString()}`,
-      footerLeft: "Created with HerdHarbor · Livestock records without limits.",
-      footerRight: context.branding?.rabbitryName || state.profile?.operationName || "HerdHarbor"
+    return context.standardPrint.buildHtml({
+      subject: context.subject,
+      graph: context.graph,
+      config: context.config,
+      branding: context.branding || null,
+      operationName: state.profile?.operationName || "HerdHarbor Breeder",
+      defaultLogo: state.profile?.logoData || defaultHerdHarborLogo(),
+      sale,
+      generatedDate: new Date().toLocaleDateString(),
+      formatDate,
+      speciesIcon
     });
   }
 
@@ -2360,7 +2339,7 @@
     if (!animal) return toast("The animal record could not be found.", "error");
 
     const customization = window.HerdHarborPedigreeCustomization;
-    if (!customization?.controlsHtml || !customization?.readControls) {
+    if (!customization?.printControlsHtml || !customization?.readPrintControls) {
       return toast("Pedigree customization did not finish loading.", "error");
     }
 
@@ -2372,7 +2351,7 @@
       <form id="print-pedigree-form">
         <div class="pedigree-warning">Customize this pedigree below. Changes here apply to this export only; Settings controls your default pedigree configuration.</div>
         <h3 style="margin-top:18px">Pedigree layout</h3>
-        <div id="pedigree-export-customization">${customization.controlsHtml(config)}</div>
+        <div id="pedigree-export-customization">${customization.printControlsHtml(config)}</div>
 
         <h3 style="margin-top:18px">Sale / transfer details</h3>
         <div class="form-grid two" style="margin-top:10px">
@@ -2417,10 +2396,10 @@
         control.addEventListener("change", (event) => {
           if (event.currentTarget?.name === "template") {
             config = customization.templateConfig(event.currentTarget.value);
-            configHost.innerHTML = customization.controlsHtml(config);
+            configHost.innerHTML = customization.printControlsHtml(config);
             bindCustomization();
           } else {
-            config = customization.readControls(configHost, config);
+            config = customization.readPrintControls(configHost, config);
           }
           renderPreview();
         });
@@ -2436,7 +2415,7 @@
     $("#cancel-print-pedigree").addEventListener("click", closeModal);
     form.addEventListener("submit", (event) => {
       event.preventDefault();
-      config = customization.readControls(configHost, config);
+      config = customization.readPrintControls(configHost, config);
       printSalePedigree(animalId, saleValues(), config);
     });
 
@@ -2456,14 +2435,18 @@
     if (mobilePrint) {
       openMobilePrintPreview(printableHtml, context.subject.name);
     } else {
-      const popup = context.exporter.openPrintWindow?.(printableHtml);
+      const popup = window.open("", "_blank");
       if (!popup) {
         openMobilePrintPreview(printableHtml, context.subject.name);
       } else {
+        popup.document.open();
+        popup.document.write(printableHtml);
+        popup.document.close();
         try {
           window.HerdHarborPedigreeGenetics?.enhanceDocument?.(popup.document, true, window);
         } catch {}
         closeModal();
+        setTimeout(() => popup.focus(), 150);
       }
     }
 

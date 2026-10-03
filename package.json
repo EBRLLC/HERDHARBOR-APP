@@ -52,7 +52,8 @@
     "test:stack-a5": "node --test tests/document-export-v2.0.0.test.cjs tests/pedigree-engine-v2.0.0.test.cjs tests/pedigree-renderer-v2.0.0.test.cjs tests/pedigree-customization-renderer-v2.0.0.test.cjs tests/pedigree-documents-v2.0.0.test.cjs tests/pedigree-visual-print.test.cjs tests/mobile-pedigree.test.cjs",
     "test:stack-a6": "node --test tests/birth-certificate-v2.0.0.test.cjs tests/document-export-v2.0.0.test.cjs tests/pedigree-documents-v2.0.0.test.cjs tests/runtime-animal-profile-extraction-v1.8.3.test.cjs tests/mobile-pedigree.test.cjs",
     "test:stack-a7": "node --test tests/animal-documents-v2.0.0.test.cjs tests/stack-a-acceptance-v2.0.0.test.cjs tests/birth-certificate-v2.0.0.test.cjs tests/document-export-v2.0.0.test.cjs tests/pedigree-engine-v2.0.0.test.cjs tests/pedigree-renderer-v2.0.0.test.cjs tests/pedigree-customization-v2.0.0.test.cjs tests/pedigree-customization-renderer-v2.0.0.test.cjs tests/pedigree-documents-v2.0.0.test.cjs tests/runtime-animal-profile-extraction-v1.8.3.test.cjs tests/mobile-pedigree.test.cjs tests/mobile-settings-pedigree-layout-v1.6.7.test.cjs tests/pedigree-visual-print.test.cjs",
-    "test:stack-a": "npm run test:stack-a7"
+    "test:stack-a": "npm run test:stack-a7",
+    "test:standard-pedigree": "node --test tests/mobile-pedigree-print-placement-v2.0.0.test.cjs tests/pedigree-customization-export-ui-v2.0.0.test.cjs tests/pedigree-customization-v2.0.0.test.cjs tests/pedigree-visual-print.test.cjs tests/stack-a-acceptance-v2.0.0.test.cjs"
   },
   "dependencies": {
     "@sentry/browser": "10.71.0"

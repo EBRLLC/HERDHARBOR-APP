@@ -6,14 +6,25 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const source = fs.readFileSync(path.resolve(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
+const customization = fs.readFileSync(path.resolve(__dirname, "..", "pedigree-customization-v2.0.0.js"), "utf8");
 
 test("pedigree print flow exposes customization directly in the export modal", () => {
   assert.match(source, /openModal\("Customize pedigree"/);
   assert.match(source, /id="pedigree-export-customization"/);
-  assert.match(source, /customization\.controlsHtml\(config\)/);
+  assert.match(source, /customization\.printControlsHtml\(config\)/);
   assert.match(source, /name === "template"/);
   assert.match(source, /customization\.templateConfig/);
-  assert.match(source, /customization\.readControls\(configHost, config\)/);
+  assert.match(source, /customization\.readPrintControls\(configHost, config\)/);
+});
+
+test("standard is the starting configuration for every new pedigree export", () => {
+  assert.match(customization, /const DEFAULT_TEMPLATE = "Standard"/);
+  const contextStart = source.indexOf("function pedigreeExportContext(");
+  const contextEnd = source.indexOf("function buildPedigreePrintableHtml(", contextStart);
+  const contextSource = source.slice(contextStart, contextEnd);
+  assert.match(contextSource, /templateConfig\?\.\("Standard"\)/);
+  assert.match(contextSource, /resolveBranding\?\./);
+  assert.doesNotMatch(contextSource, /resolveDocumentContext/);
 });
 
 test("pedigree export modal includes a live preview before printing", () => {
@@ -23,7 +34,7 @@ test("pedigree export modal includes a live preview before printing", () => {
   assert.match(source, /Print \/ Save PDF/);
 });
 
-test("per-export customization overrides defaults without replacing saved defaults", () => {
+test("per-export customization does not overwrite saved defaults", () => {
   assert.match(source, /function pedigreeExportContext\(animalId, overrideConfig = null\)/);
   assert.match(source, /const config = overrideConfig && customization\?\.normalize/);
   assert.match(source, /printSalePedigree\(animalId, saleValues\(\), config\)/);
