@@ -47,7 +47,7 @@ Normal member-facing UI should show product feature names rather than internal e
 
 - whole-app version: 2.0.0
 - release channel: stable
-- canonical build ID: `v2.0.0-release-1`
+- canonical build ID: `v2.0.0-release-2`
 - Android versionName: 2.0.0
 - Android versionCode: 19
 - Android package: `com.ebrllc.herdharbor`
