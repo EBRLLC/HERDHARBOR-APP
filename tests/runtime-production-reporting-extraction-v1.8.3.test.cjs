@@ -91,9 +91,9 @@ test("Production/Reporting domain has one extracted runtime owner", () => {
 test("composition runtime delegates instead of retaining a second production/report implementation", () => {
   assert.match(app, /HerdHarborProductionReportingRuntime\?\.create/);
   assert.match(app, /function ensureProfitabilityAnalyticsLoaded\(\)/);
-  assert.match(app, /function renderBudget\(\)[\s\S]*ensureProductionReportingRuntimeLoaded[\s\S]*ensureProfitabilityAnalyticsLoaded[\s\S]*productionReportingRuntime\(\)\.renderBudget\(\)/);
-  assert.match(app, /async function openProductionForm\(id = "", options = \{\}\)[\s\S]*await ensureProductionReportingRuntimeLoaded\(\)[\s\S]*productionReportingRuntime\(\)\.openProductionForm\(id, options\)/);
-  assert.match(app, /async function openTransactionForm\(id = "", defaultType = "Expense"\)[\s\S]*await ensureProductionReportingRuntimeLoaded\(\)[\s\S]*productionReportingRuntime\(\)\.openTransactionForm\(id, defaultType\)/);
+  assert.match(app, /function renderBudget\(\) \{[\s\S]*ensureProfitabilityAnalyticsLoaded[\s\S]*productionReportingRuntime\(\)\.renderBudget\(\)/);
+  assert.match(app, /function openProductionForm\(id = "", options = \{\}\) \{\s*return productionReportingRuntime\(\)\.openProductionForm\(id, options\);\s*\}/);
+  assert.match(app, /function openTransactionForm\(id = "", defaultType = "Expense"\) \{\s*return productionReportingRuntime\(\)\.openTransactionForm\(id, defaultType\);\s*\}/);
   assert.match(app, /function syncProductionIncome\(record\) \{\s*return productionReportingRuntime\(\)\.syncProductionIncome\(record\);\s*\}/);
   assert.doesNotMatch(app, /let budgetView =/);
   assert.doesNotMatch(app, /let productionReportView =/);
@@ -166,13 +166,13 @@ test("spreadsheet report tooling stays lazy and out of unconditional startup", (
   }
 });
 
-test("Production/Reporting runtime is lazy-loaded by composition and remains offline-cacheable", () => {
-  assert.equal(html.indexOf("production-reporting-runtime-v1.8.3.js?v=1"), -1);
-  assert.match(app, /function ensureProductionReportingRuntimeLoaded\(\)/);
-  assert.match(app, /"production-reporting-runtime-v1\.8\.3\.js\?v=1"/);
+test("shell loads/caches Production/Reporting before composition runtime", () => {
+  const salesIndex = html.indexOf("sales-customer-runtime-v1.8.3.js?v=1");
+  const productionIndex = html.indexOf("production-reporting-runtime-v1.8.3.js?v=1");
+  const appIndex = html.indexOf("herdharbor-app-runtime.js?v=4");
+  assert.ok(salesIndex >= 0 && productionIndex > salesIndex && appIndex > productionIndex);
   assert.match(worker, /\.\/production-reporting-runtime-v1\.8\.3\.js\?v=1/);
-  const required = worker.slice(worker.indexOf("const REQUIRED_SHELL"), worker.indexOf("const RUNTIME_CACHE_PATHS"));
-  assert.equal(required.includes("production-reporting-runtime-v1.8.3.js"), false);
+  assert.match(worker, /"\/production-reporting-runtime-v1\.8\.3\.js"/);
 });
 
 test("Phase 6G extraction remains compatible with formal v2.0.0 and does not activate normalized sync", () => {

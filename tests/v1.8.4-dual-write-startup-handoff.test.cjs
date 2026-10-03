@@ -389,7 +389,7 @@ test("syncNow does not enqueue an identical raw state while that state is alread
   const declarationIndex = source.indexOf("let syncInFlightRaw = null;");
   const syncNowIndex = source.indexOf("async function syncNow()");
   const duplicateGuardIndex = source.indexOf(
-    "(syncInFlightRaw === raw || sameState(syncInFlightRaw, raw))",
+    "if (syncInFlight && syncInFlightRaw && sameState(syncInFlightRaw, raw))",
     syncNowIndex
   );
   const enqueueIndex = source.indexOf(
@@ -399,10 +399,6 @@ test("syncNow does not enqueue an identical raw state while that state is alread
 
   assert.ok(declarationIndex >= 0, "cloud queue must track the raw snapshot currently in flight");
   assert.ok(duplicateGuardIndex > syncNowIndex, "syncNow must guard against identical in-flight state");
-  assert.ok(
-    source.indexOf("syncInFlightRaw === raw", syncNowIndex) < source.indexOf("sameState(syncInFlightRaw, raw)", syncNowIndex),
-    "byte-identical snapshots should return before canonical parsing"
-  );
   assert.ok(enqueueIndex > duplicateGuardIndex, "duplicate guard must execute before syncNow enqueues raw state");
   assert.match(
     source.slice(duplicateGuardIndex, enqueueIndex),

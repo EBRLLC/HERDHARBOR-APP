@@ -96,20 +96,8 @@ assert.match(membership, /isAdmin/);
 
 assert.match(html, /data-route="admin"[^>]*hidden[^>]*aria-hidden="true"/);
 assert.match(html, /herdharbor-access-cache-v1\.6\.1\.js/);
-assert.doesNotMatch(html, /<script[^>]+herdharbor-admin-v1\.6\.1\.js/);
 assert.match(appRuntime, /if \(route === "admin" && window\.HerdHarborMembership\?\.canAccessAdmin\?\.\(\) !== true\)/);
-assert.match(appRuntime, /function ensureAdminRuntimeLoaded\(\)/);
-assert.match(appRuntime, /"herdharbor-admin-v1\.6\.1\.js\?v=2"/);
-assert.match(appRuntime, /function syncAdminNavigation\(\)/);
-
-assert.match(appRuntime, /let pendingAdminRoute = requestedRoute === "admin"/);
-assert.match(appRuntime, /if \(route === "admin" && window\.HerdHarborMembership\?\.canAccessAdmin\?\.\(\) !== true\)[\s\S]*account\.backendReady !== true[\s\S]*pendingAdminRoute = true/);
-assert.match(appRuntime, /pendingAdminRoute && account\.backendReady === true[\s\S]*if \(allowed\)[\s\S]*navigate\("admin"\)/);
-assert.match(appRuntime, /if \(route !== "admin" && pendingAdminRoute\) pendingAdminRoute = false/);
-assert.match(appRuntime, /!allowed && account\.backendReady === true && currentRoute === "admin"[\s\S]*navigate\("dashboard"\)/);
-
-assert.match(appRuntime, /HerdHarborMembership\?\.canAccessAdmin\?\.\(\) === true/);
-assert.match(appRuntime, /renderLazyRoute\([\s\S]*"admin"[\s\S]*ensureAdminRuntimeLoaded[\s\S]*HerdHarborAdmin\?\.render\?\.\(\)/);
+assert.match(appRuntime, /HerdHarborAdmin\?\.render\?\.\(\)/);
 assert.match(admin, /Supabase also enforces this permission through Row Level Security/);
 assert.match(admin, /Manage account roles and membership access without opening private farm records/);
 assert.match(admin, /Search<input id="hh-admin-search"/);

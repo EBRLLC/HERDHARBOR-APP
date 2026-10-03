@@ -216,13 +216,13 @@ test("manual offspring creator remains compatibility fallback behind canonical l
   assert.match(lifecycleSource, /autoCreateBornOffspring\(state,litter\)/);
 });
 
-test("Breeding/Litter runtime remains eager before application composition while Animal/Profile is lazy", () => {
+test("shell loads and caches Breeding/Litter runtime before application composition", () => {
   const html = read("index.html");
   const worker = read("service-worker.js");
+  const animal = html.indexOf("animal-profile-runtime-v1.8.3.js?v=1");
   const breeding = html.indexOf("breeding-litter-runtime-v1.8.3.js?v=1");
   const composition = html.indexOf("herdharbor-app-runtime.js?v=4");
-  assert.ok(breeding >= 0 && composition > breeding);
-  assert.equal(html.indexOf("animal-profile-runtime-v1.8.3.js?v=1"), -1);
+  assert.ok(animal >= 0 && breeding > animal && composition > breeding);
   assert.match(worker, /\.\/breeding-litter-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /"\/breeding-litter-runtime-v1\.8\.3\.js"/);
 });

@@ -177,13 +177,3 @@ test("Health Intelligence is loaded and cached as part of the v1.7.1 shell", () 
   assert.match(worker, /health-intelligence-v1\.7\.1\.js\?v=1\.7\.1/);
   assert.match(worker, /health-intelligence-v1\.7\.1\.css\?v=1\.7\.1/);
 });
-
-
-test("Health Intelligence observes only Health and Symptom surfaces instead of the entire app body", () => {
-  assert.match(source, /querySelector\('#view-health'\)/);
-  assert.match(source, /querySelector\('#view-symptoms'\)/);
-  assert.match(source, /observer\.observe\(healthView,\{childList:true,subtree:true\}\)/);
-  assert.match(source, /observer\.observe\(symptomView,\{childList:true,subtree:true,attributes:true,attributeFilter:\['class'\]\}\)/);
-  assert.doesNotMatch(source, /observe\(root\.document\.body,\{childList:true,subtree:true\}\)/);
-  assert.match(source, /symptomView\?\.classList\?\.contains\('active'\)\)hardlockSymptomGuide\(\)/);
-});

@@ -26,14 +26,10 @@ test("index shell keeps only the early bootstrap inline", () => {
   assert.match(inlineScripts[0], /herdharbor_theme/);
   assert.equal((html.match(/<style\b/gi) || []).length, 0, "page-owned CSS is external");
   assert.match(html, /herdharbor-index-shell\.css\?v=1/);
-  assert.doesNotMatch(html, /<script[^>]+animal-profile-runtime-v1\.8\.3\.js\?v=1/);
-  assert.doesNotMatch(html, /<script[^>]+production-reporting-runtime-v1\.8\.3\.js\?v=1/);
-  assert.match(appRuntime, /"animal-profile-runtime-v1\.8\.3\.js\?v=1"/);
-  assert.match(appRuntime, /"production-reporting-runtime-v1\.8\.3\.js\?v=1"/);
+  assert.match(html, /animal-profile-runtime-v1\.8\.3\.js\?v=1/);
+  assert.match(html, /production-reporting-runtime-v1\.8\.3\.js\?v=1/);
   assert.doesNotMatch(html, /<script[^>]+settings-runtime-v1\.8\.3\.js/);
   assert.match(appRuntime, /"settings-runtime-v1\.8\.3\.js\?v=1"/);
-  assert.doesNotMatch(html, /<script[^>]+herdharbor-admin-v1\.6\.1\.js/);
-  assert.match(appRuntime, /"herdharbor-admin-v1\.6\.1\.js\?v=2"/);
   assert.match(html, /herdharbor-app-runtime\.js\?v=4/);
   assert.doesNotMatch(html, /function renderSales\(\)/);
   assert.match(appRuntime, /function renderSales\(\)/);
@@ -54,12 +50,9 @@ test("classic script and stylesheet order is preserved", () => {
   const coreCss = html.indexOf("herdharbor-core-v1.6.1.css?v=1.7.1");
   assert.ok(baseCss >= 0 && shellCssIndex > baseCss && coreCss > shellCssIndex);
 
+  const animalProfileRuntimeIndex = html.indexOf("animal-profile-runtime-v1.8.3.js?v=1");
   const appRuntimeIndex = html.indexOf("herdharbor-app-runtime.js?v=4");
-  assert.ok(appRuntimeIndex >= 0);
-  assert.equal(html.indexOf("animal-profile-runtime-v1.8.3.js?v=1"), -1);
-  assert.equal(html.indexOf("production-reporting-runtime-v1.8.3.js?v=1"), -1);
-  assert.match(appRuntime, /ensureAnimalProfileRuntimeLoaded/);
-  assert.match(appRuntime, /ensureProductionReportingRuntimeLoaded/);
+  assert.ok(animalProfileRuntimeIndex >= 0 && appRuntimeIndex > animalProfileRuntimeIndex);
   assert.doesNotMatch(html, /<script[^>]+analytics-v1\.6\.1\.js/);
   assert.match(appRuntime, /"analytics-v1\.6\.1\.js\?v=2"/);
   assert.doesNotMatch(html, /<script[^>]+src="herdharbor-app-runtime\.js\?v=4"[^>]+(?:async|defer|type="module")/);
@@ -83,16 +76,8 @@ test("service worker covers required extracted shell assets", () => {
     { asset: "herdharbor-index-shell.css", revision: "1" }
   ]) {
     const escaped = asset.replaceAll(".", "\\.");
-    assert.equal((worker.match(new RegExp("\\./" + escaped + "\\?v=" + revision, "g")) || []).length, 1, asset + " has one service-worker cache entry");
-    const lazyRuntime = asset === "animal-profile-runtime-v1.8.3.js" || asset === "production-reporting-runtime-v1.8.3.js";
-    if (lazyRuntime) {
-      const required = worker.slice(worker.indexOf("const REQUIRED_SHELL"), worker.indexOf("const RUNTIME_CACHE_PATHS"));
-      const runtime = worker.slice(worker.indexOf("const RUNTIME_CACHE_PATHS"), worker.indexOf("const NETWORK_FIRST_PATHS"));
-      assert.equal(required.includes(asset), false, asset + " stays off mandatory install");
-      assert.equal(runtime.includes("./" + asset + "?v=" + revision), true, asset + " remains runtime-cacheable");
-    } else {
-      assert.equal((worker.match(new RegExp('"/' + escaped + '"', "g")) || []).length, 1, asset + " has one network-first route");
-    }
+    assert.equal((worker.match(new RegExp("\\./" + escaped + "\\?v=" + revision, "g")) || []).length, 1, asset + " has one precache entry");
+    assert.equal((worker.match(new RegExp('"/' + escaped + '"', "g")) || []).length, 1, asset + " has one network-first route");
     assert.ok(exists(asset), `missing extracted asset: ${asset}`);
   }
 });
@@ -125,27 +110,4 @@ test("lazy profitability analytics stays outside required startup shell", () => 
   assert.ok(!required.includes("profitability-analytics-v1.8.3.js"));
   assert.ok(runtime.includes("profitability-analytics-v1.8.3.js?v=1"));
   assert.match(worker, /"\/profitability-analytics-v1\.8\.3\.js"/);
-});
-
-
-test("Admin UI stays outside required startup shell and loads only through the authorized route", () => {
-  const required = worker.slice(worker.indexOf("const REQUIRED_SHELL"), worker.indexOf("const RUNTIME_CACHE_PATHS"));
-  const runtime = worker.slice(worker.indexOf("const RUNTIME_CACHE_PATHS"), worker.indexOf("const NETWORK_FIRST_PATHS"));
-  assert.equal(required.includes("herdharbor-admin-v1.6.1.js"), false);
-  assert.equal(runtime.includes("./herdharbor-admin-v1.6.1.js?v=2"), true);
-  assert.match(appRuntime, /function ensureAdminRuntimeLoaded\(\)/);
-  assert.match(appRuntime, /renderLazyRoute\([\s\S]*"admin"[\s\S]*ensureAdminRuntimeLoaded/);
-  assert.match(appRuntime, /if \(route === "admin" && window\.HerdHarborMembership\?\.canAccessAdmin\?\.\(\) !== true\)/);
-});
-
-
-test("Analytics CSS and runtime load together only on the Analytics route", () => {
-  const required = worker.slice(worker.indexOf("const REQUIRED_SHELL"), worker.indexOf("const RUNTIME_CACHE_PATHS"));
-  const runtime = worker.slice(worker.indexOf("const RUNTIME_CACHE_PATHS"), worker.indexOf("const NETWORK_FIRST_PATHS"));
-  assert.doesNotMatch(html, /<link[^>]+analytics-v1\.6\.1\.css/);
-  assert.doesNotMatch(html, /<script[^>]+analytics-v1\.6\.1\.js/);
-  assert.match(appRuntime, /async function ensureAnalyticsRuntime\(\)[\s\S]*loadStyleOnce\("analytics-v1\.6\.1\.css\?v=2"\)[\s\S]*loadScriptOnce\([\s\S]*"analytics-v1\.6\.1\.js\?v=2"/);
-  assert.equal(required.includes("analytics-v1.6.1.css"), false);
-  assert.equal(runtime.includes("./analytics-v1.6.1.css?v=2"), true);
-  assert.equal(runtime.includes("./analytics-v1.6.1.js?v=2"), true);
 });

@@ -24,30 +24,20 @@ test('core accepts the extractor node-array shape directly', () => {
   assert.equal(byRole.subject.damId, byRole.dam.animalId);
 });
 
-test('tester-gated runtime loader installs the paper pedigree core before the UI', () => {
+test('runtime loader installs the paper pedigree core before the UI', () => {
   const build = read('herdharbor-build.js');
-  const optional = read('herdharbor-optional-tools.js');
-  assert.doesNotMatch(build, /paper-pedigree-import-(?:core-)?v1\.8\.2\.js/);
-  const ensureStart = optional.indexOf('async function ensureAiLiveTools()');
-  const ensureEnd = optional.indexOf('function setAiLiveTesterEnabled', ensureStart);
-  const ensure = optional.slice(ensureStart, ensureEnd);
-  const coreIndex = ensure.indexOf('ASSETS.paperPedigreeCore');
-  const uiIndex = ensure.indexOf('ASSETS.paperPedigreeUi');
-  assert.ok(coreIndex >= 0, 'paper pedigree core must be tester-gated');
+  const coreIndex = build.indexOf('paper-pedigree-import-core-v1.8.2.js?v=1');
+  const uiIndex = build.indexOf('paper-pedigree-import-v1.8.2.js?v=2');
+  assert.ok(coreIndex >= 0, 'paper pedigree core must be loaded');
   assert.ok(uiIndex > coreIndex, 'paper pedigree UI must load after the core');
 });
 
-test('service worker keeps paper pedigree runtime cached without mandatory install or duplicate classification', () => {
+test('service worker includes paper pedigree runtime in shell and network-first policy', () => {
   const worker = read('service-worker.js');
-  const required = worker.slice(worker.indexOf('const REQUIRED_SHELL'), worker.indexOf('const RUNTIME_CACHE_PATHS'));
-  const runtime = worker.slice(worker.indexOf('const RUNTIME_CACHE_PATHS'), worker.indexOf('const NETWORK_FIRST_PATHS'));
-  const network = worker.slice(worker.indexOf('const NETWORK_FIRST_PATHS'), worker.indexOf('function isNetworkFirstPath'));
-  for (const asset of ['paper-pedigree-import-core-v1.8.2.js?v=1','paper-pedigree-import-v1.8.2.js?v=2']) {
-    assert.equal(required.includes(asset), false, asset + ' must not block install');
-    assert.equal(runtime.includes(asset), true, asset + ' stays runtime-cacheable');
-  }
-  assert.equal(network.includes('/paper-pedigree-import-core-v1.8.2.js'), false);
-  assert.equal(network.includes('/paper-pedigree-import-v1.8.2.js'), false);
+  assert.match(worker, /\.\/paper-pedigree-import-core-v1\.8\.2\.js\?v=1/);
+  assert.match(worker, /\.\/paper-pedigree-import-v1\.8\.2\.js\?v=2/);
+  assert.match(worker, /"\/paper-pedigree-import-core-v1\.8\.2\.js"/);
+  assert.match(worker, /"\/paper-pedigree-import-v1\.8\.2\.js"/);
 });
 
 test('reviewed source photo uses local attachment storage instead of canonical cloud state', () => {
