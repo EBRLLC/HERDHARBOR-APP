@@ -782,11 +782,19 @@
     return value;
   }
 
-  function stateFingerprint(rawValue, includeDeviceSettings = false) {
-    const parsed = safeParse(rawValue);
-    return parsed
-      ? JSON.stringify(canonicalize(parsed, [], includeDeviceSettings))
+  function parsedStateFingerprint(value, includeDeviceSettings = false) {
+    return value && typeof value === "object"
+      ? JSON.stringify(canonicalize(value, [], includeDeviceSettings))
       : "";
+  }
+
+  function stateFingerprint(rawValue, includeDeviceSettings = false) {
+    return parsedStateFingerprint(safeParse(rawValue), includeDeviceSettings);
+  }
+
+  function sameParsedState(left, right) {
+    const leftFingerprint = parsedStateFingerprint(left);
+    return Boolean(leftFingerprint) && leftFingerprint === parsedStateFingerprint(right);
   }
 
   function sameState(left, right) {
@@ -1437,18 +1445,19 @@
       const activeOwnerId = String(originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) || "");
       const legacyOwnerId = String(originalGetItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY) || "");
       const authenticatedCache = originalGetItem.call(localStorage, cacheKey(authenticatedUserId)) || "";
+      const activeState = activeRaw ? safeParse(activeRaw) : null;
+      const authenticatedCacheState = authenticatedCache ? safeParse(authenticatedCache) : null;
+      const hasActiveState = Boolean(activeState);
       const authenticatedCacheMatchesActive = Boolean(
-        activeRaw &&
-        authenticatedCache &&
-        safeParse(activeRaw) &&
-        safeParse(authenticatedCache) &&
-        sameState(activeRaw, authenticatedCache)
+        activeState &&
+        authenticatedCacheState &&
+        sameParsedState(activeState, authenticatedCacheState)
       );
       const policy = window.HerdHarborAccountBoundaryCore?.evaluate?.({
         authenticatedUserId,
         activeOwnerId,
         legacyOwnerId,
-        hasActiveState: Boolean(activeRaw && safeParse(activeRaw)),
+        hasActiveState,
         authenticatedCacheMatchesActive
       });
 
@@ -1457,7 +1466,7 @@
           policy?.reason === "unowned-active-state" &&
           options.allowUnownedQuarantine === true &&
           activeRaw &&
-          safeParse(activeRaw)
+          hasActiveState
         ) {
           const preserved = await recordRecoverySnapshot(
             UNATTRIBUTED_RECOVERY_USER_ID,
@@ -1496,7 +1505,7 @@
         authenticatedUserId,
         activeOwnerId,
         legacyOwnerId,
-        hasActiveState: Boolean(activeRaw && safeParse(activeRaw)),
+        hasActiveState,
         authenticatedCacheMatchesActive
       }, {
         preserve: async (staleOwnerId) => {
