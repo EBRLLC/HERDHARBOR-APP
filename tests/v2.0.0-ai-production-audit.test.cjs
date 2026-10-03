@@ -23,6 +23,9 @@ test("hidden AI tools remain gated and are not eagerly exposed to normal members
   assert.match(optional, /AI_TESTER_KEY/);
   assert.match(optional, /isAiLiveTester/);
   assert.match(optional, /ensureAiLiveTools/);
+  assert.match(optional, /paperPedigreeCore:\s*"paper-pedigree-import-core-v1\.8\.2\.js\?v=1"/);
+  assert.match(optional, /paperPedigreeUi:\s*"paper-pedigree-import-v1\.8\.2\.js\?v=2"/);
+  assert.match(optional, /await loadScript\([\s\S]*ASSETS\.paperPedigreeCore[\s\S]*await loadScript\([\s\S]*ASSETS\.paperPedigreeUi/);
   assert.match(optional, /data-quick="voice"/);
   assert.match(optional, /data-quick="photo"/);
   assert.match(optional, /data-pp-read/);
