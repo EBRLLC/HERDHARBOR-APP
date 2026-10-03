@@ -57,7 +57,7 @@
   const esc = (value) => String(value == null ? "" : value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
   const deepClone = (value) => Core.deepClone ? Core.deepClone(value) : JSON.parse(JSON.stringify(value));
   const rabbitAnimals = (state) => (state.animals || []).filter((animal) => Core.canonicalSpecies(animal.species) === "Rabbit");
-  const sexIs = (animal, wanted) => wanted === "male" ? /male|buck/i.test(String(animal?.sex || "")) : /female|doe/i.test(String(animal?.sex || ""));
+  const sexIs = (animal, wanted) => wanted === "male" ? /\b(?:male|buck)\b/i.test(String(animal?.sex || "")) : /\b(?:female|doe)\b/i.test(String(animal?.sex || ""));
   function animalLabel(animal) { const identity = animal.name || animal.tag || animal.earTagNumber || animal.id || "Unnamed rabbit", color = animal.color || animal.variety; return color ? `${identity} — ${color}` : identity; }
   function selectOptions(animals, selectedId) { return ['<option value="">Select a rabbit…</option>'].concat(animals.map((animal) => `<option value="${esc(animal.id)}" ${String(animal.id) === String(selectedId || "") ? "selected" : ""}>${esc(animalLabel(animal))}</option>`)).join(""); }
   function performanceSummary(state, animal) { const p = Core.performanceForAnimal(animal, state.breedings, state.births), survival = p.survivalRate == null ? "—" : `${Math.round(p.survivalRate * 100)}%`, avg = p.averageLitterSize == null ? "—" : p.averageLitterSize.toFixed(1); return `${p.breedings} breedings · ${p.births} litters · ${p.bornAlive} live born · ${p.weaned} weaned · ${survival} survival · ${avg} avg litter`; }
@@ -79,7 +79,7 @@
     const host = document.querySelector("#view-breeding"); if (!host) return;
     let card = host.querySelector("#hh-breeding-intelligence"); if (!card) { card = document.createElement("section"); card.id = "hh-breeding-intelligence"; card.className = "hh-bi-card"; host.prepend(card); }
     const state = readState(), rabbits = rabbitAnimals(state), bucks = rabbits.filter((a) => sexIs(a,"male")), does = rabbits.filter((a) => sexIs(a,"female")), profiles = rabbits.filter((a) => a.genetics).length, predictions = state[ROOT_KEY]?.predictions?.length || 0;
-    card.innerHTML = `<div class="hh-bi-heading"><div><span class="hh-bi-kicker">Breeding Genetics</span><h2>Breeding Intelligence</h2><p>Plan rabbit pairings with pedigree evidence, recorded genetics, previous offspring and honest uncertainty handling.</p></div><span class="hh-bi-badge">Rabbit genetics</span></div><div class="hh-bi-metrics"><div><strong>${rabbits.length}</strong><span>Rabbits</span></div><div><strong>${profiles}</strong><span>Genetic profiles</span></div><div><strong>${predictions}</strong><span>Saved analyses</span></div></div><div class="hh-bi-actions"><button type="button" class="primary" data-bi-action="pair">Analyze Pairing</button><button type="button" data-bi-action="compare">Compare With Another Animal</button><button type="button" data-bi-action="profile">Rabbit genetic profile</button><button type="button" data-bi-action="learn">Learn from recorded offspring</button><button type="button" data-bi-action="history">Prediction history</button></div>${(!bucks.length || !does.length) ? '<p class="hh-bi-note">Add at least one male and one female rabbit to run Pair Analysis.</p>' : ''}<p class="hh-bi-footnote">Predictions use the supported A/B/C/D/E model. Additional modifier genes, breed-specific expression and incomplete records can change visible color.</p>`;
+    card.innerHTML = `<div class="hh-bi-heading"><div><span class="hh-bi-kicker">Breeding Genetics</span><h2>Breeding Intelligence</h2><p>Plan rabbit pairings with pedigree evidence, recorded genetics, previous offspring and honest uncertainty handling.</p></div><span class="hh-bi-badge">Rabbit genetics</span></div><div class="hh-bi-metrics"><div><strong>${rabbits.length}</strong><span>Rabbits</span></div><div><strong>${profiles}</strong><span>Genetic profiles</span></div><div><strong>${predictions}</strong><span>Saved analyses</span></div></div><div class="hh-bi-actions"><button type="button" class="primary" data-bi-action="pair">Analyze Pairing</button><button type="button" data-bi-action="compare">Linebreeding Coefficient</button><button type="button" data-bi-action="profile">Rabbit genetic profile</button><button type="button" data-bi-action="learn">Learn from recorded offspring</button><button type="button" data-bi-action="history">Prediction history</button></div>${(!bucks.length || !does.length) ? '<p class="hh-bi-note">Add at least one male and one female rabbit to run Pair Analysis.</p>' : ''}<p class="hh-bi-footnote">Predictions use the supported A/B/C/D/E model. Additional modifier genes, breed-specific expression and incomplete records can change visible color.</p>`;
   }
 
   function openModal(title, bodyHtml) {
@@ -221,8 +221,8 @@
       </div>
       <p class="hh-bi-note" id="bi-shared-selection-status" role="status" aria-live="polite">Select a shared ancestor marker to highlight every recorded appearance.</p>
       <div class="hh-bi-linebreeding-pedigrees">
-        <section><header><span class="hh-bi-kicker">ANIMAL A</span><h3>${esc(first.name || animalLabel(first))}</h3></header>${pedigreeA}</section>
-        <section><header><span class="hh-bi-kicker">ANIMAL B</span><h3>${esc(second.name || animalLabel(second))}</h3></header>${pedigreeB}</section>
+        <section><header><span class="hh-bi-kicker">BUCK</span><h3>${esc(first.name || animalLabel(first))}</h3></header>${pedigreeA}</section>
+        <section><header><span class="hh-bi-kicker">DOE</span><h3>${esc(second.name || animalLabel(second))}</h3></header>${pedigreeB}</section>
       </div>
       <section class="hh-bi-closest-path-panel"><h3>Closest recorded relationship paths</h3>${closestPathsHtml(analysis)}</section>
       <p class="hh-bi-note">Analysis depth: ${analysis.ancestorGenerationsAnalyzed} ancestor generation${analysis.ancestorGenerationsAnalyzed === 1 ? "" : "s"} · pedigree coverage ${percentage(analysis.pedigreeCompleteness.animalA.coverage)} / ${percentage(analysis.pedigreeCompleteness.animalB.coverage)}. Unknown ancestry is reflected in those coverage values.</p>
@@ -231,25 +231,40 @@
 
   function renderRelationshipComparison(firstId = "", secondId = "") {
     const state = readState();
-    const animals = (state.animals || []).filter((animal) => animal?.id);
-    const first = animals.find((animal) => String(animal.id) === String(firstId)) || animals[0] || null;
-    const second = animals.find((animal) => String(animal.id) === String(secondId)) || null;
-    const analysis = first && second ? relationshipAnalysis(first, second, state, 4) : null;
+    const rabbits = rabbitAnimals(state).filter((animal) => animal?.id);
+    const bucks = rabbits.filter((animal) => sexIs(animal, "male"));
+    const does = rabbits.filter((animal) => sexIs(animal, "female"));
+    const requested = [firstId, secondId]
+      .map((id) => rabbits.find((animal) => String(animal.id) === String(id)))
+      .filter(Boolean);
+    const buck = requested.find((animal) => sexIs(animal, "male")) || null;
+    const doe = requested.find((animal) => sexIs(animal, "female")) || null;
+    const validPair = Boolean(buck && doe && sexIs(buck, "male") && sexIs(doe, "female"));
+    const analysis = validPair ? relationshipAnalysis(buck, doe, state, 4) : null;
     const results = analysis
-      ? linebreedingViewHtml(first, second, analysis, state)
-      : '<div class="hh-bi-empty">Choose two animals to compare recorded ancestry.</div>';
+      ? linebreedingViewHtml(buck, doe, analysis, state)
+      : '<div class="hh-bi-empty">Choose one buck and one doe to calculate the linebreeding relationship and projected offspring Pedigree COI.</div>';
+    const availability = !bucks.length || !does.length
+      ? '<div class="hh-bi-warning"><strong>A buck and doe are required.</strong> Add or correctly sex at least one rabbit of each sex before running a linebreeding calculation.</div>'
+      : "";
 
-    openModal("Linebreeding Analysis", `<div class="hh-bi-pair-selectors">
-      <label>Animal<select id="bi-compare-a">${selectOptions(animals, first?.id)}</select></label>
-      <label>Compare with<select id="bi-compare-b">${selectOptions(animals, second?.id)}</select></label>
-      <button type="button" class="primary" id="bi-run-pedigree-compare">Analyze Pairing</button>
-    </div>${results}`);
+    openModal("Linebreeding Coefficient", `<div class="hh-bi-pair-selectors">
+      <label>Buck<select id="bi-linebreeding-buck">${selectOptions(bucks, buck?.id)}</select></label>
+      <label>Doe<select id="bi-linebreeding-doe">${selectOptions(does, doe?.id)}</select></label>
+      <button type="button" class="primary" id="bi-run-pedigree-compare" ${!bucks.length || !does.length ? "disabled" : ""}>Calculate Linebreeding Coefficient</button>
+    </div>${availability}${results}`);
 
     modal.querySelector("#bi-run-pedigree-compare")?.addEventListener("click", () => {
-      renderRelationshipComparison(
-        modal.querySelector("#bi-compare-a")?.value || "",
-        modal.querySelector("#bi-compare-b")?.value || ""
-      );
+      const buckId = modal.querySelector("#bi-linebreeding-buck")?.value || "";
+      const doeId = modal.querySelector("#bi-linebreeding-doe")?.value || "";
+      const selectedBuck = bucks.find((animal) => String(animal.id) === String(buckId)) || null;
+      const selectedDoe = does.find((animal) => String(animal.id) === String(doeId)) || null;
+      if (!selectedBuck || !selectedDoe || !sexIs(selectedBuck, "male") || !sexIs(selectedDoe, "female")) {
+        const empty = modal.querySelector(".hh-bi-empty");
+        if (empty) empty.textContent = "Select one buck and one doe before calculating the linebreeding coefficient.";
+        return;
+      }
+      renderRelationshipComparison(selectedBuck.id, selectedDoe.id);
     });
 
     modal.addEventListener("herdharbor:relationship-ancestor-selected", (event) => {
@@ -428,6 +443,6 @@
     observer=new MutationObserver(()=>{if(!document.querySelector("#hh-breeding-intelligence"))renderCard();updateVisibleVersion();});
     observer.observe(target,{childList:true,subtree:true});
   }
-  function boot(){installStorageProtection();ensureStylesheet();installEvents();renderCard();updateVisibleVersion();monitorBreedingView();window.HerdHarborBreedingIntelligence=Object.freeze({version:RELEASE_VERSION,analyzePairing:Core.analyzePairing,analyzeRelationship:(animalA,animalB,state,generations=4)=>relationshipAnalysis(animalA,animalB,state||readState(),generations),readState,savePredictionSnapshot,openPairAnalysis:()=>renderPairModal("",""),openRelationshipComparison:(animalId="")=>renderRelationshipComparison(animalId,""),openGeneticProfile:(animalId)=>renderProfileModal(animalId||""),openPredictionHistory:renderHistory,openSavedPrediction:renderSavedSnapshot,refresh:renderCard});}
+  function boot(){installStorageProtection();ensureStylesheet();installEvents();renderCard();updateVisibleVersion();monitorBreedingView();window.HerdHarborBreedingIntelligence=Object.freeze({version:RELEASE_VERSION,analyzePairing:Core.analyzePairing,analyzeRelationship:(animalA,animalB,state,generations=4)=>relationshipAnalysis(animalA,animalB,state||readState(),generations),readState,savePredictionSnapshot,openPairAnalysis:()=>renderPairModal("",""),openLinebreedingCoefficient:(animalId="")=>renderRelationshipComparison(animalId,""),openRelationshipComparison:(animalId="")=>renderRelationshipComparison(animalId,""),openGeneticProfile:(animalId)=>renderProfileModal(animalId||""),openPredictionHistory:renderHistory,openSavedPrediction:renderSavedSnapshot,refresh:renderCard});}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
 })();

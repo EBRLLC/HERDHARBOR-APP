@@ -78,8 +78,8 @@ test("B4 linebreeding UI uses two unified relationship-analysis renderers", () =
   assert.match(source, /PedigreeRenderer\.render\(/);
   assert.match(source, /mode: "relationship-analysis"/);
   assert.match(source, /data-hh-relationship-view/);
-  assert.match(source, /ANIMAL A/);
-  assert.match(source, /ANIMAL B/);
+  assert.match(source, /BUCK/);
+  assert.match(source, /DOE/);
   assert.match(source, /Closest recorded relationship paths/);
   assert.match(source, /herdharbor:relationship-ancestor-selected/);
 });
@@ -159,4 +159,30 @@ test("B4 relationship annotations cannot leak into normal pedigree modes", () =>
   assert.doesNotMatch(html, /Shared ancestor/);
   assert.doesNotMatch(html, /Closest path/);
   assert.doesNotMatch(html, /data-hh-shared-identity=/);
+});
+
+
+test("linebreeding coefficient workflow only offers buck × doe breeding pairs", () => {
+  const source = fs.readFileSync(path.resolve(__dirname, "..", "breeding-intelligence-v1.6.1.js"), "utf8");
+  assert.match(source, /const bucks = rabbits\.filter\(\(animal\) => sexIs\(animal, "male"\)\)/);
+  assert.match(source, /const does = rabbits\.filter\(\(animal\) => sexIs\(animal, "female"\)\)/);
+  assert.match(source, /<label>Buck<select id="bi-linebreeding-buck">/);
+  assert.match(source, /<label>Doe<select id="bi-linebreeding-doe">/);
+  assert.match(source, /Calculate Linebreeding Coefficient/);
+  assert.match(source, /!selectedBuck \|\| !selectedDoe \|\| !sexIs\(selectedBuck, "male"\) \|\| !sexIs\(selectedDoe, "female"\)/);
+  assert.doesNotMatch(source, /<label>Animal<select id="bi-compare-a">/);
+  assert.doesNotMatch(source, /<label>Compare with<select id="bi-compare-b">/);
+});
+
+test("female sex values cannot match the male breeding filter", () => {
+  const source = fs.readFileSync(path.resolve(__dirname, "..", "breeding-intelligence-v1.6.1.js"), "utf8");
+  assert.match(source, /\\b\(\?:male\|buck\)\\b/);
+  assert.match(source, /\\b\(\?:female\|doe\)\\b/);
+  assert.doesNotMatch(source, /\/male\|buck\/i/);
+});
+
+test("linebreeding coefficient keeps the old relationship API as a compatibility alias", () => {
+  const source = fs.readFileSync(path.resolve(__dirname, "..", "breeding-intelligence-v1.6.1.js"), "utf8");
+  assert.match(source, /openLinebreedingCoefficient/);
+  assert.match(source, /openRelationshipComparison/);
 });
