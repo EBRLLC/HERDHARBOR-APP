@@ -6,6 +6,7 @@ const path=require("node:path");
 const root=path.resolve(__dirname,"..");
 const html=fs.readFileSync(path.join(root,"index.html"),"utf8");
 const app=fs.readFileSync(path.join(root,"herdharbor-app-runtime.js"),"utf8");
+const pwaSource=fs.readFileSync(path.join(root,"pwa.js"),"utf8");
 const sw=fs.readFileSync(path.join(root,"service-worker.js"),"utf8");
 const market=fs.readFileSync(path.join(root,"herdharbor-marketplace.js"),"utf8");
 
@@ -215,9 +216,9 @@ test("public animal actions require the pedigree dependency before taking the fa
 
 
 test("deferred legacy asset loaders can retry after a script fetch failure",()=>{
-  assert.match(pwa,/function addScript\(id, src, onload\)[\s\S]*script\.addEventListener\("error"[\s\S]*script\.remove\(\)[\s\S]*herdharbor:dynamic-asset-error/);
-  assert.match(pwa,/window\.addEventListener\("herdharbor:dynamic-asset-error"[\s\S]*pedigreeVisualsLoadStarted = false/);
-  assert.match(pwa,/herdharbor:dynamic-asset-error[\s\S]*breedingIntelligenceLoadStarted = false/);
-  assert.match(pwa,/if \(pedigreeVisualsLoadStarted\) return;/);
-  assert.match(pwa,/if \(breedingIntelligenceLoadStarted\) return;/);
+  assert.match(pwaSource,/function addScript\(id, src, onload\)[\s\S]*script\.addEventListener\("error"[\s\S]*script\.remove\(\)[\s\S]*herdharbor:dynamic-asset-error/);
+  assert.match(pwaSource,/window\.addEventListener\("herdharbor:dynamic-asset-error"[\s\S]*pedigreeVisualsLoadStarted = false/);
+  assert.match(pwaSource,/herdharbor:dynamic-asset-error[\s\S]*breedingIntelligenceLoadStarted = false/);
+  assert.match(pwaSource,/if \(pedigreeVisualsLoadStarted\) return;/);
+  assert.match(pwaSource,/if \(breedingIntelligenceLoadStarted\) return;/);
 });
