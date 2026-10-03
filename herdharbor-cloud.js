@@ -1619,7 +1619,10 @@
     const userId = session.user.id;
     const rawValue = String(detail.rawValue || "");
     const previousValue = String(detail.previousRaw || "");
-    if (!safeParse(rawValue)) return false;
+    // StateStore emits local commit details only after rawValue was produced by
+    // JSON.stringify and durably written. Re-parsing the same full farm state
+    // here adds synchronous cost to every save without adding validation.
+    if (!rawValue) return false;
 
     safeStorageSet(ACTIVE_OWNER_KEY, userId);
     removeRedundantStateCache(userId);
