@@ -52,6 +52,11 @@
       breedsBySpecies: {},
       analyticsColors: {},
       preferredWeightDisplay: "lb",
+      pedigreeDocuments: {
+        templates: [],
+        defaults: { pedigree: "", birthCertificate: "" },
+        branding: { rabbitryName: "", rabbitryText: "", logoData: "", logoFileName: "" }
+      },
       marketAnalyticsConsent: {
         enabled: false,
         consentVersion: "",
@@ -3425,6 +3430,7 @@
     getCurrentRoute: () => currentRoute,
     openAnimalEditor: (animalId) => animalProfileRuntime().openEditor(animalId),
     openAnimalPedigreePrint: (animalId) => animalProfileRuntime().openPedigreePrint(animalId),
+    prepareDocumentImage: (file) => prepareProfileImage(file, { maxDimension: 900, targetBytes: 140000 }),
     openRecordBirth: (breedingId) => openRecordBirth(breedingId)
   });
   try { window.dispatchEvent(new CustomEvent("herdharbor:app-ready")); } catch {}
