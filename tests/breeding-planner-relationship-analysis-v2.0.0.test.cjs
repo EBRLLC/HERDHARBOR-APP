@@ -48,3 +48,21 @@ test("B3 mobile layout keeps planner metrics readable", () => {
   assert.match(css, /@media\(max-width:760px\)[\s\S]*\.hh-bi-planner-metrics\{grid-template-columns:1fr 1fr\}/);
   assert.match(css, /@media\(max-width:470px\)[\s\S]*\.hh-bi-planner-metrics\{grid-template-columns:1fr\}/);
 });
+
+
+test("B3 breeder-facing linebreeding workflow requires a buck and doe", () => {
+  const comparisonStart = source.indexOf("function renderRelationshipComparison(");
+  const comparisonEnd = source.indexOf("function modifierRows(", comparisonStart);
+  const comparison = source.slice(comparisonStart, comparisonEnd);
+
+  assert.match(source, /Linebreeding Coefficient/);
+  assert.doesNotMatch(source, /Compare With Another Animal/);
+  assert.match(comparison, /const bucks = rabbits\.filter\(\(animal\) => sexIs\(animal, "male"\)\)/);
+  assert.match(comparison, /const does = rabbits\.filter\(\(animal\) => sexIs\(animal, "female"\)\)/);
+  assert.match(comparison, /selectOptions\(bucks, buck\?\.id\)/);
+  assert.match(comparison, /selectOptions\(does, doe\?\.id\)/);
+  assert.match(comparison, /explicitPair && buck && doe/);
+  assert.match(comparison, /Add at least one buck and one doe/);
+  assert.match(comparison, /Calculate Linebreeding Coefficient/);
+  assert.doesNotMatch(comparison, /selectOptions\(animals/);
+});
