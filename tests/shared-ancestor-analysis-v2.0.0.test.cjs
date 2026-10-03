@@ -112,11 +112,11 @@ test("B1 lineage profile keeps repeated ancestors separate from cycles", () => {
   assert.equal(profile.graph.issues.some((issue) => issue.type === "cycle"), false);
 });
 
-test("B1 UI exposes Compare With Another Animal and Analyze Pairing entry points", () => {
+test("B1 UI exposes Linebreeding Coefficient and Analyze Pairing entry points", () => {
   const breeding = fs.readFileSync(path.resolve(__dirname, "..", "breeding-intelligence-v1.6.1.js"), "utf8");
   const profile = fs.readFileSync(path.resolve(__dirname, "..", "animal-profile-runtime-v1.8.3.js"), "utf8");
 
-  assert.match(breeding, /Compare With Another Animal/);
+  assert.match(breeding, /Linebreeding Coefficient/);
   assert.match(breeding, /Analyze Pairing/);
   assert.match(breeding, /Pedigree\.(sharedAncestorAnalysis|pedigreeRelationshipAnalysis)/);
   assert.match(breeding, /openRelationshipComparison/);
