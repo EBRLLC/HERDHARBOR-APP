@@ -180,9 +180,9 @@
     const relation = clean(node?.relation) || "Ancestor";
     const status = statusLabel(node);
     const subject = Number(node?.generation || 0) === 0;
-    const expanded = subject || options.expandedKeys.has(clean(node?.key));
+    const expanded = !options.interactive || subject || options.expandedKeys.has(clean(node?.key));
     const detailRows = isKnown ? renderFieldRows(animal, fields, options.formatDate) : "";
-    const canExpand = options.interactive && Boolean(detailRows || node?.issue || status);
+    const canExpand = options.interactive && Boolean(detailRows || node?.issue);
     const summarySex = isKnown && fields.includes("sex") ? sexLabel(animal) : "";
     const repeat = node?.status === "repeat" && node?.repeatOf
       ? `<span class="hh-pedigree-repeat">Also appears as ${escapeHtml(node.repeatOf)}</span>`
