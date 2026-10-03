@@ -16,7 +16,7 @@ const config = {
   dsn: String(process.env.HERDHARBOR_SENTRY_DSN || "").trim(),
   environment,
   release: "HerdHarbor@2.0.0",
-  build: String(process.env.HERDHARBOR_BUILD_ID || "v2.0.0-release-1").trim().slice(0, 80),
+  build: String(process.env.HERDHARBOR_BUILD_ID || "v2.0.0-release-2").trim().slice(0, 80),
   enableTestCrash: /^(1|true|yes)$/i.test(String(process.env.HERDHARBOR_ENABLE_MONITORING_TEST || "")) && environment !== "production"
 };
 
