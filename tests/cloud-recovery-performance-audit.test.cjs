@@ -106,3 +106,16 @@ test("clean-baseline capture returns on cheap guards before parsing large previo
   assert.equal((block.match(/safeParse\(previousValue\)/g)||[]).length,1);
   assert.doesNotMatch(block,/safeParse\(memoryBaseline\)/);
 });
+
+
+test("hot-path cloud baseline reads do not reparse an already validated memory baseline",()=>{
+  const start=cloud.indexOf("async function readCloudBaseline");
+  const end=cloud.indexOf("async function writeCloudBaseline",start);
+  const block=cloud.slice(start,end);
+  assert.match(block,/const memory = cloudBaselineMemory\.get\(userId\)/);
+  assert.match(block,/if \(memory\) return memory/);
+  assert.doesNotMatch(block,/memory && safeParse\(memory\)/);
+  const memoryAt=block.indexOf("if (memory) return memory");
+  const legacyAt=block.indexOf("originalGetItem.call(localStorage, baseKey(userId))");
+  assert.ok(memoryAt>=0&&legacyAt>memoryAt);
+});
