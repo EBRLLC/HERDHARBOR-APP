@@ -240,7 +240,15 @@
     }
 
     const subjectName = graph.root?.animal ? fieldValue(graph.root.animal, "name") : "animal";
+    const branding = options.branding && typeof options.branding === "object" ? options.branding : {};
+    const brandName = clean(branding.rabbitryName);
+    const brandText = clean(branding.rabbitryText);
+    const brandLogo = clean(branding.logoData);
+    const brandingHtml = brandName || brandText || brandLogo
+      ? `<header class="hh-pedigree-branding">${brandLogo ? `<img src="${escapeHtml(brandLogo)}" alt="">` : ""}<div>${brandName ? `<strong>${escapeHtml(brandName)}</strong>` : ""}${brandText ? `<small>${escapeHtml(brandText)}</small>` : ""}</div></header>`
+      : "";
     return `<div class="hh-pedigree-renderer density-${escapeHtml(density)} mode-${escapeHtml(mode)} layout-${escapeHtml(layout)} style-${escapeHtml(style)}" data-hh-pedigree-renderer data-pedigree-mode="${escapeHtml(mode)}" data-pedigree-layout="${escapeHtml(layout)}" data-pedigree-style="${escapeHtml(style)}" data-unknown-display="${escapeHtml(unknownDisplay)}" style="--hh-pedigree-generations:${columns.length}" aria-label="Pedigree chart for ${escapeHtml(subjectName || "animal")}">
+      ${brandingHtml}
       <div class="hh-pedigree-columns">${columns.join("")}</div>
     </div>`;
   }
