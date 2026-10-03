@@ -45,11 +45,11 @@ test("baseline restored is emitted only after durable persistence succeeds", () 
   const cloud = fs.readFileSync(path.join(__dirname, "..", "herdharbor-cloud.js"), "utf8");
   assert.match(
     cloud,
-    /const stored = await writeCloudBaseline\(userId, activeRaw\);\s*if \(!stored\) return false;\s*dispatchBaselineRestored\(userId, reason\);/
+    /const stored = await writeCloudBaseline\(userId, activeRaw, \{ validated: true \}\);\s*if \(!stored\) return false;\s*dispatchBaselineRestored\(userId, reason\);/
   );
   assert.match(
     cloud,
-    /const stored = await writeCloudBaseline\(userId, previousValue\);\s*if \(!stored\) return false;\s*dispatchBaselineRestored\(userId, reason\);/
+    /const stored = await writeCloudBaseline\(userId, previousValue, \{ validated: true \}\);\s*if \(!stored\) return false;\s*dispatchBaselineRestored\(userId, reason\);/
   );
 });
 
