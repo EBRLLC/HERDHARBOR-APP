@@ -1071,8 +1071,9 @@
     }
   }
 
-  async function writeCloudBaseline(userId, rawValue) {
-    if (!userId || !rawValue || !safeParse(rawValue)) return false;
+  async function writeCloudBaseline(userId, rawValue, options = {}) {
+    if (!userId || !rawValue) return false;
+    if (options.validated !== true && !safeParse(rawValue)) return false;
     cloudBaselineMemory.set(userId, rawValue);
 
     if (legacyBaselineStore) {
@@ -1584,7 +1585,7 @@
     if (!originalGetItem.call(localStorage, versionKey(userId))) return false;
     const activeRaw = activeStateRaw();
     if (!activeRaw || !safeParse(activeRaw)) return false;
-    const stored = await writeCloudBaseline(userId, activeRaw);
+    const stored = await writeCloudBaseline(userId, activeRaw, { validated: true });
     if (!stored) return false;
     dispatchBaselineRestored(userId, reason);
     return true;
@@ -1608,7 +1609,7 @@
     // semantics.
     cloudBaselineMemory.set(userId, previousValue);
     void (async () => {
-      const stored = await writeCloudBaseline(userId, previousValue);
+      const stored = await writeCloudBaseline(userId, previousValue, { validated: true });
       if (!stored) return false;
       dispatchBaselineRestored(userId, reason);
       return true;
@@ -1827,7 +1828,7 @@
     }
 
     if (remoteRaw && sameState(remoteRaw, rawValue)) {
-      await writeCloudBaseline(userId, remoteRaw);
+      await writeCloudBaseline(userId, remoteRaw, { validated: true });
       if (!stillCurrent()) return false;
       if (remoteRecord.updated_at) {
         safeStorageSet(versionKey(userId), remoteRecord.updated_at);
@@ -2064,7 +2065,7 @@
     const savedRaw = savedRecord?.app_state
       ? JSON.stringify(savedRecord.app_state)
       : rawValue;
-    await writeCloudBaseline(userId, savedRaw);
+    await writeCloudBaseline(userId, savedRaw, { validated: true });
     if (!stillCurrent()) return false;
     if (savedRecord?.updated_at) {
       safeStorageSet(versionKey(userId), savedRecord.updated_at);
@@ -2562,7 +2563,7 @@
         );
         return false;
       }
-      await writeCloudBaseline(userId, remoteRaw);
+      await writeCloudBaseline(userId, remoteRaw, { validated: true });
       if (!stillCurrent()) return false;
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       setSyncState("Saved to cloud", "success");
@@ -2610,7 +2611,7 @@
       }
       if (!stillCurrent()) return false;
       setActiveUserData(userId, deviceCloudRaw);
-      await writeCloudBaseline(userId, remoteRaw);
+      await writeCloudBaseline(userId, remoteRaw, { validated: true });
       if (!stillCurrent()) return false;
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       setSyncState("Newer cloud records found; reloading…", "success");
@@ -3229,7 +3230,7 @@
         return false;
       }
       setActiveUserData(conflict.userId, deviceCloudRaw);
-      await writeCloudBaseline(conflict.userId, conflict.remoteRaw);
+      await writeCloudBaseline(conflict.userId, conflict.remoteRaw, { validated: true });
       if (conflict.remoteUpdatedAt) {
         safeStorageSet(versionKey(conflict.userId), conflict.remoteUpdatedAt);
       }
@@ -3656,7 +3657,7 @@
       }
       if (!isCurrentHydration()) return staleHydration();
       setActiveUserData(userId, deviceCloudRaw);
-      await writeCloudBaseline(userId, cloudRaw);
+      await writeCloudBaseline(userId, cloudRaw, { validated: true });
       if (!isCurrentHydration()) return staleHydration();
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       safeStorageRemove(dirtyKey(userId));
