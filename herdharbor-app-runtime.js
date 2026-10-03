@@ -3647,7 +3647,10 @@
       return action.call(runtime, animalId);
     };
 
-    if (typeof window.HerdHarborAnimalProfileRuntime?.create === "function") {
+    if (
+      typeof window.HerdHarborAnimalProfileRuntime?.create === "function" &&
+      typeof window.HerdHarborPedigreePlatform?.buildPedigreeGraph === "function"
+    ) {
       return run();
     }
 

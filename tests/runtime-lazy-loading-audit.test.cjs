@@ -203,3 +203,12 @@ test("optional monitoring assets do not block service-worker installation",()=>{
     assert.equal(runtimeCache.includes(asset),true,asset+" should cache after optional load");
   }
 });
+
+
+test("public animal actions require the pedigree dependency before taking the fast path",()=>{
+  const start=app.indexOf("function launchLazyAnimalProfileAction");
+  const end=app.indexOf("window.HerdHarborApp",start);
+  const block=app.slice(start,end);
+  assert.match(block,/HerdHarborAnimalProfileRuntime\?\.create[\s\S]*HerdHarborPedigreePlatform\?\.buildPedigreeGraph[\s\S]*return run\(\)/);
+  assert.match(block,/ensureAnimalProfileRuntimeLoaded\(\)[\s\S]*\.then\(run\)/);
+});
