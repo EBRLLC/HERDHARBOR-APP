@@ -22,7 +22,7 @@
       "textareaField", "speciesIcon", "breedOptionsFor", "prepareProfileImage", "toast",
       "allowsAnimalTransition", "uid", "rememberBreed", "recordActivity", "saveState",
       "renderCurrentView", "completeWorkflowTasks", "formatDate", "formatMoney",
-      "detailField", "navigate", "openPrintPedigreeForm", "ensureQrToolsReady", "getPedigreeCustomization"
+      "detailField", "navigate", "openPrintPedigreeForm", "ensureQrToolsReady", "getPedigreeCustomization", "getPedigreeDocumentContext"
     ];
     for (const name of required) {
       if (typeof deps[name] !== "function") throw new Error(`Animal/Profile runtime requires ${name}().`);
@@ -407,9 +407,11 @@
       const rendererOptions = customization?.rendererOptions
         ? customization.rendererOptions(config, deps.formatDate)
         : { mode: "private-herd", formatDate: deps.formatDate };
+      const documentContext = deps.getPedigreeDocumentContext(config) || {};
       return renderer.render({
         graph,
-        ...rendererOptions
+        ...rendererOptions,
+        branding: documentContext.branding || null
       });
     }
 

@@ -52,6 +52,27 @@
       breedsBySpecies: {},
       analyticsColors: {},
       preferredWeightDisplay: "lb",
+      pedigreeDocuments: {
+        templates: [],
+        defaults: { pedigree: "", birthCertificate: "" },
+        branding: {
+          rabbitryName: "",
+          rabbitryText: "",
+          logoData: "",
+          logoFileName: "",
+          accent: "#2e7d7b",
+          website: "",
+          social: "",
+          contact: {
+            includeEmail: false,
+            email: "",
+            includePhone: false,
+            phone: "",
+            includeAddress: false,
+            address: ""
+          }
+        }
+      },
       marketAnalyticsConsent: {
         enabled: false,
         consentVersion: "",
@@ -1194,7 +1215,13 @@
       navigate,
       openPrintPedigreeForm,
       ensureQrToolsReady,
-      getPedigreeCustomization: () => window.HerdHarborPedigreeCustomization?.loadPreferences?.(localStorage) || { generations: 3 }
+      getPedigreeCustomization: () => window.HerdHarborPedigreeCustomization?.loadPreferences?.(localStorage) || { generations: 3 },
+      getPedigreeDocumentContext: (fallbackConfig) => window.HerdHarborPedigreeDocuments?.resolveDocumentContext?.(
+        state.settings?.pedigreeDocuments,
+        "pedigree",
+        state.profile || {},
+        fallbackConfig || {}
+      ) || { config: fallbackConfig || {}, branding: null }
     });
     return animalProfileRuntimeInstance;
   }
@@ -2248,7 +2275,7 @@
         <div class="pedigree-warning">The printed pedigree always uses a clean white page, even when HerdHarbor is in dark mode.</div>
         <div class="form-grid two" style="margin-top:14px">
           ${field("Seller name", "sellerName", state.profile?.ownerName || "", true)}
-          ${field("Seller contact", "sellerContact", state.profile?.email || "")}
+          ${field("Seller contact", "sellerContact", "")}
           ${field("Buyer name", "buyerName", "")}
           ${field("Sale / transfer date", "saleDate", todayISO(), false, "date")}
           ${field("Sale price (optional)", "salePrice", "")}
@@ -3425,6 +3452,7 @@
     getCurrentRoute: () => currentRoute,
     openAnimalEditor: (animalId) => animalProfileRuntime().openEditor(animalId),
     openAnimalPedigreePrint: (animalId) => animalProfileRuntime().openPedigreePrint(animalId),
+    prepareDocumentImage: (file) => prepareProfileImage(file, { maxDimension: 900, targetBytes: 140000 }),
     openRecordBirth: (breedingId) => openRecordBirth(breedingId)
   });
   try { window.dispatchEvent(new CustomEvent("herdharbor:app-ready")); } catch {}

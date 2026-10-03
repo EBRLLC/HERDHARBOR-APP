@@ -240,7 +240,25 @@
     }
 
     const subjectName = graph.root?.animal ? fieldValue(graph.root.animal, "name") : "animal";
+    const branding = options.branding && typeof options.branding === "object" ? options.branding : {};
+    const brandName = clean(branding.rabbitryName);
+    const brandText = clean(branding.rabbitryText);
+    const brandLogo = clean(branding.logoData);
+    const brandWebsite = clean(branding.website);
+    const brandSocial = clean(branding.social);
+    const brandContact = branding.contact && typeof branding.contact === "object" ? branding.contact : {};
+    const brandContactItems = [
+      clean(brandContact.email),
+      clean(brandContact.phone),
+      clean(brandContact.address)
+    ].filter(Boolean);
+    const brandAccent = /^#[0-9a-f]{6}$/i.test(clean(branding.accent)) ? clean(branding.accent) : "#2e7d7b";
+    const brandingMeta = [brandWebsite, brandSocial, ...brandContactItems].filter(Boolean);
+    const brandingHtml = brandName || brandText || brandLogo || brandingMeta.length
+      ? `<header class="hh-pedigree-branding" style="--hh-pedigree-accent:${escapeHtml(brandAccent)}">${brandLogo ? `<img src="${escapeHtml(brandLogo)}" alt="">` : ""}<div>${brandName ? `<strong>${escapeHtml(brandName)}</strong>` : ""}${brandText ? `<small>${escapeHtml(brandText)}</small>` : ""}${brandingMeta.length ? `<span>${brandingMeta.map(escapeHtml).join(" · ")}</span>` : ""}</div></header>`
+      : "";
     return `<div class="hh-pedigree-renderer density-${escapeHtml(density)} mode-${escapeHtml(mode)} layout-${escapeHtml(layout)} style-${escapeHtml(style)}" data-hh-pedigree-renderer data-pedigree-mode="${escapeHtml(mode)}" data-pedigree-layout="${escapeHtml(layout)}" data-pedigree-style="${escapeHtml(style)}" data-unknown-display="${escapeHtml(unknownDisplay)}" style="--hh-pedigree-generations:${columns.length}" aria-label="Pedigree chart for ${escapeHtml(subjectName || "animal")}">
+      ${brandingHtml}
       <div class="hh-pedigree-columns">${columns.join("")}</div>
     </div>`;
   }

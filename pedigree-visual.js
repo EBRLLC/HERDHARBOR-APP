@@ -426,6 +426,7 @@ if (!src) return;
   function run() {
     pending = false;
     ensureSettingsUI(document);
+    window.HerdHarborPedigreeDocuments?.ensureSettingsUI?.(document);
     enhanceDocument(document, false);
     watchPrintFrames(document);
   }
@@ -460,6 +461,10 @@ if (!src) return;
     }
     ensureStyles(document);
     patchPrintWindows();
+    window.addEventListener("herdharbor:pedigree-settings-refresh", () => {
+      document.querySelector("#hh-pedigree-settings")?.remove();
+      schedule();
+    });
     run();
     if (observer) return;
     observer = new MutationObserver(schedule);
