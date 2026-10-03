@@ -174,7 +174,7 @@
     const mobilePrint = options.mobilePrint === true;
     const sheetHeight = mobilePrint ? (generations === 5 ? "9.45in" : "9.25in") : pageHeight(generations);
     const mobileClass = mobilePrint ? " mobile-print" : "";
-    const finalGenerationClass = generations === 5 ? " five-generation" : generations === 3 ? " three-generation" : " four-generation";
+    const finalGenerationClass = generations === 5 ? "five-generation" : generations === 3 ? "three-generation" : "four-generation";
 
     return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(subject.name)} Pedigree</title><style>
       @page { size: letter landscape; margin: .2in; }
