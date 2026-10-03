@@ -121,10 +121,6 @@
   addStyle("hh-subscription-engine-v180-style", "subscription-engine-v1.8.0.css?v=1");
   addStyle("hh-subscription-member-ui-v180-style", "subscription-member-ui-v1.8.0.css?v=1");
   addStyle("hh-mobile-viewport-v180-style", "mobile-viewport-hotfix-v1.8.0.css?v=1");
-  addStyle("hh-direct-transfer-v182-style", "direct-transfer-v1.8.2.css?v=1");
-  addScript("hh-direct-transfer-core-v182", "direct-transfer-core-v1.8.2.js?v=1", () => {
-    addScript("hh-direct-transfer-v182", "direct-transfer-v1.8.2.js?v=1");
-  });
   addScript("hh-paper-pedigree-core-v182", "paper-pedigree-import-core-v1.8.2.js?v=1", () => {
     addScript("hh-paper-pedigree-v182", "paper-pedigree-import-v1.8.2.js?v=2");
   });

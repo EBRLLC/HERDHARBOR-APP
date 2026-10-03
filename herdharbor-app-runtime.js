@@ -1067,7 +1067,12 @@
       },
       tasks: renderTasks,
       budget: renderBudget,
-      sales: renderSales,
+      sales: () => {
+        renderSales();
+        void ensureDirectTransferRuntime().catch((error) => {
+          console.warn("HerdHarbor Direct Transfer could not load for Sales:", error);
+        });
+      },
       settings: renderSettings,
       admin: () => window.HerdHarborAdmin?.render?.()
     };

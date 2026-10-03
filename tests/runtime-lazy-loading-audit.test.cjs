@@ -106,3 +106,19 @@ test("lazy Marketplace dependencies remain offline-cacheable without returning t
   assert.equal(html.includes('<script src="herdharbor-marketplace.js?v=1"></script>'),false);
   assert.equal(html.includes('<script src="direct-transfer-v1.8.2.js?v=1"></script>'),false);
 });
+
+
+test("Direct Transfer starts only from Sales or an explicit Marketplace transfer action",()=>{
+  const build=fs.readFileSync(path.join(root,"herdharbor-build.js"),"utf8");
+  const required=sw.slice(sw.indexOf("const REQUIRED_SHELL"),sw.indexOf("const RUNTIME_CACHE_PATHS"));
+  const runtimeCache=sw.slice(sw.indexOf("const RUNTIME_CACHE_PATHS"),sw.indexOf("const NETWORK_FIRST_PATHS"));
+  assert.doesNotMatch(build,/addStyle\("hh-direct-transfer-v182-style"/);
+  assert.doesNotMatch(build,/addScript\("hh-direct-transfer-core-v182"/);
+  assert.doesNotMatch(required,/direct-transfer-(?:core-)?v1\.8\.2/);
+  for(const asset of ["direct-transfer-core-v1.8.2.js?v=1","direct-transfer-v1.8.2.js?v=1","direct-transfer-v1.8.2.css?v=1"]){
+    assert.ok(runtimeCache.includes(asset),asset);
+  }
+  const renderers=app.slice(app.indexOf("const renderers"),app.indexOf("renderers[currentRoute]"));
+  assert.match(renderers,/sales:\s*\(\) => \{[\s\S]*renderSales\(\);[\s\S]*ensureDirectTransferRuntime\(\)/);
+  assert.match(market,/if\(transferButton\)\{if\(typeof actions\?\.ensureDirectTransfer==="function"\)await actions\.ensureDirectTransfer\(\);openDirectTransferForListing/);
+});
