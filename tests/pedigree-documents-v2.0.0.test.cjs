@@ -81,3 +81,39 @@ test("settings manager includes template CRUD defaults branding and logo upload 
     "Rabbitry / operation name", "Branding line", "Upload document logo", "Use operation logo"
   ]) assert.ok(html.includes(token), token);
 });
+
+
+test("document context feeds a saved default template and branding to the shared renderer", () => {
+  let store = Docs.saveTemplate(baseStore(), "Default", { generations: 5, style: "professional" }, { id: "default", now: "x" });
+  store = Docs.setDefaultTemplate(store, "pedigree", "default");
+  store = Docs.updateBranding(store, { rabbitryName: "Bluegrass Rabbitry", rabbitryText: "Quality stock", logoData: "data:image/png;base64,LOGO" });
+  const context = Docs.resolveDocumentContext(store, "pedigree", { operationName: "Fallback" }, { generations: 3 });
+  assert.equal(context.template.id, "default");
+  assert.equal(context.config.generations, 5);
+  assert.equal(context.branding.rabbitryName, "Bluegrass Rabbitry");
+  assert.equal(context.branding.logoData, "data:image/png;base64,LOGO");
+});
+
+test("A4 shell loads and caches saved-template/branding assets", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const root = path.resolve(__dirname, "..");
+  const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+  const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
+  const customizationIndex = html.indexOf("pedigree-customization-v2.0.0.js?v=1");
+  const documentsIndex = html.indexOf("pedigree-documents-v2.0.0.js?v=1");
+  const rendererIndex = html.indexOf("pedigree-renderer-v2.0.0.js?v=1");
+  assert.ok(customizationIndex >= 0 && documentsIndex > customizationIndex && rendererIndex > documentsIndex);
+  assert.match(html, /pedigree-documents-v2\.0\.0\.css\?v=1/);
+  assert.match(worker, /\.\/pedigree-documents-v2\.0\.0\.css\?v=1/);
+  assert.match(worker, /\.\/pedigree-documents-v2\.0\.0\.js\?v=1/);
+  assert.match(worker, /"\/pedigree-documents-v2\.0\.0\.js"/);
+});
+
+test("canonical app settings own saved templates and expose compressed document image preparation", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const source = fs.readFileSync(path.resolve(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
+  assert.match(source, /pedigreeDocuments:\s*\{[\s\S]*templates:\s*\[\][\s\S]*birthCertificate/);
+  assert.match(source, /prepareDocumentImage:\s*\(file\) => prepareProfileImage/);
+});
