@@ -34,10 +34,10 @@ assert.match(shellCss, /prefers-reduced-motion: reduce/);
 assert.match(shellCss, /\.modal-backdrop \{[\s\S]*?backdrop-filter: none/);
 assert.match(appRuntime, /function openMobilePrintPreview\(printableHtml, animalName\)/);
 assert.match(appRuntime, /id="pedigree-print-preview"/);
-assert.match(appRuntime, /frame\.contentWindow/);
-assert.match(appRuntime, /printWindow\.print\(\)/);
+assert.match(appRuntime, /HerdHarborDocumentExport/);\nassert.match(appRuntime, /exporter\\?\\.loadFrame\\?\\./);
+assert.match(appRuntime, /exporter\\?\\.printFrame\\?\\./);
 assert.match(appRuntime, /window\.matchMedia\("\(display-mode: standalone\)"\)/);
-assert.match(appRuntime, /const ids = savedPedigree\?\.ancestorIds \|\| \{\}/);
-assert.match(appRuntime, /byId\(ids\.sire \|\| subject\.sireId\)/);
+assert.match(appRuntime, /ancestorIds: savedPedigree\\?\\.ancestorIds \\|\\| \\{\\}/);
+assert.match(appRuntime, /renderer\\.render\\(/);
 
 console.log("mobile pedigree interaction and viewport tests passed");
