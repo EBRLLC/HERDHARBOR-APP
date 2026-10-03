@@ -80,3 +80,15 @@ test("account-boundary sign-in parses active and authenticated cache snapshots o
   assert.equal((block.match(/safeParse\(authenticatedCache\)/g)||[]).length,1);
   assert.doesNotMatch(block,/hasActiveState:\s*Boolean\(activeRaw && safeParse\(activeRaw\)\)/);
 });
+
+
+test("canonical local save bridge does not reparse StateStore's freshly serialized state",()=>{
+  const start=cloud.indexOf("async function handleCanonicalStateCommit");
+  const end=cloud.indexOf("function installStateStoreBridge",start);
+  const block=cloud.slice(start,end);
+  assert.ok(start>=0&&end>start);
+  assert.match(block,/const rawValue = String\(detail\.rawValue \|\| ""\)/);
+  assert.match(block,/if \(!rawValue\) return false/);
+  assert.doesNotMatch(block,/safeParse\(rawValue\)/);
+  assert.match(block,/scheduleCloudSync\(rawValue, writeSequence\)/);
+});
