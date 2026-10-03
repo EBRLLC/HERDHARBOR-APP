@@ -129,3 +129,15 @@ test("Admin UI is lazy for ordinary members while navigation authorization stays
   assert.equal(required.includes("herdharbor-admin-v1.6.1.js"), false);
   assert.equal(runtime.includes("./herdharbor-admin-v1.6.1.js?v=2"), true);
 });
+
+
+test("default Great Pyrenees artwork is an external content-addressed asset, not base64 in core JS", () => {
+  const app = read("herdharbor-app-runtime.js");
+  const sw = read("service-worker.js");
+  assert.doesNotMatch(app, /data:image\/png;base64/);
+  const asset = app.match(/great-pyrenees-outline-[a-f0-9]{12}\.png/)?.[0];
+  assert.ok(asset, "core runtime references the fingerprinted Great Pyrenees asset");
+  assert.ok(fs.existsSync(path.join(root, asset)), "Great Pyrenees asset exists");
+  const required = sw.slice(sw.indexOf("const REQUIRED_SHELL"), sw.indexOf("const RUNTIME_CACHE_PATHS"));
+  assert.ok(required.includes("./" + asset), "default Dog visual remains available offline");
+});

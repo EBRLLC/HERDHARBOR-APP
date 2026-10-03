@@ -29,6 +29,7 @@ const REQUIRED_SHELL = [
   "./sales-customer-runtime-v1.8.3.js?v=1",
   "./herdharbor-app-runtime.js?v=4",
   "./icon-192.png",
+  "./great-pyrenees-outline-d7c57423367e.png",
   "./how-to/",
 ];
 
