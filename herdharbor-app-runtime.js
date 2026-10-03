@@ -215,8 +215,16 @@
       });
   }
 
+  function ensureMarketAnalyticsRuntime() {
+    return loadScriptOnce(
+      "market-analytics-v1.6.5.js?v=1.7.1",
+      () => typeof window.HerdHarborMarket?.recordSaleChange === "function"
+    );
+  }
+
   async function ensureAnalyticsRuntime() {
     await Promise.all([
+      ensureMarketAnalyticsRuntime(),
       loadStyleOnce("analytics-v1.6.1.css?v=2"),
       loadScriptOnce(
         "analytics-v1.6.1.js?v=2",
@@ -309,11 +317,15 @@
     );
   }
 
-  function ensureSettingsRuntimeLoaded() {
-    return loadScriptOnce(
-      "settings-runtime-v1.8.3.js?v=1",
-      () => typeof window.HerdHarborSettingsRuntime?.create === "function"
-    );
+  async function ensureSettingsRuntimeLoaded() {
+    await Promise.all([
+      ensureMarketAnalyticsRuntime(),
+      loadScriptOnce(
+        "settings-runtime-v1.8.3.js?v=1",
+        () => typeof window.HerdHarborSettingsRuntime?.create === "function"
+      )
+    ]);
+    return window.HerdHarborSettingsRuntime;
   }
 
   function ensureProfitabilityAnalyticsLoaded() {
@@ -966,6 +978,49 @@
     $("#app-shell").classList.add("hidden");
   }
 
+  function hasPendingMarketAnalyticsQueue() {
+    try {
+      for (let index = 0; index < localStorage.length; index += 1) {
+        const key = localStorage.key(index);
+        if (!key?.startsWith("herdharbor_market_queue_v1")) continue;
+        const raw = String(localStorage.getItem(key) || "").trim();
+        if (raw && raw !== "[]") return true;
+      }
+    } catch {}
+    return false;
+  }
+
+  function marketAnalyticsNeeded() {
+    return state.settings?.marketAnalyticsConsent?.enabled === true ||
+      hasPendingMarketAnalyticsQueue();
+  }
+
+  let marketAnalyticsWarmScheduled = false;
+
+  function warmMarketAnalyticsIfNeeded() {
+    if (!marketAnalyticsNeeded()) return false;
+    if (typeof window.HerdHarborMarket?.recordSaleChange === "function") {
+      void window.HerdHarborMarket?.retryNow?.();
+      return true;
+    }
+    if (marketAnalyticsWarmScheduled) return true;
+
+    marketAnalyticsWarmScheduled = true;
+    const run = () => {
+      void ensureMarketAnalyticsRuntime()
+        .then(() => window.HerdHarborMarket?.retryNow?.())
+        .catch((error) => console.warn("HerdHarbor Market Analytics could not warm in the background:", error))
+        .finally(() => { marketAnalyticsWarmScheduled = false; });
+    };
+
+    if (typeof window.requestIdleCallback === "function") {
+      window.requestIdleCallback(run, { timeout: 1500 });
+    } else {
+      window.setTimeout(run, 0);
+    }
+    return true;
+  }
+
   function showApp() {
     $("#onboarding").classList.add("hidden");
     $("#app-shell").classList.remove("hidden");
@@ -982,6 +1037,7 @@
       operationLogo.classList.add("hidden");
     }
     navigate(currentRoute);
+    warmMarketAnalyticsIfNeeded();
     if (!deepLinkHandled) {
       const animalId = new URLSearchParams(window.location.search).get("animal") || "";
       if (animalId) {
@@ -1139,10 +1195,17 @@
       tasks: renderTasks,
       budget: renderBudget,
       sales: () => {
-        renderSales();
-        void ensureDirectTransferRuntime().catch((error) => {
-          console.warn("HerdHarbor Direct Transfer could not load for Sales:", error);
-        });
+        const renderSalesRoute = () => {
+          renderSales();
+          void ensureDirectTransferRuntime().catch((error) => {
+            console.warn("HerdHarbor Direct Transfer could not load for Sales:", error);
+          });
+        };
+        if (!marketAnalyticsNeeded() || typeof window.HerdHarborMarket?.recordSaleChange === "function") {
+          renderSalesRoute();
+          return;
+        }
+        renderLazyRoute("sales", "Sales", ensureMarketAnalyticsRuntime, renderSalesRoute);
       },
       settings: renderSettings,
       admin: () => {
