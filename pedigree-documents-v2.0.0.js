@@ -14,7 +14,18 @@
       rabbitryName: "",
       rabbitryText: "",
       logoData: "",
-      logoFileName: ""
+      logoFileName: "",
+      accent: "#2e7d7b",
+      website: "",
+      social: "",
+      contact: Object.freeze({
+        includeEmail: false,
+        email: "",
+        includePhone: false,
+        phone: "",
+        includeAddress: false,
+        address: ""
+      })
     })
   });
 
@@ -81,7 +92,18 @@
         rabbitryName: clean(input.branding?.rabbitryName),
         rabbitryText: clean(input.branding?.rabbitryText),
         logoData: clean(input.branding?.logoData),
-        logoFileName: clean(input.branding?.logoFileName)
+        logoFileName: clean(input.branding?.logoFileName),
+        accent: /^#[0-9a-f]{6}$/i.test(clean(input.branding?.accent)) ? clean(input.branding.accent) : "#2e7d7b",
+        website: clean(input.branding?.website),
+        social: clean(input.branding?.social),
+        contact: {
+          includeEmail: input.branding?.contact?.includeEmail === true,
+          email: clean(input.branding?.contact?.email),
+          includePhone: input.branding?.contact?.includePhone === true,
+          phone: clean(input.branding?.contact?.phone),
+          includeAddress: input.branding?.contact?.includeAddress === true,
+          address: clean(input.branding?.contact?.address)
+        }
       }
     };
   }
@@ -161,7 +183,21 @@
       ...(Object.prototype.hasOwnProperty.call(branding, "rabbitryName") ? { rabbitryName: clean(branding.rabbitryName) } : {}),
       ...(Object.prototype.hasOwnProperty.call(branding, "rabbitryText") ? { rabbitryText: clean(branding.rabbitryText) } : {}),
       ...(Object.prototype.hasOwnProperty.call(branding, "logoData") ? { logoData: clean(branding.logoData) } : {}),
-      ...(Object.prototype.hasOwnProperty.call(branding, "logoFileName") ? { logoFileName: clean(branding.logoFileName) } : {})
+      ...(Object.prototype.hasOwnProperty.call(branding, "logoFileName") ? { logoFileName: clean(branding.logoFileName) } : {}),
+      ...(Object.prototype.hasOwnProperty.call(branding, "accent") && /^#[0-9a-f]{6}$/i.test(clean(branding.accent)) ? { accent: clean(branding.accent) } : {}),
+      ...(Object.prototype.hasOwnProperty.call(branding, "website") ? { website: clean(branding.website) } : {}),
+      ...(Object.prototype.hasOwnProperty.call(branding, "social") ? { social: clean(branding.social) } : {}),
+      ...(branding.contact && typeof branding.contact === "object" ? {
+        contact: {
+          ...next.branding.contact,
+          ...(Object.prototype.hasOwnProperty.call(branding.contact, "includeEmail") ? { includeEmail: branding.contact.includeEmail === true } : {}),
+          ...(Object.prototype.hasOwnProperty.call(branding.contact, "email") ? { email: clean(branding.contact.email) } : {}),
+          ...(Object.prototype.hasOwnProperty.call(branding.contact, "includePhone") ? { includePhone: branding.contact.includePhone === true } : {}),
+          ...(Object.prototype.hasOwnProperty.call(branding.contact, "phone") ? { phone: clean(branding.contact.phone) } : {}),
+          ...(Object.prototype.hasOwnProperty.call(branding.contact, "includeAddress") ? { includeAddress: branding.contact.includeAddress === true } : {}),
+          ...(Object.prototype.hasOwnProperty.call(branding.contact, "address") ? { address: clean(branding.contact.address) } : {})
+        }
+      } : {})
     };
     return next;
   }
@@ -172,7 +208,15 @@
       rabbitryName: normalized.branding.rabbitryName || clean(profile?.operationName) || "HerdHarbor Breeder",
       rabbitryText: normalized.branding.rabbitryText,
       logoData: normalized.branding.logoData || clean(profile?.logoData),
-      logoFileName: normalized.branding.logoFileName
+      logoFileName: normalized.branding.logoFileName,
+      accent: normalized.branding.accent,
+      website: normalized.branding.website,
+      social: normalized.branding.social,
+      contact: {
+        email: normalized.branding.contact.includeEmail ? normalized.branding.contact.email : "",
+        phone: normalized.branding.contact.includePhone ? normalized.branding.contact.phone : "",
+        address: normalized.branding.contact.includeAddress ? normalized.branding.contact.address : ""
+      }
     };
   }
 
