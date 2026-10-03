@@ -58,6 +58,17 @@
   const deepClone = (value) => Core.deepClone ? Core.deepClone(value) : JSON.parse(JSON.stringify(value));
   const rabbitAnimals = (state) => (state.animals || []).filter((animal) => Core.canonicalSpecies(animal.species) === "Rabbit");
   const sexIs = (animal, wanted) => wanted === "male" ? /\b(?:male|buck)\b/i.test(String(animal?.sex || "")) : /\b(?:female|doe)\b/i.test(String(animal?.sex || ""));
+  const isAncestorOnly = (animal) => Boolean(animal?.isAncestorOnly) || String(animal?.status || "").trim().toLowerCase() === "ancestor only";
+  function isActiveAnimalRecord(animal) {
+    const membershipResult = window.HerdHarborMembership?.isActiveAnimal?.(animal);
+    if (typeof membershipResult === "boolean") return membershipResult;
+    return !["sold", "deceased", "archived", "ancestor only"].includes(String(animal?.status || "Active").trim().toLowerCase());
+  }
+  function linebreedingCandidateRabbits(state, includeAncestors = false) {
+    return rabbitAnimals(state).filter((animal) =>
+      animal?.id && (isActiveAnimalRecord(animal) || (includeAncestors && isAncestorOnly(animal)))
+    );
+  }
   function animalLabel(animal) { const identity = animal.name || animal.tag || animal.earTagNumber || animal.id || "Unnamed rabbit", color = animal.color || animal.variety; return color ? `${identity} — ${color}` : identity; }
   function selectOptions(animals, selectedId) { return ['<option value="">Select a rabbit…</option>'].concat(animals.map((animal) => `<option value="${esc(animal.id)}" ${String(animal.id) === String(selectedId || "") ? "selected" : ""}>${esc(animalLabel(animal))}</option>`)).join(""); }
   function performanceSummary(state, animal) { const p = Core.performanceForAnimal(animal, state.breedings, state.births), survival = p.survivalRate == null ? "—" : `${Math.round(p.survivalRate * 100)}%`, avg = p.averageLitterSize == null ? "—" : p.averageLitterSize.toFixed(1); return `${p.breedings} breedings · ${p.births} litters · ${p.bornAlive} live born · ${p.weaned} weaned · ${survival} survival · ${avg} avg litter`; }
@@ -229,9 +240,9 @@
     </div>`;
   }
 
-  function renderRelationshipComparison(firstId = "", secondId = "") {
+  function renderRelationshipComparison(firstId = "", secondId = "", includeAncestors = false) {
     const state = readState();
-    const rabbits = rabbitAnimals(state).filter((animal) => animal?.id);
+    const rabbits = linebreedingCandidateRabbits(state, includeAncestors);
     const bucks = rabbits.filter((animal) => sexIs(animal, "male"));
     const does = rabbits.filter((animal) => sexIs(animal, "female"));
     const requested = [firstId, secondId]
@@ -245,14 +256,24 @@
       ? linebreedingViewHtml(buck, doe, analysis, state)
       : '<div class="hh-bi-empty">Choose one buck and one doe to calculate the linebreeding relationship and projected offspring Pedigree COI.</div>';
     const availability = !bucks.length || !does.length
-      ? '<div class="hh-bi-warning"><strong>A buck and doe are required.</strong> Add or correctly sex at least one rabbit of each sex before running a linebreeding calculation.</div>'
+      ? '<div class="hh-bi-warning"><strong>A buck and doe are required.</strong> Add or correctly sex at least one active rabbit of each sex, or turn on Include ancestors if you need an ancestor-only record.</div>'
       : "";
 
-    openModal("Linebreeding Coefficient", `<div class="hh-bi-pair-selectors">
+    openModal("Linebreeding Coefficient", `<div class="hh-bi-linebreeding-filter">
+      <label><input type="checkbox" id="bi-linebreeding-include-ancestors" ${includeAncestors ? "checked" : ""}> <span>Include ancestors</span></label>
+      <small>Off by default. Active rabbits are shown first; turning this on also includes records marked Ancestor Only.</small>
+    </div>
+    <div class="hh-bi-pair-selectors">
       <label>Buck<select id="bi-linebreeding-buck">${selectOptions(bucks, buck?.id)}</select></label>
       <label>Doe<select id="bi-linebreeding-doe">${selectOptions(does, doe?.id)}</select></label>
       <button type="button" class="primary" id="bi-run-pedigree-compare" ${!bucks.length || !does.length ? "disabled" : ""}>Calculate Linebreeding Coefficient</button>
     </div>${availability}${results}`);
+
+    modal.querySelector("#bi-linebreeding-include-ancestors")?.addEventListener("change", (event) => {
+      const buckId = modal.querySelector("#bi-linebreeding-buck")?.value || "";
+      const doeId = modal.querySelector("#bi-linebreeding-doe")?.value || "";
+      renderRelationshipComparison(buckId, doeId, event.currentTarget.checked === true);
+    });
 
     modal.querySelector("#bi-run-pedigree-compare")?.addEventListener("click", () => {
       const buckId = modal.querySelector("#bi-linebreeding-buck")?.value || "";
@@ -264,7 +285,7 @@
         if (empty) empty.textContent = "Select one buck and one doe before calculating the linebreeding coefficient.";
         return;
       }
-      renderRelationshipComparison(selectedBuck.id, selectedDoe.id);
+      renderRelationshipComparison(selectedBuck.id, selectedDoe.id, includeAncestors);
     });
 
     modal.addEventListener("herdharbor:relationship-ancestor-selected", (event) => {
