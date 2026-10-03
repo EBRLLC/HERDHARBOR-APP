@@ -33,11 +33,11 @@ const REQUIRED_SHELL = [
   "./mobile-capture-v1.8.3.js?v=1",
   "./herdharbor-app-runtime.js?v=4",
   "./how-to/",
-  "./icon-192.png",
-  "./icon-512.png"
 ];
 
 const RUNTIME_CACHE_PATHS = [
+  "./icon-192.png",
+  "./icon-512.png",
   "./herdharbor-monitoring-config.js?v=2.0.0",
   "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.0",
   "./herdharbor-pedigree-platform.js?v=1",
