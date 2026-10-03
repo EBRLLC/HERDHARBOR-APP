@@ -124,3 +124,32 @@ test("controls warn that account contact is not automatically inserted", () => {
   assert.match(html, /name="goHomeDate"/);
   assert.match(html, /name="breederNote"/);
 });
+
+
+test("A6 shell loads/caches Birth Certificate after shared exporter", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const root = path.resolve(__dirname, "..");
+  const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+  const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
+  const exporterIndex = html.indexOf("document-export-v2.0.0.js?v=1");
+  const birthIndex = html.indexOf("birth-certificate-v2.0.0.js?v=1");
+  assert.ok(exporterIndex >= 0 && birthIndex > exporterIndex);
+  assert.match(html, /birth-certificate-v2\.0\.0\.css\?v=1/);
+  assert.match(worker, /\.\/birth-certificate-v2\.0\.0\.css\?v=1/);
+  assert.match(worker, /\.\/birth-certificate-v2\.0\.0\.js\?v=1/);
+  assert.match(worker, /"\/birth-certificate-v2\.0\.0\.js"/);
+});
+
+test("application workflow previews through an iframe and prints the same shared-export HTML", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const app = fs.readFileSync(path.resolve(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
+  assert.match(app, /function birthCertificateHtml\(animalId, options = \{\}\)/);
+  assert.match(app, /birthCertificate\.buildCertificateHtml\(/);
+  assert.match(app, /id="birth-certificate-preview"/);
+  assert.match(app, /exporter\.loadFrame\(frame, html\)/);
+  assert.match(app, /exporter\.printFrame\(frame\)/);
+  assert.match(app, /openAnimalBirthCertificate/);
+  assert.doesNotMatch(app, /Birth Certificate[\s\S]{0,1000}state\.profile\?\.email/);
+});
