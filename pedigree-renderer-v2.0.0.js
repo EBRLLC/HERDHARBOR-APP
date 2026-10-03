@@ -256,7 +256,9 @@
     const style = ["classic", "minimal", "professional", "buyer", "rabbitry-branded"].includes(options.style) ? options.style : "classic";
     const interactive = options.interactive == null ? modeConfig.interactive : options.interactive === true;
     const expandedKeys = new Set(Array.isArray(options.expandedKeys) ? options.expandedKeys.map(clean) : []);
-    const relationship = normalizeRelationshipAnnotations(options.relationship);
+    const relationship = mode === "relationship-analysis"
+      ? normalizeRelationshipAnnotations(options.relationship)
+      : normalizeRelationshipAnnotations(null);
     const generations = Math.max(1, Number(graph.generations || 1));
     const columns = [];
 
