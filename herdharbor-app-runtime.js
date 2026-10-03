@@ -2370,6 +2370,9 @@
       if (!popup) {
         openMobilePrintPreview(printableHtml, subject.name);
       } else {
+        try {
+          window.HerdHarborPedigreeGenetics?.enhanceDocument?.(popup.document, true, window);
+        } catch {}
         closeModal();
       }
     }
