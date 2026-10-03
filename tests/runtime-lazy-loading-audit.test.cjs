@@ -174,3 +174,19 @@ test("route-change instrumentation preserves multi-view navigation",()=>{
   assert.doesNotMatch(block,/(?<!\$)\$\("\.view"\)\.forEach/);
   assert.match(block,/herdharbor:route-change/);
 });
+
+
+test("pedigree platform is route-loaded once and dependency-ordered before consumers",()=>{
+  const required=sw.slice(sw.indexOf("const REQUIRED_SHELL"),sw.indexOf("const RUNTIME_CACHE_PATHS"));
+  const runtimeCache=sw.slice(sw.indexOf("const RUNTIME_CACHE_PATHS"),sw.indexOf("const NETWORK_FIRST_PATHS"));
+  assert.equal(html.includes('<script src="herdharbor-pedigree-platform.js?v=1"></script>'),false);
+  assert.equal(required.includes("herdharbor-pedigree-platform.js?v=1"),false);
+  assert.equal(runtimeCache.includes("herdharbor-pedigree-platform.js?v=1"),true);
+  assert.match(app,/function ensurePedigreePlatformRuntime\(\)[\s\S]*herdharbor-pedigree-platform\.js\?v=1/);
+  assert.match(app,/async function ensureDocumentCenterRuntime\(\) \{\s*await ensurePedigreePlatformRuntime\(\);/);
+  assert.match(app,/async function ensureMarketplaceRuntime\(\) \{\s*await ensurePedigreePlatformRuntime\(\);/);
+  assert.match(app,/async function ensureAnimalProfileRuntimeLoaded\(\) \{\s*await ensurePedigreePlatformRuntime\(\);/);
+  const renderers=app.slice(app.indexOf("const renderers"),app.indexOf("renderers[currentRoute]"));
+  assert.match(renderers,/breeding:[\s\S]*ensurePedigreePlatformRuntime/);
+  assert.match(renderers,/pedigrees:[\s\S]*ensurePedigreePlatformRuntime/);
+});
