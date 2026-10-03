@@ -28,6 +28,7 @@ const REQUIRED_SHELL = [
   "./task-runtime-v1.8.3.js?v=1",
   "./sales-customer-runtime-v1.8.3.js?v=1",
   "./herdharbor-app-runtime.js?v=4",
+  "./icon-192.png",
   "./how-to/",
 ];
 
@@ -36,7 +37,6 @@ const RUNTIME_CACHE_PATHS = [
   "./analytics-v1.6.1.css?v=2",
   "./mobile-capture-v1.8.3.js?v=1",
   "./herdharbor-admin-v1.6.1.js?v=2",
-  "./icon-192.png",
   "./icon-512.png",
   "./herdharbor-monitoring-config.js?v=2.0.0",
   "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.0",
