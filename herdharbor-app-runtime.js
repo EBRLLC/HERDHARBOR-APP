@@ -2299,213 +2299,85 @@
     const subject = state.animals.find((item) => item.id === animalId);
     if (!subject) return toast("The animal record could not be found.", "error");
 
-    const byId = (id) => state.animals.find((item) => item.id === id) || null;
+    const engine = window.HerdHarborPedigreeEngine;
+    const renderer = window.HerdHarborPedigreeRenderer;
+    const customization = window.HerdHarborPedigreeCustomization;
+    const documents = window.HerdHarborPedigreeDocuments;
+    const exporter = window.HerdHarborDocumentExport;
+    if (!engine?.buildGraph || !renderer?.render || !exporter?.buildDocumentHtml) {
+      return toast("The pedigree export tools did not finish loading.", "error");
+    }
+
     const savedPedigree = state.pedigrees
       .filter((record) => record.subjectAnimalId === animalId)
       .sort((left, right) => String(right.importedAt || "").localeCompare(String(left.importedAt || "")))[0] || null;
-    const ids = savedPedigree?.ancestorIds || {};
-    const sire = byId(ids.sire || subject.sireId);
-    const dam = byId(ids.dam || subject.damId);
-    const sireSire = byId(ids.sireSire || sire?.sireId);
-    const sireDam = byId(ids.sireDam || sire?.damId);
-    const damSire = byId(ids.damSire || dam?.sireId);
-    const damDam = byId(ids.damDam || dam?.damId);
-    const greats = {
-      sireSireSire: byId(ids.sireSireSire || sireSire?.sireId),
-      sireSireDam: byId(ids.sireSireDam || sireSire?.damId),
-      sireDamSire: byId(ids.sireDamSire || sireDam?.sireId),
-      sireDamDam: byId(ids.sireDamDam || sireDam?.damId),
-      damSireSire: byId(ids.damSireSire || damSire?.sireId),
-      damSireDam: byId(ids.damSireDam || damSire?.damId),
-      damDamSire: byId(ids.damDamSire || damDam?.sireId),
-      damDamDam: byId(ids.damDamDam || damDam?.damId)
-    };
 
-    const logo = state.profile?.logoData || defaultHerdHarborLogo();
-    const subjectPhoto = subject.photoData || "";
-    const sexMeta = (animal) => {
-      const sex = String(animal?.sex || "Unknown").toLowerCase();
-      const isRabbit = String(animal?.species || subject.species || "").toLowerCase() === "rabbit";
-      if (sex === "male") return ["♂", isRabbit ? "BUCK" : "MALE"];
-      if (sex === "female") return ["♀", isRabbit ? "DOE" : "FEMALE"];
-      return ["•", "UNKNOWN"];
-    };
+    const currentConfig = customization?.loadPreferences?.(localStorage) || { generations: 4 };
+    const documentContext = documents?.resolveDocumentContext?.(
+      state.settings?.pedigreeDocuments,
+      "pedigree",
+      state.profile || {},
+      currentConfig
+    ) || { config: currentConfig, branding: null };
+    const config = documentContext.config || currentConfig;
+    const graph = engine.buildGraph({
+      animals: state.animals || [],
+      subject,
+      subjectId: subject.id,
+      ancestorIds: savedPedigree?.ancestorIds || {},
+      generations: config.generations || 4
+    });
+    const rendererOptions = customization?.rendererOptions
+      ? customization.rendererOptions(config, formatDate)
+      : { mode: "print-preview", interactive: false, formatDate };
+    const pedigreeHtml = renderer.render({
+      graph,
+      ...rendererOptions,
+      mode: "print-preview",
+      interactive: false,
+      branding: documentContext.branding || null
+    });
 
-    const animalCard = (animal, relation, extraClass = "") => {
-      const [sexSymbol, sexLabel] = sexMeta(animal);
-      const details = [
-        ["ID", animal?.earTagNumber || animal?.tag || animal?.tattoo || "—"],
-        ["DOB", animal?.dob ? formatDate(animal.dob) : "—"],
-        ["COLOR", animal?.color || "—"],
-        ["BREED", animal?.breed || "—"],
-        ["REG", animal?.registrationNumber || "—"],
-        ["BREEDER", animal?.breeder || "—"]
-      ];
-      return `<article class="pedigree-node-card ${animal ? "" : "unknown"} ${extraClass}">
-        <div class="node-header">
-          <div class="node-title"><span class="species-mark">${speciesIcon(animal?.species || subject.species)}</span><div><span class="relation">${esc(relation)}</span><strong>${esc(animal?.name || "Unknown")}</strong></div></div>
-          <div class="sex-mark"><span>${sexSymbol}</span><small>${sexLabel}</small></div>
-        </div>
-        <div class="node-details">${details.map(([label, value]) => {
-          const fieldName = label.toLowerCase();
-          const protectedValue = label === "COLOR" || label === "BREEDER" ? " pedigree-protected-value" : "";
-          return `<div data-field="${fieldName}"><b>${label}:</b><span class="${protectedValue.trim()}" title="${esc(value)}">${esc(value)}</span></div>`;
-        }).join("")}</div>
-      </article>`;
-    };
+    const salePrice = sale.salePrice ? `$${sale.salePrice}` : "";
+    const metadata = [
+      { label: "Seller", value: sale.sellerName },
+      { label: "Seller contact", value: sale.sellerContact },
+      { label: "Buyer", value: sale.buyerName },
+      { label: "Sale / transfer date", value: sale.saleDate ? formatDate(sale.saleDate) : "" },
+      { label: "Sale price", value: salePrice },
+      { label: "Transfer number", value: sale.transferNumber }
+    ];
 
-    const salePrice = sale.salePrice ? `$${esc(sale.salePrice)}` : "—";
-    const operationName = state.profile?.operationName || "HerdHarbor Breeder";
-    const generatedDate = new Date().toLocaleDateString();
+    const printableHtml = exporter.buildDocumentHtml({
+      title: `${subject.name} Pedigree`,
+      documentType: "Pedigree",
+      page: exporter.pedigreePageOptions?.(config.generations || 4) || { pageSize: "letter", orientation: "landscape", margin: ".3in" },
+      bodyHtml: pedigreeHtml,
+      metadata,
+      notes: sale.saleNotes || "",
+      generatedLabel: `Generated ${new Date().toLocaleDateString()}`,
+      footerLeft: "Created with HerdHarbor · Livestock records without limits.",
+      footerRight: documentContext.branding?.rabbitryName || state.profile?.operationName || "HerdHarbor"
+    });
 
-    const printableHtml = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject.name)} Pedigree</title><style>
-      @page { size: letter landscape; margin: .2in; }
-      * { box-sizing: border-box; }
-      html, body { margin: 0; padding: 0; color: #2f3438; background: #fff; font-family: "Segoe UI", Arial, Helvetica, sans-serif; }
-      body { padding: 0; }
-      .sheet { width: 100%; height: 8.06in; min-height: 0; max-height: 8.06in; display: flex; flex-direction: column; overflow: hidden; }
-      .header { min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 0 0 8px; border-bottom: 2px solid #68737b; }
-      .brand-print { min-width: 0; display: flex; align-items: center; gap: 11px; }
-      .brand-print img { width: 52px; height: 52px; object-fit: contain; padding: 3px; background: #fff; border: 1px solid #d7dce0; border-radius: 6px; }
-      .brand-print h1 { margin: 0; color: #27343d; font-size: 20px; line-height: 1.1; }
-      .tagline { margin-top: 3px; color: #707980; font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-      .print-subject { display: flex; align-items: center; gap: 10px; text-align: right; }
-      .print-subject strong { display: block; color: #242b30; font-size: 14px; }
-      .print-subject small { display: block; margin-top: 3px; color: #747d84; font-size: 8px; }
-      .print-animal-photo { width: 52px; height: 52px; display: grid; place-items: center; overflow: hidden; color: #fff; background: #40505a; border: 1px solid #cfd5d9; border-radius: 6px; font-size: 24px; }
-      .print-animal-photo img { width: 100%; height: 100%; object-fit: cover; }
-
-      .pedigree-tree {
-        flex: 1 1 auto;
-        min-height: 0;
-        display: grid;
-        grid-template-columns: minmax(168px,1.18fr) 34px minmax(164px,1.1fr) 34px minmax(158px,1fr) 34px minmax(152px,.96fr);
-        grid-template-rows: repeat(8, minmax(0,1fr));
-        column-gap: 0;
-        padding: 8px 0 6px;
-      }
-      .pedigree-node { min-width: 0; align-self: center; padding: 2px 0; }
-      .pedigree-node-card { width: 100%; padding: 6px 7px; background: #fff; border: 1px solid #c9d0d5; border-radius: 5px; box-shadow: 0 1px 1px rgba(20,31,39,.035); }
-      .pedigree-node-card.subject-card { border-color: #7d8991; border-left: 3px solid #4f7776; }
-      .pedigree-node-card.unknown { color: #747d84; background: #fafbfb; border-style: dashed; }
-      .node-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; padding-bottom: 4px; border-bottom: 1px solid #eef0f2; }
-      .node-title { min-width: 0; display: flex; align-items: flex-start; gap: 5px; }
-      .species-mark { width: 15px; height: 15px; flex: 0 0 auto; display: grid; place-items: center; color: #65717a; background: #f1f3f4; border-radius: 50%; font-size: 9px; }
-      .node-title > div { min-width: 0; }
-      .relation { display: block; margin-bottom: 1px; color: #7b858c; font-size: 6.5px; font-weight: 800; letter-spacing: .075em; text-transform: uppercase; }
-      .node-title strong { display: block; overflow: hidden; color: #2b3237; font-size: 9px; line-height: 1.12; text-overflow: ellipsis; white-space: nowrap; }
-      .sex-mark { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; color: #707980; }
-      .sex-mark > span { font-size: 10px; line-height: 1; }
-      .sex-mark small { font-size: 5.8px; font-weight: 800; letter-spacing: .05em; }
-      .node-details { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1px 7px; padding-top: 4px; }
-      .node-details div { min-width: 0; display: grid; grid-template-columns: auto minmax(0,1fr); gap: 3px; align-items: baseline; font-size: 6.7px; line-height: 1.2; }
-      .node-details b { color: #4e575e; font-size: 6px; letter-spacing: .045em; }
-      .node-details span { overflow: hidden; color: #505a61; text-overflow: ellipsis; white-space: nowrap; }
-      .node-details .pedigree-protected-value { overflow: visible; font-family: inherit; font-size: inherit; line-height: 1.08; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
-      .great-node .pedigree-node-card { padding: 4px 6px; }
-      .great-node .node-header { padding-bottom: 2px; }
-      .great-node .node-details { gap: 0 5px; padding-top: 2px; }
-      .great-node .node-details div { font-size: 6.1px; }
-      .great-node .node-details b { font-size: 5.5px; }
-      .great-node .relation { display: none; }
-      .great-node .node-title strong { font-size: 8px; }
-
-      .pedigree-branch { position: relative; align-self: stretch; }
-      .pedigree-branch::before { content: ""; position: absolute; left: 50%; top: 25%; bottom: 25%; border-left: 1px solid #aab2b8; }
-      .pedigree-branch::after { content: ""; position: absolute; left: 0; top: 50%; width: 50%; border-top: 1px solid #aab2b8; }
-      .branch-arm { position: absolute; left: 50%; right: 0; border-top: 1px solid #aab2b8; }
-      .branch-arm.top { top: 25%; }
-      .branch-arm.bottom { top: 75%; }
-
-      .sale-strip { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 5px; padding-top: 7px; border-top: 2px solid #68737b; }
-      .sale-field { min-width: 0; padding: 5px 6px; background: #fafafa; border: 1px solid #d9dee2; border-radius: 4px; }
-      .sale-field small, .sale-field strong { display: block; }
-      .sale-field small { color: #717b82; font-size: 6px; font-weight: 800; letter-spacing: .055em; text-transform: uppercase; }
-      .sale-field strong { margin-top: 2px; overflow: hidden; color: #343b40; font-size: 7.5px; text-overflow: ellipsis; white-space: nowrap; }
-      .sale-notes { grid-column: 1 / -1; }
-      .sale-notes strong { white-space: normal; }
-      .certification { display: grid; grid-template-columns: 1.35fr 1fr 1fr; gap: 18px; align-items: end; margin-top: 8px; color: #4d565c; font-size: 7px; }
-      .certification p { margin: 0; line-height: 1.35; }
-      .signature { padding-top: 10px; border-top: 1px solid #68737b; text-align: center; }
-      .footer { display: flex; justify-content: space-between; gap: 20px; margin-top: 7px; color: #7b848a; font-size: 6.5px; }
-      .no-print { position: fixed; right: 18px; bottom: 18px; padding: 10px 15px; color: #fff; background: #2e7d7b; border: 0; border-radius: 8px; font-weight: 800; cursor: pointer; box-shadow: 0 5px 18px rgba(0,0,0,.18); }
-      @media screen and (max-width: 980px) {
-        body { min-width: 980px; }
-      }
-      @media print {
-        html, body { width: 100%; height: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .sheet, .pedigree-tree { break-inside: avoid; page-break-inside: avoid; }
-        .no-print { display: none; }
-      }
-    </style></head><body><div class="sheet">
-      <header class="header">
-        <div class="brand-print"><img src="${logo}" alt="${esc(operationName)} logo"><div><h1>${esc(operationName)}</h1><div class="tagline">Four-generation pedigree · Generated by HerdHarbor</div></div></div>
-        <div class="print-subject"><div><strong>${esc(subject.name)}</strong><small>${esc([subject.earTagNumber || subject.tag || subject.tattoo, subject.earTagColor, subject.registrationNumber, subject.breed, subject.color].filter(Boolean).join(" · ") || "Pedigree record")}<br>Generated ${generatedDate}</small></div><div class="print-animal-photo">${subjectPhoto ? `<img src="${subjectPhoto}" alt="${esc(subject.name)} photo">` : `<span>${speciesIcon(subject.species)}</span>`}</div></div>
-      </header>
-
-      <main class="pedigree-tree" aria-label="Pedigree chart for ${esc(subject.name)}">
-        <div class="pedigree-node" style="grid-column:1;grid-row:1 / 9">${animalCard(subject, "Animal", "subject-card")}</div>
-        <div class="pedigree-branch" style="grid-column:2;grid-row:1 / 9"><span class="branch-arm top"></span><span class="branch-arm bottom"></span></div>
-
-        <div class="pedigree-node" style="grid-column:3;grid-row:1 / 5">${animalCard(sire, "Sire")}</div>
-        <div class="pedigree-node" style="grid-column:3;grid-row:5 / 9">${animalCard(dam, "Dam")}</div>
-        <div class="pedigree-branch" style="grid-column:4;grid-row:1 / 5"><span class="branch-arm top"></span><span class="branch-arm bottom"></span></div>
-        <div class="pedigree-branch" style="grid-column:4;grid-row:5 / 9"><span class="branch-arm top"></span><span class="branch-arm bottom"></span></div>
-
-        <div class="pedigree-node" style="grid-column:5;grid-row:1 / 3">${animalCard(sireSire, "Sire's sire")}</div>
-        <div class="pedigree-node" style="grid-column:5;grid-row:3 / 5">${animalCard(sireDam, "Sire's dam")}</div>
-        <div class="pedigree-node" style="grid-column:5;grid-row:5 / 7">${animalCard(damSire, "Dam's sire")}</div>
-        <div class="pedigree-node" style="grid-column:5;grid-row:7 / 9">${animalCard(damDam, "Dam's dam")}</div>
-        <div class="pedigree-branch" style="grid-column:6;grid-row:1 / 3"><span class="branch-arm top"></span><span class="branch-arm bottom"></span></div>
-        <div class="pedigree-branch" style="grid-column:6;grid-row:3 / 5"><span class="branch-arm top"></span><span class="branch-arm bottom"></span></div>
-        <div class="pedigree-branch" style="grid-column:6;grid-row:5 / 7"><span class="branch-arm top"></span><span class="branch-arm bottom"></span></div>
-        <div class="pedigree-branch" style="grid-column:6;grid-row:7 / 9"><span class="branch-arm top"></span><span class="branch-arm bottom"></span></div>
-
-        <div class="pedigree-node great-node" style="grid-column:7;grid-row:1">${animalCard(greats.sireSireSire, "Sire's sire's sire")}</div>
-        <div class="pedigree-node great-node" style="grid-column:7;grid-row:2">${animalCard(greats.sireSireDam, "Sire's sire's dam")}</div>
-        <div class="pedigree-node great-node" style="grid-column:7;grid-row:3">${animalCard(greats.sireDamSire, "Sire's dam's sire")}</div>
-        <div class="pedigree-node great-node" style="grid-column:7;grid-row:4">${animalCard(greats.sireDamDam, "Sire's dam's dam")}</div>
-        <div class="pedigree-node great-node" style="grid-column:7;grid-row:5">${animalCard(greats.damSireSire, "Dam's sire's sire")}</div>
-        <div class="pedigree-node great-node" style="grid-column:7;grid-row:6">${animalCard(greats.damSireDam, "Dam's sire's dam")}</div>
-        <div class="pedigree-node great-node" style="grid-column:7;grid-row:7">${animalCard(greats.damDamSire, "Dam's dam's sire")}</div>
-        <div class="pedigree-node great-node" style="grid-column:7;grid-row:8">${animalCard(greats.damDamDam, "Dam's dam's dam")}</div>
-      </main>
-
-      <section class="sale-strip">
-        <div class="sale-field"><small>Seller</small><strong>${esc(sale.sellerName || "—")}</strong></div>
-        <div class="sale-field"><small>Seller contact</small><strong>${esc(sale.sellerContact || "—")}</strong></div>
-        <div class="sale-field"><small>Buyer</small><strong>${esc(sale.buyerName || "—")}</strong></div>
-        <div class="sale-field"><small>Sale / transfer date</small><strong>${esc(formatDate(sale.saleDate))}</strong></div>
-        <div class="sale-field"><small>Sale price</small><strong>${salePrice}</strong></div>
-        <div class="sale-field"><small>Transfer number</small><strong>${esc(sale.transferNumber || "—")}</strong></div>
-        <div class="sale-field sale-notes"><small>Sale notes</small><strong>${esc(sale.saleNotes || "—")}</strong></div>
-      </section>
-
-      <section class="certification"><p>I certify that this pedigree reflects the records entered for this animal to the best of my knowledge.</p><div class="signature">Seller signature / date</div><div class="signature">Buyer signature / date</div></section>
-      <footer class="footer"><span>Created with HerdHarbor · Livestock records without limits.</span><span>HerdHarbor</span></footer>
-      <button class="no-print" onclick="window.print()">Print / Save PDF</button>
-    </div></body></html>`;
     const mobilePrint = window.matchMedia("(max-width: 760px)").matches ||
       window.matchMedia("(display-mode: standalone)").matches ||
       Boolean(window.navigator.standalone);
     if (mobilePrint) {
       openMobilePrintPreview(printableHtml, subject.name);
     } else {
-      const popup = window.open("", "_blank");
+      const popup = exporter.openPrintWindow?.(printableHtml);
       if (!popup) {
         openMobilePrintPreview(printableHtml, subject.name);
       } else {
-        popup.document.open();
-        popup.document.write(printableHtml);
-        popup.document.close();
-        closeModal();
         try {
           window.HerdHarborPedigreeGenetics?.enhanceDocument?.(popup.document, true, window);
         } catch {}
-        setTimeout(() => popup.focus(), 150);
+        closeModal();
       }
     }
-    recordActivity(`Opened a printable sale pedigree for ${subject.name}.`, "pedigree");
+
+    recordActivity(`Opened a printable pedigree for ${subject.name}.`, "pedigree");
     saveState();
   }
 
@@ -2519,9 +2391,12 @@
       </div>`, "Mobile print preview");
     $(".modal").classList.add("modal-wide");
     const frame = $("#pedigree-print-preview");
-    frame.srcdoc = printableHtml;
+    const exporter = window.HerdHarborDocumentExport;
+    if (!exporter?.loadFrame?.(frame, printableHtml)) frame.srcdoc = printableHtml;
     $("#close-mobile-print").addEventListener("click", closeModal);
     $("#run-mobile-print").addEventListener("click", () => {
+      const exporter = window.HerdHarborDocumentExport;
+      if (exporter?.printFrame?.(frame)) return;
       const printWindow = frame.contentWindow;
       if (!printWindow) return toast("The print preview is still loading. Try again.", "error");
       printWindow.focus();
