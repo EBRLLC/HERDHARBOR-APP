@@ -1199,7 +1199,13 @@
       navigate,
       openPrintPedigreeForm,
       ensureQrToolsReady,
-      getPedigreeCustomization: () => window.HerdHarborPedigreeCustomization?.loadPreferences?.(localStorage) || { generations: 3 }
+      getPedigreeCustomization: () => window.HerdHarborPedigreeCustomization?.loadPreferences?.(localStorage) || { generations: 3 },
+      getPedigreeDocumentContext: (fallbackConfig) => window.HerdHarborPedigreeDocuments?.resolveDocumentContext?.(
+        state.settings?.pedigreeDocuments,
+        "pedigree",
+        state.profile || {},
+        fallbackConfig || {}
+      ) || { config: fallbackConfig || {}, branding: null }
     });
     return animalProfileRuntimeInstance;
   }
