@@ -132,3 +132,14 @@ test("trusted cloud baseline writes skip duplicate full-state parsing while defa
   assert.ok(calls.length>=8);
   for(const call of calls) assert.match(call,/\{ validated: true \}/,call);
 });
+
+
+test("lifecycle sync dedupe checks byte-identical snapshots before canonical parsing",()=>{
+  const start=cloud.indexOf("async function syncNow()");
+  const end=cloud.indexOf("async function invokeFunction",start);
+  const block=cloud.slice(start,end);
+  assert.match(block,/syncInFlightRaw === raw \|\| sameState\(syncInFlightRaw, raw\)/);
+  assert.match(block,/pendingSync\.rawValue === raw \|\| sameState\(pendingSync\.rawValue, raw\)/);
+  assert.ok(block.indexOf("syncInFlightRaw === raw") < block.indexOf("sameState(syncInFlightRaw, raw)"));
+  assert.ok(block.indexOf("pendingSync.rawValue === raw") < block.indexOf("sameState(pendingSync.rawValue, raw)"));
+});
