@@ -214,11 +214,15 @@
       });
   }
 
-  function ensureAnalyticsRuntime() {
-    return loadScriptOnce(
-      "analytics-v1.6.1.js?v=2",
-      () => typeof window.HerdHarborAnalytics?.render === "function"
-    );
+  async function ensureAnalyticsRuntime() {
+    await Promise.all([
+      loadStyleOnce("analytics-v1.6.1.css?v=2"),
+      loadScriptOnce(
+        "analytics-v1.6.1.js?v=2",
+        () => typeof window.HerdHarborAnalytics?.render === "function"
+      )
+    ]);
+    return window.HerdHarborAnalytics;
   }
 
   function ensurePedigreePlatformRuntime() {
