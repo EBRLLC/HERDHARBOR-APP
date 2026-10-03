@@ -2268,6 +2268,12 @@
   }
 
 
+  function isMobilePedigreePrintEnvironment() {
+    return window.matchMedia("(max-width: 760px)").matches ||
+      window.matchMedia("(display-mode: standalone)").matches ||
+      Boolean(window.navigator.standalone);
+  }
+
   function pedigreeExportContext(animalId, overrideConfig = null) {
     const subject = state.animals.find((item) => item.id === animalId);
     if (!subject) return null;
@@ -2329,6 +2335,7 @@
       defaultLogo: state.profile?.logoData || defaultHerdHarborLogo(),
       sale,
       generatedDate: new Date().toLocaleDateString(),
+      mobilePrint: isMobilePedigreePrintEnvironment(),
       formatDate,
       speciesIcon
     });
@@ -2429,9 +2436,7 @@
     const printableHtml = buildPedigreePrintableHtml(animalId, sale, context.config);
     if (!printableHtml) return toast("The pedigree could not be prepared.", "error");
 
-    const mobilePrint = window.matchMedia("(max-width: 760px)").matches ||
-      window.matchMedia("(display-mode: standalone)").matches ||
-      Boolean(window.navigator.standalone);
+    const mobilePrint = isMobilePedigreePrintEnvironment();
     if (mobilePrint) {
       openMobilePrintPreview(printableHtml, context.subject.name);
     } else {
