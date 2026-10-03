@@ -2275,7 +2275,7 @@
         <div class="pedigree-warning">The printed pedigree always uses a clean white page, even when HerdHarbor is in dark mode.</div>
         <div class="form-grid two" style="margin-top:14px">
           ${field("Seller name", "sellerName", state.profile?.ownerName || "", true)}
-          ${field("Seller contact", "sellerContact", state.profile?.email || "")}
+          ${field("Seller contact", "sellerContact", "")}
           ${field("Buyer name", "buyerName", "")}
           ${field("Sale / transfer date", "saleDate", todayISO(), false, "date")}
           ${field("Sale price (optional)", "salePrice", "")}
