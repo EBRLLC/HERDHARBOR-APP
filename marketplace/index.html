@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0D2540">
+  <meta name="description" content="Browse animals listed by HerdHarbor members without exposing private herd records.">
+  <title>HerdHarbor Marketplace</title>
+  <link rel="icon" href="../icon-192.png">
+  <link rel="stylesheet" href="../herdharbor-breeder-platform.css?v=1">
+  <link rel="stylesheet" href="marketplace.css?v=1">
+</head>
+<body>
+  <header class="market-header">
+    <a class="market-brand" href="./" aria-label="HerdHarbor Marketplace home">
+      <img src="../icon-192.png" alt="">
+      <span><strong>HerdHarbor</strong><small>Marketplace</small></span>
+    </a>
+    <nav class="market-actions" aria-label="Marketplace">
+      <span id="market-session" class="market-session">Public browsing</span>
+      <a class="market-link" href="../?route=marketplace" target="_blank" rel="noopener">Seller tools</a>
+      <a class="market-button" href="../">Open HerdHarbor</a>
+    </nav>
+  </header>
+
+  <section class="market-hero">
+    <div class="market-hero-copy">
+      <p class="market-eyebrow">HerdHarbor Marketplace</p>
+      <h1>Find the right animal without digging through a management dashboard.</h1>
+      <p>Browse breeder listings, public pedigrees, seller information, and listing details in a storefront built for buyers.</p>
+    </div>
+    <div class="market-hero-card">
+      <strong>Private herd records stay private.</strong>
+      <span>Only seller-approved Marketplace information is published here.</span>
+    </div>
+  </section>
+
+  <main class="market-main">
+    <form id="market-search" class="market-search" aria-label="Search Marketplace">
+      <label class="market-search-wide">
+        <span>Search</span>
+        <input name="search" type="search" placeholder="Animal, breed, description">
+      </label>
+      <label>
+        <span>Species</span>
+        <input name="species" placeholder="Rabbit, goat, poultry…">
+      </label>
+      <label>
+        <span>Breed</span>
+        <input name="breed" placeholder="Breed">
+      </label>
+      <label>
+        <span>State / region</span>
+        <input name="region" placeholder="Kentucky">
+      </label>
+      <label>
+        <span>Min price</span>
+        <input name="minPrice" type="number" min="0" step="1" placeholder="$">
+      </label>
+      <label>
+        <span>Max price</span>
+        <input name="maxPrice" type="number" min="0" step="1" placeholder="$">
+      </label>
+      <div class="market-search-actions">
+        <button type="reset" class="market-button-secondary">Reset</button>
+        <button type="submit" class="market-button">Search</button>
+      </div>
+    </form>
+
+    <div class="market-results-heading">
+      <div>
+        <p class="market-eyebrow">Available now</p>
+        <h2>Marketplace listings</h2>
+      </div>
+      <span id="market-result-count" class="market-result-count"></span>
+    </div>
+
+    <div id="market-status" class="market-status" role="status" aria-live="polite">Loading listings…</div>
+    <section id="market-grid" class="market-grid" aria-live="polite"></section>
+  </main>
+
+  <dialog id="market-detail-dialog" class="market-dialog">
+    <button type="button" class="market-dialog-close" id="market-dialog-close" aria-label="Close listing">×</button>
+    <div id="market-detail"></div>
+  </dialog>
+
+  <div id="market-toast" class="market-toast" role="status" aria-live="polite"></div>
+
+  <footer class="market-footer">
+    <strong>HerdHarbor Marketplace</strong>
+    <span>Marketplace listings are published by members. HerdHarbor does not expose private herd records in public listings.</span>
+  </footer>
+
+  <script src="../vendor/supabase-2.111.0.js"></script>
+  <script src="../herdharbor-pedigree-platform.js?v=1"></script>
+  <script src="../herdharbor-marketplace.js?v=1"></script>
+  <script src="marketplace-app.js?v=1"></script>
+</body>
+</html>
