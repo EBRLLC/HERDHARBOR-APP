@@ -29,11 +29,11 @@ const REQUIRED_SHELL = [
   "./sales-customer-runtime-v1.8.3.js?v=1",
   "./herdharbor-app-runtime.js?v=4",
   "./icon-192.png",
-  "./great-pyrenees-outline-d7c57423367e.png",
   "./how-to/",
 ];
 
 const RUNTIME_CACHE_PATHS = [
+  "./great-pyrenees-outline-d7c57423367e.png",
   "./herdharbor-breeder-platform.css?v=1",
   "./analytics-v1.6.1.css?v=2",
   "./mobile-capture-v1.8.3.js?v=1",
