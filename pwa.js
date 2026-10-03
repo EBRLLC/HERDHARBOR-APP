@@ -449,10 +449,40 @@
   });
   document.addEventListener("click", (event) => { const trigger = event.target.closest("[data-pwa-install]"); if (trigger) requestInstall(); });
 
+  let pedigreeVisualsLoadStarted = false;
+  let breedingIntelligenceLoadStarted = false;
+
+  function ensurePedigreeVisuals() {
+    if (pedigreeVisualsLoadStarted) return;
+    pedigreeVisualsLoadStarted = true;
+    loadPedigreeVisuals();
+  }
+
+  function ensureBreedingIntelligence() {
+    if (breedingIntelligenceLoadStarted) return;
+    breedingIntelligenceLoadStarted = true;
+    ensurePedigreeVisuals();
+    loadBreedingIntelligence();
+  }
+
+  function ensureRouteAssets(route) {
+    const normalized = String(route || "").toLowerCase();
+    if (normalized === "breeding") ensureBreedingIntelligence();
+    else if (normalized === "pedigrees" || normalized === "animals") ensurePedigreeVisuals();
+  }
+
+  window.addEventListener("herdharbor:app-ready", () => {
+    ensureRouteAssets(window.HerdHarborApp?.getCurrentRoute?.());
+  });
+  window.addEventListener("herdharbor:route-change", (event) => {
+    ensureRouteAssets(event?.detail?.route);
+  });
+
   window.HerdHarborPWA = {
     install: requestInstall,
     refreshInstallUI,
     checkForUpdates: () => checkForAppUpdate({ force: true }),
+    ensureRouteAssets,
     isInstalled: isStandalone,
     version: APP_VERSION,
     build: PWA_BUILD
@@ -464,9 +494,6 @@
     try {
       monitoring()?.setModule?.("dashboard");
       monitoring()?.addBreadcrumb?.({ module: "dashboard", action: "load_application_modules" });
-      loadPedigreeVisuals();
-      loadBreedingIntelligence();
-      loadShows();
       refreshManifestLink();
       refreshInstallUI();
       registerServiceWorker();

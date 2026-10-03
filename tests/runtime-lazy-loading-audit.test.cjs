@@ -122,3 +122,25 @@ test("Direct Transfer starts only from Sales or an explicit Marketplace transfer
   assert.match(renderers,/sales:\s*\(\) => \{[\s\S]*renderSales\(\);[\s\S]*ensureDirectTransferRuntime\(\)/);
   assert.match(market,/if\(transferButton\)\{if\(typeof actions\?\.ensureDirectTransfer==="function"\)await actions\.ensureDirectTransfer\(\);openDirectTransferForListing/);
 });
+
+
+test("legacy pedigree and genetics bundles are not part of unconditional PWA boot",()=>{
+  const pwa=fs.readFileSync(path.join(root,"pwa.js"),"utf8");
+  const bootStart=pwa.indexOf("function bootApplication()");
+  const bootEnd=pwa.indexOf("function boot()",bootStart);
+  const boot=pwa.slice(bootStart,bootEnd);
+  assert.doesNotMatch(boot,/loadPedigreeVisuals\(\)/);
+  assert.doesNotMatch(boot,/loadBreedingIntelligence\(\)/);
+  assert.doesNotMatch(boot,/loadShows\(\)/);
+  assert.match(pwa,/function ensureRouteAssets\(route\)/);
+  assert.match(pwa,/normalized === "breeding"\) ensureBreedingIntelligence\(\)/);
+  assert.match(pwa,/normalized === "pedigrees" \|\| normalized === "animals"\) ensurePedigreeVisuals\(\)/);
+  assert.match(pwa,/herdharbor:route-change/);
+  assert.match(app,/new CustomEvent\("herdharbor:route-change", \{ detail: \{ route: currentRoute \} \}\)/);
+});
+
+test("unused Shows legacy bundle is no longer started during application boot",()=>{
+  const pwa=fs.readFileSync(path.join(root,"pwa.js"),"utf8");
+  const boot=pwa.slice(pwa.indexOf("function bootApplication()"),pwa.indexOf("function boot()",pwa.indexOf("function bootApplication()")));
+  assert.doesNotMatch(boot,/loadShows\(\)/);
+});

@@ -984,7 +984,8 @@
       route = "dashboard";
     }
     currentRoute = route || "dashboard";
-    $$(".view").forEach((view) => view.classList.remove("active"));
+    try { window.dispatchEvent(new CustomEvent("herdharbor:route-change", { detail: { route: currentRoute } })); } catch {}
+    $(".view").forEach((view) => view.classList.remove("active"));
     $$(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.route === currentRoute));
     const target = $(`#view-${currentRoute}`);
     if (target) target.classList.add("active");
