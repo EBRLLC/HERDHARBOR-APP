@@ -347,6 +347,7 @@ html[data-theme="dark"] .hh-pedigree-renderer.style-professional .hh-pedigree-ge
   padding: 9px 10px;
   background: rgba(13,37,64,.035);
   border: 1px solid var(--border);
+  border-left: 4px solid var(--hh-pedigree-accent, var(--teal));
   border-radius: 10px;
 }
 
@@ -369,10 +370,13 @@ html[data-theme="dark"] .hh-pedigree-renderer.style-professional .hh-pedigree-ge
   font-size: .9rem;
 }
 
-.hh-pedigree-branding small {
+.hh-pedigree-branding small,
+.hh-pedigree-branding span {
+  display: block;
   margin-top: 2px;
   color: var(--muted);
   font-size: .7rem;
+  overflow-wrap: anywhere;
 }
 
 html[data-theme="dark"] .hh-pedigree-branding strong {
