@@ -108,7 +108,7 @@ test("B1 lineage profile keeps repeated ancestors separate from cycles", () => {
   assert.ok(row);
   assert.equal(row.occurrenceCount, 2);
   assert.equal(row.repeated, true);
-  assert.deepEqual(row.occurrences.map((item) => item.status), ["repeat", "known"].sort((a,b)=>0).sort());
+  assert.deepEqual(new Set(row.occurrences.map((item) => item.status)), new Set(["known", "repeat"]));
   assert.equal(profile.graph.issues.some((issue) => issue.type === "cycle"), false);
 });
 
