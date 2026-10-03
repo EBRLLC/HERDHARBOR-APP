@@ -2285,7 +2285,11 @@
     // can call syncNow() while the exact same state is already being saved.
     // Do not enqueue that raw state again or the queue will PATCH it a second
     // time immediately after the first save completes.
-    if (syncInFlight && syncInFlightRaw && sameState(syncInFlightRaw, raw)) {
+    if (
+      syncInFlight &&
+      syncInFlightRaw &&
+      (syncInFlightRaw === raw || sameState(syncInFlightRaw, raw))
+    ) {
       return syncInFlight;
     }
 
@@ -2293,7 +2297,10 @@
     syncTimer = null;
     syncDebounceStartedAt = 0;
 
-    if (pendingSync && sameState(pendingSync.rawValue, raw)) {
+    if (
+      pendingSync &&
+      (pendingSync.rawValue === raw || sameState(pendingSync.rawValue, raw))
+    ) {
       return drainSyncQueue();
     }
 
