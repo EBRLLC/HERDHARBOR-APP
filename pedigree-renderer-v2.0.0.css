@@ -1,0 +1,287 @@
+.hh-pedigree-renderer {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-top: 14px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+.hh-pedigree-columns {
+  min-width: max(100%, calc(var(--hh-pedigree-generations, 3) * 215px));
+  display: grid;
+  grid-template-columns: repeat(var(--hh-pedigree-generations, 3), minmax(190px, 1fr));
+  gap: 18px;
+  align-items: stretch;
+  padding: 4px 2px 12px;
+}
+
+.hh-pedigree-generation {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.hh-pedigree-generation-label {
+  min-height: 24px;
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.hh-pedigree-generation-cards {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-rows: repeat(auto-fit, minmax(68px, 1fr));
+  gap: 9px;
+}
+
+.hh-pedigree-card {
+  min-width: 0;
+  align-self: stretch;
+  overflow: hidden;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(13,37,64,.045);
+}
+
+.hh-pedigree-card.is-subject {
+  border-color: rgba(46,125,123,.56);
+  border-left: 4px solid var(--teal);
+}
+
+.hh-pedigree-card.is-unknown {
+  background: rgba(255,255,255,.5);
+  border-style: dashed;
+}
+
+.hh-pedigree-card-summary {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr) auto;
+  gap: 9px;
+  align-items: center;
+  padding: 9px 10px;
+}
+
+.hh-pedigree-photo {
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.hh-pedigree-card-title {
+  min-width: 0;
+}
+
+.hh-pedigree-card-title small {
+  display: block;
+  color: var(--muted);
+  font-size: .61rem;
+  font-weight: 900;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.hh-pedigree-card-title strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--navy);
+  font-size: .88rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.hh-pedigree-card-title > span {
+  display: inline-block;
+  margin: 3px 6px 0 0;
+  color: var(--muted);
+  font-size: .67rem;
+  font-weight: 750;
+}
+
+.hh-pedigree-status {
+  padding: 2px 5px;
+  background: rgba(13,37,64,.06);
+  border-radius: 999px;
+}
+
+.hh-pedigree-repeat {
+  color: var(--teal) !important;
+}
+
+.hh-pedigree-toggle {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--navy);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.hh-pedigree-toggle:hover,
+.hh-pedigree-toggle:focus-visible {
+  background: rgba(46,125,123,.08);
+  border-color: rgba(46,125,123,.25);
+  outline: none;
+}
+
+.hh-pedigree-toggle span {
+  display: block;
+  font-size: 1.1rem;
+  transition: transform .15s ease;
+}
+
+.hh-pedigree-toggle[aria-expanded="true"] span {
+  transform: rotate(180deg);
+}
+
+.hh-pedigree-card-details {
+  padding: 0 10px 10px;
+  border-top: 1px solid var(--border);
+}
+
+.hh-pedigree-card-details[hidden] {
+  display: none !important;
+}
+
+.hh-pedigree-card-details dl {
+  display: grid;
+  gap: 5px;
+  margin: 9px 0 0;
+}
+
+.hh-pedigree-field {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(76px,.75fr) minmax(0,1.25fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.hh-pedigree-field dt,
+.hh-pedigree-field dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.hh-pedigree-field dt {
+  color: var(--muted);
+  font-size: .64rem;
+  font-weight: 850;
+  letter-spacing: .025em;
+}
+
+.hh-pedigree-field dd {
+  color: var(--navy);
+  font-size: .7rem;
+  font-weight: 700;
+}
+
+.hh-pedigree-issue {
+  margin: 9px 0 0;
+  color: var(--warning);
+  font-size: .7rem;
+  font-weight: 750;
+}
+
+.hh-pedigree-renderer.density-compact .hh-pedigree-columns {
+  gap: 12px;
+}
+
+.hh-pedigree-renderer.density-compact .hh-pedigree-generation-cards {
+  gap: 6px;
+}
+
+.hh-pedigree-renderer.density-compact .hh-pedigree-card-summary {
+  min-height: 50px;
+  padding: 7px 8px;
+}
+
+.hh-pedigree-renderer.density-compact .hh-pedigree-photo {
+  width: 34px;
+  height: 34px;
+}
+
+html[data-theme="dark"] .hh-pedigree-card {
+  background: #102638;
+  border-color: rgba(211,226,235,.16);
+}
+
+html[data-theme="dark"] .hh-pedigree-card.is-unknown {
+  background: rgba(16,38,56,.55);
+}
+
+html[data-theme="dark"] .hh-pedigree-card-title strong,
+html[data-theme="dark"] .hh-pedigree-field dd,
+html[data-theme="dark"] .hh-pedigree-toggle {
+  color: #F1F5F7;
+}
+
+@media (max-width: 760px) {
+  .hh-pedigree-renderer {
+    scroll-snap-type: x proximity;
+  }
+
+  .hh-pedigree-columns {
+    grid-template-columns: repeat(var(--hh-pedigree-generations, 3), minmax(176px, 82vw));
+    scroll-snap-type: x proximity;
+  }
+
+  .hh-pedigree-generation {
+    scroll-snap-align: start;
+  }
+
+  .hh-pedigree-card-summary {
+    min-height: 62px;
+  }
+
+  .hh-pedigree-card-title strong {
+    font-size: .92rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hh-pedigree-toggle span {
+    transition: none;
+  }
+}
+
+@media print {
+  .hh-pedigree-renderer {
+    overflow: visible;
+  }
+
+  .hh-pedigree-columns {
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .hh-pedigree-toggle {
+    display: none;
+  }
+
+  .hh-pedigree-card-details[hidden] {
+    display: block !important;
+  }
+
+  .hh-pedigree-card {
+    break-inside: avoid;
+    box-shadow: none;
+  }
+}
