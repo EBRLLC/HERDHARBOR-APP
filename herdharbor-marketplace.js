@@ -586,7 +586,12 @@ async function renderInbox(host,customGateway,toast,selectedConversationId){
   thread.querySelector("#hh-message-block")?.addEventListener("click",async function(){if(!conversationRow.other_public_id)return notify("This profile cannot be blocked from this thread.","error");try{await blockPublicProfile(conversationRow.other_public_id,gw);notify("User blocked in Marketplace.","success");await loadInbox();}catch(error){notify(error?.message||"User could not be blocked.","error");}});
   thread.querySelector("#hh-message-mute")?.addEventListener("click",async function(){await updateConversationMember(conversationId,{muted_at:new Date().toISOString()},gw);notify("Conversation muted.","success");});
   thread.querySelector("#hh-message-archive")?.addEventListener("click",async function(){await updateConversationMember(conversationId,{archived_at:new Date().toISOString()},gw);notify("Conversation archived.","success");await loadInbox();});
-  realtime=subscribeConversation(conversationId,appendMessage,gw);
+  realtime=subscribeConversation(conversationId,function(message){
+   appendMessage(message);
+   if(String(message?.sender_id||"")!==String(user.id)){
+    void updateConversationMember(conversationId,{unread_count:0},gw).catch(function(){});
+   }
+  },gw);
  }
  host.querySelectorAll("[data-inbox-folder]").forEach(function(button){button.addEventListener("click",function(){folder=button.dataset.inboxFolder||"all";void loadInbox();});});
  list.addEventListener("click",function(event){const button=event.target.closest("[data-inbox-conversation]");if(button)void openThread(button.dataset.inboxConversation);});

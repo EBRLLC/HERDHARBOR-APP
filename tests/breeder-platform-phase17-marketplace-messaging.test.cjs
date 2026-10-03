@@ -58,3 +58,20 @@ test("message threads bound initial history and append realtime events without f
  assert.doesNotMatch(source,/subscribeConversation\(conversationId,function\(\)\{void openThread\(conversationId\);\},gw\)/);
  assert.match(source,/const sent=await sendMessage[\s\S]*appendMessage\(sent\)/);
 });
+
+
+test("muting suppresses interruption state but does not silently mark future messages read",()=>{
+ const block=migration.slice(migration.indexOf("marketplace_message_unread()"),migration.indexOf("drop trigger if exists marketplace_message_unread"));
+ assert.match(block,/unread_count=unread_count\+1/);
+ assert.match(block,/user_id<>new\.sender_id/);
+ assert.doesNotMatch(block,/muted_at is null/);
+});
+
+test("an already-open realtime thread clears the server unread increment after displaying an incoming message",()=>{
+ const start=source.indexOf("async function openThread(conversationId)");
+ const end=source.indexOf("host.querySelectorAll",start);
+ const block=source.slice(start,end);
+ assert.match(block,/subscribeConversation\(conversationId,function\(message\)/);
+ assert.match(block,/appendMessage\(message\)/);
+ assert.match(block,/message\?\.sender_id[\s\S]*user\.id[\s\S]*updateConversationMember\(conversationId,\{unread_count:0\}/);
+});

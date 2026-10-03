@@ -129,7 +129,7 @@ as $$
 begin
   update public.marketplace_conversation_members
   set unread_count=unread_count+1
-  where conversation_id=new.conversation_id and user_id<>new.sender_id and muted_at is null;
+  where conversation_id=new.conversation_id and user_id<>new.sender_id;
 
   update public.marketplace_conversations
   set updated_at=new.created_at

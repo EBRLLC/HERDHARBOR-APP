@@ -126,7 +126,10 @@ begin
      and not herdharbor_private.marketplace_is_active_member(caller) then
     raise exception 'marketplace access suspended' using errcode='42501';
   end if;
-  return case when tg_op='DELETE' then old else new end;
+  if tg_op='DELETE' then
+    return old;
+  end if;
+  return new;
 end;
 $$;
 revoke all on function herdharbor_private.marketplace_enforce_active_listing_writer() from public,anon,authenticated;

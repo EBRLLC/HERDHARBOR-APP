@@ -18,6 +18,7 @@ test("suspended sellers cannot create or update listing content",()=>{
  assert.match(listing,/marketplace_is_active_member/);
  assert.match(migration,/marketplace_enforce_active_listing_writer/);
  assert.match(migration,/tg_op<>'DELETE'/);
+ assert.match(migration,/if tg_op='DELETE' then[\s\S]*return old;[\s\S]*return new;/);
  assert.match(migration,/marketplace access suspended/);
 });
 
