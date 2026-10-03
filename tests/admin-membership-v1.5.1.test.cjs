@@ -108,7 +108,6 @@ assert.match(appRuntime, /pendingAdminRoute && account\.backendReady === true[\s
 assert.match(appRuntime, /if \(route !== "admin" && pendingAdminRoute\) pendingAdminRoute = false/);
 assert.match(appRuntime, /!allowed && account\.backendReady === true && currentRoute === "admin"[\s\S]*navigate\("dashboard"\)/);
 
-assert.match(appRuntime, /if \(!allowed && currentRoute === "admin"\) \{\s*navigate\("dashboard"\);\s*\}/);
 assert.match(appRuntime, /HerdHarborMembership\?\.canAccessAdmin\?\.\(\) === true/);
 assert.match(appRuntime, /renderLazyRoute\([\s\S]*"admin"[\s\S]*ensureAdminRuntimeLoaded[\s\S]*HerdHarborAdmin\?\.render\?\.\(\)/);
 assert.match(admin, /Supabase also enforces this permission through Row Level Security/);
