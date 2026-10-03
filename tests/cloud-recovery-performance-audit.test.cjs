@@ -66,3 +66,17 @@ test("sign-in hydration validates the active local snapshot only once before clo
   assert.match(block,/!dirty &&\s*activeStateIsValid &&\s*Boolean\(knownCloudVersion\)/);
   assert.equal((block.match(/safeParse\(activeRaw\)/g)||[]).length,1);
 });
+
+
+test("account-boundary sign-in parses active and authenticated cache snapshots only once",()=>{
+  const start=cloud.indexOf("async function ensureAuthenticatedAccountBoundary");
+  const end=cloud.indexOf("function setSyncState",start);
+  const block=cloud.slice(start,end);
+  assert.match(block,/const activeState = activeRaw \? safeParse\(activeRaw\) : null/);
+  assert.match(block,/const authenticatedCacheState = authenticatedCache \? safeParse\(authenticatedCache\) : null/);
+  assert.match(block,/const hasActiveState = Boolean\(activeState\)/);
+  assert.match(block,/sameParsedState\(activeState, authenticatedCacheState\)/);
+  assert.equal((block.match(/safeParse\(activeRaw\)/g)||[]).length,1);
+  assert.equal((block.match(/safeParse\(authenticatedCache\)/g)||[]).length,1);
+  assert.doesNotMatch(block,/hasActiveState:\s*Boolean\(activeRaw && safeParse\(activeRaw\)\)/);
+});
