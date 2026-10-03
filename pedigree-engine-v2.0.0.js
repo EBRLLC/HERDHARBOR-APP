@@ -297,6 +297,167 @@
     };
   }
 
+  function occurrenceForNode(node) {
+    if (!node || node.generation <= 0 || !node.animal) return null;
+    const identity = identityForAnimal(node.animal);
+    if (!identity) return null;
+    return {
+      identity,
+      animalId: clean(node.animal.id),
+      animal: node.animal,
+      key: node.key,
+      path: [...node.path],
+      relation: node.relation,
+      depth: node.generation,
+      status: node.status
+    };
+  }
+
+  function lineageProfile(options = {}) {
+    const graph = buildGraph(options);
+    const occurrenceMap = new Map();
+
+    for (const node of graph.nodes) {
+      const occurrence = occurrenceForNode(node);
+      if (!occurrence) continue;
+      if (!occurrenceMap.has(occurrence.identity)) {
+        occurrenceMap.set(occurrence.identity, {
+          identity: occurrence.identity,
+          animalId: occurrence.animalId,
+          animal: occurrence.animal,
+          occurrences: []
+        });
+      }
+      occurrenceMap.get(occurrence.identity).occurrences.push(occurrence);
+    }
+
+    const ancestors = [...occurrenceMap.values()].map((row) => {
+      const occurrences = row.occurrences
+        .slice()
+        .sort((a, b) => a.depth - b.depth || a.key.localeCompare(b.key));
+      return {
+        identity: row.identity,
+        animalId: row.animalId,
+        animal: row.animal,
+        occurrences,
+        occurrenceCount: occurrences.length,
+        repeated: occurrences.length > 1,
+        closestDepth: occurrences[0]?.depth || null,
+        closestOccurrences: occurrences.filter((item) => item.depth === occurrences[0]?.depth)
+      };
+    }).sort((a, b) =>
+      (a.closestDepth || Number.MAX_SAFE_INTEGER) - (b.closestDepth || Number.MAX_SAFE_INTEGER) ||
+      clean(a.animal?.name).localeCompare(clean(b.animal?.name)) ||
+      a.identity.localeCompare(b.identity)
+    );
+
+    return {
+      graph,
+      generations: graph.generations,
+      maxAncestorDepth: graph.maxAncestorDepth,
+      ancestors,
+      byIdentity: Object.fromEntries(ancestors.map((row) => [row.identity, row])),
+      repeatedAncestors: ancestors.filter((row) => row.repeated),
+      completeness: { ...graph.completeness },
+      issues: graph.issues.slice()
+    };
+  }
+
+  function sharedAncestorAnalysis(options = {}) {
+    const animals = Array.isArray(options.animals) ? options.animals : [];
+    const generations = normalizeGenerations(options.generations ?? options.depth ?? DEFAULT_GENERATIONS);
+    const animalA = options.animalA || animals.find((item) => clean(item?.id) === clean(options.animalAId)) || null;
+    const animalB = options.animalB || animals.find((item) => clean(item?.id) === clean(options.animalBId)) || null;
+
+    const profileA = lineageProfile({ animals, subject: animalA, subjectId: animalA?.id || options.animalAId, generations });
+    const profileB = lineageProfile({ animals, subject: animalB, subjectId: animalB?.id || options.animalBId, generations });
+    const shared = [];
+
+    for (const rowA of profileA.ancestors) {
+      const rowB = profileB.byIdentity[rowA.identity];
+      if (!rowB) continue;
+      const pathPairs = [];
+      for (const occurrenceA of rowA.occurrences) {
+        for (const occurrenceB of rowB.occurrences) {
+          pathPairs.push({
+            animalA: occurrenceA,
+            animalB: occurrenceB,
+            totalDepth: occurrenceA.depth + occurrenceB.depth
+          });
+        }
+      }
+      pathPairs.sort((left, right) =>
+        left.totalDepth - right.totalDepth ||
+        left.animalA.depth - right.animalA.depth ||
+        left.animalA.key.localeCompare(right.animalA.key) ||
+        left.animalB.key.localeCompare(right.animalB.key)
+      );
+      const closestTotalDepth = pathPairs[0]?.totalDepth ?? null;
+      shared.push({
+        identity: rowA.identity,
+        animalId: rowA.animalId || rowB.animalId,
+        animal: rowA.animal || rowB.animal,
+        name: clean(rowA.animal?.name || rowB.animal?.name || rowA.animalId || rowB.animalId),
+        animalAOccurrences: rowA.occurrences,
+        animalBOccurrences: rowB.occurrences,
+        animalARepeated: rowA.repeated,
+        animalBRepeated: rowB.repeated,
+        pathPairs,
+        pathPairCount: pathPairs.length,
+        closestTotalDepth,
+        closestPathPairs: pathPairs.filter((pair) => pair.totalDepth === closestTotalDepth)
+      });
+    }
+
+    shared.sort((left, right) =>
+      (left.closestTotalDepth ?? Number.MAX_SAFE_INTEGER) - (right.closestTotalDepth ?? Number.MAX_SAFE_INTEGER) ||
+      left.name.localeCompare(right.name) ||
+      left.identity.localeCompare(right.identity)
+    );
+
+    return {
+      version: VERSION,
+      method: "canonical-pedigree-shared-ancestor-path-analysis",
+      generations,
+      maxAncestorDepth: Math.max(profileA.maxAncestorDepth, profileB.maxAncestorDepth),
+      animalA: {
+        id: clean(animalA?.id || options.animalAId),
+        name: clean(animalA?.name),
+        profile: profileA
+      },
+      animalB: {
+        id: clean(animalB?.id || options.animalBId),
+        name: clean(animalB?.name),
+        profile: profileB
+      },
+      sharedAncestors: shared,
+      sharedAncestorCount: shared.length,
+      totalSharedPathPairs: shared.reduce((sum, row) => sum + row.pathPairCount, 0),
+      closestRelationshipPaths: shared.flatMap((row) =>
+        row.closestPathPairs.map((pair) => ({
+          ancestorIdentity: row.identity,
+          ancestorId: row.animalId,
+          ancestorName: row.name,
+          animalA: pair.animalA,
+          animalB: pair.animalB,
+          totalDepth: pair.totalDepth
+        }))
+      ).sort((left, right) =>
+        left.totalDepth - right.totalDepth ||
+        left.ancestorName.localeCompare(right.ancestorName) ||
+        left.animalA.key.localeCompare(right.animalA.key)
+      ),
+      completeness: {
+        animalA: { ...profileA.completeness },
+        animalB: { ...profileB.completeness }
+      },
+      issues: {
+        animalA: profileA.issues.slice(),
+        animalB: profileB.issues.slice()
+      }
+    };
+  }
+
   function legacyAncestorIds(options = {}) {
     return { ...buildGraph(options).ancestorIds };
   }
@@ -311,6 +472,8 @@
     slotKey,
     relationLabel,
     buildGraph,
+    lineageProfile,
+    sharedAncestorAnalysis,
     legacyAncestorIds
   });
 });

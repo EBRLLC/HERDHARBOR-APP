@@ -1,7 +1,9 @@
 (() => {
   "use strict";
   const Core = window.HerdHarborBreedingIntelligenceCore;
+  const Pedigree = window.HerdHarborPedigreeEngine;
   if (!Core) { console.error("HerdHarbor Breeding Intelligence could not start: core module missing."); return; }
+  if (!Pedigree?.sharedAncestorAnalysis) { console.error("HerdHarbor Breeding Intelligence could not start: canonical pedigree analysis missing."); return; }
   const STORAGE_KEY = "herdharbor_pre_alpha_v1", RELEASE_VERSION = "1.6.1", ROOT_KEY = "breedingIntelligence";
   let lastAnalysis = null, lastPair = null, modal = null, observer = null;
 
@@ -76,7 +78,7 @@
     const host = document.querySelector("#view-breeding"); if (!host) return;
     let card = host.querySelector("#hh-breeding-intelligence"); if (!card) { card = document.createElement("section"); card.id = "hh-breeding-intelligence"; card.className = "hh-bi-card"; host.prepend(card); }
     const state = readState(), rabbits = rabbitAnimals(state), bucks = rabbits.filter((a) => sexIs(a,"male")), does = rabbits.filter((a) => sexIs(a,"female")), profiles = rabbits.filter((a) => a.genetics).length, predictions = state[ROOT_KEY]?.predictions?.length || 0;
-    card.innerHTML = `<div class="hh-bi-heading"><div><span class="hh-bi-kicker">Breeding Genetics</span><h2>Breeding Intelligence</h2><p>Plan rabbit pairings with pedigree evidence, recorded genetics, previous offspring and honest uncertainty handling.</p></div><span class="hh-bi-badge">Rabbit genetics</span></div><div class="hh-bi-metrics"><div><strong>${rabbits.length}</strong><span>Rabbits</span></div><div><strong>${profiles}</strong><span>Genetic profiles</span></div><div><strong>${predictions}</strong><span>Saved analyses</span></div></div><div class="hh-bi-actions"><button type="button" class="primary" data-bi-action="pair">Analyze pairing</button><button type="button" data-bi-action="profile">Rabbit genetic profile</button><button type="button" data-bi-action="learn">Learn from recorded offspring</button><button type="button" data-bi-action="history">Prediction history</button></div>${(!bucks.length || !does.length) ? '<p class="hh-bi-note">Add at least one male and one female rabbit to run Pair Analysis.</p>' : ''}<p class="hh-bi-footnote">Predictions use the supported A/B/C/D/E model. Additional modifier genes, breed-specific expression and incomplete records can change visible color.</p>`;
+    card.innerHTML = `<div class="hh-bi-heading"><div><span class="hh-bi-kicker">Breeding Genetics</span><h2>Breeding Intelligence</h2><p>Plan rabbit pairings with pedigree evidence, recorded genetics, previous offspring and honest uncertainty handling.</p></div><span class="hh-bi-badge">Rabbit genetics</span></div><div class="hh-bi-metrics"><div><strong>${rabbits.length}</strong><span>Rabbits</span></div><div><strong>${profiles}</strong><span>Genetic profiles</span></div><div><strong>${predictions}</strong><span>Saved analyses</span></div></div><div class="hh-bi-actions"><button type="button" class="primary" data-bi-action="pair">Analyze Pairing</button><button type="button" data-bi-action="compare">Compare With Another Animal</button><button type="button" data-bi-action="profile">Rabbit genetic profile</button><button type="button" data-bi-action="learn">Learn from recorded offspring</button><button type="button" data-bi-action="history">Prediction history</button></div>${(!bucks.length || !does.length) ? '<p class="hh-bi-note">Add at least one male and one female rabbit to run Pair Analysis.</p>' : ''}<p class="hh-bi-footnote">Predictions use the supported A/B/C/D/E model. Additional modifier genes, breed-specific expression and incomplete records can change visible color.</p>`;
   }
 
   function openModal(title, bodyHtml) {
@@ -106,6 +108,70 @@
   }
 
   function resultRows(analysis) { if (analysis.exact) return analysis.exactOutcomes.map((o) => `<div class="hh-bi-result-row"><div><strong>${esc(o.name)}</strong><span>${esc(o.family)} · ${esc(o.scope)}</span></div><b>${(o.probability*100).toFixed((o.probability*100)%1?1:0)}%</b></div>`).join(""); return analysis.possibleOutcomes.map((o) => `<div class="hh-bi-result-row"><div><strong>${esc(o.name)}</strong><span>${esc(o.family)} · ${esc(o.scope)}</span></div><b>Possible</b></div>`).join(""); }
+  function percentage(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? `${(number * 100).toFixed(1).replace(/\.0$/, "")}%` : "—";
+  }
+
+  function relationshipAnalysis(animalA, animalB, state, generations = 4) {
+    return Pedigree.sharedAncestorAnalysis({
+      animals: state.animals || [],
+      animalA,
+      animalB,
+      generations
+    });
+  }
+
+  function relationshipSummaryHtml(analysis, labelA = "Animal A", labelB = "Animal B") {
+    if (!analysis) return '<p class="hh-bi-note">Pedigree analysis is unavailable.</p>';
+    const shared = analysis.sharedAncestors.length
+      ? `<ul>${analysis.sharedAncestors.map((row) => {
+          const closest = row.closestPathPairs[0];
+          const pathText = closest
+            ? `${closest.animalA.relation} (${closest.animalA.depth}) ↔ ${closest.animalB.relation} (${closest.animalB.depth})`
+            : "Recorded on both pedigrees";
+          const repeats = row.animalARepeated || row.animalBRepeated
+            ? ` · repeated occurrence${row.pathPairCount === 1 ? "" : "s"}: ${row.pathPairCount} path pair${row.pathPairCount === 1 ? "" : "s"}`
+            : "";
+          return `<li><strong>${esc(row.name || "Shared ancestor")}</strong> — ${esc(pathText)}${esc(repeats)}</li>`;
+        }).join("")}</ul>`
+      : `<p>No shared ancestors are recorded within ${analysis.maxAncestorDepth} analyzed ancestor generation${analysis.maxAncestorDepth === 1 ? "" : "s"}.</p>`;
+
+    return `<div class="hh-bi-pedigree-summary">
+      <div class="hh-bi-two-col">
+        <div><h4>${esc(labelA)}</h4><p>${percentage(analysis.completeness.animalA.coverage)} pedigree coverage · ${analysis.completeness.animalA.knownAncestorSlots}/${analysis.completeness.animalA.expectedAncestorSlots} recorded slots</p></div>
+        <div><h4>${esc(labelB)}</h4><p>${percentage(analysis.completeness.animalB.coverage)} pedigree coverage · ${analysis.completeness.animalB.knownAncestorSlots}/${analysis.completeness.animalB.expectedAncestorSlots} recorded slots</p></div>
+      </div>
+      <p class="hh-bi-note">Analyzed through ${analysis.maxAncestorDepth} ancestor generation${analysis.maxAncestorDepth === 1 ? "" : "s"}. Shared ancestors are matched by canonical animal identity and every recorded occurrence/path is preserved.</p>
+      <h4>Shared ancestors (${analysis.sharedAncestorCount})</h4>
+      ${shared}
+    </div>`;
+  }
+
+  function renderRelationshipComparison(firstId = "", secondId = "") {
+    const state = readState();
+    const animals = (state.animals || []).filter((animal) => animal?.id);
+    const first = animals.find((animal) => String(animal.id) === String(firstId)) || animals[0] || null;
+    const second = animals.find((animal) => String(animal.id) === String(secondId)) || null;
+    const analysis = first && second ? relationshipAnalysis(first, second, state, 4) : null;
+    const results = analysis
+      ? relationshipSummaryHtml(analysis, first.name || "Animal A", second.name || "Animal B")
+      : '<div class="hh-bi-empty">Choose two animals to compare recorded ancestry.</div>';
+
+    openModal("Compare Pedigrees", `<div class="hh-bi-pair-selectors">
+      <label>Animal<select id="bi-compare-a">${selectOptions(animals, first?.id)}</select></label>
+      <label>Compare with<select id="bi-compare-b">${selectOptions(animals, second?.id)}</select></label>
+      <button type="button" class="primary" id="bi-run-pedigree-compare">Compare With Another Animal</button>
+    </div>${results}`);
+
+    modal.querySelector("#bi-run-pedigree-compare")?.addEventListener("click", () => {
+      renderRelationshipComparison(
+        modal.querySelector("#bi-compare-a")?.value || "",
+        modal.querySelector("#bi-compare-b")?.value || ""
+      );
+    });
+  }
+
   function modifierRows(analysis){return Object.entries(analysis.modifierCrosses||{}).map(([locus,cross])=>`<details class="hh-bi-trait-result"><summary><strong>${esc(locus)} · ${esc(cross.name)}</strong><span>${cross.exact?"Calculated":"Unknown alleles"}</span></summary>${cross.exact?cross.outcomes.map(row=>`<div class="hh-bi-result-row"><div><strong>${esc(row.expression.label)}</strong><span>${esc(row.alleles.join("/"))}</span></div><b>${(row.probability*100).toFixed((row.probability*100)%1?1:0)}%</b></div>`).join(""):'<p class="hh-bi-note">Add both parental genotypes to calculate percentages. Unknown alleles were not guessed.</p>'}</details>`).join("");}
   function renderPairModal(buckId, doeId) {
     lastAnalysis=null; lastPair=null;
@@ -113,7 +179,7 @@
     let analysisHtml='<div class="hh-bi-empty">Choose a buck and doe, then run Pair Analysis.</div>';
     if (buck && doe && buckId && doeId) {
       lastAnalysis=Core.analyzePairing(buck,doe,state); lastPair={buckId:buck.id,doeId:doe.id};
-      const shared=lastAnalysis.sharedAncestors.length?`<ul>${lastAnalysis.sharedAncestors.map((a)=>`<li>${esc(a.name)} — generation ${a.parent1Depth} from ${esc(buck.name||"buck")} / generation ${a.parent2Depth} from ${esc(doe.name||"doe")}</li>`).join("")}</ul>`:"<p>No shared ancestors found within three recorded generations.</p>", previous=lastAnalysis.previousOffspring.length?lastAnalysis.previousOffspring.map((r)=>`${esc(r.color)} × ${r.count}`).join(" · "):"No recorded offspring colors for this pairing yet.";
+      const pedigreeAnalysis=relationshipAnalysis(buck,doe,state,4), shared=relationshipSummaryHtml(pedigreeAnalysis,buck.name||"Buck",doe.name||"Doe"), previous=lastAnalysis.previousOffspring.length?lastAnalysis.previousOffspring.map((r)=>`${esc(r.color)} × ${r.count}`).join(" · "):"No recorded offspring colors for this pairing yet.";
       const health=(lastAnalysis.healthNotices||[]).length?`<div class="hh-bi-warning"><h3>Breeding health notices</h3><ul>${lastAnalysis.healthNotices.map(n=>`<li><strong>${esc(n.locus)} · ${n.probability==null?"Possible":`${(n.probability*100).toFixed(0)}%`}</strong> — ${esc(n.message)}</li>`).join("")}</ul><p>Informational only; consult a rabbit-savvy veterinarian for health decisions.</p></div>`:"";
       analysisHtml=`<div class="hh-bi-analysis-header"><div><span class="hh-bi-kicker">Possible offspring colors</span><h3>${lastAnalysis.exact?"Exact core-locus probabilities":"Possible outcomes with current evidence"}</h3></div><span class="hh-bi-confidence ${lastAnalysis.exact?"exact":"conditional"}">${lastAnalysis.exact?"Complete A/B/C/D/E":`${lastAnalysis.incompleteLoci.length} unknown locus entries`}</span></div><div class="hh-bi-results">${resultRows(lastAnalysis)||'<p>No supported core-color outcome could be resolved from the current records.</p>'}</div>${lastAnalysis.modifierCrosses?`<div class="hh-bi-evidence-panel"><h3>Pattern, coat & conformation traits</h3><p class="hh-bi-note">Each tracked locus is calculated independently. Registry recognition is not implied.</p>${modifierRows(lastAnalysis)}</div>`:""}${health}<div class="hh-bi-explain"><h3>Why these results?</h3><p>${esc(lastAnalysis.explanation)}</p><p>${esc(lastAnalysis.disclaimer)}</p></div><div class="hh-bi-two-col"><div><h3>Pedigree comparison</h3>${shared}</div><div><h3>Previous offspring</h3><p>${previous}</p></div></div><div class="hh-bi-two-col"><div><h3>${esc(buck.name||"Buck")} performance</h3><p>${esc(performanceSummary(state,buck))}</p></div><div><h3>${esc(doe.name||"Doe")} performance</h3><p>${esc(performanceSummary(state,doe))}</p></div></div><div class="hh-bi-modal-actions"><button type="button" class="primary" id="bi-save-analysis">Save Prediction Snapshot</button></div><p class="hh-bi-save-confirmation" id="bi-save-confirmation" role="status" aria-live="polite" hidden></p>`;
     }
@@ -211,7 +277,7 @@
   }
 
   function renderHistory(){const state=readState(),predictions=(state[ROOT_KEY]?.predictions||[]).slice().reverse();const rows=predictions.length?predictions.map((snapshot)=>{const parents=snapshotParents(snapshot),outcomes=savedColorOutcomes(snapshot.analysis||{}).slice(0,8).map((outcome)=>`${outcome.name||"Outcome"} ${probabilityText(outcome)}`).join(" · ");return `<article class="hh-bi-history-item"><strong>${esc(parents.buckName)} × ${esc(parents.doeName)}</strong><span>${esc(new Date(snapshot.createdAt).toLocaleString())}</span><p>${esc(outcomes||"No supported outcome recorded")}</p><small>Snapshot preserved with its original calculation context; later evidence does not rewrite this result.</small><button type="button" class="primary" data-bi-open-snapshot="${esc(snapshot.id)}">Open saved prediction</button></article>`;}).join(""):'<p>No prediction snapshots have been saved yet.</p>';openModal("Prediction History",`<div class="hh-bi-history">${rows}</div>`);}
-  function handleAction(action){if(action==="pair")return renderPairModal("","");if(action==="profile")return renderProfileModal("");if(action==="learn")return learnFromOffspring();if(action==="history")return renderHistory();}
+  function handleAction(action){if(action==="pair")return renderPairModal("","");if(action==="compare")return renderRelationshipComparison("","");if(action==="profile")return renderProfileModal("");if(action==="learn")return learnFromOffspring();if(action==="history")return renderHistory();}
   function installEvents(){document.addEventListener("click",(event)=>{const action=event.target.closest("[data-bi-action]")?.dataset.biAction;if(action)handleAction(action);const snapshotId=event.target.closest("[data-bi-open-snapshot]")?.dataset.biOpenSnapshot;if(snapshotId)renderSavedSnapshot(snapshotId);if(event.target.closest("[data-bi-history-back]"))renderHistory();if(event.target.closest("[data-bi-close]")||event.target===modal)closeModal();});document.addEventListener("keydown",(event)=>{if(event.key==="Escape"&&modal)closeModal();});}
   function monitorBreedingView(){
     if(observer)return;
@@ -226,6 +292,6 @@
     observer=new MutationObserver(()=>{if(!document.querySelector("#hh-breeding-intelligence"))renderCard();updateVisibleVersion();});
     observer.observe(target,{childList:true,subtree:true});
   }
-  function boot(){installStorageProtection();ensureStylesheet();installEvents();renderCard();updateVisibleVersion();monitorBreedingView();window.HerdHarborBreedingIntelligence=Object.freeze({version:RELEASE_VERSION,analyzePairing:Core.analyzePairing,readState,savePredictionSnapshot,openPairAnalysis:()=>renderPairModal("",""),openGeneticProfile:(animalId)=>renderProfileModal(animalId||""),openPredictionHistory:renderHistory,openSavedPrediction:renderSavedSnapshot,refresh:renderCard});}
+  function boot(){installStorageProtection();ensureStylesheet();installEvents();renderCard();updateVisibleVersion();monitorBreedingView();window.HerdHarborBreedingIntelligence=Object.freeze({version:RELEASE_VERSION,analyzePairing:Core.analyzePairing,analyzeRelationship:(animalA,animalB,state,generations=4)=>relationshipAnalysis(animalA,animalB,state||readState(),generations),readState,savePredictionSnapshot,openPairAnalysis:()=>renderPairModal("",""),openRelationshipComparison:(animalId="")=>renderRelationshipComparison(animalId,""),openGeneticProfile:(animalId)=>renderProfileModal(animalId||""),openPredictionHistory:renderHistory,openSavedPrediction:renderSavedSnapshot,refresh:renderCard});}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
 })();
