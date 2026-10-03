@@ -183,6 +183,17 @@
     return normalized.templates.find((item) => item.id === id) || null;
   }
 
+  function resolveDocumentContext(store, documentType, profile = {}, fallbackConfig = {}) {
+    const normalized = normalizeStore(store);
+    const template = defaultTemplate(normalized, documentType);
+    return {
+      documentType: DOCUMENT_TYPES.includes(documentType) ? documentType : "pedigree",
+      template,
+      config: safeConfig(template?.config || fallbackConfig),
+      branding: resolveBranding(normalized, profile)
+    };
+  }
+
   function readCanonicalStore() {
     const state = root?.HerdHarborApp?.getState?.();
     return normalizeStore(state?.settings?.pedigreeDocuments);
@@ -385,6 +396,7 @@
     updateBranding,
     resolveBranding,
     defaultTemplate,
+    resolveDocumentContext,
     readCanonicalStore,
     persistCanonicalStore,
     currentCustomization,
