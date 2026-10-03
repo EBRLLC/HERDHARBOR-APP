@@ -90,7 +90,8 @@
     return String(element?.innerText || element?.textContent || "").replace(/\s+/g, " ").trim();
   }
 
-  function looksLikePedigreeCard(element) {\n    if (element?.matches?.("[data-hh-pedigree-card]")) return false;
+  function looksLikePedigreeCard(element) {
+    if (element?.matches?.("[data-hh-pedigree-card]")) return false;
     const text = cardText(element);
     if (!/\bCOLOR\s*:/i.test(text) || !/\bBREEDER\s*:/i.test(text)) return false;
     if (!/(?:♀|♂|\bDOE\b|\bBUCK\b|\bFEMALE\b|\bMALE\b)/i.test(text)) return false;
