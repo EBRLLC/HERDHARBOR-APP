@@ -137,3 +137,15 @@ test("Admin UI stays outside required startup shell and loads only through the a
   assert.match(appRuntime, /renderLazyRoute\([\s\S]*"admin"[\s\S]*ensureAdminRuntimeLoaded/);
   assert.match(appRuntime, /if \(route === "admin" && window\.HerdHarborMembership\?\.canAccessAdmin\?\.\(\) !== true\)/);
 });
+
+
+test("Analytics CSS and runtime load together only on the Analytics route", () => {
+  const required = worker.slice(worker.indexOf("const REQUIRED_SHELL"), worker.indexOf("const RUNTIME_CACHE_PATHS"));
+  const runtime = worker.slice(worker.indexOf("const RUNTIME_CACHE_PATHS"), worker.indexOf("const NETWORK_FIRST_PATHS"));
+  assert.doesNotMatch(html, /<link[^>]+analytics-v1\.6\.1\.css/);
+  assert.doesNotMatch(html, /<script[^>]+analytics-v1\.6\.1\.js/);
+  assert.match(appRuntime, /async function ensureAnalyticsRuntime\(\)[\s\S]*loadStyleOnce\("analytics-v1\.6\.1\.css\?v=2"\)[\s\S]*loadScriptOnce\([\s\S]*"analytics-v1\.6\.1\.js\?v=2"/);
+  assert.equal(required.includes("analytics-v1.6.1.css"), false);
+  assert.equal(runtime.includes("./analytics-v1.6.1.css?v=2"), true);
+  assert.equal(runtime.includes("./analytics-v1.6.1.js?v=2"), true);
+});
