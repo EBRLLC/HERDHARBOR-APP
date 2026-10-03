@@ -30,7 +30,7 @@ test("legacy cloud sync migrates the large merge baseline away from localStorage
 
   assert.match(cloud, /HerdHarborLegacyCloudBaseline\?\.createIndexedDbStore/);
   assert.match(cloud, /async function readCloudBaseline\(userId\)/);
-  assert.match(cloud, /async function writeCloudBaseline\(userId, rawValue\)/);
+  assert.match(cloud, /async function writeCloudBaseline\(userId, rawValue, options = \{\}\)/);
   assert.match(cloud, /await legacyBaselineStore\.set\(userId, rawValue\)/);
   assert.match(cloud, /safeStorageRemove\(baseKey\(userId\)\)/);
 
