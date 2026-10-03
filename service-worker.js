@@ -22,7 +22,6 @@ const REQUIRED_SHELL = [
   "./herdharbor-cloud.js?v=35",
   "./cloud-sync-rollout-runtime-v1.8.4.js?v=3",
   "./pwa.js?v=34",
-  "./market-analytics-v1.6.5.js?v=1.7.1",
   "./breeding-litter-runtime-v1.8.3.js?v=1",
   "./task-automation-v1.8.3.js?v=1",
   "./task-runtime-v1.8.3.js?v=1",
@@ -33,6 +32,7 @@ const REQUIRED_SHELL = [
 ];
 
 const RUNTIME_CACHE_PATHS = [
+  "./market-analytics-v1.6.5.js?v=1.7.1",
   "./great-pyrenees-outline-d7c57423367e.png",
   "./herdharbor-breeder-platform.css?v=1",
   "./analytics-v1.6.1.css?v=2",
