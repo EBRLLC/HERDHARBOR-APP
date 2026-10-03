@@ -360,15 +360,15 @@ test("stable release bootstrap keeps legacy billing isolated and cannot execute 
   const pwa = read("pwa.js");
 
   assert.match(release, /version: window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"/);
-  assert.match(release, /buildId: window\.HerdHarborBuild\?\.buildId \|\| "v2\.0\.0-release-1"/);
+  assert.match(release, /buildId: window\.HerdHarborBuild\?\.buildId \|\| "v2\.0\.0-release-2"/);
   assert.match(release, /billingEnabled: false/);
   assert.match(read("subscription-engine-v1.8.0.js"), /Legacy billing isolation/);
   assert.match(read("subscription-launch-v1.8.1.js"), /window\.HerdHarborMembership = wrapped/);
 
   assert.match(html, /<script id="hh-v151-release-script" src="herdharbor-release-v1\.6\.1\.js\?v=2"><\/script>/);
   assert.match(pwa, /addScript\("hh-v151-release-script", "herdharbor-release-v1\.6\.1\.js\?v=2"\)/);
-  assert.match(html, /pwa\.js\?v=34/);
-  assert.match(worker, /\.\/pwa\.js\?v=34/);
+  assert.match(html, /pwa\.js\?v=35/);
+  assert.match(worker, /\.\/pwa\.js\?v=35/);
 });
 
 
