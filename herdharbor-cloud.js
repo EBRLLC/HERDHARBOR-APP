@@ -3362,7 +3362,8 @@
         ? storedActiveRaw
         : null;
     const cachedRaw = originalGetItem.call(localStorage, cacheKey(userId));
-    if (activeRaw && safeParse(activeRaw)) removeRedundantStateCache(userId);
+    const activeStateIsValid = Boolean(activeRaw && safeParse(activeRaw));
+    if (activeStateIsValid) removeRedundantStateCache(userId);
     const dirty = originalGetItem.call(localStorage, dirtyKey(userId)) === "1";
     let rolloutDecision = null;
 
@@ -3375,7 +3376,7 @@
       originalGetItem.call(localStorage, versionKey(userId)) || "";
     const canUseVersionOnlyPrefetch =
       !dirty &&
-      Boolean(activeRaw && safeParse(activeRaw)) &&
+      activeStateIsValid &&
       Boolean(knownCloudVersion);
     const baselineRestorePromise = restoreMissingCloudBaseline(userId, "hydrate");
     const legacyCloudPrefetchMode = canUseVersionOnlyPrefetch ? "version" : "record";

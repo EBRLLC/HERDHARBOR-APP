@@ -55,3 +55,14 @@ test("routine snapshot throttle runs before full JSON validation",()=>{
   assert.ok(throttleAt>=0);
   assert.ok(parseAt>throttleAt,"throttled routine backups should return before parsing the entire state");
 });
+
+
+test("sign-in hydration validates the active local snapshot only once before cloud prefetch",()=>{
+  const start=cloud.indexOf("async function hydrateUserDataOnce");
+  const end=cloud.indexOf("async function hydrateUserData(",start);
+  const block=cloud.slice(start,end);
+  assert.match(block,/const activeStateIsValid = Boolean\(activeRaw && safeParse\(activeRaw\)\)/);
+  assert.match(block,/if \(activeStateIsValid\) removeRedundantStateCache\(userId\)/);
+  assert.match(block,/!dirty &&\s*activeStateIsValid &&\s*Boolean\(knownCloudVersion\)/);
+  assert.equal((block.match(/safeParse\(activeRaw\)/g)||[]).length,1);
+});
