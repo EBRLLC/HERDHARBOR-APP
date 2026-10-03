@@ -105,3 +105,18 @@ test("PWA artwork is runtime-cached instead of blocking application shell instal
     assert.equal(runtime.includes("./" + icon), true, icon + " remains cacheable when requested");
   }
 });
+
+
+test("Admin UI is lazy for ordinary members while navigation authorization stays in core runtime", () => {
+  const index = read("index.html");
+  const app = read("herdharbor-app-runtime.js");
+  const sw = read("service-worker.js");
+  const required = sw.slice(sw.indexOf("const REQUIRED_SHELL"), sw.indexOf("const RUNTIME_CACHE_PATHS"));
+  const runtime = sw.slice(sw.indexOf("const RUNTIME_CACHE_PATHS"), sw.indexOf("const NETWORK_FIRST_PATHS"));
+  assert.doesNotMatch(index, /<script[^>]+herdharbor-admin-v1\.6\.1\.js/);
+  assert.match(app, /function syncAdminNavigation\(\)/);
+  assert.match(app, /HerdHarborMembership\?\.canAccessAdmin\?\.\(\) === true/);
+  assert.match(app, /"herdharbor-admin-v1\.6\.1\.js\?v=2"/);
+  assert.equal(required.includes("herdharbor-admin-v1.6.1.js"), false);
+  assert.equal(runtime.includes("./herdharbor-admin-v1.6.1.js?v=2"), true);
+});
