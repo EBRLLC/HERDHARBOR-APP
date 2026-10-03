@@ -10,6 +10,15 @@ const Renderer = require("../pedigree-renderer-v2.0.0.js");
 const root = path.resolve(__dirname, "..");
 const css = fs.readFileSync(path.join(root, "pedigree-renderer-v2.0.0.css"), "utf8");
 
+function cardFor(html, key) {
+  const keyIndex = html.indexOf(`data-pedigree-key="${key}"`);
+  assert.ok(keyIndex >= 0, `missing pedigree card ${key}`);
+  const start = html.lastIndexOf("<article", keyIndex);
+  const end = html.indexOf("</article>", keyIndex);
+  assert.ok(start >= 0 && end > keyIndex, `incomplete pedigree card ${key}`);
+  return html.slice(start, end + "</article>".length);
+}
+
 function graph() {
   return Engine.buildGraph({
     animals: [
@@ -56,8 +65,8 @@ test("private herd renderer consumes the canonical graph and emits one reusable 
 
 test("collapsed ancestor cards keep details hidden while subject starts expanded", () => {
   const html = Renderer.render({ graph: graph(), mode: "private-herd" });
-  const subject = html.match(/<article class="[^"]*is-subject[^"]*"[^>]*data-pedigree-key="subject"[\\s\\S]*?<\\/article>/)?.[0] || "";
-  const sire = html.match(/<article class="[^"]*"[^>]*data-pedigree-key="sire"[\\s\\S]*?<\\/article>/)?.[0] || "";
+  const subject = cardFor(html, "subject");
+  const sire = cardFor(html, "sire");
   assert.match(subject, /is-expanded/);
   assert.doesNotMatch(subject, /hh-pedigree-card-details" hidden/);
   assert.match(sire, /aria-expanded="false"/);
