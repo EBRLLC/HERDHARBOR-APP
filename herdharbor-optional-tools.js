@@ -9,6 +9,7 @@
     paperPedigreeCore: "paper-pedigree-import-core-v1.8.2.js?v=1",
     paperPedigreeUi: "paper-pedigree-import-v1.8.2.js?v=2",
     voiceAi: "voice-assisted-entry-v1.8.3.js?v=1",
+    mobileCapture: "mobile-capture-v1.8.3.js?v=1",
     photoAi: "photo-assisted-entry-v1.8.3.js?v=2"
   });
 
@@ -161,7 +162,19 @@
         );
       })(),
       loadScript(ASSETS.voiceAi, "HerdHarbor voice-assisted entry", () => typeof window.HerdHarborVoiceAssistedEntry?.create === "function"),
-      loadScript(ASSETS.photoAi, "HerdHarbor photo-assisted entry", () => typeof window.HerdHarborPhotoAssistedEntry?.create === "function")
+      (async () => {
+        await loadScript(
+          ASSETS.mobileCapture,
+          "HerdHarbor mobile capture support",
+          () => typeof window.HerdHarborMobileCapture?.prepareImage === "function" &&
+            typeof window.HerdHarborMobileCapture?.createRetryController === "function"
+        );
+        await loadScript(
+          ASSETS.photoAi,
+          "HerdHarbor photo-assisted entry",
+          () => typeof window.HerdHarborPhotoAssistedEntry?.create === "function"
+        );
+      })()
     ]);
     return Object.freeze({
       paperPedigree: window.HerdHarborPaperPedigreeImport,
