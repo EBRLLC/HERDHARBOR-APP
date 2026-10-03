@@ -9,7 +9,7 @@
   const PREF_KEY='herdharbor_pedigree_genetics_v1';
   const STATE_KEY='herdharbor_pre_alpha_v1';
   const LOCI=['A','B','C','D','E','En','V'];
-  const DEFAULTS=Object.freeze({mode:'full',printGenetics:true});
+  const DEFAULTS=Object.freeze({mode:'full',printGenetics:false});
   const KNOWN_SOURCES=new Set(['dna','genetic-test','user','breeder','phenotype','offspring']);
   let pending=false,observer=null;
 
@@ -23,7 +23,7 @@
   function loadPreferences(storage){
     try{
       const saved=JSON.parse((storage||globalThis.localStorage)?.getItem(PREF_KEY)||'{}');
-      return{mode:['off','known','full'].includes(saved.mode)?saved.mode:DEFAULTS.mode,printGenetics:saved.printGenetics!==false};
+      return{mode:['off','known','full'].includes(saved.mode)?saved.mode:DEFAULTS.mode,printGenetics:saved.printGenetics===true};
     }catch{return{...DEFAULTS};}
   }
   function savePreferences(storage,next){(storage||globalThis.localStorage)?.setItem(PREF_KEY,JSON.stringify(next));}
@@ -175,7 +175,7 @@
     const state=readState(rootWindow.localStorage),existing=doc.getElementById('hh-pedigree-genetics-settings');
     if(!(state.animals||[]).some(isRabbit)){existing?.remove();return;}if(existing)return;
     const host=doc.querySelector('#hh-pedigree-settings')||settings.querySelector('.settings-grid')||settings,prefs=loadPreferences(rootWindow.localStorage),wrap=doc.createElement('div');
-    wrap.id='hh-pedigree-genetics-settings';wrap.className='hh-pedigree-genetics-settings';wrap.innerHTML=`<div class="hh-setting-row"><label for="hh-pedigree-genetics-mode">Show Genetics on Pedigree</label><select id="hh-pedigree-genetics-mode"><option value="off" ${prefs.mode==='off'?'selected':''}>Off</option><option value="known" ${prefs.mode==='known'?'selected':''}>Known Only</option><option value="full" ${prefs.mode==='full'?'selected':''}>Full Inferred</option></select><p class="hh-setting-help">Rabbit pedigrees use the same genetics engine and evidence model as Pair Analysis. Full Inferred shows unresolved alleles with underscores.</p></div><div class="hh-setting-row"><label class="hh-setting-check"><input type="checkbox" id="hh-pedigree-print-genetics" ${prefs.printGenetics?'checked':''}><span>Include Genetics on Printed Pedigree</span></label><p class="hh-setting-help">On by default for rabbits and respects the genetics display mode above.</p></div>`;
+    wrap.id='hh-pedigree-genetics-settings';wrap.className='hh-pedigree-genetics-settings';wrap.innerHTML=`<div class="hh-setting-row"><label for="hh-pedigree-genetics-mode">Show Genetics on Pedigree</label><select id="hh-pedigree-genetics-mode"><option value="off" ${prefs.mode==='off'?'selected':''}>Off</option><option value="known" ${prefs.mode==='known'?'selected':''}>Known Only</option><option value="full" ${prefs.mode==='full'?'selected':''}>Full Inferred</option></select><p class="hh-setting-help">Rabbit pedigrees use the same genetics engine and evidence model as Pair Analysis. Full Inferred shows unresolved alleles with underscores.</p></div><div class="hh-setting-row"><label class="hh-setting-check"><input type="checkbox" id="hh-pedigree-print-genetics" ${prefs.printGenetics?'checked':''}><span>Include Genetics on Printed Pedigree</span></label><p class="hh-setting-help">Off by default on printed pedigrees. Enable it here when you want genetics included.</p></div>`;
     host.appendChild(wrap);
     const save=()=>{savePreferences(rootWindow.localStorage,{mode:wrap.querySelector('#hh-pedigree-genetics-mode').value,printGenetics:wrap.querySelector('#hh-pedigree-print-genetics').checked});schedule(rootWindow);};
     wrap.querySelectorAll('input,select').forEach(c=>c.addEventListener('change',save));
