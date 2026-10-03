@@ -144,3 +144,23 @@ test("default Great Pyrenees artwork is lazy and runtime-cached instead of block
   assert.equal(required.includes("./" + asset), false, "conditional Dog artwork does not block shell install");
   assert.equal(runtime.includes("./" + asset), true, "Dog artwork remains cacheable after first use");
 });
+
+
+test("Market Analytics stays off global startup but remains available for opted-in workflows", () => {
+  const index = read("index.html");
+  const app = read("herdharbor-app-runtime.js");
+  const sw = read("service-worker.js");
+  const required = sw.slice(sw.indexOf("const REQUIRED_SHELL"), sw.indexOf("const RUNTIME_CACHE_PATHS"));
+  const runtime = sw.slice(sw.indexOf("const RUNTIME_CACHE_PATHS"), sw.indexOf("const NETWORK_FIRST_PATHS"));
+
+  assert.doesNotMatch(index, /<script[^>]+market-analytics-v1\.6\.5\.js/);
+  assert.match(app, /function ensureMarketAnalyticsRuntime\(\)[\s\S]*market-analytics-v1\.6\.5\.js\?v=1\.7\.1/);
+  assert.match(app, /async function ensureAnalyticsRuntime\(\)[\s\S]*ensureMarketAnalyticsRuntime\(\)/);
+  assert.match(app, /async function ensureSettingsRuntimeLoaded\(\)[\s\S]*ensureMarketAnalyticsRuntime\(\)/);
+  assert.match(app, /sales:\s*\(\) => \{[\s\S]*marketAnalyticsNeeded\(\)[\s\S]*ensureMarketAnalyticsRuntime/);
+  assert.match(app, /function warmMarketAnalyticsIfNeeded\(\)[\s\S]*requestIdleCallback\(run, \{ timeout: 1500 \}\)/);
+  assert.match(app, /state\.settings\?\.marketAnalyticsConsent\?\.enabled === true/);
+  assert.match(app, /key\?\.startsWith\("herdharbor_market_queue_v1"\)/);
+  assert.equal(required.includes("market-analytics-v1.6.5.js"), false);
+  assert.equal(runtime.includes("./market-analytics-v1.6.5.js?v=1.7.1"), true);
+});
