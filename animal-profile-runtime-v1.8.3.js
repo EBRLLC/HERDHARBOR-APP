@@ -22,7 +22,7 @@
       "textareaField", "speciesIcon", "breedOptionsFor", "prepareProfileImage", "toast",
       "allowsAnimalTransition", "uid", "rememberBreed", "recordActivity", "saveState",
       "renderCurrentView", "completeWorkflowTasks", "formatDate", "formatMoney",
-      "detailField", "navigate", "openPrintPedigreeForm", "ensureQrToolsReady"
+      "detailField", "navigate", "openPrintPedigreeForm", "ensureQrToolsReady", "getPedigreeCustomization"
     ];
     for (const name of required) {
       if (typeof deps[name] !== "function") throw new Error(`Animal/Profile runtime requires ${name}().`);
@@ -396,9 +396,7 @@
       if (!engine?.buildGraph || !renderer?.render) {
         return '<p class="muted">Pedigree preview is unavailable until the pedigree tools finish loading.</p>';
       }
-      const config = customization?.loadPreferences
-        ? customization.loadPreferences(root.localStorage)
-        : { generations: 3 };
+      const config = deps.getPedigreeCustomization() || { generations: 3 };
       const graph = engine.buildGraph({
         animals: state.animals || [],
         subject,
