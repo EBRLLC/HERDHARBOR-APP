@@ -6,5 +6,13 @@
     "summary": "How line breeding works, what it can accomplish, where the risks come from, and what records a breeder should keep before making related pairings.",
     "url": "/resources/line-breeding-rabbits.html",
     "published": "2026-10-02"
+  },
+  {
+    "slug": "rabbit-genetics",
+    "title": "Rabbit Genetics: From Genes to Breeding Decisions",
+    "category": "Rabbit Breeding",
+    "summary": "A ground-up guide to genes, alleles, dominant and recessive inheritance, Punnett squares, coat-color loci, hidden carriers, epistasis, pedigrees, polygenic traits, and practical breeding decisions.",
+    "url": "/resources/rabbit-genetics.html",
+    "published": "2026-10-02"
   }
 ]
