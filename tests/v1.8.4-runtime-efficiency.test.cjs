@@ -131,13 +131,16 @@ test("Admin UI is lazy for ordinary members while navigation authorization stays
 });
 
 
-test("default Great Pyrenees artwork is an external content-addressed asset, not base64 in core JS", () => {
+test("default Great Pyrenees artwork is lazy and runtime-cached instead of blocking shell install", () => {
   const app = read("herdharbor-app-runtime.js");
   const sw = read("service-worker.js");
   assert.doesNotMatch(app, /data:image\/png;base64/);
   const asset = app.match(/great-pyrenees-outline-[a-f0-9]{12}\.png/)?.[0];
   assert.ok(asset, "core runtime references the fingerprinted Great Pyrenees asset");
   assert.ok(fs.existsSync(path.join(root, asset)), "Great Pyrenees asset exists");
+  assert.match(app, /species-outline-dog[^>]+loading="lazy"[^>]+decoding="async"/);
   const required = sw.slice(sw.indexOf("const REQUIRED_SHELL"), sw.indexOf("const RUNTIME_CACHE_PATHS"));
-  assert.ok(required.includes("./" + asset), "default Dog visual remains available offline");
+  const runtime = sw.slice(sw.indexOf("const RUNTIME_CACHE_PATHS"), sw.indexOf("const NETWORK_FIRST_PATHS"));
+  assert.equal(required.includes("./" + asset), false, "conditional Dog artwork does not block shell install");
+  assert.equal(runtime.includes("./" + asset), true, "Dog artwork remains cacheable after first use");
 });
