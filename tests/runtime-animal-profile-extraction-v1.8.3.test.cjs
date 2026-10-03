@@ -52,7 +52,8 @@ function stubDeps(state) {
     detailField: html,
     navigate: noop,
     openPrintPedigreeForm: noop,
-    ensureQrToolsReady: async () => true
+    ensureQrToolsReady: async () => true,
+    getPedigreeCustomization: () => ({ generations: 3 })
   };
 }
 
@@ -95,6 +96,7 @@ test("extracted runtime uses injected canonical state and creates no parallel pe
   assert.match(extractedSource, /deps\.saveState\("Animal deleted\."\)/);
   assert.doesNotMatch(extractedSource, /localStorage|sessionStorage|indexedDB|STORAGE_KEY|herdharbor_pre_alpha_v1/);
   assert.doesNotMatch(extractedSource, /commitState\(/);
+  assert.match(extractedSource, /deps\.getPedigreeCustomization\(\)/);
 });
 
 test("animal filter behavior remains search/species/sex/status compatible", () => {

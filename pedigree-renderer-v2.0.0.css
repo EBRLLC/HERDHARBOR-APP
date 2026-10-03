@@ -285,3 +285,55 @@ html[data-theme="dark"] .hh-pedigree-toggle {
     box-shadow: none;
   }
 }
+
+
+.hh-pedigree-renderer.layout-columns .hh-pedigree-generation-cards {
+  align-content: start;
+  grid-template-rows: none;
+  grid-auto-rows: minmax(68px, auto);
+}
+
+.hh-pedigree-renderer.style-minimal .hh-pedigree-card {
+  box-shadow: none;
+  border-color: transparent;
+  border-bottom-color: var(--border);
+  border-radius: 0;
+}
+
+.hh-pedigree-renderer.style-minimal .hh-pedigree-card.is-subject {
+  border-left: 0;
+  border-bottom: 2px solid var(--teal);
+}
+
+.hh-pedigree-renderer.style-professional .hh-pedigree-card {
+  border-radius: 5px;
+  box-shadow: none;
+}
+
+.hh-pedigree-renderer.style-professional .hh-pedigree-generation-label {
+  color: var(--navy);
+  letter-spacing: .1em;
+}
+
+.hh-pedigree-renderer.style-buyer .hh-pedigree-card-summary {
+  min-height: 68px;
+}
+
+.hh-pedigree-renderer.style-buyer .hh-pedigree-photo {
+  width: 50px;
+  height: 50px;
+}
+
+.hh-pedigree-renderer.style-rabbitry-branded .hh-pedigree-card.is-subject,
+.hh-pedigree-renderer.style-rabbitry-branded .hh-pedigree-card.is-expanded {
+  border-color: rgba(46,125,123,.5);
+}
+
+.hh-pedigree-renderer[data-unknown-display="blank"] .hh-pedigree-card.is-unknown .hh-pedigree-card-title strong {
+  color: var(--border-strong);
+  font-weight: 650;
+}
+
+html[data-theme="dark"] .hh-pedigree-renderer.style-professional .hh-pedigree-generation-label {
+  color: #F1F5F7;
+}

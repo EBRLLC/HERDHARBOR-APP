@@ -22,7 +22,7 @@
       "textareaField", "speciesIcon", "breedOptionsFor", "prepareProfileImage", "toast",
       "allowsAnimalTransition", "uid", "rememberBreed", "recordActivity", "saveState",
       "renderCurrentView", "completeWorkflowTasks", "formatDate", "formatMoney",
-      "detailField", "navigate", "openPrintPedigreeForm", "ensureQrToolsReady"
+      "detailField", "navigate", "openPrintPedigreeForm", "ensureQrToolsReady", "getPedigreeCustomization"
     ];
     for (const name of required) {
       if (typeof deps[name] !== "function") throw new Error(`Animal/Profile runtime requires ${name}().`);
@@ -392,20 +392,24 @@
       const state = stateNow();
       const engine = root.HerdHarborPedigreeEngine;
       const renderer = root.HerdHarborPedigreeRenderer;
+      const customization = root.HerdHarborPedigreeCustomization;
       if (!engine?.buildGraph || !renderer?.render) {
         return '<p class="muted">Pedigree preview is unavailable until the pedigree tools finish loading.</p>';
       }
+      const config = deps.getPedigreeCustomization() || { generations: 3 };
       const graph = engine.buildGraph({
         animals: state.animals || [],
         subject,
         subjectId: subject?.id,
         ancestorIds: record?.ancestorIds || {},
-        generations: 3
+        generations: config.generations || 3
       });
+      const rendererOptions = customization?.rendererOptions
+        ? customization.rendererOptions(config, deps.formatDate)
+        : { mode: "private-herd", formatDate: deps.formatDate };
       return renderer.render({
         graph,
-        mode: "private-herd",
-        formatDate: deps.formatDate
+        ...rendererOptions
       });
     }
 

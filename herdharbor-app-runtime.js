@@ -1193,7 +1193,8 @@
       detailField,
       navigate,
       openPrintPedigreeForm,
-      ensureQrToolsReady
+      ensureQrToolsReady,
+      getPedigreeCustomization: () => window.HerdHarborPedigreeCustomization?.loadPreferences?.(localStorage) || { generations: 3 }
     });
     return animalProfileRuntimeInstance;
   }

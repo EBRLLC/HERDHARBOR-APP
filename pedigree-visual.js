@@ -21,6 +21,15 @@
   function loadPreferences() {
     try {
       const saved = JSON.parse(localStorage.getItem(PREF_KEY) || "{}");
+      const customization = window.HerdHarborPedigreeCustomization;
+      if (customization?.loadPreferences) {
+        const config = customization.loadPreferences(localStorage);
+        return {
+          sexColors: saved.sexColors !== false,
+          photoMode: config.photos ? "compact" : "off",
+          printPhotos: config.photos
+        };
+      }
       return {
         sexColors: saved.sexColors !== false,
         photoMode: ["off", "compact", "visual"].includes(saved.photoMode) ? saved.photoMode : DEFAULTS.photoMode,
@@ -314,49 +323,83 @@ if (!src) return;
     const settings = doc.querySelector("#view-settings");
     if (!settings || settings.querySelector("#hh-pedigree-settings")) return;
     const host = settings.querySelector(".settings-grid") || settings;
-    const prefs = loadPreferences();
+    const customization = window.HerdHarborPedigreeCustomization;
+    const stored = (() => {
+      try { return JSON.parse(localStorage.getItem(PREF_KEY) || "{}"); } catch { return {}; }
+    })();
+
     const card = doc.createElement("article");
     card.id = "hh-pedigree-settings";
     card.className = "settings-card hh-pedigree-settings";
+
+    if (!customization?.controlsHtml || !customization?.loadPreferences || !customization?.savePreferences) {
+      const prefs = loadPreferences();
+      card.innerHTML = `
+        <h3>Pedigree appearance</h3>
+        <p>Pedigree customization is unavailable until the pedigree tools finish loading.</p>
+        <div class="hh-setting-row">
+          <label class="hh-setting-check">
+            <input type="checkbox" id="hh-pedigree-sex-colors" ${prefs.sexColors ? "checked" : ""}>
+            <span>Color-code pedigree cards by sex</span>
+          </label>
+        </div>
+      `;
+      host.appendChild(card);
+      card.querySelector("#hh-pedigree-sex-colors")?.addEventListener("change", (event) => {
+        savePreferences({ ...prefs, sexColors: event.currentTarget.checked });
+        schedule();
+      });
+      return;
+    }
+
+    let config = customization.loadPreferences(localStorage);
     card.innerHTML = `
-      <h3>Pedigree appearance</h3>
-      <p>Make pedigrees easier to identify at a glance without changing animal or ancestry records.</p>
+      <h3>Pedigree defaults</h3>
+      <p>Choose the default pedigree depth, visible fields, photos, unknown-animal display, density, layout, and style. These settings do not change animal or ancestry records.</p>
       <div class="hh-setting-row">
         <label class="hh-setting-check">
-          <input type="checkbox" id="hh-pedigree-sex-colors" ${prefs.sexColors ? "checked" : ""}>
-          <span>Color-code pedigree cards by sex</span>
+          <input type="checkbox" id="hh-pedigree-sex-colors" ${stored.sexColors !== false ? "checked" : ""}>
+          <span>Color-code legacy printed pedigree cards by sex</span>
         </label>
-        <p class="hh-setting-help">Bucks use a pale blue accent, does use a pale rose accent, and sex symbols remain visible for grayscale printing.</p>
       </div>
-      <div class="hh-setting-row">
-        <label for="hh-pedigree-photo-mode">Photos in pedigree view</label>
-        <select id="hh-pedigree-photo-mode">
-          <option value="off" ${prefs.photoMode === "off" ? "selected" : ""}>Off</option>
-          <option value="compact" ${prefs.photoMode === "compact" ? "selected" : ""}>Compact</option>
-          <option value="visual" ${prefs.photoMode === "visual" ? "selected" : ""}>Visual</option>
-        </select>
-        <p class="hh-setting-help">Uses each animal's stored primary/profile photo when one is available. Missing photos leave no blank placeholder.</p>
-      </div>
-      <div class="hh-setting-row">
-        <label class="hh-setting-check">
-          <input type="checkbox" id="hh-pedigree-print-photos" ${prefs.printPhotos ? "checked" : ""}>
-          <span>Include stored photos on printed pedigrees</span>
-        </label>
-        <p class="hh-setting-help">Print uses compact generation-sized thumbnails so COLOR and BREEDER remain readable.</p>
-      </div>
+      <div data-hh-pedigree-config-host>${customization.controlsHtml(config)}</div>
     `;
     host.appendChild(card);
 
-    const save = () => {
-      const next = {
-        sexColors: card.querySelector("#hh-pedigree-sex-colors").checked,
-        photoMode: card.querySelector("#hh-pedigree-photo-mode").value,
-        printPhotos: card.querySelector("#hh-pedigree-print-photos").checked
-      };
-      savePreferences(next);
+    const configHost = card.querySelector("[data-hh-pedigree-config-host]");
+
+    const persist = () => {
+      const savedConfig = customization.savePreferences(localStorage, config);
+      let existing = {};
+      try { existing = JSON.parse(localStorage.getItem(PREF_KEY) || "{}"); } catch {}
+      localStorage.setItem(PREF_KEY, JSON.stringify({
+        ...existing,
+        sexColors: card.querySelector("#hh-pedigree-sex-colors")?.checked !== false
+      }));
+      config = savedConfig;
+      window.dispatchEvent(new CustomEvent("herdharbor:pedigree-customization-change", {
+        detail: { config }
+      }));
       schedule();
     };
-    card.querySelectorAll("input,select").forEach((control) => control.addEventListener("change", save));
+
+    const bindControls = () => {
+      configHost.querySelectorAll("input,select").forEach((control) => {
+        control.addEventListener("change", (event) => {
+          if (event.currentTarget?.name === "template") {
+            config = customization.templateConfig(event.currentTarget.value);
+            configHost.innerHTML = customization.controlsHtml(config);
+            bindControls();
+          } else {
+            config = customization.readControls(configHost, config);
+          }
+          persist();
+        });
+      });
+    };
+
+    card.querySelector("#hh-pedigree-sex-colors")?.addEventListener("change", persist);
+    bindControls();
   }
 
   function patchPrintWindows() {
