@@ -48,3 +48,15 @@ test("seller profile expansion uses only the public seller profile API",()=>{
  assert.match(source,/getPublicSellerProfile\(row\.seller_public_id/);
  assert.doesNotMatch(source,/row\.seller_id/);
 });
+
+
+test("seller refresh expires dead listings before generating stale reminders",()=>{
+ const start=migration.indexOf("marketplace_refresh_seller_notifications()");
+ const end=migration.indexOf("revoke all on function public.marketplace_refresh_seller_notifications",start);
+ const block=migration.slice(start,end);
+ const expireAt=block.indexOf("update public.marketplace_listings l");
+ const notifyAt=block.indexOf("insert into public.marketplace_notifications");
+ assert.ok(expireAt>=0 && notifyAt>expireAt,"expiration must run before stale-reminder generation");
+ assert.match(block,/l\.expires_at is not null and l\.expires_at<=now\(\)/);
+ assert.match(block,/l\.expires_at is null or l\.expires_at>now\(\)/);
+});
