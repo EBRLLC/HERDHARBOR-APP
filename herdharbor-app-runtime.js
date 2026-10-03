@@ -1214,6 +1214,7 @@
       detailField,
       navigate,
       openPrintPedigreeForm,
+      openBirthCertificateForm,
       ensureQrToolsReady,
       getPedigreeCustomization: () => window.HerdHarborPedigreeCustomization?.loadPreferences?.(localStorage) || { generations: 3 },
       getPedigreeDocumentContext: (fallbackConfig) => window.HerdHarborPedigreeDocuments?.resolveDocumentContext?.(
@@ -3410,6 +3411,7 @@
     getCurrentRoute: () => currentRoute,
     openAnimalEditor: (animalId) => animalProfileRuntime().openEditor(animalId),
     openAnimalPedigreePrint: (animalId) => animalProfileRuntime().openPedigreePrint(animalId),
+    openAnimalBirthCertificate: (animalId) => openBirthCertificateForm(animalId),
     prepareDocumentImage: (file) => prepareProfileImage(file, { maxDimension: 900, targetBytes: 140000 }),
     openRecordBirth: (breedingId) => openRecordBirth(breedingId)
   });
