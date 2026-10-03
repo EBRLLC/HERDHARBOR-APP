@@ -60,19 +60,20 @@ function loadWorkerHarness(cacheKeys) {
 }
 
 test("2.0.0 activation retires prior HerdHarbor shells but preserves current and unrelated caches", async () => {
-  const current = "herdharbor-shell-v2.0.0-v2.0.0-release-1";
+  const current = "herdharbor-shell-v2.0.0-v2.0.0-release-2";
+  const old200 = "herdharbor-shell-v2.0.0-v2.0.0-release-1";
   const old184 = "herdharbor-shell-v1.8.4-alpha-v1.8.4-release-9";
   const old182 = "herdharbor-shell-v1.8.2-alpha-cloud-sync-v2-state-integrity-1";
   const unrelated = "other-app-cache";
 
-  const h = loadWorkerHarness([old184, old182, current, unrelated]);
+  const h = loadWorkerHarness([old200, old184, old182, current, unrelated]);
   assert.equal(typeof h.listeners.activate, "function");
 
   let activation;
   h.listeners.activate({ waitUntil(promise) { activation = promise; } });
   await activation;
 
-  assert.deepEqual(new Set(h.deleted), new Set([old184, old182]));
+  assert.deepEqual(new Set(h.deleted), new Set([old200, old184, old182]));
   assert.equal(h.deleted.includes(current), false);
   assert.equal(h.deleted.includes(unrelated), false);
   assert.equal(h.navigationPreloadEnabled, 1);
@@ -96,12 +97,12 @@ test("2.0.0 worker still waits for explicit Update Now activation", () => {
 
 test("2.0.0 shell bootstrap and required precache agree on the release query identity", () => {
   assert.match(index, /manifest\.json\?v=2\.0\.0/);
-  assert.match(index, /herdharbor-build\.js\?v=2\.0\.0/);
-  assert.match(index, /pwa\.js\?v=34/);
-  assert.match(workerSource, /herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1/);
+  assert.match(index, /herdharbor-build\.js\?v=2\.0\.0-r2/);
+  assert.match(index, /pwa\.js\?v=35/);
+  assert.match(workerSource, /herdharbor-shell-v2\.0\.0-v2\.0\.0-release-2/);
   assert.match(workerSource, /\.\/manifest\.json\?v=2\.0\.0/);
-  assert.match(workerSource, /\.\/herdharbor-build\.js\?v=2\.0\.0/);
-  assert.match(workerSource, /\.\/pwa\.js\?v=34/);
+  assert.match(workerSource, /\.\/herdharbor-build\.js\?v=2\.0\.0-r2/);
+  assert.match(workerSource, /\.\/pwa\.js\?v=35/);
   assert.match(workerSource, /\.\/herdharbor-monitoring-config\.js\?v=2\.0\.0/);
   assert.match(workerSource, /\.\/vendor\/herdharbor-monitoring-v1\.6\.1\.min\.js\?v=2\.0\.0/);
 });
