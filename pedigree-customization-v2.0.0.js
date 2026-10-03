@@ -30,6 +30,16 @@
   const STYLES = Object.freeze(["classic", "minimal", "professional", "buyer", "rabbitry-branded"]);
 
   const TEMPLATES = Object.freeze({
+    "Standard": Object.freeze({
+      generations: 4,
+      rootFields: Object.freeze(["name", "sex", "dob", "breed", "color", "registrationNumber", "prefix"]),
+      ancestorFields: Object.freeze(["name", "sex", "dob", "breed", "color", "registrationNumber", "prefix"]),
+      photos: true,
+      unknownDisplay: "label",
+      density: "comfortable",
+      layout: "balanced",
+      style: "classic"
+    }),
     "Classic": Object.freeze({
       generations: 4,
       rootFields: Object.freeze(["name", "sex", "dob", "breed", "color", "registrationNumber"]),
@@ -82,7 +92,7 @@
     })
   });
 
-  const DEFAULT_TEMPLATE = "Classic";
+  const DEFAULT_TEMPLATE = "Standard";
 
   function clean(value) {
     return String(value == null ? "" : value).trim();
@@ -239,6 +249,43 @@
     });
   }
 
+  function printControlsHtml(config = {}) {
+    const value = normalize(config);
+    return `<div class="hh-pedigree-config" data-hh-pedigree-print-config>
+      <div class="pedigree-warning">Standard is the default HerdHarbor pedigree layout. These options change what appears on the pedigree without replacing its print design.</div>
+      <div class="form-grid two">
+        <label>Template
+          <select name="template">${Object.keys(TEMPLATES).map((name) => option(name, value.template)).join("")}</select>
+        </label>
+        <label>Generations
+          <select name="generations">${GENERATION_OPTIONS.map((count) => `<option value="${count}" ${count === value.generations ? "selected" : ""}>${count} generations</option>`).join("")}</select>
+        </label>
+        <label>Unknown ancestors
+          <select name="unknownDisplay"><option value="label" ${value.unknownDisplay === "label" ? "selected" : ""}>Show “Unknown”</option><option value="blank" ${value.unknownDisplay === "blank" ? "selected" : ""}>Keep blank position</option></select>
+        </label>
+      </div>
+      <label class="hh-pedigree-config-photo"><input type="checkbox" name="photos" ${value.photos ? "checked" : ""}><span>Show the animal photo when available</span></label>
+      <div class="hh-pedigree-config-fields">
+        <fieldset><legend>Animal fields</legend><div class="hh-pedigree-config-checks">${fieldChecks("rootFields", value.rootFields)}</div></fieldset>
+        <fieldset><legend>Ancestor fields</legend><div class="hh-pedigree-config-checks">${fieldChecks("ancestorFields", value.ancestorFields)}</div></fieldset>
+      </div>
+    </div>`;
+  }
+
+  function readPrintControls(root, fallback = {}) {
+    const base = normalize(fallback);
+    const value = (name) => clean(root?.querySelector?.(`[name="${name}"]`)?.value);
+    return normalize({
+      ...base,
+      template: value("template") || base.template,
+      generations: Number(value("generations") || base.generations),
+      rootFields: checkedValues(root, "rootFields"),
+      ancestorFields: checkedValues(root, "ancestorFields"),
+      photos: Boolean(root?.querySelector?.('input[name="photos"]')?.checked),
+      unknownDisplay: value("unknownDisplay") || base.unknownDisplay
+    });
+  }
+
   function rendererOptions(config, formatDate) {
     const value = normalize(config);
     return {
@@ -272,6 +319,8 @@
     savePreferences,
     controlsHtml,
     readControls,
+    printControlsHtml,
+    readPrintControls,
     rendererOptions
   });
 });
