@@ -52,6 +52,7 @@ function stubDeps(state) {
     detailField: html,
     navigate: noop,
     openPrintPedigreeForm: noop,
+    openBirthCertificateForm: noop,
     ensureQrToolsReady: async () => true,
     getPedigreeCustomization: () => ({ generations: 3 }),
     getPedigreeDocumentContext: (config) => ({ config, branding: null })
@@ -69,6 +70,8 @@ test("Animals/Profile domain has one extracted runtime owner", () => {
   assert.match(extractedSource, /function openAnimalQrCardForm\(/);
   assert.match(extractedSource, /function printAnimalQrCards\(/);
   assert.match(extractedSource, /function pedigreeRecordPreviewHtml\(/);
+  assert.match(extractedSource, /id="detail-birth-certificate"/);
+  assert.match(extractedSource, /deps\.openBirthCertificateForm\(id\)/);
 });
 
 test("composition runtime delegates animal behavior instead of retaining a second implementation", () => {
