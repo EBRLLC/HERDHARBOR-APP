@@ -79,6 +79,28 @@
     return [...new Set(source.filter((field) => FIELD_ORDER.includes(field)))];
   }
 
+  function normalizeRelationshipAnnotations(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const cleanList = (items) => Array.isArray(items) ? items.map(clean).filter(Boolean) : [];
+    const counts = source.occurrenceCounts && typeof source.occurrenceCounts === "object"
+      ? Object.fromEntries(Object.entries(source.occurrenceCounts).map(([key, count]) => [clean(key), Math.max(1, Number(count) || 1)]))
+      : {};
+    return {
+      sharedIdentities: new Set(cleanList(source.sharedIdentities)),
+      closestKeys: new Set(cleanList(source.closestKeys)),
+      occurrenceCounts: counts
+    };
+  }
+
+  function relationshipMeta(node, annotations) {
+    const identity = clean(node?.identity);
+    const key = clean(node?.key);
+    const shared = Boolean(identity) && annotations.sharedIdentities.has(identity);
+    const closest = Boolean(key) && annotations.closestKeys.has(key);
+    const occurrenceCount = shared ? Math.max(1, Number(annotations.occurrenceCounts[identity]) || 1) : 0;
+    return { identity, shared, closest, occurrenceCount };
+  }
+
   function firstImageValue(value, depth = 0) {
     if (depth > 4 || value == null) return "";
     if (typeof value === "string") {
@@ -171,6 +193,7 @@
 
   function renderCard(node, options) {
     const animal = node?.animal || null;
+    const relationship = relationshipMeta(node, options.relationship);
     const isKnown = Boolean(animal) && ["known", "repeat"].includes(node?.status);
     const subject = Number(node?.generation || 0) === 0;
     const fields = subject ? options.rootFields : options.ancestorFields;
@@ -186,11 +209,17 @@
     const canExpand = options.interactive && Boolean(detailRows || node?.issue);
     const summarySex = isKnown && fields.includes("sex") ? sexLabel(animal) : "";
     const repeat = node?.status === "repeat" && node?.repeatOf
-      ? `<span class="hh-pedigree-repeat">Also appears as ${escapeHtml(node.repeatOf)}</span>`
+      ? `<span class="hh-pedigree-repeat">Repeated occurrence · Also appears as ${escapeHtml(node.repeatOf)}</span>`
+      : "";
+    const sharedMarker = relationship.shared
+      ? `<button type="button" class="hh-pedigree-shared-marker" data-hh-shared-identity="${escapeHtml(relationship.identity)}" aria-pressed="false"><span aria-hidden="true">↔</span> Shared ancestor${relationship.occurrenceCount > 1 ? ` · ${relationship.occurrenceCount} appearances` : ""}</button>`
+      : "";
+    const closestMarker = relationship.closest
+      ? `<span class="hh-pedigree-closest-marker"><span aria-hidden="true">◎</span> Closest path</span>`
       : "";
     const issue = node?.issue ? `<p class="hh-pedigree-issue">${escapeHtml(node.issue)}</p>` : "";
 
-    return `<article class="hh-pedigree-card${subject ? " is-subject" : ""}${isKnown ? "" : " is-unknown"}${expanded ? " is-expanded" : ""}" data-hh-pedigree-card data-pedigree-key="${escapeHtml(node?.key)}" data-pedigree-status="${escapeHtml(node?.status)}">
+    return `<article class="hh-pedigree-card${subject ? " is-subject" : ""}${isKnown ? "" : " is-unknown"}${expanded ? " is-expanded" : ""}${relationship.shared ? " is-shared-ancestor" : ""}${relationship.closest ? " is-closest-path" : ""}" data-hh-pedigree-card data-pedigree-key="${escapeHtml(node?.key)}" data-pedigree-identity="${escapeHtml(relationship.identity)}" data-pedigree-status="${escapeHtml(node?.status)}">
       <div class="hh-pedigree-card-summary">
         ${photo ? `<img class="hh-pedigree-photo" src="${escapeHtml(photo)}" alt="" loading="lazy" decoding="async">` : ""}
         <div class="hh-pedigree-card-title">
@@ -199,6 +228,8 @@
           ${summarySex ? `<span>${escapeHtml(summarySex)}</span>` : ""}
           ${status ? `<span class="hh-pedigree-status">${escapeHtml(status)}</span>` : ""}
           ${repeat}
+          ${sharedMarker}
+          ${closestMarker}
         </div>
         ${canExpand ? `<button type="button" class="hh-pedigree-toggle" data-hh-pedigree-toggle="${escapeHtml(node?.key)}" aria-expanded="${expanded ? "true" : "false"}" aria-label="${expanded ? "Collapse" : "Expand"} ${escapeHtml(relation)} details"><span aria-hidden="true">⌄</span></button>` : ""}
       </div>
@@ -225,6 +256,9 @@
     const style = ["classic", "minimal", "professional", "buyer", "rabbitry-branded"].includes(options.style) ? options.style : "classic";
     const interactive = options.interactive == null ? modeConfig.interactive : options.interactive === true;
     const expandedKeys = new Set(Array.isArray(options.expandedKeys) ? options.expandedKeys.map(clean) : []);
+    const relationship = mode === "relationship-analysis"
+      ? normalizeRelationshipAnnotations(options.relationship)
+      : normalizeRelationshipAnnotations(null);
     const generations = Math.max(1, Number(graph.generations || 1));
     const columns = [];
 
@@ -234,7 +268,7 @@
       columns.push(`<section class="hh-pedigree-generation" data-generation="${generation}" aria-label="${generation === 0 ? "Animal" : `Generation ${generation + 1}`}">
         <div class="hh-pedigree-generation-label">${generation === 0 ? "Animal" : generation === 1 ? "Parents" : generation === 2 ? "Grandparents" : `Generation ${generation + 1}`}</div>
         <div class="hh-pedigree-generation-cards">
-          ${nodes.map((node) => renderCard(node, { rootFields, ancestorFields, density, unknownDisplay, interactive, expandedKeys, formatDate: options.formatDate })).join("")}
+          ${nodes.map((node) => renderCard(node, { rootFields, ancestorFields, density, unknownDisplay, interactive, expandedKeys, relationship, formatDate: options.formatDate })).join("")}
         </div>
       </section>`);
     }
@@ -276,11 +310,40 @@
     return true;
   }
 
+  function selectSharedIdentity(scope, identity) {
+    const cleanIdentity = clean(identity);
+    const root = scope?.querySelectorAll ? scope : null;
+    if (!root || !cleanIdentity) return 0;
+    let count = 0;
+    root.querySelectorAll("[data-pedigree-identity]").forEach((card) => {
+      const selected = clean(card.dataset?.pedigreeIdentity) === cleanIdentity;
+      card.classList.toggle("is-shared-selected", selected);
+      if (selected) count += 1;
+    });
+    root.querySelectorAll("[data-hh-shared-identity]").forEach((button) => {
+      button.setAttribute("aria-pressed", clean(button.dataset?.hhSharedIdentity) === cleanIdentity ? "true" : "false");
+    });
+    return count;
+  }
+
   function start(target = globalThis) {
     const doc = target?.document;
     if (!doc || started) return false;
     started = true;
     doc.addEventListener("click", (event) => {
+      const sharedButton = event.target?.closest?.("[data-hh-shared-identity]");
+      if (sharedButton) {
+        const scope = sharedButton.closest?.("[data-hh-relationship-view]") || doc;
+        const identity = clean(sharedButton.dataset?.hhSharedIdentity);
+        const selectedCount = selectSharedIdentity(scope, identity);
+        if (typeof CustomEvent === "function") {
+          sharedButton.dispatchEvent(new CustomEvent("herdharbor:relationship-ancestor-selected", {
+            bubbles: true,
+            detail: { identity, selectedCount }
+          }));
+        }
+        return;
+      }
       const button = event.target?.closest?.("[data-hh-pedigree-toggle]");
       if (!button) return;
       toggleCard(button);
@@ -294,9 +357,11 @@
     MODES,
     normalizeMode,
     normalizeFields,
+    normalizeRelationshipAnnotations,
     fieldValue,
     render,
     toggleCard,
+    selectSharedIdentity,
     start
   });
 });

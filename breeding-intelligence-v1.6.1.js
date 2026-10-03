@@ -2,6 +2,7 @@
   "use strict";
   const Core = window.HerdHarborBreedingIntelligenceCore;
   const Pedigree = window.HerdHarborPedigreeEngine;
+  const PedigreeRenderer = window.HerdHarborPedigreeRenderer;
   if (!Core) { console.error("HerdHarbor Breeding Intelligence could not start: core module missing."); return; }
   if (!Pedigree?.sharedAncestorAnalysis) { console.error("HerdHarbor Breeding Intelligence could not start: canonical pedigree analysis missing."); return; }
   const STORAGE_KEY = "herdharbor_pre_alpha_v1", RELEASE_VERSION = "1.6.1", ROOT_KEY = "breedingIntelligence";
@@ -164,6 +165,70 @@
     </div>`;
   }
 
+  function relationshipRendererAnnotations(analysis, side) {
+    const isA = side === "animalA";
+    const sharedIdentities = analysis.sharedAncestors.map((row) => row.identity);
+    const occurrenceCounts = {};
+    const closestKeys = [];
+    for (const row of analysis.sharedAncestors) {
+      occurrenceCounts[row.identity] = isA ? row.animalAOccurrences.length : row.animalBOccurrences.length;
+      for (const pair of row.closestPathPairs) {
+        const occurrence = isA ? pair.animalA : pair.animalB;
+        if (occurrence?.key) closestKeys.push(occurrence.key);
+      }
+    }
+    return { sharedIdentities, occurrenceCounts, closestKeys };
+  }
+
+  function closestPathsHtml(analysis) {
+    const rows = (analysis.closestRelationshipPaths || []).slice(0, 12);
+    if (!rows.length) return '<p>No shared-ancestor path is recorded within the analyzed pedigree depth.</p>';
+    return `<ul class="hh-bi-closest-paths">${rows.map((row) =>
+      `<li><strong>${esc(row.ancestorName || "Shared ancestor")}</strong><span>${esc(row.animalA.relation)} ↔ ${esc(row.animalB.relation)} · combined depth ${row.totalDepth}</span></li>`
+    ).join("")}</ul>`;
+  }
+
+  function linebreedingViewHtml(first, second, analysis, state) {
+    if (!PedigreeRenderer?.render || !Pedigree?.buildGraph) {
+      return `<div class="hh-bi-warning">Interactive pedigree rendering is unavailable. ${relationshipSummaryHtml(analysis, first.name || "Animal A", second.name || "Animal B")}</div>`;
+    }
+
+    const generations = analysis.generationsAnalyzed || 4;
+    const graphA = Pedigree.buildGraph({ animals: state.animals || [], subject: first, subjectId: first.id, generations });
+    const graphB = Pedigree.buildGraph({ animals: state.animals || [], subject: second, subjectId: second.id, generations });
+    const fields = ["name", "sex", "breed", "color", "registrationNumber"];
+    const pedigreeA = PedigreeRenderer.render({
+      graph: graphA,
+      mode: "relationship-analysis",
+      interactive: true,
+      fields,
+      relationship: relationshipRendererAnnotations(analysis, "animalA")
+    });
+    const pedigreeB = PedigreeRenderer.render({
+      graph: graphB,
+      mode: "relationship-analysis",
+      interactive: true,
+      fields,
+      relationship: relationshipRendererAnnotations(analysis, "animalB")
+    });
+
+    return `<div class="hh-bi-linebreeding-view" data-hh-relationship-view>
+      ${plannerPedigreeMetrics(analysis)}
+      <div class="hh-bi-relationship-legend" aria-label="Relationship analysis markers">
+        <span><b>↔</b> Shared ancestor — click to identify every appearance in both pedigrees</span>
+        <span><b>◎</b> Closest path — occurrence used in one of the closest recorded relationship paths</span>
+        <span><b>Repeated occurrence</b> — the same ancestor appears more than once in that pedigree</span>
+      </div>
+      <p class="hh-bi-note" id="bi-shared-selection-status" role="status" aria-live="polite">Select a shared ancestor marker to highlight every recorded appearance.</p>
+      <div class="hh-bi-linebreeding-pedigrees">
+        <section><header><span class="hh-bi-kicker">ANIMAL A</span><h3>${esc(first.name || animalLabel(first))}</h3></header>${pedigreeA}</section>
+        <section><header><span class="hh-bi-kicker">ANIMAL B</span><h3>${esc(second.name || animalLabel(second))}</h3></header>${pedigreeB}</section>
+      </div>
+      <section class="hh-bi-closest-path-panel"><h3>Closest recorded relationship paths</h3>${closestPathsHtml(analysis)}</section>
+      <p class="hh-bi-note">Analysis depth: ${analysis.ancestorGenerationsAnalyzed} ancestor generation${analysis.ancestorGenerationsAnalyzed === 1 ? "" : "s"} · pedigree coverage ${percentage(analysis.pedigreeCompleteness.animalA.coverage)} / ${percentage(analysis.pedigreeCompleteness.animalB.coverage)}. Unknown ancestry is reflected in those coverage values.</p>
+    </div>`;
+  }
+
   function renderRelationshipComparison(firstId = "", secondId = "") {
     const state = readState();
     const animals = (state.animals || []).filter((animal) => animal?.id);
@@ -171,13 +236,13 @@
     const second = animals.find((animal) => String(animal.id) === String(secondId)) || null;
     const analysis = first && second ? relationshipAnalysis(first, second, state, 4) : null;
     const results = analysis
-      ? relationshipSummaryHtml(analysis, first.name || "Animal A", second.name || "Animal B")
+      ? linebreedingViewHtml(first, second, analysis, state)
       : '<div class="hh-bi-empty">Choose two animals to compare recorded ancestry.</div>';
 
-    openModal("Compare Pedigrees", `<div class="hh-bi-pair-selectors">
+    openModal("Linebreeding Analysis", `<div class="hh-bi-pair-selectors">
       <label>Animal<select id="bi-compare-a">${selectOptions(animals, first?.id)}</select></label>
       <label>Compare with<select id="bi-compare-b">${selectOptions(animals, second?.id)}</select></label>
-      <button type="button" class="primary" id="bi-run-pedigree-compare">Compare With Another Animal</button>
+      <button type="button" class="primary" id="bi-run-pedigree-compare">Analyze Pairing</button>
     </div>${results}`);
 
     modal.querySelector("#bi-run-pedigree-compare")?.addEventListener("click", () => {
@@ -185,6 +250,15 @@
         modal.querySelector("#bi-compare-a")?.value || "",
         modal.querySelector("#bi-compare-b")?.value || ""
       );
+    });
+
+    modal.addEventListener("herdharbor:relationship-ancestor-selected", (event) => {
+      const status = modal.querySelector("#bi-shared-selection-status");
+      if (!status) return;
+      const count = Number(event.detail?.selectedCount || 0);
+      status.textContent = count
+        ? `Highlighted ${count} recorded appearance${count === 1 ? "" : "s"} of the selected shared ancestor across both pedigrees.`
+        : "No recorded appearance was found for that shared ancestor.";
     });
   }
 
