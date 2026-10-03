@@ -463,7 +463,7 @@
           <button class="button button-ghost" id="detail-analytics">View analytics</button>
           <button class="button button-ghost" id="detail-print-qr">Print QR card</button>
           <button class="button button-ghost" id="detail-import-pedigree">Build / import pedigree</button>
-          <button class="button button-ghost" id="detail-compare-pedigree">Compare With Another Animal</button>
+          <button class="button button-ghost" id="detail-compare-pedigree">Linebreeding Coefficient</button>
           <button class="button button-primary" id="detail-edit">Edit animal</button>
         </div>
       `, `${animal.species || "Animal"} record`);
@@ -485,6 +485,10 @@
       $("#detail-import-pedigree")?.addEventListener("click", () => deps.openPedigreeImport(id));
       $("#detail-compare-pedigree")?.addEventListener("click", () => {
         const intelligence = window.HerdHarborBreedingIntelligence;
+        if (typeof intelligence?.openLinebreedingCoefficient === "function") {
+          intelligence.openLinebreedingCoefficient(id);
+          return;
+        }
         if (typeof intelligence?.openRelationshipComparison === "function") {
           intelligence.openRelationshipComparison(id);
           return;
