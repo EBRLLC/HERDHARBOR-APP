@@ -392,20 +392,26 @@
       const state = stateNow();
       const engine = root.HerdHarborPedigreeEngine;
       const renderer = root.HerdHarborPedigreeRenderer;
+      const customization = root.HerdHarborPedigreeCustomization;
       if (!engine?.buildGraph || !renderer?.render) {
         return '<p class="muted">Pedigree preview is unavailable until the pedigree tools finish loading.</p>';
       }
+      const config = customization?.loadPreferences
+        ? customization.loadPreferences(root.localStorage)
+        : { generations: 3 };
       const graph = engine.buildGraph({
         animals: state.animals || [],
         subject,
         subjectId: subject?.id,
         ancestorIds: record?.ancestorIds || {},
-        generations: 3
+        generations: config.generations || 3
       });
+      const rendererOptions = customization?.rendererOptions
+        ? customization.rendererOptions(config, deps.formatDate)
+        : { mode: "private-herd", formatDate: deps.formatDate };
       return renderer.render({
         graph,
-        mode: "private-herd",
-        formatDate: deps.formatDate
+        ...rendererOptions
       });
     }
 
