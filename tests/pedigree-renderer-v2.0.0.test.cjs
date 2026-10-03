@@ -120,3 +120,20 @@ test("print-preview mode is non-interactive but uses the same renderer", () => {
   assert.match(html, /mode-print-preview/);
   assert.doesNotMatch(html, /data-hh-pedigree-toggle/);
 });
+
+
+test("shared renderer accepts optional breeder document branding without creating a second renderer", () => {
+  const html = Renderer.render({
+    graph: graph(),
+    mode: "print-preview",
+    branding: {
+      rabbitryName: "Bluegrass Rabbitry",
+      rabbitryText: "Quality stock",
+      logoData: "data:image/png;base64,LOGO"
+    }
+  });
+  assert.match(html, /hh-pedigree-branding/);
+  assert.match(html, /Bluegrass Rabbitry/);
+  assert.match(html, /Quality stock/);
+  assert.match(html, /data:image\/png;base64,LOGO/);
+});
