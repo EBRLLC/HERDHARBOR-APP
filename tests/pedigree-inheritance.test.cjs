@@ -6,6 +6,17 @@ const path = require("node:path");
 const Engine = require("../pedigree-engine-v2.0.0.js");
 
 const appRuntime = fs.readFileSync(path.join(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
+const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+const worker = fs.readFileSync(path.join(__dirname, "..", "service-worker.js"), "utf8");
+
+const engineScriptIndex = html.indexOf('pedigree-engine-v2.0.0.js?v=1');
+const animalRuntimeIndex = html.indexOf('animal-profile-runtime-v1.8.3.js?v=1');
+const appRuntimeIndex = html.indexOf('herdharbor-app-runtime.js?v=4');
+assert.ok(engineScriptIndex >= 0, "the canonical pedigree engine is loaded by the application shell");
+assert.ok(animalRuntimeIndex > engineScriptIndex, "the engine loads before the animal profile runtime");
+assert.ok(appRuntimeIndex > engineScriptIndex, "the engine loads before the main application runtime");
+assert.match(worker, /\.\/pedigree-engine-v2\.0\.0\.js\?v=1/);
+assert.match(worker, /path\.endsWith\("pedigree-engine-v2\.0\.0\.js"\)/);
 
 assert.match(
   appRuntime,
