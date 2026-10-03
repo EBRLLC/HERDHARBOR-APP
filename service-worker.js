@@ -23,7 +23,6 @@ const REQUIRED_SHELL = [
   "./account-boundary-core-v1.8.4.js?v=3",
   "./herdharbor-cloud.js?v=35",
   "./cloud-sync-rollout-runtime-v1.8.4.js?v=3",
-  "./herdharbor-admin-v1.6.1.js?v=2",
   "./pwa.js?v=34",
   "./market-analytics-v1.6.5.js?v=1.7.1",
   "./breeding-litter-runtime-v1.8.3.js?v=1",
@@ -36,6 +35,7 @@ const REQUIRED_SHELL = [
 ];
 
 const RUNTIME_CACHE_PATHS = [
+  "./herdharbor-admin-v1.6.1.js?v=2",
   "./icon-192.png",
   "./icon-512.png",
   "./herdharbor-monitoring-config.js?v=2.0.0",
