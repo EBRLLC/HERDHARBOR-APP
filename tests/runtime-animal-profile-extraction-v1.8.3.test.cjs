@@ -53,7 +53,8 @@ function stubDeps(state) {
     navigate: noop,
     openPrintPedigreeForm: noop,
     ensureQrToolsReady: async () => true,
-    getPedigreeCustomization: () => ({ generations: 3 })
+    getPedigreeCustomization: () => ({ generations: 3 }),
+    getPedigreeDocumentContext: (config) => ({ config, branding: null })
   };
 }
 
@@ -97,6 +98,7 @@ test("extracted runtime uses injected canonical state and creates no parallel pe
   assert.doesNotMatch(extractedSource, /localStorage|sessionStorage|indexedDB|STORAGE_KEY|herdharbor_pre_alpha_v1/);
   assert.doesNotMatch(extractedSource, /commitState\(/);
   assert.match(extractedSource, /deps\.getPedigreeCustomization\(\)/);
+  assert.match(extractedSource, /deps\.getPedigreeDocumentContext\(config\)/);
 });
 
 test("animal filter behavior remains search/species/sex/status compatible", () => {
