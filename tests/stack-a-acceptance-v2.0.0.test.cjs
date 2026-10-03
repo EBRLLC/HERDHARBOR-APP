@@ -107,8 +107,10 @@ test("Stack A assets preserve bounded required shell and use runtime cache for o
   ]) assert.match(sw, new RegExp(asset.replace(/[.]/g, "\\.")));
 });
 
-test("Stack A document modules do not introduce sync authority or Marketplace behavior", () => {
-  for (const source of [renderer, customization, documents, exporter, birth, animalDocs]) {
+test("A4-A7 document modules do not introduce sync authority or Marketplace behavior", () => {
+  // A2 intentionally exposes a future marketplace renderer mode; later document phases must not
+  // add Marketplace behavior or sync authority of their own.
+  for (const source of [documents, exporter, birth, animalDocs]) {
     assert.doesNotMatch(source, /HerdHarborCloud|cloud-sync|normalized authority|Marketplace|marketplace/i);
   }
 });
