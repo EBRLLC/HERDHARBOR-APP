@@ -97,6 +97,11 @@ declare inserted_count integer := 0;
 begin
   if caller is null then raise exception 'authentication required' using errcode='42501'; end if;
 
+  update public.marketplace_listings l
+  set state='expired',updated_at=now()
+  where l.seller_id=caller and l.state='available' and l.expires_at is not null and l.expires_at<=now();
+
+
   insert into public.marketplace_notifications(user_id,kind,listing_id,dedupe_key,payload)
   select caller,'stale_listing',l.id,
          'stale:'||l.id::text||':'||to_char(now(),'YYYY-MM'),
@@ -104,13 +109,10 @@ begin
   from public.marketplace_listings l
   where l.seller_id=caller
     and l.state='available'
+    and (l.expires_at is null or l.expires_at>now())
     and coalesce(l.last_confirmed_at,l.published_at,l.created_at)<now()-interval '30 days'
   on conflict (user_id,dedupe_key) where dedupe_key is not null do nothing;
   get diagnostics inserted_count = row_count;
-
-  update public.marketplace_listings l
-  set state='expired',updated_at=now()
-  where l.seller_id=caller and l.state='available' and l.expires_at is not null and l.expires_at<=now();
 
   return inserted_count;
 end;

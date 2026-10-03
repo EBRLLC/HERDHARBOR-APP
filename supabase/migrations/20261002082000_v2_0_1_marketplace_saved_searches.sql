@@ -144,6 +144,15 @@ set search_path=''
 as $$
 begin
   if new.state<>'available' then return new; end if;
+  if new.expires_at is not null and new.expires_at<=now() then return new; end if;
+  if not exists (
+    select 1
+    from public.marketplace_public_profiles p
+    where p.user_id=new.seller_id
+      and p.marketplace_status='active'
+  ) then
+    return new;
+  end if;
   if tg_op='UPDATE' and old.state='available' and
      old.animal_name is not distinct from new.animal_name and
      old.species is not distinct from new.species and
@@ -166,6 +175,12 @@ begin
   from public.marketplace_saved_searches s
   where s.alerts_enabled=true
     and s.user_id<>new.seller_id
+    and exists (
+      select 1
+      from public.marketplace_public_profiles subscriber
+      where subscriber.user_id=s.user_id
+        and subscriber.marketplace_status='active'
+    )
     and (nullif(trim(s.search_text),'') is null or
          new.animal_name ilike '%'||trim(s.search_text)||'%' or
          new.breed ilike '%'||trim(s.search_text)||'%' or

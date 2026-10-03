@@ -49,3 +49,24 @@ test("saved search payload is normalized from server search arguments",()=>{
  assert.equal(payload.max_price_value,12000);
  assert.equal(payload.alerts_value,true);
 });
+
+
+test("saved-search alerts only target listings that remain publicly visible",()=>{
+ const start=migration.indexOf("marketplace_notify_saved_searches()");
+ const end=migration.indexOf("drop trigger if exists marketplace_notify_saved_searches",start);
+ const block=migration.slice(start,end);
+ assert.match(block,/new\.expires_at is not null and new\.expires_at<=now\(\)/);
+ assert.match(block,/marketplace_public_profiles p/);
+ assert.match(block,/p\.user_id=new\.seller_id/);
+ assert.match(block,/p\.marketplace_status='active'/);
+});
+
+
+test("saved-search alerts skip suspended recipients",()=>{
+ const start=migration.indexOf("marketplace_notify_saved_searches()");
+ const end=migration.indexOf("drop trigger if exists marketplace_notify_saved_searches",start);
+ const block=migration.slice(start,end);
+ assert.match(block,/marketplace_public_profiles subscriber/);
+ assert.match(block,/subscriber\.user_id=s\.user_id/);
+ assert.match(block,/subscriber\.marketplace_status='active'/);
+});
