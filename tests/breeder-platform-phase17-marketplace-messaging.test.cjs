@@ -75,3 +75,16 @@ test("an already-open realtime thread clears the server unread increment after d
  assert.match(block,/appendMessage\(message\)/);
  assert.match(block,/message\?\.sender_id[\s\S]*user\.id[\s\S]*updateConversationMember\(conversationId,\{unread_count:0\}/);
 });
+
+
+test("inbox realtime subscription is disposed on close route exit and rerender",()=>{
+ const start=source.indexOf("async function renderInbox(");
+ const end=source.indexOf("async function submitReport",start);
+ const block=source.slice(start,end);
+ assert.match(block,/if\(typeof host\.__hhMarketplaceInboxCleanup==="function"\)host\.__hhMarketplaceInboxCleanup\(\)/);
+ assert.match(block,/function cleanupInbox\(\)[\s\S]*realtime\?\.unsubscribe\?\.\(\)/);
+ assert.match(block,/removeEventListener\?\.\("herdharbor:route-change",handleRouteChange\)/);
+ assert.match(block,/addEventListener\?\.\("herdharbor:route-change",handleRouteChange\)/);
+ assert.match(block,/route\|\|""\)!=="marketplace"\)cleanupInbox\(\)/);
+ assert.match(block,/hh-inbox-close[\s\S]*cleanupInbox\(\);host\.innerHTML=""/);
+});

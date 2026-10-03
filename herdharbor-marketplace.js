@@ -544,13 +544,25 @@ async function renderInbox(host,customGateway,toast,selectedConversationId){
  if(!host)throw new Error("Marketplace inbox host is required.");
  const gw=customGateway||gateway();
  const notify=typeof toast==="function"?toast:function(){};
+ if(typeof host.__hhMarketplaceInboxCleanup==="function")host.__hhMarketplaceInboxCleanup();
  host.innerHTML='<section class="panel hh-market-inbox"><div class="panel-header"><div><h3>Marketplace Messages</h3><small>Private listing-linked conversations</small></div><button type="button" class="button button-ghost button-small" id="hh-inbox-close">Close</button></div><div class="hh-inbox-filters"><button type="button" data-inbox-folder="all">All</button><button type="button" data-inbox-folder="buying">Buying</button><button type="button" data-inbox-folder="selling">Selling</button><button type="button" data-inbox-folder="unread">Unread</button></div><div class="hh-inbox-layout"><div id="hh-inbox-list"></div><div id="hh-inbox-thread"><p class="muted">Choose a conversation.</p></div></div></section>';
- host.querySelector("#hh-inbox-close")?.addEventListener("click",function(){host.innerHTML="";});
  const list=host.querySelector("#hh-inbox-list");
  const thread=host.querySelector("#hh-inbox-thread");
  let folder="all";
  let realtime=null;
  let inboxRows=[];
+ function cleanupInbox(){
+  realtime?.unsubscribe?.();
+  realtime=null;
+  root?.removeEventListener?.("herdharbor:route-change",handleRouteChange);
+  if(host.__hhMarketplaceInboxCleanup===cleanupInbox)delete host.__hhMarketplaceInboxCleanup;
+ }
+ function handleRouteChange(event){
+  if(String(event?.detail?.route||"")!=="marketplace")cleanupInbox();
+ }
+ host.__hhMarketplaceInboxCleanup=cleanupInbox;
+ root?.addEventListener?.("herdharbor:route-change",handleRouteChange);
+ host.querySelector("#hh-inbox-close")?.addEventListener("click",function(){cleanupInbox();host.innerHTML="";});
  async function loadInbox(){
   const rows=await listConversations(folder,gw);
   inboxRows=rows;
