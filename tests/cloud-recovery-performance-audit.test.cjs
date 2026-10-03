@@ -92,3 +92,17 @@ test("canonical local save bridge does not reparse StateStore's freshly serializ
   assert.doesNotMatch(block,/safeParse\(rawValue\)/);
   assert.match(block,/scheduleCloudSync\(rawValue, writeSequence\)/);
 });
+
+
+test("clean-baseline capture returns on cheap guards before parsing large previous state",()=>{
+  const start=cloud.indexOf("function captureCleanBaselineBeforeLocalCommit");
+  const end=cloud.indexOf("async function handleCanonicalStateCommit",start);
+  const block=cloud.slice(start,end);
+  const memoryAt=block.indexOf("cloudBaselineMemory.has(userId)");
+  const dirtyAt=block.indexOf('originalGetItem.call(localStorage, dirtyKey(userId)) === "1"');
+  const versionAt=block.indexOf("originalGetItem.call(localStorage, versionKey(userId))");
+  const parseAt=block.indexOf("safeParse(previousValue)");
+  assert.ok(memoryAt>=0&&dirtyAt>memoryAt&&versionAt>dirtyAt&&parseAt>versionAt);
+  assert.equal((block.match(/safeParse\(previousValue\)/g)||[]).length,1);
+  assert.doesNotMatch(block,/safeParse\(memoryBaseline\)/);
+});
