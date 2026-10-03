@@ -20,3 +20,19 @@ html[data-theme="dark"] .hh-bi-modal li{color:#334b60}
 .hh-bi-planner-section-header{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:10px}.hh-bi-planner-section-header h3{margin:4px 0 0}.hh-bi-planner-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:12px 0}.hh-bi-planner-metrics>div{padding:12px;border:1px solid rgba(13,37,64,.12);border-radius:10px;background:#fff}.hh-bi-planner-metrics span{display:block;color:#65727e;font-size:.74rem;font-weight:800;line-height:1.25}.hh-bi-planner-metrics strong{display:block;margin-top:4px;color:#0d2540;font-size:1.05rem}.hh-bi-pedigree-actions{display:flex;justify-content:flex-end;margin-top:14px}.hh-bi-pedigree-actions button{min-height:42px;padding:10px 15px;border:1px solid #82d0cc;border-radius:10px;background:#82d0cc;color:#0d2540;font-weight:800;cursor:pointer}
 @media(max-width:760px){.hh-bi-planner-metrics{grid-template-columns:1fr 1fr}.hh-bi-planner-section-header{display:grid}.hh-bi-pedigree-actions button{width:100%}}
 @media(max-width:470px){.hh-bi-planner-metrics{grid-template-columns:1fr}}
+
+.hh-bi-linebreeding-view{display:grid;gap:14px}
+.hh-bi-relationship-legend{display:flex;flex-wrap:wrap;gap:8px 14px;padding:12px 14px;border:1px solid rgba(13,37,64,.12);border-radius:12px;background:#fff}
+.hh-bi-relationship-legend span{display:inline-flex;align-items:center;gap:5px;color:#334b60;font-size:.78rem;font-weight:700}
+.hh-bi-relationship-legend b{color:#17645f}
+.hh-bi-linebreeding-pedigrees{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+.hh-bi-linebreeding-pedigrees>section{min-width:0;padding:12px;border:1px solid rgba(13,37,64,.12);border-radius:14px;background:#fff}
+.hh-bi-linebreeding-pedigrees>section>header{display:flex;align-items:end;justify-content:space-between;gap:10px;margin-bottom:2px}
+.hh-bi-linebreeding-pedigrees>section>header h3{margin:0;color:#0d2540}
+.hh-bi-closest-path-panel{padding:14px;border:1px solid rgba(13,37,64,.12);border-radius:12px;background:#fff}
+.hh-bi-closest-path-panel h3{margin:0 0 10px}
+.hh-bi-closest-paths{display:grid;gap:7px;margin:0;padding:0;list-style:none}
+.hh-bi-closest-paths li{display:flex;justify-content:space-between;gap:12px;padding:8px 10px;border:1px solid rgba(13,37,64,.08);border-radius:9px;background:rgba(13,37,64,.025)}
+.hh-bi-closest-paths span{color:#65727e;font-size:.8rem;text-align:right}
+@media(max-width:900px){.hh-bi-linebreeding-pedigrees{grid-template-columns:1fr}}
+@media(max-width:760px){.hh-bi-relationship-legend{display:grid}.hh-bi-linebreeding-pedigrees>section{padding:10px}.hh-bi-closest-paths li{display:grid}.hh-bi-closest-paths span{text-align:left}}
