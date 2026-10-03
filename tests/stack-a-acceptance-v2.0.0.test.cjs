@@ -47,7 +47,8 @@ test("3 4 and 5 generation customization remains supported", () => {
 
 test("original four-generation standard geometry is protected", () => {
   assert.match(standardPrint, /minmax\(168px,1\.18fr\) 34px minmax\(164px,1\.1fr\) 34px minmax\(158px,1fr\) 34px minmax\(152px,\.96fr\)/);
-  assert.match(standardPrint, /height: \$\{pageHeight\(generations\)\}/);
+  assert.match(standardPrint, /const sheetHeight = mobilePrint \? \(generations === 5 \? "9\.45in" : "9\.25in"\) : pageHeight\(generations\)/);
+  assert.match(standardPrint, /height: \$\{sheetHeight\}/);
   assert.match(standardPrint, /return generations === 5 \? "8\.02in" : "8\.06in"/);
   assert.match(standardPrint, /@media screen and \(max-width: 980px\) \{ body \{ min-width: 980px; \} \}/);
 });
