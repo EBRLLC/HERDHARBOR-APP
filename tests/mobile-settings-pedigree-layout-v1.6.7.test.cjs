@@ -7,11 +7,13 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const visualJs = fs.readFileSync(path.join(root, "pedigree-visual.js"), "utf8");
 const geneticsJs = fs.readFileSync(path.join(root, "pedigree-genetics-v1.6.1.js"), "utf8");
+const customizationJs = fs.readFileSync(path.join(root, "pedigree-customization-v2.0.0.js"), "utf8");
+const customizationCss = fs.readFileSync(path.join(root, "pedigree-customization-v2.0.0.css"), "utf8");
 const css = fs.readFileSync(path.join(root, "pedigree-visual.css"), "utf8");
 
 assert.match(visualJs, /class=\"hh-setting-check\"/);
 assert.match(visualJs, /id=\"hh-pedigree-sex-colors\"/);
-assert.match(visualJs, /id=\"hh-pedigree-print-photos\"/);
+assert.match(customizationJs, /name="photos"/);
 assert.match(geneticsJs, /class=\"hh-setting-check\"/);
 assert.match(geneticsJs, /id=\"hh-pedigree-print-genetics\"/);
 
@@ -22,5 +24,6 @@ assert.match(css, /\.hh-pedigree-settings \.hh-setting-check input\[type=\"check
 assert.match(css, /\.hh-pedigree-settings \.hh-setting-check span\s*\{[\s\S]*?min-width:\s*0;[\s\S]*?max-width:\s*100%;[\s\S]*?overflow-wrap:\s*anywhere;/);
 assert.match(css, /\.hh-pedigree-settings select\s*\{[\s\S]*?width:\s*100%;[\s\S]*?max-width:\s*100%;[\s\S]*?min-width:\s*0;/);
 assert.match(css, /@media \(max-width:\s*620px\)[\s\S]*?\.hh-pedigree-settings/);
+assert.match(customizationCss, /@media \(max-width:\s*760px\)[\s\S]*?\.hh-pedigree-config-fields[\s\S]*?grid-template-columns:\s*1fr/);
 
 console.log("Alpha v1.6.7 mobile pedigree settings containment test passed");
