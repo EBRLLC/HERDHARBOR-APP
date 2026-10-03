@@ -99,14 +99,20 @@ test("legacy stability compatibility patches lazy spreadsheets without a perpetu
 });
 
 
-test("PWA artwork is runtime-cached instead of blocking application shell installation", () => {
+test("PWA artwork caches one core logo while keeping the large install icon non-blocking", () => {
   const sw = read("service-worker.js");
   const required = sw.slice(sw.indexOf("const REQUIRED_SHELL"), sw.indexOf("const RUNTIME_CACHE_PATHS"));
   const runtime = sw.slice(sw.indexOf("const RUNTIME_CACHE_PATHS"), sw.indexOf("const NETWORK_FIRST_PATHS"));
-  for (const icon of ["icon-192.png", "icon-512.png"]) {
-    assert.equal(required.includes(icon), false, icon + " should not block app shell install");
-    assert.equal(runtime.includes("./" + icon), true, icon + " remains cacheable when requested");
-  }
+  assert.equal(required.includes("./icon-192.png"), true, "core shell logo stays available offline");
+  assert.equal(runtime.includes("./icon-192.png"), false, "core logo is not duplicated across cache tiers");
+  assert.equal(required.includes("icon-512.png"), false, "large install artwork does not block shell installation");
+  assert.equal(runtime.includes("./icon-512.png"), true, "large install artwork remains runtime-cacheable");
+});
+
+test("index shell reuses one external 192px logo instead of embedding four base64 copies", () => {
+  const index = read("index.html");
+  assert.doesNotMatch(index, /data:image\/png;base64/);
+  assert.equal((index.match(/icon-192\.png/g) || []).length, 4);
 });
 
 
