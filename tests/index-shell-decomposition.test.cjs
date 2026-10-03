@@ -81,8 +81,16 @@ test("service worker covers required extracted shell assets", () => {
     { asset: "herdharbor-index-shell.css", revision: "1" }
   ]) {
     const escaped = asset.replaceAll(".", "\\.");
-    assert.equal((worker.match(new RegExp("\\./" + escaped + "\\?v=" + revision, "g")) || []).length, 1, asset + " has one precache entry");
-    assert.equal((worker.match(new RegExp('"/' + escaped + '"', "g")) || []).length, 1, asset + " has one network-first route");
+    assert.equal((worker.match(new RegExp("\\./" + escaped + "\\?v=" + revision, "g")) || []).length, 1, asset + " has one service-worker cache entry");
+    const lazyRuntime = asset === "animal-profile-runtime-v1.8.3.js" || asset === "production-reporting-runtime-v1.8.3.js";
+    if (lazyRuntime) {
+      const required = worker.slice(worker.indexOf("const REQUIRED_SHELL"), worker.indexOf("const RUNTIME_CACHE_PATHS"));
+      const runtime = worker.slice(worker.indexOf("const RUNTIME_CACHE_PATHS"), worker.indexOf("const NETWORK_FIRST_PATHS"));
+      assert.equal(required.includes(asset), false, asset + " stays off mandatory install");
+      assert.equal(runtime.includes("./" + asset + "?v=" + revision), true, asset + " remains runtime-cacheable");
+    } else {
+      assert.equal((worker.match(new RegExp('"/' + escaped + '"', "g")) || []).length, 1, asset + " has one network-first route");
+    }
     assert.ok(exists(asset), `missing extracted asset: ${asset}`);
   }
 });
