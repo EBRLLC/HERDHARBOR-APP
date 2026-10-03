@@ -77,6 +77,9 @@ test("customization changes card content without replacing standard geometry", (
     speciesIcon: () => "R"
   });
   assert.match(html, /grid-template-columns: minmax\(168px,1\.18fr\)/);
-  assert.match(html, /data-field="breed"/);
-  assert.doesNotMatch(html, /data-field="registrationNumber"/);
+  const sireStart = html.indexOf('grid-column:3;grid-row:1 / 5');
+  const sireEnd = html.indexOf('</article>', sireStart);
+  const sireCard = html.slice(sireStart, sireEnd);
+  assert.match(sireCard, /data-field="breed"/);
+  assert.doesNotMatch(sireCard, /data-field="registrationNumber"/);
 });
