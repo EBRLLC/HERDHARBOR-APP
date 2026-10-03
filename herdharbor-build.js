@@ -4,8 +4,8 @@
     product: "HerdHarbor",
     channel: "Stable",
     version: "2.0.0",
-    buildId: "v2.0.0-release-1",
-    build: "2.0.0-v2.0.0-release-1"
+    buildId: "v2.0.0-release-2",
+    build: "2.0.0-v2.0.0-release-2"
   });
 
   // Keep authentication and the first cloud hydration from waiting forever while
