@@ -119,3 +119,16 @@ test("hot-path cloud baseline reads do not reparse an already validated memory b
   const legacyAt=block.indexOf("originalGetItem.call(localStorage, baseKey(userId))");
   assert.ok(memoryAt>=0&&legacyAt>memoryAt);
 });
+
+
+test("trusted cloud baseline writes skip duplicate full-state parsing while default writes still validate",()=>{
+  const start=cloud.indexOf("async function writeCloudBaseline");
+  const end=cloud.indexOf("function removeRedundantStateCache",start);
+  const block=cloud.slice(start,end);
+  assert.match(block,/options\.validated !== true && !safeParse\(rawValue\)/);
+  const calls=[...cloud.matchAll(/writeCloudBaseline\(([^\n]+)\)/g)]
+    .map((match)=>match[0])
+    .filter((call)=>!call.startsWith("writeCloudBaseline(userId, rawValue, options"));
+  assert.ok(calls.length>=8);
+  for(const call of calls) assert.match(call,/\{ validated: true \}/,call);
+});
