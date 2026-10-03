@@ -97,7 +97,11 @@
     }
     await loadScript(ASSETS.exceljs, "ExcelJS", () => typeof window.ExcelJS?.Workbook === "function");
     await loadScript(ASSETS.spreadsheet, "HerdHarbor spreadsheet tools", spreadsheetApiReady);
-    return window.HerdHarborSpreadsheet;
+    const api = window.HerdHarborSpreadsheet;
+    try {
+      window.dispatchEvent(new CustomEvent("herdharbor:spreadsheet-ready"));
+    } catch {}
+    return api;
   }
 
   async function ensureQrTools() {
