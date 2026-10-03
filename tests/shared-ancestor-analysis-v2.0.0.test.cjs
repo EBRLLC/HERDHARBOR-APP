@@ -118,13 +118,15 @@ test("B1 UI exposes Compare With Another Animal and Analyze Pairing entry points
 
   assert.match(breeding, /Compare With Another Animal/);
   assert.match(breeding, /Analyze Pairing/);
-  assert.match(breeding, /Pedigree\.sharedAncestorAnalysis/);
+  assert.match(breeding, /Pedigree\.(sharedAncestorAnalysis|pedigreeRelationshipAnalysis)/);
   assert.match(breeding, /openRelationshipComparison/);
   assert.match(profile, /detail-compare-pedigree/);
   assert.match(profile, /openRelationshipComparison\(id\)/);
 });
 
-test("B1 does not publish a relationship coefficient or pedigree COI", () => {
+test("B1 shared-ancestor APIs remain present when later Stack B phases extend the canonical engine", () => {
   const source = fs.readFileSync(path.resolve(__dirname, "..", "pedigree-engine-v2.0.0.js"), "utf8");
-  assert.doesNotMatch(source, /projectedOffspringCoi|relationshipCoefficient|kinshipCoefficient/);
+  assert.match(source, /function lineageProfile\(/);
+  assert.match(source, /function sharedAncestorAnalysis\(/);
+  assert.match(source, /sharedAncestorAnalysis,/);
 });
