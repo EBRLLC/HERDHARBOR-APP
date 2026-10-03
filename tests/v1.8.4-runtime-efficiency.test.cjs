@@ -94,3 +94,14 @@ test("legacy stability compatibility patches lazy spreadsheets without a perpetu
   assert.doesNotMatch(stability, /setInterval\?\.\(\(\)=>\{patchCurrentDom\(\)/);
   assert.doesNotMatch(stability, /,150\)/);
 });
+
+
+test("PWA artwork is runtime-cached instead of blocking application shell installation", () => {
+  const sw = read("service-worker.js");
+  const required = sw.slice(sw.indexOf("const REQUIRED_SHELL"), sw.indexOf("const RUNTIME_CACHE_PATHS"));
+  const runtime = sw.slice(sw.indexOf("const RUNTIME_CACHE_PATHS"), sw.indexOf("const NETWORK_FIRST_PATHS"));
+  for (const icon of ["icon-192.png", "icon-512.png"]) {
+    assert.equal(required.includes(icon), false, icon + " should not block app shell install");
+    assert.equal(runtime.includes("./" + icon), true, icon + " remains cacheable when requested");
+  }
+});
