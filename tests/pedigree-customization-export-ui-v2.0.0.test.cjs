@@ -19,8 +19,12 @@ test("pedigree print flow exposes customization directly in the export modal", (
 
 test("standard is the starting configuration for every new pedigree export", () => {
   assert.match(customization, /const DEFAULT_TEMPLATE = "Standard"/);
-  assert.match(source, /templateConfig\?\.\("Standard"\)/);
-  assert.doesNotMatch(source, /resolveDocumentContext\?\.\([\s\S]{0,220}"pedigree"/);
+  const start = source.indexOf("function pedigreeExportContext");
+  const end = source.indexOf("function buildPedigreePrintableHtml", start);
+  const exportContext = source.slice(start, end);
+  assert.match(exportContext, /templateConfig\?\.\("Standard"\)/);
+  assert.match(exportContext, /resolveBranding\?\./);
+  assert.doesNotMatch(exportContext, /resolveDocumentContext/);
 });
 
 test("pedigree export modal includes a live preview before printing", () => {
