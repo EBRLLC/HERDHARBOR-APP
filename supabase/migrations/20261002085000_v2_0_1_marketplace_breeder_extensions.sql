@@ -44,7 +44,7 @@ language sql
 stable
 security definer
 set search_path=''
-as $
+as $$
   select l.id,l.source_animal_id,l.state,l.listing_kind,l.available_from,l.animal_name,l.species,l.breed,l.sex,l.price_cents,l.currency,
          l.location_city,l.location_region,l.pedigree_status,l.published_at,l.expires_at,l.last_confirmed_at,
          l.sold_at,l.created_at,l.updated_at,
@@ -53,7 +53,7 @@ as $
   where l.seller_id=(select auth.uid())
     and (nullif(trim(status_filter),'') is null or l.state=lower(trim(status_filter)))
   order by l.updated_at desc,l.id;
-$;
+$$;
 revoke all on function public.marketplace_my_listings(text) from public,anon;
 grant execute on function public.marketplace_my_listings(text) to authenticated;
 
