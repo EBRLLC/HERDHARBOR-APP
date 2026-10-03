@@ -78,7 +78,7 @@
     const host = document.querySelector("#view-breeding"); if (!host) return;
     let card = host.querySelector("#hh-breeding-intelligence"); if (!card) { card = document.createElement("section"); card.id = "hh-breeding-intelligence"; card.className = "hh-bi-card"; host.prepend(card); }
     const state = readState(), rabbits = rabbitAnimals(state), bucks = rabbits.filter((a) => sexIs(a,"male")), does = rabbits.filter((a) => sexIs(a,"female")), profiles = rabbits.filter((a) => a.genetics).length, predictions = state[ROOT_KEY]?.predictions?.length || 0;
-    card.innerHTML = `<div class="hh-bi-heading"><div><span class="hh-bi-kicker">Breeding Genetics</span><h2>Breeding Intelligence</h2><p>Plan rabbit pairings with pedigree evidence, recorded genetics, previous offspring and honest uncertainty handling.</p></div><span class="hh-bi-badge">Rabbit genetics</span></div><div class="hh-bi-metrics"><div><strong>${rabbits.length}</strong><span>Rabbits</span></div><div><strong>${profiles}</strong><span>Genetic profiles</span></div><div><strong>${predictions}</strong><span>Saved analyses</span></div></div><div class="hh-bi-actions"><button type="button" class="primary" data-bi-action="pair">Analyze Pairing</button><button type="button" data-bi-action="compare">Compare With Another Animal</button><button type="button" data-bi-action="profile">Rabbit genetic profile</button><button type="button" data-bi-action="learn">Learn from recorded offspring</button><button type="button" data-bi-action="history">Prediction history</button></div>${(!bucks.length || !does.length) ? '<p class="hh-bi-note">Add at least one male and one female rabbit to run Pair Analysis.</p>' : ''}<p class="hh-bi-footnote">Predictions use the supported A/B/C/D/E model. Additional modifier genes, breed-specific expression and incomplete records can change visible color.</p>`;
+    card.innerHTML = `<div class="hh-bi-heading"><div><span class="hh-bi-kicker">Breeding Genetics</span><h2>Breeding Intelligence</h2><p>Plan rabbit pairings with pedigree evidence, recorded genetics, previous offspring and honest uncertainty handling.</p></div><span class="hh-bi-badge">Rabbit genetics</span></div><div class="hh-bi-metrics"><div><strong>${rabbits.length}</strong><span>Rabbits</span></div><div><strong>${profiles}</strong><span>Genetic profiles</span></div><div><strong>${predictions}</strong><span>Saved analyses</span></div></div><div class="hh-bi-actions"><button type="button" class="primary" data-bi-action="pair">Analyze Pairing</button><button type="button" data-bi-action="compare">Linebreeding Coefficient</button><button type="button" data-bi-action="profile">Rabbit genetic profile</button><button type="button" data-bi-action="learn">Learn from recorded offspring</button><button type="button" data-bi-action="history">Prediction history</button></div>${(!bucks.length || !does.length) ? '<p class="hh-bi-note">Add at least one male and one female rabbit to run Pair Analysis.</p>' : ''}<p class="hh-bi-footnote">Predictions use the supported A/B/C/D/E model. Additional modifier genes, breed-specific expression and incomplete records can change visible color.</p>`;
   }
 
   function openModal(title, bodyHtml) {
@@ -166,24 +166,37 @@
 
   function renderRelationshipComparison(firstId = "", secondId = "") {
     const state = readState();
-    const animals = (state.animals || []).filter((animal) => animal?.id);
-    const first = animals.find((animal) => String(animal.id) === String(firstId)) || animals[0] || null;
-    const second = animals.find((animal) => String(animal.id) === String(secondId)) || null;
-    const analysis = first && second ? relationshipAnalysis(first, second, state, 4) : null;
-    const results = analysis
-      ? relationshipSummaryHtml(analysis, first.name || "Animal A", second.name || "Animal B")
-      : '<div class="hh-bi-empty">Choose two animals to compare recorded ancestry.</div>';
+    const rabbits = rabbitAnimals(state);
+    const bucks = rabbits.filter((animal) => sexIs(animal, "male"));
+    const does = rabbits.filter((animal) => sexIs(animal, "female"));
+    const requested = [firstId, secondId]
+      .map((id) => rabbits.find((animal) => String(animal.id) === String(id)))
+      .filter(Boolean);
+    const requestedBuck = requested.find((animal) => sexIs(animal, "male")) || null;
+    const requestedDoe = requested.find((animal) => sexIs(animal, "female")) || null;
+    const buck = requestedBuck || bucks[0] || null;
+    const doe = requestedDoe || does[0] || null;
+    const explicitPair = Boolean(firstId && secondId && requestedBuck && requestedDoe);
+    const analysis = explicitPair && buck && doe
+      ? relationshipAnalysis(buck, doe, state, 4)
+      : null;
 
-    openModal("Compare Pedigrees", `<div class="hh-bi-pair-selectors">
-      <label>Animal<select id="bi-compare-a">${selectOptions(animals, first?.id)}</select></label>
-      <label>Compare with<select id="bi-compare-b">${selectOptions(animals, second?.id)}</select></label>
-      <button type="button" class="primary" id="bi-run-pedigree-compare">Compare With Another Animal</button>
+    const results = analysis
+      ? relationshipSummaryHtml(analysis, buck.name || "Buck", doe.name || "Doe")
+      : (!bucks.length || !does.length)
+        ? '<div class="hh-bi-empty">Add at least one buck and one doe before calculating a linebreeding coefficient.</div>'
+        : '<div class="hh-bi-empty">Choose a buck and doe, then calculate the linebreeding coefficient.</div>';
+
+    openModal("Linebreeding Coefficient", `<div class="hh-bi-pair-selectors">
+      <label>Buck<select id="bi-compare-buck">${selectOptions(bucks, buck?.id)}</select></label>
+      <label>Doe<select id="bi-compare-doe">${selectOptions(does, doe?.id)}</select></label>
+      <button type="button" class="primary" id="bi-run-pedigree-compare" ${!bucks.length || !does.length ? "disabled" : ""}>Calculate Linebreeding Coefficient</button>
     </div>${results}`);
 
     modal.querySelector("#bi-run-pedigree-compare")?.addEventListener("click", () => {
       renderRelationshipComparison(
-        modal.querySelector("#bi-compare-a")?.value || "",
-        modal.querySelector("#bi-compare-b")?.value || ""
+        modal.querySelector("#bi-compare-buck")?.value || "",
+        modal.querySelector("#bi-compare-doe")?.value || ""
       );
     });
   }
