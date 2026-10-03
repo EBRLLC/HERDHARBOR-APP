@@ -29,12 +29,12 @@ const REQUIRED_SHELL = [
   "./task-automation-v1.8.3.js?v=1",
   "./task-runtime-v1.8.3.js?v=1",
   "./sales-customer-runtime-v1.8.3.js?v=1",
-  "./mobile-capture-v1.8.3.js?v=1",
   "./herdharbor-app-runtime.js?v=4",
   "./how-to/",
 ];
 
 const RUNTIME_CACHE_PATHS = [
+  "./mobile-capture-v1.8.3.js?v=1",
   "./herdharbor-admin-v1.6.1.js?v=2",
   "./icon-192.png",
   "./icon-512.png",
@@ -177,7 +177,6 @@ const NETWORK_FIRST_PATHS = [
   "/sales-customer-runtime-v1.8.3.js",
   "/profitability-analytics-v1.8.3.js",
   "/settings-runtime-v1.8.3.js",
-  "/mobile-capture-v1.8.3.js",
   "/herdharbor-app-runtime.js",
   "/mobile-viewport-hotfix-v1.8.0.css",
   "/spreadsheet-import.js",
