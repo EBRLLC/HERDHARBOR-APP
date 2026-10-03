@@ -253,9 +253,12 @@
 
         nodes.push(child);
         byKey[key] = child;
+        const traversableAnimal = child.status === "known" || child.status === "repeat"
+          ? childAnimal
+          : null;
         queue.push({
           node: child,
-          animal: childAnimal,
+          animal: traversableAnimal,
           path: childPath,
           branchIds: nextBranchIds
         });
