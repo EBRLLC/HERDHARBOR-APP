@@ -81,3 +81,19 @@ test("controls include generation, root/ancestor fields, photos, unknown display
   ]) assert.ok(html.includes(token), token);
   for (const template of Object.keys(Customization.TEMPLATES)) assert.ok(html.includes(template), template);
 });
+
+
+test("A3 shell loads customization before the renderer and caches both assets", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const root = path.resolve(__dirname, "..");
+  const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+  const worker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
+  const customizationIndex = html.indexOf("pedigree-customization-v2.0.0.js?v=1");
+  const rendererIndex = html.indexOf("pedigree-renderer-v2.0.0.js?v=1");
+  assert.ok(customizationIndex >= 0 && rendererIndex > customizationIndex);
+  assert.match(html, /pedigree-customization-v2\.0\.0\.css\?v=1/);
+  assert.match(worker, /\.\/pedigree-customization-v2\.0\.0\.css\?v=1/);
+  assert.match(worker, /\.\/pedigree-customization-v2\.0\.0\.js\?v=1/);
+  assert.match(worker, /"\/pedigree-customization-v2\.0\.0\.js"/);
+});
