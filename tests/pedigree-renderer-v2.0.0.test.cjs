@@ -56,8 +56,8 @@ test("private herd renderer consumes the canonical graph and emits one reusable 
 
 test("collapsed ancestor cards keep details hidden while subject starts expanded", () => {
   const html = Renderer.render({ graph: graph(), mode: "private-herd" });
-  const subject = html.slice(html.indexOf('data-pedigree-key="subject"'), html.indexOf('data-pedigree-key="sire"'));
-  const sire = html.slice(html.indexOf('data-pedigree-key="sire"'), html.indexOf('data-pedigree-key="dam"'));
+  const subject = html.match(/<article class="[^"]*is-subject[^"]*"[^>]*data-pedigree-key="subject"[\\s\\S]*?<\\/article>/)?.[0] || "";
+  const sire = html.match(/<article class="[^"]*"[^>]*data-pedigree-key="sire"[\\s\\S]*?<\\/article>/)?.[0] || "";
   assert.match(subject, /is-expanded/);
   assert.doesNotMatch(subject, /hh-pedigree-card-details" hidden/);
   assert.match(sire, /aria-expanded="false"/);
