@@ -117,3 +117,54 @@ test("canonical app settings own saved templates and expose compressed document 
   assert.match(source, /pedigreeDocuments:\s*\{[\s\S]*templates:\s*\[\][\s\S]*birthCertificate/);
   assert.match(source, /prepareDocumentImage:\s*\(file\) => prepareProfileImage/);
 });
+
+
+test("contact information is excluded unless explicitly enabled and is never copied from account profile", () => {
+  const profile = {
+    operationName: "Profile Rabbitry",
+    logoData: "data:image/png;base64,PROFILE",
+    email: "private@example.com",
+    phone: "555-0000",
+    address: "Private Address"
+  };
+  let store = Docs.updateBranding(baseStore(), {
+    website: "https://example.test",
+    social: "@rabbitry",
+    accent: "#123456",
+    contact: {
+      email: "print@example.com",
+      phone: "555-1234",
+      address: "Printed Address"
+    }
+  });
+  let branding = Docs.resolveBranding(store, profile);
+  assert.equal(branding.website, "https://example.test");
+  assert.equal(branding.social, "@rabbitry");
+  assert.equal(branding.accent, "#123456");
+  assert.deepEqual(branding.contact, { email: "", phone: "", address: "" });
+  assert.notEqual(branding.contact.email, profile.email);
+
+  store = Docs.updateBranding(store, {
+    contact: {
+      includeEmail: true,
+      includePhone: true,
+      includeAddress: true
+    }
+  });
+  branding = Docs.resolveBranding(store, profile);
+  assert.deepEqual(branding.contact, {
+    email: "print@example.com",
+    phone: "555-1234",
+    address: "Printed Address"
+  });
+});
+
+test("branding manager includes accent website social and explicit contact opt-ins", () => {
+  const html = Docs.managerHtml(baseStore(), { operationName: "Rabbitry", email: "account@example.com" });
+  for (const token of [
+    "Accent color", "Website", "Social information",
+    "hh-pedigree-brand-email-on", "hh-pedigree-brand-phone-on", "hh-pedigree-brand-address-on",
+    "Nothing from your account is inserted automatically"
+  ]) assert.ok(html.includes(token), token);
+  assert.ok(!html.includes('value="account@example.com"'));
+});
