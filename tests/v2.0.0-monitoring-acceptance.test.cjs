@@ -21,9 +21,9 @@ const worker = read("service-worker.js");
 
 test("monitoring configuration and controlled acceptance identify stable 2.0.0", () => {
   assert.match(config, /release:\s*"HerdHarbor@2\.0\.0"/);
-  assert.match(config, /build:\s*"v2\.0\.0-release-1"/);
+  assert.match(config, /build:\s*"v2\.0\.0-release-2"/);
   assert.match(generator, /release:\s*"HerdHarbor@2\.0\.0"/);
-  assert.match(generator, /v2\.0\.0-release-1/);
+  assert.match(generator, /v2\.0\.0-release-2/);
   assert.match(acceptance, /release:\s*"HerdHarbor@2\.0\.0"/);
   assert.match(acceptance, /build:\s*"v2\.0\.0-production-acceptance"/);
   assert.match(acceptance, /herdharbor-release-acceptance\/2\.0\.0/);
