@@ -190,7 +190,10 @@
       : "";
     const issue = node?.issue ? `<p class="hh-pedigree-issue">${escapeHtml(node.issue)}</p>` : "";
 
-    return `<article class="hh-pedigree-card${subject ? " is-subject" : ""}${isKnown ? "" : " is-unknown"}${expanded ? " is-expanded" : ""}" data-hh-pedigree-card data-pedigree-key="${escapeHtml(node?.key)}" data-pedigree-status="${escapeHtml(node?.status)}">
+    const placementStyle = Number.isFinite(options.rowStart) && Number.isFinite(options.rowSpan)
+      ? ` style="--hh-pedigree-row-start:${options.rowStart};--hh-pedigree-row-span:${options.rowSpan}"`
+      : "";
+    return `<article class="hh-pedigree-card${subject ? " is-subject" : ""}${isKnown ? "" : " is-unknown"}${expanded ? " is-expanded" : ""}" data-hh-pedigree-card data-pedigree-key="${escapeHtml(node?.key)}" data-pedigree-status="${escapeHtml(node?.status)}"${placementStyle}>
       <div class="hh-pedigree-card-summary">
         ${photo ? `<img class="hh-pedigree-photo" src="${escapeHtml(photo)}" alt="" loading="lazy" decoding="async">` : ""}
         <div class="hh-pedigree-card-title">
@@ -228,13 +231,25 @@
     const generations = Math.max(1, Number(graph.generations || 1));
     const columns = [];
 
+    const pedigreeSlots = Math.max(1, 2 ** Math.max(0, generations - 1));
     for (let generation = 0; generation < generations; generation += 1) {
       const nodes = graph.nodes.filter((node) => Number(node.generation) === generation);
       if (!nodes.length) continue;
+      const rowSpan = Math.max(1, Math.floor(pedigreeSlots / Math.max(1, nodes.length)));
       columns.push(`<section class="hh-pedigree-generation" data-generation="${generation}" aria-label="${generation === 0 ? "Animal" : `Generation ${generation + 1}`}">
         <div class="hh-pedigree-generation-label">${generation === 0 ? "Animal" : generation === 1 ? "Parents" : generation === 2 ? "Grandparents" : `Generation ${generation + 1}`}</div>
-        <div class="hh-pedigree-generation-cards">
-          ${nodes.map((node) => renderCard(node, { rootFields, ancestorFields, density, unknownDisplay, interactive, expandedKeys, formatDate: options.formatDate })).join("")}
+        <div class="hh-pedigree-generation-cards" style="--hh-pedigree-slots:${pedigreeSlots}">
+          ${nodes.map((node, index) => renderCard(node, {
+            rootFields,
+            ancestorFields,
+            density,
+            unknownDisplay,
+            interactive,
+            expandedKeys,
+            formatDate: options.formatDate,
+            rowStart: (index * rowSpan) + 1,
+            rowSpan
+          })).join("")}
         </div>
       </section>`);
     }
@@ -257,7 +272,7 @@
     const brandingHtml = brandName || brandText || brandLogo || brandingMeta.length
       ? `<header class="hh-pedigree-branding" style="--hh-pedigree-accent:${escapeHtml(brandAccent)}">${brandLogo ? `<img src="${escapeHtml(brandLogo)}" alt="">` : ""}<div>${brandName ? `<strong>${escapeHtml(brandName)}</strong>` : ""}${brandText ? `<small>${escapeHtml(brandText)}</small>` : ""}${brandingMeta.length ? `<span>${brandingMeta.map(escapeHtml).join(" · ")}</span>` : ""}</div></header>`
       : "";
-    return `<div class="hh-pedigree-renderer density-${escapeHtml(density)} mode-${escapeHtml(mode)} layout-${escapeHtml(layout)} style-${escapeHtml(style)}" data-hh-pedigree-renderer data-pedigree-mode="${escapeHtml(mode)}" data-pedigree-layout="${escapeHtml(layout)}" data-pedigree-style="${escapeHtml(style)}" data-unknown-display="${escapeHtml(unknownDisplay)}" style="--hh-pedigree-generations:${columns.length}" aria-label="Pedigree chart for ${escapeHtml(subjectName || "animal")}">
+    return `<div class="hh-pedigree-renderer density-${escapeHtml(density)} mode-${escapeHtml(mode)} layout-${escapeHtml(layout)} style-${escapeHtml(style)}" data-hh-pedigree-renderer data-pedigree-mode="${escapeHtml(mode)}" data-pedigree-layout="${escapeHtml(layout)}" data-pedigree-style="${escapeHtml(style)}" data-pedigree-generations="${columns.length}" data-unknown-display="${escapeHtml(unknownDisplay)}" style="--hh-pedigree-generations:${columns.length};--hh-pedigree-slots:${pedigreeSlots}" aria-label="Pedigree chart for ${escapeHtml(subjectName || "animal")}">
       ${brandingHtml}
       <div class="hh-pedigree-columns">${columns.join("")}</div>
     </div>`;
