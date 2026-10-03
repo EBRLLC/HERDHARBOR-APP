@@ -62,7 +62,6 @@
     push("prefix", "BREEDER", animal?.prefix || animal?.rabbitry || animal?.rabbitryName || animal?.breeder);
     push("weight", "WEIGHT", animal?.currentWeight || animal?.weight);
     push("gcNumber", "GC", animal?.gcNumber || animal?.grandChampionNumber || animal?.grandChampionNo);
-    push("genotype", "GENOTYPE", genotypeValue(animal));
     return rows;
   }
 
@@ -94,7 +93,8 @@
     const relation = relationFor(node);
     const extraClass = options.great ? " great-node-card" : "";
     const subjectClass = isSubject ? " subject-card" : "";
-    return `<article class="pedigree-node-card${subjectClass}${animal ? "" : " unknown"}${extraClass}">
+    const printGenetics = fields.includes("genotype");
+    return `<article class="pedigree-node-card hh-pedigree-card${subjectClass}${animal ? "" : " unknown"}${extraClass}" data-hh-generation="${Number(node?.generation || 0)}" data-animal-id="${escapeHtml(animal?.id || "")}" data-hh-print-genetics="${printGenetics ? "1" : "0"}">
       <div class="node-header">
         <div class="node-title"><span class="species-mark">${options.speciesIcon(animal?.species || subject?.species)}</span><div><span class="relation">${escapeHtml(relation)}</span><strong>${escapeHtml(title)}</strong></div></div>
         ${showSex ? `<div class="sex-mark"><span>${symbol}</span><small>${label}</small></div>` : ""}
@@ -176,7 +176,7 @@
     const mobileClass = mobilePrint ? " mobile-print" : "";
     const finalGenerationClass = generations === 5 ? "five-generation" : generations === 3 ? "three-generation" : "four-generation";
 
-    return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(subject.name)} Pedigree</title><style>
+    return `<!doctype html><html class="hh-standard-pedigree-print"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(subject.name)} Pedigree</title><style>
       @page { size: letter landscape; margin: .2in; }
       * { box-sizing: border-box; }
       html, body { margin: 0; padding: 0; color: #2f3438; background: #fff; font-family: "Segoe UI", Arial, Helvetica, sans-serif; }
