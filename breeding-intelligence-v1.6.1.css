@@ -36,3 +36,31 @@ html[data-theme="dark"] .hh-bi-modal li{color:#334b60}
 .hh-bi-closest-paths span{color:#65727e;font-size:.8rem;text-align:right}
 @media(max-width:900px){.hh-bi-linebreeding-pedigrees{grid-template-columns:1fr}}
 @media(max-width:760px){.hh-bi-relationship-legend{display:grid}.hh-bi-linebreeding-pedigrees>section{padding:10px}.hh-bi-closest-paths li{display:grid}.hh-bi-closest-paths span{text-align:left}}
+
+
+.hh-bi-linebreeding-filter {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-soft, rgba(127,127,127,.05));
+}
+
+.hh-bi-linebreeding-filter label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 700;
+}
+
+.hh-bi-linebreeding-filter input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+
+.hh-bi-linebreeding-filter small {
+  color: var(--muted);
+  line-height: 1.35;
+}
