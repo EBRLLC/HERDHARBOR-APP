@@ -3,8 +3,8 @@
 
   const release = Object.freeze({
     version: window.HerdHarborBuild?.version || "2.0.0",
-    buildId: window.HerdHarborBuild?.buildId || "v2.0.0-release-1",
-    build: window.HerdHarborBuild?.build || "2.0.0-v2.0.0-release-1",
+    buildId: window.HerdHarborBuild?.buildId || "v2.0.0-release-2",
+    build: window.HerdHarborBuild?.build || "2.0.0-v2.0.0-release-2",
     howToUrl: "https://herdharbor.com/how-to/",
     featureFlags: Object.freeze({
       adminMemberManagementEnabled: true,
