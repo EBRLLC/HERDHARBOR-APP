@@ -263,7 +263,10 @@ test("Phase 9F keeps Task automation eager before Task runtime while Health rema
   assert.match(worker, /\.\/task-automation-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /\.\/health-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /"\/task-automation-v1\.8\.3\.js"/);
-  assert.match(worker, /"\/health-runtime-v1\.8\.3\.js"/);
+  const required = worker.slice(worker.indexOf("const REQUIRED_SHELL"), worker.indexOf("const RUNTIME_CACHE_PATHS"));
+  const runtimeCache = worker.slice(worker.indexOf("const RUNTIME_CACHE_PATHS"), worker.indexOf("const NETWORK_FIRST_PATHS"));
+  assert.equal(required.includes("health-runtime-v1.8.3.js"), false);
+  assert.equal(runtimeCache.includes("health-runtime-v1.8.3.js?v=1"), true);
   assert.match(pkg.scripts["test:v1.8.3"], /derived-task-automation-v1\.8\.3\.test\.cjs/);
 });
 
