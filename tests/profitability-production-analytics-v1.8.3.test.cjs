@@ -143,18 +143,27 @@ test("profitability analytics are read-only and contain no persistence path", ()
   assert.doesNotMatch(source, /state\.(?:animals|transactions|sales|payments|litters|productionRecords)\s*=|state\.(?:animals|transactions|sales|payments|litters|productionRecords)\.(?:push|splice)\(/);
 });
 
-test("Production/Reporting remains the visible owner and shell loads profitability before it", () => {
+test("Production/Reporting remains the visible owner and Budget loads reporting with profitability on demand", () => {
   const runtime = read("production-reporting-runtime-v1.8.3.js");
   const html = read("index.html");
+  const app = read("herdharbor-app-runtime.js");
   const worker = read("service-worker.js");
   const pkg = JSON.parse(read("package.json"));
   assert.match(runtime, /Recorded profitability/);
   assert.match(runtime, /HerdHarborProfitabilityAnalytics/);
-  assert.match(runtime, /Recorded profitability/);
   assert.match(runtime, /recorded data only/);
-  assert.ok(html.indexOf("profitability-analytics-v1.8.3.js?v=1") < html.indexOf("production-reporting-runtime-v1.8.3.js?v=1"));
+  assert.doesNotMatch(html, /<script[^>]+profitability-analytics-v1\.8\.3\.js/);
+  assert.doesNotMatch(html, /<script[^>]+production-reporting-runtime-v1\.8\.3\.js/);
+  assert.match(app, /ensureProfitabilityAnalyticsLoaded/);
+  assert.match(app, /ensureProductionReportingRuntimeLoaded/);
+  assert.match(app, /Promise\.all\(\[ensureProductionReportingRuntimeLoaded\(\), ensureProfitabilityAnalyticsLoaded\(\)\]\)/);
   assert.match(worker, /\.\/profitability-analytics-v1\.8\.3\.js\?v=1/);
+  assert.match(worker, /\.\/production-reporting-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /"\/profitability-analytics-v1\.8\.3\.js"/);
+  const required = worker.slice(worker.indexOf("const REQUIRED_SHELL"), worker.indexOf("const RUNTIME_CACHE_PATHS"));
+  const runtimeCache = worker.slice(worker.indexOf("const RUNTIME_CACHE_PATHS"), worker.indexOf("const NETWORK_FIRST_PATHS"));
+  assert.equal(required.includes("production-reporting-runtime-v1.8.3.js"), false);
+  assert.equal(runtimeCache.includes("production-reporting-runtime-v1.8.3.js?v=1"), true);
   assert.match(pkg.scripts["test:v1.8.3"], /profitability-production-analytics-v1\.8\.3\.test\.cjs/);
 });
 

@@ -147,3 +147,14 @@ test('Phase 1 assets are cache-busted after stability repair, dark mode is expli
   assert.doesNotMatch(build,/workflow-engine-v1\.7\.5|health-intelligence-ui-hotfix-v1\.7\.5/);
   assert.doesNotMatch(sw,/workflow-engine-v1\.7\.5|health-intelligence-ui-hotfix-v1\.7\.5/);
 });
+
+test('Phase 1 observer watches only Dashboard and modal surfaces, not the whole app body',()=>{
+  const repo=path.resolve(__dirname,'..');
+  const source=fs.readFileSync(path.join(repo,'workflow-phase1-v1.7.1.js'),'utf8');
+  assert.match(source,/function observeEnhanceTargets\(\)/);
+  assert.match(source,/querySelector\('#view-dashboard'\)/);
+  assert.match(source,/querySelector\('#modal-content'\)/);
+  assert.match(source,/observer\.observe\(dashboard,\{childList:true,subtree:true,attributes:true,attributeFilter:\['class'\]\}\)/);
+  assert.match(source,/observer\.observe\(modal,\{childList:true,subtree:true\}\)/);
+  assert.doesNotMatch(source,/observer\.observe\(root\.document\.body,\{childList:true,subtree:true\}\)/);
+});

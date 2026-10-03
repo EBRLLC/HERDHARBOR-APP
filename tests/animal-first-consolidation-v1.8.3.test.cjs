@@ -40,11 +40,13 @@ test("profile Quick Add uses the shared animal action router and does not create
   assert.doesNotMatch(quickBlock, /state\.(?:animals|health|breedings|litters|pedigrees)\.(?:push|splice)/);
 });
 
-test("canonical runtime wrappers stay narrow after Animals/Profile extraction", () => {
+test("canonical runtime wrappers stay narrow and lazy-safe after Animals/Profile extraction", () => {
   const runtime = read("herdharbor-app-runtime.js");
   const extracted = read("animal-profile-runtime-v1.8.3.js");
-  assert.match(runtime, /openAnimalEditor:\s*\(animalId\)\s*=>\s*animalProfileRuntime\(\)\.openEditor\(animalId\)/);
-  assert.match(runtime, /openAnimalPedigreePrint:\s*\(animalId\)\s*=>\s*animalProfileRuntime\(\)\.openPedigreePrint\(animalId\)/);
+  assert.match(runtime, /function launchLazyAnimalProfileAction\(method, animalId, unavailableMessage\)/);
+  assert.match(runtime, /ensureAnimalProfileRuntimeLoaded\(\)[\s\S]*\.then\(run\)/);
+  assert.match(runtime, /openAnimalEditor:\s*\(animalId\) => launchLazyAnimalProfileAction\([\s\S]*"openEditor"[\s\S]*animalId/);
+  assert.match(runtime, /openAnimalPedigreePrint:\s*\(animalId\) => launchLazyAnimalProfileAction\([\s\S]*"openPedigreePrint"[\s\S]*animalId/);
   assert.match(extracted, /function openEditor\(animalId\)/);
   assert.match(extracted, /animalsNow\(\)\.some\(\(animal\) => String\(animal\.id\) === id\)/);
   assert.match(extracted, /function openPedigreePrint\(animalId\)/);

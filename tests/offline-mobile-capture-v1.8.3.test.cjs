@@ -122,16 +122,25 @@ test("canonical cloud retry safeguards remain untouched", () => {
   assert.doesNotMatch(mobile, /dirtyKey|baseKey|lifecycleTombstones|syncConflict/);
 });
 
-test("mobile capture remains in the core shell while photo AI is live-tester lazy-loaded", () => {
-  const mobileIndex = html.indexOf("mobile-capture-v1.8.3.js?v=1");
-  const appIndex = html.indexOf("herdharbor-app-runtime.js?v=4");
+test("mobile capture is live-tester lazy-loaded before photo AI", () => {
   const optional = read("herdharbor-optional-tools.js");
-  assert.ok(mobileIndex >= 0 && appIndex > mobileIndex);
+  assert.doesNotMatch(html, /<script[^>]+mobile-capture-v1\.8\.3\.js/);
   assert.doesNotMatch(html, /<script[^>]+photo-assisted-entry-v1\.8\.3\.js/);
+  assert.match(optional, /mobileCapture:\s*"mobile-capture-v1\.8\.3\.js\?v=1"/);
   assert.match(optional, /photoAi:\s*"photo-assisted-entry-v1\.8\.3\.js\?v=2"/);
-  assert.match(optional, /ensureAiLiveTools/);
-  assert.match(worker, /\.\/mobile-capture-v1\.8\.3\.js\?v=1/);
-  assert.match(worker, /"\/mobile-capture-v1\.8\.3\.js"/);
+  const ensureStart = optional.indexOf("async function ensureAiLiveTools()");
+  const ensureEnd = optional.indexOf("function setAiLiveTesterEnabled", ensureStart);
+  const ensure = optional.slice(ensureStart, ensureEnd);
+  assert.ok(ensure.indexOf("ASSETS.mobileCapture") >= 0);
+  assert.ok(ensure.indexOf("ASSETS.photoAi") > ensure.indexOf("ASSETS.mobileCapture"));
+  assert.match(ensure, /HerdHarborMobileCapture\?\.prepareImage/);
+  assert.match(ensure, /HerdHarborMobileCapture\?\.createRetryController/);
+  const required = worker.slice(worker.indexOf("const REQUIRED_SHELL"), worker.indexOf("const RUNTIME_CACHE_PATHS"));
+  const runtime = worker.slice(worker.indexOf("const RUNTIME_CACHE_PATHS"), worker.indexOf("const NETWORK_FIRST_PATHS"));
+  const network = worker.slice(worker.indexOf("const NETWORK_FIRST_PATHS"), worker.indexOf("function isNetworkFirstPath"));
+  assert.equal(required.includes("mobile-capture-v1.8.3.js"), false);
+  assert.equal(runtime.includes("./mobile-capture-v1.8.3.js?v=1"), true);
+  assert.equal(network.includes("/mobile-capture-v1.8.3.js"), false);
   assert.match(worker, /\.\/photo-assisted-entry-v1\.8\.3\.js\?v=2/);
   assert.match(pkg.scripts["test:v1.8.3"], /offline-mobile-capture-v1\.8\.3\.test\.cjs/);
 });

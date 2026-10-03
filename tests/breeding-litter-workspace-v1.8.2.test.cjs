@@ -122,3 +122,11 @@ test('integration replaces manual litter creation entry points with Manage litte
   assert.ok(integration.includes('Manage litter'));
   assert.ok(integration.includes('hhBwManageLitter'));
 });
+
+
+test('litter workspace observes only the Litters view instead of the entire app body',()=>{
+  const source=fs.readFileSync(path.join(__dirname,'..','breeding-litter-workspace-v1.8.2.js'),'utf8');
+  assert.match(source,/querySelector\("#view-litters"\)/);
+  assert.match(source,/observer\.observe\(littersView,\{childList:true,subtree:true,attributes:true,attributeFilter:\["class"\]\}\)/);
+  assert.doesNotMatch(source,/observer\.observe\(root\.document\.body,\{childList:true,subtree:true\}\)/);
+});

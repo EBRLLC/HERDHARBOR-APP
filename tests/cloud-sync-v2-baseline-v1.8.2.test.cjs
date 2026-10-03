@@ -95,6 +95,7 @@ function makeBridge(seed = {}) {
     "removeRedundantStateCache",
     "sameState",
     "recordRecoverySnapshot",
+    "scheduleRoutineRecoverySnapshot",
     "scheduleCloudSync",
     "normalizedAuthorityActive",
     "safeStorageRemove",
@@ -145,6 +146,7 @@ return {
     () => {},
     (left, right) => left === right,
     (id, raw, reason) => { recovery.push({ id, raw, reason }); return Promise.resolve(true); },
+    (id, raw) => { recovery.push({ id, raw, reason: "Before local change" }); return true; },
     (rawValue, sequence) => { scheduled.push({ rawValue, sequence }); },
     () => false,
     (key) => storage.removeItem(key)

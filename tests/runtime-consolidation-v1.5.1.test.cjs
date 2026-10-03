@@ -39,6 +39,15 @@ const activeV161 = [
 for (const file of activeV161) {
   assert.ok(fs.existsSync(path.join(root, file)), "missing consolidated runtime asset: " + file);
   const cacheVersion = file === "herdharbor-monitoring-config.js" ? "2.0.0" : file === "herdharbor-release-v1.6.1.js" ? "2" : file === "herdharbor-admin-v1.6.1.js" ? "2" : file === "pedigree-genetics-v1.6.1.js" ? "2" : "1.7.1";
+  if (file === "herdharbor-admin-v1.6.1.js") {
+    assert.doesNotMatch(html, /<script[^>]+herdharbor-admin-v1\.6\.1\.js/);
+    assert.ok(appRuntime.includes(`${file}?v=${cacheVersion}`), "Admin runtime is available through the authorized lazy route");
+    const required = worker.slice(worker.indexOf("const REQUIRED_SHELL"), worker.indexOf("const RUNTIME_CACHE_PATHS"));
+    const runtime = worker.slice(worker.indexOf("const RUNTIME_CACHE_PATHS"), worker.indexOf("const NETWORK_FIRST_PATHS"));
+    assert.equal(required.includes(file), false, "Admin UI does not block shell installation");
+    assert.ok(runtime.includes(`./${file}?v=${cacheVersion}`), "Admin UI remains runtime-cacheable");
+    continue;
+  }
   assert.ok((pwa + "\n" + html).includes(`${file}?v=${cacheVersion}`) || html.includes(file + "?v=1.6.5"), "startup loader does not load current runtime asset " + file);
   assert.ok(worker.includes(`./${file}?v=${cacheVersion}`), "service-worker.js does not precache current runtime asset " + file);
 }

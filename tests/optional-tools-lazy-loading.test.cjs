@@ -322,7 +322,7 @@ test("transfer import cleanup remains independent from optional spreadsheet stat
 
 test("spreadsheet import always clears and re-enables its captured input", () => {
   const start = runtime.indexOf("async function handleSpreadsheetImport(event)");
-  const end = runtime.indexOf("\n  function loadDemoData()", start);
+  const end = runtime.indexOf("\n  async function loadDemoData()", start);
   assert.ok(start >= 0 && end > start, "spreadsheet import function is present");
   const spreadsheetImport = runtime.slice(start, end);
 

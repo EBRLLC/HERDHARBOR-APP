@@ -156,17 +156,17 @@ test("slow monitoring does not delay normal application module loading", () => {
   assert.ok(harness.nodes.has("hh-monitoring-config"), "monitoring config begins loading immediately");
   assert.equal(harness.nodes.has("hh-monitoring-v151"), false, "SDK waits for its config");
   harness.fireDocument("DOMContentLoaded");
-  assert.ok(harness.nodes.has("hh-pedigree-visual-script"));
-  assert.ok(harness.nodes.has("hh-rabbit-records-v151"));
-  assert.ok(harness.nodes.has("hh-shows-v151-script"));
+  assert.equal(harness.nodes.has("hh-pedigree-visual-script"), false, "pedigree visuals stay deferred on dashboard");
+  assert.equal(harness.nodes.has("hh-rabbit-records-v151"), false, "genetics stays deferred on dashboard");
+  assert.equal(harness.nodes.has("hh-shows-v151-script"), false, "unused Shows bundle stays off startup");
 });
 
 test("unavailable monitoring configuration is fail-open", () => {
   const harness = createHarness();
   harness.fireNode("hh-monitoring-config", "error");
   assert.doesNotThrow(() => harness.fireDocument("DOMContentLoaded"));
-  assert.ok(harness.nodes.has("hh-pedigree-visual-script"));
-  assert.ok(harness.nodes.has("hh-shows-v151-script"));
+  assert.equal(harness.nodes.has("hh-pedigree-visual-script"), false);
+  assert.equal(harness.nodes.has("hh-shows-v151-script"), false);
 });
 
 test("monitoring bundle load failure cannot block or restart application boot", () => {
