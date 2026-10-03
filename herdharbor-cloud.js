@@ -1040,7 +1040,10 @@
   async function readCloudBaseline(userId) {
     if (!userId) return null;
     const memory = cloudBaselineMemory.get(userId);
-    if (memory && safeParse(memory)) return memory;
+    // Every writer to cloudBaselineMemory validates the raw snapshot first.
+    // Treat the in-memory baseline as the validated cache instead of parsing
+    // the full farm state again on every save and foreground cloud refresh.
+    if (memory) return memory;
 
     const legacyRaw = originalGetItem.call(localStorage, baseKey(userId));
     if (legacyRaw && safeParse(legacyRaw)) {
