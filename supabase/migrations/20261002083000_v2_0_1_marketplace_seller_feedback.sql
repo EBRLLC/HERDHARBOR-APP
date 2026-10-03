@@ -44,7 +44,7 @@ declare seller uuid;
 declare review_id uuid;
 begin
   if caller is null then raise exception 'authentication required' using errcode='42501'; end if;
-  if review_rating<1 or review_rating>5 then raise exception 'rating must be between 1 and 5'; end if;
+  if review_rating is null or review_rating<1 or review_rating>5 then raise exception 'rating must be between 1 and 5'; end if;
 
   select l.seller_id into seller
   from public.marketplace_listings l
@@ -155,6 +155,19 @@ begin
     where r.id=target_review_id and r.seller_id=caller
   ) then raise exception 'review unavailable' using errcode='42501'; end if;
 
+  select r.id into report_id
+  from public.marketplace_reports r
+  where r.reporter_id=caller
+    and r.target_type='review'
+    and r.target_id=target_review_id::text
+    and r.status='open'
+  order by r.created_at desc
+  limit 1;
+
+  if report_id is not null then
+    return report_id;
+  end if;
+
   update public.marketplace_reviews set status='disputed',updated_at=now() where id=target_review_id;
   insert into public.marketplace_reports(reporter_id,target_type,target_id,reason,details)
   values(caller,'review',target_review_id::text,'Seller disputed review',left(trim(dispute_reason),2000))
@@ -179,16 +192,39 @@ as $$
 declare caller uuid := (select auth.uid());
 declare report_id uuid;
 declare recent_count integer;
+declare target_uuid uuid;
 begin
   if caller is null then raise exception 'authentication required' using errcode='42501'; end if;
   if report_target_type not in ('listing','user','conversation','message','review') then raise exception 'invalid report target'; end if;
   if nullif(trim(report_target_id),'') is null or nullif(trim(report_reason),'') is null then raise exception 'report target and reason are required'; end if;
+  begin
+    target_uuid := report_target_id::uuid;
+  exception when invalid_text_representation then
+    raise exception 'invalid report target';
+  end;
   select count(*) into recent_count from public.marketplace_reports r where r.reporter_id=caller and r.created_at>now()-interval '1 hour';
   if recent_count>=10 then raise exception 'report rate limit exceeded'; end if;
-  if report_target_type='conversation' and not herdharbor_private.marketplace_is_conversation_member(report_target_id::uuid) then
+
+  if report_target_type='conversation' and not herdharbor_private.marketplace_is_conversation_member(target_uuid) then
     raise exception 'conversation unavailable' using errcode='42501';
-  end if;
-  if report_target_type='review' and not exists(select 1 from public.marketplace_reviews r where r.id=report_target_id::uuid) then
+  elsif report_target_type='message' and not exists (
+    select 1 from public.marketplace_messages m
+    where m.id=target_uuid
+      and herdharbor_private.marketplace_is_conversation_member(m.conversation_id)
+  ) then
+    raise exception 'message unavailable' using errcode='42501';
+  elsif report_target_type='listing' and not exists (
+    select 1 from public.marketplace_listings l where l.id=target_uuid
+  ) then
+    raise exception 'listing unavailable';
+  elsif report_target_type='user' and not exists (
+    select 1 from public.marketplace_public_profiles p
+    where p.public_id=target_uuid and p.user_id<>caller
+  ) then
+    raise exception 'profile unavailable';
+  elsif report_target_type='review' and not exists (
+    select 1 from public.marketplace_reviews r where r.id=target_uuid
+  ) then
     raise exception 'review unavailable';
   end if;
   insert into public.marketplace_reports(reporter_id,target_type,target_id,reason,details)

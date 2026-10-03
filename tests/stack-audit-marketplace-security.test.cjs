@@ -82,3 +82,31 @@ test("attachment policies bind the message id to the same outer conversation wit
  assert.match(block,/msg\.sender_id=\(select auth\.uid\(\)\)/);
  assert.doesNotMatch(block,/msg\.conversation_id=conversation_id/);
 });
+
+
+test("final report RPC validates target existence and message-thread membership",()=>{
+ const feedback=fs.readFileSync(path.join(root,"supabase/migrations/20261002083000_v2_0_1_marketplace_seller_feedback.sql"),"utf8");
+ const start=feedback.indexOf("create or replace function public.marketplace_submit_report");
+ const end=feedback.indexOf("revoke all on function public.marketplace_submit_report",start);
+ const block=feedback.slice(start,end);
+ assert.match(block,/target_uuid := report_target_id::uuid/);
+ assert.match(block,/report_target_type='message'[\s\S]*marketplace_messages m[\s\S]*marketplace_is_conversation_member\(m\.conversation_id\)/);
+ assert.match(block,/report_target_type='listing'[\s\S]*marketplace_listings l where l\.id=target_uuid/);
+ assert.match(block,/report_target_type='user'[\s\S]*marketplace_public_profiles p[\s\S]*p\.user_id<>caller/);
+});
+
+test("seller review disputes are idempotent while an open moderation report already exists",()=>{
+ const feedback=fs.readFileSync(path.join(root,"supabase/migrations/20261002083000_v2_0_1_marketplace_seller_feedback.sql"),"utf8");
+ const start=feedback.indexOf("create or replace function public.marketplace_dispute_review");
+ const end=feedback.indexOf("revoke all on function public.marketplace_dispute_review",start);
+ const block=feedback.slice(start,end);
+ assert.match(block,/r\.target_type='review'/);
+ assert.match(block,/r\.target_id=target_review_id::text/);
+ assert.match(block,/r\.status='open'/);
+ assert.match(block,/if report_id is not null then[\s\S]*return report_id/);
+});
+
+test("review rating validation rejects null explicitly instead of relying on the table constraint",()=>{
+ const feedback=fs.readFileSync(path.join(root,"supabase/migrations/20261002083000_v2_0_1_marketplace_seller_feedback.sql"),"utf8");
+ assert.match(feedback,/review_rating is null or review_rating<1 or review_rating>5/);
+});
