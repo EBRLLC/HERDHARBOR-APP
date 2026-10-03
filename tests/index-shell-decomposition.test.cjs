@@ -32,6 +32,8 @@ test("index shell keeps only the early bootstrap inline", () => {
   assert.match(appRuntime, /"production-reporting-runtime-v1\.8\.3\.js\?v=1"/);
   assert.doesNotMatch(html, /<script[^>]+settings-runtime-v1\.8\.3\.js/);
   assert.match(appRuntime, /"settings-runtime-v1\.8\.3\.js\?v=1"/);
+  assert.doesNotMatch(html, /<script[^>]+herdharbor-admin-v1\.6\.1\.js/);
+  assert.match(appRuntime, /"herdharbor-admin-v1\.6\.1\.js\?v=2"/);
   assert.match(html, /herdharbor-app-runtime\.js\?v=4/);
   assert.doesNotMatch(html, /function renderSales\(\)/);
   assert.match(appRuntime, /function renderSales\(\)/);
@@ -123,4 +125,15 @@ test("lazy profitability analytics stays outside required startup shell", () => 
   assert.ok(!required.includes("profitability-analytics-v1.8.3.js"));
   assert.ok(runtime.includes("profitability-analytics-v1.8.3.js?v=1"));
   assert.match(worker, /"\/profitability-analytics-v1\.8\.3\.js"/);
+});
+
+
+test("Admin UI stays outside required startup shell and loads only through the authorized route", () => {
+  const required = worker.slice(worker.indexOf("const REQUIRED_SHELL"), worker.indexOf("const RUNTIME_CACHE_PATHS"));
+  const runtime = worker.slice(worker.indexOf("const RUNTIME_CACHE_PATHS"), worker.indexOf("const NETWORK_FIRST_PATHS"));
+  assert.equal(required.includes("herdharbor-admin-v1.6.1.js"), false);
+  assert.equal(runtime.includes("./herdharbor-admin-v1.6.1.js?v=2"), true);
+  assert.match(appRuntime, /function ensureAdminRuntimeLoaded\(\)/);
+  assert.match(appRuntime, /renderLazyRoute\([\s\S]*"admin"[\s\S]*ensureAdminRuntimeLoaded/);
+  assert.match(appRuntime, /if \(route === "admin" && window\.HerdHarborMembership\?\.canAccessAdmin\?\.\(\) !== true\)/);
 });
