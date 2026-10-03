@@ -19,7 +19,7 @@ test("pedigree print flow exposes customization directly in the export modal", (
 test("pedigree export modal includes a live preview before printing", () => {
   assert.match(source, /id="pedigree-export-preview"/);
   assert.match(source, /buildPedigreePrintableHtml\(animalId, saleValues\(\), config\)/);
-  assert.match(source, /exporter\?\.loadFrame\?\(preview, html\)/);
+  assert.match(source, /exporter\?\.loadFrame\?\.\(preview, html\)/);
   assert.match(source, /Print \/ Save PDF/);
 });
 
