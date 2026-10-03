@@ -1588,13 +1588,15 @@
   }
 
   function captureCleanBaselineBeforeLocalCommit(userId, previousValue, reason = "before-local-edit") {
-    if (!userId || !previousValue || !safeParse(previousValue)) return false;
+    if (!userId || !previousValue) return false;
 
-    const memoryBaseline = cloudBaselineMemory.get(userId);
-    if (memoryBaseline && safeParse(memoryBaseline)) return false;
-
+    // Once a valid baseline is already staged, or this account is already
+    // dirty, there is nothing to recapture. Run those cheap guards before
+    // parsing a potentially large photo-heavy previous state.
+    if (cloudBaselineMemory.has(userId)) return false;
     if (originalGetItem.call(localStorage, dirtyKey(userId)) === "1") return false;
     if (!originalGetItem.call(localStorage, versionKey(userId))) return false;
+    if (!safeParse(previousValue)) return false;
 
     // A clean local state immediately before the first edit is a safe merge
     // baseline. Stage it synchronously so durable IndexedDB latency can never
