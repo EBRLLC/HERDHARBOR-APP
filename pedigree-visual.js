@@ -367,8 +367,8 @@ if (!src) return;
     host.appendChild(card);
 
     const configHost = card.querySelector("[data-hh-pedigree-config-host]");
-    const save = () => {
-      config = customization.readControls(configHost, config);
+
+    const persist = () => {
       const savedConfig = customization.savePreferences(localStorage, config);
       let existing = {};
       try { existing = JSON.parse(localStorage.getItem(PREF_KEY) || "{}"); } catch {}
@@ -383,7 +383,23 @@ if (!src) return;
       schedule();
     };
 
-    card.querySelectorAll("input,select").forEach((control) => control.addEventListener("change", save));
+    const bindControls = () => {
+      configHost.querySelectorAll("input,select").forEach((control) => {
+        control.addEventListener("change", (event) => {
+          if (event.currentTarget?.name === "template") {
+            config = customization.templateConfig(event.currentTarget.value);
+            configHost.innerHTML = customization.controlsHtml(config);
+            bindControls();
+          } else {
+            config = customization.readControls(configHost, config);
+          }
+          persist();
+        });
+      });
+    };
+
+    card.querySelector("#hh-pedigree-sex-colors")?.addEventListener("change", persist);
+    bindControls();
   }
 
   function patchPrintWindows() {
