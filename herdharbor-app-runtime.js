@@ -221,7 +221,15 @@
     );
   }
 
-  function ensureDocumentCenterRuntime() {
+  function ensurePedigreePlatformRuntime() {
+    return loadScriptOnce(
+      "herdharbor-pedigree-platform.js?v=1",
+      () => typeof window.HerdHarborPedigreePlatform?.buildPedigreeGraph === "function"
+    );
+  }
+
+  async function ensureDocumentCenterRuntime() {
+    await ensurePedigreePlatformRuntime();
     return loadScriptOnce(
       "herdharbor-document-center.js?v=1",
       () => typeof window.HerdHarborDocumentCenter?.renderHub === "function"
@@ -248,7 +256,8 @@
     ensureDirectTransfer: ensureDirectTransferRuntime
   });
 
-  function ensureAnimalProfileRuntimeLoaded() {
+  async function ensureAnimalProfileRuntimeLoaded() {
+    await ensurePedigreePlatformRuntime();
     return loadScriptOnce(
       "animal-profile-runtime-v1.8.3.js?v=1",
       () => typeof window.HerdHarborAnimalProfileRuntime?.create === "function"
@@ -269,7 +278,8 @@
     );
   }
 
-  function ensureMarketplaceRuntime() {
+  async function ensureMarketplaceRuntime() {
+    await ensurePedigreePlatformRuntime();
     return loadScriptOnce(
       "herdharbor-marketplace.js?v=1",
       () => typeof window.HerdHarborMarketplace?.renderMarketplace === "function"
@@ -1031,9 +1041,21 @@
         );
       },
       animals: renderAnimals,
-      breeding: renderBreedings,
+      breeding: () => {
+        if (typeof window.HerdHarborPedigreePlatform?.buildPedigreeGraph === "function") {
+          renderBreedings();
+          return;
+        }
+        renderLazyRoute("breeding", "Breeding", ensurePedigreePlatformRuntime, renderBreedings);
+      },
       litters: renderLitters,
-      pedigrees: renderPedigrees,
+      pedigrees: () => {
+        if (typeof window.HerdHarborPedigreePlatform?.buildPedigreeGraph === "function") {
+          renderPedigrees();
+          return;
+        }
+        renderLazyRoute("pedigrees", "Pedigrees", ensurePedigreePlatformRuntime, renderPedigrees);
+      },
       documents: () => {
         if (typeof window.HerdHarborDocumentCenter?.renderHub === "function") {
           window.HerdHarborDocumentCenter.renderHub({ target: $("#view-documents"), state, toast, escapeHtml: esc });
@@ -1320,7 +1342,10 @@
   }
 
   function renderAnimals() {
-    if (typeof window.HerdHarborAnimalProfileRuntime?.create === "function") {
+    if (
+      typeof window.HerdHarborAnimalProfileRuntime?.create === "function" &&
+      typeof window.HerdHarborPedigreePlatform?.buildPedigreeGraph === "function"
+    ) {
       return animalProfileRuntime().renderAnimals();
     }
     renderLazyRoute(
