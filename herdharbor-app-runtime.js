@@ -2282,17 +2282,22 @@
       .filter((record) => record.subjectAnimalId === animalId)
       .sort((left, right) => String(right.importedAt || "").localeCompare(String(left.importedAt || "")))[0] || null;
 
-    const currentConfig = customization?.loadPreferences?.(localStorage) || { generations: 4 };
-    const documentContext = documents?.resolveDocumentContext?.(
+    const standardConfig = customization?.templateConfig?.("Standard") || {
+      template: "Standard",
+      generations: 4,
+      rootFields: ["name", "sex", "dob", "breed", "color", "registrationNumber", "prefix"],
+      ancestorFields: ["name", "sex", "dob", "breed", "color", "registrationNumber", "prefix"],
+      photos: true,
+      unknownDisplay: "label"
+    };
+    const branding = documents?.resolveBranding?.(
       state.settings?.pedigreeDocuments,
-      "pedigree",
-      state.profile || {},
-      currentConfig
-    ) || { config: currentConfig, branding: null };
+      state.profile || {}
+    ) || null;
 
     const config = overrideConfig && customization?.normalize
       ? customization.normalize(overrideConfig)
-      : (overrideConfig || documentContext.config || currentConfig);
+      : (overrideConfig || standardConfig);
 
     const graph = engine.buildGraph({
       animals: state.animals || [],
@@ -2306,7 +2311,7 @@
       subject,
       graph,
       config,
-      branding: documentContext.branding || null,
+      branding,
       standardPrint
     };
   }
@@ -2334,7 +2339,7 @@
     if (!animal) return toast("The animal record could not be found.", "error");
 
     const customization = window.HerdHarborPedigreeCustomization;
-    if (!customization?.controlsHtml || !customization?.readControls) {
+    if (!customization?.printControlsHtml || !customization?.readPrintControls) {
       return toast("Pedigree customization did not finish loading.", "error");
     }
 
@@ -2346,7 +2351,7 @@
       <form id="print-pedigree-form">
         <div class="pedigree-warning">Customize this pedigree below. Changes here apply to this export only; Settings controls your default pedigree configuration.</div>
         <h3 style="margin-top:18px">Pedigree layout</h3>
-        <div id="pedigree-export-customization">${customization.controlsHtml(config)}</div>
+        <div id="pedigree-export-customization">${customization.printControlsHtml(config)}</div>
 
         <h3 style="margin-top:18px">Sale / transfer details</h3>
         <div class="form-grid two" style="margin-top:10px">
@@ -2391,10 +2396,10 @@
         control.addEventListener("change", (event) => {
           if (event.currentTarget?.name === "template") {
             config = customization.templateConfig(event.currentTarget.value);
-            configHost.innerHTML = customization.controlsHtml(config);
+            configHost.innerHTML = customization.printControlsHtml(config);
             bindCustomization();
           } else {
-            config = customization.readControls(configHost, config);
+            config = customization.readPrintControls(configHost, config);
           }
           renderPreview();
         });
@@ -2410,7 +2415,7 @@
     $("#cancel-print-pedigree").addEventListener("click", closeModal);
     form.addEventListener("submit", (event) => {
       event.preventDefault();
-      config = customization.readControls(configHost, config);
+      config = customization.readPrintControls(configHost, config);
       printSalePedigree(animalId, saleValues(), config);
     });
 
