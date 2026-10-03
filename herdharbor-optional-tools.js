@@ -6,6 +6,8 @@
     exceljs: "vendor/exceljs-4.4.0.min.js",
     spreadsheet: "spreadsheet-import.js?v=17",
     qr: "vendor/qrcode-generator-1.4.4.js",
+    paperPedigreeCore: "paper-pedigree-import-core-v1.8.2.js?v=1",
+    paperPedigreeUi: "paper-pedigree-import-v1.8.2.js?v=2",
     voiceAi: "voice-assisted-entry-v1.8.3.js?v=1",
     photoAi: "photo-assisted-entry-v1.8.3.js?v=2"
   });
@@ -142,10 +144,23 @@
   async function ensureAiLiveTools() {
     if (!isAiLiveTester()) throw new Error("AI live testing is not enabled for this browser.");
     await Promise.all([
+      (async () => {
+        await loadScript(
+          ASSETS.paperPedigreeCore,
+          "HerdHarbor paper pedigree core",
+          () => typeof window.HerdHarborPaperPedigreeImportCore?.buildImportPlan === "function"
+        );
+        await loadScript(
+          ASSETS.paperPedigreeUi,
+          "HerdHarbor paper pedigree reader",
+          () => typeof window.HerdHarborPaperPedigreeImport?.open === "function"
+        );
+      })(),
       loadScript(ASSETS.voiceAi, "HerdHarbor voice-assisted entry", () => typeof window.HerdHarborVoiceAssistedEntry?.create === "function"),
       loadScript(ASSETS.photoAi, "HerdHarbor photo-assisted entry", () => typeof window.HerdHarborPhotoAssistedEntry?.create === "function")
     ]);
     return Object.freeze({
+      paperPedigree: window.HerdHarborPaperPedigreeImport,
       voice: window.HerdHarborVoiceAssistedEntry,
       photo: window.HerdHarborPhotoAssistedEntry
     });

@@ -180,8 +180,6 @@ const NETWORK_FIRST_PATHS = [
   "/mobile-capture-v1.8.3.js",
   "/herdharbor-app-runtime.js",
   "/mobile-viewport-hotfix-v1.8.0.css",
-  "/paper-pedigree-import-core-v1.8.2.js",
-  "/paper-pedigree-import-v1.8.2.js",
   "/spreadsheet-import.js",
   "/vendor/jszip-3.10.1.min.js",
   "/vendor/exceljs-4.4.0.min.js",
