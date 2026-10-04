@@ -119,13 +119,13 @@ test("C5A snapshot reset prevents stale deeper pedigree after source or visibili
   assert.match(sql, /new\.pedigree_depth := 0/);
 });
 
-test("C5A Edge Function imports the canonical engine instead of implementing ancestry", () => {
+test("C5/C7 Edge Function keeps the canonical engine while account ownership supplies authorization", () => {
   const source = read("supabase/functions/marketplace-pedigree-snapshot/index.ts");
   assert.match(source, /import "\.\.\/\.\.\/\.\.\/pedigree-engine-v2\.0\.0\.js"/);
   assert.match(source, /import "\.\.\/\.\.\/\.\.\/marketplace-pedigree-snapshot-v2\.0\.1\.js"/);
-  assert.match(source, /marketplace_owner_pedigree_source/);
-  assert.match(source, /marketplace_owner_set_pedigree_snapshot/);
-  assert.match(source, /herdharbor_account_role/);
+  assert.match(source, /marketplace_member_session/);
+  assert.match(source, /marketplace_member_pedigree_source/);
+  assert.match(source, /marketplace_member_set_pedigree_snapshot/);
   assert.doesNotMatch(source, /function\s+buildGraph|source\.animals.*sireId|source\.animals.*damId/s);
   assert.doesNotMatch(source, /SUPABASE_SERVICE_ROLE_KEY|service_role/i);
 });

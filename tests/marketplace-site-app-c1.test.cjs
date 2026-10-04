@@ -6,7 +6,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
-test("C1A app exposes only an Owner-only external website link", () => {
+test("C1/C7 app exposes the external Marketplace link to signed-in HerdHarbor users", () => {
   const index = read("index.html");
   const nav = read("marketplace-nav-v2.0.1.js");
 
@@ -14,10 +14,11 @@ test("C1A app exposes only an Owner-only external website link", () => {
   assert.match(index, /href="https:\/\/herdharbor\.com\/marketplace\/"/);
   assert.match(index, /target="_blank"/);
   assert.match(index, /rel="noopener noreferrer"/);
-  assert.match(nav, /HerdHarborMembership/);
-  assert.match(nav, /isOwner\?\.\(\) === true/);
-  assert.match(nav, /backendReady === true/);
-  assert.doesNotMatch(nav, /supabase|marketplace_listings|marketplace_public_profiles|location\.assign|addEventListener\("click"/i);
+  assert.match(nav, /HerdHarborCloud\?\.getSession/);
+  assert.match(nav, /Boolean\(session\(\)\?\.user\?\.id\)/);
+  assert.match(nav, /marketplace-sso-ticket/);
+  assert.doesNotMatch(nav, /HerdHarborMembership|isOwner|backendReady/);
+  assert.doesNotMatch(nav, /marketplace_listings|marketplace_public_profiles/i);
 });
 
 test("C1A app repo does not host Marketplace website runtime", () => {
@@ -36,7 +37,7 @@ test("C1A service worker caches no Marketplace website assets", () => {
   const sw = read("service-worker.js");
   const required = sw.match(/const REQUIRED_SHELL = \[([\s\S]*?)\];/)?.[1] || "";
   const runtime = sw.match(/const RUNTIME_CACHE_PATHS = \[([\s\S]*?)\];/)?.[1] || "";
-  assert.match(required, /marketplace-nav-v2\.0\.1\.js\?v=2/);
+  assert.match(required, /marketplace-nav-v2\.0\.1\.js\?v=3/);
   assert.doesNotMatch(required, /marketplace\//);
   assert.doesNotMatch(runtime, /marketplace\//);
   assert.doesNotMatch(sw, /herdharbor\.com\/marketplace/);
