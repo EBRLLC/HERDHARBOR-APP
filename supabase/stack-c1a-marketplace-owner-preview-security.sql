@@ -248,10 +248,6 @@ insert into storage.buckets (id, name, public)
 values ('marketplace-public', 'marketplace-public', false)
 on conflict (id) do update set public = false;
 
-insert into storage.buckets (id, name, public)
-values ('marketplace-message-attachments', 'marketplace-message-attachments', false)
-on conflict (id) do update set public = false;
-
 drop policy if exists marketplace_storage_owner_select on storage.objects;
 drop policy if exists marketplace_storage_owner_insert on storage.objects;
 drop policy if exists marketplace_storage_owner_update on storage.objects;
@@ -266,7 +262,7 @@ on storage.objects
 for select
 to authenticated
 using (
-  bucket_id in ('marketplace-public','marketplace-message-attachments')
+  bucket_id = 'marketplace-public'
   and owner_id = (select auth.uid())::text
   and (select public.herdharbor_account_role()) = 'owner'
 );
@@ -276,7 +272,7 @@ on storage.objects
 for insert
 to authenticated
 with check (
-  bucket_id in ('marketplace-public','marketplace-message-attachments')
+  bucket_id = 'marketplace-public'
   and owner_id = (select auth.uid())::text
   and (select public.herdharbor_account_role()) = 'owner'
 );
@@ -286,12 +282,12 @@ on storage.objects
 for update
 to authenticated
 using (
-  bucket_id in ('marketplace-public','marketplace-message-attachments')
+  bucket_id = 'marketplace-public'
   and owner_id = (select auth.uid())::text
   and (select public.herdharbor_account_role()) = 'owner'
 )
 with check (
-  bucket_id in ('marketplace-public','marketplace-message-attachments')
+  bucket_id = 'marketplace-public'
   and owner_id = (select auth.uid())::text
   and (select public.herdharbor_account_role()) = 'owner'
 );
@@ -301,7 +297,7 @@ on storage.objects
 for delete
 to authenticated
 using (
-  bucket_id in ('marketplace-public','marketplace-message-attachments')
+  bucket_id = 'marketplace-public'
   and owner_id = (select auth.uid())::text
   and (select public.herdharbor_account_role()) = 'owner'
 );
