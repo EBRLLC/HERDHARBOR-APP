@@ -55,7 +55,8 @@
     "test:stack-a": "npm run test:stack-a7",
     "test:standard-pedigree": "node --test tests/mobile-pedigree-print-placement-v2.0.0.test.cjs tests/pedigree-customization-export-ui-v2.0.0.test.cjs tests/pedigree-customization-v2.0.0.test.cjs tests/pedigree-visual-print.test.cjs tests/stack-a-acceptance-v2.0.0.test.cjs",
     "test:stack-c1": "node --test tests/marketplace-owner-preview-c1.test.cjs tests/membership-policy-v1.5.1.test.cjs tests/pwa-update-regression-v1.5.0.test.cjs tests/release-asset-integrity-v1.8.4.test.cjs",
-    "test:stack-c2": "node --test tests/marketplace-owner-preview-c1.test.cjs tests/marketplace-owner-profile-c2.test.cjs"
+    "test:stack-c2": "node --test tests/marketplace-owner-preview-c1.test.cjs tests/marketplace-owner-profile-c2.test.cjs",
+    "test:stack-c3": "node --test tests/marketplace-owner-preview-c1.test.cjs tests/marketplace-owner-profile-c2.test.cjs tests/marketplace-listings-c3.test.cjs"
   },
   "dependencies": {
     "@sentry/browser": "10.71.0"
