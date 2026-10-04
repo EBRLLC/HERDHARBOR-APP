@@ -44,3 +44,20 @@ verify_jwt = true
 # Provider secrets stay server-side; the browser receives only a review draft.
 verify_jwt = true
 
+
+
+
+[functions.marketplace-pedigree-snapshot]
+# Pedigree refresh mutates only the signed-in seller's own listing snapshot.
+verify_jwt = true
+
+[functions.marketplace-sso-ticket]
+# App-to-Marketplace SSO validates the current HerdHarbor user token in code,
+# then mints a one-time magic-link token hash. No session/refresh token is copied.
+verify_jwt = false
+
+
+[functions.marketplace-public-media]
+# Public website media is validated against active Marketplace listings/profiles,
+# then signed with service-role access so raw Storage paths never reach guests.
+verify_jwt = false
