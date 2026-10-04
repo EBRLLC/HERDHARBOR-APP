@@ -308,11 +308,15 @@
 
           const files = [...(form.elements.photos.files || [])].slice(0, MAX_PHOTOS);
           if (files.length) {
+            const previousPaths = Array.isArray(listing?.photo_paths) ? listing.photo_paths.slice() : [];
             uploadedPaths = await uploadPhotos(context.client, context.userId, savedId, files);
             await rpc(context.client, "marketplace_owner_set_listing_photos", {
               listing_id_value: savedId,
               paths_value: uploadedPaths
             });
+            if (previousPaths.length) {
+              context.client.storage.from("marketplace-public").remove(previousPaths).catch(() => {});
+            }
           }
 
           status.textContent = "Listing saved.";
