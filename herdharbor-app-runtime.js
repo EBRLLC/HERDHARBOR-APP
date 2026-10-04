@@ -834,7 +834,7 @@
       }
     });
 
-    $(".nav-item, .brand").forEach((item) => {
+    document.querySelectorAll(".nav-item, .brand").forEach((item) => {
       if (item.hasAttribute("data-marketplace-nav")) return;
       item.addEventListener("click", (event) => {
         event.preventDefault();
