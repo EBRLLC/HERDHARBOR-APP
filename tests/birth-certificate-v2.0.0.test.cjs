@@ -153,3 +153,19 @@ test("application workflow previews through an iframe and prints the same shared
   assert.match(app, /openAnimalBirthCertificate/);
   assert.doesNotMatch(app, /Birth Certificate[\s\S]{0,1000}state\.profile\?\.email/);
 });
+
+
+test("current weight supports pounds plus ounces and app workflow sources latest health weight", () => {
+  assert.equal(Birth.currentWeightText({
+    currentWeight: "3",
+    currentWeightUnit: "lb+oz",
+    currentWeightOunces: "6"
+  }), "3 lb 6 oz");
+
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const app = fs.readFileSync(path.resolve(__dirname, "..", "herdharbor-app-runtime.js"), "utf8");
+  assert.match(app, /const latestWeight = \(state\.health \|\| \[\]\)/);
+  assert.match(app, /currentWeight: latestWeight\.weight/);
+  assert.match(app, /currentWeightUnit: latestWeight\.weightUnit \|\| "lb"/);
+});
