@@ -450,6 +450,10 @@
         </div>
         <h3 style="margin-top:22px">Pedigree preview</h3>
         ${pedigreeRecordPreviewHtml(animal, pedigreeImports.slice().sort((left, right) => String(right.importedAt || "").localeCompare(String(left.importedAt || "")))[0] || null)}
+        ${root.HerdHarborAnimalDocuments?.centerHtml?.({
+          animalName: animal.name,
+          pedigreeCount: pedigreeImports.length
+        }) || ""}
         <h3 style="margin-top:22px">Notes</h3>
         <p class="muted">${esc(animal.notes || "No notes recorded.")}</p>
         <h3 style="margin-top:22px">Record summary</h3>
@@ -457,8 +461,6 @@
         <div class="modal-actions">
           <button class="button button-ghost" id="detail-close">Close</button>
           <button class="button button-ghost" id="detail-analytics">View analytics</button>
-          <button class="button button-ghost" id="detail-print-pedigree">Print sale pedigree</button>
-          <button class="button button-ghost" id="detail-birth-certificate">Birth Certificate</button>
           <button class="button button-ghost" id="detail-print-qr">Print QR card</button>
           <button class="button button-ghost" id="detail-import-pedigree">Build / import pedigree</button>
           <button class="button button-primary" id="detail-edit">Edit animal</button>
@@ -471,8 +473,13 @@
         root.HerdHarborAnalytics?.openAnimal?.(id);
         deps.navigate("analytics");
       });
-      $("#detail-print-pedigree")?.addEventListener("click", () => deps.openPrintPedigreeForm(id));
-      $("#detail-birth-certificate")?.addEventListener("click", () => deps.openBirthCertificateForm(id));
+      root.HerdHarborAnimalDocuments?.bindCenter?.(
+        document.querySelector("[data-hh-animal-documents]"),
+        {
+          openPedigree: () => deps.openPrintPedigreeForm(id),
+          openBirthCertificate: () => deps.openBirthCertificateForm(id)
+        }
+      );
       $("#detail-print-qr")?.addEventListener("click", (event) => openAnimalQrCardForm(id, event.currentTarget));
       $("#detail-import-pedigree")?.addEventListener("click", () => deps.openPedigreeImport(id));
       $("#detail-edit")?.addEventListener("click", () => openAnimalForm(id));
