@@ -81,7 +81,8 @@ test("C7C public media is Edge-signed and browser path RPCs are removed", () => 
   assert.match(cleanup, /drop function if exists public\.marketplace_public_seller_media_v2\(uuid\)/);
   assert.match(cleanup, /drop policy if exists marketplace_storage_public_read/);
 
-  assert.match(mediaEdge, /WEBSITE_ORIGINS = new Set\(\["https:\/\/herdharbor\.com", "https:\/\/www\.herdharbor\.com"\]\)/);\n  assert.match(mediaEdge, /WEBSITE_ORIGINS\.has\(origin\)/);
+  assert.match(mediaEdge, /WEBSITE_ORIGINS = new Set\(\["https:\/\/herdharbor\.com", "https:\/\/www\.herdharbor\.com"\]\)/);
+  assert.match(mediaEdge, /WEBSITE_ORIGINS\.has\(origin\)/);
   assert.match(mediaEdge, /createSignedUrls\(paths, 300\)/);
   assert.match(mediaEdge, /createSignedUrl\(avatarPath, 300\)/);
   assert.match(mediaEdge, /return reply\(req, \{ listings: result \}\)/);
