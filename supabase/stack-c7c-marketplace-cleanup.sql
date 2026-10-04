@@ -1318,17 +1318,19 @@ as $c7c_storage_mutable$
     herdharbor_private.marketplace_current_account_active()
     and (
       object_name like 'profiles/%'
-      or (
-        object_name like 'listings/%'
-        and not exists (
-          select 1
-          from public.marketplace_listing_photos ph
-          join public.marketplace_listings l on l.id=ph.listing_id
-          where ph.storage_path=object_name
-            and ph.seller_id=(select auth.uid())
-            and l.state='removed'
-        )
-      )
+      or object_name like 'listings/%'
+    )
+    and not exists (
+      select 1
+      from public.marketplace_public_profiles p
+      where p.user_id=(select auth.uid())
+        and p.avatar_path=object_name
+    )
+    and not exists (
+      select 1
+      from public.marketplace_listing_photos ph
+      where ph.seller_id=(select auth.uid())
+        and ph.storage_path=object_name
     )
 $c7c_storage_mutable$;
 
