@@ -22,19 +22,15 @@ test("C1 keeps Marketplace as a separate gated web surface", () => {
 test("C1 core app exposes only a lightweight Owner-only Marketplace link", () => {
   const index = read("index.html");
   const nav = read("marketplace-nav-v2.0.1.js");
-  const runtime = read("herdharbor-app-runtime.js");
 
   assert.match(index, /data-marketplace-nav/);
-  assert.match(index, /data-marketplace-url="\/marketplace\/"/);
-  assert.match(index, /hidden aria-hidden="true"/);
+  assert.match(index, /<a class="marketplace-nav-link"[^>]+data-marketplace-nav[^>]+href="\/marketplace\/"[^>]+hidden aria-hidden="true"/);
   assert.match(index, /marketplace-nav-v2\.0\.1\.js\?v=1/);
   assert.match(nav, /HerdHarborMembership/);
   assert.match(nav, /isOwner\?\.\(\) === true/);
   assert.match(nav, /backendReady === true/);
   assert.match(nav, /accountStatus/);
-  assert.doesNotMatch(nav, /marketplace_listings|marketplace_public_profiles|from\(/);
-  assert.match(runtime, /document\.querySelectorAll\("\\.nav-item, \\.brand"\)\.forEach/);
-  assert.match(runtime, /item\.hasAttribute\("data-marketplace-nav"\)/);
+  assert.doesNotMatch(nav, /marketplace_listings|marketplace_public_profiles|from\(|location\.assign|addEventListener\("click"/);
 });
 
 test("C1 service worker does not precache or runtime-cache Marketplace web bundles", () => {
