@@ -268,7 +268,8 @@ test("C7C makes listing conversations idempotent under concurrent opens", () => 
   assert.match(cleanupSql, /where c\.listing_id=listing_id_value[\s\S]*m\.user_id=actor/);
 });
 
-test("C7 does not create unused message-attachment Storage on a fresh deployment", () => {
+test("C7 does not depend on abandoned message-attachment schema or Storage", () => {
+  assert.doesNotMatch(accessSql, /marketplace_message_attachments/);
   assert.doesNotMatch(accessSql, /insert into storage\.buckets[\s\S]{0,180}marketplace-message-attachments/);
 });
 
