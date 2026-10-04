@@ -834,7 +834,8 @@
       }
     });
 
-    $$(".nav-item, .brand").forEach((item) => {
+    $(".nav-item, .brand").forEach((item) => {
+      if (item.hasAttribute("data-marketplace-nav")) return;
       item.addEventListener("click", (event) => {
         event.preventDefault();
         navigate(item.dataset.route);
