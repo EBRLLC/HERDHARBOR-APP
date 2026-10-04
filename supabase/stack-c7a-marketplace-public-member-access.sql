@@ -82,7 +82,6 @@ revoke all privileges on table public.marketplace_favorites from anon, authentic
 revoke all privileges on table public.marketplace_conversations from anon, authenticated;
 revoke all privileges on table public.marketplace_conversation_members from anon, authenticated;
 revoke all privileges on table public.marketplace_messages from anon, authenticated;
-revoke all privileges on table public.marketplace_message_attachments from anon, authenticated;
 revoke all privileges on table public.marketplace_blocks from anon, authenticated;
 revoke all privileges on table public.marketplace_reports from anon, authenticated;
 revoke all privileges on table public.marketplace_moderation_actions from anon, authenticated;
@@ -170,19 +169,10 @@ with check (
   and herdharbor_private.marketplace_current_user_is_conversation_member(conversation_id)
 );
 
-drop policy if exists marketplace_message_attachments_member_select on public.marketplace_message_attachments;
-create policy marketplace_message_attachments_member_select
-on public.marketplace_message_attachments
-for select
-to authenticated
-using (
-  herdharbor_private.marketplace_current_user_is_conversation_member(conversation_id)
-);
-
 -- ---------------------------------------------------------------------------
 -- Private Storage bucket: public media can be signed only when it is referenced
 -- by an active public seller/listing. Members keep full access to their own
--- Marketplace media. Message attachments remain private.
+-- Marketplace media.
 -- ---------------------------------------------------------------------------
 
 insert into storage.buckets (id,name,public)
