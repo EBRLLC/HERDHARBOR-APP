@@ -33,6 +33,7 @@ test("C1 core app exposes only a lightweight Owner-only Marketplace link", () =>
   assert.match(nav, /backendReady === true/);
   assert.match(nav, /accountStatus/);
   assert.doesNotMatch(nav, /marketplace_listings|marketplace_public_profiles|from\(/);
+  assert.match(runtime, /\$\$\("\\.nav-item, \\.brand"\)\.forEach/);
   assert.match(runtime, /item\.hasAttribute\("data-marketplace-nav"\)/);
 });
 
