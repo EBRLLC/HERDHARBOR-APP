@@ -285,6 +285,8 @@ test("C7C moves public media signing behind the dedicated Edge function", () => 
   assert.match(media, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(media, /createSignedUrls\(paths, 300\)/);
   assert.match(media, /createSignedUrl\(avatarPath, 300\)/);
+  assert.match(media, /select\("listing_id,seller_id,storage_path,sort_order,created_at"\)/);
+  assert.match(media, /String\(\(row as any\)\.seller_id\) !== listingSeller\.get\(id\)/);
   assert.match(config, /\[functions\.marketplace-public-media\]/);
   assert.match(config, /verify_jwt = false/);
 });
