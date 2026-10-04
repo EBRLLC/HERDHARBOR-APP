@@ -115,6 +115,8 @@
     const explicit = clean(animal?.currentWeight);
     if (explicit) {
       const unit = clean(animal?.currentWeightUnit);
+      const ounces = clean(animal?.currentWeightOunces);
+      if (unit === "lb+oz" && ounces) return `${explicit} lb ${ounces} oz`;
       return unit ? `${explicit} ${unit}` : explicit;
     }
     return clean(animal?.weight);
