@@ -85,17 +85,27 @@ Deno.serve(async (req) => {
 
       const { data: photos, error: photoError } = await admin
         .from("marketplace_listing_photos")
-        .select("listing_id,storage_path,sort_order,created_at")
+        .select("listing_id,seller_id,storage_path,sort_order,created_at")
         .in("listing_id", allowedListingIds)
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true });
       if (photoError) throw photoError;
 
+      const listingSeller = new Map<string,string>();
+      for (const row of usableListings) {
+        if (allowedListingIds.includes(String((row as any).id))) {
+          listingSeller.set(String((row as any).id), String((row as any).seller_id));
+        }
+      }
+
       const grouped = new Map<string,string[]>();
       for (const row of photos || []) {
         const id = String((row as any).listing_id);
+        if (String((row as any).seller_id) !== listingSeller.get(id)) continue;
         if (!grouped.has(id)) grouped.set(id, []);
-        if ((grouped.get(id) || []).length < maxPerListing) grouped.get(id)!.push(String((row as any).storage_path || ""));
+        if ((grouped.get(id) || []).length < maxPerListing) {
+          grouped.get(id)!.push(String((row as any).storage_path || ""));
+        }
       }
 
       for (const id of allowedListingIds) {
