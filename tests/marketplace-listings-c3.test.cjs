@@ -11,7 +11,7 @@ test("C3 Select From My Herd is a narrow read-only Owner RPC", () => {
   const block = sql.match(/create or replace function public\.marketplace_owner_herd_animals\(\)[\s\S]*?\$c3_herd\$;/i)?.[0] || "";
 
   assert.match(block, /herdharbor_user_data/);
-  assert.match(block, /app_state -> 'animals'/);
+  assert.match(block, /select d\.app_state[\s\S]*?into snapshot/);\n  assert.match(block, /snapshot -> 'animals'/);
   assert.match(block, /herdharbor_account_role\(\)\) = 'owner'/);
   assert.match(block, /source_animal_id text/);
   assert.match(block, /animal_name text/);
