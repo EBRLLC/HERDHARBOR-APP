@@ -59,7 +59,7 @@ test("C3 web provides both required listing creation paths", () => {
   assert.match(source, /marketplace_owner_set_listing_photos/);
   assert.match(source, /marketplace_owner_delete_listing/);
   assert.match(source, /source_animal_id/);
-  assert.match(source, /detached snapshot/i);
+  assert.match(source, /detached snapshot/i);\n  assert.match(source, /previousPaths/);\n  assert.match(source, /remove\\(previousPaths\\)/);
   assert.doesNotMatch(source, /HerdHarborStateStore|saveState|cloud-sync|herdharbor_sync_records/i);
 });
 
