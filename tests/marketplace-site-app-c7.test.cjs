@@ -341,3 +341,11 @@ test("C7 Edge configuration makes pedigree JWT verification explicit", () => {
   assert.match(config, /\[functions\.marketplace-sso-ticket\][\s\S]*?verify_jwt = false/);
   assert.match(config, /\[functions\.marketplace-public-media\][\s\S]*?verify_jwt = false/);
 });
+
+
+test("C7A published listings enforce minimum server-side content", () => {
+  const saveListing = accessSql.match(/create or replace function public\.marketplace_member_save_listing[\s\S]*?\$c7_member_save_listing\$;/i)?.[0] || "";
+  assert.match(saveListing, /safe_state='available'[\s\S]*btrim\(coalesce\(animal_name_value,''\)\)=''/);
+  assert.match(saveListing, /btrim\(coalesce\(species_value,''\)\)=''/);
+  assert.match(saveListing, /Published Marketplace listings require an animal\/listing name and species/);
+});
