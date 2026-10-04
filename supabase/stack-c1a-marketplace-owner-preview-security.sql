@@ -256,6 +256,10 @@ drop policy if exists marketplace_storage_owner_select on storage.objects;
 drop policy if exists marketplace_storage_owner_insert on storage.objects;
 drop policy if exists marketplace_storage_owner_update on storage.objects;
 drop policy if exists marketplace_storage_owner_delete on storage.objects;
+drop policy if exists marketplace_storage_owner_preview_select on storage.objects;
+drop policy if exists marketplace_storage_owner_preview_insert on storage.objects;
+drop policy if exists marketplace_storage_owner_preview_update on storage.objects;
+drop policy if exists marketplace_storage_owner_preview_delete on storage.objects;
 
 create policy marketplace_storage_owner_preview_select
 on storage.objects
