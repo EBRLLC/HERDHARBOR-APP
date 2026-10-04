@@ -349,3 +349,11 @@ test("C7A published listings enforce minimum server-side content", () => {
   assert.match(saveListing, /btrim\(coalesce\(species_value,''\)\)=''/);
   assert.match(saveListing, /Published Marketplace listings require an animal\/listing name and species/);
 });
+
+
+test("C7C member session exposes full Marketplace suspension separately", () => {
+  const session = cleanupSql.match(/create or replace function public\.marketplace_member_session[\s\S]*?\$c7c_member_session\$;/i)?.[0] || "";
+  assert.match(session, /marketplace_account_suspensions/);
+  assert.match(session, /'marketplace_suspended',suspended/);
+  assert.match(session, /'marketplace_access_ready',herdharbor_private\.marketplace_current_account_active\(\)/);
+});
