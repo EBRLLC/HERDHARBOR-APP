@@ -144,6 +144,15 @@ begin
       using errcode = '22001';
   end if;
 
+  if safe_source is not null and exists (
+    select 1
+    from public.herdharbor_sync_manifest m
+    where m.user_id = actor and m.cutover_stage = 'normalized'
+  ) then
+    raise exception 'Marketplace herd-linked listing save requires an updated normalized-authority import bridge'
+      using errcode = '55000';
+  end if;
+
   if safe_source is not null and not exists (
     select 1
     from public.herdharbor_user_data d,
