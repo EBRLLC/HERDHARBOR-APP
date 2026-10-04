@@ -11,8 +11,11 @@ test("C3 Select From My Herd is a narrow read-only Owner RPC", () => {
   const block = sql.match(/create or replace function public\.marketplace_owner_herd_animals\(\)[\s\S]*?\$c3_herd\$;/i)?.[0] || "";
 
   assert.match(block, /herdharbor_user_data/);
-  assert.match(block, /select d\.app_state[\s\S]*?into snapshot/);\n  assert.match(block, /snapshot -> 'animals'/);
-  assert.match(block, /herdharbor_account_role\(\)\) = 'owner'/);
+  assert.match(block, /select d\.app_state[\s\S]*?into snapshot/);
+  assert.match(block, /snapshot -> 'animals'/);
+  assert.match(block, /herdharbor_account_role\(\) <> 'owner'/);
+  assert.match(block, /authority_stage = 'normalized'/);
+  assert.match(block, /Do not fall back to a stale legacy snapshot/);
   assert.match(block, /source_animal_id text/);
   assert.match(block, /animal_name text/);
   assert.match(block, /breed text/);
@@ -27,6 +30,7 @@ test("C3 saves detached Marketplace snapshots and validates source ownership", (
   assert.match(save, /insert into public\.marketplace_listings/);
   assert.match(save, /public_snapshot = jsonb_build_object|jsonb_build_object/);
   assert.match(save, /safe_source is not null and not exists/);
+  assert.match(save, /m\.cutover_stage = 'normalized'/);
   assert.match(save, /d\.user_id = actor/);
   assert.doesNotMatch(save, /update public\.herdharbor_user_data|delete from public\.herdharbor_user_data/i);
   assert.doesNotMatch(save, /foreign key[^\n]+source_animal/i);
@@ -59,7 +63,9 @@ test("C3 web provides both required listing creation paths", () => {
   assert.match(source, /marketplace_owner_set_listing_photos/);
   assert.match(source, /marketplace_owner_delete_listing/);
   assert.match(source, /source_animal_id/);
-  assert.match(source, /detached snapshot/i);\n  assert.match(source, /previousPaths/);\n  assert.match(source, /remove\\(previousPaths\\)/);
+  assert.match(source, /detached snapshot/i);
+  assert.match(source, /previousPaths/);
+  assert.match(source, /remove\(previousPaths\)/);
   assert.doesNotMatch(source, /HerdHarborStateStore|saveState|cloud-sync|herdharbor_sync_records/i);
 });
 
