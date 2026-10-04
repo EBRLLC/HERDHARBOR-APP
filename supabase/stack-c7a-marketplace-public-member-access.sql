@@ -806,6 +806,16 @@ begin
     raise exception 'Invalid Marketplace listing value' using errcode='22023';
   end if;
 
+  if safe_state='available'
+    and (
+      btrim(coalesce(animal_name_value,''))=''
+      or btrim(coalesce(species_value,''))=''
+    )
+  then
+    raise exception 'Published Marketplace listings require an animal/listing name and species'
+      using errcode='22023';
+  end if;
+
   if safe_state='available' and not exists (
     select 1 from public.marketplace_public_profiles p
     where p.user_id=actor and p.marketplace_status='active'
