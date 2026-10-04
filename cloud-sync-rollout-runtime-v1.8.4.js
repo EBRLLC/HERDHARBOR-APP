@@ -15,7 +15,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const VERSION = "1.1-normalized-authority";
+  const VERSION = "1.2-dual-write-expansion";
   const RELEASE = "1.8.4";
   const REQUIRED_VALIDATION_PASSES = 3;
   const WRITER_VERSION = "record-cas-v1";
@@ -624,6 +624,57 @@
       });
     }
 
+    async function advanceToDualWriteForCleanHydration(ctx) {
+      const current = await refreshContextStage(ctx);
+      if (current.stage === "dual_write" || current.stage === "normalized") {
+        return Object.freeze({ ok: true, skipped: true, stage: current.stage, reason: "already-advanced" });
+      }
+      if (current.stage !== "legacy" && current.stage !== "shadow") {
+        return Object.freeze({ ok: true, skipped: true, stage: current.stage, reason: "stage-not-eligible" });
+      }
+
+      const boot = await bootstrapIfNeeded(ctx);
+      if (!boot?.ok) {
+        validationPasses = 0;
+        lastValidation = null;
+        return Object.freeze({
+          ok: false,
+          skipped: false,
+          stage: ctx.stage,
+          reason: boot?.reason || "shadow-bootstrap-incomplete",
+          bootstrap: boot
+        });
+      }
+
+      await refreshContextStage(ctx);
+      while (ctx.stage === "shadow" && validationPasses < requiredValidationPasses) {
+        const validation = await validateNow();
+        if (validation?.ok !== true) {
+          return Object.freeze({
+            ok: false,
+            skipped: false,
+            stage: ctx.stage,
+            reason: validation?.reason || "validation-failed",
+            validation
+          });
+        }
+        await refreshContextStage(ctx);
+      }
+
+      if (ctx.stage !== "shadow") {
+        return Object.freeze({ ok: true, skipped: true, stage: ctx.stage, reason: "stage-changed-during-validation" });
+      }
+
+      const promotion = await promoteToDualWrite();
+      return Object.freeze({
+        ok: promotion?.ok === true,
+        skipped: false,
+        stage: promotion?.stage || ctx.stage,
+        validationCheckpoints: requiredValidationPasses,
+        promotion
+      });
+    }
+
     async function prepareHydration(options = {}) {
       const ctx = await ensureContext();
       if (!ctx) return Object.freeze({ active: false, authoritative: false, ok: true, stage: "legacy" });
@@ -641,6 +692,49 @@
         });
       }
       if (stage !== "normalized") {
+        if (options.legacyDirty !== true && (stage === "legacy" || stage === "shadow")) {
+          try {
+            const expansion = await advanceToDualWriteForCleanHydration(ctx);
+            const current = await refreshContextStage(ctx);
+            if (expansion?.ok === true && expansion?.skipped !== true && current.stage === "dual_write") {
+              emit("dual-write-expansion-complete", { stage: current.stage, ok: true });
+            } else if (expansion?.ok !== true) {
+              emit("dual-write-expansion-deferred", {
+                stage: current.stage,
+                ok: false,
+                reason: expansion?.reason || "validation-incomplete"
+              });
+            }
+            return Object.freeze({
+              active: true,
+              authoritative: false,
+              ok: true,
+              stage: current.stage,
+              dualWriteExpansion: expansion
+            });
+          } catch (error) {
+            validationPasses = 0;
+            lastValidation = null;
+            const current = await refreshContextStage(ctx);
+            emit("dual-write-expansion-deferred", {
+              stage: current.stage,
+              ok: false,
+              reason: error?.code || error?.message || "dual-write-expansion-failed"
+            });
+            return Object.freeze({
+              active: true,
+              authoritative: false,
+              ok: true,
+              stage: current.stage,
+              dualWriteExpansion: Object.freeze({
+                ok: false,
+                skipped: false,
+                stage: current.stage,
+                reason: error?.code || "dual-write-expansion-failed"
+              })
+            });
+          }
+        }
         return Object.freeze({ active: true, authoritative: false, ok: true, stage });
       }
 
