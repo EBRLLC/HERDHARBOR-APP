@@ -45,6 +45,8 @@ test("C1 service worker does not precache or runtime-cache Marketplace web bundl
   assert.match(required, /marketplace-nav-v2\.0\.1\.js\?v=1/);
   assert.doesNotMatch(required, /marketplace\/marketplace-(?:gate|app|v2)/);
   assert.doesNotMatch(runtime, /marketplace\/marketplace-(?:gate|app|v2)/);
+  assert.match(sw, /request\.mode === "navigate" && url\.pathname\.startsWith\("\/marketplace"\)/);
+  assert.match(sw, /event\.respondWith\(fetch\(request, \{ cache: "no-store" \}\)\)/);
 });
 
 test("C1 migration closes failed-stack access and reopens only Owner-preview core tables", () => {
