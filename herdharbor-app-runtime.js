@@ -2415,6 +2415,21 @@
 
     const sire = state.animals.find((item) => item.id === animal.sireId) || null;
     const dam = state.animals.find((item) => item.id === animal.damId) || null;
+    const latestWeight = (state.health || [])
+      .filter((record) => record.animalId === animal.id && String(record.weight || "").trim())
+      .sort((left, right) => {
+        const leftKey = String(left.date || left.createdAt || "");
+        const rightKey = String(right.date || right.createdAt || "");
+        return rightKey.localeCompare(leftKey);
+      })[0] || null;
+    const certificateAnimal = latestWeight
+      ? {
+          ...animal,
+          currentWeight: latestWeight.weight,
+          currentWeightUnit: latestWeight.weightUnit || "lb",
+          currentWeightOunces: latestWeight.weightOunces || ""
+        }
+      : animal;
     const documentContext = documents?.resolveDocumentContext?.(
       state.settings?.pedigreeDocuments,
       "birthCertificate",
@@ -2423,7 +2438,7 @@
     ) || { branding: null };
 
     return birthCertificate.buildCertificateHtml({
-      animal,
+      animal: certificateAnimal,
       sire,
       dam,
       branding: documentContext.branding || null,
