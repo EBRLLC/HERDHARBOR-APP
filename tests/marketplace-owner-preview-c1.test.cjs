@@ -51,6 +51,9 @@ test("C1 migration closes failed-stack access and reopens only Owner-preview cor
   const sql = read("supabase/stack-c1-marketplace-owner-preview-security.sql");
 
   assert.match(sql, /revoke all privileges on table public\.%I from anon, authenticated/i);
+  assert.match(sql, /p\.proname like 'marketplace_%'/i);
+  assert.match(sql, /revoke all privileges on function %s from public, anon, authenticated/i);
+  assert.match(sql, /grant execute on function %s to service_role/i);
   assert.match(sql, /drop policy if exists/i);
   assert.match(sql, /herdharbor_account_role\(\)\) = 'owner'/i);
   assert.match(sql, /grant select, insert, update, delete on table public\.marketplace_listings to authenticated/i);
