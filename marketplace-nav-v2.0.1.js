@@ -15,10 +15,6 @@
     nav.setAttribute("aria-hidden", String(!allowed));
   }
 
-  nav.addEventListener("click", () => {
-    const href = nav.dataset.marketplaceUrl || "/marketplace/";
-    window.location.assign(href);
-  });
 
   document.addEventListener("herdharbor:membership-change", sync);
   if (document.readyState === "loading") {
