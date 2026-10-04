@@ -101,6 +101,55 @@ $c7c_active$;
 revoke all on function herdharbor_private.marketplace_current_account_active() from public, anon;
 grant execute on function herdharbor_private.marketplace_current_account_active() to authenticated;
 
+create or replace function public.marketplace_member_session()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $c7c_member_session$
+declare
+  actor uuid := auth.uid();
+  result jsonb;
+  suspended boolean := false;
+begin
+  if actor is null then
+    raise exception 'Authentication required' using errcode='42501';
+  end if;
+
+  select exists (
+    select 1
+    from public.marketplace_account_suspensions s
+    where s.user_id=actor and s.lifted_at is null
+  ) into suspended;
+
+  select jsonb_build_object(
+    'user_id',actor,
+    'account_role',a.account_role,
+    'account_status',a.account_status,
+    'membership_tier',a.membership_tier,
+    'marketplace_access_ready',herdharbor_private.marketplace_current_account_active(),
+    'marketplace_suspended',suspended,
+    'seller_public_id',p.public_id,
+    'marketplace_status',coalesce(p.marketplace_status,'not_created')
+  )
+  into result
+  from public.account_access a
+  left join public.marketplace_public_profiles p on p.user_id=a.user_id
+  where a.user_id=actor
+  limit 1;
+
+  if result is null then
+    raise exception 'Account access profile is unavailable' using errcode='42501';
+  end if;
+
+  return result;
+end
+$c7c_member_session$;
+
+revoke all on function public.marketplace_member_session() from public, anon;
+grant execute on function public.marketplace_member_session() to authenticated;
+
 drop trigger if exists marketplace_prevent_owner_self_lockout
 on public.marketplace_public_profiles;
 
