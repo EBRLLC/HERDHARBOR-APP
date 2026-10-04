@@ -357,3 +357,15 @@ test("C7C member session exposes full Marketplace suspension separately", () => 
   assert.match(session, /'marketplace_suspended',suspended/);
   assert.match(session, /'marketplace_access_ready',herdharbor_private\.marketplace_current_account_active\(\)/);
 });
+
+
+test("C7C referenced Marketplace media cannot be directly mutated", () => {
+  const mutable = cleanupSql.match(/create or replace function herdharbor_private\.marketplace_storage_object_mutable[\s\S]*?\$c7c_storage_mutable\$;/i)?.[0] || "";
+  assert.match(mutable, /marketplace_public_profiles/);
+  assert.match(mutable, /p\.avatar_path=object_name/);
+  assert.match(mutable, /marketplace_listing_photos/);
+  assert.match(mutable, /ph\.storage_path=object_name/);
+  assert.match(mutable, /ph\.seller_id=\(select auth\.uid\(\)\)/);
+  assert.match(cleanupSql, /marketplace_storage_member_own_update[\s\S]*marketplace_storage_object_mutable\(name\)/);
+  assert.match(cleanupSql, /marketplace_storage_member_own_delete[\s\S]*marketplace_storage_object_mutable\(name\)/);
+});
