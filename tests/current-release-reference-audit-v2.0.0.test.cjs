@@ -101,7 +101,7 @@ test("stable carried-forward component identities remain present", () => {
 });
 
 test("PWA shell and bootstrap use the 2.0.0 cutover identity", () => {
-  assert.match(worker, /herdharbor-shell-v2\.0\.0-v2\.0\.0-release-2/);
+  assert.match(worker, /herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1/);
   assert.doesNotMatch(worker, /const CACHE_NAME = "herdharbor-shell-v1\.8\.4/);
   assert.match(index, /manifest\.json\?v=2\.0\.0/);
   assert.match(index, /herdharbor-build\.js\?v=2\.0\.0/);
