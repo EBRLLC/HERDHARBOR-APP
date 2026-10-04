@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.111.0";
 
-const WEBSITE_ORIGIN = "https://herdharbor.com";
+const WEBSITE_ORIGINS = new Set(["https://herdharbor.com", "https://www.herdharbor.com"]);
 const BUCKET = "marketplace-public";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -12,7 +12,7 @@ function corsHeaders(req: Request) {
     "Content-Type": "application/json; charset=utf-8",
     "Vary": "Origin"
   };
-  if (origin === WEBSITE_ORIGIN) headers["Access-Control-Allow-Origin"] = WEBSITE_ORIGIN;
+  if (WEBSITE_ORIGINS.has(origin)) headers["Access-Control-Allow-Origin"] = origin;
   return headers;
 }
 
@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return reply(req, { error: "Method not allowed." }, 405);
 
   const origin = req.headers.get("Origin") || "";
-  if (origin !== WEBSITE_ORIGIN) return reply(req, { error: "Origin not allowed." }, 403);
+  if (!WEBSITE_ORIGINS.has(origin)) return reply(req, { error: "Origin not allowed." }, 403);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
