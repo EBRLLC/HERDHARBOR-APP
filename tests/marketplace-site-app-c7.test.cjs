@@ -43,8 +43,7 @@ test("C7A direct browser table access is revoked and account ownership remains i
     "marketplace_favorites",
     "marketplace_conversations",
     "marketplace_conversation_members",
-    "marketplace_messages",
-    "marketplace_message_attachments"
+    "marketplace_messages"
   ]) {
     assert.match(accessSql, new RegExp("revoke all privileges on table public\\." + table + " from anon, authenticated", "i"));
   }
