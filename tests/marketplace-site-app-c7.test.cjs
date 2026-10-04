@@ -7,6 +7,7 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
+const c1Sql = read("supabase/stack-c1a-marketplace-owner-preview-security.sql");
 const accessSql = read("supabase/stack-c7a-marketplace-public-member-access.sql");
 const pedigreeSql = read("supabase/stack-c7b-marketplace-member-pedigree.sql");
 const cleanupSql = read("supabase/stack-c7c-marketplace-cleanup.sql");
@@ -324,4 +325,11 @@ test("C7C conversation block state reports both directions without exposing peer
     cleanupSql.match(/create function public\.marketplace_member_conversation_block_state[\s\S]*?\$c7c_block_state\$;/i)?.[0] || "",
     /public_id|display_name|rabbitry_name|email|phone/i
   );
+});
+
+
+test("C7 root stack never creates the abandoned message-attachment Storage bucket", () => {
+  assert.doesNotMatch(c1Sql, /values \('marketplace-message-attachments'/);
+  assert.doesNotMatch(c1Sql, /bucket_id in \('marketplace-public','marketplace-message-attachments'\)/);
+  assert.doesNotMatch(accessSql, /values \('marketplace-message-attachments'/);
 });
