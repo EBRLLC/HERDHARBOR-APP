@@ -46,6 +46,11 @@ verify_jwt = true
 
 
 
+
+[functions.marketplace-pedigree-snapshot]
+# Pedigree refresh mutates only the signed-in seller's own listing snapshot.
+verify_jwt = true
+
 [functions.marketplace-sso-ticket]
 # App-to-Marketplace SSO validates the current HerdHarbor user token in code,
 # then mints a one-time magic-link token hash. No session/refresh token is copied.
