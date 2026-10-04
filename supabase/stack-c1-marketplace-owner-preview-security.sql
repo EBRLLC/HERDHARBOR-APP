@@ -118,7 +118,7 @@ $$;
 -- Disable every RPC left behind by the rolled-back Marketplace stack.
 -- SECURITY DEFINER functions can bypass table RLS, so no legacy marketplace_*
 -- RPC remains callable by anon or authenticated during the Owner-only preview.
-do $
+do $marketplace_lockdown$
 declare
   function_row record;
 begin
@@ -144,7 +144,7 @@ begin
     );
   end loop;
 end
-$;
+$marketplace_lockdown$;
 
 grant select, insert, update, delete on table public.marketplace_public_profiles to authenticated;
 grant select, insert, update, delete on table public.marketplace_listings to authenticated;
