@@ -2,7 +2,7 @@ name: HerdHarbor 2.0.0 CI
 
 on:
   pull_request:
-    branches: [main, 'release-2.0.0-phase-*', 'breeder-docs/phase-*', 'breeding-intel/phase-*']
+    branches: [main, 'release-2.0.0-phase-*', 'breeder-docs/phase-*', 'breeding-intel/phase-*', 'marketplace-site/app-*']
   workflow_dispatch:
 
 permissions:
@@ -23,6 +23,11 @@ jobs:
           node-version: 22
       - name: Install pinned dependencies
         run: npm ci --no-audit --no-fund
+      - name: Validate Marketplace Edge Function TypeScript
+        run: |
+          npx esbuild supabase/functions/marketplace-sso-ticket/index.ts --format=esm --platform=neutral --log-level=error --outfile=/tmp/marketplace-sso-ticket.mjs
+          npx esbuild supabase/functions/marketplace-public-media/index.ts --format=esm --platform=neutral --log-level=error --outfile=/tmp/marketplace-public-media.mjs
+          npx esbuild supabase/functions/marketplace-pedigree-snapshot/index.ts --format=esm --platform=neutral --log-level=error --outfile=/tmp/marketplace-pedigree-snapshot.mjs
       - name: Verify current 2.0.0 release contract
         run: npm run test:release
       - name: Run lifecycle state-integrity E2E gate
