@@ -112,8 +112,8 @@ test("C7A public media uses only the Edge signer; raw paths are not anonymously 
   assert.doesNotMatch(accessSql, /actor::text\|\|'\/listings\/'/);
 
   const edge = read("supabase/functions/marketplace-public-media/index.ts");
-  assert.match(edge, /WEBSITE_ORIGIN = "https:\/\/herdharbor\.com"/);
-  assert.match(edge, /origin !== WEBSITE_ORIGIN/);
+  assert.match(edge, /WEBSITE_ORIGINS = new Set\(\["https:\/\/herdharbor\.com", "https:\/\/www\.herdharbor\.com"\]\)/);
+  assert.match(edge, /!WEBSITE_ORIGINS\.has\(origin\)/);
   assert.match(edge, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(edge, /\.eq\("state", "available"\)/);
   assert.match(edge, /\.eq\("marketplace_status", "active"\)/);
@@ -280,8 +280,8 @@ test("C7C moves public media signing behind the dedicated Edge function", () => 
   assert.match(cleanupSql, /drop policy if exists marketplace_storage_public_read/);
   assert.match(cleanupSql, /drop function if exists public\.marketplace_public_listing_media_v2\(uuid\[\]\)/);
   assert.match(cleanupSql, /drop function if exists public\.marketplace_public_seller_media_v2\(uuid\)/);
-  assert.match(media, /WEBSITE_ORIGIN = "https:\/\/herdharbor\.com"/);
-  assert.match(media, /origin !== WEBSITE_ORIGIN/);
+  assert.match(media, /WEBSITE_ORIGINS = new Set\(\["https:\/\/herdharbor\.com", "https:\/\/www\.herdharbor\.com"\]\)/);
+  assert.match(media, /!WEBSITE_ORIGINS\.has\(origin\)/);
   assert.match(media, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(media, /createSignedUrls\(paths, 300\)/);
   assert.match(media, /createSignedUrl\(avatarPath, 300\)/);
@@ -332,4 +332,12 @@ test("C7 root stack never creates the abandoned message-attachment Storage bucke
   assert.doesNotMatch(c1Sql, /values \('marketplace-message-attachments'/);
   assert.doesNotMatch(c1Sql, /bucket_id in \('marketplace-public','marketplace-message-attachments'\)/);
   assert.doesNotMatch(accessSql, /values \('marketplace-message-attachments'/);
+});
+
+
+test("C7 Edge configuration makes pedigree JWT verification explicit", () => {
+  const config = read("supabase/config.toml");
+  assert.match(config, /\[functions\.marketplace-pedigree-snapshot\][\s\S]*?verify_jwt = true/);
+  assert.match(config, /\[functions\.marketplace-sso-ticket\][\s\S]*?verify_jwt = false/);
+  assert.match(config, /\[functions\.marketplace-public-media\][\s\S]*?verify_jwt = false/);
 });
