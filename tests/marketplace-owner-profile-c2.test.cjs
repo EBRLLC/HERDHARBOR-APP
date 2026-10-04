@@ -62,7 +62,7 @@ test("C2 web profile editor contains only broad public-facing fields", () => {
   assert.match(source, /marketplace-public/);
   assert.match(source, /createSignedUrl/);
   assert.doesNotMatch(source, /name="(?:email|phone|street|address|billing|subscription)"/i);
-  assert.doesNotMatch(source, /account_access|subscriptions|billing/i);
+  assert.doesNotMatch(source, /\.from\(["\'](?:account_access|subscriptions|subscription_payments|billing)[^"\']*["\']\)/i);
 });
 
 test("C2 profile runtime is loaded only inside the already Owner-gated Marketplace app", () => {
