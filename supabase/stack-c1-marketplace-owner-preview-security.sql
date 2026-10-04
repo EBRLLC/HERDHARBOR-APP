@@ -115,6 +115,37 @@ begin
 end
 $$;
 
+-- Disable every RPC left behind by the rolled-back Marketplace stack.
+-- SECURITY DEFINER functions can bypass table RLS, so no legacy marketplace_*
+-- RPC remains callable by anon or authenticated during the Owner-only preview.
+do $
+declare
+  function_row record;
+begin
+  for function_row in
+    select format(
+      '%I.%I(%s)',
+      n.nspname,
+      p.proname,
+      pg_get_function_identity_arguments(p.oid)
+    ) as function_signature
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname like 'marketplace_%'
+  loop
+    execute format(
+      'revoke all privileges on function %s from public, anon, authenticated',
+      function_row.function_signature
+    );
+    execute format(
+      'grant execute on function %s to service_role',
+      function_row.function_signature
+    );
+  end loop;
+end
+$;
+
 grant select, insert, update, delete on table public.marketplace_public_profiles to authenticated;
 grant select, insert, update, delete on table public.marketplace_listings to authenticated;
 grant select, insert, update, delete on table public.marketplace_listing_photos to authenticated;
