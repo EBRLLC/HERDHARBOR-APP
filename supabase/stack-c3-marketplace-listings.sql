@@ -14,28 +14,43 @@ returns table (
   asking_price text,
   herd_status text
 )
-language sql
+language plpgsql
 stable
 security definer
 set search_path = ''
 as $c3_herd$
-  with owner_state as (
-    select d.app_state
-    from public.herdharbor_user_data d
-    where d.user_id = (select auth.uid())
-      and (select public.herdharbor_account_role()) = 'owner'
-    limit 1
-  ),
-  animals as (
-    select item
-    from owner_state,
-      lateral jsonb_array_elements(
-        case
-          when jsonb_typeof(app_state -> 'animals') = 'array' then app_state -> 'animals'
-          else '[]'::jsonb
-        end
-      ) item
-  )
+declare
+  actor uuid := auth.uid();
+  authority_stage text;
+  snapshot jsonb;
+begin
+  if actor is null or public.herdharbor_account_role() <> 'owner' then
+    raise exception 'Marketplace herd import is Owner-only'
+      using errcode = '42501';
+  end if;
+
+  select m.cutover_stage
+  into authority_stage
+  from public.herdharbor_sync_manifest m
+  where m.user_id = actor;
+
+  if authority_stage = 'normalized' then
+    raise exception 'Marketplace herd import bridge does not read normalized authority yet'
+      using errcode = '55000',
+            hint = 'Do not fall back to a stale legacy snapshot; update the read-only Marketplace import bridge first.';
+  end if;
+
+  select d.app_state
+  into snapshot
+  from public.herdharbor_user_data d
+  where d.user_id = actor
+  limit 1;
+
+  if snapshot is null then
+    return;
+  end if;
+
+  return query
   select
     nullif(btrim(coalesce(item ->> 'id', item ->> 'uuid', item ->> 'recordId', item ->> 'record_id', item ->> 'key')), '') as source_animal_id,
     left(btrim(coalesce(item ->> 'name', '')), 120) as animal_name,
@@ -43,16 +58,22 @@ as $c3_herd$
     left(btrim(coalesce(item ->> 'breed', '')), 120) as breed,
     left(btrim(coalesce(item ->> 'sex', '')), 32) as sex,
     case
-      when coalesce(item ->> 'dob', '') ~ '^\d{4}-\d{2}-\d{2}$' then (item ->> 'dob')::date
+      when coalesce(item ->> 'dob', '') ~ '^\\d{4}-\\d{2}-\\d{2}$' then (item ->> 'dob')::date
       else null
     end as dob,
     left(btrim(coalesce(item ->> 'color', '')), 120) as variety_color,
     left(btrim(coalesce(item ->> 'askingPrice', '')), 32) as asking_price,
     left(btrim(coalesce(item ->> 'status', '')), 40) as herd_status
-  from animals
+  from jsonb_array_elements(
+    case
+      when jsonb_typeof(snapshot -> 'animals') = 'array' then snapshot -> 'animals'
+      else '[]'::jsonb
+    end
+  ) item
   where nullif(btrim(coalesce(item ->> 'id', item ->> 'uuid', item ->> 'recordId', item ->> 'record_id', item ->> 'key')), '') is not null
     and lower(coalesce(item ->> 'status', '')) not in ('deceased','archived','ancestor only')
-  order by lower(coalesce(item ->> 'name', '')), source_animal_id
+  order by lower(coalesce(item ->> 'name', '')), source_animal_id;
+end
 $c3_herd$;
 
 revoke all on function public.marketplace_owner_herd_animals() from public, anon;
