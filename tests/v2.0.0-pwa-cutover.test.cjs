@@ -98,7 +98,7 @@ test("2.0.0 shell bootstrap and required precache agree on the release query ide
   assert.match(index, /manifest\.json\?v=2\.0\.0/);
   assert.match(index, /herdharbor-build\.js\?v=2\.0\.0/);
   assert.match(index, /pwa\.js\?v=34/);
-  assert.match(workerSource, /herdharbor-shell-v2\.0\.0-v2\.0\.0-release-2/);
+  assert.match(workerSource, /herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1/);
   assert.match(workerSource, /\.\/manifest\.json\?v=2\.0\.0/);
   assert.match(workerSource, /\.\/herdharbor-build\.js\?v=2\.0\.0/);
   assert.match(workerSource, /\.\/pwa\.js\?v=34/);
