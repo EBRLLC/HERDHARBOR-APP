@@ -898,3 +898,35 @@ test("shadow post-legacy status remains pending while worker reports queued work
     /normalizedPending:[\s\S]*Number\(normalizedResult\?\.pending \|\| 0\) > 0/
   );
 });
+
+
+test("clean approved hydration auto-promotes a legacy account to dual-write only after three verified checkpoints", async () => {
+  const h = await harness();
+  const decision = await h.runtime.checkEligibility();
+  assert.equal(decision.active, true);
+  assert.equal(h.recordStore.manifest, null);
+
+  const hydration = await h.runtime.prepareHydration({ legacyDirty: false });
+
+  assert.equal(hydration.ok, true);
+  assert.equal(hydration.authoritative, false);
+  assert.equal(hydration.stage, "dual_write");
+  assert.equal(hydration.dualWriteExpansion?.ok, true);
+  assert.equal(hydration.dualWriteExpansion?.validationCheckpoints, 3);
+  assert.equal(h.recordStore.manifest.cutover_stage, "dual_write");
+  assert.equal(h.recordStore.manifest.metadata.normalized_writer_ready, true);
+  assert.equal(h.runtime.status().stage, "dual_write");
+  assert.equal(h.runtime.status().validationPasses, 0);
+});
+
+test("dirty legacy hydration never auto-promotes before the legacy save is authoritative", async () => {
+  const h = await harness();
+  await h.runtime.checkEligibility();
+
+  const hydration = await h.runtime.prepareHydration({ legacyDirty: true });
+
+  assert.equal(hydration.ok, true);
+  assert.equal(hydration.stage, "legacy");
+  assert.equal(h.recordStore.manifest, null);
+  assert.equal(h.runtime.status().stage, "legacy");
+});
