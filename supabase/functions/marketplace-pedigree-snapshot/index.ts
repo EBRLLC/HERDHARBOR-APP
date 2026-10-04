@@ -79,12 +79,12 @@ Deno.serve(async (req) => {
       return fail(req, "authentication_invalid", "The authentication session is invalid or expired.", 401);
     }
 
-    const { data: role, error: roleError } = await client.rpc("herdharbor_account_role");
-    if (roleError || String(role || "").toLowerCase() !== "owner") {
-      return fail(req, "owner_required", "Marketplace is currently a private Owner-only preview.", 403);
+    const { data: memberSession, error: memberSessionError } = await client.rpc("marketplace_member_session");
+    if (memberSessionError || String(memberSession?.account_status || "").toLowerCase() !== "active") {
+      return fail(req, "member_required", "An active HerdHarbor account is required.", 403);
     }
 
-    const { data: source, error: sourceError } = await client.rpc("marketplace_owner_pedigree_source", {
+    const { data: source, error: sourceError } = await client.rpc("marketplace_member_pedigree_source", {
       listing_id_value: listingId
     });
     if (sourceError) {
@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: saved, error: saveError } = await client.rpc("marketplace_owner_set_pedigree_snapshot", {
+    const { data: saved, error: saveError } = await client.rpc("marketplace_member_set_pedigree_snapshot", {
       listing_id_value: listingId,
       snapshot_value: snapshot
     });
