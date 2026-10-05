@@ -77,6 +77,6 @@ Production static assets are published from the exact reviewed `main` commit thr
 
 ### Distribution status for the 2.0.0 release
 
-- **Web / installable web app:** HerdHarbor's production web channel is `https://app.herdharbor.com`, and the web app can be installed on supported mobile and desktop browsers. The 2.0.0 release is not considered live until the exact merged `main` commit completes the monitored production publisher.
+- **Web / installable web app:** HerdHarbor's production web channel is `https://app.herdharbor.com`, and the web app can be installed on supported mobile and desktop browsers. The 2.0.0 release is not considered live until the exact merged `main` commit completes the branch-source GitHub Pages deployment.
 - **Google Play:** coming soon. The Android 2.0.0 package and Play submission material are prepared, but store publication must not be claimed until Play Console confirms the production release.
 - **Apple App Store:** coming soon. This repository does not currently contain an iOS App Store release package, so App Store availability must not be claimed until that separate release is completed.
