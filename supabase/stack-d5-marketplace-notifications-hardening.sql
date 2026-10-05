@@ -431,6 +431,46 @@ revoke all on function public.marketplace_member_mark_all_notifications_read()
 grant execute on function public.marketplace_member_mark_all_notifications_read()
   to authenticated;
 
+create or replace function public.marketplace_member_mark_entity_notifications_read(
+  entity_type_value text,
+  entity_id_value text
+)
+returns integer
+language plpgsql
+security definer
+set search_path=''
+as $d5_read_entity$
+declare
+  actor uuid := auth.uid();
+  safe_type text := lower(btrim(coalesce(entity_type_value,'')));
+  safe_id text := btrim(coalesce(entity_id_value,''));
+  changed integer;
+begin
+  if actor is null or not herdharbor_private.marketplace_current_account_active() then
+    raise exception 'Active HerdHarbor account required' using errcode='42501';
+  end if;
+
+  if safe_type='' or safe_id='' then
+    raise exception 'Notification entity is required' using errcode='22023';
+  end if;
+
+  update public.marketplace_notification_inbox
+  set read_at=coalesce(read_at,now())
+  where user_id=actor
+    and entity_type=safe_type
+    and entity_id=safe_id
+    and read_at is null;
+
+  get diagnostics changed=row_count;
+  return changed;
+end
+$d5_read_entity$;
+
+revoke all on function public.marketplace_member_mark_entity_notifications_read(text,text)
+  from public,anon;
+grant execute on function public.marketplace_member_mark_entity_notifications_read(text,text)
+  to authenticated;
+
 create or replace function public.marketplace_member_notification_summary()
 returns jsonb
 language plpgsql
