@@ -12,6 +12,7 @@ const PAYLOAD_VERSION = 1;
 const MAX_SUBJECTS = 25;
 const MAX_ANIMALS = 100;
 const MAX_BODY_BYTES = 1_500_000;
+const DEFAULT_TRANSFER_CATEGORIES = Object.freeze({ identity: true, pedigree: true, genetics: true, ownershipHistory: true });
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: CORS });
 const clean = (value: unknown, max = 240) => typeof value === "string" ? value.trim().replace(/\s+/g, " ").slice(0, max) : "";
 
@@ -39,6 +40,8 @@ type TransferRow = {
   accepted_at?: string | null;
   declined_at?: string | null;
   cancelled_at?: string | null;
+  expires_at?: string | null;
+  transfer_categories?: Record<string, boolean> | null;
 };
 
 function sanitizeOwnershipHistory(history: unknown) {
@@ -113,7 +116,17 @@ function sanitizeGenetics(value: unknown) {
   };
 }
 
-function sanitizeAnimal(value: unknown) {
+function normalizeTransferCategories(value: unknown) {
+  const input = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  return {
+    identity: true,
+    pedigree: true,
+    genetics: input.genetics !== false,
+    ownershipHistory: input.ownershipHistory !== false
+  };
+}
+
+function sanitizeAnimal(value: unknown, categories = DEFAULT_TRANSFER_CATEGORIES) {
   const animal = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
   return {
     id: clean(animal.id, 160),
@@ -132,8 +145,8 @@ function sanitizeAnimal(value: unknown) {
     variety: clean(animal.variety, 160),
     sireId: clean(animal.sireId, 160),
     damId: clean(animal.damId, 160),
-    genetics: sanitizeGenetics(animal.genetics),
-    ownershipHistory: sanitizeOwnershipHistory(animal.ownershipHistory)
+    genetics: categories.genetics ? sanitizeGenetics(animal.genetics) : null,
+    ownershipHistory: categories.ownershipHistory ? sanitizeOwnershipHistory(animal.ownershipHistory) : []
   };
 }
 
@@ -145,7 +158,8 @@ function sanitizePayload(value: unknown) {
   if (!transferId) throw new Error("Transfer ID is required.");
   const subjectIds = (Array.isArray(payload.subjectIds) ? payload.subjectIds : []).map((id) => clean(id, 160)).filter(Boolean);
   if (!subjectIds.length || subjectIds.length > MAX_SUBJECTS || new Set(subjectIds).size !== subjectIds.length) throw new Error("Invalid subject-animal list.");
-  const animals = (Array.isArray(payload.animals) ? payload.animals : []).map(sanitizeAnimal);
+  const categories = normalizeTransferCategories(payload.categories);
+  const animals = (Array.isArray(payload.animals) ? payload.animals : []).map((animal) => sanitizeAnimal(animal, categories));
   if (!animals.length || animals.length > MAX_ANIMALS) throw new Error("Invalid pedigree-animal list.");
   if (animals.some((animal) => !animal.id) || new Set(animals.map((animal) => animal.id)).size !== animals.length) throw new Error("Animal IDs are invalid or duplicated.");
   const animalIds = new Set(animals.map((animal) => animal.id));
@@ -162,6 +176,7 @@ function sanitizePayload(value: unknown) {
     sender: { operationName: clean(sender.operationName, 160), ownerName: clean(sender.ownerName, 160), memberCode: clean(sender.memberCode, 64) },
     recipient: { name: clean(recipient.name, 160) },
     sale: { saleNumber: clean(sale.saleNumber, 120), saleDate: clean(sale.saleDate, 32), transferNumber: transferId },
+    categories,
     subjectIds,
     animals
   };
