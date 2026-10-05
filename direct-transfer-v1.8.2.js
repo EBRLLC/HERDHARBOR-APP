@@ -282,7 +282,12 @@
       <div class="hh-direct-summary">
         <strong>${esc(sale.saleNumber || sale.transferNumber)}</strong>
         <span>${esc(subjects.join(", ") || "Animal sale")}</span>
-        <small>The buyer will receive the animal record, available 3-generation pedigree, transferable genetics, and provenance. Your private notes, financial records, health notes, and customer records are not sent.</small>
+        <small>Identity and pedigree are required. Choose whether transferable genetics and ownership provenance are included. Private notes, financial records, health notes, customer records, and Marketplace messages are never transferred.</small>
+      </div>
+      <div class="hh-direct-review-grid">
+        <div><span>Required</span><strong>Identity + pedigree</strong><small>Animal identity and available ancestors, up to 3 generations.</small></div>
+        <label><span>Optional</span><strong><input id="hh-direct-include-genetics" type="checkbox" checked> Transferable genetics</strong><small>Structured genetics only; no private notes.</small></label>
+        <label><span>Optional</span><strong><input id="hh-direct-include-history" type="checkbox" checked> Ownership provenance</strong><small>Sanitized ownership history only.</small></label>
       </div>
       <label class="hh-direct-field">Buyer email or HerdHarbor member code
         <div class="hh-direct-lookup-row">
@@ -313,7 +318,10 @@
         resolved = response.recipient;
         result.innerHTML = `<div><strong>${esc(resolved.displayName || "HerdHarbor member")}</strong><span>${esc(resolved.maskedEmail || resolved.memberCode || "Verified member")}</span></div>
           <button type="button" class="button button-primary" id="hh-direct-send-confirmed">Send transfer</button>`;
-        result.querySelector("#hh-direct-send-confirmed").addEventListener("click", () => sendResolvedTransfer(sale.id, recipient, resolved));
+        result.querySelector("#hh-direct-send-confirmed").addEventListener("click", () => sendResolvedTransfer(sale.id, recipient, resolved, {
+          genetics: host.querySelector("#hh-direct-include-genetics")?.checked !== false,
+          ownershipHistory: host.querySelector("#hh-direct-include-history")?.checked !== false
+        }));
       } catch (error) {
         resolved = null;
         result.innerHTML = `<strong>Member lookup failed.</strong><span>${esc(error.message)}</span>`;
@@ -327,7 +335,7 @@
     });
   }
 
-  async function sendResolvedTransfer(saleId, recipientLookup, recipient) {
+  async function sendResolvedTransfer(saleId, recipientLookup, recipient, transferCategories = {}) {
     const button = document.querySelector("#hh-direct-send-confirmed");
     if (button) { button.disabled = true; button.textContent = "Sending…"; }
     try {
@@ -336,7 +344,11 @@
       const payload = Core.buildTransferPayload(state, saleId, {
         operationName: me?.displayName || state.profile?.operationName || "",
         ownerName: state.profile?.ownerName || "",
-        memberCode: me?.memberCode || ""
+        memberCode: me?.memberCode || "",
+        transferCategories: {
+          genetics: transferCategories.genetics !== false,
+          ownershipHistory: transferCategories.ownershipHistory !== false
+        }
       });
       const response = await api("create", { recipient: recipientLookup, payload });
       const transfer = response?.transfer;
@@ -398,9 +410,10 @@
         </div>
         <div class="hh-direct-review-grid">
           <div><span>Pedigree</span><strong>${Number(transfer.pedigreeRecordCount || 0)} animal records</strong><small>Subject animal plus available ancestors, up to 3 generations.</small></div>
-          <div><span>Genetics</span><strong>${transfer.includesGenetics ? "Included" : "No profile recorded"}</strong><small>Only transferable structured genetics are included.</small></div>
+          <div><span>Genetics</span><strong>${transfer.categories?.genetics ? (transfer.includesGenetics ? "Included" : "Approved; none recorded") : "Not included"}</strong><small>Only transferable structured genetics can be included.</small></div>
+          <div><span>Ownership provenance</span><strong>${transfer.categories?.ownershipHistory ? "Included" : "Not included"}</strong><small>Sanitized transfer history only.</small></div>
         </div>
-        <div class="hh-direct-privacy-note"><strong>Not transferred:</strong> seller financial data, customer records, private notes, health notes, and unrelated records.</div>
+        <div class="hh-direct-privacy-note"><strong>Not transferred:</strong> seller financial data, customer records, private notes, health notes, Marketplace messages, and unrelated records.</div>
         <div class="hh-direct-modal-actions">
           <button type="button" class="button button-ghost" id="hh-direct-decline">Decline</button>
           <button type="button" class="button button-primary" id="hh-direct-accept">Accept & add to my animals</button>
