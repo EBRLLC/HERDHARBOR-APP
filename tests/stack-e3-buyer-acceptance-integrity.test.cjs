@@ -68,7 +68,7 @@ test("E3 server enforces expiry before preview, prepare or acceptance", () => {
   assert.match(edge, /expireTransferIfDue/);
   assert.match(edge, /status:\s*"expired"/);
   assert.match(edge, /eventType[^\n]*expired|audit\([^\n]*"expired"/);
-  assert.match(edge, /current\.status === "accepted"/);
+  assert.match(edge, /currentRow\.status === "accepted"/);
   assert.match(edge, /\.eq\("status", "pending"\)/);
 });
 
