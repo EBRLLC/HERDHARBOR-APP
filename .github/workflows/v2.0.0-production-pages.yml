@@ -17,41 +17,6 @@ jobs:
   build-and-verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Wait for branch-source Pages publisher
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_SHA: ${{ github.sha }}
-        run: |
-          found=""
-          for attempt in $(seq 1 24); do
-            payload="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${RELEASE_SHA}&per_page=100")"
-            state="$(printf '%s' "$payload" | node -e '
-              let input=""; process.stdin.on("data", c => input += c); process.stdin.on("end", () => {
-                const data = JSON.parse(input || "{}");
-                const run = (data.workflow_runs || []).find(item =>
-                  item.name === "pages build and deployment" ||
-                  item.path === "dynamic/pages/pages-build-deployment"
-                );
-                process.stdout.write(run ? `${run.status}|${run.conclusion || ""}` : "missing|");
-              });
-            ')"
-            status="${state%%|*}"
-            if [ "$status" = "completed" ]; then
-              found="yes"
-              echo "Branch-source Pages run finished; production verification can continue."
-              break
-            fi
-            if [ "$status" = "missing" ]; then
-              echo "Branch-source Pages run not visible yet (attempt ${attempt}/24)."
-            else
-              echo "Branch-source Pages run is ${status} (attempt ${attempt}/24)."
-            fi
-            sleep 10
-          done
-          if [ -z "$found" ]; then
-            echo "No branch-source Pages run was resolved within the wait window."
-            exit 1
-          fi
       - name: Checkout exact main release payload
         uses: actions/checkout@v4
         with:
