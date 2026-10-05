@@ -2,7 +2,7 @@ name: HerdHarbor 2.0.0 CI
 
 on:
   pull_request:
-    branches: [main, 'release-2.0.0-phase-*', 'breeder-docs/phase-*', 'breeding-intel/phase-*', 'marketplace-site/app-*', 'marketplace-comms/app-*']
+    branches: [main, 'release-2.0.0-phase-*', 'breeder-docs/phase-*', 'breeding-intel/phase-*', 'marketplace-site/app-*', 'marketplace-comms/app-*', 'ownership-transfer/phase-*']
   workflow_dispatch:
 
 permissions:
@@ -28,6 +28,7 @@ jobs:
           npx esbuild supabase/functions/marketplace-sso-ticket/index.ts --format=esm --platform=neutral --log-level=error --outfile=/tmp/marketplace-sso-ticket.mjs
           npx esbuild supabase/functions/marketplace-public-media/index.ts --format=esm --platform=neutral --log-level=error --outfile=/tmp/marketplace-public-media.mjs
           npx esbuild supabase/functions/marketplace-pedigree-snapshot/index.ts --format=esm --platform=neutral --log-level=error --outfile=/tmp/marketplace-pedigree-snapshot.mjs
+          npx esbuild supabase/functions/animal-transfer/index.ts --format=esm --platform=neutral --log-level=error --outfile=/tmp/animal-transfer.mjs
       - name: Verify current 2.0.0 release contract
         run: npm run test:release
       - name: Run lifecycle state-integrity E2E gate
