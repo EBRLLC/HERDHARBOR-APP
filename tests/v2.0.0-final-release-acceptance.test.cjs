@@ -98,9 +98,9 @@ test("both protected production workflows require the final release gate", () =>
   assert.doesNotMatch(productionAcceptance, /Alpha v1\.8\.4/);
 });
 
-test("final gate does not imply deployment before the monitored publisher succeeds", () => {
+test("final gate does not imply deployment before branch-source Pages succeeds", () => {
   const readme = read("README.md");
-  assert.match(readme, /2\.0\.0 release is not considered live until the exact merged `main` commit completes the monitored production publisher/i);
+  assert.match(readme, /2\.0\.0 release is not considered live until the exact merged `main` commit completes the branch-source GitHub Pages deployment/i);
   assert.match(readme, /Google Play:\*\* coming soon/i);
   assert.match(readme, /Apple App Store:\*\* coming soon/i);
 });

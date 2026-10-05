@@ -90,12 +90,14 @@ test("browser patch includes species API aliases, current-farm symptom filtering
   assert.match(source, /sale.status='Pending'/);
 });
 
-test("production publisher is authoritative, current-SHA based, and no longer requires a manual rerun", () => {
+test("production Pages verification is current-SHA based and does not duplicate deployment", () => {
   const workflow = fs.readFileSync(path.resolve(__dirname, "../.github/workflows/v2.0.0-production-pages.yml"), "utf8");
   assert.match(workflow, /branches: \[main\]/);
   assert.match(workflow, /ref: \${{ github\.sha }}/);
-  assert.match(workflow, /pages-build-deployment/);
+  assert.match(workflow, /Production Pages artifact verified/);
   assert.match(workflow, /herdharbor-v1\.7\.1-stability-hotfix\.js/);
+  assert.doesNotMatch(workflow, /actions\/deploy-pages@|actions\/upload-pages-artifact@/);
+  assert.doesNotMatch(workflow, /Wait for branch-source Pages publisher|sleep 10/);
   assert.doesNotMatch(workflow, /github\.run_attempt == 1/);
   assert.doesNotMatch(workflow, /aad206c5b5c69395d8d5405c1e9ee1b0840c1d34/);
 });
