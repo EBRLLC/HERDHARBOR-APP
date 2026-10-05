@@ -34,3 +34,11 @@ test("D4 Saved Animals reuses marketplace_favorites and hides removed or suspend
   assert.match(sql, /marketplace_account_suspensions/i);
   assert.match(sql, /'Listing unavailable'/i);
 });
+
+
+test("D4 favorite v2 can always remove a stale favorite but still validates new saves", () => {
+  assert.match(sql, /marketplace_member_toggle_favorite_v2/i);
+  assert.match(sql, /if not coalesce\(favorite_value,false\)[\s\S]*delete from public\.marketplace_favorites/i);
+  assert.match(sql, /l\.state='available'/i);
+  assert.match(sql, /marketplace_account_suspensions/i);
+});
