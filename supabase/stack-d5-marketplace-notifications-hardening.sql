@@ -20,6 +20,7 @@ create table if not exists public.marketplace_notification_inbox (
       'listing_lifecycle',
       'moderation_warning',
       'seller_status',
+      'account_status',
       'saved_search'
     )),
   constraint marketplace_notification_inbox_key_check
@@ -66,7 +67,7 @@ declare
   result_id uuid;
 begin
   if user_id_value is null
-    or safe_type not in ('message','listing_expiration','listing_lifecycle','moderation_warning','seller_status','saved_search')
+    or safe_type not in ('message','listing_expiration','listing_lifecycle','moderation_warning','seller_status','account_status','saved_search')
     or safe_key=''
     or safe_title=''
     or safe_body=''
@@ -278,6 +279,62 @@ drop trigger if exists marketplace_notification_seller_status
 create trigger marketplace_notification_seller_status
 after update of marketplace_status on public.marketplace_public_profiles
 for each row execute function herdharbor_private.marketplace_notify_seller_status();
+
+create or replace function herdharbor_private.marketplace_notify_account_suspension()
+returns trigger
+language plpgsql
+security definer
+set search_path=''
+as $d5_account_status_trigger$
+declare
+  notification_title text;
+  notification_body text;
+  dedupe text;
+begin
+  if tg_op='INSERT' then
+    notification_title:='Marketplace access suspended';
+    notification_body:='Your Marketplace account access is suspended. Your main HerdHarbor account and private herd records are unchanged.';
+    dedupe:='account-suspension:'||new.suspension_id::text||':suspended';
+  elsif old.lifted_at is null and new.lifted_at is not null then
+    notification_title:='Marketplace access restored';
+    notification_body:='Your Marketplace account access has been restored.';
+    dedupe:='account-suspension:'||new.suspension_id::text||':lifted';
+  else
+    return new;
+  end if;
+
+  perform herdharbor_private.marketplace_enqueue_member_notification(
+    new.user_id,
+    'account_status',
+    dedupe,
+    notification_title,
+    notification_body,
+    'account',
+    new.user_id::text,
+    jsonb_build_object(
+      'suspension_id',new.suspension_id,
+      'lifted',new.lifted_at is not null
+    )
+  );
+
+  return new;
+end
+$d5_account_status_trigger$;
+
+revoke all on function herdharbor_private.marketplace_notify_account_suspension()
+  from public,anon,authenticated;
+
+drop trigger if exists marketplace_notification_account_suspension_insert
+  on public.marketplace_account_suspensions;
+create trigger marketplace_notification_account_suspension_insert
+after insert on public.marketplace_account_suspensions
+for each row execute function herdharbor_private.marketplace_notify_account_suspension();
+
+drop trigger if exists marketplace_notification_account_suspension_lift
+  on public.marketplace_account_suspensions;
+create trigger marketplace_notification_account_suspension_lift
+after update of lifted_at on public.marketplace_account_suspensions
+for each row execute function herdharbor_private.marketplace_notify_account_suspension();
 
 create or replace function public.marketplace_member_refresh_notifications()
 returns jsonb
