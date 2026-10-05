@@ -42,6 +42,7 @@ type TransferRow = {
   cancelled_at?: string | null;
   expires_at?: string | null;
   transfer_categories?: Record<string, boolean> | null;
+  marketplace_listing_id?: string | null;
 };
 
 function sanitizeOwnershipHistory(history: unknown) {
@@ -220,6 +221,34 @@ async function authoritativeTransferAnimals(admin: Admin, userId: string, subjec
   return animals;
 }
 
+async function resolveMarketplaceListing(admin: Admin, userId: string, requestedListingId: string, subjectIds: string[]) {
+  const subjectSet = new Set(subjectIds);
+  const select = "id,seller_id,source_animal_id,state,listing_kind";
+  let query = admin.from("marketplace_listings").select(select)
+    .eq("seller_id", userId)
+    .eq("state", "sold");
+
+  if (requestedListingId) {
+    const { data, error } = await query.eq("id", requestedListingId).maybeSingle();
+    if (error) throw error;
+    if (!data) throw new Error("That sold Marketplace listing is not available to the signed-in seller.");
+    if (data.listing_kind !== "individual" || !data.source_animal_id || !subjectSet.has(clean(data.source_animal_id, 160))) {
+      throw new Error("The Marketplace listing does not match the animal being transferred.");
+    }
+    return data.id as string;
+  }
+
+  if (subjectIds.length !== 1) return null;
+  const { data, error } = await query
+    .eq("source_animal_id", subjectIds[0])
+    .eq("listing_kind", "individual")
+    .order("sold_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.id ? String(data.id) : null;
+}
+
 async function resolveRecipient(admin: Admin, lookup: string): Promise<Recipient | null> {
   const { data, error } = await admin.rpc("herdharbor_direct_transfer_resolve", { lookup_value: lookup });
   if (error) throw error;
@@ -255,7 +284,8 @@ function metadata(row: TransferRow) {
     declinedAt: row.declined_at || null,
     cancelledAt: row.cancelled_at || null,
     expiresAt: row.expires_at || null,
-    categories: normalizeTransferCategories(row.transfer_categories || {})
+    categories: normalizeTransferCategories(row.transfer_categories || {}),
+    marketplaceListingId: row.marketplace_listing_id || null
   };
 }
 
@@ -268,7 +298,7 @@ async function audit(admin: Admin, transferId: string, actorId: string, eventTyp
   if (error) console.warn("HerdHarbor direct transfer audit event was not stored:", error.message);
 }
 
-const META_COLUMNS = "id,sender_id,recipient_id,transfer_id,source_sale_number,sale_date,status,payload_version,subject_count,subject_names,pedigree_record_count,includes_genetics,sender_display_name,recipient_display_name,transfer_categories,expires_at,created_at,updated_at,accepted_at,declined_at,cancelled_at";
+const META_COLUMNS = "id,sender_id,recipient_id,transfer_id,source_sale_number,sale_date,status,payload_version,subject_count,subject_names,pedigree_record_count,includes_genetics,sender_display_name,recipient_display_name,transfer_categories,marketplace_listing_id,expires_at,created_at,updated_at,accepted_at,declined_at,cancelled_at";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -340,6 +370,7 @@ Deno.serve(async (req) => {
       payload.animals = await authoritativeTransferAnimals(admin, user.id, payload.subjectIds, payload.categories);
       payload.sender = { operationName: sender.display_name, ownerName: "", memberCode: sender.member_code };
       payload.recipient = { name: recipient.display_name };
+      const marketplaceListingId = await resolveMarketplaceListing(admin, user.id, clean(body.listingId, 160), payload.subjectIds);
 
       const { data: existing, error: existingError } = await admin.from("herdharbor_direct_animal_transfers")
         .select(META_COLUMNS)
@@ -375,6 +406,7 @@ Deno.serve(async (req) => {
         pedigree_record_count: payload.animals.length,
         includes_genetics: includesGenetics,
         transfer_categories: payload.categories,
+        marketplace_listing_id: marketplaceListingId,
         expires_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
         sender_display_name: sender.display_name,
         recipient_display_name: recipient.display_name
