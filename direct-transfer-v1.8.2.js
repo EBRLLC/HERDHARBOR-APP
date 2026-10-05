@@ -437,7 +437,7 @@
   }
 
   async function acceptIncoming(transferId, recovery = false) {
-    const button = document.querySelector("#hh-direct-accept") || document.querySelector(`[data-hh-finish-transfer="${CSS.escape(String(transferId || ""))}"]`);
+    const button = document.querySelector("#hh-direct-accept") || Array.from(document.querySelectorAll("[data-hh-finish-transfer]")).find((node) => String(node.dataset.hhFinishTransfer || "") === String(transferId || ""));
     if (button) { button.disabled = true; button.textContent = recovery ? "Finishing import…" : "Accepting…"; }
     let serverAccepted = false;
     try {
