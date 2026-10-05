@@ -1,4 +1,4 @@
-name: HerdHarbor 2.0.0 monitored production Pages publish
+name: HerdHarbor 2.0.0 production Pages verification
 
 on:
   push:
@@ -8,17 +8,13 @@ on:
 permissions:
   contents: read
   actions: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: herdharbor-pages-production
+  group: herdharbor-pages-production-verification
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
-    environment:
-      name: github-pages
+  build-and-verify:
     runs-on: ubuntu-latest
     steps:
       - name: Wait for branch-source Pages publisher
@@ -42,7 +38,7 @@ jobs:
             status="${state%%|*}"
             if [ "$status" = "completed" ]; then
               found="yes"
-              echo "Branch-source Pages run finished; monitored publisher can safely publish last."
+              echo "Branch-source Pages run finished; production verification can continue."
               break
             fi
             if [ "$status" = "missing" ]; then
@@ -53,7 +49,8 @@ jobs:
             sleep 10
           done
           if [ -z "$found" ]; then
-            echo "No branch-source Pages run was resolved within the wait window; continuing with the authoritative monitored publisher."
+            echo "No branch-source Pages run was resolved within the wait window."
+            exit 1
           fi
       - name: Checkout exact main release payload
         uses: actions/checkout@v4
@@ -132,8 +129,7 @@ jobs:
           grep -q "\"build\": \"${RELEASE_SHA}\"" _site/herdharbor-monitoring-config.js
           ! grep -R -E --include='*.html' --include='*.js' --include='*.css' '\\.(js|css)\\?v=' _site
           grep -E -q 'herdharbor-shell-[a-f0-9]{16}' _site/service-worker.js
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-      - uses: actions/deploy-pages@v4
+      - name: Confirm single-publisher contract
+        run: |
+          test -s _site/release-asset-manifest.json
+          echo "Production Pages artifact verified. Deployment authority remains the branch-source Pages workflow."
