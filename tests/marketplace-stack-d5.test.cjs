@@ -50,3 +50,12 @@ test("D5 expiration reminders are deterministic for each expiry window", () => {
   assert.match(sql, /'listing-expiry:'\|\|l\.id::text\|\|':'\|\|l\.expires_at::text/i);
   assert.match(sql, /expires_at<=now\(\)\+interval '5 days'/i);
 });
+
+
+test("D5 distinguishes full Marketplace account suspension from seller-profile suspension", () => {
+  assert.match(sql, /marketplace_notify_account_suspension/i);
+  assert.match(sql, /'account_status'/i);
+  assert.match(sql, /Marketplace access suspended/i);
+  assert.match(sql, /Marketplace access restored/i);
+  assert.match(sql, /private herd records are unchanged/i);
+});
