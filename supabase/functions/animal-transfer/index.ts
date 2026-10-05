@@ -182,6 +182,44 @@ function sanitizePayload(value: unknown) {
   };
 }
 
+async function authoritativeTransferAnimals(admin: Admin, userId: string, subjectIds: string[], categories: Record<string, boolean>) {
+  const { data, error } = await admin.rpc("herdharbor_direct_transfer_owned_animals", { owner_user_id: userId });
+  if (error) throw error;
+  const source = Array.isArray(data) ? data : [];
+  const byId = new Map<string, Record<string, unknown>>();
+  source.forEach((value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return;
+    const animal = value as Record<string, unknown>;
+    const id = clean(animal.id || animal.uuid || animal.recordId || animal.record_id || animal.key, 160);
+    if (id && !byId.has(id)) byId.set(id, animal);
+  });
+
+  const included = new Set<string>();
+  let frontier = subjectIds.slice();
+  subjectIds.forEach((id) => {
+    if (!byId.has(id)) throw new Error("One or more transferred animals do not belong to the signed-in seller account.");
+    included.add(id);
+  });
+
+  for (let depth = 0; depth < 3; depth += 1) {
+    const next: string[] = [];
+    for (const id of frontier) {
+      const animal = byId.get(id);
+      for (const rawParent of [animal?.sireId, animal?.damId]) {
+        const parentId = clean(rawParent, 160);
+        if (!parentId || included.has(parentId) || !byId.has(parentId)) continue;
+        included.add(parentId);
+        next.push(parentId);
+      }
+    }
+    frontier = next;
+  }
+
+  const animals = [...included].map((id) => sanitizeAnimal(byId.get(id), categories));
+  if (animals.length > MAX_ANIMALS) throw new Error("This transfer contains too many pedigree records.");
+  return animals;
+}
+
 async function resolveRecipient(admin: Admin, lookup: string): Promise<Recipient | null> {
   const { data, error } = await admin.rpc("herdharbor_direct_transfer_resolve", { lookup_value: lookup });
   if (error) throw error;
@@ -297,6 +335,7 @@ Deno.serve(async (req) => {
       if (recipient.recipient_id === user.id) return json({ error: "You cannot transfer an animal to your own account." }, 400);
       const sender = await ensureIdentity(admin, user);
       const payload = sanitizePayload(body.payload);
+      payload.animals = await authoritativeTransferAnimals(admin, user.id, payload.subjectIds, payload.categories);
       payload.sender = { operationName: sender.display_name, ownerName: "", memberCode: sender.member_code };
       payload.recipient = { name: recipient.display_name };
 
@@ -333,6 +372,8 @@ Deno.serve(async (req) => {
         subject_names: subjectNames,
         pedigree_record_count: payload.animals.length,
         includes_genetics: includesGenetics,
+        transfer_categories: payload.categories,
+        expires_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
         sender_display_name: sender.display_name,
         recipient_display_name: recipient.display_name
       }).select(META_COLUMNS).single();
