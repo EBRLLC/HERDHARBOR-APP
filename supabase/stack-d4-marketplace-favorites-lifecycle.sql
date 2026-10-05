@@ -307,3 +307,55 @@ revoke all on function public.marketplace_member_saved_listings(integer,integer)
   from public, anon;
 grant execute on function public.marketplace_member_saved_listings(integer,integer)
   to authenticated;
+
+
+create or replace function public.marketplace_member_toggle_favorite_v2(
+  listing_id_value uuid,
+  favorite_value boolean
+)
+returns boolean
+language plpgsql
+security definer
+set search_path=''
+as $d4_favorite$
+declare
+  actor uuid := auth.uid();
+begin
+  if actor is null or not herdharbor_private.marketplace_current_account_active() then
+    raise exception 'Active HerdHarbor account required' using errcode='42501';
+  end if;
+
+  if not coalesce(favorite_value,false) then
+    delete from public.marketplace_favorites
+    where user_id=actor and listing_id=listing_id_value;
+    return false;
+  end if;
+
+  if not exists(
+    select 1
+    from public.marketplace_listings l
+    join public.marketplace_public_profiles p on p.user_id=l.seller_id
+    where l.id=listing_id_value
+      and l.state='available'
+      and p.marketplace_status='active'
+      and (l.expires_at is null or l.expires_at>now())
+      and not exists(
+        select 1 from public.marketplace_account_suspensions susp
+        where susp.user_id=l.seller_id and susp.lifted_at is null
+      )
+  ) then
+    raise exception 'Marketplace listing is unavailable' using errcode='22023';
+  end if;
+
+  insert into public.marketplace_favorites(user_id,listing_id)
+  values(actor,listing_id_value)
+  on conflict(user_id,listing_id) do nothing;
+
+  return true;
+end
+$d4_favorite$;
+
+revoke all on function public.marketplace_member_toggle_favorite_v2(uuid,boolean)
+  from public, anon;
+grant execute on function public.marketplace_member_toggle_favorite_v2(uuid,boolean)
+  to authenticated;
