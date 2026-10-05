@@ -298,6 +298,46 @@ async function audit(admin: Admin, transferId: string, actorId: string, eventTyp
   if (error) console.warn("HerdHarbor direct transfer audit event was not stored:", error.message);
 }
 
+function transferExpired(row: TransferRow) {
+  if (row.status !== "pending" || !row.expires_at) return false;
+  const expiresAt = new Date(row.expires_at).getTime();
+  return Number.isFinite(expiresAt) && expiresAt <= Date.now();
+}
+
+async function expireTransferIfDue(admin: Admin, row: TransferRow, actorId: string) {
+  if (!transferExpired(row)) return row;
+  const now = new Date().toISOString();
+  const { data, error } = await admin.from("herdharbor_direct_animal_transfers")
+    .update({ status: "expired", updated_at: now })
+    .eq("id", row.id)
+    .eq("status", "pending")
+    .select(META_COLUMNS)
+    .maybeSingle();
+  if (error) throw error;
+  if (data) {
+    await audit(admin, data.id, actorId, "expired");
+    return data as TransferRow;
+  }
+  const { data: current, error: currentError } = await admin.from("herdharbor_direct_animal_transfers")
+    .select(META_COLUMNS)
+    .eq("id", row.id)
+    .maybeSingle();
+  if (currentError) throw currentError;
+  return (current || row) as TransferRow;
+}
+
+async function expireDueTransfersForUser(admin: Admin, userId: string, ownershipColumn: "sender_id" | "recipient_id") {
+  const now = new Date().toISOString();
+  const { data, error } = await admin.from("herdharbor_direct_animal_transfers")
+    .select(META_COLUMNS)
+    .eq(ownershipColumn, userId)
+    .eq("status", "pending")
+    .lte("expires_at", now)
+    .limit(50);
+  if (error) throw error;
+  for (const row of data || []) await expireTransferIfDue(admin, row as TransferRow, userId);
+}
+
 const META_COLUMNS = "id,sender_id,recipient_id,transfer_id,source_sale_number,sale_date,status,payload_version,subject_count,subject_names,pedigree_record_count,includes_genetics,sender_display_name,recipient_display_name,transfer_categories,marketplace_listing_id,expires_at,created_at,updated_at,accepted_at,declined_at,cancelled_at";
 
 Deno.serve(async (req) => {
@@ -340,6 +380,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === "inbox") {
+      await expireDueTransfersForUser(admin, user.id, "recipient_id");
       const { data, error } = await admin.from("herdharbor_direct_animal_transfers")
         .select(META_COLUMNS)
         .eq("recipient_id", user.id)
@@ -350,6 +391,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === "outbox") {
+      await expireDueTransfersForUser(admin, user.id, "sender_id");
       const { data, error } = await admin.from("herdharbor_direct_animal_transfers")
         .select(META_COLUMNS)
         .eq("sender_id", user.id)
@@ -427,9 +469,10 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (error) throw error;
       if (!data) return json({ error: "That transfer is not available to this account." }, 404);
-      if (data.status !== "pending") return json({ error: `This transfer is ${data.status}.` }, 409);
-      await audit(admin, data.id, user.id, "previewed");
-      return json({ transfer: metadata(data as TransferRow) });
+      const current = await expireTransferIfDue(admin, data as TransferRow, user.id);
+      if (current.status !== "pending") return json({ error: `This transfer is ${current.status}.` }, 409);
+      await audit(admin, current.id, user.id, "previewed");
+      return json({ transfer: metadata(current) });
     }
 
     if (action === "prepare_accept") {
@@ -440,9 +483,10 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (error) throw error;
       if (!data) return json({ error: "That transfer is not available to this account." }, 404);
-      if (!["pending", "accepted"].includes(data.status)) return json({ error: `This transfer is ${data.status}.` }, 409);
-      await audit(admin, data.id, user.id, "prepared");
-      return json({ transfer: { ...metadata(data as TransferRow), payload: data.payload } });
+      const current = await expireTransferIfDue(admin, data as TransferRow, user.id);
+      if (!["pending", "accepted"].includes(current.status)) return json({ error: `This transfer is ${current.status}.` }, 409);
+      await audit(admin, current.id, user.id, "prepared");
+      return json({ transfer: { ...metadata(current), payload: data.payload } });
     }
 
     if (action === "complete_accept") {
@@ -453,8 +497,9 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (currentError) throw currentError;
       if (!current) return json({ error: "That transfer is not available to this account." }, 404);
-      if (current.status === "accepted") return json({ transfer: metadata(current as TransferRow), existing: true });
-      if (current.status !== "pending") return json({ error: `This transfer is ${current.status}.` }, 409);
+      const currentRow = await expireTransferIfDue(admin, current as TransferRow, user.id);
+      if (currentRow.status === "accepted") return json({ transfer: metadata(currentRow), existing: true });
+      if (currentRow.status !== "pending") return json({ error: `This transfer is ${currentRow.status}.` }, 409);
       const now = new Date().toISOString();
       const { data, error } = await admin.from("herdharbor_direct_animal_transfers")
         .update({ status: "accepted", accepted_at: now, updated_at: now })
