@@ -253,7 +253,9 @@ function metadata(row: TransferRow) {
     updatedAt: row.updated_at,
     acceptedAt: row.accepted_at || null,
     declinedAt: row.declined_at || null,
-    cancelledAt: row.cancelled_at || null
+    cancelledAt: row.cancelled_at || null,
+    expiresAt: row.expires_at || null,
+    categories: normalizeTransferCategories(row.transfer_categories || {})
   };
 }
 
@@ -266,7 +268,7 @@ async function audit(admin: Admin, transferId: string, actorId: string, eventTyp
   if (error) console.warn("HerdHarbor direct transfer audit event was not stored:", error.message);
 }
 
-const META_COLUMNS = "id,sender_id,recipient_id,transfer_id,source_sale_number,sale_date,status,payload_version,subject_count,subject_names,pedigree_record_count,includes_genetics,sender_display_name,recipient_display_name,created_at,updated_at,accepted_at,declined_at,cancelled_at";
+const META_COLUMNS = "id,sender_id,recipient_id,transfer_id,source_sale_number,sale_date,status,payload_version,subject_count,subject_names,pedigree_record_count,includes_genetics,sender_display_name,recipient_display_name,transfer_categories,expires_at,created_at,updated_at,accepted_at,declined_at,cancelled_at";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
