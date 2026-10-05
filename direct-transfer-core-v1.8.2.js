@@ -11,6 +11,7 @@
   const MAX_ANIMAL_RECORDS = 100;
   const MAX_SUBJECTS = 25;
   const ACTIVE_STATUSES = new Set(["active", "breeding"]);
+  const DEFAULT_TRANSFER_CATEGORIES = Object.freeze({ identity: true, pedigree: true, genetics: true, ownershipHistory: true });
 
   const clone = (value) => value == null ? value : JSON.parse(JSON.stringify(value));
   const clean = (value, max = 240) => String(value == null ? "" : value).trim().replace(/\s+/g, " ").slice(0, max);
@@ -100,7 +101,16 @@
     };
   }
 
-  function transferableAnimal(animal) {
+  function normalizeTransferCategories(input = {}) {
+    return Object.freeze({
+      identity: true,
+      pedigree: true,
+      genetics: input?.genetics !== false,
+      ownershipHistory: input?.ownershipHistory !== false
+    });
+  }
+
+  function transferableAnimal(animal, categories = DEFAULT_TRANSFER_CATEGORIES) {
     if (!animal || typeof animal !== "object") return null;
     return {
       id: clean(animal.id, 160),
@@ -119,12 +129,12 @@
       variety: clean(animal.variety, 160),
       sireId: clean(animal.sireId, 160),
       damId: clean(animal.damId, 160),
-      genetics: sanitizeGenetics(animal.genetics),
-      ownershipHistory: sanitizeOwnershipHistory(animal.ownershipHistory)
+      genetics: categories.genetics ? sanitizeGenetics(animal.genetics) : null,
+      ownershipHistory: categories.ownershipHistory ? sanitizeOwnershipHistory(animal.ownershipHistory) : []
     };
   }
 
-  function transferAnimalsForSale(state, sale) {
+  function transferAnimalsForSale(state, sale, categories = DEFAULT_TRANSFER_CATEGORIES) {
     const animals = Array.isArray(state?.animals) ? state.animals : [];
     const items = Array.isArray(sale?.items) ? sale.items : [];
     const subjectIds = new Set(items.map((item) => clean(item?.animalId, 160)).filter(Boolean));
@@ -149,7 +159,7 @@
       animals: [...included]
         .map((id) => animals.find((record) => String(record?.id) === String(id)))
         .filter(Boolean)
-        .map(transferableAnimal)
+        .map((animal) => transferableAnimal(animal, categories))
         .filter(Boolean)
     };
   }
@@ -163,7 +173,8 @@
     const customer = customers.find((record) => String(record?.id) === String(sale.customerId)) || {};
     const transferId = clean(sale.transferNumber || sale.saleNumber, 120);
     if (!transferId) throw new Error("The completed sale is missing a transfer number.");
-    const transfer = transferAnimalsForSale(state, sale);
+    const categories = normalizeTransferCategories(senderIdentity.transferCategories);
+    const transfer = transferAnimalsForSale(state, sale, categories);
     if (!transfer.subjectIds.length) throw new Error("The sale does not contain an animal to transfer.");
     if (transfer.subjectIds.length > MAX_SUBJECTS || transfer.animals.length > MAX_ANIMAL_RECORDS) {
       throw new Error("This sale contains too many animal records for a single direct transfer.");
@@ -188,6 +199,7 @@
         saleDate: clean(sale.saleDate, 32),
         transferNumber: transferId
       },
+      categories,
       subjectIds: transfer.subjectIds,
       animals: transfer.animals
     };
@@ -346,6 +358,8 @@
     PAYLOAD_VERSION,
     MAX_ANIMAL_RECORDS,
     MAX_SUBJECTS,
+    DEFAULT_TRANSFER_CATEGORIES,
+    normalizeTransferCategories,
     sanitizeGenetics,
     transferableAnimal,
     transferAnimalsForSale,
