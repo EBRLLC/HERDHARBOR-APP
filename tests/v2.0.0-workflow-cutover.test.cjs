@@ -36,15 +36,17 @@ test("CI presents stable 2.0.0 names and still validates stacked release PRs", (
   assert.doesNotMatch(ci, /Alpha v1\.8\.4|current v1\.8\.4 release|Android v1\.8\.4/);
 });
 
-test("monitored Pages publisher verifies the 2.0.0 payload before deployment", () => {
-  assert.match(pages, /^name: HerdHarbor 2\.0\.0 monitored production Pages publish$/m);
+test("production Pages verification validates 2.0.0 without becoming a second publisher", () => {
+  assert.match(pages, /^name: HerdHarbor 2\.0\.0 production Pages verification$/m);
   assert.match(pages, /npm run test:v2\.0\.0/);
   assert.match(pages, /version: "2\.0\.0"/);
   assert.match(pages, /HerdHarbor@2\.0\.0/);
   assert.match(pages, /RELEASE_SHA="\$\(git rev-parse HEAD\)"/);
   assert.match(pages, /test "\$RELEASE_SHA" = "\$\{GITHUB_SHA\}"/);
   assert.match(pages, /generate-release-assets\.mjs _site/);
-  assert.match(pages, /actions\/deploy-pages@v4/);
+  assert.match(pages, /Production Pages artifact verified/);
+  assert.doesNotMatch(pages, /actions\/deploy-pages@v4|actions\/upload-pages-artifact@v3/);
+  assert.doesNotMatch(pages, /Wait for branch-source Pages publisher|sleep 10/);
   assert.doesNotMatch(pages, /npm run test:v1\.8\.4|HerdHarbor@1\.8\.4|version: "1\.8\.4"/);
 });
 
