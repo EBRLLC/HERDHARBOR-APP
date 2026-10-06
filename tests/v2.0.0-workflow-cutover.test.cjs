@@ -29,7 +29,9 @@ test("CI presents stable 2.0.0 names and still validates stacked release PRs", (
   assert.match(ci, /^name: HerdHarbor 2\.0\.0 CI$/m);
   assert.match(ci, /branches: \[main,[^\n]*'marketplace-comms\/app-\*'[^\n]*'ownership-transfer\/phase-\*'\]/);
   assert.match(ci, /group: herdharbor-v2\.0\.0-ci-/);
-  assert.match(ci, /Verify current 2\.0\.0 release contract/);
+  assert.match(ci, /Verify repository governance and current 2\.0\.0 release contract/);
+  assert.match(ci, /Verify canonical engine ownership explicitly/);
+  assert.match(ci, /npm run test:governance/);
   assert.match(ci, /Android 2\.0\.0 review bundle/);
   assert.match(ci, /herdharbor-v2\.0\.0-monitoring-bundle/);
   assert.match(ci, /herdharbor-v2\.0\.0-unsigned-aab/);
@@ -41,6 +43,9 @@ test("production Pages verification validates 2.0.0 without becoming a second pu
   assert.match(pages, /npm run test:v2\.0\.0/);
   assert.match(pages, /version: "2\.0\.0"/);
   assert.match(pages, /HerdHarbor@2\.0\.0/);
+  assert.match(pages, /Verify reviewed PR provenance/);
+  assert.match(pages, /commits\/\$\{sha\}\/pulls/);
+  assert.match(pages, /Production verification blocked: main commit is not traceable to a merged PR/);
   assert.match(pages, /RELEASE_SHA="\$\(git rev-parse HEAD\)"/);
   assert.match(pages, /test "\$RELEASE_SHA" = "\$\{GITHUB_SHA\}"/);
   assert.match(pages, /generate-release-assets\.mjs _site/);
