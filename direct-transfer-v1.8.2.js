@@ -165,6 +165,14 @@
     chip.hidden = !pendingCount;
   }
 
+  function localHasTransferReceipt(serverTransferId) {
+    const state = readState();
+    return state.transfers.some((record) =>
+      String(record?.serverTransferId || "") === String(serverTransferId || "") &&
+      String(record?.direction || "").toLowerCase() === "received"
+    );
+  }
+
   function transferCard(row, incoming = true) {
     const names = Array.isArray(row.subjectNames) && row.subjectNames.length
       ? row.subjectNames.join(", ")
@@ -178,6 +186,7 @@
       </div>
       <div class="hh-direct-card-actions">
         ${incoming && status === "pending" ? `<button type="button" class="button button-primary" data-hh-review-transfer="${esc(row.id)}">Review</button>` : ""}
+        ${incoming && status === "accepted" && !localHasTransferReceipt(row.id) ? `<button type="button" class="button button-primary" data-hh-finish-transfer="${esc(row.id)}">Finish import</button>` : ""}
         ${!incoming && status === "pending" ? `<button type="button" class="button button-ghost" data-hh-cancel-transfer="${esc(row.id)}">Cancel</button>` : ""}
       </div>
     </article>`;
@@ -229,6 +238,8 @@
     panel.addEventListener("click", async (event) => {
       const review = event.target.closest?.("[data-hh-review-transfer]");
       if (review) return openIncomingReview(review.dataset.hhReviewTransfer);
+      const finish = event.target.closest?.("[data-hh-finish-transfer]");
+      if (finish) return acceptIncoming(finish.dataset.hhFinishTransfer, true);
       const cancel = event.target.closest?.("[data-hh-cancel-transfer]");
       if (cancel) return cancelOutgoing(cancel.dataset.hhCancelTransfer);
       const refresh = event.target.closest?.("#hh-direct-refresh");
@@ -425,27 +436,42 @@
     }
   }
 
-  async function acceptIncoming(transferId) {
-    const button = document.querySelector("#hh-direct-accept");
-    if (button) { button.disabled = true; button.textContent = "Adding animal…"; }
+  async function acceptIncoming(transferId, recovery = false) {
+    const button = document.querySelector("#hh-direct-accept") || Array.from(document.querySelectorAll("[data-hh-finish-transfer]")).find((node) => String(node.dataset.hhFinishTransfer || "") === String(transferId || ""));
+    if (button) { button.disabled = true; button.textContent = recovery ? "Finishing import…" : "Accepting…"; }
+    let serverAccepted = false;
     try {
       const prepared = await api("prepare_accept", { transferId });
       const transfer = prepared?.transfer;
       if (!transfer?.payload) throw new Error("The transfer payload could not be loaded.");
+
+      // The canonical server lifecycle wins first. This compare-and-set is the
+      // ownership event; local import is deterministic and recoverable afterward.
+      await api("complete_accept", { transferId: transfer.id });
+      serverAccepted = true;
+
       const applied = Core.applyIncomingTransfer(readState(), transfer.payload, {
         serverTransferId: transfer.id,
         senderDisplayName: transfer.senderDisplayName,
         recipientDisplayName: identity?.displayName || ""
       });
       const synced = await persistState(applied.state);
-      if (!synced) throw new Error("The animal is protected on this device, but cloud sync has not completed. The transfer will stay pending until you retry while online.");
-      await api("complete_accept", { transferId: transfer.id });
+      if (!synced) {
+        throw new Error("Transfer accepted securely, but this device has not finished importing it. Reconnect and use Finish import.");
+      }
       closeModal();
       toast(applied.alreadyImported ? "Transfer confirmed." : "Animal and pedigree added to your HerdHarbor account.", "success");
       setTimeout(() => window.location.reload(), 500);
     } catch (error) {
-      toast(error.message || "The transfer could not be accepted.", "error");
-      if (button) { button.disabled = false; button.textContent = "Accept & add to my animals"; }
+      const message = serverAccepted
+        ? (error.message || "Transfer accepted securely, but this device has not finished importing it. Use Finish import to retry.")
+        : (error.message || "The transfer could not be accepted.");
+      toast(message, "error");
+      if (button) {
+        button.disabled = false;
+        button.textContent = serverAccepted || recovery ? "Finish import" : "Accept & add to my animals";
+      }
+      if (serverAccepted) refreshTransfers(true).catch(() => {});
     }
   }
 
