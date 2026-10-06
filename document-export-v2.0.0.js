@@ -61,6 +61,7 @@
     const generatedLabel = clean(options.generatedLabel);
     const footerLeft = clean(options.footerLeft) || "Created with HerdHarbor";
     const footerRight = clean(options.footerRight) || "HerdHarbor";
+    const stylesheets = (Array.isArray(options.stylesheets) ? options.stylesheets : []).map(clean).filter((href) => /^[-a-zA-Z0-9_./?=]+$/.test(href));
     const pageSize = PAGE_SIZES[page.pageSize];
     const pageWidth = page.orientation === "landscape" ? pageSize.height : pageSize.width;
     const pageHeight = page.orientation === "landscape" ? pageSize.width : pageSize.height;
@@ -104,6 +105,7 @@ body { min-width:0; }
 }
 </style>
 <link rel="stylesheet" href="pedigree-renderer-v2.0.0.css?v=1">
+${stylesheets.map((href) => `<link rel="stylesheet" href="${escapeHtml(href)}">`).join("\n")}
 </head>
 <body data-hh-document-type="${escapeHtml(documentType)}">
 <section class="hh-doc-page" data-hh-document-page="1">

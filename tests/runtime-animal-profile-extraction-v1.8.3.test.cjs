@@ -53,6 +53,7 @@ function stubDeps(state) {
     navigate: noop,
     openPrintPedigreeForm: noop,
     openBirthCertificateForm: noop,
+    openNewOwnerPackageForm: noop,
     ensureQrToolsReady: async () => true,
     getPedigreeCustomization: () => ({ generations: 3 }),
     getPedigreeDocumentContext: (config) => ({ config, branding: null })
@@ -72,6 +73,7 @@ test("Animals/Profile domain has one extracted runtime owner", () => {
   assert.match(extractedSource, /function pedigreeRecordPreviewHtml\(/);
   assert.match(extractedSource, /HerdHarborAnimalDocuments\?\.centerHtml/);
   assert.match(extractedSource, /openBirthCertificate: \(\) => deps\.openBirthCertificateForm\(id\)/);
+  assert.match(extractedSource, /openNewOwnerPackage: \(\) => deps\.openNewOwnerPackageForm\(id\)/);
 });
 
 test("composition runtime delegates animal behavior instead of retaining a second implementation", () => {

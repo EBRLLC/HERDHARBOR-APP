@@ -22,7 +22,7 @@
       "textareaField", "speciesIcon", "breedOptionsFor", "prepareProfileImage", "toast",
       "allowsAnimalTransition", "uid", "rememberBreed", "recordActivity", "saveState",
       "renderCurrentView", "completeWorkflowTasks", "formatDate", "formatMoney",
-      "detailField", "navigate", "openPrintPedigreeForm", "openBirthCertificateForm", "ensureQrToolsReady", "getPedigreeCustomization", "getPedigreeDocumentContext"
+      "detailField", "navigate", "openPrintPedigreeForm", "openBirthCertificateForm", "openNewOwnerPackageForm", "ensureQrToolsReady", "getPedigreeCustomization", "getPedigreeDocumentContext"
     ];
     for (const name of required) {
       if (typeof deps[name] !== "function") throw new Error(`Animal/Profile runtime requires ${name}().`);
@@ -478,7 +478,8 @@
         document.querySelector("[data-hh-animal-documents]"),
         {
           openPedigree: () => deps.openPrintPedigreeForm(id),
-          openBirthCertificate: () => deps.openBirthCertificateForm(id)
+          openBirthCertificate: () => deps.openBirthCertificateForm(id),
+          openNewOwnerPackage: () => deps.openNewOwnerPackageForm(id)
         }
       );
       $("#detail-print-qr")?.addEventListener("click", (event) => openAnimalQrCardForm(id, event.currentTarget));

@@ -23,6 +23,14 @@
       actionLabel: "Create certificate",
       action: "birth-certificate",
       available: true
+    }),
+    Object.freeze({
+      id: "newOwnerPackage",
+      label: "New Owner Package",
+      description: "Combine a buyer-safe pedigree, birth certificate, animal summary, and transfer handoff into one printable package.",
+      actionLabel: "Create package",
+      action: "new-owner-package",
+      available: true
     })
   ]);
 
@@ -85,6 +93,7 @@
         const action = button.dataset.documentAction;
         if (action === "pedigree") handlers.openPedigree?.();
         if (action === "birth-certificate") handlers.openBirthCertificate?.();
+        if (action === "new-owner-package") handlers.openNewOwnerPackage?.();
       });
     });
     return true;

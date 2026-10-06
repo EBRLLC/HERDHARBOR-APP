@@ -1215,6 +1215,7 @@
       navigate,
       openPrintPedigreeForm,
       openBirthCertificateForm,
+      openNewOwnerPackageForm,
       ensureQrToolsReady,
       getPedigreeCustomization: () => window.HerdHarborPedigreeCustomization?.loadPreferences?.(localStorage) || { generations: 3 },
       getPedigreeDocumentContext: (fallbackConfig) => window.HerdHarborPedigreeDocuments?.resolveDocumentContext?.(
@@ -2580,6 +2581,132 @@
     updatePreview();
   }
 
+  function newOwnerPackageHtml(animalId, options = {}) {
+    const animal = state.animals.find((item) => item.id === animalId);
+    const packageBuilder = window.HerdHarborNewOwnerPackage;
+    const documents = window.HerdHarborPedigreeDocuments;
+    if (!animal || !packageBuilder?.buildPackageHtml) return "";
+
+    const sire = state.animals.find((item) => item.id === animal.sireId) || null;
+    const dam = state.animals.find((item) => item.id === animal.damId) || null;
+    const savedPedigree = (state.pedigrees || [])
+      .filter((record) => record.subjectAnimalId === animalId)
+      .sort((left, right) => String(right.importedAt || "").localeCompare(String(left.importedAt || "")))[0] || null;
+    const branding = documents?.resolveBranding?.(
+      state.settings?.pedigreeDocuments,
+      state.profile || {}
+    ) || null;
+
+    return packageBuilder.buildPackageHtml({
+      animal,
+      animals: state.animals || [],
+      sire,
+      dam,
+      ancestorIds: savedPedigree?.ancestorIds || {},
+      branding,
+      generations: options.generations || 4,
+      sections: options.sections || {},
+      transfer: {
+        buyerName: options.buyerName || "",
+        sellerName: state.profile?.operationName || state.profile?.ownerName || "Seller",
+        transferNumber: options.transferNumber || "",
+        transferDate: options.transferDate || ""
+      },
+      birthOptions: {
+        fields: {
+          photo: true, dob: true, sex: true, breed: true, color: true, identity: true,
+          birthWeight: true, currentWeight: true, sire: true, dam: true, breeder: true,
+          newOwner: true, goHomeDate: true, breederNote: false, signature: true
+        }
+      },
+      publicReference: { enabled: false },
+      formatDate,
+      generatedLabel: `Generated ${new Date().toLocaleDateString()}`
+    });
+  }
+
+  function openNewOwnerPackageForm(animalId) {
+    const animal = state.animals.find((item) => item.id === animalId);
+    const packageBuilder = window.HerdHarborNewOwnerPackage;
+    const exporter = window.HerdHarborDocumentExport;
+    if (!animal) return toast("The animal record could not be found.", "error");
+    if (!packageBuilder?.buildPackageHtml || !exporter?.loadFrame || !exporter?.printFrame) {
+      return toast("The New Owner Package tools did not finish loading.", "error");
+    }
+
+    openModal("New Owner Package", `
+      <form id="new-owner-package-form">
+        <div class="pedigree-warning">This package uses the existing HerdHarbor document engines. Private notes, health notes, customer records, billing data, and Marketplace messages are excluded.</div>
+        <div class="form-grid two" style="margin-top:14px">
+          ${field("Buyer name", "buyerName", "")}
+          ${field("Transfer number", "transferNumber", "")}
+          ${field("Transfer / go-home date", "transferDate", todayISO(), false, "date")}
+          <label>Pedigree generations
+            <select name="generations">
+              <option value="3">3 generations</option>
+              <option value="4" selected>4 generations</option>
+              <option value="5">5 generations</option>
+            </select>
+          </label>
+        </div>
+        <fieldset style="margin-top:14px">
+          <legend>Package sections</legend>
+          <div class="form-grid two">
+            <label><input type="checkbox" name="summary" checked> Animal information summary</label>
+            <label><input type="checkbox" name="transferReceipt" checked> Transfer handoff summary</label>
+            <label><input type="checkbox" name="birthCertificate" checked> Birth Certificate</label>
+            <label><input type="checkbox" name="pedigree" checked> Buyer-safe Pedigree</label>
+          </div>
+        </fieldset>
+        <h3 style="margin-top:18px">Preview</h3>
+        <iframe id="new-owner-package-preview" title="New Owner Package preview for ${esc(animal.name)}" style="width:100%;height:58dvh;border:1px solid var(--border);border-radius:10px;background:#fff"></iframe>
+        <div class="modal-actions">
+          <button type="button" class="button button-ghost" id="close-new-owner-package">Close</button>
+          <button type="submit" class="button button-primary">Print / Save PDF</button>
+        </div>
+      </form>
+    `, `${animal.name} · New Owner Package`);
+    $(".modal")?.classList.add("modal-wide");
+
+    const form = $("#new-owner-package-form");
+    const frame = $("#new-owner-package-preview");
+    const values = () => {
+      const data = Object.fromEntries(new FormData(form));
+      return {
+        buyerName: data.buyerName || "",
+        transferNumber: data.transferNumber || "",
+        transferDate: data.transferDate || "",
+        generations: Number(data.generations || 4),
+        sections: {
+          summary: form.elements.summary?.checked === true,
+          transferReceipt: form.elements.transferReceipt?.checked === true,
+          birthCertificate: form.elements.birthCertificate?.checked === true,
+          pedigree: form.elements.pedigree?.checked === true
+        }
+      };
+    };
+    const updatePreview = () => {
+      const html = newOwnerPackageHtml(animalId, values());
+      if (html) exporter.loadFrame(frame, html);
+    };
+
+    form?.querySelectorAll("input,select").forEach((control) => {
+      control.addEventListener("input", updatePreview);
+      control.addEventListener("change", updatePreview);
+    });
+    $("#close-new-owner-package")?.addEventListener("click", closeModal);
+    form?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      updatePreview();
+      if (!exporter.printFrame(frame)) {
+        toast("The package preview is still loading. Try again.", "error");
+        return;
+      }
+      recordActivity(`Opened a New Owner Package for ${animal.name}.`, "document");
+    });
+    updatePreview();
+  }
+
   let healthRuntimeInstance = null;
 
   function healthRuntime() {
@@ -3504,6 +3631,7 @@
     openAnimalEditor: (animalId) => animalProfileRuntime().openEditor(animalId),
     openAnimalPedigreePrint: (animalId) => animalProfileRuntime().openPedigreePrint(animalId),
     openAnimalBirthCertificate: (animalId) => openBirthCertificateForm(animalId),
+    openAnimalNewOwnerPackage: (animalId) => openNewOwnerPackageForm(animalId),
     prepareDocumentImage: (file) => prepareProfileImage(file, { maxDimension: 900, targetBytes: 140000 }),
     openRecordBirth: (breedingId) => openRecordBirth(breedingId)
   });
