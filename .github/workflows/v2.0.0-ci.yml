@@ -29,8 +29,10 @@ jobs:
           npx esbuild supabase/functions/marketplace-public-media/index.ts --format=esm --platform=neutral --log-level=error --outfile=/tmp/marketplace-public-media.mjs
           npx esbuild supabase/functions/marketplace-pedigree-snapshot/index.ts --format=esm --platform=neutral --log-level=error --outfile=/tmp/marketplace-pedigree-snapshot.mjs
           npx esbuild supabase/functions/animal-transfer/index.ts --format=esm --platform=neutral --log-level=error --outfile=/tmp/animal-transfer.mjs
-      - name: Verify current 2.0.0 release contract
+      - name: Verify repository governance and current 2.0.0 release contract
         run: npm run test:release
+      - name: Verify canonical engine ownership explicitly
+        run: npm run test:governance
       - name: Run lifecycle state-integrity E2E gate
         run: npm run test:state-integrity
       - name: Run complete HerdHarbor regression suite in UTC
