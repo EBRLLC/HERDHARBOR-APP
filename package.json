@@ -15,7 +15,7 @@
     "test:health": "node --test tests/symptom-guide.test.cjs tests/health-intelligence-v1.7.1.test.cjs tests/v1.7.1-stability-hotfix.test.cjs",
     "test:phase2": "node --test tests/rabbit-genetics-v1.6.1.test.cjs tests/genetics-release-contract-v1.6.5.test.cjs tests/phase2-release-v1.6.1.test.cjs",
     "test:phase3": "node --test tests/standards-phase3.test.cjs tests/multispecies-genetics-phase3.test.cjs tests/phase3-integration.test.cjs tests/standards-v1.7.0.test.cjs",
-    "test:release": "npm run audit:security && node --test tests/current-release-reference-audit-v2.0.0.test.cjs",
+    "test:release": "npm run audit:security && npm run test:governance && node --test tests/current-release-reference-audit-v2.0.0.test.cjs",
     "test:completion": "npm run test:v2.0.0-final",
     "test:v1.7.1": "node --test tests/multispecies-genetics-v1.7.1.test.cjs tests/multispecies-genetics-ui-v1.7.1.test.cjs tests/species-context-hardlock-v1.7.1.test.cjs tests/health-intelligence-v1.7.1.test.cjs tests/v1.7.1-stability-hotfix.test.cjs tests/workflow-phase1-v1.7.1.test.cjs tests/phase3-integration.test.cjs",
     "test:v1.8.1": "node --test tests/subscription-engine-v1.8.0.test.cjs tests/subscription-launch-v1.8.1.test.cjs tests/subscription-stripe-v1.8.1.test.cjs tests/subscription-referrals-credits-v1.8.1.test.cjs tests/subscription-email-delivery-v1.8.1.test.cjs tests/registration-safety-v1.8.1.test.cjs tests/email-engine-v1.8.1.test.cjs tests/mobile-viewport-hotfix-v1.8.0.test.cjs tests/app-script-compile.test.cjs tests/auth-signin-deadlock-v1.6.7.test.cjs",
@@ -53,7 +53,8 @@
     "test:stack-a6": "node --test tests/birth-certificate-v2.0.0.test.cjs tests/document-export-v2.0.0.test.cjs tests/pedigree-documents-v2.0.0.test.cjs tests/runtime-animal-profile-extraction-v1.8.3.test.cjs tests/mobile-pedigree.test.cjs",
     "test:stack-a7": "node --test tests/animal-documents-v2.0.0.test.cjs tests/stack-a-acceptance-v2.0.0.test.cjs tests/birth-certificate-v2.0.0.test.cjs tests/document-export-v2.0.0.test.cjs tests/pedigree-engine-v2.0.0.test.cjs tests/pedigree-renderer-v2.0.0.test.cjs tests/pedigree-customization-v2.0.0.test.cjs tests/pedigree-customization-renderer-v2.0.0.test.cjs tests/pedigree-documents-v2.0.0.test.cjs tests/runtime-animal-profile-extraction-v1.8.3.test.cjs tests/mobile-pedigree.test.cjs tests/mobile-settings-pedigree-layout-v1.6.7.test.cjs tests/pedigree-visual-print.test.cjs",
     "test:stack-a": "npm run test:stack-a7",
-    "test:standard-pedigree": "node --test tests/mobile-pedigree-print-placement-v2.0.0.test.cjs tests/pedigree-customization-export-ui-v2.0.0.test.cjs tests/pedigree-customization-v2.0.0.test.cjs tests/pedigree-visual-print.test.cjs tests/stack-a-acceptance-v2.0.0.test.cjs"
+    "test:standard-pedigree": "node --test tests/mobile-pedigree-print-placement-v2.0.0.test.cjs tests/pedigree-customization-export-ui-v2.0.0.test.cjs tests/pedigree-customization-v2.0.0.test.cjs tests/pedigree-visual-print.test.cjs tests/stack-a-acceptance-v2.0.0.test.cjs",
+    "test:governance": "node --test tests/stack-e5-transfer-hardening-audit.test.cjs tests/v2.0.0-main-integrity-audit.test.cjs"
   },
   "dependencies": {
     "@sentry/browser": "10.71.0"
