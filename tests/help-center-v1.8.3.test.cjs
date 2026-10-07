@@ -86,7 +86,7 @@ test("every required Phase 7 workflow has a stable direct anchor", () => {
 });
 
 test("workflow guides link back to canonical app areas", () => {
-  for (const route of ["animals", "pedigrees", "breeding", "litters", "health", "symptoms", "analytics", "budget", "sales", "settings"]) {
+  for (const route of ["animals", "pedigrees", "breeding", "litters", "health", "symptoms", "analytics", "budget", "sales", "shows", "settings"]) {
     assert.match(howTo, new RegExp('href="https://app\\.herdharbor\\.com/#' + route + '"'), "missing route link #" + route);
   }
   assert.match(howTo, /Print \/ Save PDF/);
@@ -214,4 +214,29 @@ test("section numbers run 01 through 20 in guide order", () => {
   const numbers = [...howTo.matchAll(/<section class="section" id="[^"]+"[\s\S]*?<span class="section-number">([^<]+)<\/span>/g)]
     .map((match) => match[1]);
   assert.deepEqual(numbers, Array.from({ length: 20 }, (_, index) => String(index + 1).padStart(2, "0")));
+});
+
+
+test("Marketplace help matches the separate public website workflow", () => {
+  assert.match(howTo, /id="marketplace"/);
+  assert.match(howTo, /href="https:\/\/herdharbor\.com\/marketplace\/"/);
+  assert.match(howTo, /Anyone can view active listings/);
+  assert.match(howTo, /Seller Profile before publishing/);
+  assert.match(howTo, /do not need a Seller Profile to browse or message a seller/i);
+});
+
+test("customer Help Center excludes tester-only AI entry instructions", () => {
+  assert.doesNotMatch(howTo, /Paper Pedigree AI|guide-import-paper-pedigree|Import a paper pedigree photo|voice-assisted entry|photo-assisted entry/i);
+});
+
+test("section numbers run 01 through 20 in guide order", () => {
+  const numbers = [...howTo.matchAll(/<section class="section" id="[^"]+"[\s\S]*?<span class="section-number">([^<]+)<\/span>/g)]
+    .map((match) => match[1]);
+  assert.deepEqual(numbers, Array.from({ length: 20 }, (_, index) => String(index + 1).padStart(2, "0")));
+});
+
+test("Free Adult remains fallback-only in Help Center copy", () => {
+  assert.match(howTo, /Free Adult is an automatic fallback state, not a selectable account or signup plan/i);
+  assert.match(howTo, /Free Adult is never offered as a plan choice/i);
+  assert.doesNotMatch(howTo, /value="free_adult"/i);
 });
