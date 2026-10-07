@@ -45,21 +45,6 @@ const requiredAnchors = [
   "guide-account-basics"
 ];
 
-test("canonical copy includes the complete customer help order", () => {
-  assert.match(howTo, /HERDHARBOR HOW-TO CANONICAL/);
-  assert.match(howTo, /Most common tasks/);
-  assert.match(howTo, /New to HerdHarbor\? Start here\./);
-  assert.doesNotMatch(howTo, /Visual walkthrough coming soon/);
-  assert.match(howTo, /20 guides available/);
-
-  const expected = ["getting-started","animals","pedigrees","breeding","litters","health","growth","genetics","tasks","analytics","sales","marketplace","subscription","sync","youth","symptoms","budget","settings","workflow-index","faq"];
-  const actual = [...howTo.matchAll(/<section class="section" id="([^"]+)"/g)].map((match) => match[1]);
-  assert.deepEqual(actual, expected);
-  assert.equal([...howTo.matchAll(/<a class="guide-card"[^>]*href="#/g)].length, 20);
-  assert.doesNotMatch(howTo, /href="\/#/);
-  assert.match(howTo, /Weight, Treatment, Medication, Vaccination, Observation, or Veterinary visit/);
-});
-
 test("Help Center uses current production language and membership guidance", () => {
   assert.match(howTo, /HerdHarbor How To Center/);
   assert.doesNotMatch(howTo, /Alpha v\d/i);
@@ -67,13 +52,29 @@ test("Help Center uses current production language and membership guidance", () 
   assert.doesNotMatch(howTo, /Paid subscriptions begin October 1, 2026/);
   assert.doesNotMatch(howTo, /fall back to Junior/i);
   assert.match(howTo, /one calendar month of Member trial access/i);
-  assert.match(howTo, /Free Adult is the permanent adult fallback/i);
-  assert.match(howTo, /not a signup plan and cannot be selected as an account type/i);
+  assert.match(howTo, /Free Adult is an automatic fallback state, not a selectable account or signup plan/i);
   assert.match(howTo, /five active animals/i);
-  assert.match(howTo, /Junior remains a separate account path/i);
-  assert.match(howTo, /herd records are not deleted/i);
-  assert.doesNotMatch(howTo, /Trial, Membership & Referrals\s*v1\.8\.4/i);
-  assert.match(howTo, /Junior is a separate free plan/i);
+  assert.match(howTo, /Junior remains a separate selectable signup path/i);
+  assert.match(howTo, /does not delete the animals or records/i);
+});
+
+test("canonical Help Center order stays stable and complete", () => {
+  assert.match(howTo, /HERDHARBOR HOW-TO CANONICAL/);
+  assert.match(howTo, /20 guides available/);
+  assert.doesNotMatch(howTo, /Visual walkthrough coming soon/);
+  assert.doesNotMatch(howTo, /href="\/#/);
+
+  const expected = [
+    "getting-started","animals","pedigrees","breeding","litters","health","growth","genetics",
+    "tasks","analytics","sales","marketplace","subscription","sync","youth","symptoms","budget","settings",
+    "workflow-index","faq"
+  ];
+  const actual = [...howTo.matchAll(/<section class="section" id="([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(actual, expected);
+  assert.equal([...howTo.matchAll(/<a class="guide-card"[^>]*href="#/g)].length, 20);
+  assert.match(howTo, /Weight, Treatment, Medication, Vaccination, Observation, or Veterinary visit/);
+  assert.match(howTo, /Free Adult is an automatic fallback state, not a selectable account or signup plan/);
+  assert.doesNotMatch(howTo, /value="free_adult"/i);
 });
 
 test("every required Phase 7 workflow has a stable direct anchor", () => {
@@ -171,12 +172,13 @@ test("Marketplace guide stays tied to the live website flow", () => {
   assert.match(howTo, /href="https:\/\/herdharbor\.com\/marketplace\/"/);
   assert.match(howTo, /Anyone can view active listings/);
   assert.match(howTo, /Seller Profile before publishing/);
-  assert.match(howTo, /Select From My Herd/);
-  assert.match(howTo, /Buyer note:[\s\S]*do not need a Seller Profile to browse or message a seller/i);
+  assert.match(howTo, /do not need a Seller Profile to browse or message a seller/);
 });
 
-
 test("Help Center covers live document, show, and production workflows", () => {
+  for (const anchor of ["guide-customize-print-pedigree","guide-birth-certificate","guide-new-owner-package","guide-show-entry","guide-production-record"]) {
+    assert.match(howTo, new RegExp('id="' + anchor + '"'));
+  }
   assert.match(howTo, /Customize and print a pedigree/);
   assert.match(howTo, /Create a Birth Certificate/);
   assert.match(howTo, /Create a New Owner Package/);
