@@ -229,3 +229,8 @@ test("signup guidance matches selectable plan controls", () => {
   assert.match(howTo, /Business is shown as Coming Soon and cannot be selected/);
   assert.match(howTo, /Free Adult is never offered as a plan choice/);
 });
+
+
+test("canonical HTML contains no literal escaped newlines", () => {
+  assert.doesNotMatch(howTo, /\\n/);
+});
