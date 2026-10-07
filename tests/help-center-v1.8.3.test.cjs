@@ -208,3 +208,29 @@ test("Marketplace and current customer workflows stay documented", () => {
 test("customer Help Center excludes tester-only AI instructions", () => {
   assert.doesNotMatch(howTo, /Paper Pedigree AI|guide-import-paper-pedigree|Import a paper pedigree photo|voice-assisted entry|photo-assisted entry/i);
 });
+
+
+test("verified live controls remain precise in Help Center copy", () => {
+  assert.match(howTo, /\+ Record birth/);
+  assert.match(howTo, /Create offspring/);
+  assert.match(howTo, /\+ Production/);
+  assert.match(howTo, /\+ Income/);
+  assert.match(howTo, /\+ Expense/);
+  for (const label of ["Status", "Last synced", "Connection", "Unsynced changes", "Sync now", "Download safety backup", "Download Excel template", "Upload Excel file"]) {
+    assert.match(howTo, new RegExp(label));
+  }
+});
+
+test("production and signup guidance match the current controls", () => {
+  assert.match(howTo, /production records in Budget/);
+  assert.match(howTo, /Use Budget for production records/);
+  assert.doesNotMatch(howTo, /production in Production/);
+  assert.doesNotMatch(howTo, /Shows, Production, or History action/);
+  assert.match(howTo, /Signup currently lets you select Junior or Member/);
+  assert.match(howTo, /Business is shown as Coming Soon and cannot be selected/);
+  assert.match(howTo, /Free Adult is never offered as a plan choice/);
+});
+
+test("canonical HTML contains no literal escaped newlines", () => {
+  assert.doesNotMatch(howTo, /\\n/);
+});
