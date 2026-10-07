@@ -463,6 +463,7 @@
           <button class="button button-ghost" id="detail-analytics">View analytics</button>
           <button class="button button-ghost" id="detail-print-qr">Print QR card</button>
           <button class="button button-ghost" id="detail-import-pedigree">Build / import pedigree</button>
+          <button class="button button-ghost" id="detail-birth-certificate">Create Birth Certificate</button>
           <button class="button button-ghost" id="detail-compare-pedigree">Linebreeding Coefficient</button>
           <button class="button button-primary" id="detail-edit">Edit animal</button>
         </div>
@@ -484,6 +485,7 @@
       );
       $("#detail-print-qr")?.addEventListener("click", (event) => openAnimalQrCardForm(id, event.currentTarget));
       $("#detail-import-pedigree")?.addEventListener("click", () => deps.openPedigreeImport(id));
+      $("#detail-birth-certificate")?.addEventListener("click", () => deps.openBirthCertificateForm(id));
       $("#detail-compare-pedigree")?.addEventListener("click", () => {
         const intelligence = window.HerdHarborBreedingIntelligence;
         if (typeof intelligence?.openLinebreedingCoefficient === "function") {

@@ -72,6 +72,8 @@ test("Animals/Profile domain has one extracted runtime owner", () => {
   assert.match(extractedSource, /function printAnimalQrCards\(/);
   assert.match(extractedSource, /function pedigreeRecordPreviewHtml\(/);
   assert.match(extractedSource, /HerdHarborAnimalDocuments\?\.centerHtml/);
+  assert.match(extractedSource, /id="detail-birth-certificate">Create Birth Certificate<\/button>/);
+  assert.match(extractedSource, /#detail-birth-certificate"\)\?\.addEventListener\("click", \(\) => deps\.openBirthCertificateForm\(id\)\)/);
   assert.match(extractedSource, /openBirthCertificate: \(\) => deps\.openBirthCertificateForm\(id\)/);
   assert.match(extractedSource, /openNewOwnerPackage: \(\) => deps\.openNewOwnerPackageForm\(id\)/);
 });
