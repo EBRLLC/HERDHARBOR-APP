@@ -19,7 +19,6 @@ const requiredAnchors = [
   "guide-add-animal",
   "guide-edit-animal",
   "guide-create-pedigree",
-  "guide-import-paper-pedigree",
   "guide-add-breeding",
   "guide-record-pregnancy",
   "guide-record-birth-litter",
@@ -67,6 +66,8 @@ test("Help Center uses current production language and membership guidance", () 
   assert.match(howTo, /five active animals/i);
   assert.match(howTo, /Junior remains a separate account path/i);
   assert.match(howTo, /herd records are not deleted/i);
+  assert.doesNotMatch(howTo, /Trial, Membership & Referrals\s*v1\.8\.4/i);
+  assert.match(howTo, /Junior is a separate free plan/i);
 });
 
 test("every required Phase 7 workflow has a stable direct anchor", () => {
@@ -81,8 +82,7 @@ test("workflow guides link back to canonical app areas", () => {
   for (const route of ["animals", "pedigrees", "breeding", "litters", "health", "symptoms", "analytics", "budget", "sales", "settings"]) {
     assert.match(howTo, new RegExp('href="https://app\\.herdharbor\\.com/#' + route + '"'), "missing route link #" + route);
   }
-  assert.match(howTo, /review draft/i);
-  assert.match(howTo, /does not silently change farm records/i);
+  assert.doesNotMatch(howTo, /Paper Pedigree AI|guide-import-paper-pedigree|Import a paper pedigree photo/i);
   assert.match(howTo, /Weights belong to the canonical Health record/i);
   assert.match(howTo, /provenance and duplicate protection/i);
   assert.match(howTo, /do not clear local data as a sync repair step/i);
