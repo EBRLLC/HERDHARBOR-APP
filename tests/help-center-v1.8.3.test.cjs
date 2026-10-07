@@ -63,6 +63,7 @@ test("Help Center uses current production language and membership guidance", () 
   assert.doesNotMatch(howTo, /fall back to Junior/i);
   assert.match(howTo, /one calendar month of Member trial access/i);
   assert.match(howTo, /Free Adult is the permanent adult fallback/i);
+  assert.match(howTo, /not a signup plan and cannot be selected as an account type/i);
   assert.match(howTo, /five active animals/i);
   assert.match(howTo, /Junior remains a separate account path/i);
   assert.match(howTo, /herd records are not deleted/i);
