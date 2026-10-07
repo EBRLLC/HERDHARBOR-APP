@@ -48,10 +48,29 @@ test("Help Center uses current production language and membership guidance", () 
   assert.doesNotMatch(howTo, /Paid subscriptions begin October 1, 2026/);
   assert.doesNotMatch(howTo, /fall back to Junior/i);
   assert.match(howTo, /one calendar month of Member trial access/i);
-  assert.match(howTo, /Free Adult is the permanent adult fallback/i);
+  assert.match(howTo, /Free Adult is an automatic fallback state, not a selectable account or signup plan/i);
   assert.match(howTo, /five active animals/i);
-  assert.match(howTo, /Junior remains a separate account path/i);
+  assert.match(howTo, /Junior remains a separate selectable signup path/i);
   assert.match(howTo, /herd records are not deleted/i);
+});
+
+test("canonical Help Center order stays stable and complete", () => {
+  assert.match(howTo, /HERDHARBOR HOW-TO CANONICAL/);
+  assert.match(howTo, /19 guides available/);
+  assert.doesNotMatch(howTo, /Visual walkthrough coming soon/);
+  assert.doesNotMatch(howTo, /href="\/#/);
+
+  const expected = [
+    "getting-started","animals","pedigrees","breeding","litters","health","growth","genetics",
+    "tasks","analytics","sales","subscription","sync","youth","symptoms","budget","settings",
+    "workflow-index","faq"
+  ];
+  const actual = [...howTo.matchAll(/<section class="section" id="([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(actual, expected);
+  assert.equal([...howTo.matchAll(/<a class="guide-card"[^>]*href="#/g)].length, 19);
+  assert.match(howTo, /Weight, Treatment, Medication, Vaccination, Observation, or Veterinary visit/);
+  assert.match(howTo, /Free Adult is an automatic fallback state, not a selectable account or signup plan/);
+  assert.doesNotMatch(howTo, /value="free_adult"/i);
 });
 
 test("every required Phase 7 workflow has a stable direct anchor", () => {
@@ -64,7 +83,7 @@ test("every required Phase 7 workflow has a stable direct anchor", () => {
 
 test("workflow guides link back to canonical app areas", () => {
   for (const route of ["animals", "pedigrees", "breeding", "litters", "health", "symptoms", "analytics", "budget", "sales", "settings"]) {
-    assert.match(howTo, new RegExp('href="/#' + route + '"'), "missing route link #" + route);
+    assert.match(howTo, new RegExp('href="https://app\\.herdharbor\\.com/#' + route + '"'), "missing route link #" + route);
   }
   assert.match(howTo, /review draft/i);
   assert.match(howTo, /does not silently change farm records/i);
@@ -101,7 +120,7 @@ test("Help navigation remains part of the app and offline shell", () => {
 });
 
 test("How To topic cards use the finished website icon system instead of numbered placeholders", () => {
-  assert.match(howTo, /<img class="brand-mark" src="\.\.\/icon-192\.png"/);
+  assert.match(howTo, /<img class="brand-mark" src="https:\/\/herdharbor\.com\/assets\/herdharbor-icon\.png"/);
   for (const icon of ["i-start","i-animal","i-pedigree","i-breeding","i-litter","i-health","i-growth","i-genetics","i-tasks","i-analytics","i-sales","i-member","i-cloud","i-youth","i-symptoms","i-budget","i-settings","i-guides","i-help"]) {
     assert.match(howTo, new RegExp('<symbol id="' + icon + '"'));
     assert.match(howTo, new RegExp('<use href="#' + icon + '"><\\/use>'));
@@ -121,7 +140,7 @@ test("Help Center search and mobile navigation remain usable", () => {
 });
 
 test("Rabbit genetics guide explains uncertainty ranges and evidence without overstating certainty", () => {
-  assert.match(howTo, /How to Use Rabbit Genetics & Pair Analysis/);
+  assert.match(howTo, /How to Use Genetics & Rabbit Pair Analysis/);
   assert.match(howTo, /Do not add the displayed ranges together/);
   assert.match(howTo, /minimum and maximum across those valid scenarios/i);
   assert.match(howTo, /Uncertainty preserved/);
