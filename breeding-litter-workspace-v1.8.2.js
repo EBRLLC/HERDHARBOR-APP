@@ -180,7 +180,7 @@
     return["Unknown","Female","Male"].map(item=>`<option value="${item}" ${item===clean(value||"Unknown")?"selected":""}>${item}${rabbit&&item==="Female"?" (Doe)":rabbit&&item==="Male"?" (Buck)":""}</option>`).join("");
   }
   function selectableRow(animal,context){
-    const disabled=context==="wean"?(lower(animal.status)==="deceased"||Boolean(clean(animal.weanedDate))):protectedAnimal(animal);
+    const disabled=context==="documents"?false:context==="wean"?(lower(animal.status)==="deceased"||Boolean(clean(animal.weanedDate))):protectedAnimal(animal);
     return`<label class="hh-bw-select-row ${disabled?"is-disabled":""}"><input type="checkbox" data-hh-bw-select value="${esc(animal.id)}" ${disabled?"disabled":""}><span><strong>${esc(animal.name||animal.tag||"Offspring")}</strong><small>${esc([animal.sex,animal.color,animal.status,animal.weanedDate?`Weaned ${fmt(animal.weanedDate)}`:""].filter(Boolean).join(" · "))}</small></span></label>`;
   }
 
@@ -211,11 +211,17 @@
     return`<div id="hh-bw-disposition-panel"><div class="hh-bw-toolbar"><div><strong>Offspring decisions</strong><span>Retain, list for sale, or reserve multiple offspring at once.</span></div></div>${editable.length?`<div class="hh-bw-select-head"><strong>Select offspring</strong><button type="button" data-hh-bw-select-all>All available</button></div><div class="hh-bw-select-list">${offspring.map(animal=>selectableRow(animal,"disposition")).join("")}</div><div class="hh-bw-decision-actions"><button class="button button-primary" type="button" data-hh-bw-disposition="retain">Retain</button><button class="button button-ghost" type="button" data-hh-bw-disposition="for-sale">For Sale</button><button class="button button-ghost" type="button" data-hh-bw-disposition="reserved">Reserved</button></div>`:`<div class="hh-bw-empty"><strong>No offspring are available for a disposition change.</strong></div>`}</div>`;
   }
 
+  function documentsPanel(state,litter,offspring){
+    const documentable=offspring.filter(animal=>clean(animal.id));
+    return`<div id="hh-bw-documents-panel"><div class="hh-bw-toolbar"><div><strong>Litter documents</strong><span>Generate documents in bulk from each offspring's existing canonical animal record. No pedigree or birth data is duplicated here.</span></div></div>${documentable.length?`<div class="hh-bw-select-head"><strong>Select offspring</strong><button type="button" data-hh-bw-select-all>Select all offspring</button></div><div class="hh-bw-select-list">${documentable.map(animal=>selectableRow(animal,"documents")).join("")}</div><div class="hh-bw-decision-actions"><button class="button button-primary" type="button" data-hh-bw-document="pedigree">Generate pedigrees</button><button class="button button-ghost" type="button" data-hh-bw-document="birthCertificate">Generate birth certificates</button></div>`:`<div class="hh-bw-empty"><strong>No offspring profiles exist yet.</strong><span>Create offspring records first so HerdHarbor has canonical animals to generate documents from.</span></div>`}</div>`;
+  }
+
   function panelHtml(state,litter,offspring){
     if(activeTab==="weights")return weightsPanel(state,litter,offspring);
     if(activeTab==="health")return healthPanel(state,litter,offspring);
     if(activeTab==="weaning")return weaningPanel(state,litter,offspring);
     if(activeTab==="decisions")return dispositionPanel(state,litter,offspring);
+    if(activeTab==="documents")return documentsPanel(state,litter,offspring);
     return offspringPanel(state,litter,offspring);
   }
 
@@ -226,7 +232,7 @@
     let overlay=root.document.getElementById("hh-breeding-litter-workspace");
     if(!overlay){overlay=root.document.createElement("div");overlay.id="hh-breeding-litter-workspace";overlay.className="hh-bw-overlay";root.document.body.appendChild(overlay);}
     overlay.dataset.hhBwLitterId=activeLitterId;
-    overlay.innerHTML=`<section class="hh-bw-shell" role="dialog" aria-modal="true" aria-labelledby="hh-bw-title"><header class="hh-bw-header"><div><span class="eyebrow">Breeding workspace</span><h2 id="hh-bw-title">${esc(dam?.name||"Dam")} × ${esc(sire?.name||"Sire")}</h2><p>Born ${fmt(litter.birthDate)} · ${esc(dam?.species||offspring[0]?.species||"")} ${esc(dam?.breed||offspring[0]?.breed||"")}</p></div><button type="button" class="hh-bw-close" data-hh-bw-close aria-label="Close">×</button></header><div class="hh-bw-stats"><div><span>Born alive</span><strong>${info.bornAlive}</strong></div><div><span>Current profiles</span><strong>${offspring.length}</strong></div><div><span>Living</span><strong>${info.living}</strong></div><div><span>Weaned</span><strong>${info.weaned} / ${info.available}</strong></div></div><nav class="hh-bw-tabs" aria-label="Litter tools">${[["offspring","Offspring"],["weights","Weights"],["health","Health"],["weaning","Weaning"],["decisions","Decisions"]].map(([id,label])=>`<button type="button" data-hh-bw-tab="${id}" class="${activeTab===id?"active":""}">${label}</button>`).join("")}</nav><main class="hh-bw-content">${panelHtml(state,litter,offspring)}</main></section>`;
+    overlay.innerHTML=`<section class="hh-bw-shell" role="dialog" aria-modal="true" aria-labelledby="hh-bw-title"><header class="hh-bw-header"><div><span class="eyebrow">Breeding workspace</span><h2 id="hh-bw-title">${esc(dam?.name||"Dam")} × ${esc(sire?.name||"Sire")}</h2><p>Born ${fmt(litter.birthDate)} · ${esc(dam?.species||offspring[0]?.species||"")} ${esc(dam?.breed||offspring[0]?.breed||"")}</p></div><button type="button" class="hh-bw-close" data-hh-bw-close aria-label="Close">×</button></header><div class="hh-bw-stats"><div><span>Born alive</span><strong>${info.bornAlive}</strong></div><div><span>Current profiles</span><strong>${offspring.length}</strong></div><div><span>Living</span><strong>${info.living}</strong></div><div><span>Weaned</span><strong>${info.weaned} / ${info.available}</strong></div></div><nav class="hh-bw-tabs" aria-label="Litter tools">${[["offspring","Offspring"],["weights","Weights"],["health","Health"],["weaning","Weaning"],["decisions","Decisions"],["documents","Documents"]].map(([id,label])=>`<button type="button" data-hh-bw-tab="${id}" class="${activeTab===id?"active":""}">${label}</button>`).join("")}</nav><main class="hh-bw-content">${panelHtml(state,litter,offspring)}</main></section>`;
     root.document.documentElement.classList.add("hh-bw-open");
     return true;
   }
@@ -247,6 +253,7 @@
     if(event.target.closest("[data-hh-bw-loss-confirm]")){event.preventDefault();const form=overlay.querySelector("#hh-bw-offspring-form");const date=form?.elements?.lossDate?.value;const reason=form?.elements?.lossReason?.value;if(!clean(reason))return;const result=recordLoss(stateNow(),activeLitterId,lossTargetId,{date,reason});if(result.changed){lossTargetId="";commit(result.state,"Offspring loss recorded and litter totals updated.");}return;}
     if(event.target.closest("[data-hh-bw-select-all]")){event.preventDefault();selectAll(overlay);return;}
     if(event.target.closest("[data-hh-bw-wean-all]")){event.preventDefault();const form=overlay.querySelector("#hh-bw-weaning-form");const state=stateNow();const ids=offspringForLitter(state,activeLitterId).filter(a=>lower(a.status)!=="deceased"&&!clean(a.weanedDate)).map(a=>a.id);const result=weanSelected(state,activeLitterId,ids,{date:form?.elements?.date?.value,location:form?.elements?.location?.value});if(result.updated.length)commit(result.state,`${result.updated.length} offspring marked weaned.`);return;}
+    const documentAction=event.target.closest("[data-hh-bw-document]");if(documentAction){event.preventDefault();const ids=selectedIds(overlay);if(!ids.length){root.HerdHarborApp?.toast?.("Select at least one offspring first.","error");return;}const type=documentAction.dataset.hhBwDocument;if(typeof root.HerdHarborApp?.openAnimalDocumentBatch!=="function"){root.HerdHarborApp?.toast?.("Litter document generation is not available right now.","error");return;}close();root.HerdHarborApp.openAnimalDocumentBatch(ids,type);return;}
     const disposition=event.target.closest("[data-hh-bw-disposition]");if(disposition){event.preventDefault();const ids=selectedIds(overlay);const result=setDisposition(stateNow(),activeLitterId,ids,disposition.dataset.hhBwDisposition);if(result.updated.length)commit(result.state,`${result.updated.length} offspring updated to ${result.status}.`);return;}
   }
 

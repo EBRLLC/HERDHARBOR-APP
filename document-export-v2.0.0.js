@@ -5,7 +5,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (root) {
   "use strict";
 
-  const VERSION = "2.0.0-a5";
+  const VERSION = "2.0.0-a6";
   const PAGE_SIZES = Object.freeze({
     letter: Object.freeze({ width: "8.5in", height: "11in" }),
     a4: Object.freeze({ width: "210mm", height: "297mm" })
@@ -123,6 +123,65 @@ ${stylesheets.map((href) => `<link rel="stylesheet" href="${escapeHtml(href)}">`
 </html>`;
   }
 
+  function extractDocumentParts(html) {
+    const source = String(html || "");
+    if (!source) return { head: "", body: "" };
+
+    try {
+      if (root?.DOMParser) {
+        const parsed = new root.DOMParser().parseFromString(source, "text/html");
+        parsed.querySelectorAll(".hh-doc-actions,.no-print").forEach((node) => node.remove());
+        const head = [...parsed.head.querySelectorAll('style,link[rel="stylesheet"]')]
+          .map((node) => node.outerHTML)
+          .join("\n");
+        return { head, body: parsed.body.innerHTML };
+      }
+    } catch {}
+
+    const head = (source.match(/<head[^>]*>([\s\S]*?)<\/head>/i)?.[1] || "")
+      .match(/<style[\s\S]*?<\/style>|<link\b[^>]*rel=["']stylesheet["'][^>]*>/gi)?.join("\n") || "";
+    const rawBody = source.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] || source;
+    const actionsPattern = new RegExp("<" + "div\\b[^>]*class=[\\\"'][^\\\"']*hh-doc-actions[^\\\"']*[\\\"'][\\s\\S]*?<\\/div>", "gi");
+    const noPrintPattern = new RegExp("<" + "button\\b[^>]*class=[\\\"'][^\\\"']*no-print[^\\\"']*[\\\"'][\\s\\S]*?<\\/button>", "gi");
+    const body = rawBody
+      .replace(actionsPattern, "")
+      .replace(noPrintPattern, "");
+    return { head, body };
+  }
+
+  function buildBatchHtml(documents = [], options = {}) {
+    const parts = (Array.isArray(documents) ? documents : [])
+      .map(extractDocumentParts)
+      .filter((part) => clean(part.body));
+    if (!parts.length) return "";
+
+    const title = clean(options.title) || "HerdHarbor Documents";
+    const headAssets = [...new Set(parts.map((part) => part.head).filter(Boolean))].join("\n");
+
+    return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escapeHtml(title)}</title>
+${headAssets}
+<style>
+.hh-doc-batch-item { break-after:page; page-break-after:always; }
+.hh-doc-batch-item:last-of-type { break-after:auto; page-break-after:auto; }
+.hh-doc-batch-item .hh-doc-actions,
+.hh-doc-batch-item .no-print { display:none !important; }
+.hh-doc-batch-actions { position:fixed; right:16px; bottom:16px; z-index:1000; }
+.hh-doc-batch-actions button { min-height:40px; padding:8px 12px; color:#fff; background:#2e7d7b; border:0; border-radius:8px; font-weight:800; cursor:pointer; }
+@media print { .hh-doc-batch-actions { display:none !important; } }
+</style>
+</head>
+<body data-hh-document-batch="true">
+${parts.map((part, index) => `<section class="hh-doc-batch-item" data-hh-document-batch-item="${index + 1}">${part.body}</section>`).join("\n")}
+<div class="hh-doc-batch-actions"><button type="button" onclick="window.print()">Print / Save PDF</button></div>
+</body>
+</html>`;
+  }
+
   function openPrintWindow(html, options = {}) {
     const popup = root?.open?.("", "_blank");
     if (!popup) return null;
@@ -154,6 +213,7 @@ ${stylesheets.map((href) => `<link rel="stylesheet" href="${escapeHtml(href)}">`
     normalizePageOptions,
     pedigreePageOptions,
     buildDocumentHtml,
+    buildBatchHtml,
     openPrintWindow,
     loadFrame,
     printFrame

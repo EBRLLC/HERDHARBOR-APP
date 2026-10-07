@@ -122,3 +122,16 @@ test('integration replaces manual litter creation entry points with Manage litte
   assert.ok(integration.includes('Manage litter'));
   assert.ok(integration.includes('hhBwManageLitter'));
 });
+
+
+test('Manage litter exposes normalized litter document generation',()=>{
+  const workspace=fs.readFileSync(path.join(__dirname,'..','breeding-litter-workspace-v1.8.2.js'),'utf8');
+  const runtime=fs.readFileSync(path.join(__dirname,'..','herdharbor-app-runtime.js'),'utf8');
+  const exporter=fs.readFileSync(path.join(__dirname,'..','document-export-v2.0.0.js'),'utf8');
+  assert.ok(workspace.includes('["documents","Documents"]'));
+  assert.ok(workspace.includes('data-hh-bw-document="pedigree"'));
+  assert.ok(workspace.includes('data-hh-bw-document="birthCertificate"'));
+  assert.ok(workspace.includes('openAnimalDocumentBatch'));
+  assert.ok(runtime.includes('openAnimalDocumentBatch'));
+  assert.ok(exporter.includes('buildBatchHtml'));
+});
