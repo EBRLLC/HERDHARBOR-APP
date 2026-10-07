@@ -91,7 +91,18 @@ test("workflow guides link back to canonical app areas", () => {
   }
   assert.match(howTo, /Print \/ Save PDF/);
   assert.match(howTo, /Add a show entry and result/);
-  assert.match(howTo, /Add a production record/);\n  assert.match(howTo, /\+ Record birth/);\n  assert.match(howTo, /Create offspring/);\n  assert.match(howTo, /\+ Expense/);\n  assert.match(howTo, /\+ Income/);\n  assert.match(howTo, /\+ Production/);\n  assert.match(howTo, /Sync now/);\n  assert.match(howTo, /Download safety backup/);\n  assert.match(howTo, /Export backup/);\n  assert.match(howTo, /Export records to Excel/);\n  assert.match(howTo, /Download Excel template/);\n  assert.match(howTo, /Upload Excel file/);
+  assert.match(howTo, /Add a production record/);
+  assert.match(howTo, /\+ Record birth/);
+  assert.match(howTo, /Create offspring/);
+  assert.match(howTo, /\+ Expense/);
+  assert.match(howTo, /\+ Income/);
+  assert.match(howTo, /\+ Production/);
+  assert.match(howTo, /Sync now/);
+  assert.match(howTo, /Download safety backup/);
+  assert.match(howTo, /Export backup/);
+  assert.match(howTo, /Export records to Excel/);
+  assert.match(howTo, /Download Excel template/);
+  assert.match(howTo, /Upload Excel file/);
   assert.match(howTo, /Weights belong to the canonical Health record/i);
   assert.match(howTo, /provenance and duplicate protection/i);
   assert.match(howTo, /do not clear local data as a sync repair step/i);
