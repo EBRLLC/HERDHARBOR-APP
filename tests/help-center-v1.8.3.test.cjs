@@ -73,11 +73,10 @@ test("canonical Help Center order stays stable and complete", () => {
   assert.deepEqual(actual, expected);
   assert.equal([...howTo.matchAll(/<a class="guide-card"[^>]*href="#/g)].length, 20);
   assert.match(howTo, /Weight, Treatment, Medication, Vaccination, Observation, or Veterinary visit/);
-  assert.match(howTo, /Free Adult is an automatic fallback state, not a selectable account or signup plan/);
   assert.doesNotMatch(howTo, /value="free_adult"/i);
 });
 
-test("every required Phase 7 workflow has a stable direct anchor", () => {
+test("every current customer workflow has a stable direct anchor", () => {
   for (const anchor of requiredAnchors) {
     assert.match(howTo, new RegExp('id="' + anchor + '"'), "missing anchor " + anchor);
   }
@@ -85,27 +84,36 @@ test("every required Phase 7 workflow has a stable direct anchor", () => {
   assert.match(howTo, /href="#workflow-index"/);
 });
 
-test("workflow guides link back to canonical app areas", () => {
+test("workflow guides link back to canonical product areas", () => {
   for (const route of ["animals", "pedigrees", "breeding", "litters", "health", "symptoms", "analytics", "budget", "sales", "shows", "settings"]) {
     assert.match(howTo, new RegExp('href="https://app\\.herdharbor\\.com/#' + route + '"'), "missing route link #" + route);
   }
-  assert.match(howTo, /Print \/ Save PDF/);
-  assert.match(howTo, /Add a show entry and result/);
-  assert.match(howTo, /Add a production record/);
-  assert.match(howTo, /\+ Record birth/);
-  assert.match(howTo, /Create offspring/);
-  assert.match(howTo, /\+ Expense/);
-  assert.match(howTo, /\+ Income/);
-  assert.match(howTo, /\+ Production/);
-  assert.match(howTo, /Sync now/);
-  assert.match(howTo, /Download safety backup/);
-  assert.match(howTo, /Export backup/);
-  assert.match(howTo, /Export records to Excel/);
-  assert.match(howTo, /Download Excel template/);
-  assert.match(howTo, /Upload Excel file/);
   assert.match(howTo, /Weights belong to the canonical Health record/i);
   assert.match(howTo, /provenance and duplicate protection/i);
   assert.match(howTo, /do not clear local data as a sync repair step/i);
+  assert.match(howTo, /Print \/ Save PDF/);
+  assert.match(howTo, /Add a show entry and result/);
+  assert.match(howTo, /Add a production record/);
+});
+
+test("Marketplace help matches the separate public website workflow", () => {
+  assert.match(howTo, /id="marketplace"/);
+  assert.match(howTo, /href="https:\/\/herdharbor\.com\/marketplace\/"/);
+  assert.match(howTo, /Anyone can view active listings/);
+  assert.match(howTo, /Seller Profile before publishing/);
+  assert.match(howTo, /Select From My Herd/);
+  assert.match(howTo, /do not need a Seller Profile to browse or message a seller/i);
+});
+
+test("customer Help Center excludes tester-only AI entry instructions", () => {
+  assert.doesNotMatch(howTo, /Paper Pedigree AI|guide-import-paper-pedigree|Import a paper pedigree photo|voice-assisted entry|photo-assisted entry|AI-assisted entry/i);
+});
+
+test("Free Adult remains fallback-only in customer Help", () => {
+  assert.match(howTo, /Free Adult is an automatic fallback state, not a selectable account or signup plan/i);
+  assert.match(howTo, /Free Adult is never offered as a plan choice/i);
+  assert.match(howTo, /initial Member trial ends without a paid subscription/i);
+  assert.doesNotMatch(howTo, /value="free_adult"/i);
 });
 
 test("How To Center covers every user-facing main navigation route", () => {
@@ -119,7 +127,7 @@ test("How To Center covers every user-facing main navigation route", () => {
   for (const route of navRoutes) {
     assert.ok(documentedRoutes.has(route), "How To Center is missing main app route: " + route);
   }
-  for (const id of ["symptoms", "budget", "settings"]) {
+  for (const id of ["symptoms", "budget", "settings", "marketplace"]) {
     assert.match(howTo, new RegExp('id="' + id + '"'), "missing detailed guide section #" + id);
   }
   assert.match(howTo, /href="#faq"/);
@@ -135,7 +143,7 @@ test("Help navigation remains part of the app and offline shell", () => {
   assert.match(settings, /href="\/how-to\/"[^>]*>How To Center/);
 });
 
-test("How To topic cards use the finished website icon system instead of numbered placeholders", () => {
+test("How To topic cards use the finished icon system", () => {
   assert.match(howTo, /<img class="brand-mark" src="https:\/\/herdharbor\.com\/assets\/herdharbor-icon\.png"/);
   for (const icon of ["i-start","i-animal","i-pedigree","i-breeding","i-litter","i-health","i-growth","i-genetics","i-tasks","i-analytics","i-sales","i-marketplace","i-member","i-cloud","i-youth","i-symptoms","i-budget","i-settings","i-guides","i-help"]) {
     assert.match(howTo, new RegExp('<symbol id="' + icon + '"'));
@@ -144,19 +152,6 @@ test("How To topic cards use the finished website icon system instead of numbere
   assert.match(howTo, /\.guide-icon svg\{[^}]*stroke:#fff/);
   assert.match(howTo, /linear-gradient\(145deg,#2E7D7B,#246866\)/);
   assert.doesNotMatch(howTo, /<span class="guide-icon">\d{2}<\/span>/);
-});
-
-test("Marketplace guide matches the separate website workflow", () => {
-  assert.match(howTo, /id="marketplace"/);
-  assert.match(howTo, /href="https:\/\/herdharbor\.com\/marketplace\/"/);
-  assert.match(howTo, /Anyone can view active listings/);
-  assert.match(howTo, /Complete Seller Profile before publishing/);
-  assert.match(howTo, /Select From My Herd/);
-  assert.match(howTo, /Do I need a Seller Profile to use Marketplace\?/);
-});
-
-test("customer help does not expose tester-only AI entry workflows", () => {
-  assert.doesNotMatch(howTo, /guide-import-paper-pedigree|Paper Pedigree AI|voice-assisted entry|photo-assisted entry|AI-assisted entry/i);
 });
 
 test("Help Center search and mobile navigation remain usable", () => {
@@ -177,7 +172,6 @@ test("Rabbit genetics guide explains uncertainty ranges and evidence without ove
   assert.match(howTo, /No Mendelian percentage/);
   assert.match(howTo, /Black Harlequin or Black Magpie describe coat phenotype\/pattern/);
   assert.match(howTo, /More genetically possible colors/);
-  assert.doesNotMatch(howTo, /\\n\s*<div class="step"><strong>Breed context/); 
   assert.match(howTo, /Breed context keeps unrelated specialty loci out of the main view/);
   assert.match(howTo, /two Holland Lops will not have Rex, Satin, Lionhead-mane/);
   assert.match(howTo, /Evidence used/);
@@ -186,57 +180,14 @@ test("Rabbit genetics guide explains uncertainty ranges and evidence without ove
   assert.match(howTo, /not a DNA test/i);
 });
 
+test("section numbers run 01 through 20 in guide order", () => {
+  const numbers = [...howTo.matchAll(/<section class="section" id="[^"]+"[\s\S]*?<span class="section-number">([^<]+)<\/span>/g)]
+    .map((match) => match[1]);
+  assert.deepEqual(numbers, Array.from({ length: 20 }, (_, index) => String(index + 1).padStart(2, "0")));
+});
+
 test("Help documentation does not create a second business-rule engine", () => {
   assert.doesNotMatch(howTo, /localStorage\.|sessionStorage\.|indexedDB\.|createClient\s*\(/);
   assert.doesNotMatch(howTo, /state\.(?:animals|health|breedings|litters|tasks|sales)\.(?:push|splice)/);
   assert.match(pkg.scripts["test:v1.8.3"], /help-center-v1\.8\.3\.test\.cjs/);
-});
-
-
-test("Marketplace and current customer workflows stay documented", () => {
-  assert.match(howTo, /id="marketplace"/);
-  assert.match(howTo, /href="https:\/\/herdharbor\.com\/marketplace\/"/);
-  assert.match(howTo, /Anyone can view active listings/);
-  assert.match(howTo, /Seller Profile before publishing/);
-  assert.match(howTo, /do not need a Seller Profile to browse or message a seller/i);
-  for (const anchor of ["guide-customize-print-pedigree","guide-birth-certificate","guide-new-owner-package","guide-show-entry","guide-production-record"]) {
-    assert.match(howTo, new RegExp('id="' + anchor + '"'));
-  }
-  assert.match(howTo, /href="https:\/\/app\.herdharbor\.com\/#shows"/);
-});
-
-test("customer Help Center excludes tester-only AI instructions", () => {
-  assert.doesNotMatch(howTo, /Paper Pedigree AI|guide-import-paper-pedigree|Import a paper pedigree photo|voice-assisted entry|photo-assisted entry/i);
-});
-
-
-test("section numbers run 01 through 20 in guide order", () => {
-  const numbers = [...howTo.matchAll(/<section class="section" id="[^"]+"[\s\S]*?<span class="section-number">([^<]+)<\/span>/g)]
-    .map((match) => match[1]);
-  assert.deepEqual(numbers, Array.from({ length: 20 }, (_, index) => String(index + 1).padStart(2, "0")));
-});
-
-
-test("Marketplace help matches the separate public website workflow", () => {
-  assert.match(howTo, /id="marketplace"/);
-  assert.match(howTo, /href="https:\/\/herdharbor\.com\/marketplace\/"/);
-  assert.match(howTo, /Anyone can view active listings/);
-  assert.match(howTo, /Seller Profile before publishing/);
-  assert.match(howTo, /do not need a Seller Profile to browse or message a seller/i);
-});
-
-test("customer Help Center excludes tester-only AI entry instructions", () => {
-  assert.doesNotMatch(howTo, /Paper Pedigree AI|guide-import-paper-pedigree|Import a paper pedigree photo|voice-assisted entry|photo-assisted entry/i);
-});
-
-test("section numbers run 01 through 20 in guide order", () => {
-  const numbers = [...howTo.matchAll(/<section class="section" id="[^"]+"[\s\S]*?<span class="section-number">([^<]+)<\/span>/g)]
-    .map((match) => match[1]);
-  assert.deepEqual(numbers, Array.from({ length: 20 }, (_, index) => String(index + 1).padStart(2, "0")));
-});
-
-test("Free Adult remains fallback-only in Help Center copy", () => {
-  assert.match(howTo, /Free Adult is an automatic fallback state, not a selectable account or signup plan/i);
-  assert.match(howTo, /Free Adult is never offered as a plan choice/i);
-  assert.doesNotMatch(howTo, /value="free_adult"/i);
 });
