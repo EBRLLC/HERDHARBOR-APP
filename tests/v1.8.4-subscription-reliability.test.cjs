@@ -10,6 +10,8 @@ const engine=read("subscription-engine-v1.8.0.js");
 const provider=read("subscription-stripe-provider-v1.8.0.js");
 const billing=read("supabase/functions/subscription-billing/index.ts");
 const webhook=read("supabase/functions/subscription-webhook/index.ts");
+const signupPolicy=read("subscription-referral-policy-v1.8.1.js");
+const registrationReferral=read("supabase/functions/registration-referral/index.ts");
 
 test("member checkout and portal remain server-authoritative with secrets off the browser",()=>{
   assert.match(provider,/invokeFunction\("subscription-billing"/);
@@ -27,6 +29,18 @@ test("entitlement transitions preserve records and separate Free Adult from Juni
   assert.match(launch,/Your existing records stay available/);
   assert.doesNotMatch(launch,/state\.(?:animals|health|pedigrees)\s*=\s*\[\]/);
   assert.doesNotMatch(webhook,/from\("herdharbor_user_data"\)\.delete/);
+});
+
+test("Free Adult is fallback-only and cannot be selected during signup",()=>{
+  assert.match(signupPolicy,/value="junior"/);
+  assert.match(signupPolicy,/value="member"/);
+  assert.doesNotMatch(signupPolicy,/value="free_adult"/i);
+  assert.doesNotMatch(signupPolicy,/value="free adult"/i);
+  assert.match(signupPolicy,/requestedPlan: form\.querySelector\("\[data-hh-signup-plan\]:checked"\)\?\.value === "member" \? "member" : "junior"/);
+  assert.match(registrationReferral,/!\["junior", "member"\]\.includes\(requestedPlan\)/);
+  assert.match(registrationReferral,/Choose Junior or Member/);
+  assert.match(billing,/effectiveStatus = trial\.active \? "trialing" : "free_adult"/);
+  assert.match(launch,/membershipSource: "free_adult"/);
 });
 
 test("administrative authority stays protected while Founder entitlement is Stripe-backed",()=>{
