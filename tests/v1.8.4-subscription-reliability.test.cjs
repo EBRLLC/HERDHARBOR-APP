@@ -9,7 +9,9 @@ const launch=read("subscription-launch-v1.8.1.js");
 const engine=read("subscription-engine-v1.8.0.js");
 const provider=read("subscription-stripe-provider-v1.8.0.js");
 const billing=read("supabase/functions/subscription-billing/index.ts");
-const webhook=read("supabase/functions/subscription-webhook/index.ts");\nconst signupPolicy=read("subscription-referral-policy-v1.8.1.js");\nconst registrationReferral=read("supabase/functions/registration-referral/index.ts");
+const webhook=read("supabase/functions/subscription-webhook/index.ts");
+const signupPolicy=read("subscription-referral-policy-v1.8.1.js");
+const registrationReferral=read("supabase/functions/registration-referral/index.ts");
 
 test("member checkout and portal remain server-authoritative with secrets off the browser",()=>{
   assert.match(provider,/invokeFunction\("subscription-billing"/);
