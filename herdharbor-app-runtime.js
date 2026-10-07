@@ -2527,6 +2527,80 @@
     });
   }
 
+  function openDocumentBatchPreview(html, title = "Litter documents") {
+    openModal(title, `
+      <div class="pedigree-warning">These documents were generated from the current canonical animal records. Use Print / Save PDF to save the complete batch.</div>
+      <iframe id="hh-document-batch-preview" title="${esc(title)}" style="width:100%;height:64dvh;margin-top:12px;border:1px solid var(--border);border-radius:10px;background:#fff"></iframe>
+      <div class="modal-actions">
+        <button type="button" class="button button-ghost" id="close-document-batch">Close</button>
+        <button type="button" class="button button-primary" id="print-document-batch">Print / Save PDF</button>
+      </div>
+    `, "Litter document batch");
+    $(".modal")?.classList.add("modal-wide");
+    const frame = $("#hh-document-batch-preview");
+    const exporter = window.HerdHarborDocumentExport;
+    if (!exporter?.loadFrame?.(frame, html)) frame.srcdoc = html;
+    $("#close-document-batch")?.addEventListener("click", closeModal);
+    $("#print-document-batch")?.addEventListener("click", () => {
+      if (!exporter?.printFrame?.(frame)) toast("The document batch is still loading. Try again.", "error");
+    });
+  }
+
+  function openAnimalDocumentBatch(animalIds = [], documentType = "pedigree") {
+    const ids = [...new Set((Array.isArray(animalIds) ? animalIds : []).map(String).filter(Boolean))]
+      .filter((id) => state.animals.some((animal) => animal.id === id));
+    if (!ids.length) {
+      toast("Select at least one offspring first.", "error");
+      return false;
+    }
+
+    const exporter = window.HerdHarborDocumentExport;
+    if (!exporter?.buildBatchHtml) {
+      toast("Batch document tools did not finish loading.", "error");
+      return false;
+    }
+
+    let documents = [];
+    let label = "";
+    if (documentType === "pedigree") {
+      label = "Pedigrees";
+      documents = ids
+        .map((animalId) => buildPedigreePrintableHtml(animalId, { sellerName: state.profile?.ownerName || "" }))
+        .filter(Boolean);
+    } else if (documentType === "birthCertificate") {
+      label = "Birth Certificates";
+      const birthCertificate = window.HerdHarborBirthCertificate;
+      if (!birthCertificate?.normalizeOptions) {
+        toast("Birth certificate tools did not finish loading.", "error");
+        return false;
+      }
+      const options = birthCertificate.normalizeOptions({});
+      documents = ids.map((animalId) => birthCertificateHtml(animalId, options)).filter(Boolean);
+    } else {
+      toast("That document type is not available for litter generation.", "error");
+      return false;
+    }
+
+    if (!documents.length) {
+      toast("No documents could be generated for the selected offspring.", "error");
+      return false;
+    }
+
+    const title = `${label} · ${documents.length} offspring`;
+    const html = exporter.buildBatchHtml(documents, { title });
+    if (!html) {
+      toast("The document batch could not be prepared.", "error");
+      return false;
+    }
+
+    const popup = isMobilePedigreePrintEnvironment() ? null : exporter.openPrintWindow?.(html);
+    if (!popup) openDocumentBatchPreview(html, title);
+
+    recordActivity(`Generated ${documents.length} litter ${documentType === "pedigree" ? "pedigree" : "birth certificate"} document${documents.length === 1 ? "" : "s"}.`, "document");
+    saveState();
+    return true;
+  }
+
   function openBirthCertificateForm(animalId) {
     const animal = state.animals.find((item) => item.id === animalId);
     const birthCertificate = window.HerdHarborBirthCertificate;
@@ -3631,6 +3705,7 @@
     openAnimalEditor: (animalId) => animalProfileRuntime().openEditor(animalId),
     openAnimalPedigreePrint: (animalId) => animalProfileRuntime().openPedigreePrint(animalId),
     openAnimalBirthCertificate: (animalId) => openBirthCertificateForm(animalId),
+    openAnimalDocumentBatch: (animalIds, documentType) => openAnimalDocumentBatch(animalIds, documentType),
     openAnimalNewOwnerPackage: (animalId) => openNewOwnerPackageForm(animalId),
     prepareDocumentImage: (file) => prepareProfileImage(file, { maxDimension: 900, targetBytes: 140000 }),
     openRecordBirth: (breedingId) => openRecordBirth(breedingId)
