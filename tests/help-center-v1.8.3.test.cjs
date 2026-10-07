@@ -51,7 +51,7 @@ test("Help Center uses current production language and membership guidance", () 
   assert.match(howTo, /Free Adult is an automatic fallback state, not a selectable account or signup plan/i);
   assert.match(howTo, /five active animals/i);
   assert.match(howTo, /Junior remains a separate selectable signup path/i);
-  assert.match(howTo, /herd records are not deleted/i);
+  assert.match(howTo, /does not delete the animals or records/i);
 });
 
 test("canonical Help Center order stays stable and complete", () => {
