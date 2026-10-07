@@ -45,12 +45,12 @@ test("canonical copy includes the complete customer help order", () => {
   assert.match(howTo, /Most common tasks/);
   assert.match(howTo, /New to HerdHarbor\? Start here\./);
   assert.doesNotMatch(howTo, /Visual walkthrough coming soon/);
-  assert.match(howTo, /19 guides available/);
+  assert.match(howTo, /20 guides available/);
 
-  const expected = ["getting-started","animals","pedigrees","breeding","litters","health","growth","genetics","tasks","analytics","sales","subscription","sync","youth","symptoms","budget","settings","workflow-index","faq"];
+  const expected = ["getting-started","animals","pedigrees","breeding","litters","health","growth","genetics","tasks","analytics","sales","marketplace","subscription","sync","youth","symptoms","budget","settings","workflow-index","faq"];
   const actual = [...howTo.matchAll(/<section class="section" id="([^"]+)"/g)].map((match) => match[1]);
   assert.deepEqual(actual, expected);
-  assert.equal([...howTo.matchAll(/<a class="guide-card"[^>]*href="#/g)].length, 19);
+  assert.equal([...howTo.matchAll(/<a class="guide-card"[^>]*href="#/g)].length, 20);
   assert.doesNotMatch(howTo, /href="\/#/);
   assert.match(howTo, /Weight, Treatment, Medication, Vaccination, Observation, or Veterinary visit/);
 });
@@ -118,7 +118,7 @@ test("Help navigation remains part of the app and offline shell", () => {
 
 test("How To topic cards use the finished website icon system instead of numbered placeholders", () => {
   assert.match(howTo, /<img class="brand-mark" src="https:\/\/herdharbor\.com\/assets\/herdharbor-icon\.png"/);
-  for (const icon of ["i-start","i-animal","i-pedigree","i-breeding","i-litter","i-health","i-growth","i-genetics","i-tasks","i-analytics","i-sales","i-member","i-cloud","i-youth","i-symptoms","i-budget","i-settings","i-guides","i-help"]) {
+  for (const icon of ["i-start","i-animal","i-pedigree","i-breeding","i-litter","i-health","i-growth","i-genetics","i-tasks","i-analytics","i-sales","i-marketplace","i-member","i-cloud","i-youth","i-symptoms","i-budget","i-settings","i-guides","i-help"]) {
     assert.match(howTo, new RegExp('<symbol id="' + icon + '"'));
     assert.match(howTo, new RegExp('<use href="#' + icon + '"><\\/use>'));
   }
@@ -158,4 +158,14 @@ test("Help documentation does not create a second business-rule engine", () => {
   assert.doesNotMatch(howTo, /localStorage\.|sessionStorage\.|indexedDB\.|createClient\s*\(/);
   assert.doesNotMatch(howTo, /state\.(?:animals|health|breedings|litters|tasks|sales)\.(?:push|splice)/);
   assert.match(pkg.scripts["test:v1.8.3"], /help-center-v1\.8\.3\.test\.cjs/);
+});
+
+
+test("Marketplace guide stays tied to the live website flow", () => {
+  assert.match(howTo, /id="marketplace"/);
+  assert.match(howTo, /href="https:\/\/herdharbor\.com\/marketplace\/"/);
+  assert.match(howTo, /Anyone can view active listings/);
+  assert.match(howTo, /Seller Profile before publishing/);
+  assert.match(howTo, /Select From My Herd/);
+  assert.match(howTo, /Buyer note:[\s\S]*do not need a Seller Profile to browse or message a seller/i);
 });
