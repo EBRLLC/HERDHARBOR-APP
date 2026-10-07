@@ -208,3 +208,15 @@ test("Marketplace and current customer workflows stay documented", () => {
 test("customer Help Center excludes tester-only AI instructions", () => {
   assert.doesNotMatch(howTo, /Paper Pedigree AI|guide-import-paper-pedigree|Import a paper pedigree photo|voice-assisted entry|photo-assisted entry/i);
 });
+
+
+test("production and signup wording matches live controls", () => {
+  assert.match(howTo, /production records in Budget/);
+  assert.match(howTo, /Use Budget for production records/);
+  assert.doesNotMatch(howTo, /production in Production/);
+  assert.doesNotMatch(howTo, /Shows, Production, or History action/);
+  assert.match(howTo, /Signup currently lets you select Junior or Member/);
+  assert.match(howTo, /Business is shown as Coming Soon and cannot be selected/);
+  assert.match(howTo, /Free Adult is never offered as a plan choice/);
+  assert.doesNotMatch(howTo, /\\n/);
+});
