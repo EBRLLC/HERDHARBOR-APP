@@ -1,5 +1,22 @@
 [
   {
+    "slug": "winter-rabbit-care",
+    "title": "Winter Rabbit Care: Preparing Your Rabbitry for Cold Weather",
+    "summary": "A practical fall-to-winter checklist for keeping rabbits dry, sheltered, ventilated, hydrated, well-conditioned, and easier to monitor when temperatures drop.",
+    "species": [
+      "rabbit"
+    ],
+    "topics": [
+      "Health & Biosecurity"
+    ],
+    "level": "Beginner",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 5,
+    "featured": true,
+    "url": "/resources/winter-rabbit-care.html"
+  },
+  {
     "slug": "understanding-rabbit-pedigrees",
     "title": "Understanding Rabbit Pedigrees: How to Read One and What Actually Matters",
     "summary": "A practical guide to reading a rabbit pedigree, separating ancestry from proof, spotting repeated ancestors, and using records to make better breeding decisions.",
