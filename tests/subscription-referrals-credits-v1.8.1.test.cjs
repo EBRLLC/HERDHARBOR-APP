@@ -16,11 +16,15 @@ const config = read("supabase/config.toml");
 const build = read("herdharbor-build.js");
 const sw = read("service-worker.js");
 
-test("public signup exposes Junior, Member and Business Coming Soon but never Founder", () => {
+test("public signup exposes Junior and Member paths while Free Adult remains fallback-only", () => {
   assert.match(policy, /<strong>Junior<\/strong>/);
   assert.match(policy, /<strong>Member<\/strong><small>\$14\.99\/month/);
   assert.match(policy, /<strong>Business<\/strong><small>Coming Soon<\/small>/);
   assert.doesNotMatch(policy, /<strong>Founder<\/strong>/);
+  assert.doesNotMatch(policy, /value=["']free_adult["']|data-hh-signup-plan[^>]*free_adult|data-hh-subscription-select=["']free_adult["']/i);
+  assert.match(policy, /requestedPlan:\s*form\.querySelector\("\[data-hh-signup-plan\]:checked"\)\?\.value === "member" \? "member" : "junior"/);
+  assert.match(schema, /requested_plan text not null check \(requested_plan in \('junior','member'\)\)/);
+  assert.match(schema, /raise exception 'Choose Junior or Member\.'/);
   assert.match(policy, /data-hh-plan="founder"/);
   assert.match(policy, /founderPlan\.hidden = !founderEligible/);
   assert.match(policy, /button\.disabled\s*=\s*true/);
