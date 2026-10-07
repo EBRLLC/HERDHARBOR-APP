@@ -18,3 +18,6 @@ test("subscription header presentation is member-facing and cache-busted",()=>{c
 
 
 test("core subscription UI always exposes pre-checkout billing controls",()=>{assert.match(source,/Set up Founder billing — \$7\.99\/mo/);assert.match(source,/Subscribe to Member — \$14\.99\/mo/);assert.match(source,/data-hh-subscription-select="founder"/);assert.match(source,/data-hh-subscription-select="member"/)});
+
+
+test("Free Adult is never a selectable subscription plan",()=>{const e=loadEngine();const plans=e.getPlans();assert.equal(Object.prototype.hasOwnProperty.call(plans,"free_adult"),false);assert.doesNotMatch(source,/data-hh-subscription-select=["']free_adult["']/i);assert.match(source,/const PLAN_ORDER = \["junior", "founder", "member", "business"\]/)});
