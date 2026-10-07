@@ -234,3 +234,26 @@ test("production and signup guidance match the current controls", () => {
 test("canonical HTML contains no literal escaped newlines", () => {
   assert.doesNotMatch(howTo, /\\n/);
 });
+
+
+test("guide navigation forms one continuous ordered chain", () => {
+  const expected = [
+    "getting-started","animals","pedigrees","breeding","litters","health","growth","genetics",
+    "tasks","analytics","sales","marketplace","subscription","sync","youth","symptoms","budget","settings",
+    "workflow-index","faq"
+  ];
+  for (let index = 0; index < expected.length; index += 1) {
+    const id = expected[index];
+    const start = howTo.indexOf('<section class="section" id="' + id + '"');
+    const end = index + 1 < expected.length
+      ? howTo.indexOf('<section class="section" id="' + expected[index + 1] + '"')
+      : howTo.indexOf('</main>', start);
+    const section = howTo.slice(start, end);
+    if (index > 0) assert.match(section, new RegExp('href="#' + expected[index - 1] + '"[^>]*aria-label="Previous guide:'), id + " missing previous guide");
+    if (index + 1 < expected.length) assert.match(section, new RegExp('href="#' + expected[index + 1] + '"[^>]*aria-label="Next guide:'), id + " missing next guide");
+  }
+});
+
+test("shared Help Center footer always returns to the public website", () => {
+  assert.match(howTo, /<footer class="footer">HerdHarbor · <a href="https:\/\/herdharbor\.com\/">Return to herdharbor\.com<\/a><\/footer>/);
+});
