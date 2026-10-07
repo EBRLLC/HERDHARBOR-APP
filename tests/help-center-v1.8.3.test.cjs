@@ -19,6 +19,11 @@ const requiredAnchors = [
   "guide-add-animal",
   "guide-edit-animal",
   "guide-create-pedigree",
+  "guide-production-record",
+  "guide-show-entry",
+  "guide-new-owner-package",
+  "guide-birth-certificate",
+  "guide-customize-print-pedigree",
   "guide-add-breeding",
   "guide-record-pregnancy",
   "guide-record-birth-litter",
@@ -168,4 +173,15 @@ test("Marketplace guide stays tied to the live website flow", () => {
   assert.match(howTo, /Seller Profile before publishing/);
   assert.match(howTo, /Select From My Herd/);
   assert.match(howTo, /Buyer note:[\s\S]*do not need a Seller Profile to browse or message a seller/i);
+});
+
+
+test("Help Center covers live document, show, and production workflows", () => {
+  assert.match(howTo, /Customize and print a pedigree/);
+  assert.match(howTo, /Create a Birth Certificate/);
+  assert.match(howTo, /Create a New Owner Package/);
+  assert.match(howTo, /Add a show entry and result/);
+  assert.match(howTo, /Add a production record/);
+  assert.match(howTo, /href="https:\/\/app\.herdharbor\.com\/#shows"/);
+  assert.match(howTo, /href="https:\/\/app\.herdharbor\.com\/#budget"/);
 });
