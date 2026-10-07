@@ -96,7 +96,7 @@ test("sales/customer extraction remains compatible with formal v2.0.0",()=>{
  const html=read("index.html"),sw=read("service-worker.js");
  assert.equal(pkg.version, "2.0.0");
  assert.ok(html.indexOf("task-runtime-v1.8.3.js?v=1")<html.indexOf("sales-customer-runtime-v1.8.3.js?v=1"));
- assert.ok(html.indexOf("sales-customer-runtime-v1.8.3.js?v=1")<html.search(/herdharbor-app-runtime\.js\?v=\d+/));
+ assert.ok(html.indexOf("sales-customer-runtime-v1.8.3.js?v=1")<html.indexOf("herdharbor-app-runtime.js?v=4"));
  assert.match(sw,/sales-customer-runtime-v1\.8\.3\.js\?v=1/);
  assert.match(pkg.scripts["test:v1.8.3"],/runtime-sales-customer-extraction-v1\.8\.3\.test\.cjs/);
 });
