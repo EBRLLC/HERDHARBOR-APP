@@ -1,18 +1,464 @@
 [
   {
+    "slug": "understanding-rabbit-pedigrees",
+    "title": "Understanding Rabbit Pedigrees: How to Read One and What Actually Matters",
+    "summary": "A practical guide to reading a rabbit pedigree, separating ancestry from proof, spotting repeated ancestors, and using records to make better breeding decisions.",
+    "species": [
+      "rabbit"
+    ],
+    "topics": [
+      "Breeding & Reproduction",
+      "Pedigrees & Records"
+    ],
+    "level": "Beginner",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 4,
+    "featured": true,
+    "url": "/resources/understanding-rabbit-pedigrees.html"
+  },
+  {
+    "slug": "how-to-choose-a-rabbit-breeding-pair",
+    "title": "How to Choose a Breeding Pair: More Than Just Matching Pedigrees",
+    "summary": "A step-by-step approach to pairing rabbits based on goals, health, structure, fertility, family history, genetics, and proven production—not pedigree names alone.",
+    "species": [
+      "rabbit"
+    ],
+    "topics": [
+      "Breeding & Reproduction",
+      "Selection & Herd Improvement"
+    ],
+    "level": "Intermediate",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 4,
+    "featured": false,
+    "url": "/resources/how-to-choose-a-rabbit-breeding-pair.html"
+  },
+  {
+    "slug": "rabbit-color-genetics-for-beginners",
+    "title": "Rabbit Color Genetics for Beginners: The A, B, C, D, and E Basics",
+    "summary": "A beginner-friendly introduction to genotype, phenotype, dominant and recessive alleles, and the major rabbit coat-color loci without turning the lesson into a genetics textbook.",
+    "species": [
+      "rabbit"
+    ],
+    "topics": [
+      "Genetics"
+    ],
+    "level": "Beginner",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 3,
+    "featured": false,
+    "url": "/resources/rabbit-color-genetics-for-beginners.html"
+  },
+  {
+    "slug": "rabbit-litter-breeding-timeline",
+    "title": "Preparing for a Rabbit Litter: A Week-by-Week Breeding Timeline",
+    "summary": "A practical timeline from breeding through kindling and the first days after birth, with emphasis on records, observation, nest preparation, and when a problem needs veterinary attention.",
+    "species": [
+      "rabbit"
+    ],
+    "topics": [
+      "Breeding & Reproduction",
+      "Newborn & Young Stock"
+    ],
+    "level": "Beginner",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 4,
+    "featured": false,
+    "url": "/resources/rabbit-litter-breeding-timeline.html"
+  },
+  {
+    "slug": "what-to-record-for-every-breeding-animal",
+    "title": "What to Record for Every Animal in a Breeding Program",
+    "summary": "The core identity, pedigree, reproduction, health, performance, and management records that turn a list of animals into a usable breeding program.",
+    "species": [
+      "rabbit",
+      "cattle",
+      "goat",
+      "sheep",
+      "poultry",
+      "swine"
+    ],
+    "topics": [
+      "Breeding & Reproduction",
+      "Pedigrees & Records"
+    ],
+    "level": "Beginner",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 3,
+    "featured": false,
+    "url": "/resources/what-to-record-for-every-breeding-animal.html"
+  },
+  {
+    "slug": "linebreeding-inbreeding-outcrossing-explained",
+    "title": "Linebreeding vs. Inbreeding vs. Outcrossing: What the Terms Actually Mean",
+    "summary": "A plain-language comparison of major mating systems, what each changes genetically, and why the labels matter less than the actual pedigree and breeding objective.",
+    "species": [
+      "rabbit",
+      "cattle",
+      "goat",
+      "sheep",
+      "poultry",
+      "swine"
+    ],
+    "topics": [
+      "Breeding & Reproduction",
+      "Genetics"
+    ],
+    "level": "Intermediate",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 3,
+    "featured": false,
+    "url": "/resources/linebreeding-inbreeding-outcrossing-explained.html"
+  },
+  {
+    "slug": "evaluate-rabbit-for-breeding-program",
+    "title": "How to Evaluate a Rabbit Before Adding It to Your Breeding Program",
+    "summary": "A structured pre-breeding evaluation covering health, structure, temperament, fertility, pedigree, family performance, and the rabbit’s fit with a defined breeding goal.",
+    "species": [
+      "rabbit"
+    ],
+    "topics": [
+      "Breeding & Reproduction",
+      "Health & Biosecurity",
+      "Selection & Herd Improvement"
+    ],
+    "level": "Intermediate",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 3,
+    "featured": false,
+    "url": "/resources/evaluate-rabbit-for-breeding-program.html"
+  },
+  {
+    "slug": "build-a-breeding-program",
+    "title": "How to Build a Breeding Program Instead of Just Producing Litters",
+    "summary": "A framework for turning individual matings into a multi-generation breeding program with goals, records, selection standards, replacement planning, and measurable progress.",
+    "species": [
+      "rabbit",
+      "cattle",
+      "goat",
+      "sheep",
+      "poultry",
+      "swine"
+    ],
+    "topics": [
+      "Breeding & Reproduction",
+      "Pedigrees & Records",
+      "Selection & Herd Improvement"
+    ],
+    "level": "Intermediate",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 3,
+    "featured": true,
+    "url": "/resources/build-a-breeding-program.html"
+  },
+  {
+    "slug": "newborn-rabbit-kits-normal-vs-concerning",
+    "title": "Newborn Rabbit Kits: What’s Normal and What Needs Attention",
+    "summary": "A practical guide to normal newborn-kit appearance and nest behavior, routine checks, warning signs, and when a weak or abnormal kit needs experienced or veterinary help.",
+    "species": [
+      "rabbit"
+    ],
+    "topics": [
+      "Health & Biosecurity",
+      "Newborn & Young Stock"
+    ],
+    "level": "Beginner",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 3,
+    "featured": false,
+    "url": "/resources/newborn-rabbit-kits-normal-vs-concerning.html"
+  },
+  {
+    "slug": "when-to-retire-a-breeding-rabbit",
+    "title": "When Should You Retire a Breeding Rabbit?",
+    "summary": "A decision framework for retiring breeding rabbits based on health, fertility, maternal or paternal performance, body condition, recurring problems, and the long-term goals of the program.",
+    "species": [
+      "rabbit"
+    ],
+    "topics": [
+      "Breeding & Reproduction",
+      "Health & Biosecurity",
+      "Selection & Herd Improvement"
+    ],
+    "level": "Intermediate",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 3,
+    "featured": false,
+    "url": "/resources/when-to-retire-a-breeding-rabbit.html"
+  },
+  {
+    "slug": "coefficient-of-inbreeding-explained",
+    "title": "Understanding COI: Coefficient of Inbreeding Without the Math Headache",
+    "summary": "A practical explanation of what COI estimates, how pedigree depth and repeated ancestors affect it, why a single percentage is not a breeding verdict, and how breeders should use it.",
+    "species": [
+      "rabbit",
+      "cattle",
+      "goat",
+      "sheep",
+      "poultry",
+      "swine"
+    ],
+    "topics": [
+      "Breeding & Reproduction",
+      "Genetics",
+      "Pedigrees & Records"
+    ],
+    "level": "Intermediate",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 3,
+    "featured": false,
+    "url": "/resources/coefficient-of-inbreeding-explained.html"
+  },
+  {
+    "slug": "animal-medical-records-guide",
+    "title": "Keeping Accurate Medical Records for Livestock and Rabbits",
+    "summary": "What to record for animal health events, treatments, medications, outcomes, withdrawal periods, recurring problems, and herd-level decision making.",
+    "species": [
+      "rabbit",
+      "cattle",
+      "goat",
+      "sheep",
+      "poultry",
+      "swine"
+    ],
+    "topics": [
+      "Pedigrees & Records",
+      "Health & Biosecurity"
+    ],
+    "level": "Beginner",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 3,
+    "featured": false,
+    "url": "/resources/animal-medical-records-guide.html"
+  },
+  {
+    "slug": "track-rabbit-litter-performance",
+    "title": "How to Track Litter Performance and Identify Your Best Breeding Lines",
+    "summary": "How to compare rabbit litters using fertility, litter size, survival, growth, uniformity, maternal performance, and offspring quality across multiple generations.",
+    "species": [
+      "rabbit"
+    ],
+    "topics": [
+      "Breeding & Reproduction",
+      "Pedigrees & Records",
+      "Selection & Herd Improvement"
+    ],
+    "level": "Intermediate",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 3,
+    "featured": false,
+    "url": "/resources/track-rabbit-litter-performance.html"
+  },
+  {
+    "slug": "genotype-vs-phenotype",
+    "title": "Genotype vs. Phenotype: Why an Animal Can Carry Traits You Cannot See",
+    "summary": "An accessible explanation of genotype, phenotype, dominant and recessive inheritance, hidden carriers, environmental effects, and why visible appearance never tells the entire genetic story.",
+    "species": [
+      "rabbit",
+      "cattle",
+      "goat",
+      "sheep",
+      "poultry",
+      "swine"
+    ],
+    "topics": [
+      "Genetics"
+    ],
+    "level": "Beginner",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 3,
+    "featured": false,
+    "url": "/resources/genotype-vs-phenotype.html"
+  },
+  {
+    "slug": "common-pedigree-mistakes",
+    "title": "Common Pedigree Mistakes—and How They Affect a Breeding Program",
+    "summary": "The data mistakes that quietly damage breeding decisions: duplicate animals, wrong parents, guessed genetics, inconsistent names, missing dates, and pedigrees disconnected from health and performance records.",
+    "species": [
+      "rabbit",
+      "cattle",
+      "goat",
+      "sheep",
+      "poultry",
+      "swine"
+    ],
+    "topics": [
+      "Breeding & Reproduction",
+      "Pedigrees & Records"
+    ],
+    "level": "Beginner",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 3,
+    "featured": false,
+    "url": "/resources/common-pedigree-mistakes.html"
+  },
+  {
+    "slug": "breeding-for-improvement-across-generations",
+    "title": "Breeding for Improvement: How to Identify Strengths and Faults Across Generations",
+    "summary": "How to move beyond judging individual animals and use family patterns, offspring data, selection pressure, and balanced goals to improve a breeding population over multiple generations.",
+    "species": [
+      "rabbit",
+      "cattle",
+      "goat",
+      "sheep",
+      "poultry",
+      "swine"
+    ],
+    "topics": [
+      "Breeding & Reproduction",
+      "Genetics",
+      "Selection & Herd Improvement"
+    ],
+    "level": "Advanced",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 3,
+    "featured": false,
+    "url": "/resources/breeding-for-improvement-across-generations.html"
+  },
+  {
+    "slug": "what-makes-a-good-breeding-record",
+    "title": "What Makes a Good Breeding Record?",
+    "summary": "The essential fields and workflow for recording pairings, exposure dates, pregnancy outcomes, due dates, births, offspring, complications, and repeat breeding decisions.",
+    "species": [
+      "rabbit",
+      "cattle",
+      "goat",
+      "sheep",
+      "poultry",
+      "swine"
+    ],
+    "topics": [
+      "Breeding & Reproduction",
+      "Pedigrees & Records"
+    ],
+    "level": "Beginner",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 3,
+    "featured": false,
+    "url": "/resources/what-makes-a-good-breeding-record.html"
+  },
+  {
+    "slug": "selecting-replacement-breeding-stock",
+    "title": "Selecting Replacement Stock: Which Young Animals Should You Keep?",
+    "summary": "A practical replacement-selection framework using health, function, breeding goals, family performance, growth or production data, reproductive potential, and genetic diversity.",
+    "species": [
+      "rabbit",
+      "cattle",
+      "goat",
+      "sheep",
+      "poultry",
+      "swine"
+    ],
+    "topics": [
+      "Breeding & Reproduction",
+      "Selection & Herd Improvement"
+    ],
+    "level": "Intermediate",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 3,
+    "featured": false,
+    "url": "/resources/selecting-replacement-breeding-stock.html"
+  },
+  {
+    "slug": "new-animal-quarantine-protocol",
+    "title": "Quarantine Protocols When Bringing a New Animal Into Your Herd, Flock, or Rabbitry",
+    "summary": "A practical biosecurity framework for isolation, equipment separation, observation, testing, veterinary planning, and safe release of new or returning animals.",
+    "species": [
+      "rabbit",
+      "cattle",
+      "goat",
+      "sheep",
+      "poultry",
+      "swine"
+    ],
+    "topics": [
+      "Health & Biosecurity"
+    ],
+    "level": "Beginner",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 3,
+    "featured": true,
+    "url": "/resources/new-animal-quarantine-protocol.html"
+  },
+  {
+    "slug": "why-track-failed-breedings",
+    "title": "Why Breeders Should Track Failed Breedings Too",
+    "summary": "Why missed conceptions, repeat breedings, pregnancy loss, infertile eggs, and other reproductive failures are essential data for fertility, management, health, and breeding decisions.",
+    "species": [
+      "rabbit",
+      "cattle",
+      "goat",
+      "sheep",
+      "poultry",
+      "swine"
+    ],
+    "topics": [
+      "Breeding & Reproduction",
+      "Pedigrees & Records"
+    ],
+    "level": "Beginner",
+    "published": "2026-10-07",
+    "updated": "2026-10-07",
+    "readTime": 3,
+    "featured": false,
+    "url": "/resources/why-track-failed-breedings.html"
+  },
+  {
     "slug": "line-breeding-rabbits",
     "title": "Line Breeding Rabbits: A Practical Genetics Guide",
     "category": "Rabbit Breeding",
     "summary": "How line breeding works, what it can accomplish, where the risks come from, and what records a breeder should keep before making related pairings.",
-    "url": "/resources/line-breeding-rabbits.html",
-    "published": "2026-10-02"
+    "species": [
+      "rabbit"
+    ],
+    "topics": [
+      "Breeding & Reproduction",
+      "Genetics",
+      "Pedigrees & Records"
+    ],
+    "level": "Intermediate",
+    "published": "2026-10-02",
+    "updated": "2026-10-02",
+    "readTime": 8,
+    "featured": true,
+    "url": "/resources/line-breeding-rabbits.html"
   },
   {
     "slug": "rabbit-genetics",
     "title": "Rabbit Genetics: From Genes to Breeding Decisions",
     "category": "Rabbit Breeding",
     "summary": "A ground-up guide to genes, alleles, dominant and recessive inheritance, Punnett squares, coat-color loci, hidden carriers, epistasis, pedigrees, polygenic traits, and practical breeding decisions.",
-    "url": "/resources/rabbit-genetics.html",
-    "published": "2026-10-02"
+    "species": [
+      "rabbit"
+    ],
+    "topics": [
+      "Genetics",
+      "Breeding & Reproduction"
+    ],
+    "level": "Intermediate",
+    "published": "2026-10-02",
+    "updated": "2026-10-02",
+    "readTime": 12,
+    "featured": true,
+    "url": "/resources/rabbit-genetics.html"
   }
 ]
