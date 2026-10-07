@@ -141,9 +141,11 @@ ${stylesheets.map((href) => `<link rel="stylesheet" href="${escapeHtml(href)}">`
     const head = (source.match(/<head[^>]*>([\s\S]*?)<\/head>/i)?.[1] || "")
       .match(/<style[\s\S]*?<\/style>|<link\b[^>]*rel=["']stylesheet["'][^>]*>/gi)?.join("\n") || "";
     const rawBody = source.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] || source;
+    const actionsPattern = new RegExp("<" + "div\\b[^>]*class=[\\\"'][^\\\"']*hh-doc-actions[^\\\"']*[\\\"'][\\s\\S]*?<\\/div>", "gi");
+    const noPrintPattern = new RegExp("<" + "button\\b[^>]*class=[\\\"'][^\\\"']*no-print[^\\\"']*[\\\"'][\\s\\S]*?<\\/button>", "gi");
     const body = rawBody
-      .replace(/<div\b[^>]*class=["'][^"']*hh-doc-actions[^"']*["'][\s\S]*?<\/div>/gi, "")
-      .replace(/<button\b[^>]*class=["'][^"']*no-print[^"']*["'][\s\S]*?<\/button>/gi, "");
+      .replace(actionsPattern, "")
+      .replace(noPrintPattern, "");
     return { head, body };
   }
 
