@@ -124,3 +124,15 @@ test('BEW white mask does not force a hidden extension genotype, and BEW by BEW 
   const result=Engine.analyzePairing(bew('a'),bew('b'));
   assert.deepEqual(result.possibleOffspringColors.map(c=>[c.name,c.minProbability,c.maxProbability]),[['Blue-Eyed White (BEW)',1,1]]);
 });
+
+test('white phenotypes do not reveal hidden agouti or dilute alleles',()=>{
+  const bew={species:'Rabbit',color:'Blue Eyed White (BEW)',genetics:{loci:{V:['v','v']}}};
+  const choices=(l)=>Engine.phenotypePairs(bew,l).map(p=>p.join('/'));
+  assert.ok(choices('A').includes('A/A'),'BEW can hide agouti');
+  assert.ok(choices('A').includes('at/a'),'BEW can hide otter');
+  assert.ok(choices('D').includes('D/D'),'BEW does not prove blue dilution');
+  assert.ok(choices('D').includes('d/d'),'BEW can conceal blue dilution');
+  const rew={species:'Rabbit',color:'Red Eyed White (REW)'};
+  assert.ok(Engine.phenotypePairs(rew,'D').some(p=>p.join('/')==='D/D'));
+  assert.deepEqual(Engine.phenotypePairs(rew,'C'),[['c','c']]);
+});
