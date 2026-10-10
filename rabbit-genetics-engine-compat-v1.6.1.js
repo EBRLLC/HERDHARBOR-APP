@@ -13,6 +13,9 @@ function intersection(a,b,l){const keys=new Set(b.map(p=>pairKey(l,p)));return a
 function phenotypePairs(animal,locus){
   let list=Base.possiblePairsForLocus(animal,animal?.color||animal?.variety,locus);
   const c=norm(animal?.color||animal?.variety);
+  // White phenotypes mask the underlying base pattern/pigment. Keep explicit
+  // genotype evidence, but do not infer agouti, dilute, extension, or spotting.
+  if(/\b(?:blue[- ]?eyed white|bew|red[- ]?eyed white|ruby[- ]?eyed white|rew)\b/.test(c)&&locus!=='V'&&locus!=='C')return Base.possiblePairsForLocus(animal,'',locus);
   if(/magpie/.test(c)){
     if(locus==='E') list=list.filter(p=>['ej/ej','ej/e'].includes(pairKey('E',p)));
     if(locus==='C') list=list.filter(p=>{const q=Base.normalizeGenetics({loci:{C:{alleles:p}}}).loci.C.alleles;return q[0]==='cchd'&&q[1]!=='C';});
