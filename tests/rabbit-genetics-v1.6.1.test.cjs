@@ -107,7 +107,7 @@ test('BEW phenotype is represented as inferred vv in read-only profiles without 
 test('harlequin and magpie parents cannot generate silver martens without an extension E allele',()=>{
   const parent=(id,color,loci)=>({id,name:id,species:'Rabbit',breed:'Holland Lop',color,genetics:{loci}});
   const base={A:['A','a'],B:['B','B'],D:['D','D'],E:['ej','ej'],V:['V','v'],En:['en','en']};
-  const patches=parent('patches','Black and Orange Harlequin VC',{...base,C:['C','C']});
+  const patches=parent('patches','Black and Orange Harlequin VC',{...base,C:['C','cchd']});
   const judy=parent('judy','Black Magpie',{...base,C:['cchd','cchd']});
   const result=Engine.analyzePairing(patches,judy,{animals:[patches,judy]});
   assert.equal(result.possibleOffspringColors.some(x=>/Silver Marten/.test(x.name)),false);
