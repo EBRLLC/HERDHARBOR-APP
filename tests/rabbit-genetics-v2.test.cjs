@@ -24,3 +24,13 @@ const nonbew={id:'nb',name:'NonBEW',species:'Rabbit',color:'Black'},other={id:'o
 const c1=rabbit('c1','Chocolate',{B:['b','b']}),l1=rabbit('l1','Lilac',{B:['b','b'],D:['d','d']});const y=Core.analyzePairing(c1,l1,{animals:[c1,l1]});assert.notDeepEqual(x.exactOutcomes.map(o=>[o.name,o.probability]),y.exactOutcomes.map(o=>[o.name,o.probability]));
 assert.ok(Core.RABBIT_MODIFIERS.wideband&&Core.RABBIT_MODIFIERS.silvering&&Core.RABBIT_MODIFIERS.rufus&&Core.RABBIT_MODIFIERS.breedSpecific);
 console.log("Rabbit Genetics v2 deterministic inheritance tests passed");
+
+const tanMagpie=Core.basePhenotypeFromGenotype({A:['at','a'],B:['B','B'],C:['cchd','cchd'],D:['D','D'],E:['ej','ej']});
+assert.equal(tanMagpie.name,'Black Magpie','Japanese extension overrides the Silver Marten label');
+const trueMarten=Core.basePhenotypeFromGenotype({A:['at','a'],B:['B','B'],C:['cchd','cchd'],D:['D','D'],E:['E','ej']});
+assert.equal(trueMarten.name,'Black Silver Marten');
+const phenotypeBEW={id:'bew-phenotype',name:'bew-phenotype',species:'Rabbit',color:'Blue Eyed White (BEW)',genetics:{loci:{V:{alleles:['_','_'],status:'unknown'}}}};
+const inferredBEW=Core.refineAnimalGenetics(phenotypeBEW,[phenotypeBEW],[]).genetics;
+assert.deepEqual(inferredBEW.loci.V.alleles,['v','v']);
+assert.equal(inferredBEW.loci.V.source,'phenotype');
+assert.equal(inferredBEW.loci.V.status,'inferred','coat-color inference must not be presented as a DNA-confirmed result');

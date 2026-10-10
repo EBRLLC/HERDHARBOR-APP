@@ -91,3 +91,48 @@ test('different, mixed, unknown, or unmapped breeds keep the full tracked-locus 
   }
 });
 
+
+test('BEW phenotype is represented as inferred vv in read-only profiles without rewriting owner records',()=>{
+  const animal={id:'snow',species:'Rabbit',color:'Blue Eyed White (BEW)',genetics:{loci:{V:{alleles:['_','_'],status:'unknown'}}}};
+  const original=JSON.stringify(animal);
+  const profile=Engine.profileForAnimal(animal);
+  assert.deepEqual(profile.genetics.loci.V.alleles,['v','v']);
+  assert.equal(profile.genetics.loci.V.source,'phenotype');
+  assert.equal(profile.genetics.loci.V.status,'strongly-inferred');
+  assert.equal(JSON.stringify(animal),original);
+  const conflicting={...animal,genetics:{loci:{V:{alleles:['V','V'],status:'confirmed',source:'genetic-test'}}}};
+  assert.deepEqual(Engine.profileForAnimal(conflicting).genetics.loci.V.alleles,['V','V'],'never silently replace contradictory genotype evidence');
+});
+
+test('harlequin and magpie parents cannot generate silver martens without an extension E allele',()=>{
+  const parent=(id,color,loci)=>({id,name:id,species:'Rabbit',breed:'Holland Lop',color,genetics:{loci}});
+  const base={A:['A','a'],B:['B','B'],D:['D','D'],E:['ej','ej'],V:['V','v'],En:['en','en']};
+  const patches=parent('patches','Black and Orange Harlequin VC',{...base,C:['C','cchd']});
+  const judy=parent('judy','Black Magpie',{...base,C:['cchd','cchd']});
+  const result=Engine.analyzePairing(patches,judy,{animals:[patches,judy]});
+  assert.equal(result.possibleOffspringColors.some(x=>/Silver Marten/.test(x.name)),false);
+  assert.equal(result.viennaRange.bew.minProbability,.25);
+  assert.equal(result.viennaRange.bew.maxProbability,.25);
+  assert.ok(result.possibleOffspringColors.some(x=>/Magpie/.test(x.name)));
+});
+
+test('BEW white mask does not force a hidden extension genotype, and BEW by BEW is 100 percent BEW',()=>{
+  const bew=(id)=>({id,name:id,species:'Rabbit',breed:'Holland Lop',color:'Blue Eyed White (BEW)',genetics:{loci:{V:{alleles:['v','v'],source:'phenotype',status:'inferred'}}}});
+  const choices=Engine.phenotypePairs(bew('a'),'E').map(a=>a.join('/'));
+  assert.ok(choices.includes('e/e'),'a BEW rabbit can conceal nonextension');
+  assert.ok(choices.includes('ej/ej'),'a BEW rabbit can conceal harlequin');
+  const result=Engine.analyzePairing(bew('a'),bew('b'));
+  assert.deepEqual(result.possibleOffspringColors.map(c=>[c.name,c.minProbability,c.maxProbability]),[['Blue-Eyed White (BEW)',1,1]]);
+});
+
+test('white phenotypes do not reveal hidden agouti or dilute alleles',()=>{
+  const bew={species:'Rabbit',color:'Blue Eyed White (BEW)',genetics:{loci:{V:['v','v']}}};
+  const choices=(l)=>Engine.phenotypePairs(bew,l).map(p=>p.join('/'));
+  assert.ok(choices('A').includes('A/A'),'BEW can hide agouti');
+  assert.ok(choices('A').includes('at/a'),'BEW can hide otter');
+  assert.ok(choices('D').includes('D/D'),'BEW does not prove blue dilution');
+  assert.ok(choices('D').includes('d/d'),'BEW can conceal blue dilution');
+  const rew={species:'Rabbit',color:'Red Eyed White (REW)'};
+  assert.ok(Engine.phenotypePairs(rew,'D').some(p=>p.join('/')==='D/D'));
+  assert.deepEqual(Engine.phenotypePairs(rew,'C'),[['c','c']]);
+});
