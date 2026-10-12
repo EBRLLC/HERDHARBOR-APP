@@ -306,9 +306,12 @@
     }
     const status = root.document?.querySelector?.("#hh-account-sync-status");
     if (status) {
-      status.textContent = text;
-      status.dataset.type = tone;
-      status.dataset.syncState = snapshot.state;
+      // Do not generate a childList mutation for identical status text.
+      // The startup observer watches body additions and would otherwise
+      // requeue this render indefinitely on some mobile browsers.
+      if (status.textContent !== text) status.textContent = text;
+      if (status.dataset.type !== tone) status.dataset.type = tone;
+      if (status.dataset.syncState !== snapshot.state) status.dataset.syncState = snapshot.state;
     }
     return snapshot;
   }
@@ -550,6 +553,13 @@
     ensureInitialRevision();
     const snapshot = applyStatePresentation(getDiagnostics());
     ensureOpenButton();
+    // This observer is only needed until the account dialog exists.
+    // Keeping it attached to the entire body creates a render/mutation
+    // feedback loop and can make mobile dialog buttons unresponsive.
+    if (root.document?.getElementById?.("hh-sync-diagnostics-open")) {
+      observer?.disconnect();
+      observer = null;
+    }
     refreshOpenModal();
     return snapshot;
   }
