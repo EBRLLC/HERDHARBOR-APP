@@ -857,6 +857,18 @@
 
   }
 
+  // Cloud hydration can complete after this runtime has already rendered its
+  // first paint. In that case the persisted cloud profile must be adopted into
+  // the in-memory state; a storage update alone cannot change onboarding.
+  function applyVerifiedCloudState() {
+    const next = loadState();
+    if (!next?.profile || !String(next.profile.operationName || "").trim()) return false;
+    state = next;
+    showApp();
+    refreshSyncStatus();
+    return true;
+  }
+
   function showOnboarding() {
     $("#onboarding").classList.remove("hidden");
     $("#app-shell").classList.add("hidden");
@@ -3693,6 +3705,7 @@
 
   window.HerdHarborApp = Object.freeze({
     getState: () => state,
+    applyVerifiedCloudState,
     commitState: (next, message = "") => {
       if (!next || typeof next !== "object") return false;
       state = next;
