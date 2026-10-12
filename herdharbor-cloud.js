@@ -3612,7 +3612,18 @@
           (activeRaw && sameState(activeRaw, cloudRaw))
         );
 
-      const baselineRefresh = await refreshDualWriteBaselineForRemoteState();
+      // A first-time device has no configured operation and no local animal,
+      // task, or activity edits to reconcile. The verified legacy cloud row is
+      // already authoritative in dual-write; loading that read-only snapshot
+      // must not wait on a potentially slow normalized-record baseline fetch.
+      // Existing configured local operations still require baseline refresh
+      // BEFORE replacing any local data, preserving the two-device contract.
+      const pristineDevice = hasConfiguredOperationProfile(data.app_state) &&
+        !hasConfiguredOperationProfile(activeRaw || cachedRaw) &&
+        !hasUnsyncedDomainRecords(activeRaw || cachedRaw);
+      const baselineRefresh = pristineDevice
+        ? { ok: true, skipped: true, reason: "pristine-device-legacy-authority" }
+        : await refreshDualWriteBaselineForRemoteState();
       if (!isCurrentHydration()) return staleHydration();
       if (baselineRefresh?.ok === false) {
         setSyncState(
@@ -3621,7 +3632,13 @@
             : "Cloud records loaded, but normalized sync protection could not refresh yet.",
           "error"
         );
-        unlockApp();
+        // Never reveal a blank new-operation form while a verified existing
+        // account is blocked by a consistency check.
+        if (!hasConfiguredOperationProfile(activeRaw || cachedRaw)) {
+          showAccountBoundaryRecovery("Your existing cloud operation is available, but synchronization protection needs to finish. Refresh account data to retry.");
+        } else {
+          unlockApp();
+        }
         return;
       }
       if (!isCurrentHydration()) return staleHydration();
@@ -3639,7 +3656,15 @@
         });
       }
 
-      if (stateChanged) {
+      // Adopt the now-persisted profile if the main runtime already rendered
+      // onboarding before the cloud response arrived. A one-time sessionStorage
+      // reload marker alone does not update the in-memory application state.
+      const appNeedsOperation = !hasConfiguredOperationProfile(
+        window.HerdHarborApp?.getState?.()
+      );
+      const runtimeRecovered = appNeedsOperation &&
+        window.HerdHarborApp?.applyVerifiedCloudState?.() === true;
+      if (stateChanged && !runtimeRecovered) {
         const reloadKey = `hh_cloud_loaded_${userId}_${data.updated_at || "current"}`;
         if (!sessionStorage.getItem(reloadKey)) {
           sessionStorage.setItem(reloadKey, "1");
@@ -3650,6 +3675,18 @@
 
       unlockApp();
       setSyncState("Cloud records loaded", "success");
+
+      if (pristineDevice && rolloutDecision?.stage === "dual_write") {
+        // Finish normalized baseline maintenance AFTER the customer can read
+        // the verified legacy data. This task is read-only with respect to
+        // legacy cloud authority and does not change the production cutover.
+        window.setTimeout(() => {
+          if (session?.user?.id !== userId) return;
+          void refreshDualWriteBaselineForRemoteState().catch((error) => {
+            console.warn("HerdHarbor deferred dual-write baseline refresh failed:", error?.code || error?.message || error);
+          });
+        }, 0);
+      }
       return;
     }
 
