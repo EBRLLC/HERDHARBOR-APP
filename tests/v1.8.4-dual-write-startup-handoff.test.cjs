@@ -670,7 +670,7 @@ test("changed cloud revision falls back to the full legacy record load", () => {
   assert.ok(appStateBranch > fallbackFetch);
 });
 
-test("dirty startup still prioritizes the protected local snapshot instead of prefetching cloud", () => {
+test("dirty startup preserves configured local changes but recovers empty onboarding from verified cloud", () => {
   const hydrateSource = extract(
     cloudSource,
     "  async function hydrateUserDataOnce(activeSession)",
@@ -681,16 +681,30 @@ test("dirty startup still prioritizes the protected local snapshot instead of pr
     hydrateSource,
     /const legacyCloudPrefetchPromise = dirty[\s\S]*\? null[\s\S]*canUseVersionOnlyPrefetch/
   );
-  const dirtyIndex = hydrateSource.indexOf("if (dirty) {");
+  const emptyLocalGuard = hydrateSource.indexOf(
+    "if (dirty && !hasConfiguredOperationProfile(activeRaw || cachedRaw))"
+  );
+  const cloudProbeIndex = hydrateSource.indexOf("const cloudProbe = await fetchCloudRecord(userId);", emptyLocalGuard);
+  const localRecordGuard = hydrateSource.indexOf("hasUnsyncedDomainRecords(deviceRaw)", emptyLocalGuard);
+  const dirtyIndex = hydrateSource.indexOf("if (dirty && !verifiedExistingCloudRecord) {");
   const drainIndex = hydrateSource.indexOf("await drainSyncQueue();", dirtyIndex);
   const normalCloudJoin = hydrateSource.indexOf(
-    "legacyCloudPrefetchPromise || fetchCloudRecord(userId)",
+    "verifiedExistingCloudRecord || legacyCloudPrefetchPromise || fetchCloudRecord(userId)",
     dirtyIndex
   );
-  assert.ok(dirtyIndex >= 0 && drainIndex > dirtyIndex);
-  assert.ok(
-    normalCloudJoin > drainIndex,
-    "dirty startup saves its local copy before entering the normal cloud-load path"
+
+  assert.ok(emptyLocalGuard >= 0 && localRecordGuard > emptyLocalGuard);
+  assert.ok(cloudProbeIndex > localRecordGuard && dirtyIndex > cloudProbeIndex);
+  assert.ok(drainIndex > dirtyIndex && normalCloudJoin > drainIndex);
+  assert.match(
+    hydrateSource.slice(dirtyIndex, normalCloudJoin),
+    /if \(dirty && !verifiedExistingCloudRecord\)[\s\S]*await drainSyncQueue\(\)/,
+    "valid dirty local state keeps its pre-cloud protected save"
+  );
+  assert.match(
+    hydrateSource,
+    /if \(cloudProbe\?\.error \|\| !hasConfiguredOperationProfile\(cloudProbe\?\.data\?\.app_state\)\)/,
+    "an unconfigured local state may use only a verified existing cloud operation"
   );
 });
 
