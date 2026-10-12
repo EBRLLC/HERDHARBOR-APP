@@ -73,7 +73,7 @@ test("a missing local profile always requires full cloud hydration even with a c
   const end = cloud.indexOf("const baselineRestorePromise =", start);
   assert.ok(start >= 0 && end > start);
   const guard = cloud.slice(start, end);
-  assert.match(guard, /hasConfiguredOperationProfile\\(activeRaw\\)/,
+  assert.ok(guard.includes("hasConfiguredOperationProfile(activeRaw)"),
     "version-only fetch must never treat an empty local onboarding state as a loaded operation");
-  assert.match(guard, /Boolean\\(knownCloudVersion\\)/);
+  assert.ok(guard.includes("Boolean(knownCloudVersion)"));
 });
