@@ -204,7 +204,9 @@ test("legacy cross-device hydration refreshes the normalized baseline before rep
   const hydrateReplace = source.indexOf("setActiveUserData(userId, deviceCloudRaw);", hydrateRefresh);
   assert.ok(hydrateRefresh >= 0 && hydrateReplace > hydrateRefresh, "startup hydration must evaluate baseline policy before local replacement");
 
-  const protectedStartup = source.slice(hydrateRefresh, hydrateReplace);
+  const pristineGuard = source.indexOf("const pristineDevice = hasConfiguredOperationProfile(data.app_state)", hydrateStart);
+  assert.ok(pristineGuard >= 0 && pristineGuard < hydrateRefresh);
+  const protectedStartup = source.slice(pristineGuard, hydrateReplace);
   assert.match(protectedStartup, /: await refreshDualWriteBaselineForRemoteState\(\)/,
     "devices holding an existing configured operation must refresh normalized baseline before replacement");
   assert.match(protectedStartup, /!hasConfiguredOperationProfile\(activeRaw \|\| cachedRaw\)/,
