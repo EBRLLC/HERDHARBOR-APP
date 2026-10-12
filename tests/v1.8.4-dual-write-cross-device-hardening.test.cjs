@@ -200,7 +200,17 @@ test("legacy cross-device hydration refreshes the normalized baseline before rep
   assert.ok(liveRefresh >= 0 && liveReplace > liveRefresh, "foreground remote state must refresh normalized baseline before local replacement");
 
   const hydrateStart = source.indexOf("async function hydrateUserData");
-  const hydrateRefresh = source.indexOf("const baselineRefresh = await refreshDualWriteBaselineForRemoteState();", hydrateStart);
+  const hydrateRefresh = source.indexOf("const baselineRefresh = pristineDevice", hydrateStart);
   const hydrateReplace = source.indexOf("setActiveUserData(userId, deviceCloudRaw);", hydrateRefresh);
-  assert.ok(hydrateRefresh >= 0 && hydrateReplace > hydrateRefresh, "startup hydration must refresh normalized baseline before local replacement");
+  assert.ok(hydrateRefresh >= 0 && hydrateReplace > hydrateRefresh, "startup hydration must evaluate baseline policy before local replacement");
+
+  const pristineGuard = source.indexOf("const pristineDevice = hasConfiguredOperationProfile(data.app_state)", hydrateStart);
+  assert.ok(pristineGuard >= 0 && pristineGuard < hydrateRefresh);
+  const protectedStartup = source.slice(pristineGuard, hydrateReplace);
+  assert.match(protectedStartup, /: await refreshDualWriteBaselineForRemoteState\(\)/,
+    "devices holding an existing configured operation must refresh normalized baseline before replacement");
+  assert.match(protectedStartup, /!hasConfiguredOperationProfile\(activeRaw \|\| cachedRaw\)/,
+    "only a device without a configured local operation can take the cloud-first exception");
+  assert.match(protectedStartup, /!hasUnsyncedDomainRecords\(activeRaw \|\| cachedRaw\)/,
+    "the cloud-first exception must not discard unsynced local domain edits");
 });
