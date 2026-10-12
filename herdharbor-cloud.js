@@ -724,6 +724,31 @@
     }
   }
 
+  // A partially initialized device must never upload the empty onboarding
+  // state over an operation already configured in the cloud.
+  function hasConfiguredOperationProfile(value) {
+    const operation = typeof value === "string" ? safeParse(value) : value;
+    const profile = operation?.profile;
+    return Boolean(
+      profile &&
+      typeof profile === "object" &&
+      !Array.isArray(profile) &&
+      String(profile.operationName || "").trim()
+    );
+  }
+
+  function hasUnsyncedDomainRecords(rawValue) {
+    const operation = safeParse(rawValue);
+    if (!operation || typeof operation !== "object") return false;
+    const recordSections = [
+      "animals", "breedings", "litters", "pedigrees", "pedigreeDrafts",
+      "health", "tasks", "customers", "sales", "payments", "transfers",
+      "transactions", "productionRecords", "budgetPlans", "annualBudgetPlans",
+      "activity"
+    ];
+    return recordSections.some((name) => Array.isArray(operation[name]) && operation[name].length > 0);
+  }
+
   function animalStateTransitionResult(beforeRaw, afterRaw) {
     const beforeState = safeParse(beforeRaw);
     const afterState = safeParse(afterRaw);
@@ -1670,6 +1695,10 @@
     let appState = safeParse(rawValue);
     if (!appState) {
       setSyncState("Local data could not be read.", "error");
+      return false;
+    }
+    if (!hasConfiguredOperationProfile(appState)) {
+      setSyncState("This device has not loaded an operation profile. Cloud upload is paused to protect existing records.", "error");
       return false;
     }
 
@@ -3424,7 +3453,30 @@
       return;
     }
 
-    if (dirty) {
+    // A stale/empty onboarding state can be marked dirty before the cloud
+    // profile is hydrated (especially across a mobile PWA reload). Do not
+    // upload that empty state. Verify the legacy cloud record first; during
+    // dual-write the legacy row is still the authoritative source.
+    let verifiedExistingCloudRecord = null;
+    if (dirty && !hasConfiguredOperationProfile(activeRaw || cachedRaw)) {
+      const deviceRaw = activeRaw || cachedRaw;
+      if (hasUnsyncedDomainRecords(deviceRaw)) {
+        unlockApp();
+        setSyncState("Local records without a configured profile need review before cloud recovery. No records were uploaded.", "error");
+        return;
+      }
+
+      const cloudProbe = await fetchCloudRecord(userId);
+      if (!isCurrentHydration()) return staleHydration();
+      if (cloudProbe?.error || !hasConfiguredOperationProfile(cloudProbe?.data?.app_state)) {
+        unlockApp();
+        setSyncState("The existing cloud operation could not be verified. Automatic upload is paused; device records were retained.", "error");
+        return;
+      }
+      verifiedExistingCloudRecord = cloudProbe;
+    }
+
+    if (dirty && !verifiedExistingCloudRecord) {
       await baselineRestorePromise;
       if (!isCurrentHydration()) return staleHydration();
       const unsyncedRaw = activeRaw || cachedRaw;
@@ -3445,7 +3497,7 @@
     setSyncState("Loading cloud records…", "working");
 
     const [prefetchedLegacy] = await Promise.all([
-      legacyCloudPrefetchPromise || fetchCloudRecord(userId),
+      verifiedExistingCloudRecord || legacyCloudPrefetchPromise || fetchCloudRecord(userId),
       baselineRestorePromise
     ]);
     if (!isCurrentHydration()) return staleHydration();
