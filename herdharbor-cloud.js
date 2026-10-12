@@ -3340,7 +3340,9 @@
       originalGetItem.call(localStorage, versionKey(userId)) || "";
     const canUseVersionOnlyPrefetch =
       !dirty &&
-      Boolean(activeRaw && safeParse(activeRaw)) &&
+      // A matching revision is not sufficient if this device never loaded
+      // the corresponding operation profile. Fetch the full cloud snapshot.
+      hasConfiguredOperationProfile(activeRaw) &&
       Boolean(knownCloudVersion);
     const baselineRestorePromise = restoreMissingCloudBaseline(userId, "hydrate");
     const legacyCloudPrefetchMode = canUseVersionOnlyPrefetch ? "version" : "record";
