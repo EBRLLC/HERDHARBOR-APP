@@ -67,3 +67,13 @@ test("a configured local operation retains the original dual-write baseline-firs
   assert.ok(body.indexOf("const baselineRefresh") < body.indexOf("if (baselineRefresh?.ok === false)"));
   assert.match(body, /!hasUnsyncedDomainRecords/);
 });
+
+test("a missing local profile always requires full cloud hydration even with a cached revision", () => {
+  const start = cloud.indexOf("const canUseVersionOnlyPrefetch =");
+  const end = cloud.indexOf("const baselineRestorePromise =", start);
+  assert.ok(start >= 0 && end > start);
+  const guard = cloud.slice(start, end);
+  assert.match(guard, /hasConfiguredOperationProfile\\(activeRaw\\)/,
+    "version-only fetch must never treat an empty local onboarding state as a loaded operation");
+  assert.match(guard, /Boolean\\(knownCloudVersion\\)/);
+});
