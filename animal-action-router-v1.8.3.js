@@ -16,6 +16,7 @@
     "breeding",
     "genetics",
     "pedigree",
+    "birth-certificate",
     "show-entry",
     "analytics",
     "print-pedigree",
@@ -30,6 +31,7 @@
     care: "#hh-health-intelligence-modal",
     breeding: "#breeding-form",
     pedigree: "#pedigree-import-form",
+    "birth-certificate": "#birth-certificate-form",
     "show-entry": "#hh-entry-form",
     "print-pedigree": "#print-pedigree-form",
     edit: "#animal-form"
@@ -243,6 +245,15 @@
     return root.HerdHarborApp.openAnimalPedigreePrint(animalId) === true;
   }
 
+  function openBirthCertificate(animalId) {
+    if (typeof root.HerdHarborApp?.openAnimalBirthCertificate !== "function") {
+      toast("Birth Certificate is not available right now.", "error");
+      return false;
+    }
+    root.HerdHarborApp.openAnimalBirthCertificate(animalId);
+    return true;
+  }
+
   function openEditor(animalId) {
     if (typeof root.HerdHarborApp?.openAnimalEditor !== "function") {
       toast("Animal editing is not available right now.", "error");
@@ -317,6 +328,7 @@
     else if (nextAction === "show-entry") launched = openShowEntry(id);
     else if (nextAction === "analytics") launched = openAnalytics(id);
     else if (nextAction === "print-pedigree") launched = openPedigreePrint(id);
+    else if (nextAction === "birth-certificate") launched = openBirthCertificate(id);
     else if (nextAction === "edit") launched = openEditor(id);
 
     if (launched) {
