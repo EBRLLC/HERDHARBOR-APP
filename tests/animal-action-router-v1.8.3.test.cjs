@@ -10,13 +10,14 @@ const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 test('v1.8.3 router owns the migrated animal profile actions', () => {
   assert.equal(Router.VERSION, '1.8.3');
   assert.deepEqual([...Router.DIRECT_ACTIONS], [
-    'weight', 'health', 'episode', 'care', 'breeding', 'genetics', 'pedigree', 'show-entry', 'analytics', 'print-pedigree', 'edit'
+    'weight', 'health', 'episode', 'care', 'breeding', 'genetics', 'pedigree', 'birth-certificate', 'show-entry', 'analytics', 'print-pedigree', 'edit'
   ]);
   for (const action of Router.DIRECT_ACTIONS) assert.equal(Router.canHandle(action), true);
   assert.equal(Router.returnSurfaceFor('weight'), '#health-form');
   assert.equal(Router.returnSurfaceFor('episode'), '#hh-health-intelligence-modal');
   assert.equal(Router.returnSurfaceFor('breeding'), '#breeding-form');
   assert.equal(Router.returnSurfaceFor('pedigree'), '#pedigree-import-form');
+  assert.equal(Router.returnSurfaceFor('birth-certificate'), '#birth-certificate-form');
   assert.equal(Router.returnSurfaceFor('show-entry'), '#hh-entry-form');
   assert.equal(Router.returnSurfaceFor('edit'), '#animal-form');
   assert.equal(Router.returnSurfaceFor('analytics'), '');
@@ -38,6 +39,7 @@ test('direct animal actions no longer depend on opening the legacy profile modal
   assert.doesNotMatch(source, /data-view-animal/);
   assert.doesNotMatch(source, /detail-import-pedigree|detail-print-pedigree|detail-edit|detail-analytics/);
   assert.match(source, /HerdHarborApp\?\.openAnimalPedigreePrint/);
+  assert.match(source, /HerdHarborApp\?\.openAnimalBirthCertificate/);
   assert.match(source, /HerdHarborApp\?\.openAnimalEditor/);
   assert.match(source, /#view-animal-profile\.active \[data-hh-p2-action\]/);
   assert.match(source, /event\.stopImmediatePropagation\(\)/);
@@ -83,11 +85,12 @@ test('PWA shell caches and network-refreshes the v1.8.3 router', () => {
 });
 
 
-test('core runtime exposes narrow canonical edit and pedigree-print entry points for the router', () => {
+test('core runtime exposes narrow canonical edit, pedigree-print, and birth-certificate entry points for the router', () => {
   const appRuntime = read('herdharbor-app-runtime.js');
   const animalProfileRuntime = read('animal-profile-runtime-v1.8.3.js');
   assert.match(appRuntime, /openAnimalEditor:\s*\(animalId\)\s*=>\s*animalProfileRuntime\(\)\.openEditor\(animalId\)/);
   assert.match(appRuntime, /openAnimalPedigreePrint:\s*\(animalId\)\s*=>\s*animalProfileRuntime\(\)\.openPedigreePrint\(animalId\)/);
+  assert.match(appRuntime, /openAnimalBirthCertificate:\s*\(animalId\)\s*=>\s*openBirthCertificateForm\(animalId\)/);
   assert.match(animalProfileRuntime, /function openEditor\(animalId\)/);
   assert.match(animalProfileRuntime, /openAnimalForm\(id\)/);
   assert.match(animalProfileRuntime, /function openPedigreePrint\(animalId\)/);
