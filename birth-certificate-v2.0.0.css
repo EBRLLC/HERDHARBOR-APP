@@ -261,6 +261,26 @@
 }
 
 @media print {
+  body[data-hh-document-type="Birth Certificate"] .hh-doc-page {
+    min-height: 0 !important;
+    height: auto !important;
+    break-after: auto !important;
+    page-break-after: auto !important;
+  }
+
+  body[data-hh-document-type="Birth Certificate"] .hh-doc-body {
+    flex: 0 0 auto;
+    min-height: 0;
+    padding-top: 8px;
+  }
+
+  body[data-hh-document-type="Birth Certificate"] .hh-doc-footer {
+    margin-top: 6px;
+    padding-top: 4px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
   .hh-birth-certificate {
     width: 100%;
     max-width: none;
