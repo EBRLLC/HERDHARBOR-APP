@@ -448,6 +448,7 @@
     if(model.current&&["female","male"].includes(lower(model.animal?.sex))&&!model.quarantined)actions.push(["breeding","Breed","ghost"]);
     if(currentTabs(model).includes("genetics"))actions.push(["genetics","Genetics","ghost"]);
     actions.push(["pedigree","Pedigree","ghost"]);
+    actions.push(["birth-certificate","Create Birth Certificate","ghost"]);
     if(currentTabs(model).includes("shows"))actions.push(["show-entry","Show entry","ghost"]);
     actions.push(["edit","Edit / status","ghost"]);
     return actions.map(([action,label,tone])=>`<button type="button" class="button button-${tone} button-small" data-hh-p2-action="${action}">${esc(label)}</button>`).join("");

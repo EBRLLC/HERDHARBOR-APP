@@ -59,6 +59,13 @@ test("Phase Two exposes deep-link and browser navigation hooks", () => {
   assert.match(phase2, /hashchange/);
 });
 
+test("modern animal profile exposes the Birth Certificate action through the shared router", () => {
+  assert.match(phase2, /\["birth-certificate","Create Birth Certificate","ghost"\]/);
+  const router = fs.readFileSync(path.join(root, "animal-action-router-v1.8.3.js"), "utf8");
+  assert.match(router, /"birth-certificate"/);
+  assert.match(router, /openAnimalBirthCertificate/);
+});
+
 test("Phase Two lifecycle hands edits back to existing core forms", () => {
   assert.match(lifecycle, /#breeding-form/);
   assert.match(lifecycle, /#litter-form/);
