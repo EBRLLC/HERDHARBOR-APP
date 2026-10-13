@@ -111,10 +111,21 @@ test("birth certificate uses the shared A5 document exporter for preview print a
     exporter: Exporter,
     generatedLabel: "Generated 2026-10-03"
   });
-  assert.match(html, /@page \{ size: letter portrait; margin: \.4in; \}/);
+  assert.match(html, /@page \{ size: letter portrait; margin: \.35in; \}/);
+  assert.match(html, /birth-certificate-v2\.0\.0\.css\?v=1/);
   assert.match(html, /data-hh-birth-certificate/);
   assert.match(html, /Print \/ Save PDF/);
   assert.match(html, /Generated 2026-10-03/);
+});
+
+test("print layout constrains branding and animal photo for a one-page certificate", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const css = fs.readFileSync(path.resolve(__dirname, "..", "birth-certificate-v2.0.0.css"), "utf8");
+  assert.match(css, /@media print[\s\S]*\.hh-birth-brand img[\s\S]*width:\s*42px[\s\S]*height:\s*42px/);
+  assert.match(css, /@media print[\s\S]*\.hh-birth-photo[\s\S]*width:\s*72px[\s\S]*height:\s*72px/);
+  assert.match(css, /@media print[\s\S]*\.hh-birth-title[\s\S]*margin:\s*10px 0 8px/);
+  assert.match(css, /@media print[\s\S]*\.hh-birth-details[\s\S]*gap:\s*5px/);
 });
 
 test("controls warn that account contact is not automatically inserted", () => {

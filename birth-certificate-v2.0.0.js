@@ -209,7 +209,8 @@
     return exporter.buildDocumentHtml({
       title: `${clean(animal.name) || "Animal"} Birth Certificate`,
       documentType: "Birth Certificate",
-      page: { pageSize: "letter", orientation: "portrait", margin: ".4in" },
+      page: { pageSize: "letter", orientation: "portrait", margin: ".35in" },
+      stylesheets: ["birth-certificate-v2.0.0.css?v=1"],
       bodyHtml,
       generatedLabel: clean(input.generatedLabel),
       footerLeft: "Created with HerdHarbor",

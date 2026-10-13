@@ -261,13 +261,115 @@
 }
 
 @media print {
-  .hh-birth-certificate,
-  .hh-birth-title,
-  .hh-birth-details,
-  .hh-birth-note,
-  .hh-birth-signature {
+  .hh-birth-certificate {
+    width: 100%;
+    max-width: none;
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  .hh-birth-brand {
+    gap: 8px;
+    padding: 6px 8px;
+    border-left-width: 4px;
+    border-radius: 7px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .hh-birth-brand img {
+    width: 42px;
+    height: 42px;
+    max-width: 42px;
+    max-height: 42px;
+  }
+
+  .hh-birth-brand strong {
+    font-size: 13px;
+  }
+
+  .hh-birth-brand span {
+    font-size: 8px;
+  }
+
+  .hh-birth-brand small {
+    font-size: 7px;
+  }
+
+  .hh-birth-title {
+    gap: 10px;
+    margin: 10px 0 8px;
+    padding-bottom: 7px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .hh-birth-title small {
+    font-size: 8px;
+  }
+
+  .hh-birth-title h2 {
+    margin-top: 2px;
+    font-size: 22px;
+  }
+
+  .hh-birth-photo {
+    width: 72px;
+    height: 72px;
+    max-width: 72px;
+    max-height: 72px;
+  }
+
+  .hh-birth-details {
+    gap: 5px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .hh-birth-field {
+    padding: 5px 7px;
+    border-radius: 5px;
+  }
+
+  .hh-birth-field small {
+    font-size: 7px;
+  }
+
+  .hh-birth-field strong {
+    margin-top: 2px;
+    font-size: 9.5px;
+  }
+
+  .hh-birth-note,
+  .hh-birth-public-reference {
+    margin-top: 7px;
+    padding: 6px 7px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .hh-birth-note small,
+  .hh-birth-public-reference small {
+    font-size: 7px;
+  }
+
+  .hh-birth-note p,
+  .hh-birth-public-reference strong {
+    margin-top: 2px;
+    font-size: 8.5px;
+    line-height: 1.25;
+  }
+
+  .hh-birth-signature {
+    width: 40%;
+    margin-top: 20px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .hh-birth-signature small {
+    margin-top: 3px;
+    font-size: 7px;
   }
 }
 
