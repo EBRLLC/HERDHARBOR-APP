@@ -128,6 +128,15 @@ test("print layout constrains branding and animal photo for a one-page certifica
   assert.match(css, /@media print[\s\S]*\.hh-birth-details[\s\S]*gap:\s*5px/);
 });
 
+test("Birth Certificate print wrapper keeps the shared footer on page one", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const css = fs.readFileSync(path.resolve(__dirname, "..", "birth-certificate-v2.0.0.css"), "utf8");
+  assert.match(css, /body\[data-hh-document-type="Birth Certificate"\] \.hh-doc-page[\s\S]*min-height:\s*0 !important[\s\S]*page-break-after:\s*auto !important/);
+  assert.match(css, /body\[data-hh-document-type="Birth Certificate"\] \.hh-doc-body[\s\S]*flex:\s*0 0 auto/);
+  assert.match(css, /body\[data-hh-document-type="Birth Certificate"\] \.hh-doc-footer[\s\S]*margin-top:\s*6px[\s\S]*page-break-inside:\s*avoid/);
+});
+
 test("controls warn that account contact is not automatically inserted", () => {
   const html = Birth.controlsHtml({});
   assert.match(html, /Email, phone, and exact address are not added here/);
