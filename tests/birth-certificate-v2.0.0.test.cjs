@@ -126,6 +126,17 @@ test("controls warn that account contact is not automatically inserted", () => {
 });
 
 
+test("mobile Birth Certificate controls override global form sizing and remain viewport-safe", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const css = fs.readFileSync(path.resolve(__dirname, "..", "birth-certificate-v2.0.0.css"), "utf8");
+  assert.match(css, /#birth-certificate-form[\s\S]*overflow-x:\s*hidden/);
+  assert.match(css, /\.hh-birth-config fieldset[\s\S]*min-inline-size:\s*0/);
+  assert.match(css, /\.hh-birth-config-grid input\[type="checkbox"\][\s\S]*width:\s*20px[\s\S]*height:\s*20px[\s\S]*padding:\s*0/);
+  assert.match(css, /@media \(max-width:480px\)[\s\S]*grid-template-columns:\s*repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(css, /@media \(max-width:360px\)[\s\S]*grid-template-columns:\s*1fr/);
+});
+
 test("A6 shell loads/caches Birth Certificate after shared exporter", () => {
   const fs = require("node:fs");
   const path = require("node:path");
