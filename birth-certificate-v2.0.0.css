@@ -157,34 +157,79 @@
   font-size: 8px;
 }
 
+#birth-certificate-form,
+#birth-certificate-controls,
+.hh-birth-config {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+#birth-certificate-form {
+  overflow-x: hidden;
+}
+
 .hh-birth-config {
   display: grid;
   gap: 14px;
 }
 
 .hh-birth-config fieldset {
+  min-inline-size: 0;
+  max-width: 100%;
   margin: 0;
   padding: 12px;
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 10px;
+  box-sizing: border-box;
 }
 
 .hh-birth-config-grid {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   display: grid;
   grid-template-columns: repeat(3,minmax(0,1fr));
   gap: 7px;
 }
 
 .hh-birth-config-grid label {
-  min-height: 40px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 44px;
   display: flex;
-  gap: 7px;
+  gap: 8px;
   align-items: center;
-  padding: 6px 8px;
+  padding: 8px 10px;
   background: rgba(13,37,64,.035);
-  border-radius: 7px;
+  border: 1px solid rgba(13,37,64,.06);
+  border-radius: 9px;
+  box-sizing: border-box;
   font-size: .78rem;
   font-weight: 750;
+  line-height: 1.2;
+}
+
+.hh-birth-config-grid input[type="checkbox"] {
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  min-height: 20px;
+  flex: 0 0 20px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--teal);
+  border-radius: 5px;
+  box-shadow: none;
+}
+
+.hh-birth-config-grid label > span {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width:760px) {
@@ -194,6 +239,22 @@
 }
 
 @media (max-width:480px) {
+  .hh-birth-config fieldset {
+    padding: 10px;
+  }
+
+  .hh-birth-config-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 6px;
+  }
+
+  .hh-birth-config-grid label {
+    padding: 8px;
+    font-size: .8rem;
+  }
+}
+
+@media (max-width:360px) {
   .hh-birth-config-grid {
     grid-template-columns: 1fr;
   }
