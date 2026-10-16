@@ -266,6 +266,12 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => null);
+    // The existing reader is validated for rabbit pedigrees only. A dog photo
+    // cannot enter the rabbit importer through an unvalidated species switch.
+    const expectedSpecies = clean(body?.species || "Rabbit", 80).toLowerCase();
+    if (expectedSpecies !== "rabbit") {
+      return fail("unsupported_species", "Canine pedigree AI scanning is not yet validated. Enter your dog pedigree manually.", 422);
+    }
     const mimeType = clean(body?.mimeType, 80).toLowerCase();
     const fileName = clean(body?.fileName, 240) || "paper-pedigree";
     const dataUrl = typeof body?.dataUrl === "string" ? body.dataUrl : "";
@@ -397,6 +403,10 @@ Deno.serve(async (req) => {
     }
 
     const normalized = normalizeResult(parsed, fileName);
+    if (normalized.nodes.some((node) => node.species && node.species.toLowerCase() !== "rabbit")) {
+      await recordMetric(admin, "rejected_output");
+      return fail("unsupported_species", "This image appears to be for another species. Use manual animal entry until this reader is validated for that species.", 422);
+    }
     if (!normalized.nodes.length) {
       await recordMetric(admin, "rejected_output");
       return fail("no_pedigree_detected", "No pedigree animals could be read from that image. Try a clearer, straighter photo.", 422);
