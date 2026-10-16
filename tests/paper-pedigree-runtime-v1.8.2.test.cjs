@@ -44,7 +44,9 @@ test('reviewed source photo uses local attachment storage instead of canonical c
   const ui = read('paper-pedigree-import-v1.8.2.js');
   assert.match(ui, /ATTACHMENT_DB = "herdharbor_attachments_v1"/);
   assert.match(ui, /ATTACHMENT_STORE = "pedigreeDocuments"/);
-  assert.match(ui, /putPedigreeAttachment\(record\.id, preparedImage\)/);
+  assert.match(ui, /await putPedigreeAttachment\(record\.id, file\)/);
+  assert.match(ui, /storedAttachmentId = record\.id/);
+  assert.match(ui, /deletePedigreeAttachment\(storedAttachmentId\)/);
   assert.match(ui, /sourceDataUrl:\s*""/);
   assert.match(ui, /attachmentStored:\s*Boolean\(file\?\.dataUrl\)/);
   assert.doesNotMatch(ui, /sourceDataUrl:\s*file\?\.dataUrl/);
