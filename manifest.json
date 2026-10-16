@@ -3,7 +3,7 @@
   "name": "HerdHarbor",
   "short_name": "HerdHarbor",
   "description": "Farm management for animal records, breeding, health, tasks, sales, reporting, cloud sync, and specialized rabbit workflows.",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
