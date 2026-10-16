@@ -225,6 +225,7 @@
     let lastPreparedPayload = null;
     let requestGeneration = 0;
     let photoDialogActive = false;
+    let photoDialogOwnerId = "";
     let draftOwnerId = "";
     const byId = (id) => root.document?.getElementById(id);
     const sessionUserId = () => String(root.HerdHarborCloud?.getSession?.()?.user?.id || "");
@@ -555,6 +556,7 @@
 
     function open() {
       invalidatePhotoWork();
+      photoDialogOwnerId = sessionUserId();
       photoDialogActive = true;
       selectedFile = null;
       deps.openModal("Photo-assisted entry",
@@ -599,7 +601,11 @@
 
     // The cloud layer emits this when an authenticated account changes or
     // signs out. Never retain a prepared image across that boundary.
-    const onPhotoAuthBoundary = () => {
+    const onPhotoAuthBoundary = (event) => {
+      // An ordinary same-user session update must not discard a prepared
+      // review. Early auth-boundary signals still invalidate unconditionally.
+      if (event?.type === "herdharbor:auth-session" &&
+          photoDialogOwnerId && photoDialogOwnerId === sessionUserId()) return;
       // Any auth boundary/refresh invalidates running work, including image
       // preparation before lastPreparedPayload exists. A→B→A cannot reuse
       // old consent or revive a stale in-flight upload.

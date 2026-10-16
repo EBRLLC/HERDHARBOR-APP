@@ -47,6 +47,7 @@
   let observer = null;
   let generation = 0;
   let dialogActive = false;
+  let dialogOwnerId = "";
   let reviewedAttempt = null;
   let commitPending = false;
   const sessionUserId = () => String(cloud()?.getSession?.()?.user?.id || "");
@@ -502,9 +503,30 @@
       }, 700);
       return true;
     } catch (error) {
-      if (storedAttachmentId) await deletePedigreeAttachment(storedAttachmentId).catch(() => {});
+      let cleanupFailure = null;
+      if (storedAttachmentId) {
+        // Attachment deletion is best-effort but must never be silent. Retry
+        // transient IndexedDB failures, then alert the member when a local
+        // orphan may remain. Never claim an aborted import succeeded.
+        for (let retry = 0; retry < 2; retry += 1) {
+          try {
+            await deletePedigreeAttachment(storedAttachmentId);
+            cleanupFailure = null;
+            break;
+          } catch (cause) {
+            cleanupFailure = cause;
+          }
+        }
+      }
+      if (cleanupFailure) {
+        root.console?.warn?.("herdharbor_pedigree_attachment_cleanup_failed", cleanupFailure);
+      }
       if (isCurrentAttempt(attempt)) {
-        setStatus(error?.message || "The reviewed pedigree could not be imported.", "error");
+        const reason = error?.message || "The reviewed pedigree could not be imported.";
+        const cleanupWarning = cleanupFailure
+          ? " The temporary image could not be removed from this device. Your farm records were not imported; contact HerdHarbor support before clearing local app data."
+          : "";
+        setStatus(reason + cleanupWarning, "error");
       }
       return false;
     } finally {
@@ -522,6 +544,7 @@
     }
     const dialog = ensureDialog();
     reset();
+    dialogOwnerId = sessionUserId();
     dialogActive = true;
     dialog.innerHTML = `<div class="hh-pp-shell">
       <header class="hh-pp-head"><div><small class="muted">HerdHarbor paper pedigree</small><h2>Import pedigree from a photo</h2></div><button type="button" class="button button-ghost" data-pp-close>Close</button></header>
@@ -614,7 +637,12 @@
     }
   }
 
-  const onPaperAuthBoundary = () => {
+  const onPaperAuthBoundary = (event) => {
+    // A hydrated event for the SAME account is not a logout. Preserve the
+    // member's corrected review on routine token refresh. Immediate true
+    // boundaries always invalidate (including A→B→A in quick succession).
+    if (event?.type === "herdharbor:auth-session" &&
+        dialogOwnerId && dialogOwnerId === sessionUserId()) return;
     // Invalidate even an image still decoding, where no prepared payload
     // exists yet; A→B→A must not revive old consent.
     if (!dialogActive) return;

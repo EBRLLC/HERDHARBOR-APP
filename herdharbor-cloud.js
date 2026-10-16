@@ -3834,9 +3834,16 @@
     // the existing auth-session event may be delayed by cloud recovery.
     // AI capture jobs must be invalidated on every authentication boundary
     // (including A→B→A), even if userId later returns to its original value.
-    if (["SIGNED_IN","SIGNED_OUT","PASSWORD_RECOVERY","TOKEN_REFRESHED","USER_UPDATED"].includes(event)) {
+    const currentUserId = String(session?.user?.id || "");
+    const incomingUserId = String(activeSession?.user?.id || "");
+    // Same-account token refreshes are not account boundaries. Preserve any
+    // human-edited photo review through a routine credential refresh, but
+    // immediately fence account switches and sign-out before async hydration.
+    const accountChanged = incomingUserId !== currentUserId;
+    if (["SIGNED_IN","SIGNED_OUT","PASSWORD_RECOVERY"].includes(event) ||
+        (["TOKEN_REFRESHED","USER_UPDATED"].includes(event) && accountChanged)) {
       document.dispatchEvent(new CustomEvent("herdharbor:auth-boundary", {
-        detail: { event }
+        detail: { event, previousUserId: currentUserId, nextUserId: incomingUserId }
       }));
     }
     if (event === "PASSWORD_RECOVERY") {
