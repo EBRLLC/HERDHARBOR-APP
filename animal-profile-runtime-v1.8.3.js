@@ -318,11 +318,6 @@
           }
           data.canine = checked.value;
           const candidate = { ...(id ? (liveState.animals || []).find(item => item.id === id) : {}), ...data, id: id || "__new_dog__" };
-          const lineage = canineLineage?.validate?.(liveState.animals || [], candidate);
-          if (!lineage?.valid) {
-            deps.toast((lineage?.issues || ["Canine parentage validation is unavailable."]).join(" "), "error");
-            return;
-          }
         }
         if (String(data.species || "").trim().toLowerCase() !== "cattle") {
           data.earTagNumber = "";
@@ -353,13 +348,25 @@
         data.photoData = pendingPhotoData;
         data.photoFileName = pendingPhotoFileName;
 
+        // Enforce child/parent integrity for every edit, not just Dog saves.
+        const previousAnimal = id ? (liveState.animals || []).find((record) => record.id === id) : null;
+        const proposedAnimal = { ...(previousAnimal || {}), ...data, id: id || "__new_dog__" };
+        const mutationCheck = canineLineage?.validateMutation?.(liveState.animals || [], proposedAnimal);
+        if (!mutationCheck?.valid) {
+          deps.toast((mutationCheck?.issues || ["Animal relationship validation is unavailable."]).join(" "), "error");
+          return;
+        }
+
         if (id) {
           const currentAnimal = (liveState.animals || []).find((record) => record.id === id);
           if (!currentAnimal) return;
           const nextAnimal = { ...currentAnimal, ...data, updatedAt: new Date().toISOString() };
+          const leavingDog = canineIdentity?.isDog(currentAnimal) && !canineIdentity?.isDog(nextAnimal);
+          if (leavingDog) delete nextAnimal.canine;
           const nextAnimals = liveState.animals.map((item) => item.id === id ? nextAnimal : item);
           if (!deps.allowsAnimalTransition(liveState.animals, nextAnimals)) return;
           const original = { ...currentAnimal };
+          if (leavingDog) delete currentAnimal.canine;
           Object.assign(currentAnimal, nextAnimal);
           deps.rememberBreed(data.species, data.breed);
           deps.recordActivity(`Updated ${data.name}.`, "animal");
@@ -391,6 +398,11 @@
         if (!currentAnimal) return;
         if ((liveState.sales || []).some((sale) => (sale.items || []).some((item) => item.animalId === id))) {
           deps.toast("This animal is connected to a sale record. Keep the animal for invoices, transfers, and buyer history.", "error");
+          return;
+        }
+        const deleteCheck = canineLineage?.validateDeletion?.(liveState.animals || [], id);
+        if (!deleteCheck?.valid) {
+          deps.toast((deleteCheck?.issues || ["Animal deletion could break parentage."]).join(" "), "error");
           return;
         }
         if (!root.confirm?.(`Delete ${currentAnimal.name}? This cannot be undone.`)) return;
