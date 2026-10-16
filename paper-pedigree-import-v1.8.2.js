@@ -156,7 +156,8 @@
     extraction = null;
     reviewedAttempt = null;
     reviewConfirmed = false;
-    commitPending = false;
+    // Commit ownership belongs to commitReviewedPedigree's finally block.
+    // Closing a dialog must not make a pending asynchronous import reentrant.
   }
 
   function setStatus(message, type = "") {
@@ -515,6 +516,10 @@
 
   function open() {
     if (!core() || !app()) return;
+    if (commitPending) {
+      app()?.toast?.("A pedigree import is still finishing. Try again after it completes.", "error");
+      return false;
+    }
     const dialog = ensureDialog();
     reset();
     dialogActive = true;
