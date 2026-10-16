@@ -246,6 +246,12 @@ Deno.serve(async (req) => {
     const contentLength = Number(req.headers.get("content-length") || 0);
     if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) return fail("image_too_large", "That photo is too large to analyze. Resize it and try again.", 413);
     const body = await req.json().catch(() => null);
+    // Confirm explicit consent to send this image to the optional provider on
+    // every request, even for allowlisted testers. Client flags are not access
+    // credentials; the server eligibility gate above is still mandatory.
+    if (body?.aiOptIn !== true)
+      return fail("consent_required", "Choose to send this photo to the optional AI reader before uploading. Manual entry remains available.", 403);
+
     const mimeType = clean(body?.mimeType, 80).toLowerCase();
     const fileName = clean(body?.fileName, 240) || "record-photo";
     const dataUrl = typeof body?.dataUrl === "string" ? body.dataUrl : "";
