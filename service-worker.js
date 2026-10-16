@@ -11,7 +11,7 @@ const REQUIRED_SHELL = [
   "./herdharbor-index-shell.css?v=1",
   "./analytics-v1.6.1.css?v=2",
   "./vendor/supabase-2.111.0.js",
-  "./herdharbor-optional-tools.js?v=2",
+  "./herdharbor-optional-tools.js?v=3",
   "./herdharbor-build.js?v=2.0.1",
   "./herdharbor-state-store-v1.8.4.js?v=2",
   "./herdharbor-release-v1.6.1.js?v=2",
