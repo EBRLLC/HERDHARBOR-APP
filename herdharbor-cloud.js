@@ -3830,6 +3830,15 @@
   }
 
   client.auth.onAuthStateChange((event, activeSession) => {
+    // Emit synchronously, before asynchronous identity/account hydration:
+    // the existing auth-session event may be delayed by cloud recovery.
+    // AI capture jobs must be invalidated on every authentication boundary
+    // (including A→B→A), even if userId later returns to its original value.
+    if (["SIGNED_IN","SIGNED_OUT","PASSWORD_RECOVERY","TOKEN_REFRESHED","USER_UPDATED"].includes(event)) {
+      document.dispatchEvent(new CustomEvent("herdharbor:auth-boundary", {
+        detail: { event }
+      }));
+    }
     if (event === "PASSWORD_RECOVERY") {
       recoveryMode = true;
       session = activeSession;
