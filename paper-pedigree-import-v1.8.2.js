@@ -47,6 +47,7 @@
   let observer = null;
   let generation = 0;
   let dialogActive = false;
+  let dialogOwnerId = "";
   let reviewedAttempt = null;
   let commitPending = false;
   const sessionUserId = () => String(cloud()?.getSession?.()?.user?.id || "");
@@ -522,6 +523,7 @@
     }
     const dialog = ensureDialog();
     reset();
+    dialogOwnerId = sessionUserId();
     dialogActive = true;
     dialog.innerHTML = `<div class="hh-pp-shell">
       <header class="hh-pp-head"><div><small class="muted">HerdHarbor paper pedigree</small><h2>Import pedigree from a photo</h2></div><button type="button" class="button button-ghost" data-pp-close>Close</button></header>
@@ -614,7 +616,12 @@
     }
   }
 
-  const onPaperAuthBoundary = () => {
+  const onPaperAuthBoundary = (event) => {
+    // A hydrated event for the SAME account is not a logout. Preserve the
+    // member's corrected review on routine token refresh. Immediate true
+    // boundaries always invalidate (including A→B→A in quick succession).
+    if (event?.type === "herdharbor:auth-session" &&
+        dialogOwnerId && dialogOwnerId === sessionUserId()) return;
     // Invalidate even an image still decoding, where no prepared payload
     // exists yet; A→B→A must not revive old consent.
     if (!dialogActive) return;
