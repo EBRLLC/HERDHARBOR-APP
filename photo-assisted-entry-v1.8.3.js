@@ -600,16 +600,15 @@
     // The cloud layer emits this when an authenticated account changes or
     // signs out. Never retain a prepared image across that boundary.
     root.document?.addEventListener?.("herdharbor:auth-session", () => {
-      if (lastPreparedPayload && !isCurrentAttempt(lastPreparedPayload.__hhAttempt)) {
-        invalidatePhotoWork();
-        const host = byId("photo-entry-review");
-        if (host) host.innerHTML = "";
-      }
-      if (reviewed && draftOwnerId && draftOwnerId !== sessionUserId()) {
-        invalidatePhotoWork();
-        const host = byId("photo-entry-review");
-        if (host) host.innerHTML = "";
-      }
+      // Any auth boundary/refresh invalidates running work, including image
+      // preparation before lastPreparedPayload exists. A→B→A cannot reuse
+      // old consent or revive a stale in-flight upload.
+      if (!photoDialogActive) return;
+      invalidatePhotoWork();
+      const host = byId("photo-entry-review");
+      if (host) host.innerHTML = "";
+      const consent = byId("photo-entry-consent");
+      if (consent) consent.checked = false;
     });
     root.addEventListener?.("online", () => { void resumePendingAnalysis("online"); });
     root.addEventListener?.("pageshow", () => { void resumePendingAnalysis("pageshow"); });

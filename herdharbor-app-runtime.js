@@ -3720,8 +3720,21 @@
     applyVerifiedCloudState,
     commitState: (next, message = "") => {
       if (!next || typeof next !== "object") return false;
+      if (next === state) return saveState(message);
+      // The canonical store may reject a write (quota/storage failure).
+      // A rejected commit must not leave an unpersisted replacement active.
+      const previousState = state;
       state = next;
-      return saveState(message);
+      try {
+        if (saveState(message) !== true) {
+          state = previousState;
+          return false;
+        }
+        return true;
+      } catch (error) {
+        state = previousState;
+        return false;
+      }
     },
     refresh: () => renderCurrentView(),
     toast,
