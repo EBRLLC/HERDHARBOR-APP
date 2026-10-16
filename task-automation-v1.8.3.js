@@ -25,6 +25,14 @@
   function animalName(state, animalId) {
     return array(state, "animals").find((animal) => String(animal.id) === String(animalId))?.name || "Unknown animal";
   }
+  function dogFor(state, animalId) {
+    const animal = array(state,"animals").find(record=>String(record.id)===String(animalId));
+    return String(animal?.species || "").trim().toLowerCase()==="dog" ? animal : null;
+  }
+  function historicalDog(state, animalId) {
+    const animal=dogFor(state,animalId);
+    return Boolean(animal)&&["sold","deceased","archived","ancestor only"].includes(String(animal.status||"").trim().toLowerCase());
+  }
 
   function birthLiveRemaining(litter = {}) {
     const count = (value) => Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -54,7 +62,7 @@
   }
 
   function breedingDefinitions(state, breeding = {}) {
-    if (!breeding.id) return [];
+    if (!breeding.id || dogFor(state,breeding.femaleId) || dogFor(state,breeding.maleId)) return [];
     return [{
       id: workflowTaskId("breeding", breeding.id, "breeding-follow-up"),
       title: "Breeding follow-up: " + animalName(state, breeding.femaleId),
@@ -72,7 +80,7 @@
   }
 
   function litterDefinitions(state, litter = {}) {
-    if (!litter.id) return [];
+    if (!litter.id || dogFor(state,litter.damId)) return [];
     return [{
       id: workflowTaskId("birth", litter.id, "litter-follow-up"),
       title: "Litter follow-up: " + animalName(state, litter.damId),
@@ -90,7 +98,7 @@
   }
 
   function healthDefinition(state, record = {}) {
-    if (!record.id) return null;
+    if (!record.id || historicalDog(state,record.animalId)) return null;
     const type = clean(record.type);
     const reminderType = type === "Medication"
       ? "medication-follow-up"
@@ -105,7 +113,7 @@
     const recurrence = recurrenceFor(record);
     return {
       id: workflowTaskId("health", record.id, reminderType),
-      title: label + ": " + animalName(state, record.animalId),
+      title: label + ": " + animalName(state, record.animalId) + (dogFor(state,record.animalId) ? " (Dog)" : ""),
       category: "Health",
       dueDate: clean(record.followUpDate),
       animalId: clean(record.animalId),
