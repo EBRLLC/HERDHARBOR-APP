@@ -107,27 +107,36 @@
       if(id(before.sireId)||id(before.damId))
         problems.push("This animal has linked parents. Reconcile parentage before changing its species.");
     }
-    // These children may be non-dogs from historical import. Do not silently
-    // rewrite any persisted records on a parent edit.
+    // A pre-existing livestock record may have an unknown or incomplete sex.
+    // An unrelated name/status edit must not retroactively enforce canine-only
+    // parent semantics on rabbits, goats or other established species.
+    const sexChanged=Boolean(before)&&lower(before.sex)!==lower(proposed?.sex);
+    const lineageChanged=!before || ["species","sex","sireId","damId","userId","ownerId","accountId"]
+      .some(field=>lower(before?.[field])!==lower(proposed?.[field]));
+    const updated=lineageChanged
+      ? (before ? list.map(row=>id(row?.id)===proposedId?proposed:row) : [...list,proposed])
+      : list;
     for(const child of children) {
-      const relation=id(child.sireId)===proposedId?"sire":"dam";
-      const requiredSex=relation==="sire"?"male":"female";
-      if(lower(proposed?.sex)!==requiredSex)
-        problems.push("Cannot change sex: existing "+relation+" references require "+requiredSex+".");
-      if(isDog(child)&&!willBeDog)
-        problems.push("Cannot change species: existing dog pedigrees reference this Dog parent.");
-      if(isDog(child)&&willBeDog) {
-        const updated=list.map(row=>id(row.id)===proposedId?proposed:row);
+      const roles=[["sireId","male"],["damId","female"]]
+        .filter(([field])=>id(child[field])===proposedId);
+      for(const [field,requiredSex] of roles) {
+        // Only a changed sex can introduce an invalid relationship. Historical
+        // Unknown sex values are tolerated until the owner actually edits sex.
+        if(sexChanged && lower(proposed?.sex)!==requiredSex)
+          problems.push("Cannot change sex: existing "+field+" references require "+requiredSex+".");
+        if(isDog(child) && isTransition && !willBeDog)
+          problems.push("Cannot change species: existing dog pedigrees reference this Dog parent.");
+      }
+      if(isDog(child) && willBeDog && lineageChanged) {
         const childCheck=validate(updated,child);
-        if(!childCheck.valid)problems.push(...childCheck.issues);
+        if(!childCheck.valid) problems.push(...childCheck.issues);
       }
     }
-    if(willBeDog) {
-      const updated=list.some(row=>id(row?.id)===proposedId)
-        ?list.map(row=>id(row?.id)===proposedId?proposed:row)
-        :[...list,proposed];
+    // Existing invalid/incomplete dog ancestry is not silently corrected by
+    // an unrelated edit. Check the graph when identity/links change or on create.
+    if(willBeDog && lineageChanged) {
       const check=validate(updated,proposed);
-      if(!check.valid)problems.push(...check.issues);
+      if(!check.valid) problems.push(...check.issues);
     }
     return {valid:problems.length===0,issues:[...new Set(problems)]};
   }
