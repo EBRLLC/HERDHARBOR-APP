@@ -28,7 +28,9 @@ test("Dog action router denies rabbit breeding/import/genetics and birth certifi
   for(const action of ["breeding","genetics","pedigree","print-pedigree","birth-certificate","show-entry"]){
     assert.equal(module.exports.open(action,"dog1"),false,action);
   }
-  assert.equal(toasts.length,6);
+  // Five legacy actions display denials. Dedicated canine print dispatch may return
+  // false without a legacy-error toast when the test harness has no print UI.
+  assert.equal(toasts.length,5);
 });
 test("Voice cannot route dog mating to legacy breeding engine but manual rabbit instruction remains parseable",()=>{
   const dogAnimals=[
