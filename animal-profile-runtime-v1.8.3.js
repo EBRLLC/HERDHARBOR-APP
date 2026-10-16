@@ -398,30 +398,28 @@
 
       $("#delete-animal")?.addEventListener("click", () => {
         const liveState = stateNow();
-        const currentAnimal = (liveState.animals || []).find((record) => record.id === id);
+        const currentAnimal = (liveState.animals || []).find(record => record.id === id);
         if (!currentAnimal) return;
-        if ((liveState.sales || []).some((sale) => (sale.items || []).some((item) => item.animalId === id))) {
-          deps.toast("This animal is connected to a sale record. Keep the animal for invoices, transfers, and buyer history.", "error");
-          return;
-        }
-        const deleteCheck = canineLineage?.validateDeletion?.(liveState.animals || [], id);
+        // Reject deletion of a linked animal instead of silently removing
+        // health, breeding, litter or pedigree history. Archive is available.
+        const deleteCheck = canineLineage?.validateDeletion?.(liveState.animals || [], id, liveState);
         if (!deleteCheck?.valid) {
-          deps.toast((deleteCheck?.issues || ["Animal deletion could break parentage."]).join(" "), "error");
+          deps.toast((deleteCheck?.issues || ["Animal dependency validation is unavailable."]).join(" "), "error");
           return;
         }
         if (!root.confirm?.(`Delete ${currentAnimal.name}? This cannot be undone.`)) return;
-        const removedBreedingIds = (liveState.breedings || [])
-          .filter((record) => record.femaleId === id || record.maleId === id)
-          .map((record) => record.id);
-        removedBreedingIds.forEach((breedingId) => deps.completeWorkflowTasks("breeding", breedingId));
-        liveState.animals = (liveState.animals || []).filter((record) => record.id !== id);
-        liveState.breedings = (liveState.breedings || []).filter((record) => record.femaleId !== id && record.maleId !== id);
-        liveState.health = (liveState.health || []).filter((record) => record.animalId !== id);
-        liveState.pedigrees = (liveState.pedigrees || []).filter((record) => record.subjectAnimalId !== id);
-        liveState.pedigreeDrafts = (liveState.pedigreeDrafts || []).filter((record) => record.subjectAnimalId !== id);
-        liveState.tasks = (liveState.tasks || []).map((task) => task.animalId === id ? { ...task, animalId: "" } : task);
+        // Only an unreferenced animal reaches this branch. Keep a snapshot so
+        // failed durable writes cannot leave the active in-memory state deleted.
+        const previousAnimals = liveState.animals;
+        const previousActivity = Array.isArray(liveState.activity) ? liveState.activity.slice() : liveState.activity;
+        liveState.animals = previousAnimals.filter(record => record.id !== id);
         deps.recordActivity(`Deleted ${currentAnimal.name}.`, "animal");
-        deps.saveState("Animal deleted.");
+        if (!deps.saveState("Animal deleted.")) {
+          liveState.animals = previousAnimals;
+          liveState.activity = previousActivity;
+          deps.toast("Deletion was not saved. The animal remains in your records.", "error");
+          return;
+        }
         deps.closeModal();
         deps.renderCurrentView();
       });

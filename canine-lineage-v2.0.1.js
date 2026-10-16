@@ -140,16 +140,44 @@
     }
     return {valid:problems.length===0,issues:[...new Set(problems)]};
   }
-  function validateDeletion(animals, animalId) {
-    const target=id(animalId);
-    const dependents=(Array.isArray(animals)?animals:[]).filter(row=>
-      id(row?.id)!==target && (id(row?.sireId)===target||id(row?.damId)===target));
-    return dependents.length
-      ?{valid:false,issues:["This animal is referenced as a parent by "+dependents.length+
-        " other animal(s). Keep it as Ancestor Only or reassign their parent references before deleting."]}
-      :{valid:true,issues:[]};
+  // Deletion must be safe for all animal species, not only Dog pedigrees.
+  // Existing records may be referenced by litter and pedigree snapshots even
+  // when there are no live offspring Animal profiles.
+  function validateDeletion(animals, animalId, state = {}) {
+    const target=id(animalId), issues=[];
+    if(!target)return {valid:false,issues:["Choose a saved animal before deleting."]};
+    const list=Array.isArray(animals)?animals:[];
+    const children=list.filter(row=>id(row?.id)!==target &&
+      (id(row?.sireId)===target||id(row?.damId)===target));
+    if(children.length)issues.push("This animal appears as a parent in "+children.length+" animal profile(s).");
+    const relationKeys=["animalId","subjectAnimalId","damId","sireId","femaleId","maleId",
+      "fatherId","motherId","parentId","subjectId"];
+    const linked=(record)=>{
+      if(!record||typeof record!=="object")return false;
+      if(relationKeys.some(key=>id(record[key])===target))return true;
+      if(Object.values(record.ancestorIds||{}).some(value=>id(value)===target))return true;
+      if(["animalIds","offspringIds","kitIds","childIds","parentIds"].some(key=>
+        Array.isArray(record[key])&&record[key].some(value=>id(value)===target)))return true;
+      if(Array.isArray(record.items)&&record.items.some(item=>
+        item&&typeof item==="object"&&relationKeys.some(key=>id(item[key])===target)))return true;
+      return false;
+    };
+    const collections=[
+      ["breedings","breeding"],["litters","litter"],["births","birth"],
+      ["health","health"],["pedigrees","pedigree"],["pedigreeDrafts","pedigree draft"],
+      ["tasks","task"],["sales","sale"],["payments","payment"],
+      ["transfers","transfer"],["transactions","transaction"],
+      ["productionRecords","production"],["customers","customer"],
+      ["ownershipTransfers","ownership transfer"],["showEntries","show"],
+      ["showResults","show result"],["medical","medical"],["weights","weight"]
+    ];
+    for(const [key,label] of collections) {
+      const count=(Array.isArray(state?.[key])?state[key]:[]).filter(linked).length;
+      if(count)issues.push("This animal is linked to "+count+" "+label+" record(s).");
+    }
+    if(issues.length)issues.push("Keep this animal as Archived or Ancestor Only, or reconcile the linked records before deletion.");
+    return {valid:issues.length===0,issues};
   }
-
   function parentOptions(animals,subject,field){
     if(!isDog(subject))return [];
     const wanted=field==="sireId"?"male":field==="damId"?"female":"";

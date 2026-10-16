@@ -98,7 +98,9 @@ test("composition runtime delegates animal behavior instead of retaining a secon
 test("extracted runtime uses injected canonical state and creates no parallel persistence store", () => {
   assert.match(extractedSource, /const stateNow = \(\) => deps\.getState\(\) \|\| \{\}/);
   assert.match(extractedSource, /liveState\.animals\.push\(newAnimal\)/);
-  assert.match(extractedSource, /liveState\.animals = \(liveState\.animals \|\| \[\]\)\.filter/);
+  assert.match(extractedSource, /liveState\.animals = previousAnimals\.filter/);
+  assert.match(extractedSource, /liveState\.animals = previousAnimals;/);
+  assert.match(extractedSource, /liveState\.activity = previousActivity;/);
   assert.match(extractedSource, /deps\.saveState\("Animal added\."\)/);
   assert.match(extractedSource, /deps\.saveState\("Animal updated\."\)/);
   assert.match(extractedSource, /deps\.saveState\("Animal deleted\."\)/);
@@ -126,12 +128,12 @@ test("animal filter behavior remains search/species/sex/status compatible", () =
 test("animal create/edit/delete still pass through membership and integrity contracts", () => {
   assert.match(extractedSource, /deps\.allowsAnimalTransition\(liveState\.animals, nextAnimals\)/);
   assert.match(extractedSource, /deps\.allowsAnimalTransition\(liveState\.animals \|\| \[\], \[\.\.\.\(liveState\.animals \|\| \[\]\), newAnimal\]\)/);
-  assert.match(extractedSource, /sale record\. Keep the animal for invoices, transfers, and buyer history/);
-  assert.match(extractedSource, /deps\.completeWorkflowTasks\("breeding", breedingId\)/);
-  assert.match(extractedSource, /liveState\.breedings = .*femaleId !== id && record\.maleId !== id/);
-  assert.match(extractedSource, /liveState\.health = .*record\.animalId !== id/);
-  assert.match(extractedSource, /liveState\.pedigrees = .*record\.subjectAnimalId !== id/);
-  assert.match(extractedSource, /liveState\.tasks = .*task\.animalId === id \? \{ \.\.\.task, animalId: "" \}/);
+  // The old destructive cascade is replaced by dependency-preserving deletion.
+  assert.match(extractedSource, /canineLineage\?\.validateDeletion\?\.\(liveState\.animals \|\| \[\], id, liveState\)/);
+  assert.match(extractedSource, /if \(!deps\.saveState\("Animal deleted\."\)\)/);
+  assert.match(extractedSource, /liveState\.animals = previousAnimals;/);
+  assert.doesNotMatch(extractedSource, /liveState\.health = .*record\.animalId !== id/);
+  assert.doesNotMatch(extractedSource, /liveState\.pedigrees = .*record\.subjectAnimalId !== id/);
 });
 
 test("Phase 3 modern profile and shared animal-action router remain authoritative", () => {
