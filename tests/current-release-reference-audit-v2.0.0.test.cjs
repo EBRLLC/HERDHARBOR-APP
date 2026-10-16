@@ -121,8 +121,8 @@ test("current release workflows are stable 2.0.0 workflows", () => {
     ".github/workflows/v1.8.4-production-acceptance.yml"
   ]) assert.equal(exists(p), false, p);
   const ci = read(".github/workflows/v2.0.0-ci.yml");
-  assert.match(ci, /HerdHarbor@2\.0\.0/);
-  assert.match(ci, /versionName "2\.0\.0"/);
-  assert.match(ci, /versionCode 19/);
+  assert.match(ci, /HerdHarbor@2\.0\.1/);
+  assert.match(ci, /versionName "2\.0\.1"/);
+  assert.match(ci, /versionCode 20/);
   assert.match(ci, /release-2\.0\.0-phase-\*/);
 });
