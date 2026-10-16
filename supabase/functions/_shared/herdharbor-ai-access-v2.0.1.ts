@@ -24,7 +24,8 @@ export function decideAiAccess({userId,feature,account,env}: AiPolicyConfig): Ai
   const tier = normalize(account.membership_tier);
   if (!recognizedTiers.has(tier)) return {allowed:false,reason:"account_ineligible"};
   const testers = (env("HH_AI_TESTER_USER_IDS") || "").split(",").map(s=>s.trim()).filter(Boolean);
-  if (testers.includes(userId)) return {allowed:true,reason:"tester"};
+  // Junior access is blocked even for testers until age/privacy policy approval.
+  if (tier !== "junior" && testers.includes(userId)) return {allowed:true,reason:"tester"};
   // Public release requires both an explicit server flip and an owner-approved
   // tier matrix, never a version bump, browser localStorage or request payload.
   const publicEnabled = feature === "paper_pedigree" ? env("HH_AI_PAPER_PUBLIC_ENABLED") : env("HH_AI_PHOTO_PUBLIC_ENABLED");
