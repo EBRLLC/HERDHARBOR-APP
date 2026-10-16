@@ -434,7 +434,13 @@
   }
 
   async function commitReviewedPedigree() {
-    const confirm = root.document.querySelector(`#${DIALOG_ID} [data-pp-confirm-review]`);
+    if (commitPending) return false;
+    const attempt = reviewedAttempt;
+    if (!isReviewedAttempt()) {
+      setStatus("This photo review is no longer current. Read the selected photo again.", "error");
+      return false;
+    }
+    const confirm = getDialog()?.querySelector("[data-pp-confirm-review]");
     if (!confirm?.checked || reviewConfirmed !== true) {
       return setStatus("Confirm that you reviewed the extracted pedigree draft before importing.", "error");
     }
@@ -448,28 +454,45 @@
     const plan = core().buildImportPlan(current, asCoreExtraction(reviewed));
     if (renderPlanProblems(plan) || !plan.canCommit) {
       setStatus("Resolve the pedigree items listed above before importing.", "error");
-      return;
+      return false;
     }
-    const commitButton = root.document.querySelector(`#${DIALOG_ID} [data-pp-commit]`);
+    const commitButton = getDialog()?.querySelector("[data-pp-commit]");
+    const readButton = getDialog()?.querySelector("[data-pp-read]");
+    commitPending = true;
     if (commitButton) commitButton.disabled = true;
+    if (readButton) readButton.disabled = true;
     let storedAttachmentId = "";
     try {
       const applied = core().applyImportPlan(current, plan);
-      const subject = applied.state.animals.find((row) => String(row.id) === String(applied.subjectAnimalId));
+      const subject = applied.state.animals.find(row => String(row.id) === String(applied.subjectAnimalId));
       if (subject && String(subject.status || "").toLowerCase().includes("ancestor")) subject.status = "Active";
-      const record = makePedigreeRecord(applied.state, { ...applied, plan }, reviewed, preparedImage);
-      if (preparedImage?.dataUrl) {
-        await putPedigreeAttachment(record.id, preparedImage);
+      const file = preparedImage;
+      const record = makePedigreeRecord(applied.state, { ...applied, plan }, reviewed, file);
+      if (file?.dataUrl) {
+        // Record the cleanup key before I/O; a failed or aborted transaction
+        // must not leave a committed attachment without a pedigree record.
         storedAttachmentId = record.id;
+        await putPedigreeAttachment(record.id, file);
       }
+      if (!isCurrentAttempt(attempt) || reviewedAttempt !== attempt || app()?.getState?.() !== current)
+        throw new Error("The selected photo, account or farm data changed. Import cancelled.");
       const saved = app().commitState(applied.state, "Paper pedigree imported.");
-      if (saved === false) throw new Error("HerdHarbor could not save the reviewed pedigree.");
+      if (saved !== true) throw new Error("HerdHarbor could not save the reviewed pedigree.");
       setStatus("Paper pedigree imported successfully.", "success");
-      root.setTimeout(() => ensureDialog().close(), 700);
+      root.setTimeout(() => {
+        if (getDialog()?.open && isCurrentAttempt(attempt)) getDialog().close();
+      }, 700);
+      return true;
     } catch (error) {
       if (storedAttachmentId) await deletePedigreeAttachment(storedAttachmentId).catch(() => {});
-      setStatus(error?.message || "The reviewed pedigree could not be imported.", "error");
-      if (commitButton) commitButton.disabled = false;
+      if (isCurrentAttempt(attempt)) {
+        setStatus(error?.message || "The reviewed pedigree could not be imported.", "error");
+      }
+      return false;
+    } finally {
+      commitPending = false;
+      if (commitButton && isCurrentAttempt(attempt)) commitButton.disabled = false;
+      if (readButton && isCurrentAttempt(attempt)) readButton.disabled = false;
     }
   }
 
@@ -477,6 +500,7 @@
     if (!core() || !app()) return;
     const dialog = ensureDialog();
     reset();
+    dialogActive = true;
     dialog.innerHTML = `<div class="hh-pp-shell">
       <header class="hh-pp-head"><div><small class="muted">HerdHarbor paper pedigree</small><h2>Import pedigree from a photo</h2></div><button type="button" class="button button-ghost" data-pp-close>Close</button></header>
       <div class="hh-pp-body">
@@ -494,9 +518,21 @@
       </div>
       <footer class="hh-pp-foot"><button type="button" class="button button-ghost" data-pp-close>Cancel</button><button type="button" class="button button-primary" data-pp-commit disabled>Review complete — import pedigree</button></footer>
     </div>`;
-    dialog.querySelectorAll("[data-pp-close]").forEach((button) => button.addEventListener("click", () => dialog.close()));
+    dialog.querySelectorAll("[data-pp-close]").forEach((button) => button.addEventListener("click", () => {
+      dialogActive = false;
+      invalidateWork();
+      dialog.close();
+    }));
+    dialog.querySelector("[data-pp-ai-optin]")?.addEventListener("change", (event) => {
+      if (event.currentTarget?.checked) return;
+      invalidateWork();
+      setStatus("AI processing cancelled. Manual pedigree entry remains available.");
+    });
     dialog.querySelector("[data-pp-file]")?.addEventListener("change", async (event) => {
+      invalidateWork();
       selectedFile = event.target.files?.[0] || null;
+      const previewGeneration = generation;
+      const previewFile = selectedFile;
       // Consent is image-specific. Selecting a new file requires a fresh choice.
       const optIn = dialog.querySelector("[data-pp-ai-optin]");
       if (optIn) optIn.checked = false;
@@ -514,12 +550,14 @@
       if (commit) commit.disabled = true;
       if (!selectedFile) return;
       try {
-        const localPreview = await readFileAsDataUrl(selectedFile);
+        const localPreview = await readFileAsDataUrl(previewFile);
+        if (generation !== previewGeneration || selectedFile !== previewFile || !dialogActive) return;
         const preview = dialog.querySelector("[data-pp-preview]");
         if (preview) preview.innerHTML = `<img src="${localPreview}" alt="Selected paper pedigree">`;
         setStatus("Photo selected. Nothing has been added to your records yet.");
       } catch (error) {
-        setStatus(error?.message || "The photo could not be opened.", "error");
+        if (generation === previewGeneration && dialogActive)
+          setStatus(error?.message || "The photo could not be opened.", "error");
       }
     });
     dialog.querySelector("[data-pp-read]")?.addEventListener("click", readPedigree);
@@ -553,6 +591,16 @@
       quickPedigree.insertAdjacentElement("afterend", button);
     }
   }
+
+  root.document?.addEventListener?.("herdharbor:auth-session", () => {
+    // Invalidate even an image still decoding, where no prepared payload
+    // exists yet; A→B→A must not revive old consent.
+    if (!dialogActive) return;
+    invalidateWork();
+    const optIn = getDialog()?.querySelector("[data-pp-ai-optin]");
+    if (optIn) optIn.checked = false;
+    setStatus("Your account session changed. Select and review the photo again.", "error");
+  });
 
   function start() {
     addStyles();
