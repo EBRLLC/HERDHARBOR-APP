@@ -101,6 +101,7 @@
 
     if (classification === "registration_document") {
       const registration = providerDraft.registration || {};
+      if (!clean(registration.species)) warnings.push("Species was not identified in the source. Select and verify the correct species before continuing.");
       return {
         classification,
         classificationConfidence: Number(providerDraft.classificationConfidence || 0),
@@ -111,7 +112,7 @@
           tattoo: clean(registration.tattoo),
           tag: clean(registration.tag || registration.earTagNumber),
           breeder: clean(registration.breeder),
-          species: clean(registration.species) || "Rabbit",
+          species: clean(registration.species),
           breed: clean(registration.breed),
           sex: ["Male","Female","Unknown"].includes(registration.sex) ? registration.sex : "Unknown",
           dob: clean(registration.dob),
@@ -184,6 +185,7 @@
     if (draft.classification === "registration_document") {
       if (!clean(values.name)) issues.push("Animal name is required.");
       if (!clean(values.species)) issues.push("Species is required.");
+      if (lower(values.species) === "dog" && !clean(values.name)) issues.push("Review the dog identity before continuing.");
       if (!["Male","Female","Unknown"].includes(values.sex)) issues.push("Choose a valid sex.");
     } else {
       const animal = (Array.isArray(animals) ? animals : []).find((row) => String(row.id) === String(values.animalId));
