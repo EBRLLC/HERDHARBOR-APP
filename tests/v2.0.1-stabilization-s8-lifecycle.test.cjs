@@ -153,7 +153,60 @@ test("review commit verifies account and live state AFTER attachment write, befo
  const commit=paper.indexOf('const saved = app().commitState(applied.state, "Paper pedigree imported.");');
  assert.ok(write>0&&guard>write&&commit>guard);
 });
+
 test("record-photo auth boundary always invalidates pre-prepared work",()=>{
- assert.match(photo,/root\.document\?\.addEventListener\?\.\("herdharbor:auth-session"/);
+ assert.match(photo,/root\.document\?\.addEventListener\?\.\("herdharbor:auth-boundary", onPhotoAuthBoundary\)/);
+ assert.match(photo,/root\.document\?\.addEventListener\?\.\("herdharbor:auth-session", onPhotoAuthBoundary\)/);
  assert.match(photo,/if \(!photoDialogActive\) return;\s*invalidatePhotoWork\(\)/);
+});
+test("immediate auth boundary cancels paper preparation before account hydration",async()=>{
+ const x=fixture();x.open();await x.select("A.jpg");x.optIn(true);
+ const pending=x.read();
+ assert.equal(typeof x.events["herdharbor:auth-boundary"],"function");
+ x.events["herdharbor:auth-boundary"]({detail:{event:"SIGNED_IN"}});
+ await x.finishRead();
+ assert.equal(await pending,false);assert.equal(x.sent.length,0);
+});
+test("reimporting an identical extraction creates distinct records and attachments",async()=>{
+ const x=fixture();const importOnce=async()=>{
+  x.open();await x.select("A.jpg");x.optIn(true);
+  const reading=x.read();await x.finishRead();assert.equal(await reading,true);
+  assert.equal(await x.confirm(),true);
+ };
+ await importOnce();await importOnce();
+ const items=x.state().pedigrees;
+ assert.equal(items.length,2);
+ assert.notEqual(items[0].id,items[1].id);
+ assert.equal(x.attachments.size,2);
+ assert.ok(x.attachments.has(items[0].id));
+ assert.ok(x.attachments.has(items[1].id));
+});
+test("a failed reimport cannot erase an existing pedigree attachment",async()=>{
+ let saves=0;
+ const x=fixture({save:()=>++saves===1});
+ const importOnce=async()=>{
+  x.open();await x.select("A.jpg");x.optIn(true);
+  const reading=x.read();await x.finishRead();assert.equal(await reading,true);
+  return x.confirm();
+ };
+ assert.equal(await importOnce(),true);
+ const original=x.state().pedigrees[0];
+ const previous=x.attachments.get(original.id);
+ assert.ok(previous);
+ assert.equal(await importOnce(),false);
+ assert.equal(x.state().pedigrees.length,1);
+ assert.equal(x.state().pedigrees[0].id,original.id);
+ assert.equal(x.attachments.size,1);
+ assert.equal(x.attachments.get(original.id),previous);
+});
+test("photo attachments resolve only after IndexedDB transaction completion",()=>{
+ assert.match(paper,/transaction\.oncomplete\s*=\s*\(\)\s*=>\s*resolve\(request\.result\)/);
+ assert.doesNotMatch(paper,/request\.onsuccess\s*=\s*\(\)\s*=>\s*resolve\(request\.result\)/);
+});
+test("cloud sends immediate auth-boundary signals before async account hydration",()=>{
+ const cloud=src("herdharbor-cloud.js");
+ const start=cloud.indexOf('client.auth.onAuthStateChange((event, activeSession) => {');
+ const signal=cloud.indexOf('document.dispatchEvent(new CustomEvent("herdharbor:auth-boundary"',start);
+ const hydrate=cloud.indexOf('await ensureAuthenticatedAccountBoundary(activeSession',start);
+ assert.ok(start>=0&&signal>start&&hydrate>signal);
 });
