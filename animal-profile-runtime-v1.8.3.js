@@ -361,6 +361,20 @@
           return;
         }
 
+        // Breed suggestions and activity are also part of the attempted save.
+        // Restore both when persistence fails, not just the animal record.
+        const previousBreedMap = liveState.settings?.breedsBySpecies === undefined
+          ? undefined : { ...liveState.settings.breedsBySpecies };
+        const previousActivity = Array.isArray(liveState.activity)
+          ? liveState.activity.slice() : liveState.activity;
+        const rollbackAuxiliarySaveState = () => {
+          if (liveState.settings) {
+            if (previousBreedMap === undefined) delete liveState.settings.breedsBySpecies;
+            else liveState.settings.breedsBySpecies = previousBreedMap;
+          }
+          liveState.activity = previousActivity;
+        };
+
         if (id) {
           const currentAnimal = (liveState.animals || []).find((record) => record.id === id);
           if (!currentAnimal) return;
@@ -377,7 +391,7 @@
           if (!deps.saveState("Animal updated.")) {
             Object.keys(currentAnimal).forEach((key) => delete currentAnimal[key]);
             Object.assign(currentAnimal, original);
-            liveState.activity?.shift?.();
+            rollbackAuxiliarySaveState();
             return;
           }
         } else {
@@ -388,7 +402,7 @@
           deps.recordActivity(`Added ${data.name} to animal records.`, "animal");
           if (!deps.saveState("Animal added.")) {
             liveState.animals = liveState.animals.filter((item) => item.id !== newAnimal.id);
-            liveState.activity?.shift?.();
+            rollbackAuxiliarySaveState();
             return;
           }
         }
