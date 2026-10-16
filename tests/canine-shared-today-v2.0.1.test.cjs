@@ -38,12 +38,17 @@ test("mixed rabbit and dog health follow-ups share the same canonical task colle
 test("historical canine ancestors create no operational health notification",()=>{
   assert.equal(automation.deriveTaskDefinitions(base).some(x=>x.animalId==="ancestor"),false);
 });
-test("unsupported canine reproductive records create no automatic gestation/whelping tasks",()=>{
+test("existing canine breeding and litter records preserve their previously generated task IDs",()=>{
   const rows=automation.deriveTaskDefinitions(base);
   assert.ok(rows.some(x=>x.sourceRecordId==="b1"));
   assert.ok(rows.some(x=>x.sourceRecordId==="l1"));
-  assert.ok(!rows.some(x=>x.sourceRecordId==="b2"));
-  assert.ok(!rows.some(x=>x.sourceRecordId==="l2"));
+  assert.ok(rows.some(x=>x.sourceRecordId==="b2"));
+  assert.ok(rows.some(x=>x.sourceRecordId==="l2"));
+});
+test("an archived dog retains a previously active health reminder without generating a new one",()=>{
+  const data=structuredClone(base);
+  data.tasks.push({id:"task_health_h3_medication-follow-up",automationManaged:true,sourceType:"health",sourceRecordId:"h3",completed:false});
+  assert.ok(automation.deriveTaskDefinitions(data).some(x=>x.sourceRecordId==="h3"));
 });
 test("manual canine tasks are retained and task UI identifies dog species without new persistence",()=>{
   const file=fs.readFileSync(path.join(__dirname,"../task-runtime-v1.8.3.js"),"utf8");
