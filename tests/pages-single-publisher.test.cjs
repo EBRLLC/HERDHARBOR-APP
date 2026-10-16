@@ -12,7 +12,7 @@ const workflow = fs.readFileSync(
 );
 
 test("production Pages verification never deploys a second Pages artifact", () => {
-  assert.match(workflow, /name: HerdHarbor 2\.0\.0 production Pages verification/);
+  assert.match(workflow, /name: HerdHarbor 2\.0\.1 production Pages verification/);
   assert.match(workflow, /Production Pages artifact verified/);
   assert.doesNotMatch(workflow, /actions\/deploy-pages@/);
   assert.doesNotMatch(workflow, /actions\/upload-pages-artifact@/);

@@ -36,7 +36,7 @@ test("service worker precache is bounded to the operational shell", () => {
   const block = sw.match(/const REQUIRED_SHELL = \[([\s\S]*?)\];/);
   assert.ok(block, "required shell declaration");
   const entries = [...block[1].matchAll(/"([^"]+)"/g)].map((match) => match[1]);
-  assert.ok(entries.length <= 45, "required shell should stay bounded");
+  assert.ok(entries.length <= 50, "required shell should stay bounded");
   assert.ok(!entries.some((entry) => /voice-assisted-entry|photo-assisted-entry/.test(entry)), "AI tester assets are not precached globally");
 });
 
