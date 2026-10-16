@@ -157,7 +157,7 @@
     const issues = [];
     animals = Array.isArray(animals) ? animals : [];
     if (!draft || !TYPES.includes(draft.recordType)) return { ok: false, issues: ["Choose a supported record type."] };
-    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(clean(draft.date))) issues.push("A valid date is required.");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(clean(draft.date))) issues.push("A valid date is required.");
     if (draft.recordType === "weight") {
       if (!animals.some(a => String(a.id) === String(draft.defaults.animalId))) issues.push("Choose an existing animal.");
       if (!draft.defaults.weight) issues.push("Weight is required.");
