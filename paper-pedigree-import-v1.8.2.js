@@ -592,7 +592,7 @@
     }
   }
 
-  root.document?.addEventListener?.("herdharbor:auth-session", () => {
+  const onPaperAuthBoundary = () => {
     // Invalidate even an image still decoding, where no prepared payload
     // exists yet; A→B→A must not revive old consent.
     if (!dialogActive) return;
@@ -600,7 +600,9 @@
     const optIn = getDialog()?.querySelector("[data-pp-ai-optin]");
     if (optIn) optIn.checked = false;
     setStatus("Your account session changed. Select and review the photo again.", "error");
-  });
+  };
+  root.document?.addEventListener?.("herdharbor:auth-boundary", onPaperAuthBoundary);
+  root.document?.addEventListener?.("herdharbor:auth-session", onPaperAuthBoundary);
 
   function start() {
     addStyles();
