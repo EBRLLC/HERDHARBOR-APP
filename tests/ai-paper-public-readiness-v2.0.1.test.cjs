@@ -16,7 +16,7 @@ test("paper AI requests consent before upload while canonical import still owns 
  assert.match(client,/app\(\)\.commitState\(applied\.state/);
 });
 test("Dog and unidentified species cannot silently default to Rabbit",()=>{
- assert.match(client,/non-rabbit pedigree/);
+ assert.match(client,/only for rabbit pedigrees/);
  assert.match(client,/if \(!clean\(source\?\.species\)\) node\.species = ""/);
  assert.match(client,/reviewedNodes\.some\(node => clean\(node\.species\)\.toLowerCase\(\) !== "rabbit"\)/);
  assert.match(server,/body\?\.expectedSpecies/);
