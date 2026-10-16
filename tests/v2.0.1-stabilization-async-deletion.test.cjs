@@ -123,7 +123,10 @@ test("animal deletion blocks litter, draft, saved ancestor, medical, task and br
     {health:[{id:"h",animalId:"a"}]},
     {tasks:[{id:"t",animalId:"a",completed:true}]},
     {breedings:[{id:"b",femaleId:"a"}]},
-    {sales:[{id:"s",items:[{animalId:"a"}]}]}
+    {sales:[{id:"s",items:[{animalId:"a"}]}]},
+    {transactions:[{id:"txn",animalId:"a",amount:"10.00"}]},
+    {transfers:[{id:"move",animalId:"a"}]},
+    {productionRecords:[{id:"prod",animalId:"a"}]}
   ];
   for(const state of cases){
     const result=lineage.validateDeletion(animals,"a",state);
