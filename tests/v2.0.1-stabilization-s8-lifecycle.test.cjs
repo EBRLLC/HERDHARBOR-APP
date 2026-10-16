@@ -49,7 +49,10 @@ function fixture(options={}){
       put(value,id){const req={};queueMicrotask(()=>{
         attachments.set(id,value);req.onsuccess?.();
         const commit=()=>tx.oncomplete?.();
-        if(options.holdAttachmentWrite)pendingWriteCommits.push(commit);
+        if(options.abortAttachmentWrite)queueMicrotask(()=>{
+          attachments.delete(id);tx.onabort?.();
+        });
+        else if(options.holdAttachmentWrite)pendingWriteCommits.push(commit);
         else queueMicrotask(commit);
       });return req;},
       delete(id){const req={};queueMicrotask(()=>{
@@ -241,5 +244,16 @@ test("consent withdrawal during pending attachment transaction cancels import",a
  x.optIn(false);x.releaseWrites();
  assert.equal(await pending,false);
  assert.equal(x.state(),previous);
+ assert.equal(x.attachments.size,0);
+});
+
+test("aborted IndexedDB attachment write cannot commit an animal or pedigree",async()=>{
+ const x=fixture({abortAttachmentWrite:true});
+ x.open();await x.select("A.jpg");x.optIn(true);
+ const reading=x.read();await x.finishRead();assert.equal(await reading,true);
+ const original=x.state();
+ assert.equal(await x.confirm(),false);
+ assert.equal(x.state(),original);
+ assert.equal(x.state().pedigrees.length,0);
  assert.equal(x.attachments.size,0);
 });
