@@ -7,6 +7,7 @@ Updated: 2026-10-16
 - Active development version: 2.0.1
 - Next planned release: 2.0.1 — Canine Foundation + Optional AI Public Release
 - Release gate: PR review only; no merges, no deployments or public feature enablement before owner acceptance
+- 2.0.1 review stack: final R1 owner acceptance remains required; green CI does not authorize publication
 - Google Play: not yet production-published
 - Apple App Store: not yet production-published
 - AI-assisted paper pedigree, photo entry, and voice entry: deployed behind controlled access; not yet generally public
