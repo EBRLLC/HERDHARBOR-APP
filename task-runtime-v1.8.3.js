@@ -267,7 +267,11 @@
           return;
         }
 
-        const priorFingerprint = String(existing.automationFingerprint || "");
+        // Compare actual lifecycle fields before mutating the saved task.
+        // Legacy fingerprints included title/notes, so comparing persisted
+        // fingerprints would reopen completed tasks on a presentation upgrade.
+        const priorLifecycle = automation.taskFingerprint?.(existing) || "";
+        const nextLifecycle = automation.taskFingerprint?.(definition) || "";
         const fields = [
           "title", "category", "dueDate", "animalId", "notes", "sourceType", "sourceRecordId",
           "reminderType", "recurrence", "recurrenceDays"
@@ -293,7 +297,7 @@
           existing.completedAt = now;
           completed += 1;
           rowChanged = true;
-        } else if (!definition.completed && existing.completed && priorFingerprint && priorFingerprint !== fingerprint && !existing.nextTaskId) {
+        } else if (!definition.completed && existing.completed && priorLifecycle && priorLifecycle !== nextLifecycle && !existing.nextTaskId) {
           existing.completed = false;
           delete existing.completedAt;
           reopened += 1;
