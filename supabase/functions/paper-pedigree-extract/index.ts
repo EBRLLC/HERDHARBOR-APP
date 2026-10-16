@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.111.0";
+import { authorizeAiAction, aiAccessEnvironment } from "../_shared/ai-access.mjs";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -253,6 +254,16 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => null);
+    const access = await authorizeAiAction({
+      userId: authData.user.id,
+      action: "paper_pedigree",
+      admin,
+      env: aiAccessEnvironment((key: string) => Deno.env.get(key)),
+      consent: body?.aiOptIn === true
+    });
+    if (!access.allowed) return fail(access.code,
+      "This optional AI tool is not enabled for this account. Your manual records remain available.", 403);
+
     const mimeType = clean(body?.mimeType, 80).toLowerCase();
     const fileName = clean(body?.fileName, 240) || "paper-pedigree";
     const dataUrl = typeof body?.dataUrl === "string" ? body.dataUrl : "";
