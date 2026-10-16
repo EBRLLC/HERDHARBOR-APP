@@ -284,7 +284,7 @@ test("failed local attachment cleanup is reported instead of silently discarded"
  assert.equal(await x.confirm(),false);
  assert.equal(x.state(),previous);
  assert.equal(x.attachments.size,1,"failed cleanup leaves a local orphan needing explicit warning");
- assert.match(x.node("[data-pp-status]").textContent,/temporary image could not be removed/);
+ assert.match(x.node(".hh-pp-status").textContent,/temporary image could not be removed/);
 });
 test("auth boundary dispatch excludes same-user token refresh but guards identity drift",()=>{
  const cloud=src("herdharbor-cloud.js");
