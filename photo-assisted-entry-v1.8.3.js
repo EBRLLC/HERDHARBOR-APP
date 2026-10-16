@@ -223,7 +223,33 @@
     let reviewed = null;
     let retryController = null;
     let lastPreparedPayload = null;
+    let requestGeneration = 0;
+    let photoDialogActive = false;
+    let draftOwnerId = "";
     const byId = (id) => root.document?.getElementById(id);
+    const sessionUserId = () => String(root.HerdHarborCloud?.getSession?.()?.user?.id || "");
+    function invalidatePhotoWork() {
+      requestGeneration += 1;
+      retryController?.clear?.();
+      retryController = null;
+      lastPreparedPayload = null;
+      reviewed = null;
+      draftOwnerId = "";
+      const button = byId("photo-entry-analyze");
+      if (button) button.disabled = false;
+    }
+    function isCurrentAttempt(meta) {
+      return photoDialogActive && Boolean(meta) &&
+        meta.generation === requestGeneration && meta.file === selectedFile &&
+        Boolean(meta.ownerId) && sessionUserId() === meta.ownerId &&
+        byId("photo-entry-consent")?.checked === true &&
+        Boolean(byId("photo-entry-form"));
+    }
+    function cancelledPhotoError() {
+      const error = new Error("Photo analysis cancelled or account changed.");
+      error.code = "capture_cancelled";
+      return error;
+    }
     const animals = () => {
       const state = deps.getState() || {};
       return Array.isArray(state.animals) ? state.animals : [];
@@ -240,56 +266,67 @@
     }
 
     async function invokePhotoService(payload) {
+      // This also executes on offline retry. The original account/selection
+      // and live consent must still match immediately before network dispatch.
+      const { __hhAttempt, ...wirePayload } = payload || {};
+      if (!isCurrentAttempt(__hhAttempt)) throw cancelledPhotoError();
       const service = cloud();
-      if (!service?.getSession?.()?.user?.id) {
-        const error = new Error("Sign in before using photo-assisted entry.");
-        error.code = "authentication_required";
-        throw error;
-      }
+      if (!service?.getSession?.()?.user?.id) throw cancelledPhotoError();
       return typeof service.invokeFunctionWithDiagnostics === "function"
-        ? service.invokeFunctionWithDiagnostics("record-photo-extract", payload)
-        : service.invokeFunction("record-photo-extract", payload);
+        ? service.invokeFunctionWithDiagnostics("record-photo-extract", wirePayload)
+        : service.invokeFunction("record-photo-extract", wirePayload);
     }
 
     function ensureRetryController() {
       if (retryController) return retryController;
       const helper = mobileCapture();
       if (!helper?.createRetryController) throw new Error("Mobile capture support did not load.");
-      retryController = helper.createRetryController({
+      let controller;
+      controller = helper.createRetryController({
         isOnline: () => root.navigator?.onLine !== false,
         execute: invokePhotoService,
-        onStatus: ({ state, message }) => setCaptureStatus(state, message)
+        onStatus: ({ state, message }) => {
+          if (retryController === controller) setCaptureStatus(state, message);
+        }
       });
-      return retryController;
+      retryController = controller;
+      return controller;
     }
 
-    function acceptProviderResponse(response) {
+    function acceptProviderResponse(response, meta) {
+      // Never render an old response for a different photo or signed-in user.
+      if (!isCurrentAttempt(meta)) return false;
       if (!response?.draft) {
         const error = new Error(response?.error || "The photo reader returned no review draft.");
         error.code = "empty_extraction";
         throw error;
       }
       reviewed = canonicalDraft(response.draft, animals());
+      draftOwnerId = meta.ownerId;
       telemetry("photo_draft_created", reviewed.classification === "unsupported" ? "failure" : "success", reviewed.classification);
       renderReview();
       return reviewed;
     }
 
     async function resumePendingAnalysis(reason = "resume") {
-      // A consent choice must still be active when an offline upload resumes.
-      if (!byId("photo-entry-consent")?.checked) {
-        retryController?.clear?.();
-        lastPreparedPayload = null;
+      const payload = lastPreparedPayload;
+      const meta = payload?.__hhAttempt;
+      if (!payload || !retryController?.getState?.().pending) return false;
+      if (!isCurrentAttempt(meta)) {
+        invalidatePhotoWork();
         return false;
       }
-      if (!retryController?.getState?.().pending || root.navigator?.onLine === false) return false;
+      if (root.navigator?.onLine === false) return false;
+      const controller = retryController;
       try {
-        const response = await retryController.resume(reason);
-        if (response?.draft) return acceptProviderResponse(response);
+        const response = await controller.resume(reason);
+        if (!isCurrentAttempt(meta) || controller !== retryController) return false;
+        if (response?.draft) return acceptProviderResponse(response, meta);
         return response;
       } catch (error) {
+        if (!isCurrentAttempt(meta)) return false;
         const code = clean(error?.code);
-        if (!error?.retryable && code !== "secure_service_error") {
+        if (!error?.retryable && code !== "secure_service_error" && code !== "capture_cancelled") {
           const suffix = code && code !== "secure_service_error" ? " [" + code + "]" : "";
           deps.toast((error?.message || "HerdHarbor could not read that image.") + suffix, "error");
         }
@@ -424,6 +461,11 @@
     }
 
     function confirmReview() {
+      if (!photoDialogActive || !draftOwnerId || sessionUserId() !== draftOwnerId) {
+        invalidatePhotoWork();
+        deps.toast("The account changed. Reopen photo entry and review a new draft.", "error");
+        return false;
+      }
       const next = collectReview();
       const validation = validateReview(next, animals());
       if (!validation.ok) {
@@ -431,6 +473,8 @@
         return false;
       }
       telemetry("photo_draft_confirmed", "success", next.classification);
+      photoDialogActive = false;
+      invalidatePhotoWork();
       deps.closeModal();
       return next.classification === "registration_document"
         ? deps.openAnimalForm("", next.defaults)
@@ -461,16 +505,22 @@
         return false;
       }
 
+      // Snapshot the initiating user and selected File across all awaits.
+      // A changed file, account, or consent invalidates this entire attempt.
+      invalidatePhotoWork();
+      const meta = { generation: requestGeneration, ownerId: sessionUserId(), file: selectedFile };
       const button = byId("photo-entry-analyze");
       if (button) button.disabled = true;
       setCaptureStatus("working", "Preparing photo…");
       try {
-        const prepared = await helper.prepareImage(selectedFile);
+        const prepared = await helper.prepareImage(meta.file);
+        if (!isCurrentAttempt(meta)) return false;
         lastPreparedPayload = {
           dataUrl: prepared.dataUrl,
           mimeType: prepared.mimeType,
           fileName: prepared.fileName,
-          aiOptIn: true
+          aiOptIn: true,
+          __hhAttempt: meta
         };
         const sizeText = prepared.compressed
           ? "Photo prepared for reliable upload."
@@ -480,13 +530,16 @@
             ? sizeText + " You are offline; analysis will retry when connection returns."
             : sizeText);
 
-        const response = await ensureRetryController().run(lastPreparedPayload);
+        const controller = ensureRetryController();
+        const response = await controller.run(lastPreparedPayload);
+        if (!isCurrentAttempt(meta) || controller !== retryController) return false;
         if (response?.queued) {
           telemetry("photo_analysis_queued", "pending", "");
           return response;
         }
-        return acceptProviderResponse(response);
+        return acceptProviderResponse(response, meta);
       } catch (error) {
+        if (!isCurrentAttempt(meta)) return false;
         telemetry("photo_extraction_failed", "failure", reviewed?.classification || "");
         const code = clean(error?.code);
         const retryable = error?.retryable === true || Boolean(retryController?.getState?.().pending);
@@ -496,15 +549,14 @@
         }
         return false;
       } finally {
-        if (button) button.disabled = false;
+        if (button && meta.generation === requestGeneration) button.disabled = false;
       }
     }
 
     function open() {
+      invalidatePhotoWork();
+      photoDialogActive = true;
       selectedFile = null;
-      reviewed = null;
-      lastPreparedPayload = null;
-      retryController?.clear?.();
       deps.openModal("Photo-assisted entry",
         '<form id="photo-entry-form"><label>Record photo<input id="photo-entry-file" type="file" accept="image/jpeg,image/png" capture="environment"></label>' +
         '<p class="muted">Take a clear photo or choose an existing JPG/PNG. HerdHarbor prepares large phone images for upload and creates a review draft only.</p>' +
@@ -515,12 +567,10 @@
         "Reviewed assistant"
       );
       byId("photo-entry-file")?.addEventListener("change", (event) => {
+        invalidatePhotoWork();
         selectedFile = event.target?.files?.[0] || null;
         const consent = byId("photo-entry-consent");
         if (consent) consent.checked = false;
-        reviewed = null;
-        lastPreparedPayload = null;
-        retryController?.clear?.();
         const reviewHost = byId("photo-entry-review");
         if (reviewHost) reviewHost.innerHTML = "";
         setCaptureStatus(selectedFile ? "ready" : "idle",
@@ -530,12 +580,13 @@
       });
       byId("photo-entry-consent")?.addEventListener("change", (event) => {
         if (event.currentTarget?.checked) return;
-        retryController?.clear?.();
-        lastPreparedPayload = null;
+        invalidatePhotoWork();
+        const host = byId("photo-entry-review");
+        if (host) host.innerHTML = "";
       });
       byId("photo-entry-cancel")?.addEventListener("click", () => {
-        retryController?.clear?.();
-        lastPreparedPayload = null;
+        photoDialogActive = false;
+        invalidatePhotoWork();
         telemetry("photo_entry_cancelled", "cancelled", "");
         deps.closeModal();
       });
@@ -546,6 +597,20 @@
       return true;
     }
 
+    // The cloud layer emits this when an authenticated account changes or
+    // signs out. Never retain a prepared image across that boundary.
+    root.document?.addEventListener?.("herdharbor:auth-session", () => {
+      if (lastPreparedPayload && !isCurrentAttempt(lastPreparedPayload.__hhAttempt)) {
+        invalidatePhotoWork();
+        const host = byId("photo-entry-review");
+        if (host) host.innerHTML = "";
+      }
+      if (reviewed && draftOwnerId && draftOwnerId !== sessionUserId()) {
+        invalidatePhotoWork();
+        const host = byId("photo-entry-review");
+        if (host) host.innerHTML = "";
+      }
+    });
     root.addEventListener?.("online", () => { void resumePendingAnalysis("online"); });
     root.addEventListener?.("pageshow", () => { void resumePendingAnalysis("pageshow"); });
     root.document?.addEventListener?.("visibilitychange", () => {
