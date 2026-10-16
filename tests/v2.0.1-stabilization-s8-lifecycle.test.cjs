@@ -44,10 +44,19 @@ function fixture(options={}){
  const indexedDB={open(){
   const request={result:{
    objectStoreNames:{contains:()=>true},createObjectStore(){},close(){},
-   transaction(){return {objectStore(){return {
-    put(value,id){const req={};queueMicrotask(()=>{attachments.set(id,value);req.onsuccess?.();});return req;},
-    delete(id){const req={};queueMicrotask(()=>{attachments.delete(id);req.onsuccess?.();});return req;}
-   };}};}
+   transaction(){
+    const tx={objectStore(){return {
+      put(value,id){const req={};queueMicrotask(()=>{
+        attachments.set(id,value);req.onsuccess?.();
+        queueMicrotask(()=>tx.oncomplete?.());
+      });return req;},
+      delete(id){const req={};queueMicrotask(()=>{
+        attachments.delete(id);req.onsuccess?.();
+        queueMicrotask(()=>tx.oncomplete?.());
+      });return req;}
+    };}};
+    return tx;
+   }
   }};
   queueMicrotask(()=>request.onsuccess?.());return request;
  }};
