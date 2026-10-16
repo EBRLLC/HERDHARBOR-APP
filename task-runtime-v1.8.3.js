@@ -34,6 +34,12 @@
       textareaField, todayISO, addDays, uid, recordActivity, saveState, renderCurrentView
     } = deps;
     const stateNow = () => deps.getState() || {};
+    function taskAnimalLabel(animalId) {
+      const animal=(stateNow().animals||[]).find(item=>String(item.id)===String(animalId));
+      const name=animalName(animalId);
+      // Species is display-derived; never duplicate it in persisted task rows.
+      return animal && String(animal.species||"").trim().toLowerCase()==="dog" ? name+" · Dog" : name;
+    }
     const confirm = typeof root?.confirm === "function" ? root.confirm.bind(root) : () => false;
     let taskView = {
       status: "Today",
@@ -394,7 +400,7 @@
           <input class="task-check" type="checkbox" data-toggle-task="${task.id}" ${task.completed ? "checked" : ""} aria-label="${task.completed ? "Reopen" : "Complete"} ${esc(task.title)}">
           <div class="list-item-main">
             <strong style="${task.completed ? "text-decoration:line-through;opacity:.65" : ""}">${esc(task.title)}</strong>
-            <span>${esc(task.category || "Task")} · ${formatDate(task.dueDate)}${task.animalId ? ` · ${esc(animalName(task.animalId))}` : ""}${taskRecurrenceLabel(task) ? ` · ${esc(taskRecurrenceLabel(task))}` : ""}</span>
+            <span>${esc(task.category || "Task")} · ${formatDate(task.dueDate)}${task.animalId ? ` · ${esc(taskAnimalLabel(task.animalId))}` : ""}${taskRecurrenceLabel(task) ? ` · ${esc(taskRecurrenceLabel(task))}` : ""}</span>
           </div>
           <span class="badge ${status.tone}">${status.label}</span>
           <div class="list-item-actions">
