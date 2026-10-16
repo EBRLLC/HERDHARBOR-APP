@@ -169,15 +169,15 @@ test("spreadsheet report tooling stays lazy and out of unconditional startup", (
 test("shell loads/caches Production/Reporting before composition runtime", () => {
   const salesIndex = html.indexOf("sales-customer-runtime-v1.8.3.js?v=1");
   const productionIndex = html.indexOf("production-reporting-runtime-v1.8.3.js?v=1");
-  const appIndex = html.indexOf("herdharbor-app-runtime.js?v=4");
+  const appIndex = html.indexOf("herdharbor-app-runtime.js?v=5");
   assert.ok(salesIndex >= 0 && productionIndex > salesIndex && appIndex > productionIndex);
   assert.match(worker, /\.\/production-reporting-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /"\/production-reporting-runtime-v1\.8\.3\.js"/);
 });
 
 test("Phase 6G extraction remains compatible with formal v2.0.0 and does not activate normalized sync", () => {
-  assert.equal(pkg.version, "2.0.0");
-  assert.match(read("herdharbor-build.js"), /version:\s*"2\.0\.0"/);
+  assert.equal(pkg.version, "2.0.1");
+  assert.match(read("herdharbor-build.js"), /version:\s*"2\.0\.1"/);
   assert.doesNotMatch(html, /cloud-sync-rollout-control-v1\.8\.3\.js/);
   assert.match(pkg.scripts["test:v1.8.3"], /runtime-production-reporting-extraction-v1\.8\.3\.test\.cjs/);
 });

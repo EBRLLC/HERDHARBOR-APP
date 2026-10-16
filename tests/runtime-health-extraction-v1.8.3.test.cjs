@@ -146,15 +146,15 @@ test("shell loads and caches Health runtime before application composition", () 
   const worker = read("service-worker.js");
   const breeding = html.indexOf("breeding-litter-runtime-v1.8.3.js?v=1");
   const health = html.indexOf("health-runtime-v1.8.3.js?v=1");
-  const composition = html.indexOf("herdharbor-app-runtime.js?v=4");
+  const composition = html.indexOf("herdharbor-app-runtime.js?v=5");
   assert.ok(breeding >= 0 && health > breeding && composition > health);
   assert.match(worker, /\.\/health-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /"\/health-runtime-v1\.8\.3\.js"/);
 });
 
 test("Phase 6D extraction remains compatible with formal v1.8.4 and leaves normalized-sync authority unchanged", () => {
-  assert.equal(packageJson.version, "2.0.0");
-  assert.match(read("herdharbor-build.js"), /version:\s*"2\.0\.0"/);
+  assert.equal(packageJson.version, "2.0.1");
+  assert.match(read("herdharbor-build.js"), /version:\s*"2\.0\.1"/);
   for (const asset of [
     "cloud-sync-cohort-gate-v1.8.3.js",
     "cloud-sync-reconciliation-v1.8.3.js",
