@@ -307,6 +307,7 @@
   }
 
   function currentTabs(model){
+    if(root.HerdHarborCanineIdentity?.isDog(model?.animal))return ["overview","health","pedigree","history"];
     const tabs=Array.isArray(model?.tabs)?model.tabs.map(normalizeTab):["overview","health","pedigree","history"];
     return[...new Set(tabs.filter(tab=>TABS.includes(tab)))];
   }
@@ -369,6 +370,25 @@
     return`<div class="hh-p2-record-list">${rows.map(row=>`<article class="hh-p2-record"><div><strong>${esc(row.title||"Record")}</strong>${row.detail?`<small>${esc(row.detail)}</small>`:""}</div><span>${esc(row.meta||"")}</span></article>`).join("")}</div>`;
   }
 
+  function canineIdentitySummary(animal){
+    const canine=root.HerdHarborCanineIdentity;
+    if(!canine?.isDog(animal))return "";
+    const info=canine.normalize(animal.canine);
+    const registrations=info.registrations.map(row=>"<li>"+esc(row.registry)+" · "+esc(row.number)+
+      (row.status?" · "+esc(row.status):"")+" · unverified (breeder entered)</li>").join("");
+    const titles=info.titles.slice().sort((a,b)=>a.displayOrder-b.displayOrder).map(row=>
+      "<li>"+esc(row.abbreviation)+" · "+esc(row.placement)+" · "+esc(row.organization)+
+      " · unverified (breeder entered)</li>").join("");
+    return '<section class="panel hh-p2-summary-card hh-canine-profile-summary">'+
+      '<div class="panel-header"><h3>Dog registration &amp; titles</h3><small>Breeder-maintained, not official registry certification</small></div>'+
+      '<div class="hh-p2-detail-grid">'+
+      '<div><span>Call name</span><strong>'+esc(info.callName||animal.name||"—")+'</strong></div>'+
+      '<div><span>Registered name</span><strong>'+esc(info.registeredName||"Not recorded")+'</strong></div>'+
+      '</div><h4>Registration records</h4>'+(registrations?"<ul>"+registrations+"</ul>":"<p>No registrations recorded.</p>")+
+      '<h4>Recorded titles</h4>'+(titles?"<ul>"+titles+"</ul>":"<p>No titles recorded.</p>")+
+      '</section>';
+  }
+
   function overviewPanel(state,model,lifecycle){
     const animal=model.animal;
     const rows=identityRows(state,animal);
@@ -379,10 +399,11 @@
     const healthCount=(model.health?.legacy?.length||0)+(model.health?.episodes?.length||0)+(model.health?.care?.length||0)+(model.health?.groups?.length||0);
     return`<div class="hh-p2-overview-grid">
       <section class="panel hh-p2-summary-card"><div class="panel-header hh-p2-identity-header"><h3>Identity</h3><div class="hh-p2-identity-tools"><small>Canonical animal record</small><button type="button" class="icon-button hh-p2-identity-settings" data-hh-p2-identity-settings="${esc(animal.id)}" aria-label="Customize Identity" title="Customize Identity">⚙</button></div></div><div class="hh-p2-detail-grid">${rows.map(row=>`<div data-hh-p2-identity-field="${esc(row.key)}"><span>${esc(row.label)}</span><strong>${esc(row.value)}</strong>${row.detail?`<small class="hh-p2-identity-detail">${esc(row.detail)}</small>`:""}</div>`).join("")}</div></section>
+      ${canineIdentitySummary(animal)}
       <section class="panel hh-p2-summary-card"><div class="panel-header"><h3>Lifecycle</h3><small>Live status across HerdHarbor</small></div><div class="hh-p2-lifecycle-grid">
         <div><span>Status</span><strong>${esc(lifecycle.status)}</strong><small>${lifecycle.current?"Current animal":"Historical record"}</small></div>
         <div><span>Health</span><strong>${lifecycle.quarantined?"Quarantined":`${healthCount} records`}</strong><small>${lifecycle.quarantined?"Breeding actions are blocked":"Connected health history"}</small></div>
-        <div><span>Breeding</span><strong>${latestBreeding?esc(latestBreeding.status):"No breeding yet"}</strong><small>${latestBreeding?`${formatDate(latestBreeding.date)}${latestBreeding.dueDate?` · Due ${formatDate(latestBreeding.dueDate)}`:""}`:"Start from this profile when ready"}</small></div>
+        ${root.HerdHarborCanineIdentity?.isDog(animal) ? '<div><span>Canine reproduction</span><strong>Not available in 2.0.1</strong><small>Manual pedigree and records are available</small></div>' : `<div><span>Breeding</span><strong>${latestBreeding?esc(latestBreeding.status):"No breeding yet"}</strong><small>${latestBreeding?`${formatDate(latestBreeding.date)}${latestBreeding.dueDate?` · Due ${formatDate(latestBreeding.dueDate)}`:""}`:"Start from this profile when ready"}</small></div>`}
         <div><span>Sale / transfer</span><strong>${esc(latestTransfer?.status||latestSale?.status||"No transfer activity")}</strong><small>${esc(latestTransfer?.transferId||latestSale?.number||"Ownership stays with this account")}</small></div>
       </div></section>
     </div>
@@ -413,6 +434,15 @@
 
   function pedigreePanel(state,model){
     const animal=model.animal;
+    if(root.HerdHarborCanineIdentity?.isDog(animal)){
+      const linked=field=>animalById(state,animal[field]);
+      const label=field=>linked(field)?esc(root.HerdHarborCanineIdentity.displayName(linked(field))):"Unknown";
+      return '<div class="hh-p2-panel-head"><div><h3>Dog pedigree</h3>'+
+        '<p>Breeder-maintained ancestry. Not an AKC-certified or independently verified pedigree.</p>'+
+        '<p>Sire: <strong>'+label("sireId")+'</strong> · Dam: <strong>'+label("damId")+'</strong></p></div>'+
+        '<button type="button" class="button button-primary button-small" data-hh-p2-action="edit">Edit dog and parent links</button></div>'+
+        '<p class="muted">Unknown ancestors remain unknown. Dedicated dog printing will be added in the next phase.</p>';
+    }
     const pedigrees=array(state,"pedigrees").filter(record=>String(record.subjectAnimalId)===String(animal.id));
     return`<div class="hh-p2-panel-head"><div><h3>Pedigree</h3><p>Sire: <strong>${esc(animalName(state,animal.sireId))}</strong> · Dam: <strong>${esc(animalName(state,animal.damId))}</strong></p></div><div><button class="button button-primary button-small" data-hh-p2-action="pedigree">Build / import</button><button class="button button-ghost button-small" data-hh-p2-action="print-pedigree">Print</button></div></div><div class="hh-p2-lifecycle-grid"><div><span>Completed pedigree records</span><strong>${pedigrees.length}</strong></div><div><span>Transfer-ready ancestry</span><strong>${animal.sireId||animal.damId?"Linked":"Not linked yet"}</strong><small>Pedigree relationships stay attached to the animal.</small></div></div>`;
   }
@@ -444,6 +474,9 @@
   }
 
   function actionButtons(model){
+    if(root.HerdHarborCanineIdentity?.isDog(model.animal))
+      return [["weight","Add weight","primary"],["episode","Health episode","ghost"],["edit","Edit / status","ghost"]]
+        .map(([action,label,tone])=>`<button type="button" class="button button-${tone} button-small" data-hh-p2-action="${action}">${esc(label)}</button>`).join("");
     const actions=[["weight","Add weight","primary"],["episode","Health episode","ghost"]];
     if(model.current&&["female","male"].includes(lower(model.animal?.sex))&&!model.quarantined)actions.push(["breeding","Breed","ghost"]);
     if(currentTabs(model).includes("genetics"))actions.push(["genetics","Genetics","ghost"]);
@@ -474,7 +507,7 @@
           <div class="hh-p2-profile-photo ${animal.photoData?"has-photo":""}">${animalVisual(animal)}</div>
           <div class="hh-p2-profile-copy">
             <div class="hh-p2-kicker"><span>${esc(animal.species||"Animal")}</span><span class="badge ${statusTone(animal.status)}">${esc(animal.status||"Unknown status")}</span>${model.quarantined?'<span class="badge danger">Quarantined</span>':""}</div>
-            <h1>${esc(animal.name||"Unnamed animal")}</h1>
+            <h1>${esc(root.HerdHarborCanineIdentity?.isDog(animal) ? root.HerdHarborCanineIdentity.displayName(animal,{includeTitles:false}) : (animal.name||"Unnamed animal"))}</h1>
             <p>${esc([animal.earTagNumber?`Ear tag ${animal.earTagNumber}`:animal.tag||animal.tattoo,animal.earTagColor,animal.breed,animal.color].filter(Boolean).join(" · ")||"No additional identity details")}</p>
           </div>
         </header>

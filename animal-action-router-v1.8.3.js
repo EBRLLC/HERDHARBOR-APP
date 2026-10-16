@@ -316,6 +316,12 @@
     const nextAction = clean(action);
     const id = clean(animalId);
     if (!id || !canHandle(nextAction)) return false;
+    const targetAnimal = animalById(stateNow(), id);
+    const restrictedCanineActions = new Set(["breeding", "genetics", "birth-certificate", "show-entry", "pedigree", "print-pedigree"]);
+    if (root.HerdHarborCanineIdentity?.isDog(targetAnimal) && restrictedCanineActions.has(nextAction)) {
+      toast("That workflow is not available for dogs in this release. Use the dog profile for manual pedigree and registration records.", "error");
+      return false;
+    }
 
     let launched = false;
     if (nextAction === "weight") launched = openHealthRecord(id, "Weight");

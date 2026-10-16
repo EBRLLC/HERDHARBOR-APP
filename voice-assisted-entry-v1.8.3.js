@@ -140,6 +140,7 @@
       if (females.length !== 1) draft.issues.push("Choose exactly one recorded female/dam.");
       if (males.length !== 1) draft.issues.push("Choose exactly one recorded male/sire.");
       if (females[0] && males[0] && females[0].species && males[0].species && females[0].species !== males[0].species) draft.issues.push("Dam and sire must be the same species.");
+      if (matches.some(a => lower(a.species) === "dog")) draft.issues.push("Canine breeding workflows are not supported in this release. Use manual dog pedigree records.");
       draft.defaults = {
         femaleId: females.length === 1 ? String(females[0].id) : "",
         maleId: males.length === 1 ? String(males[0].id) : "",
@@ -172,6 +173,7 @@
       if (!male || lower(male.sex) !== "male") issues.push("A recorded male/sire is required.");
       if (female && male && String(female.id) === String(male.id)) issues.push("Dam and sire must be different animals.");
       if (female && male && female.species && male.species && female.species !== male.species) issues.push("Dam and sire must be the same species.");
+      if ([female,male].some(a => lower(a?.species) === "dog")) issues.push("Canine breeding workflows are not supported in this release.");
     }
     return { ok: issues.length === 0, issues };
   }
