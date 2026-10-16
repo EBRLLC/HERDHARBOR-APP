@@ -311,6 +311,7 @@
   async function readPedigree() {
     if (!selectedFile) return setStatus("Choose a JPG or PNG pedigree photo first.", "error");
     if (!cloud()?.getSession?.()?.user?.id) return setStatus("Sign in before using automatic pedigree reading.", "error");
+    if (!root.document.querySelector(`#${DIALOG_ID} [data-pp-ai-optin]`)?.checked) return setStatus("Opt in to sending this rabbit pedigree photo to the optional AI service first.", "error");
     const button = root.document.querySelector(`#${DIALOG_ID} [data-pp-read]`);
     if (button) button.disabled = true;
     setStatus("Preparing and reading the pedigree…");
@@ -318,12 +319,21 @@
       preparedImage = await prepareImage(selectedFile);
       const preview = root.document.querySelector(`#${DIALOG_ID} [data-pp-preview]`);
       if (preview) preview.innerHTML = `<img src="${preparedImage.dataUrl}" alt="Selected paper pedigree">`;
+      const reviewedUpload = { ...preparedImage, expectedSpecies: "Rabbit", aiOptIn: true };
       const response = typeof cloud().invokeFunctionWithDiagnostics === "function"
-        ? await cloud().invokeFunctionWithDiagnostics("paper-pedigree-extract", preparedImage)
-        : await cloud().invokeFunction("paper-pedigree-extract", preparedImage);
+        ? await cloud().invokeFunctionWithDiagnostics("paper-pedigree-extract", reviewedUpload)
+        : await cloud().invokeFunction("paper-pedigree-extract", reviewedUpload);
       if (!response?.extraction) throw new Error(response?.error || "The pedigree reader returned no draft.");
       extraction = response.extraction;
+      // The legacy import-core defaults missing species to Rabbit. Expose missing
+      // AI species as blank for explicit review instead of silently applying it.
       const normalized = core().normalizeExtraction(asCoreExtraction(extraction));
+      if ((extraction.nodes || []).some(node => node.species && clean(node.species).toLowerCase() !== "rabbit"))
+        throw new Error("This AI reader is currently validated only for rabbit pedigrees. Enter dog pedigrees manually.");
+      for (const node of normalized.nodes || []) {
+        const source = (extraction.nodes || []).find(item => item.role === node.role);
+        if (!clean(source?.species)) node.species = "";
+      }
       renderReview(normalized);
       const warnings = [...new Set([...(response.extraction.warnings || []), ...(normalized.warnings || [])])];
       const diagnostics = response.extraction.diagnostics || {};
@@ -383,6 +393,9 @@
     }
     const reviewed = collectReviewedExtraction();
     if (!reviewed) return setStatus("Read a pedigree photo before importing.", "error");
+    const reviewedNodes = (reviewed.nodes || []).filter(node => clean(node.name) || clean(node.registrationNumber) || clean(node.tag) || clean(node.tattoo));
+    if (reviewedNodes.some(node => clean(node.species).toLowerCase() !== "rabbit"))
+      return setStatus("Choose Rabbit explicitly for each imported pedigree animal. Dog AI scanning is not yet validated; enter dog pedigrees manually.", "error");
     const current = app()?.getState?.();
     if (!current || !core()) return setStatus("HerdHarbor is not ready to import this pedigree.", "error");
     const plan = core().buildImportPlan(current, asCoreExtraction(reviewed));
@@ -421,6 +434,8 @@
       <header class="hh-pp-head"><div><small class="muted">HerdHarbor paper pedigree</small><h2>Import pedigree from a photo</h2></div><button type="button" class="button button-ghost" data-pp-close>Close</button></header>
       <div class="hh-pp-body">
         <div class="hh-pp-notice"><strong>Review required.</strong> Automatic reading can misread printed or handwritten pedigree information. When you choose Read pedigree photo, the selected image is sent through HerdHarbor's authenticated AI processing service to prepare a draft. Nothing is added to your farm records until you review the draft and confirm the import.</div>
+        <label class="hh-pp-confirm"><input type="checkbox" data-pp-ai-optin><span>I choose to send this rabbit pedigree photo to HerdHarbor's optional AI service for a reviewable draft. I can enter pedigree records manually instead.</span></label>
+        <p class="muted">Canine AI pedigree scans are not yet validated and are disabled. Dogs can be entered and printed manually without AI.</p>
         <div class="hh-pp-upload">
           <div class="hh-pp-drop"><strong>Choose a clear photo of the pedigree</strong><p class="muted">JPG or PNG. Photograph the page straight-on with all names and identifiers visible.</p><input type="file" accept="image/jpeg,image/png" data-pp-file></div>
           <div class="hh-pp-preview" data-pp-preview><span class="muted">Photo preview</span></div>
