@@ -21,25 +21,25 @@ const index = read("index.html");
 const monitoring = read("herdharbor-monitoring-config.js");
 
 test("all whole-app release owners identify stable v2.0.0", () => {
-  assert.equal(pkg.version, "2.0.0");
-  assert.equal(lock.version, "2.0.0");
-  assert.equal(lock.packages[""].version, "2.0.0");
-  assert.equal(manifest.version, "2.0.0");
-  assert.equal(String(twa.appVersion), "2.0.0");
-  assert.equal(Number(twa.appVersionCode), 19);
-  assert.match(build, /version:\s*"2\.0\.0"/);
+  assert.equal(pkg.version, "2.0.1");
+  assert.equal(lock.version, "2.0.1");
+  assert.equal(lock.packages[""].version, "2.0.1");
+  assert.equal(manifest.version, "2.0.1");
+  assert.equal(String(twa.appVersion), "2.0.1");
+  assert.equal(Number(twa.appVersionCode), 20);
+  assert.match(build, /version:\s*"2\.0\.1"/);
   assert.match(build, /channel:\s*"Stable"/);
-  assert.match(build, /buildId:\s*"v2\.0\.0-release-1"/);
+  assert.match(build, /buildId:\s*"v2\.0\.1-release-1"/);
   assert.match(gradle, /versionName\s+"2\.0\.0"/);
-  assert.match(gradle, /versionCode\s+19/);
+  assert.match(gradle, /versionCode\s+20/);
 });
 
 test("runtime and monitoring fallbacks use the v2.0.0 release identity", () => {
-  assert.match(pwa, /version \|\| "2\.0\.0"/);
-  assert.match(pwa, /buildId \|\| "v2\.0\.0-release-1"/);
+  assert.match(pwa, /version \|\| "2\.0\.1"/);
+  assert.match(pwa, /buildId \|\| "v2\.0\.1-release-1"/);
   assert.match(pwa, /PWA_BUILD = `\$\{APP_VERSION\}-\$\{BUILD_ID\}`/);
-  assert.match(monitoring, /release:\s*"HerdHarbor@2\.0\.0"/);
-  assert.match(monitoring, /build:\s*"v2\.0\.0-release-1"/);
+  assert.match(monitoring, /release:\s*"HerdHarbor@2\.0\.1"/);
+  assert.match(monitoring, /build:\s*"v2\.0\.1-release-1"/);
 });
 
 test("historical v1.8.4 coverage coexists with the current 2.0.0 workflows", () => {

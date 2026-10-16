@@ -18,8 +18,8 @@ const sentryAcceptance = read("scripts/sentry-production-acceptance.mjs");
 
 assert.match(readme, /published from the exact reviewed `main` commit through GitHub Pages/);
 assert.match(config, /dsn: ""/);
-assert.match(config, /HerdHarbor@2\.0\.0/);
-assert.match(config, /v2.0.0-release-1/);
+assert.match(config, /HerdHarbor@2\.0\.1/);
+assert.match(config, /v2.0.1-release-1/);
 assert.doesNotMatch(config, /https:\/\/[^"']+@[^"']*sentry/i);
 
 assert.match(pagesWorkflow, /workflow_dispatch:/);

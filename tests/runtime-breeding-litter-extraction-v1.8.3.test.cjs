@@ -219,17 +219,17 @@ test("manual offspring creator remains compatibility fallback behind canonical l
 test("shell loads and caches Breeding/Litter runtime before application composition", () => {
   const html = read("index.html");
   const worker = read("service-worker.js");
-  const animal = html.indexOf("animal-profile-runtime-v1.8.3.js?v=1");
+  const animal = html.indexOf("animal-profile-runtime-v1.8.3.js?v=2");
   const breeding = html.indexOf("breeding-litter-runtime-v1.8.3.js?v=1");
-  const composition = html.indexOf("herdharbor-app-runtime.js?v=4");
+  const composition = html.indexOf("herdharbor-app-runtime.js?v=5");
   assert.ok(animal >= 0 && breeding > animal && composition > breeding);
   assert.match(worker, /\.\/breeding-litter-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /"\/breeding-litter-runtime-v1\.8\.3\.js"/);
 });
 
 test("Phase 6C extraction remains compatible with formal v1.8.4 and does not activate normalized-sync authority", () => {
-  assert.equal(packageJson.version, "2.0.0");
-  assert.match(read("herdharbor-build.js"), /version:\s*"2\.0\.0"/);
+  assert.equal(packageJson.version, "2.0.1");
+  assert.match(read("herdharbor-build.js"), /version:\s*"2\.0\.1"/);
   for (const asset of [
     "cloud-sync-cohort-gate-v1.8.3.js",
     "cloud-sync-reconciliation-v1.8.3.js",

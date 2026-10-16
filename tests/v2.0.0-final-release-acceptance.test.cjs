@@ -52,16 +52,16 @@ test("every dedicated 2.0.0 release phase gate remains wired into the aggregate 
 });
 
 test("authoritative production identities agree on stable 2.0.0", () => {
-  assert.equal(pkg.version, "2.0.0");
-  assert.equal(manifest.version, "2.0.0");
-  assert.equal(String(twa.appVersion), "2.0.0");
-  assert.equal(Number(twa.appVersionCode), 19);
+  assert.equal(pkg.version, "2.0.1");
+  assert.equal(manifest.version, "2.0.1");
+  assert.equal(String(twa.appVersion), "2.0.1");
+  assert.equal(Number(twa.appVersionCode), 20);
   assert.match(build, /channel:\s*"Stable"/);
-  assert.match(build, /version:\s*"2\.0\.0"/);
-  assert.match(gradle, /versionName\s+"2\.0\.0"/);
-  assert.match(gradle, /versionCode\s+19/);
-  assert.match(worker, /herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1/);
-  assert.match(index, /herdharbor-cloud\.js\?v=35/);
+  assert.match(build, /version:\s*"2\.0\.1"/);
+  assert.match(gradle, /versionName\s+"2\.0\.1"/);
+  assert.match(gradle, /versionCode\s+20/);
+  assert.match(worker, /herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1/);
+  assert.match(index, /herdharbor-cloud\.js\?v=36/);
 });
 
 test("normal member and store surfaces contain no pre-release or internal-component branding", () => {

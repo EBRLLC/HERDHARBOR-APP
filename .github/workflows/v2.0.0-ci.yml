@@ -1,4 +1,4 @@
-name: HerdHarbor 2.0.0 CI
+name: HerdHarbor 2.0.1 release-candidate CI
 
 on:
   pull_request:
@@ -31,7 +31,7 @@ jobs:
           npx esbuild supabase/functions/animal-transfer/index.ts --format=esm --platform=neutral --log-level=error --outfile=/tmp/animal-transfer.mjs
           npx esbuild supabase/functions/paper-pedigree-extract/index.ts --bundle --format=esm --platform=neutral --external:npm:* --log-level=error --outfile=/tmp/hh-ai-paper-2.0.1.mjs
           npx esbuild supabase/functions/record-photo-extract/index.ts --bundle --format=esm --platform=neutral --external:npm:* --log-level=error --outfile=/tmp/hh-ai-photo-2.0.1.mjs
-      - name: Verify repository governance and current 2.0.0 release contract
+      - name: Verify repository governance and current 2.0.1 release-candidate contract
         run: npm run test:release
       - name: Verify canonical engine ownership explicitly
         run: npm run test:governance
@@ -72,35 +72,35 @@ jobs:
         env:
           HERDHARBOR_SENTRY_DSN: https://public@example.invalid/123
           HERDHARBOR_MONITORING_ENVIRONMENT: test
-          HERDHARBOR_BUILD_ID: ci-v2.0.0
+          HERDHARBOR_BUILD_ID: ci-v2.0.1
           HERDHARBOR_ENABLE_MONITORING_TEST: "true"
         run: |
           npm run build:monitoring-config
           grep -q '"environment": "test"' herdharbor-monitoring-config.js
-          grep -q '"release": "HerdHarbor@2.0.0"' herdharbor-monitoring-config.js
-          grep -q '"build": "ci-v2.0.0"' herdharbor-monitoring-config.js
+          grep -q '"release": "HerdHarbor@2.0.1"' herdharbor-monitoring-config.js
+          grep -q '"build": "ci-v2.0.1"' herdharbor-monitoring-config.js
           grep -q '"enableTestCrash": true' herdharbor-monitoring-config.js
           git checkout -- herdharbor-monitoring-config.js
       - name: Ensure tests and build did not mutate source
         run: git diff --exit-code -- . ':!vendor/herdharbor-monitoring-v1.6.1.min.js' ':!herdharbor-monitoring-config.js'
       - uses: actions/upload-artifact@v4
         with:
-          name: herdharbor-v2.0.0-monitoring-bundle
+          name: herdharbor-v2.0.1-monitoring-bundle
           path: vendor/herdharbor-monitoring-v1.6.1.min.js
           if-no-files-found: error
           retention-days: 14
 
   android-review:
-    name: Android 2.0.0 review bundle
+    name: Android 2.0.1 review bundle
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Verify Android release identity
         run: |
-          grep -q 'versionName "2.0.0"' android/app/build.gradle
-          grep -q 'versionCode 19' android/app/build.gradle
-          grep -q '"appVersion": "2.0.0"' twa-manifest.json
-          grep -q '"appVersionCode": 19' twa-manifest.json
+          grep -q 'versionName "2.0.1"' android/app/build.gradle
+          grep -q 'versionCode 20' android/app/build.gradle
+          grep -q '"appVersion": "2.0.1"' twa-manifest.json
+          grep -q '"appVersionCode": 20' twa-manifest.json
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -119,7 +119,7 @@ jobs:
         run: test -s android/app/build/outputs/bundle/release/app-release.aab
       - uses: actions/upload-artifact@v4
         with:
-          name: herdharbor-v2.0.0-unsigned-aab
+          name: herdharbor-v2.0.1-unsigned-aab
           path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 14

@@ -3,9 +3,9 @@
   root.HerdHarborBuild = Object.freeze({
     product: "HerdHarbor",
     channel: "Stable",
-    version: "2.0.0",
-    buildId: "v2.0.0-release-1",
-    build: "2.0.0-v2.0.0-release-1"
+    version: "2.0.1",
+    buildId: "v2.0.1-release-1",
+    build: "2.0.1-v2.0.1-release-1"
   });
 
   // Keep authentication and the first cloud hydration from waiting forever while
@@ -73,7 +73,7 @@
     };
   }
 
-  // HerdHarbor 2.0.0 is the stable application release identity. Established domain component identities remain independently versioned.
+  // HerdHarbor 2.0.1 is the candidate application release identity. Established domain component identities remain independently versioned.
   if (!root.document) return;
 
   root.document.addEventListener("submit", (event) => {
@@ -126,7 +126,7 @@
     addScript("hh-direct-transfer-v182", "direct-transfer-v1.8.2.js?v=1");
   });
   addScript("hh-paper-pedigree-core-v182", "paper-pedigree-import-core-v1.8.2.js?v=1", () => {
-    addScript("hh-paper-pedigree-v182", "paper-pedigree-import-v1.8.2.js?v=2");
+    addScript("hh-paper-pedigree-v182", "paper-pedigree-import-v1.8.2.js?v=3");
   });
   addScript("hh-how-to-navigation-v181", "how-to-navigation-v1.8.1.js?v=1");
   addScript("hh-registration-safety-v181", "registration-safety-v1.8.1.js?v=1", () => {

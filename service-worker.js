@@ -1,18 +1,18 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v2.0.0-v2.0.0-release-1";
+const CACHE_NAME = "herdharbor-shell-v2.0.1-v2.0.1-release-1";
 const REQUIRED_SHELL = [
   "./",
   "./index.html",
-  "./manifest.json?v=2.0.0",
+  "./manifest.json?v=2.0.1",
   "./herdharbor-core-v1.6.1.css?v=1.7.1",
   "./herdharbor-v1.6.1.css?v=1.7.1",
   "./herdharbor-index-shell.css?v=1",
   "./analytics-v1.6.1.css?v=2",
   "./vendor/supabase-2.111.0.js",
-  "./herdharbor-optional-tools.js?v=2",
-  "./herdharbor-build.js?v=2.0.0",
+  "./herdharbor-optional-tools.js?v=3",
+  "./herdharbor-build.js?v=2.0.1",
   "./herdharbor-state-store-v1.8.4.js?v=2",
   "./herdharbor-release-v1.6.1.js?v=2",
   "./herdharbor-membership-v1.6.1.js?v=1.7.1",
@@ -21,20 +21,25 @@ const REQUIRED_SHELL = [
   "./herdharbor-access-cache-v1.6.1.js?v=1.7.1",
   "./cloud-legacy-baseline-v1.8.4.js?v=1",
   "./account-boundary-core-v1.8.4.js?v=3",
-  "./herdharbor-cloud.js?v=35",
+  "./herdharbor-cloud.js?v=36",
   "./cloud-sync-rollout-runtime-v1.8.4.js?v=3",
   "./local-cache-v2-v1.8.2.js?v=1",
   "./cloud-sync-v2-flow-v1.8.2.js?v=1",
   "./cloud-sync-v2-diagnostics-v1.8.2.js?v=1",
   "./herdharbor-admin-v1.6.1.js?v=2",
-  "./pwa.js?v=34",
+  "./pwa.js?v=35",
   "./market-analytics-v1.6.5.js?v=1.7.1",
   "./pedigree-engine-v2.0.0.js?v=1",
   "./pedigree-customization-v2.0.0.css?v=1",
   "./pedigree-customization-v2.0.0.js?v=1",
   "./pedigree-renderer-v2.0.0.css?v=1",
   "./pedigree-renderer-v2.0.0.js?v=1",
-  "./animal-profile-runtime-v1.8.3.js?v=1",
+  "./canine-identity-v2.0.1.css?v=1",
+  "./canine-breeds-v2.0.1.js?v=1",
+  "./canine-identity-v2.0.1.js?v=1",
+  "./canine-lineage-v2.0.1.js?v=1",
+  "./canine-pedigree-print-v2.0.1.js?v=1",
+  "./animal-profile-runtime-v1.8.3.js?v=2",
   "./breeding-litter-runtime-v1.8.3.js?v=1",
   "./task-automation-v1.8.3.js?v=1",
   "./health-runtime-v1.8.3.js?v=1",
@@ -42,9 +47,9 @@ const REQUIRED_SHELL = [
   "./sales-customer-runtime-v1.8.3.js?v=1",
   "./production-reporting-runtime-v1.8.3.js?v=1",
   "./mobile-capture-v1.8.3.js?v=1",
-  "./herdharbor-app-runtime.js?v=4",
-  "./herdharbor-monitoring-config.js?v=2.0.0",
-  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.0",
+  "./herdharbor-app-runtime.js?v=5",
+  "./herdharbor-monitoring-config.js?v=2.0.1",
+  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.1",
   "./how-to/",
   "./icon-192.png",
   "./icon-512.png"
@@ -68,13 +73,13 @@ const RUNTIME_CACHE_PATHS = [
   "./cloud-dual-write-coordinator-v1.8.3.js?v=1",
   "./cloud-normalized-read-fallback-v1.8.3.js?v=1",
   "./voice-assisted-entry-v1.8.3.js?v=1",
-  "./photo-assisted-entry-v1.8.3.js?v=2",
+  "./photo-assisted-entry-v1.8.3.js?v=3",
   "./how-to-navigation-v1.8.1.js?v=1",
   "./direct-transfer-core-v1.8.2.js?v=1",
   "./direct-transfer-v1.8.2.js?v=1",
   "./direct-transfer-v1.8.2.css?v=1",
   "./paper-pedigree-import-core-v1.8.2.js?v=1",
-  "./paper-pedigree-import-v1.8.2.js?v=2",
+  "./paper-pedigree-import-v1.8.2.js?v=3",
   "./registration-safety-v1.8.1.js?v=1",
   "./subscription-referral-policy-v1.8.1.js?v=3",
   "./subscription-admin-credits-v1.8.1.js?v=1",
@@ -285,7 +290,12 @@ self.addEventListener("install", (event) => {
         path.endsWith("pedigree-documents-v2.0.0.js") ||
         path.endsWith("pedigree-renderer-v2.0.0.js") ||
         path.endsWith("herdharbor-app-runtime.js") ||
-        path.endsWith("herdharbor-cloud.js")
+        path.endsWith("herdharbor-cloud.js") ||
+        path.endsWith("canine-identity-v2.0.1.css") ||
+        path.endsWith("canine-breeds-v2.0.1.js") ||
+        path.endsWith("canine-identity-v2.0.1.js") ||
+        path.endsWith("canine-lineage-v2.0.1.js") ||
+        path.endsWith("canine-pedigree-print-v2.0.1.js")
       );
       if (fatal.length) throw new Error("Required HerdHarbor shell assets failed to cache: " + fatal.join(", "));
     })

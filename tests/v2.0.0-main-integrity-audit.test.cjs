@@ -346,12 +346,12 @@ test("background timers are bounded, gated, or tied to an active visible feature
 test("current whole-app release fallbacks do not regress to the retired 1.8.4 identity", () => {
   const runtime = read("herdharbor-app-runtime.js");
   const cloud = read("herdharbor-cloud.js");
-  assert.match(runtime, /APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"/);
+  assert.match(runtime, /APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.1"/);
   assert.doesNotMatch(runtime, /APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.4"/);
-  assert.match(cloud, /CLOUD_SYNC_APP_RELEASE = "2\.0\.0"/);
-  assert.match(cloud, /version: window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"[\s\S]*?backupType: "local-safety-backup"/);
-  assert.match(html, /herdharbor-cloud\.js\?v=35/);
-  assert.match(worker, /\.\/herdharbor-cloud\.js\?v=35/);
+  assert.match(cloud, /CLOUD_SYNC_APP_RELEASE = "2\.0\.1"/);
+  assert.match(cloud, /version: window\.HerdHarborBuild\?\.version \|\| "2\.0\.1"[\s\S]*?backupType: "local-safety-backup"/);
+  assert.match(html, /herdharbor-cloud\.js\?v=36/);
+  assert.match(worker, /\.\/herdharbor-cloud\.js\?v=36/);
 });
 
 
@@ -359,16 +359,16 @@ test("stable release bootstrap keeps legacy billing isolated and cannot execute 
   const release = read("herdharbor-release-v1.6.1.js");
   const pwa = read("pwa.js");
 
-  assert.match(release, /version: window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"/);
-  assert.match(release, /buildId: window\.HerdHarborBuild\?\.buildId \|\| "v2\.0\.0-release-1"/);
+  assert.match(release, /version: window\.HerdHarborBuild\?\.version \|\| "2\.0\.1"/);
+  assert.match(release, /buildId: window\.HerdHarborBuild\?\.buildId \|\| "v2\.0\.1-release-1"/);
   assert.match(release, /billingEnabled: false/);
   assert.match(read("subscription-engine-v1.8.0.js"), /Legacy billing isolation/);
   assert.match(read("subscription-launch-v1.8.1.js"), /window\.HerdHarborMembership = wrapped/);
 
   assert.match(html, /<script id="hh-v151-release-script" src="herdharbor-release-v1\.6\.1\.js\?v=2"><\/script>/);
   assert.match(pwa, /addScript\("hh-v151-release-script", "herdharbor-release-v1\.6\.1\.js\?v=2"\)/);
-  assert.match(html, /pwa\.js\?v=34/);
-  assert.match(worker, /\.\/pwa\.js\?v=34/);
+  assert.match(html, /pwa\.js\?v=35/);
+  assert.match(worker, /\.\/pwa\.js\?v=35/);
 });
 
 

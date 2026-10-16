@@ -7,7 +7,7 @@
     spreadsheet: "spreadsheet-import.js?v=17",
     qr: "vendor/qrcode-generator-1.4.4.js",
     voiceAi: "voice-assisted-entry-v1.8.3.js?v=1",
-    photoAi: "photo-assisted-entry-v1.8.3.js?v=2"
+    photoAi: "photo-assisted-entry-v1.8.3.js?v=3"
   });
 
   const AI_TESTER_KEY = "herdharbor_ai_live_tester_v1";

@@ -150,17 +150,17 @@ test("Phase 3 modern profile and shared animal-action router remain authoritativ
 test("shell loads and caches extracted runtime before application composition", () => {
   const html = read("index.html");
   const worker = read("service-worker.js");
-  const domainIndex = html.indexOf("animal-profile-runtime-v1.8.3.js?v=1");
-  const compositionIndex = html.indexOf("herdharbor-app-runtime.js?v=4");
+  const domainIndex = html.indexOf("animal-profile-runtime-v1.8.3.js?v=2");
+  const compositionIndex = html.indexOf("herdharbor-app-runtime.js?v=5");
   assert.ok(domainIndex >= 0 && compositionIndex > domainIndex);
-  assert.match(worker, /\.\/animal-profile-runtime-v1\.8\.3\.js\?v=1/);
+  assert.match(worker, /\.\/animal-profile-runtime-v1\.8\.3\.js\?v=2/);
   assert.match(worker, /"\/animal-profile-runtime-v1\.8\.3\.js"/);
 });
 
 test("Phase 6B extraction remains compatible with formal v1.8.4 and does not activate normalized-sync authority", () => {
-  assert.equal(packageJson.version, "2.0.0");
+  assert.equal(packageJson.version, "2.0.1");
   const build = read("herdharbor-build.js");
-  assert.match(build, /version:\s*"2\.0\.0"/);
+  assert.match(build, /version:\s*"2\.0\.1"/);
   for (const asset of [
     "cloud-sync-cohort-gate-v1.8.3.js",
     "cloud-sync-reconciliation-v1.8.3.js",
