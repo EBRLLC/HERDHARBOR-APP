@@ -43,60 +43,26 @@ This roadmap replaces older planning that treated 1.8.x as the active product li
 
 ---
 
-# Release 2.0.1 — AI-Assisted Workflow Public Release
+# Release 2.0.1 — Canine Foundation + Optional AI Public Release
 
-**Priority:** highest product feature release.
+**Priority:** highest product feature release. **State:** development, not public-enabled.
 
-**Goal:** move the already deployed controlled-access AI workflows into a deliberate public release without allowing AI to become a second persistence path.
+**Goal:** add canine identities, breeder-maintained registrations, titles and safe pedigrees to the shared animal-first application, while independently preparing existing optional paper-pedigree/photo/voice AI for public readiness. Neither feature may be silently enabled in production.
 
-### Stack 2.0.1-A — AI access and entitlement contract
-- Define Member/Founder/Junior availability for each AI action.
-- Keep provider credentials server-side.
-- Keep per-user/global usage quotas and abuse controls.
-- Add explicit feature flags and emergency disable controls.
-- Preserve aggregate-only telemetry and privacy boundaries.
+### Required review stack
+K0 audit/governance → K1 canine catalog/registry/title model → K2 animal-first dog profile → K3 protected dog pedigree links → K4 canine print/export → A1 AI entitlements/controls → A2 paper reader → A3 photo/voice → K5 mixed-species Today/tasks → R1 final acceptance.
 
-### Stack 2.0.1-B — Paper Pedigree Reader
-- Publicly expose paper-pedigree photo reading to eligible accounts.
-- Require structured extraction validation.
-- Keep uncertain values visibly uncertain.
-- Require human review before committing.
-- Reuse the canonical pedigree graph/save path.
-- Add duplicate/conflict checks before save.
-- Add production acceptance tests using representative pedigree layouts.
+- Every branch must descend from its immediate predecessor and PRs must target their immediate predecessor's branch.
+- Preserve existing rabbits/livestock, canonical records, existing cloud/CAS/outbox boundaries and the current-farm species hardlock.
+- Canine 2.0.1 is **manual registration/title/pedigree management**, not a canine reproduction or official AKC document/verification service.
+- Support 3-/4-generation breeder-maintained pedigrees with explicit unofficial document labels; never fabricate registry confirmation.
+- Canine AI scanning may remain disabled if a verified image corpus does not meet quality gates.
+- Human-confirmed draft AI only; manual entry works with AI disabled, out of quota or unavailable.
+- Separate canine feature control and AI operation-level server-authoritative gates; public entitlement matrix requires owner approval.
+- Any missing owner approval leaves public flags off, without blocking safe review of complete implementation.
 
-### Stack 2.0.1-C — Photo-Assisted Entry
-- Publicly expose supported photo-assisted Animal/Health entry.
-- AI prepares a draft only.
-- Canonical Animal/Health forms remain final save owners.
-- Unsupported or incomplete extraction fails closed.
-- Add explicit review, correction, and cancel paths.
-
-### Stack 2.0.1-D — Voice-Assisted Entry
-- Publicly expose voice-assisted entry for supported workflows.
-- Voice creates review drafts only.
-- Canonical Health/Breeding/Animal forms remain final persistence owners.
-- Require confirmation for ambiguous dates, animals, dosages, breeding events, and other material fields.
-
-### Stack 2.0.1-E — Multi-input provenance and conflict UX
-- Define deterministic field provenance for AI-assisted drafts.
-- Show source/conflict state when multiple inputs disagree.
-- Do not auto-resolve conflicting pedigree lineage.
-- Multi-photo pedigree merging may ship only after this contract is proven.
-
-### Stack 2.0.1-F — Public release and acceptance
-- Add user-facing help/how-to content.
-- Change website AI messaging from Coming Soon only after production acceptance.
-- Verify quotas, fail-closed behavior, canonical save ownership, privacy, and rollback.
-- Keep a one-switch ability to disable AI availability without affecting canonical records.
-
-### 2.0.1 exit criteria
-- no AI path can directly bypass canonical save owners;
-- no provider secret reaches browser code;
-- uncertain/conflicting values cannot silently become canonical data;
-- AI can be disabled without data migration;
-- full regression and production acceptance are green.
-
+### Exit and stop contract
+Finish with final R1 PR **non-draft, unmerged, green on all required checks and ready for owner review**. Do not merge PRs, switch broad public flags, deploy, or claim production acceptance. Do not confuse missing CI checks with success. Preserve the 2.0.2 distribution plan unchanged.
 ---
 
 # Release 2.0.2 — Distribution and Install Quality
