@@ -200,8 +200,12 @@ test("a failed reimport cannot erase an existing pedigree attachment",async()=>{
  assert.equal(x.attachments.get(original.id),previous);
 });
 test("photo attachments resolve only after IndexedDB transaction completion",()=>{
- assert.match(paper,/transaction\.oncomplete\s*=\s*\(\)\s*=>\s*resolve\(request\.result\)/);
- assert.doesNotMatch(paper,/request\.onsuccess\s*=\s*\(\)\s*=>\s*resolve\(request\.result\)/);
+ const start=paper.indexOf("async function attachmentRequest(");
+ const end=paper.indexOf("const putPedigreeAttachment",start);
+ assert.ok(start>=0&&end>start);
+ const transactionBody=paper.slice(start,end);
+ assert.match(transactionBody,/transaction\.oncomplete\s*=\s*\(\)\s*=>\s*resolve\(request\.result\)/);
+ assert.doesNotMatch(transactionBody,/request\.onsuccess\s*=\s*\(\)\s*=>\s*resolve\(request\.result\)/);
 });
 test("cloud sends immediate auth-boundary signals before async account hydration",()=>{
  const cloud=src("herdharbor-cloud.js");
