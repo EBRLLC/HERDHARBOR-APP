@@ -2,7 +2,7 @@ name: HerdHarbor 2.0.0 CI
 
 on:
   pull_request:
-    branches: [main, 'release-2.0.0-phase-*', 'breeder-docs/phase-*', 'breeding-intel/phase-*', 'marketplace-site/app-*', 'marketplace-comms/app-*', 'ownership-transfer/phase-*']
+    branches: [main, 'herdharbor-2.0.1/**', 'release-2.0.0-phase-*', 'breeder-docs/phase-*', 'breeding-intel/phase-*', 'marketplace-site/app-*', 'marketplace-comms/app-*', 'ownership-transfer/phase-*']
   workflow_dispatch:
 
 permissions:

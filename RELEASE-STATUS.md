@@ -1,11 +1,12 @@
 # HerdHarbor Release Status
 
-Updated: 2026-10-05
+Updated: 2026-10-16
 
 - Stable production version: 2.0.0
 - Stable production channel: web / installable PWA
 - Active development version: 2.0.1
-- Next planned release: 2.0.1 — AI-Assisted Workflow Public Release
+- Next planned release: 2.0.1 — Canine Foundation + Optional AI Public Release
+- Release gate: PR review only; no merges, no deployments or public feature enablement before owner acceptance
 - Google Play: not yet production-published
 - Apple App Store: not yet production-published
 - AI-assisted paper pedigree, photo entry, and voice entry: deployed behind controlled access; not yet generally public
