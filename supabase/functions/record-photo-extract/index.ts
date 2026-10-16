@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.111.0";
+import { decideAiAccess } from "../_shared/herdharbor-ai-access-v2.0.1.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -230,6 +231,18 @@ Deno.serve(async (req) => {
     const admin = createClient(supabaseUrl, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
     const { data: authData, error: authError } = await admin.auth.getUser(token);
     if (authError || !authData?.user?.id) return fail("authentication_invalid", "The authentication session is invalid or expired.", 401);
+    // Fail closed until the owner's approved access matrix or an explicit
+    // server-side tester allowlist authorizes this authenticated account.
+    const { data: access, error: accessError } = await admin.from("account_access")
+      .select("membership_tier, account_status, subscription_status")
+      .eq("user_id", authData.user.id).maybeSingle();
+    if (accessError) return fail("access_policy_unavailable", "AI access could not be verified. Manual entry remains available.", 503, true);
+    const gate = decideAiAccess({
+      userId: authData.user.id, feature: "record_photo",
+      account: access, env: (key) => Deno.env.get(key)
+    });
+    if (!gate.allowed) return fail("access_not_enabled", "This AI feature is not enabled for your account. Manual entry remains available.", 403);
+
     const contentLength = Number(req.headers.get("content-length") || 0);
     if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) return fail("image_too_large", "That photo is too large to analyze. Resize it and try again.", 413);
     const body = await req.json().catch(() => null);
