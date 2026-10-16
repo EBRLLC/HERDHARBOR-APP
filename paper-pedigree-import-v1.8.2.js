@@ -313,12 +313,14 @@
   async function readPedigree() {
     if (!selectedFile) return setStatus("Choose a JPG or PNG pedigree photo first.", "error");
     if (!cloud()?.getSession?.()?.user?.id) return setStatus("Sign in before using automatic pedigree reading.", "error");
+    if (!root.document.querySelector(`#${DIALOG_ID} [data-pp-ai-optin]`)?.checked)
+      return setStatus("Choose to send this rabbit pedigree photo to the optional AI reader before uploading.", "error");
     const button = root.document.querySelector(`#${DIALOG_ID} [data-pp-read]`);
     if (button) button.disabled = true;
     setStatus("Preparing and reading the pedigree…");
     try {
       preparedImage = await prepareImage(selectedFile);
-      const rabbitOnlyImage = { ...preparedImage, species: "Rabbit" };
+      const rabbitOnlyImage = { ...preparedImage, species: "Rabbit", aiOptIn: true };
       const preview = root.document.querySelector(`#${DIALOG_ID} [data-pp-preview]`);
       if (preview) preview.innerHTML = `<img src="${preparedImage.dataUrl}" alt="Selected paper pedigree">`;
       const response = typeof cloud().invokeFunctionWithDiagnostics === "function"
@@ -431,6 +433,7 @@
           <div class="hh-pp-drop"><strong>Choose a clear photo of the pedigree</strong><p class="muted">JPG or PNG. Photograph the page straight-on with all names and identifiers visible.</p><input type="file" accept="image/jpeg,image/png" data-pp-file></div>
           <div class="hh-pp-preview" data-pp-preview><span class="muted">Photo preview</span></div>
         </div>
+        <label class="hh-pp-confirm"><input type="checkbox" data-pp-ai-optin><span>I choose to send this rabbit pedigree image to HerdHarbor's optional AI service to create an editable draft. Manual pedigree entry remains available.</span></label>
         <div><button type="button" class="button button-primary" data-pp-read>Read pedigree photo</button></div>
         <div class="hh-pp-status" data-type=""></div>
         <div data-pp-problems></div>
@@ -442,6 +445,9 @@
     dialog.querySelectorAll("[data-pp-close]").forEach((button) => button.addEventListener("click", () => dialog.close()));
     dialog.querySelector("[data-pp-file]")?.addEventListener("change", async (event) => {
       selectedFile = event.target.files?.[0] || null;
+      // Consent is image-specific. Selecting a new file requires a fresh choice.
+      const optIn = dialog.querySelector("[data-pp-ai-optin]");
+      if (optIn) optIn.checked = false;
       extraction = null;
       preparedImage = null;
       const review = dialog.querySelector("[data-pp-review]");
