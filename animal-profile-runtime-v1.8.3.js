@@ -53,7 +53,11 @@
         const haystack = [
           animal?.name, animal?.tag, animal?.earTagNumber, animal?.earTagColor,
           animal?.registrationNumber, animal?.tattoo, animal?.breeder, animal?.breed,
-          animal?.location, animal?.color
+          animal?.location, animal?.color,
+          animal?.canine?.callName, animal?.canine?.registeredName,
+          ...(Array.isArray(animal?.canine?.registrations) ?
+            animal.canine.registrations.flatMap(item => [item.registry, item.number, [item.registry,item.number].filter(Boolean).join(" ")]) : []),
+          ...(Array.isArray(animal?.canine?.titles) ? animal.canine.titles.map(item => item.abbreviation) : [])
         ].join(" ").toLowerCase();
         return haystack.includes(query);
       });
@@ -458,6 +462,9 @@
       const health = (state.health || []).filter((record) => record.animalId === id).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
       const breedings = (state.breedings || []).filter((record) => record.femaleId === id || record.maleId === id);
       const pedigreeImports = (state.pedigrees || []).filter((record) => record.subjectAnimalId === id);
+      const isCanine = root.HerdHarborCanineIdentity?.isDog(animal);
+      const canineInfo = isCanine ? root.HerdHarborCanineIdentity.normalize(animal.canine) : null;
+      const preferredCanineRegistration = isCanine ? root.HerdHarborCanineIdentity.preferredRegistration(animal) : null;
 
       deps.openModal(animal.name, `
         <div class="animal-detail-hero">
@@ -476,7 +483,9 @@
           ${String(animal.species || "").toLowerCase() === "cattle" ? deps.detailField("Ear tag number", animal.earTagNumber) : ""}
           ${String(animal.species || "").toLowerCase() === "cattle" ? deps.detailField("Ear tag color", animal.earTagColor) : ""}
           ${deps.detailField("Tattoo / ear number", animal.tattoo)}
-          ${deps.detailField("Registration", animal.registrationNumber)}
+          ${deps.detailField("Registration", isCanine && preferredCanineRegistration
+             ? [preferredCanineRegistration.registry,preferredCanineRegistration.number].filter(Boolean).join(" ")
+             : animal.registrationNumber)}
           ${deps.detailField("Breeder", animal.breeder)}
           ${deps.detailField("Born", deps.formatDate(animal.dob))}
           ${deps.detailField("Age", deps.ageText(animal.dob))}
@@ -484,12 +493,13 @@
           ${deps.detailField("Status", animal.status)}
           ${deps.detailField("Asking price", animal.askingPrice ? deps.formatMoney(animal.askingPrice) : "—")}
         </div>
-        <h3 style="margin-top:22px">Pedigree preview</h3>
-        ${pedigreeRecordPreviewHtml(animal, pedigreeImports.slice().sort((left, right) => String(right.importedAt || "").localeCompare(String(left.importedAt || "")))[0] || null)}
-        ${root.HerdHarborAnimalDocuments?.centerHtml?.({
-          animalName: animal.name,
-          pedigreeCount: pedigreeImports.length
-        }) || ""}
+        ${isCanine ? '<h3 style="margin-top:22px">Canine identity and pedigree</h3><p class="muted">Breeder-maintained; not independently registry verified.</p>'+
+           '<p><strong>Registered name:</strong> '+esc(canineInfo.registeredName || animal.name)+'</p>'+
+           '<p><strong>Titles:</strong> '+esc(canineInfo.titles.map(item=>item.abbreviation).join(" ") || "None recorded")+'</p>'+
+           '<p><strong>Registrations:</strong> '+esc(canineInfo.registrations.map(item=>[item.registry,item.number].filter(Boolean).join(" ")).join(" · ") || "None recorded")+'</p>'
+           : '<h3 style="margin-top:22px">Pedigree preview</h3>'+
+           pedigreeRecordPreviewHtml(animal, pedigreeImports.slice().sort((left, right) => String(right.importedAt || "").localeCompare(String(left.importedAt || "")))[0] || null)+
+           (root.HerdHarborAnimalDocuments?.centerHtml?.({animalName:animal.name,pedigreeCount:pedigreeImports.length}) || "")}
         <h3 style="margin-top:22px">Notes</h3>
         <p class="muted">${esc(animal.notes || "No notes recorded.")}</p>
         <h3 style="margin-top:22px">Record summary</h3>
@@ -498,9 +508,11 @@
           <button class="button button-ghost" id="detail-close">Close</button>
           <button class="button button-ghost" id="detail-analytics">View analytics</button>
           <button class="button button-ghost" id="detail-print-qr">Print QR card</button>
-          <button class="button button-ghost" id="detail-import-pedigree">Build / import pedigree</button>
-          <button class="button button-ghost" id="detail-birth-certificate">Create Birth Certificate</button>
-          <button class="button button-ghost" id="detail-compare-pedigree">Linebreeding Coefficient</button>
+          ${isCanine ?
+            '<button class="button button-ghost" id="detail-print-canine">Print Dog Pedigree</button>' :
+            '<button class="button button-ghost" id="detail-import-pedigree">Build / import pedigree</button>' +
+            '<button class="button button-ghost" id="detail-birth-certificate">Create Birth Certificate</button>' +
+            '<button class="button button-ghost" id="detail-compare-pedigree">Linebreeding Coefficient</button>'}
           <button class="button button-primary" id="detail-edit">Edit animal</button>
         </div>
       `, `${animal.species || "Animal"} record`);
@@ -511,7 +523,7 @@
         root.HerdHarborAnalytics?.openAnimal?.(id);
         deps.navigate("analytics");
       });
-      root.HerdHarborAnimalDocuments?.bindCenter?.(
+      if (!isCanine) root.HerdHarborAnimalDocuments?.bindCenter?.(
         document.querySelector("[data-hh-animal-documents]"),
         {
           openPedigree: () => deps.openPrintPedigreeForm(id),
@@ -520,6 +532,7 @@
         }
       );
       $("#detail-print-qr")?.addEventListener("click", (event) => openAnimalQrCardForm(id, event.currentTarget));
+      $("#detail-print-canine")?.addEventListener("click", () => root.HerdHarborCaninePedigreePrint?.openForAnimal?.(id));
       $("#detail-import-pedigree")?.addEventListener("click", () => deps.openPedigreeImport(id));
       $("#detail-birth-certificate")?.addEventListener("click", () => deps.openBirthCertificateForm(id));
       $("#detail-compare-pedigree")?.addEventListener("click", () => {

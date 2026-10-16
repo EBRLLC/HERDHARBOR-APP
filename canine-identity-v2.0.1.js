@@ -172,7 +172,7 @@
     return validate({
       callName: panel.querySelector('[data-canine-call-name]')?.value,
       registeredName: panel.querySelector('[data-canine-registered-name]')?.value,
-      registrations, titles, preferredRegistrationId: previous?.preferredRegistrationId
+      registrations, titles, preferredRegistrationId: registrations.some(row=>row.id===previous?.preferredRegistrationId) ? previous.preferredRegistrationId : ""
     });
   }
   return Object.freeze({ VERSION, isDog, normalize, validate, displayName, preferredRegistration, editorHtml, bindEditor, readEditor });
