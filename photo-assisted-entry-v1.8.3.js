@@ -11,19 +11,31 @@
   const clean = (value) => String(value == null ? "" : value).replace(/\s+/g, " ").trim();
   const lower = (value) => clean(value).toLowerCase();
 
+  function identityValues(animal, field) {
+    const base = [animal?.[field]];
+    if (lower(animal?.species) !== "dog") return base.map(lower).filter(Boolean);
+    const canine = animal?.canine || {};
+    if (field === "name") base.push(canine.registeredName,canine.callName);
+    if (field === "registrationNumber" && Array.isArray(canine.registrations)) {
+      for (const entry of canine.registrations) {
+        base.push(entry?.number, [entry?.registry,entry?.number].filter(Boolean).join(" "));
+      }
+    }
+    return base.map(lower).filter(Boolean);
+  }
   function exactAnimalMatches(hints = {}, animals = []) {
     const records = Array.isArray(animals) ? animals : [];
     const identifier = lower(hints.identifier);
     if (identifier) {
-      const matches = records.filter((animal) =>
-        ["registrationNumber","tattoo","tag","earTagNumber"].some((field) => lower(animal?.[field]) === identifier)
-      );
+      const matches = records.filter(animal=>
+        ["registrationNumber","tattoo","tag","earTagNumber"].some(field=>
+          identityValues(animal,field).includes(identifier)));
       if (matches.length) return matches;
     }
     for (const field of ["registrationNumber","tattoo","tag","earTagNumber","name"]) {
       const value = lower(hints[field]);
       if (!value) continue;
-      const matches = records.filter((animal) => lower(animal?.[field]) === value);
+      const matches = records.filter(animal=>identityValues(animal,field).includes(value));
       if (matches.length) return matches;
     }
     return [];
@@ -102,6 +114,8 @@
     if (classification === "registration_document") {
       const registration = providerDraft.registration || {};
       if (!clean(registration.species)) warnings.push("Species was not identified in the source. Select and verify the correct species before continuing.");
+      if (exactAnimalMatches({registrationNumber:registration.registrationNumber,name:registration.name},animals).length)
+        warnings.push("An existing animal may already have this registered identity. Review before creating another animal.");
       return {
         classification,
         classificationConfidence: Number(providerDraft.classificationConfidence || 0),
