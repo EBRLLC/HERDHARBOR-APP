@@ -62,7 +62,9 @@
   }
 
   function breedingDefinitions(state, breeding = {}) {
-    if (!breeding.id || dogFor(state,breeding.femaleId) || dogFor(state,breeding.maleId)) return [];
+    // Existing breeding records are authoritative regardless of species. Suppressing
+    // a formerly valid Dog definition would silently mark its task as completed.
+    if (!breeding.id) return [];
     return [{
       id: workflowTaskId("breeding", breeding.id, "breeding-follow-up"),
       title: "Breeding follow-up: " + animalName(state, breeding.femaleId),
@@ -80,7 +82,8 @@
   }
 
   function litterDefinitions(state, litter = {}) {
-    if (!litter.id || dogFor(state,litter.damId)) return [];
+    // Keep historical task fingerprints and IDs stable across release upgrades.
+    if (!litter.id) return [];
     return [{
       id: workflowTaskId("birth", litter.id, "litter-follow-up"),
       title: "Litter follow-up: " + animalName(state, litter.damId),
@@ -98,7 +101,12 @@
   }
 
   function healthDefinition(state, record = {}) {
-    if (!record.id || historicalDog(state,record.animalId)) return null;
+    if (!record.id) return null;
+    // Do not introduce new work for archived dog ancestors, but do not mark
+    // an *existing* tracked reminder complete merely because a status changed.
+    if (historicalDog(state,record.animalId) &&
+        !array(state,"tasks").some(task=>task.automationManaged &&
+          task.sourceType==="health" && String(task.sourceRecordId)===String(record.id))) return null;
     const type = clean(record.type);
     const reminderType = type === "Medication"
       ? "medication-follow-up"

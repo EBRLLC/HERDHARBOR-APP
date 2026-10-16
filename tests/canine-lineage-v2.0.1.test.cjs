@@ -37,6 +37,6 @@ test("rabbit lineage is not changed by canine validator",()=>{
   const result=lineage.validate(animals,rabbit("pup","Female",{sireId:"dad",damId:"mom"}));
   assert.equal(result.valid,true);
   const profile=fs.readFileSync(path.join(__dirname,"../animal-profile-runtime-v1.8.3.js"),"utf8");
-  assert.match(profile,/const lineage = canineLineage\?\.validate\?\./);
+  assert.match(profile,/canineLineage\?\.validateMutation\?\./);
   assert.match(profile,/if \(canineIdentity\?\.isDog\(data\.species\)\)/);
 });

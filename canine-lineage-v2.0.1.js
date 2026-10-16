@@ -72,6 +72,67 @@
     }
     return {valid:problems.length===0,issues:[...new Set(problems)],warnings:[...new Set(warnings)]};
   }
+
+  // Called before a canonical Animal edit, including species or sex changes.
+  // Check children that depend on the subject as well as the subject's parents.
+  // This prevents an edited sire/dam from silently invalidating existing litters.
+  function validateMutation(animals, proposed) {
+    const list=Array.isArray(animals)?animals:[];
+    const proposedId=id(proposed?.id);
+    const before=list.find(row=>id(row?.id)===proposedId);
+    const problems=[];
+    if(!proposedId)problems.push("Animal identifier is required.");
+    const children=list.filter(row=>id(row?.id)!==proposedId &&
+      (id(row?.sireId)===proposedId || id(row?.damId)===proposedId));
+    const wasDog=isDog(before), willBeDog=isDog(proposed);
+    const isTransition=before&&lower(before.species)!==lower(proposed?.species);
+    if(isTransition && (wasDog||willBeDog)) {
+      const meta=before?.canine || {};
+      const hasIdentity=Boolean(String(meta.registeredName||"").trim() ||
+        String(meta.callName||"").trim() ||
+        (Array.isArray(meta.registrations)&&meta.registrations.length) ||
+        (Array.isArray(meta.titles)&&meta.titles.length));
+      if(wasDog && hasIdentity)
+        problems.push("This dog has registration, title or identity records. Retain Dog species until those records are explicitly reconciled.");
+      if(children.length)
+        problems.push("This animal is a parent in existing pedigrees. Reconcile offspring references before changing its species.");
+      if(id(before.sireId)||id(before.damId))
+        problems.push("This animal has linked parents. Reconcile parentage before changing its species.");
+    }
+    // These children may be non-dogs from historical import. Do not silently
+    // rewrite any persisted records on a parent edit.
+    for(const child of children) {
+      const relation=id(child.sireId)===proposedId?"sire":"dam";
+      const requiredSex=relation==="sire"?"male":"female";
+      if(lower(proposed?.sex)!==requiredSex)
+        problems.push("Cannot change sex: existing "+relation+" references require "+requiredSex+".");
+      if(isDog(child)&&!willBeDog)
+        problems.push("Cannot change species: existing dog pedigrees reference this Dog parent.");
+      if(isDog(child)&&willBeDog) {
+        const updated=list.map(row=>id(row.id)===proposedId?proposed:row);
+        const childCheck=validate(updated,child);
+        if(!childCheck.valid)problems.push(...childCheck.issues);
+      }
+    }
+    if(willBeDog) {
+      const updated=list.some(row=>id(row?.id)===proposedId)
+        ?list.map(row=>id(row?.id)===proposedId?proposed:row)
+        :[...list,proposed];
+      const check=validate(updated,proposed);
+      if(!check.valid)problems.push(...check.issues);
+    }
+    return {valid:problems.length===0,issues:[...new Set(problems)]};
+  }
+  function validateDeletion(animals, animalId) {
+    const target=id(animalId);
+    const dependents=(Array.isArray(animals)?animals:[]).filter(row=>
+      id(row?.id)!==target && (id(row?.sireId)===target||id(row?.damId)===target));
+    return dependents.length
+      ?{valid:false,issues:["This animal is referenced as a parent by "+dependents.length+
+        " other animal(s). Keep it as Ancestor Only or reassign their parent references before deleting."]}
+      :{valid:true,issues:[]};
+  }
+
   function parentOptions(animals,subject,field){
     if(!isDog(subject))return [];
     const wanted=field==="sireId"?"male":field==="damId"?"female":"";
@@ -93,5 +154,5 @@
       }
     }
   }
-  return Object.freeze({VERSION,validate,parentOptions,filterParentSelectors});
+  return Object.freeze({VERSION,validate,validateMutation,validateDeletion,parentOptions,filterParentSelectors});
 });
