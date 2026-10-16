@@ -435,13 +435,20 @@
   function pedigreePanel(state,model){
     const animal=model.animal;
     if(root.HerdHarborCanineIdentity?.isDog(animal)){
+      const meta=root.HerdHarborCanineIdentity.normalize(animal.canine);
+      const registryOptions=[...new Set(meta.registrations.map(row=>row.registry))].map(org=>'<option value="'+esc(org)+'">'+esc(org)+'</option>').join("");
       const linked=field=>animalById(state,animal[field]);
       const label=field=>linked(field)?esc(root.HerdHarborCanineIdentity.displayName(linked(field))):"Unknown";
       return '<div class="hh-p2-panel-head"><div><h3>Dog pedigree</h3>'+
         '<p>Breeder-maintained ancestry. Not an AKC-certified or independently verified pedigree.</p>'+
         '<p>Sire: <strong>'+label("sireId")+'</strong> · Dam: <strong>'+label("damId")+'</strong></p></div>'+
         '<button type="button" class="button button-primary button-small" data-hh-p2-action="edit">Edit dog and parent links</button></div>'+
-        '<p class="muted">Unknown ancestors remain unknown. Dedicated dog printing will be added in the next phase.</p>';
+        '<div class="hh-canine-print-controls">'+
+        '<label>Generations<select data-hh-canine-generations><option value="3">3 generations</option><option value="4" selected>4 generations</option></select></label>'+
+        '<label>Paper<select data-hh-canine-paper><option value="letter">US Letter landscape</option><option value="a4">A4 landscape</option></select></label>'+
+        '<label>Registry<select data-hh-canine-registry><option value="">Preferred recorded registry</option>'+registryOptions+'</select></label>'+
+        '<button type="button" class="button button-primary" data-hh-p2-action="print-pedigree">Print / Save PDF</button>'+
+        '</div><p class="muted">Unknown ancestors remain unknown. Full ancestor details are included without silent text truncation.</p>';
     }
     const pedigrees=array(state,"pedigrees").filter(record=>String(record.subjectAnimalId)===String(animal.id));
     return`<div class="hh-p2-panel-head"><div><h3>Pedigree</h3><p>Sire: <strong>${esc(animalName(state,animal.sireId))}</strong> · Dam: <strong>${esc(animalName(state,animal.damId))}</strong></p></div><div><button class="button button-primary button-small" data-hh-p2-action="pedigree">Build / import</button><button class="button button-ghost button-small" data-hh-p2-action="print-pedigree">Print</button></div></div><div class="hh-p2-lifecycle-grid"><div><span>Completed pedigree records</span><strong>${pedigrees.length}</strong></div><div><span>Transfer-ready ancestry</span><strong>${animal.sireId||animal.damId?"Linked":"Not linked yet"}</strong><small>Pedigree relationships stay attached to the animal.</small></div></div>`;
