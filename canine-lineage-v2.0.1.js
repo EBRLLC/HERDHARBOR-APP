@@ -165,9 +165,11 @@
     const collections=[
       ["breedings","breeding"],["litters","litter"],["births","birth"],
       ["health","health"],["pedigrees","pedigree"],["pedigreeDrafts","pedigree draft"],
-      ["tasks","task"],["sales","sale"],["ownershipTransfers","ownership transfer"],
-      ["showEntries","show"],["showResults","show result"],["medical","medical"],
-      ["weights","weight"]
+      ["tasks","task"],["sales","sale"],["payments","payment"],
+      ["transfers","transfer"],["transactions","transaction"],
+      ["productionRecords","production"],["customers","customer"],
+      ["ownershipTransfers","ownership transfer"],["showEntries","show"],
+      ["showResults","show result"],["medical","medical"],["weights","weight"]
     ];
     for(const [key,label] of collections) {
       const count=(Array.isArray(state?.[key])?state[key]:[]).filter(linked).length;
