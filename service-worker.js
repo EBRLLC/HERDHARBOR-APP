@@ -290,7 +290,12 @@ self.addEventListener("install", (event) => {
         path.endsWith("pedigree-documents-v2.0.0.js") ||
         path.endsWith("pedigree-renderer-v2.0.0.js") ||
         path.endsWith("herdharbor-app-runtime.js") ||
-        path.endsWith("herdharbor-cloud.js")
+        path.endsWith("herdharbor-cloud.js") ||
+        path.endsWith("canine-identity-v2.0.1.css") ||
+        path.endsWith("canine-breeds-v2.0.1.js") ||
+        path.endsWith("canine-identity-v2.0.1.js") ||
+        path.endsWith("canine-lineage-v2.0.1.js") ||
+        path.endsWith("canine-pedigree-print-v2.0.1.js")
       );
       if (fatal.length) throw new Error("Required HerdHarbor shell assets failed to cache: " + fatal.join(", "));
     })
