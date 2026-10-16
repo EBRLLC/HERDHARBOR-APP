@@ -89,7 +89,9 @@ test("retryable provider failure keeps the same draft request pending without ca
 test("photo entry is camera-first, uses prepared images, and resumes on mobile lifecycle signals", () => {
   assert.match(photo, /capture="environment"/);
   assert.match(photo, /mobileCapture\(\)/);
-  assert.match(photo, /prepareImage\(selectedFile\)/);
+  assert.match(photo, /prepareImage\(meta\.file\)/);
+  assert.match(photo, /isCurrentAttempt\(meta\)/);
+  assert.match(photo, /meta\.ownerId/);
   assert.match(photo, /createRetryController/);
   assert.match(photo, /photo_analysis_queued/);
   assert.match(photo, /addEventListener\?\.\("online"/);
