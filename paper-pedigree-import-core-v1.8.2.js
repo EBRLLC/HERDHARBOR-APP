@@ -213,6 +213,11 @@
 
     for (const node of extraction.nodes || []) {
       if (!node.present) continue;
+      if (norm(node.species || DEFAULT_SPECIES) !== "rabbit") {
+        conflicts.push({type:"unsupported-species",role:node.role,field:"species",incoming:clone(node)});
+        actions.push({role:node.role,mode:"blocked",incoming:clone(node),reason:"unsupported-species"});
+        continue;
+      }
       if (!clean(node.name, 160)) {
         conflicts.push({ type: "missing-required-field", role: node.role, field: "name", incoming: clone(node) });
         actions.push({ role: node.role, mode: "blocked", incoming: clone(node), reason: "missing-required-field" });
@@ -283,6 +288,16 @@
     if ((plan.conflicts || []).length && options.allowConflicts !== true) throw new Error("Resolve pedigree field conflicts before importing.");
     const state = clone(inputState && typeof inputState === "object" ? inputState : {});
     state.animals = Array.isArray(state.animals) ? state.animals : [];
+    // Guard canonical commits as well as the review plan. An AI draft cannot
+    // write unvalidated Dog metadata even with a forged/previously built plan.
+    for (const action of plan.actions || []) {
+      if (!["create","merge","link"].includes(action.mode)) continue;
+      if (norm(action.incoming?.species || DEFAULT_SPECIES) !== "rabbit")
+        throw new Error("This AI paper pedigree reader supports rabbits only. Enter other species manually.");
+      const existing = state.animals.find(row => String(row.id) === String(action.animalId));
+      if (existing && norm(existing.species || DEFAULT_SPECIES) !== "rabbit")
+        throw new Error("Paper pedigree AI cannot overwrite another species.");
+    }
     const importedAt = nowIso();
     const touchedIds = [];
 
