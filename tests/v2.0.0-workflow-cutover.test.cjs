@@ -42,7 +42,7 @@ test("production Pages verification validates 2.0.0 without becoming a second pu
   assert.match(pages, /^name: HerdHarbor 2\.0\.0 production Pages verification$/m);
   assert.match(pages, /npm run test:v2\.0\.0/);
   assert.match(pages, /version: "2\.0\.0"/);
-  assert.match(pages, /HerdHarbor@2\.0\.0/);
+  assert.match(pages, /HerdHarbor@2\.0\.1/);
   assert.match(pages, /Verify reviewed PR provenance/);
   assert.match(pages, /commits\/\{sha\}\/pulls/);
   assert.match(pages, /Production verification blocked: main commit is not traceable to a merged PR/);

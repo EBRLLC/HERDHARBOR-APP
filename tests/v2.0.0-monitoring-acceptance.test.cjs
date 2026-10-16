@@ -24,7 +24,7 @@ test("monitoring configuration and controlled acceptance identify stable 2.0.0",
   assert.match(config, /build:\s*"v2\.0\.1-release-1"/);
   assert.match(generator, /release:\s*"HerdHarbor@2\.0\.1"/);
   assert.match(generator, /v2\.0\.1-release-1/);
-  assert.match(acceptance, /release:\s*"HerdHarbor@2\.0\.0"/);
+  assert.match(acceptance, /release:\s*"HerdHarbor@2\.0\.1"/);
   assert.match(acceptance, /build:\s*"v2\.0\.0-production-acceptance"/);
   assert.match(acceptance, /herdharbor-release-acceptance\/2\.0\.0/);
   assert.doesNotMatch(acceptance, /HerdHarbor@1\.8\.4|v1\.8\.4-production-acceptance|acceptance\/1\.8\.4/);
@@ -67,8 +67,8 @@ test("monitoring remains privacy-hardened and non-blocking", () => {
 });
 
 test("changed Cloud Sync telemetry runtime uses a revised served identity", () => {
-  assert.match(index, /herdharbor-cloud\.js\?v=35/);
-  assert.match(worker, /\.\/herdharbor-cloud\.js\?v=35/);
+  assert.match(index, /herdharbor-cloud\.js\?v=36/);
+  assert.match(worker, /\.\/herdharbor-cloud\.js\?v=36/);
   assert.doesNotMatch(index, /herdharbor-cloud\.js\?v=32/);
   assert.doesNotMatch(worker, /\.\/herdharbor-cloud\.js\?v=32/);
 });
