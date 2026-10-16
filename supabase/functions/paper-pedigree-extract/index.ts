@@ -263,6 +263,9 @@ Deno.serve(async (req) => {
     });
     if (!access.allowed) return fail(access.code,
       "This optional AI tool is not enabled for this account. Your manual records remain available.", 403);
+    if (clean(body?.expectedSpecies, 40).toLowerCase() !== "rabbit")
+      return fail("unsupported_species", "AI pedigree reading is currently validated for rabbit pedigrees only. Dog pedigree entry remains available manually.", 422);
+
 
     const mimeType = clean(body?.mimeType, 80).toLowerCase();
     const fileName = clean(body?.fileName, 240) || "paper-pedigree";
@@ -395,6 +398,11 @@ Deno.serve(async (req) => {
     }
 
     const normalized = normalizeResult(parsed, fileName);
+    if (normalized.nodes.some((node: any) => node.species && node.species.toLowerCase() !== "rabbit")) {
+      await recordMetric(admin, "rejected_output");
+      return fail("unsupported_species", "This appears to contain a non-rabbit pedigree. Use manual animal and canine pedigree entry.", 422);
+    }
+
     if (!normalized.nodes.length) {
       await recordMetric(admin, "rejected_output");
       return fail("no_pedigree_detected", "No pedigree animals could be read from that image. Try a clearer, straighter photo.", 422);
