@@ -276,6 +276,12 @@
     }
 
     async function resumePendingAnalysis(reason = "resume") {
+      // A consent choice must still be active when an offline upload resumes.
+      if (!byId("photo-entry-consent")?.checked) {
+        retryController?.clear?.();
+        lastPreparedPayload = null;
+        return false;
+      }
       if (!retryController?.getState?.().pending || root.navigator?.onLine === false) return false;
       try {
         const response = await retryController.resume(reason);
@@ -444,6 +450,10 @@
         deps.toast("Sign in before using photo-assisted entry.", "error");
         return false;
       }
+      if (!byId("photo-entry-consent")?.checked) {
+        deps.toast("Choose to send this record photo to the optional AI reader before uploading.", "error");
+        return false;
+      }
 
       const helper = mobileCapture();
       if (!helper?.prepareImage) {
@@ -459,7 +469,8 @@
         lastPreparedPayload = {
           dataUrl: prepared.dataUrl,
           mimeType: prepared.mimeType,
-          fileName: prepared.fileName
+          fileName: prepared.fileName,
+          aiOptIn: true
         };
         const sizeText = prepared.compressed
           ? "Photo prepared for reliable upload."
@@ -497,6 +508,7 @@
       deps.openModal("Photo-assisted entry",
         '<form id="photo-entry-form"><label>Record photo<input id="photo-entry-file" type="file" accept="image/jpeg,image/png" capture="environment"></label>' +
         '<p class="muted">Take a clear photo or choose an existing JPG/PNG. HerdHarbor prepares large phone images for upload and creates a review draft only.</p>' +
+        '<label><input id="photo-entry-consent" type="checkbox"> I choose to send this record photo to HerdHarbor\'s optional AI service for an editable draft. I can enter the record manually instead.</label>' +
         '<div id="photo-entry-status" class="notice hidden" aria-live="polite"></div>' +
         '<div class="modal-actions"><button type="button" class="button button-ghost" id="photo-entry-cancel">Cancel</button><button type="submit" class="button button-primary" id="photo-entry-analyze">Analyze photo</button></div></form>' +
         '<div id="photo-entry-review"></div>',
@@ -504,6 +516,8 @@
       );
       byId("photo-entry-file")?.addEventListener("change", (event) => {
         selectedFile = event.target?.files?.[0] || null;
+        const consent = byId("photo-entry-consent");
+        if (consent) consent.checked = false;
         reviewed = null;
         lastPreparedPayload = null;
         retryController?.clear?.();
@@ -513,6 +527,11 @@
           selectedFile ? (root.navigator?.onLine === false
             ? "Photo selected. You are offline; prepare it now and HerdHarbor will retry analysis when connection returns."
             : "Photo selected and ready to prepare.") : "");
+      });
+      byId("photo-entry-consent")?.addEventListener("change", (event) => {
+        if (event.currentTarget?.checked) return;
+        retryController?.clear?.();
+        lastPreparedPayload = null;
       });
       byId("photo-entry-cancel")?.addEventListener("click", () => {
         retryController?.clear?.();
