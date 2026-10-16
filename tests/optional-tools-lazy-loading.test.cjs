@@ -102,9 +102,9 @@ test("heavy spreadsheet and QR assets are absent from unconditional index startu
   for (const asset of heavyAssets) {
     assert.ok(!html.includes('<script src="' + asset + '"></script>'), asset + " must not load from index.html");
   }
-  assert.match(html, /herdharbor-optional-tools\.js\?v=2/);
+  assert.match(html, /herdharbor-optional-tools\.js\?v=3/);
   assert.ok(
-    html.indexOf("herdharbor-optional-tools.js?v=2") < html.indexOf("herdharbor-app-runtime.js?v=4"),
+    html.indexOf("herdharbor-optional-tools.js?v=3") < html.indexOf("herdharbor-app-runtime.js?v=5"),
     "optional loader is available before the app runtime"
   );
 });
@@ -300,7 +300,7 @@ test("service worker keeps heavy tools out of REQUIRED_SHELL and cache-first is 
   for (const asset of heavyAssets) {
     assert.ok(!shell.includes(asset), asset + " must not be mandatory REQUIRED_SHELL");
   }
-  assert.match(shell, /herdharbor-optional-tools\.js\?v=2/);
+  assert.match(shell, /herdharbor-optional-tools\.js\?v=3/);
   assert.match(worker, /function isImmutableFingerprintAsset/);
   assert.match(worker, /searchParams\.get\("rev"\)/);
   assert.match(worker, /event\.respondWith\(cacheFirst\(request\)\)/);
