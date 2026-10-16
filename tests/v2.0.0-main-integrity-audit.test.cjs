@@ -367,8 +367,8 @@ test("stable release bootstrap keeps legacy billing isolated and cannot execute 
 
   assert.match(html, /<script id="hh-v151-release-script" src="herdharbor-release-v1\.6\.1\.js\?v=2"><\/script>/);
   assert.match(pwa, /addScript\("hh-v151-release-script", "herdharbor-release-v1\.6\.1\.js\?v=2"\)/);
-  assert.match(html, /pwa\.js\?v=34/);
-  assert.match(worker, /\.\/pwa\.js\?v=34/);
+  assert.match(html, /pwa\.js\?v=35/);
+  assert.match(worker, /\.\/pwa\.js\?v=35/);
 });
 
 
