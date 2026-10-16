@@ -133,6 +133,7 @@
       const existing = (state.animals || []).find((record) => record.id === id) || null;
       const animal = id ? { ...defaults, ...(existing || {}) } : { ...defaults };
       const canineIdentity = root.HerdHarborCanineIdentity;
+      const canineLineage = root.HerdHarborCanineLineage;
       let pendingPhotoData = animal.photoData || "";
       let pendingPhotoFileName = animal.photoFileName || "";
       let photoPreparationPromise = null;
@@ -196,7 +197,8 @@
       const birthWeightUnit = $('[name="birthWeightUnit"]', $("#animal-form"));
       const birthWeightOunces = $(".birth-weight-ounces", $("#animal-form"));
       const breedList = $("#animal-breed-options");
-      const cattleEarFields = $$(".cattle-ear-field", $("#animal-form"));
+      const cattleEarFields = $(".cattle-ear-field", $("#animal-form"));
+      const refreshCanineParents = () => canineLineage?.filterParentSelectors?.($("#animal-form"),stateNow().animals || [],{...animal,species:speciesSelect?.value||animal.species,id:id||animal.id||""});
 
       const refreshBreedOptions = () => {
         if (!breedList) return;
@@ -240,10 +242,12 @@
         refreshPhotoPreview();
         refreshBreedOptions();
         refreshCattleEarFields();
+        refreshCanineParents();
       });
       canineIdentity?.bindEditor?.($("#animal-form"), speciesSelect);
       refreshBreedOptions();
       refreshCattleEarFields();
+      refreshCanineParents();
       birthWeightUnit?.addEventListener("change", refreshBirthWeightFields);
       refreshBirthWeightFields();
 
@@ -313,6 +317,12 @@
             return;
           }
           data.canine = checked.value;
+          const candidate = { ...(id ? (liveState.animals || []).find(item => item.id === id) : {}), ...data, id: id || "__new_dog__" };
+          const lineage = canineLineage?.validate?.(liveState.animals || [], candidate);
+          if (!lineage?.valid) {
+            deps.toast((lineage?.issues || ["Canine parentage validation is unavailable."]).join(" "), "error");
+            return;
+          }
         }
         if (String(data.species || "").trim().toLowerCase() !== "cattle") {
           data.earTagNumber = "";
