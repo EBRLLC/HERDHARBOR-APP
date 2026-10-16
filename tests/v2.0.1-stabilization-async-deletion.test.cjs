@@ -175,3 +175,18 @@ test("linked litter cannot be deleted even after confirmation; unlinked animal d
   assert.equal(yes.saved,1);
   assert.equal(free.animals.length,0);
 });
+
+test("immediate auth-boundary event invalidates record photo before image preparation finishes",async()=>{
+ let finish;
+ const f=photoFixture({prepareImage:()=>new Promise(resolve=>finish=()=>resolve({
+   dataUrl:"data:image/png;base64,aA==",mimeType:"image/png",fileName:"private.png"
+ }))});
+ f.api.open();f.choose("private.png");f.consent(true);
+ const pending=f.api.analyze();
+ assert.equal(typeof f.listeners["document:herdharbor:auth-boundary"],"function");
+ f.listeners["document:herdharbor:auth-boundary"]({detail:{event:"SIGNED_IN"}});
+ finish();
+ assert.equal(await pending,false);
+ assert.equal(f.requests.length,0);
+ assert.equal(f.element("photo-entry-consent").checked,false);
+});
