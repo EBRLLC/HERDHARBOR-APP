@@ -267,6 +267,12 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => null);
+    // Confirm explicit consent to send this image to the optional provider on
+    // every request, even for allowlisted testers. Client flags are not access
+    // credentials; the server eligibility gate above is still mandatory.
+    if (body?.aiOptIn !== true)
+      return fail("consent_required", "Choose to send this photo to the optional AI reader before uploading. Manual entry remains available.", 403);
+
     // The existing reader is validated for rabbit pedigrees only. A dog photo
     // cannot enter the rabbit importer through an unvalidated species switch.
     const expectedSpecies = clean(body?.species, 80).toLowerCase();
