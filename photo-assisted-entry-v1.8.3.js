@@ -599,7 +599,7 @@
 
     // The cloud layer emits this when an authenticated account changes or
     // signs out. Never retain a prepared image across that boundary.
-    root.document?.addEventListener?.("herdharbor:auth-session", () => {
+    const onPhotoAuthBoundary = () => {
       // Any auth boundary/refresh invalidates running work, including image
       // preparation before lastPreparedPayload exists. A→B→A cannot reuse
       // old consent or revive a stale in-flight upload.
@@ -609,7 +609,9 @@
       if (host) host.innerHTML = "";
       const consent = byId("photo-entry-consent");
       if (consent) consent.checked = false;
-    });
+    };
+    root.document?.addEventListener?.("herdharbor:auth-boundary", onPhotoAuthBoundary);
+    root.document?.addEventListener?.("herdharbor:auth-session", onPhotoAuthBoundary);
     root.addEventListener?.("online", () => { void resumePendingAnalysis("online"); });
     root.addEventListener?.("pageshow", () => { void resumePendingAnalysis("pageshow"); });
     root.document?.addEventListener?.("visibilitychange", () => {
