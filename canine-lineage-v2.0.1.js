@@ -44,30 +44,38 @@
         problems.push(field+" references another account.");continue;
       }
     }
-    // Check all known lineage branches, not just immediate sire/dam; a repeated
-    // ancestor is legal, but a repeated ID on the *same path* is a cycle.
-    const stack=[];
-    for(const [field] of roles)if(id(subject?.[field]))stack.push({ref:id(subject[field]),seen:new Set(subjectId?[subjectId]:[])});
-    const visitedEdges=new Set();
-    while(stack.length){
-      const {ref,seen}=stack.pop();
-      if(seen.has(ref)){problems.push("Circular canine parentage involving "+ref+".");continue;}
-      if(data.duplicates.has(ref))continue;
+    // Three-state iterative DFS visits each reachable ancestor once. Shared
+    // ancestors are normal in pedigrees and must not cause exponential walks;
+    // only an edge to an active (on-path) node indicates a true cycle.
+    const visited=new Set(),active=new Set(subjectId?[subjectId]:[]);
+    const frames=[];
+    for(const [field] of roles)if(id(subject?.[field]))
+      frames.push({ref:id(subject[field]),exit:false});
+    while(frames.length){
+      const {ref,exit}=frames.pop();
+      if(exit){active.delete(ref);visited.add(ref);continue;}
+      if(active.has(ref)){
+        problems.push("Circular canine parentage involving "+ref+".");
+        continue;
+      }
+      if(visited.has(ref)||data.duplicates.has(ref))continue;
       const ancestor=data.index.get(ref);
-      if(!ancestor)continue;
+      if(!ancestor){warnings.push("An existing ancestor points to a missing animal.");continue;}
       if(!isDog(ancestor)){problems.push("An ancestor in this dog pedigree belongs to another species.");continue;}
-      if(targetOwner&&owner(ancestor)&&owner(ancestor)!==targetOwner){problems.push("An ancestor in this dog pedigree belongs to another account.");continue;}
-      const next=new Set(seen);next.add(ref);
+      if(targetOwner&&owner(ancestor)&&owner(ancestor)!==targetOwner){
+        problems.push("An ancestor in this dog pedigree belongs to another account.");
+        continue;
+      }
+      active.add(ref);
+      frames.push({ref,exit:true});
       for(const [field,sex] of roles){
-        const parentRef=id(ancestor[field]);if(!parentRef)continue;
+        const parentRef=id(ancestor[field]);
+        if(!parentRef)continue;
         const parent=data.index.get(parentRef);
         if(!parent){warnings.push("An existing ancestor points to a missing animal.");continue;}
-        if(lower(parent.sex)!==lower(sex))problems.push("An ancestor has an incompatible "+field+" sex.");
-        const edge=ref+"|"+field+"|"+parentRef;
-        // Keep per-path cycle checks; edge cache is only advisory, never skips
-        // distinct branches that can expose circular lineage.
-        visitedEdges.add(edge);
-        stack.push({ref:parentRef,seen:next});
+        if(lower(parent.sex)!==lower(sex))
+          problems.push("An ancestor has an incompatible "+field+" sex.");
+        frames.push({ref:parentRef,exit:false});
       }
     }
     return {valid:problems.length===0,issues:[...new Set(problems)],warnings:[...new Set(warnings)]};

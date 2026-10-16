@@ -34,9 +34,11 @@
       prefix:"",rabbitry:"",rabbitryName:"",gcNumber:"",grandChampionNumber:""
     };
   }
-  function completeRecords(graph,canine){
+  function completeRecords(graph,canine,registryPreference=""){
     return graph.nodes.filter(node=>node.animal).map(node=>{
-      const a=node.animal,reg=canine.preferredRegistration(a);
+      const a=node.animal,meta=canine.normalize(a.canine);
+      const preferred=clean(registryPreference).toLowerCase();
+      const reg=meta.registrations.find(item=>preferred&&item.registry.toLowerCase()===preferred)||canine.preferredRegistration(a);
       return '<li><strong>'+esc(node.relation||"Dog")+'</strong> — '+esc(canine.displayName(a))+
         (reg?' · '+esc(reg.registry)+' '+esc(reg.number):' · No registration recorded')+
         ' · '+esc(a.breed||"Breed not recorded")+'</li>';
@@ -92,12 +94,22 @@
       '</style>';
     html=html.replace('</head>',extraStyle+'</head>');
     const disclosure='<aside class="hh-canine-disclaimer">'+esc(DISCLAIMER)+'</aside>';
-    html=html.replace(/<section class="sale-strip">[\s\S]*?<\/section>/,disclosure);
-    html=html.replace(/<section class="certification">[\s\S]*?<\/section>/,"");
+    const salePattern=/<section class="sale-strip">[\s\S]*?<\/section>/;
+    const certificationPattern=/<section class="certification">[\s\S]*?<\/section>/;
+    // Fail closed when the shared renderer changes. Never silently print
+    // a Dog document with a Rabbit sale form or certification footer.
+    if(!salePattern.test(html)||!certificationPattern.test(html))
+      throw new Error("Canine print contract changed; inspect the shared renderer before printing.");
+    html=html.replace(salePattern,disclosure).replace(certificationPattern,"");
     const appendix='<section class="hh-canine-appendix"><h2>Complete canine pedigree details</h2>'+
-      '<p>'+esc(DISCLAIMER)+'</p><ol>'+completeRecords(graph,canine)+'</ol></section>';
-    html=html.replace('</div></body></html>',appendix+'</div></body></html>');
-    html=html.replace('<body>','<body data-hh-canine-pedigree="true">');
+      '<p>'+esc(DISCLAIMER)+'</p><ol>'+completeRecords(graph,canine,registryPreference)+'</ol></section>';
+    const closure="</div></body></html>";
+    if(!html.includes(closure)||!html.includes("<body>"))
+      throw new Error("Canine print markup changed; do not print an incomplete document.");
+    // Put the full-text appendix *outside* the printed pedigree sheet so it
+    // starts a real page rather than being trapped inside the flex layout.
+    html=html.replace(closure,"</div>"+appendix+"</body></html>");
+    html=html.replace("<body>",'<body data-hh-canine-pedigree="true">');
     return {html,generations,paperSize:paper,subjectId:String(subject.id),nodeCount:graph.nodes.length};
   }
   function openForAnimal(animalId,options={}){
