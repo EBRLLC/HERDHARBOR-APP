@@ -89,7 +89,7 @@
       for(const option of Array.from(select.options||[])){
         if(!option.value)continue;
         if(option.dataset.baseDisabled===undefined)option.dataset.baseDisabled=option.disabled?"1":"0";
-        option.disabled=dog?!allowed.has(option.value):option.dataset.baseDisabled==="1";
+        option.disabled=dog?(!allowed.has(option.value)&&!option.selected):option.dataset.baseDisabled==="1";
       }
     }
   }
