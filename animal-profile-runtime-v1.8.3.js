@@ -411,7 +411,7 @@
         // Only an unreferenced animal reaches this branch. Keep a snapshot so
         // failed durable writes cannot leave the active in-memory state deleted.
         const previousAnimals = liveState.animals;
-        const previousActivity = liveState.activity;
+        const previousActivity = Array.isArray(liveState.activity) ? liveState.activity.slice() : liveState.activity;
         liveState.animals = previousAnimals.filter(record => record.id !== id);
         deps.recordActivity(`Deleted ${currentAnimal.name}.`, "animal");
         if (!deps.saveState("Animal deleted.")) {
