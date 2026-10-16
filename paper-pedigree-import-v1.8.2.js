@@ -503,9 +503,30 @@
       }, 700);
       return true;
     } catch (error) {
-      if (storedAttachmentId) await deletePedigreeAttachment(storedAttachmentId).catch(() => {});
+      let cleanupFailure = null;
+      if (storedAttachmentId) {
+        // Attachment deletion is best-effort but must never be silent. Retry
+        // transient IndexedDB failures, then alert the member when a local
+        // orphan may remain. Never claim an aborted import succeeded.
+        for (let retry = 0; retry < 2; retry += 1) {
+          try {
+            await deletePedigreeAttachment(storedAttachmentId);
+            cleanupFailure = null;
+            break;
+          } catch (cause) {
+            cleanupFailure = cause;
+          }
+        }
+      }
+      if (cleanupFailure) {
+        root.console?.warn?.("herdharbor_pedigree_attachment_cleanup_failed", cleanupFailure);
+      }
       if (isCurrentAttempt(attempt)) {
-        setStatus(error?.message || "The reviewed pedigree could not be imported.", "error");
+        const reason = error?.message || "The reviewed pedigree could not be imported.";
+        const cleanupWarning = cleanupFailure
+          ? " The temporary image could not be removed from this device. Your farm records were not imported; contact HerdHarbor support before clearing local app data."
+          : "";
+        setStatus(reason + cleanupWarning, "error");
       }
       return false;
     } finally {
