@@ -2358,6 +2358,18 @@
     const animal = state.animals.find((item) => item.id === animalId);
     if (!animal) return toast("The animal record could not be found.", "error");
 
+    // This is the shared print entry point for Animal cards, saved pedigree
+    // records and the main Pedigrees page. Dog exports must never fall through
+    // to the legacy rabbit/sale-pedigree customization form.
+    if (window.HerdHarborCanineIdentity?.isDog(animal)) {
+      const dogPrinter = window.HerdHarborCaninePedigreePrint;
+      if (typeof dogPrinter?.openForAnimal !== "function") {
+        toast("Dog pedigree printing is unavailable. No document was created.", "error");
+        return false;
+      }
+      return dogPrinter.openForAnimal(animalId);
+    }
+
     const customization = window.HerdHarborPedigreeCustomization;
     if (!customization?.printControlsHtml || !customization?.readPrintControls) {
       return toast("Pedigree customization did not finish loading.", "error");
