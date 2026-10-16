@@ -12,7 +12,7 @@ function commitApp(initial,saveState){
 }
 function fixture(options={}){
  let user="A",dialog=null;
- const nodes=new Map(),events={},readers=[],sent=[],attachments=new Map();
+ const nodes=new Map(),events={},readers=[],sent=[],attachments=new Map(),pendingWriteCommits=[];
  const node=key=>{
   if(!nodes.has(key))nodes.set(key,{
    checked:false,disabled:false,innerHTML:"",textContent:"",dataset:{},value:"",
@@ -48,7 +48,9 @@ function fixture(options={}){
     const tx={objectStore(){return {
       put(value,id){const req={};queueMicrotask(()=>{
         attachments.set(id,value);req.onsuccess?.();
-        queueMicrotask(()=>tx.oncomplete?.());
+        const commit=()=>tx.oncomplete?.();
+        if(options.holdAttachmentWrite)pendingWriteCommits.push(commit);
+        else queueMicrotask(commit);
       });return req;},
       delete(id){const req={};queueMicrotask(()=>{
         attachments.delete(id);req.onsuccess?.();
@@ -98,6 +100,7 @@ function fixture(options={}){
  }
  return{
   root,nodes,events,readers,sent,attachments,state:state.get,dialog:()=>dialog,node,
+  releaseWrites:()=>{for(const release of pendingWriteCommits.splice(0))release();},
   open:()=>root.HerdHarborPaperPedigreeImport.open(),select,optIn,finishRead,
   read:()=>node("[data-pp-read]").on_click(),
   switchUser:id=>{user=id;events["herdharbor:auth-session"]?.({detail:{signedIn:true}});},
@@ -213,4 +216,30 @@ test("cloud sends immediate auth-boundary signals before async account hydration
  const signal=cloud.indexOf('document.dispatchEvent(new CustomEvent("herdharbor:auth-boundary"',start);
  const hydrate=cloud.indexOf('await ensureAuthenticatedAccountBoundary(activeSession',start);
  assert.ok(start>=0&&signal>start&&hydrate>signal);
+});
+
+test("switching accounts during the pending attachment transaction cancels the final import",async()=>{
+ const x=fixture({holdAttachmentWrite:true});
+ x.open();await x.select("A.jpg");x.optIn(true);
+ const reading=x.read();await x.finishRead();assert.equal(await reading,true);
+ const originalState=x.state();
+ const pending=x.confirm();await flush();
+ assert.equal(x.attachments.size,1,"attachment request has succeeded but transaction is uncommitted");
+ x.switchUser("B");
+ x.releaseWrites();
+ assert.equal(await pending,false);
+ assert.equal(x.state(),originalState);
+ assert.equal(x.state().pedigrees.length,0);
+ assert.equal(x.attachments.size,0);
+});
+test("consent withdrawal during pending attachment transaction cancels import",async()=>{
+ const x=fixture({holdAttachmentWrite:true});
+ x.open();await x.select("A.jpg");x.optIn(true);
+ const reading=x.read();await x.finishRead();assert.equal(await reading,true);
+ const previous=x.state();
+ const pending=x.confirm();await flush();
+ x.optIn(false);x.releaseWrites();
+ assert.equal(await pending,false);
+ assert.equal(x.state(),previous);
+ assert.equal(x.attachments.size,0);
 });
