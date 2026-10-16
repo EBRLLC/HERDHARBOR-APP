@@ -56,6 +56,7 @@ function fixture(options={}){
         else queueMicrotask(commit);
       });return req;},
       delete(id){const req={};queueMicrotask(()=>{
+        if(options.failAttachmentCleanup){tx.onabort?.();return;}
         attachments.delete(id);req.onsuccess?.();
         queueMicrotask(()=>tx.oncomplete?.());
       });return req;}
@@ -256,4 +257,38 @@ test("aborted IndexedDB attachment write cannot commit an animal or pedigree",as
  assert.equal(x.state(),original);
  assert.equal(x.state().pedigrees.length,0);
  assert.equal(x.attachments.size,0);
+});
+
+test("token refresh and same-account hydration preserve an edited paper review",async()=>{
+ const x=fixture();x.open();await x.select("A.jpg");x.optIn(true);
+ const reading=x.read();await x.finishRead();assert.equal(await reading,true);
+ const review=x.node("[data-pp-review]");
+ const corrected=review.innerHTML+" [breeder edits retained]";
+ review.innerHTML=corrected;
+ x.events["herdharbor:auth-session"]({type:"herdharbor:auth-session",detail:{signedIn:true}});
+ assert.equal(review.innerHTML,corrected);
+ assert.equal(x.node("[data-pp-ai-optin]").checked,true);
+});
+test("a real auth boundary still cancels the same paper review",async()=>{
+ const x=fixture();x.open();await x.select("A.jpg");x.optIn(true);
+ const reading=x.read();await x.finishRead();assert.equal(await reading,true);
+ x.events["herdharbor:auth-boundary"]({type:"herdharbor:auth-boundary",detail:{event:"SIGNED_OUT"}});
+ assert.equal(x.node("[data-pp-review]").innerHTML,"");
+ assert.equal(x.node("[data-pp-ai-optin]").checked,false);
+});
+test("failed local attachment cleanup is reported instead of silently discarded",async()=>{
+ const x=fixture({save:()=>false,failAttachmentCleanup:true});
+ x.open();await x.select("A.jpg");x.optIn(true);
+ const reading=x.read();await x.finishRead();assert.equal(await reading,true);
+ const previous=x.state();
+ assert.equal(await x.confirm(),false);
+ assert.equal(x.state(),previous);
+ assert.equal(x.attachments.size,1,"failed cleanup leaves a local orphan needing explicit warning");
+ assert.match(x.node("[data-pp-status]").textContent,/temporary image could not be removed/);
+});
+test("auth boundary dispatch excludes same-user token refresh but guards identity drift",()=>{
+ const cloud=src("herdharbor-cloud.js");
+ assert.match(cloud,/const accountChanged = incomingUserId !== currentUserId/);
+ assert.match(cloud,/\["TOKEN_REFRESHED","USER_UPDATED"\]\.includes\(event\) && accountChanged/);
+ assert.match(cloud,/detail: \{ event, previousUserId: currentUserId, nextUserId: incomingUserId \}/);
 });
