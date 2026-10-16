@@ -48,9 +48,9 @@
   }
 
   function taskFingerprint(definition = {}) {
+    // Stable scheduling identity, not UI copy. Changing an animal name, Dog
+    // label or notes must never reopen a previously completed reminder.
     return JSON.stringify([
-      clean(definition.title),
-      clean(definition.category),
       clean(definition.dueDate),
       clean(definition.animalId),
       clean(definition.sourceType),
