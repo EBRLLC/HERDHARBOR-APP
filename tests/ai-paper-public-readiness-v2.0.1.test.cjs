@@ -21,7 +21,7 @@ test("Dog and unidentified species cannot silently default to Rabbit",()=>{
  assert.match(client,/reviewedNodes\.some\(node => clean\(node\.species\)\.toLowerCase\(\) !== "rabbit"\)/);
  assert.match(server,/body\?\.expectedSpecies/);
  assert.match(server,/normalized\.nodes\.some\(\(node: any\) => node\.species && node\.species\.toLowerCase\(\) !== "rabbit"\)/);
- assert.equal(core.DEFAULT_SPECIES,"Rabbit");
+ assert.equal(core.normalizeNode({}).species,"Rabbit");
 });
 test("Provider quotas and server account eligibility stay mandatory",()=>{
  assert.match(server,/authorizeAiAction/);
