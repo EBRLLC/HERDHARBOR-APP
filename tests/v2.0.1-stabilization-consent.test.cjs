@@ -23,7 +23,11 @@ test("both image endpoints reject missing explicit consent before image checks o
 test("paper AI requires opt-in before any image preparation, resets it per file and sends consent",()=>{
   const file=read("paper-pedigree-import-v1.8.2.js");
   assert.match(file,/data-pp-ai-optin/);
-  assert.ok(file.indexOf("data-pp-ai-optin")<file.indexOf("preparedImage = await prepareImage(selectedFile)"));
+  const consentCheck=file.indexOf("if (!isOptedIn())");
+  const prepare=file.indexOf("const image = await prepareImage(attempt.file)");
+  const preDispatch=file.indexOf("if (!isCurrentAttempt(attempt)) return false;",prepare);
+  assert.ok(consentCheck>=0&&prepare>consentCheck&&preDispatch>prepare,
+    "consent must precede image preparation and be rechecked before upload");
   assert.match(file,/aiOptIn: true/);
   assert.match(file,/if \(optIn\) optIn.checked = false/);
   assert.match(file,/I choose to send this rabbit pedigree image/);
