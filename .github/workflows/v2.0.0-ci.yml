@@ -29,6 +29,8 @@ jobs:
           npx esbuild supabase/functions/marketplace-public-media/index.ts --format=esm --platform=neutral --log-level=error --outfile=/tmp/marketplace-public-media.mjs
           npx esbuild supabase/functions/marketplace-pedigree-snapshot/index.ts --format=esm --platform=neutral --log-level=error --outfile=/tmp/marketplace-pedigree-snapshot.mjs
           npx esbuild supabase/functions/animal-transfer/index.ts --format=esm --platform=neutral --log-level=error --outfile=/tmp/animal-transfer.mjs
+          npx esbuild supabase/functions/paper-pedigree-extract/index.ts --bundle --format=esm --platform=neutral --external:npm:* --log-level=error --outfile=/tmp/hh-ai-paper-2.0.1.mjs
+          npx esbuild supabase/functions/record-photo-extract/index.ts --bundle --format=esm --platform=neutral --external:npm:* --log-level=error --outfile=/tmp/hh-ai-photo-2.0.1.mjs
       - name: Verify repository governance and current 2.0.0 release contract
         run: npm run test:release
       - name: Verify canonical engine ownership explicitly
