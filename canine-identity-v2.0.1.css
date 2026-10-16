@@ -1,0 +1,10 @@
+/* 2.0.1 canine identity editor: scoped to the existing animal modal only. */
+.canine-identity-panel { margin: 20px 0; padding: 16px; border: 1px solid var(--border, #cfd7dd); border-radius: 12px; }
+.canine-identity-panel[hidden], .canine-identity-panel.hidden { display: none !important; }
+.canine-identity-panel h3 { margin: 0 0 8px; }
+.canine-identity-panel h4 { margin: 18px 0 8px; }
+.canine-entry { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; padding: 12px; margin: 8px 0; border: 1px solid var(--border, #cfd7dd); border-radius: 8px; }
+.canine-entry label { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.canine-entry input, .canine-entry select { width: 100%; min-width: 0; box-sizing: border-box; }
+.canine-entry > button { justify-self: start; align-self: end; }
+@media (max-width: 600px) { .canine-identity-panel { padding: 12px; } .canine-entry { grid-template-columns: minmax(0,1fr); } }
