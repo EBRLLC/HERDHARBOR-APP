@@ -8,3 +8,8 @@
 .canine-entry input, .canine-entry select { width: 100%; min-width: 0; box-sizing: border-box; }
 .canine-entry > button { justify-self: start; align-self: end; }
 @media (max-width: 600px) { .canine-identity-panel { padding: 12px; } .canine-entry { grid-template-columns: minmax(0,1fr); } }
+
+.hh-canine-print-controls { display:flex; align-items:end; flex-wrap:wrap; gap:10px; margin:16px 0; }
+.hh-canine-print-controls label { display:flex; flex-direction:column; gap:4px; min-width:145px; }
+.hh-canine-print-controls select { min-width:0; max-width:100%; }
+@media (max-width:600px) { .hh-canine-print-controls { flex-direction:column; align-items:stretch; } .hh-canine-print-controls label, .hh-canine-print-controls select { width:100%; } }
