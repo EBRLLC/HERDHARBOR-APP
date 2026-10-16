@@ -33,7 +33,7 @@ function runAnimalSave(original,animalId,accepted){
  const $$=()=>({addEventListener:(_event,fn)=>{handler=fn;}});
  const create=new Function("$","stateNow","FormData","id","deps","canineIdentity","canineLineage","photoPreparationPromise","photoStatus","animal","pendingPhotoData","pendingPhotoFileName",
    profile.slice(start,end)+"return true;");
- create($,()=>state,FormDataStub,animalId,deps,
+ create($$,()=>state,FormDataStub,animalId,deps,
    {isDog:()=>false},{validateMutation:()=>({valid:true})},null,null,{canine:{}}, "", "");
  const capture=handler;
  assert.equal(typeof capture,"function");
