@@ -96,6 +96,7 @@ const OUTPUT_SCHEMA = {
 function extractionInstructions() {
   return `You extract livestock pedigree information from a photographed paper pedigree for HerdHarbor.
 Return only pedigree information that is actually visible. Do not invent missing names, registration numbers, tattoos, tags, breeders, birth dates, colors, varieties, breeds, species, or other facts.
+Set species to Rabbit only when supported by visible evidence (for example, a documented rabbit breed); otherwise output an empty string. Uncertain or non-rabbit species cannot be imported by this reader.
 
 Use these exact lineage roles:
 subject = the animal the pedigree belongs to
@@ -268,7 +269,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => null);
     // The existing reader is validated for rabbit pedigrees only. A dog photo
     // cannot enter the rabbit importer through an unvalidated species switch.
-    const expectedSpecies = clean(body?.species || "Rabbit", 80).toLowerCase();
+    const expectedSpecies = clean(body?.species, 80).toLowerCase();
     if (expectedSpecies !== "rabbit") {
       return fail("unsupported_species", "Canine pedigree AI scanning is not yet validated. Enter your dog pedigree manually.", 422);
     }
@@ -403,7 +404,7 @@ Deno.serve(async (req) => {
     }
 
     const normalized = normalizeResult(parsed, fileName);
-    if (normalized.nodes.some((node) => node.species && node.species.toLowerCase() !== "rabbit")) {
+    if (normalized.nodes.some((node) => node.species.toLowerCase() !== "rabbit")) {
       await recordMetric(admin, "rejected_output");
       return fail("unsupported_species", "This image appears to be for another species. Use manual animal entry until this reader is validated for that species.", 422);
     }
