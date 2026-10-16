@@ -203,8 +203,11 @@
         const transaction = db.transaction(ATTACHMENT_STORE, mode);
         const store = transaction.objectStore(ATTACHMENT_STORE);
         const request = action(store);
-        request.onsuccess = () => resolve(request.result);
+        // IndexedDB request success precedes transaction durability. Do not
+        // resolve and close the DB until the entire transaction commits.
         request.onerror = () => reject(request.error || new Error("Pedigree attachment storage failed."));
+        transaction.oncomplete = () => resolve(request.result);
+        transaction.onerror = () => reject(transaction.error || new Error("Pedigree attachment storage failed."));
         transaction.onabort = () => reject(transaction.error || new Error("Pedigree attachment storage was interrupted."));
       });
     } finally {
@@ -413,7 +416,21 @@
       if (action.role !== "subject" && action.animalId) ancestorIds[action.role] = action.animalId;
     }
     const importedAt = new Date().toISOString();
-    const id = `pedigree_ai_${String(reviewed.extractionId || Date.now()).replace(/[^a-z0-9_-]/gi, "").slice(0, 80)}`;
+    // An extraction ID identifies a model response, not a unique imported
+    // document. Re-imports must never overwrite an older attachment or reuse
+    // its cleanup key if this import later fails.
+    const extractionKey = String(reviewed.extractionId || "draft")
+      .replace(/[^a-z0-9_-]/gi, "").slice(0, 48) || "draft";
+    let id = "";
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const nonce = (root.crypto?.randomUUID?.() ||
+        (Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 14)))
+        .replace(/[^a-z0-9_-]/gi, "");
+      id = `pedigree_ai_${extractionKey}_${nonce}`;
+      if (!(nextState.pedigrees || []).some(row => String(row.id) === id)) break;
+      id = "";
+    }
+    if (!id) throw new Error("A unique pedigree attachment key could not be created.");
     const record = {
       id,
       subjectAnimalId: result.subjectAnimalId,
