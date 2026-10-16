@@ -5,6 +5,7 @@
   "description": "HerdHarbor 2.0.0 production monitoring and regression tooling",
   "scripts": {
     "test": "node --test tests/*.test.cjs",
+    "test:v2.0.1-review": "node --test tests/canine-*.test.cjs tests/ai-access-gate-v2.0.1.test.cjs tests/paper-pedigree-species-gate-v2.0.1.test.cjs tests/photo-voice-readiness-v2.0.1.test.cjs tests/v2.0.1-integration-review.test.cjs",
     "build:monitoring": "node scripts/build-monitoring.mjs",
     "build:monitoring-config": "node scripts/build-monitoring-config.mjs",
     "audit:security": "node scripts/repository-security-audit.mjs",
