@@ -132,6 +132,7 @@
       const state = stateNow();
       const existing = (state.animals || []).find((record) => record.id === id) || null;
       const animal = id ? { ...defaults, ...(existing || {}) } : { ...defaults };
+      const canineIdentity = root.HerdHarborCanineIdentity;
       let pendingPhotoData = animal.photoData || "";
       let pendingPhotoFileName = animal.photoFileName || "";
       let photoPreparationPromise = null;
@@ -177,6 +178,7 @@
             ${deps.selectAnimalField("Sire", "sireId", animal.sireId, "Male")}
             ${deps.selectAnimalField("Dam", "damId", animal.damId, "Female")}
           </div>
+          ${canineIdentity?.editorHtml?.(animal) || ""}
           ${deps.textareaField("Notes", "notes", animal.notes)}
           <div class="modal-actions">
             ${id ? '<button type="button" class="button button-danger" id="delete-animal">Delete</button>' : ""}
@@ -198,7 +200,10 @@
 
       const refreshBreedOptions = () => {
         if (!breedList) return;
-        breedList.innerHTML = deps.breedOptionsFor(speciesSelect?.value || "Rabbit")
+        const breedSource = canineIdentity?.isDog(speciesSelect?.value) && root.HerdHarborCanineBreeds
+          ? root.HerdHarborCanineBreeds.list().map((breed) => breed.name)
+          : deps.breedOptionsFor(speciesSelect?.value || "Rabbit");
+        breedList.innerHTML = breedSource
           .map((breed) => `<option value="${esc(breed)}"></option>`)
           .join("");
       };
@@ -236,6 +241,7 @@
         refreshBreedOptions();
         refreshCattleEarFields();
       });
+      canineIdentity?.bindEditor?.($("#animal-form"), speciesSelect);
       refreshBreedOptions();
       refreshCattleEarFields();
       birthWeightUnit?.addEventListener("change", refreshBirthWeightFields);
@@ -300,6 +306,14 @@
         const liveState = stateNow();
         const data = Object.fromEntries(new FormData(form));
         data.breed = String(data.breed || "").trim();
+        if (canineIdentity?.isDog(data.species)) {
+          const checked = canineIdentity.readEditor(form, animal.canine);
+          if (!checked?.valid) {
+            deps.toast((checked?.errors || ["Dog registration/title fields could not be validated."]).join(" "), "error");
+            return;
+          }
+          data.canine = checked.value;
+        }
         if (String(data.species || "").trim().toLowerCase() !== "cattle") {
           data.earTagNumber = "";
           data.earTagColor = "";
