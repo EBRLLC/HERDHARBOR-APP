@@ -37,6 +37,8 @@ jobs:
         run: npm run test:governance
       - name: Run lifecycle state-integrity E2E gate
         run: npm run test:state-integrity
+      - name: Validate combined 2.0.1 canine and optional AI review contract
+        run: npm run test:v2.0.1-review
       - name: Run complete HerdHarbor regression suite in UTC
         env:
           TZ: UTC

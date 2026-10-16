@@ -53,6 +53,15 @@ Established runtime components may keep older component identities in filenames 
 
 Historical SQL migration files and historical release documentation remain intact as implementation history.
 
+## 2.0.1 review candidate
+
+HerdHarbor 2.0.1 (canine breeder-maintained identities/pedigrees and optional AI public readiness) is staged in an **unmerged PR stack**, not yet production. Current public release remains 2.0.0.
+
+- Dog registrations and title records are breeder-entered; printed HerdHarbor canine pedigrees are not official AKC documents.
+- AI remains entirely optional; broad public eligibility is disabled pending an owner-approved tier matrix, provider/quotas/privacy acceptance and user opt-in.
+- Paper pedigree AI image recognition currently supports rabbit pedigrees only; canine images are deliberately not supported until reference corpus testing proves quality.
+- See `RELEASE_NOTES-v2.0.1.md` and `docs/2.0.1-owner-acceptance.md` for exact work-in-review scope and outstanding release gates.
+
 ## Development and verification
 
 Node.js 22 or newer is required for repository tooling.
