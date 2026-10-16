@@ -25,10 +25,15 @@ test("Dog action router denies rabbit breeding/import/genetics and birth certifi
   }};
   sandbox.globalThis=sandbox;
   vm.runInNewContext(read("animal-action-router-v1.8.3.js"),sandbox);
-  for(const action of ["breeding","genetics","pedigree","print-pedigree","birth-certificate","show-entry"]){
+  for(const action of ["breeding","genetics","pedigree","birth-certificate","show-entry"]){
     assert.equal(module.exports.open(action,"dog1"),false,action);
   }
-  assert.equal(toasts.length,6);
+  assert.equal(toasts.length,5);
+  // Canine printing is enabled by K4 without opening the rabbit print workflow.
+  let caninePrintInvocations=0;
+  sandbox.HerdHarborCaninePedigreePrint={openForAnimal:()=>{caninePrintInvocations++;return true;}};
+  assert.equal(module.exports.open("print-pedigree","dog1"),true);
+  assert.equal(caninePrintInvocations,1);
 });
 test("Voice cannot route dog mating to legacy breeding engine but manual rabbit instruction remains parseable",()=>{
   const dogAnimals=[
