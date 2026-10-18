@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: herdharbor-v2.0.0-ci-${{ github.event.pull_request.number || github.ref }}
+  group: herdharbor-v2.0.1-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
