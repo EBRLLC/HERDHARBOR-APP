@@ -1283,10 +1283,11 @@
   }
 
   async function preserveActiveForUser(userId, reason, rawValue = activeStateRaw()) {
-    if (!userId) return false;
-    // An empty workspace needs no archival copy. A malformed or unreadable
-    // workspace must never be treated as safely preserved.
+    // An empty workspace has nothing to preserve; initial SIGNED_OUT may
+    // arrive before any user or local operation has been established.
     if (!rawValue) return true;
+    if (!userId) return false;
+    // A malformed or unreadable workspace must not be treated as preserved.
     if (!safeParse(rawValue)) return false;
     const cacheId = cacheKey(userId);
     let localStored = false;
