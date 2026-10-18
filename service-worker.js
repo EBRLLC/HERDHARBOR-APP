@@ -49,7 +49,7 @@ const REQUIRED_SHELL = [
   "./mobile-capture-v1.8.3.js?v=1",
   "./herdharbor-app-runtime.js?v=5",
   "./herdharbor-monitoring-config.js?v=2.0.1",
-  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.1",
+  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.1"
 ];
 
 const RUNTIME_CACHE_PATHS = [
