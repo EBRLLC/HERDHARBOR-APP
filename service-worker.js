@@ -50,12 +50,12 @@ const REQUIRED_SHELL = [
   "./herdharbor-app-runtime.js?v=5",
   "./herdharbor-monitoring-config.js?v=2.0.1",
   "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.1",
-  "./icon-192.png",
-  "./icon-512.png"
 ];
 
 const RUNTIME_CACHE_PATHS = [
   "./how-to/",
+  "./icon-192.png",
+  "./icon-512.png",
   "./animal-documents-v2.0.0.js?v=1",
   "./birth-certificate-v2.0.0.js?v=1",
   "./standard-pedigree-print-v2.0.0.js?v=1",
