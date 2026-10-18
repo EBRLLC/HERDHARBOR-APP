@@ -302,7 +302,7 @@
 
   function hasUnfinishedLocalWork() {
     try {
-      if (window.HerdHarborCloud?.hasUnsyncedChanges?.() === true) return true;
+      if (document.documentElement?.dataset?.hhUnsynced === "true") return true;
       // The paper pedigree and photo review dialogs hold corrections in
       // browser memory until explicitly committed. A controller change in
       // another tab must never erase them.
