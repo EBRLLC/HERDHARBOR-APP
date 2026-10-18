@@ -91,13 +91,29 @@ function installWithFailure(failAsset) {
   return { pending, added };
 }
 
+test("every startup-loaded local script and stylesheet has exactly the same required offline URL", () => {
+  const index = read("index.html");
+  const required = worker.slice(worker.indexOf("const REQUIRED_SHELL = ["), worker.indexOf("const RUNTIME_CACHE_PATHS = ["));
+  const runtime = worker.slice(worker.indexOf("const RUNTIME_CACHE_PATHS = ["), worker.indexOf("];", worker.indexOf("const RUNTIME_CACHE_PATHS = [")));
+  const staticAssets = [...index.matchAll(/<(?:script|link)\b[^>]*(?:src|href)=["']([^"']+)["']/g)]
+    .map((match) => match[1])
+    .filter((url) => !/^(?:https?:|data:|\/\/|#)/.test(url));
+  assert.ok(staticAssets.length >= 45, "verify the whole startup shell, not only canine additions");
+  for (const asset of staticAssets) {
+    const token = JSON.stringify("./" + asset);
+    assert.ok(required.includes(token), "missing or revision-mismatched required startup asset: " + asset);
+    assert.ok(!runtime.includes(token), "startup asset incorrectly classed as lazy: " + asset);
+  }
+});
+
 test("a missing operational task, health, animal, cloud or canine module aborts offline installation", async () => {
   for (const asset of [
     "task-runtime-v1.8.3.js",
     "health-runtime-v1.8.3.js",
     "animal-profile-runtime-v1.8.3.js",
     "herdharbor-cloud.js",
-    "canine-lineage-v2.0.1.js"
+    "canine-lineage-v2.0.1.js",
+    "pedigree-documents-v2.0.0.js"
   ]) {
     const install = installWithFailure(asset);
     await assert.rejects(install.pending, (error) => {
