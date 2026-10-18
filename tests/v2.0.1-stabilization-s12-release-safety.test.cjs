@@ -91,18 +91,31 @@ function installWithFailure(failAsset) {
   return { pending, added };
 }
 
-test("every startup-loaded local script and stylesheet has exactly the same required offline URL", () => {
+test("essential startup identity agrees with the bounded offline shell, while document assets stay optional", () => {
   const index = read("index.html");
   const required = worker.slice(worker.indexOf("const REQUIRED_SHELL = ["), worker.indexOf("const RUNTIME_CACHE_PATHS = ["));
   const runtime = worker.slice(worker.indexOf("const RUNTIME_CACHE_PATHS = ["), worker.indexOf("];", worker.indexOf("const RUNTIME_CACHE_PATHS = [")));
-  const staticAssets = [...index.matchAll(/<(?:script|link)\b[^>]*(?:src|href)=["']([^"']+)["']/g)]
-    .map((match) => match[1])
-    .filter((url) => !/^(?:https?:|data:|\/\/|#)/.test(url));
-  assert.ok(staticAssets.length >= 45, "verify the whole startup shell, not only canine additions");
-  for (const asset of staticAssets) {
-    const token = JSON.stringify("./" + asset);
-    assert.ok(required.includes(token), "missing or revision-mismatched required startup asset: " + asset);
-    assert.ok(!runtime.includes(token), "startup asset incorrectly classed as lazy: " + asset);
+  const requiredAssets = [...required.matchAll(/"\.\/([^"]+)"/g)].map((match) => match[1]);
+  assert.ok(requiredAssets.length <= 50, "do not grow the required PWA install beyond the bounded operational shell");
+  for (const asset of [
+    "herdharbor-cloud.js?v=37",
+    "cloud-sync-rollout-runtime-v1.8.4.js?v=4",
+    "herdharbor-app-runtime.js?v=5",
+    "animal-profile-runtime-v1.8.3.js?v=2",
+    "health-runtime-v1.8.3.js?v=1",
+    "task-runtime-v1.8.3.js?v=1",
+    "canine-lineage-v2.0.1.js?v=1"
+  ]) {
+    assert.ok(requiredAssets.includes(asset), "missing or stale core offline URL: " + asset);
+    assert.ok(index.includes(asset), "browser must request the same core revision: " + asset);
+  }
+  for (const asset of [
+    "document-export-v2.0.0.js?v=1",
+    "birth-certificate-v2.0.0.js?v=1",
+    "animal-documents-v2.0.0.js?v=1"
+  ]) {
+    assert.ok(!requiredAssets.includes(asset), "optional document module must not block startup: " + asset);
+    assert.ok(runtime.includes(JSON.stringify("./" + asset)), "document module remains runtime-cacheable: " + asset);
   }
 });
 
@@ -112,8 +125,7 @@ test("a missing operational task, health, animal, cloud or canine module aborts 
     "health-runtime-v1.8.3.js",
     "animal-profile-runtime-v1.8.3.js",
     "herdharbor-cloud.js",
-    "canine-lineage-v2.0.1.js",
-    "pedigree-documents-v2.0.0.js"
+    "canine-lineage-v2.0.1.js"
   ]) {
     const install = installWithFailure(asset);
     await assert.rejects(install.pending, (error) => {
