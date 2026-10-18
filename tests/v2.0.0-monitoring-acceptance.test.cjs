@@ -19,7 +19,7 @@ const pwa = read("pwa.js");
 const index = read("index.html");
 const worker = read("service-worker.js");
 
-test("monitoring configuration and controlled acceptance identify stable 2.0.0", () => {
+test("monitoring configuration and controlled acceptance identify 2.0.1", () => {
   assert.match(config, /release:\s*"HerdHarbor@2\.0\.1"/);
   assert.match(config, /build:\s*"v2\.0\.1-release-1"/);
   assert.match(generator, /release:\s*"HerdHarbor@2\.0\.1"/);
@@ -38,7 +38,7 @@ test("controlled Sentry acceptance is synthetic-only and wired only through prot
   assert.match(productionWorkflow, /node scripts\/sentry-production-acceptance\.mjs/);
 });
 
-test("Cloud Sync telemetry reports app 2.0.0 while retaining independent component build identity", () => {
+test("Cloud Sync telemetry reports app 2.0.1 while retaining independent component build identity", () => {
   assert.match(cloud, /CLOUD_SYNC_APP_RELEASE = "2\.0\.1"/);
   assert.match(cloud, /CLOUD_SYNC_COMPONENT_BUILD = "legacy-full-state-observability-3"/);
   assert.match(cloud, /app_release:\s*CLOUD_SYNC_APP_RELEASE/);
