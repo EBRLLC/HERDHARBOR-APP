@@ -400,11 +400,13 @@
     }
 
     async function reconcileDualWriteFromLegacyAuthority(ctx, degradedResult) {
+      assertContextCurrent(ctx);
       const pendingBefore = stateStore.getOutbox(ctx.userId);
       if (!Array.isArray(pendingBefore)) return degradedResult;
       if (typeof stateStore.acknowledgeMutations !== "function") return degradedResult;
 
       const legacyRead = await cloud.readLegacySnapshotForNormalizedSync();
+      assertContextCurrent(ctx);
       const authoritative = ctx.normalizer.mapLegacySnapshot(legacyRead.snapshot);
       const local = ctx.normalizer.mapLegacySnapshot(stateStore.getState());
 
@@ -434,14 +436,18 @@
 
       try {
         const beforeRows = await ctx.recordStore.list(ctx.normalizer.namespace, { includeDeleted: true });
+        assertContextCurrent(ctx);
         const sync = await ctx.shadowController.sync(legacyRead.snapshot, {
           previousRows: beforeRows,
           legacySnapshotUpdatedAt: legacyRead.updatedAt || undefined
         });
+        assertContextCurrent(ctx);
         const verification = await ctx.shadowController.verifyAndRecord(legacyRead.snapshot, {
           expectedChecksum: sync?.checksum || authoritative?.checksum || undefined
         });
+        assertContextCurrent(ctx);
         const rows = await ctx.recordStore.list(ctx.normalizer.namespace, { includeDeleted: true });
+        assertContextCurrent(ctx);
         const reconciliation = ctx.reconciliationApi.reconcileSnapshot(
           ctx.normalizer,
           legacyRead.snapshot,
@@ -470,6 +476,7 @@
           };
         }
 
+        assertContextCurrent(ctx);
         if (coveredMutationIds.length) {
           stateStore.acknowledgeMutations(coveredMutationIds, ctx.userId);
         }
@@ -477,6 +484,7 @@
         // The shadow reconciliation may have advanced normalized record
         // versions. Refresh the durable CAS baseline before the next edit.
         const primed = await ctx.worker.primeBaseline({ force: true });
+        assertContextCurrent(ctx);
         const remaining = stateStore.getOutbox(ctx.userId).length;
         const ok = remaining === 0 && primed?.ok !== false;
 
@@ -510,6 +518,8 @@
           }
         };
       } catch (error) {
+        if (error?.code === "HH_SYNC_ACCOUNT_CHANGED") throw error;
+        assertContextCurrent(ctx);
         emit("dual-write-authority-reconcile-failed", {
           stage: ctx.stage,
           reason: error?.code || error?.message || "unknown"
@@ -530,6 +540,7 @@
       if (!ctx) return { ok: true, skipped: true, reason: "not-eligible" };
 
       const boot = await bootstrapIfNeeded(ctx);
+      assertContextCurrent(ctx);
       if (!boot.ok) return boot;
 
       const manifest = await ctx.recordStore.getManifest();
@@ -545,6 +556,7 @@
           ok: true,
           updated_at: null
         });
+        assertContextCurrent(ctx);
         const normalizedErrorCode = String(result?.normalizedErrorCode || "");
         const conflictLikeDegradation =
           Number(result?.normalizedConflicts || 0) > 0 ||
@@ -565,9 +577,11 @@
           )
         ) {
           result = await reconcileDualWriteFromLegacyAuthority(ctx, result);
+          assertContextCurrent(ctx);
         }
       } else {
         const normalizedResult = await ctx.worker.drain({ ownerId: ctx.userId });
+        assertContextCurrent(ctx);
         result = {
           ok: normalizedResult?.failed === 0,
           mode: "shadow-record-write",
