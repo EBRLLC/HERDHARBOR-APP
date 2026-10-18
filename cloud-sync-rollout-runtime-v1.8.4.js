@@ -162,6 +162,17 @@
       }
     }
 
+    // A completed context can outlive its authentication session if a cloud
+    // operation was already awaiting a response. Never hand its data or
+    // baseline state to a later session, including rapid A->B->A switches.
+    function assertContextCurrent(ctx) {
+      if (!ctx || context !== ctx || safeText(cloud.getSession?.()?.user?.id) !== ctx.userId) {
+        throw Object.assign(new Error("Authenticated account changed during normalized synchronization."), {
+          code: "HH_SYNC_ACCOUNT_CHANGED"
+        });
+      }
+    }
+
     function emit(type, detail = {}) {
       try {
         root?.document?.dispatchEvent?.(new root.CustomEvent("herdharbor:normalized-rollout", {
@@ -366,13 +377,18 @@
     }
 
     async function bootstrapIfNeeded(ctx) {
+      assertContextCurrent(ctx);
       const manifest = await ctx.recordStore.getManifest();
+      assertContextCurrent(ctx);
       const stage = stageOf(manifest);
       ctx.stage = stage;
       if (stage !== "legacy") return { ok: true, skipped: true, stage };
 
+      assertContextCurrent(ctx);
       const result = await ctx.bootstrap.run();
+      assertContextCurrent(ctx);
       const after = await ctx.recordStore.getManifest();
+      assertContextCurrent(ctx);
       ctx.stage = stageOf(after);
       if (result?.verified !== true || ctx.stage !== "shadow") {
         validationPasses = 0;
@@ -517,6 +533,7 @@
       if (!boot.ok) return boot;
 
       const manifest = await ctx.recordStore.getManifest();
+      assertContextCurrent(ctx);
       ctx.stage = stageOf(manifest);
       if (ctx.stage === "normalized") {
         return { ok: true, skipped: true, reason: "normalized-authority-owned-by-pr7", stage: ctx.stage };
@@ -629,7 +646,9 @@
     }
 
     async function refreshContextStage(ctx) {
+      assertContextCurrent(ctx);
       const manifest = await ctx.recordStore.getManifest();
+      assertContextCurrent(ctx);
       ctx.stage = stageOf(manifest);
       const authorityActive =
         ctx.stage === "normalized" &&
@@ -825,7 +844,9 @@
         }
       }
 
+      assertContextCurrent(ctx);
       const read = await ctx.readResolver.read();
+      assertContextCurrent(ctx);
       if (read?.source !== "normalized" || read?.fallback === true) {
         const result = Object.freeze({
           active: true,
@@ -875,6 +896,7 @@
         return Object.freeze({ ok: true, skipped: true, reason: "not-dual-write", stage });
       }
 
+      assertContextCurrent(ctx);
       const pending = stateStore.getOutbox(ctx.userId).length;
       if (pending > 0) {
         validationPasses = 0;
@@ -966,6 +988,7 @@
       if (!sync.ok) return Object.freeze({ ...sync, source: null });
 
       const read = await ctx.readResolver.read();
+      assertContextCurrent(ctx);
       const afterRevision = Number(stateStore.getRevision?.(ctx.userId) || 0);
       if (
         read?.source !== "normalized" ||
@@ -987,6 +1010,7 @@
       }
 
       await ctx.worker.primeBaseline({ force: true });
+      assertContextCurrent(ctx);
       emit("normalized-refresh-ready", { stage, ok: true });
       return Object.freeze({
         ok: true,
