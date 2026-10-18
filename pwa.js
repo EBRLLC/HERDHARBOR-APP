@@ -308,7 +308,10 @@
       // another tab must never erase them.
       if (document.querySelector?.(
         '#hh-paper-pedigree-dialog[open], #photo-entry-review input, #photo-entry-review textarea, ' +
-        'dialog[open] input, dialog[open] textarea, [role="dialog"]:not([hidden]) textarea'
+        'dialog[open] input, dialog[open] textarea, [role="dialog"]:not([hidden]) textarea, ' +
+        '#modal-backdrop:not(.hidden) #modal-content input, ' +
+        '#modal-backdrop:not(.hidden) #modal-content textarea, ' +
+        '#modal-backdrop:not(.hidden) #modal-content select'
       )) return true;
     } catch {}
     return false;
