@@ -199,6 +199,7 @@ test("background PWA controller changes retain unsaved AI drafts and cloud chang
   assert.ok(a > 0 && b > a);
   let dirty = true, reloads = 0, attached = 0;
   const doc = {
+    documentElement: { dataset: { hhUnsynced: "true" } },
     querySelector() { return dirty ? {} : null; },
     createElement() {
       return { className: "", innerHTML: "", setAttribute() {},
@@ -221,6 +222,7 @@ test("background PWA controller changes retain unsaved AI drafts and cloud chang
   assert.equal(gate.deferred(),true);
   assert.equal(attached,1);
   dirty=false;
+  doc.documentElement.dataset.hhUnsynced = "false";
   gate.reloadAfterUpdate();
   assert.equal(reloads,1);
   assert.match(s,/serviceWorker\?\.addEventListener\("controllerchange"[\s\S]*?reloadAfterUpdate\(\)/);
