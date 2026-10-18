@@ -3854,8 +3854,14 @@
       return;
     }
 
-    if (event === "SIGNED_IN" && activeSession) {
+    // A refresh or user-update event with a different account identity must
+    // use full account-boundary recovery, never reuse the prior farm state.
+    if (activeSession && (event === "SIGNED_IN" ||
+        (accountChanged && ["TOKEN_REFRESHED", "USER_UPDATED"].includes(event)))) {
       const signedInUserId = String(activeSession.user?.id || "");
+      if (accountChanged) {
+        showAccountBoundaryRecovery("HerdHarbor is verifying the newly authenticated account.");
+      }
       session = activeSession;
       if (recoveryMode) {
         showRecovery();
