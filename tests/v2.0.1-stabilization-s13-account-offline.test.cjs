@@ -127,6 +127,18 @@ test("failed dependency element is removed; next attempt can create a fresh scri
   await second;
 });
 
+test("the required offline shell is strict JSON for the fingerprinted release builder", () => {
+  const worker = read("service-worker.js");
+  const shell = worker.match(/const REQUIRED_SHELL = (\[[\s\S]*?\]);/)?.[1];
+  assert.ok(shell);
+  const assets = JSON.parse(shell);
+  assert.ok(assets.length >= 30);
+  assert.ok(assets.some(asset => asset.includes("herdharbor-cloud.js")));
+  assert.ok(!assets.includes("./how-to/"));
+  assert.ok(!assets.includes("./icon-192.png"));
+  assert.ok(!assets.includes("./icon-512.png"));
+});
+
 test("How-To and install icons are optional while the operational PWA shell stays mandatory", async () => {
   const source = read("service-worker.js");
   const vm = require("node:vm");
