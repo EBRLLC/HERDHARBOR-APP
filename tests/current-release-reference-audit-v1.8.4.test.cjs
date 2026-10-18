@@ -30,7 +30,7 @@ test("all whole-app release owners identify 2.0.1 release candidate", () => {
   assert.match(build, /version:\s*"2\.0\.1"/);
   assert.match(build, /channel:\s*"Stable"/);
   assert.match(build, /buildId:\s*"v2\.0\.1-release-1"/);
-  assert.match(gradle, /versionName\s+"2\.0\.0"/);
+  assert.match(gradle, /versionName\s+"2\.0\.1"/);
   assert.match(gradle, /versionCode\s+20/);
 });
 
