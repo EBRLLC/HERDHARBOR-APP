@@ -49,8 +49,9 @@ test("production Pages verification validates 2.0.1 without becoming a second pu
   assert.match(pages, /RELEASE_SHA="\$\(git rev-parse HEAD\)"/);
   assert.match(pages, /test "\$RELEASE_SHA" = "\$\{GITHUB_SHA\}"/);
   assert.match(pages, /generate-release-assets\.mjs _site/);
-  assert.match(pages, /Production Pages artifact verified/);
-  assert.doesNotMatch(pages, /actions\/deploy-pages@v4|actions\/upload-pages-artifact@v3/);
+  assert.match(pages, /Require GitHub Actions Pages source before publishing/);
+  assert.match(pages, /actions\/deploy-pages@v4/);
+  assert.match(pages, /actions\/upload-pages-artifact@v3/);
   assert.doesNotMatch(pages, /Wait for branch-source Pages publisher|sleep 10/);
   assert.doesNotMatch(pages, /npm run test:v1\.8\.4|HerdHarbor@1\.8\.4|version: "1\.8\.4"/);
 });
