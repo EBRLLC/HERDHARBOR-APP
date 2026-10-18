@@ -1282,13 +1282,19 @@
     }
   }
 
-  function preserveActiveForUser(userId, reason) {
-    if (!userId) return;
-    const activeRaw = activeStateRaw();
-    if (!activeRaw || !safeParse(activeRaw)) return;
-    safeStorageSet(cacheKey(userId), activeRaw);
-    safeStorageSet(ACTIVE_OWNER_KEY, userId);
-    recordRecoverySnapshot(userId, activeRaw, reason);
+  async function preserveActiveForUser(userId, reason, rawValue = activeStateRaw()) {
+    if (!userId) return false;
+    // An empty workspace needs no archival copy. A malformed or unreadable
+    // workspace must never be treated as safely preserved.
+    if (!rawValue) return true;
+    if (!safeParse(rawValue)) return false;
+    const cacheId = cacheKey(userId);
+    const localStored = safeStorageSet(cacheId, rawValue) &&
+      originalGetItem.call(localStorage, cacheId) === rawValue;
+    // IndexedDB is the durable fallback when mobile localStorage is full.
+    // Wait for its transaction to commit before clearing the active workspace.
+    const recovered = await recordRecoverySnapshot(userId, rawValue, reason);
+    return localStored || recovered === true;
   }
 
   function setActiveUserData(userId, rawValue, reason = "legacy-cloud-state-replace") {
@@ -1464,10 +1470,14 @@
         authenticatedCacheMatchesActive
       }, {
         preserve: async (staleOwnerId) => {
-          preserveActiveForUser(
+          const preserved = await preserveActiveForUser(
             staleOwnerId,
-            options.reason || "Local copy retained before account boundary recovery"
+            options.reason || "Local copy retained before account boundary recovery",
+            activeRaw
           );
+          // Authentication can advance while the archival transaction commits.
+          // Never clear an account after its recovery token became stale.
+          if (!preserved || !isAccountOperationCurrent(fenceToken, authenticatedUserId)) return false;
           clearAccountSessionMarkers(staleOwnerId);
           clearAccountSessionMarkers(authenticatedUserId);
           return true;
@@ -2162,6 +2172,8 @@
 
   async function syncNow() {
     const syncUserIdAtStart = session?.user?.id;
+    const syncToken = captureAccountOperation(syncUserIdAtStart);
+    const syncAccountCurrent = () => isAccountOperationCurrent(syncToken, syncUserIdAtStart);
     const legacyWritePendingAtStart = Boolean(pendingSync) || Boolean(
       syncUserIdAtStart &&
       originalGetItem.call(localStorage, dirtyKey(syncUserIdAtStart)) === "1"
@@ -2175,6 +2187,7 @@
     // on the next idle/check path after the save is protected in cloud.
     if (!normalizedAuthorityActive() && !legacyWritePendingAtStart) {
       await refreshNormalizedAuthorityIfEligible();
+      if (!syncAccountCurrent()) return false;
     }
     if (normalizedAuthorityActive()) {
       clearTimeout(syncTimer);
@@ -2184,6 +2197,7 @@
       setSyncState("Saving normalized cloud records…", "working");
       try {
         const result = await normalizedRollout.syncNormalizedNow();
+        if (!syncAccountCurrent()) return false;
         if (result?.reason !== "normalized-not-authoritative") {
           if (result?.ok) {
             setSyncState("Saved to cloud", "success");
@@ -2193,12 +2207,14 @@
           return false;
         }
       } catch (error) {
+        if (!syncAccountCurrent()) return false;
         console.error("HerdHarbor normalized cloud save failed:", error);
         setSyncState("Normalized cloud unavailable; local changes remain protected.", "error");
         return false;
       }
     }
 
+    if (!syncAccountCurrent()) return false;
     const syncUserId = session?.user?.id;
     const legacyDirty = syncUserId
       ? originalGetItem.call(localStorage, dirtyKey(syncUserId)) === "1"
@@ -3898,22 +3914,42 @@
 
     if (event === "SIGNED_OUT") {
       const previousUserId = session?.user?.id;
-      preserveActiveForUser(previousUserId, "Local copy retained after session ended");
-      clearAccountSessionMarkers(previousUserId);
-      clearActiveUserData();
-      resetAccountBoundaryRuntime();
+      const previousRaw = activeStateRaw();
+      showAccountBoundaryRecovery("HerdHarbor is securing your local records during sign-out.");
       accountBoundaryFence?.invalidate?.();
       session = null;
-      normalizedCohortStatusCache = null;
-      normalizedCohortStatusInFlight = null;
       dispatchAuthSession();
-      publishAccessProfile(fallbackAccessProfile());
-      if (accountButton) accountButton.remove();
-      if (accountDialog) accountDialog.remove();
-      accountButton = null;
-      accountDialog = null;
-      showAuth("signin");
-      authMessage("Signed out successfully.", "success");
+      void (async () => {
+        const preserved = await preserveActiveForUser(
+          previousUserId, "Local copy retained after session ended", previousRaw
+        );
+        // A newer sign-in owns the workspace. Its own account-boundary
+        // recovery will handle the retained previous account state.
+        if (session?.user?.id) return;
+        if (!preserved) {
+          showAccountBoundaryRecovery(
+            "Sign-out completed, but HerdHarbor could not safely back up offline records. Local data is retained. Free storage space and sign in to the original account before switching."
+          );
+          return;
+        }
+        clearAccountSessionMarkers(previousUserId);
+        clearActiveUserData();
+        resetAccountBoundaryRuntime();
+        normalizedCohortStatusCache = null;
+        normalizedCohortStatusInFlight = null;
+        publishAccessProfile(fallbackAccessProfile());
+        if (accountButton) accountButton.remove();
+        if (accountDialog) accountDialog.remove();
+        accountButton = null;
+        accountDialog = null;
+        showAuth("signin");
+        authMessage("Signed out successfully.", "success");
+      })().catch((error) => {
+        console.error("HerdHarbor could not securely finish sign-out:", error);
+        if (!session?.user?.id) showAccountBoundaryRecovery(
+          "Your previous local account records could not be safely backed up. They remain on this device."
+        );
+      });
     }
   });
 
