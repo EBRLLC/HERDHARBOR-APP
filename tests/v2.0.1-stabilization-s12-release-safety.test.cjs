@@ -98,7 +98,7 @@ test("essential startup identity agrees with the bounded offline shell, while do
   const requiredAssets = [...required.matchAll(/"\.\/([^"]+)"/g)].map((match) => match[1]);
   assert.ok(requiredAssets.length <= 50, "do not grow the required PWA install beyond the bounded operational shell");
   for (const asset of [
-    "herdharbor-cloud.js?v=37",
+    "herdharbor-cloud.js?v=38",
     "cloud-sync-rollout-runtime-v1.8.4.js?v=4",
     "herdharbor-app-runtime.js?v=5",
     "animal-profile-runtime-v1.8.3.js?v=2",
