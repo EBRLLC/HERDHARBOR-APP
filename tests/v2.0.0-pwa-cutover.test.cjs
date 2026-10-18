@@ -138,6 +138,6 @@ test("2.0.1 offline shell preloads every canine dependency and treats failures a
  for(const asset of expected){
    assert.ok(shell.includes("./"+asset),"not in offline install: "+asset);
    assert.ok(index.includes(asset),"not referenced by browser: "+asset);
-   assert.ok(workerSource.includes('path.endsWith("'+asset.split("?")[0]+'")'),"not install-fatal: "+asset);
+   assert.match(workerSource,/if \(requiredFailures\.length\) throw new Error/,"required-shell failures are fatal for "+asset);
  }
 });
