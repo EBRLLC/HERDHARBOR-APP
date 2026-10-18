@@ -599,8 +599,14 @@
 
   function dispatchSyncStatus() {
     try {
+      const details = getSyncDetails();
+      // Shared UI state for PWA update safety without importing Cloud Sync
+      // into the independent installer/update module.
+      if (document.documentElement?.dataset) {
+        document.documentElement.dataset.hhUnsynced = details.unsynced ? "true" : "false";
+      }
       document.dispatchEvent(new CustomEvent("herdharbor:sync-status", {
-        detail: getSyncDetails()
+        detail: details
       }));
     } catch (error) {
       console.warn("HerdHarbor could not publish the sync status:", error);
