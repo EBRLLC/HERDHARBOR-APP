@@ -25,7 +25,7 @@ test("2.0.0 workflows are the only active current-release workflow files", () =>
   ]) assert.equal(exists(p), false, p);
 });
 
-test("CI presents stable 2.0.0 names and still validates stacked release PRs", () => {
+test("CI presents 2.0.1 release-candidate names and still validates stacked release PRs", () => {
   assert.match(ci, /^name: HerdHarbor 2\.0\.0 CI$/m);
   assert.match(ci, /branches: \[main,[^\n]*'marketplace-comms\/app-\*'[^\n]*'ownership-transfer\/phase-\*'\]/);
   assert.match(ci, /group: herdharbor-v2\.0\.0-ci-/);
@@ -38,7 +38,7 @@ test("CI presents stable 2.0.0 names and still validates stacked release PRs", (
   assert.doesNotMatch(ci, /Alpha v1\.8\.4|current v1\.8\.4 release|Android v1\.8\.4/);
 });
 
-test("production Pages verification validates 2.0.0 without becoming a second publisher", () => {
+test("production Pages verification validates 2.0.1 without becoming a second publisher", () => {
   assert.match(pages, /^name: HerdHarbor 2\.0\.0 production Pages verification$/m);
   assert.match(pages, /npm run test:v2\.0\.0/);
   assert.match(pages, /version: "2\.0\.0"/);
@@ -55,7 +55,7 @@ test("production Pages verification validates 2.0.0 without becoming a second pu
   assert.doesNotMatch(pages, /npm run test:v1\.8\.4|HerdHarbor@1\.8\.4|version: "1\.8\.4"/);
 });
 
-test("production acceptance identifies and tests the stable 2.0.0 release", () => {
+test("production acceptance identifies and tests the 2.0.1 release", () => {
   assert.match(acceptance, /^name: HerdHarbor 2\.0\.0 production acceptance$/m);
   assert.match(acceptance, /HERDHARBOR_BUILD_ID: v2\.0\.0-production-acceptance/);
   assert.match(acceptance, /npm run test:v2\.0\.0/);
