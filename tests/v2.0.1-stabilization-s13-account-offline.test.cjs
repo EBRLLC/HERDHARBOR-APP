@@ -19,6 +19,9 @@ function setupSyncRuntime() {
   const listeners = new Map();
   const released = [];
   const baselines = [];
+  let recordStage = "legacy";
+  let delayManifest = false;
+  let resolveManifest = null;
   const root = {
     document: {
       addEventListener(type, listener) { listeners.set(type, listener); },
@@ -44,7 +47,13 @@ function setupSyncRuntime() {
     getNormalizedSyncCohortStatus: async () => ({
       eligible: true, mode: "allowlist", percentageEnabled: false, schemaVerified: true, stage: "legacy"
     }),
-    createNormalizedRecordStore: () => ({ getManifest: async () => ({ cutover_stage: "legacy" }) }),
+    createNormalizedRecordStore: () => ({ getManifest: async () => {
+      if (delayManifest) {
+        delayManifest = false;
+        await new Promise(resolve => { resolveManifest = resolve; });
+      }
+      return { cutover_stage: recordStage };
+    } }),
     readLegacySnapshotForNormalizedSync: async () => ({ snapshot: {} })
   };
   const runtime = api.create({
@@ -55,6 +64,10 @@ function setupSyncRuntime() {
   });
   return {
     runtime, listeners, released, baselines,
+    setStage(stage) { recordStage = stage; },
+    pauseNextManifest() { delayManifest = true; },
+    resumeManifest() { resolveManifest?.(); resolveManifest = null; },
+    get manifestPending() { return resolveManifest !== null; },
     switchTo(id, event = "herdharbor:auth-boundary") {
       session = id ? { user: { id } } : null;
       listeners.get(event)?.({});
@@ -89,6 +102,29 @@ test("same-account session refresh does not restart an active normalized setup",
   testCase.released[0]();
   await starting;
   assert.deepEqual(testCase.baselines, ["account-a"]);
+});
+
+
+test("in-flight normalized stage read is rejected after account switch, before priming an old-owner baseline", async () => {
+  const testCase = setupSyncRuntime();
+  const started = testCase.runtime.start({ confirmLegacy: false });
+  await ticks();
+  testCase.released[0]();
+  await started;
+  assert.deepEqual(testCase.baselines, ["account-a"]);
+
+  testCase.setStage("dual_write");
+  testCase.pauseNextManifest();
+  const pending = testCase.runtime.refreshDualWriteBaseline();
+  await ticks();
+  assert.equal(testCase.manifestPending, true, "test must suspend the actual stage read");
+
+  testCase.switchTo("account-b");
+  await ticks();
+  testCase.resumeManifest();
+  await assert.rejects(pending, error => error.code === "HH_SYNC_ACCOUNT_CHANGED");
+  assert.deepEqual(testCase.baselines, ["account-a"],
+    "stale account A must not initialize or prime its baseline for account B");
 });
 
 test("failed dependency element is removed; next attempt can create a fresh script", async () => {
