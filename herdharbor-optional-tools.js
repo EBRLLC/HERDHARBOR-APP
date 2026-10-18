@@ -11,6 +11,12 @@
   });
 
   const AI_TESTER_KEY = "herdharbor_ai_live_tester_v1";
+  // This is a UI preference only. Edge Functions independently verify signed-in
+  // membership entitlements, tester allowlists and explicit per-request consent.
+  function currentAccountId() {
+    return String(window.HerdHarborCloud?.getSession?.()?.user?.id || "").trim();
+  }
+  const testerKey = (accountId) => AI_TESTER_KEY + ":" + accountId;
 
   const inFlight = new Map();
 
@@ -105,7 +111,8 @@
 
   function isAiLiveTester() {
     try {
-      return window.localStorage?.getItem(AI_TESTER_KEY) === "1";
+      const accountId = currentAccountId();
+      return Boolean(accountId && window.localStorage?.getItem(testerKey(accountId)) === "1");
     } catch {
       return false;
     }
@@ -140,11 +147,15 @@
   }
 
   async function ensureAiLiveTools() {
-    if (!isAiLiveTester()) throw new Error("AI live testing is not enabled for this browser.");
+    const ownerId = currentAccountId();
+    if (!ownerId || !isAiLiveTester()) throw new Error("AI live testing is not enabled for this signed-in account.");
     await Promise.all([
       loadScript(ASSETS.voiceAi, "HerdHarbor voice-assisted entry", () => typeof window.HerdHarborVoiceAssistedEntry?.create === "function"),
       loadScript(ASSETS.photoAi, "HerdHarbor photo-assisted entry", () => typeof window.HerdHarborPhotoAssistedEntry?.create === "function")
     ]);
+    if (ownerId !== currentAccountId() || !isAiLiveTester()) {
+      throw new Error("The signed-in account changed while AI tester tools were loading.");
+    }
     return Object.freeze({
       voice: window.HerdHarborVoiceAssistedEntry,
       photo: window.HerdHarborPhotoAssistedEntry
@@ -153,8 +164,11 @@
 
   function setAiLiveTesterEnabled(enabled) {
     try {
-      if (enabled) window.localStorage?.setItem(AI_TESTER_KEY, "1");
-      else window.localStorage?.removeItem(AI_TESTER_KEY);
+      const accountId = currentAccountId();
+      if (accountId) {
+        if (enabled) window.localStorage?.setItem(testerKey(accountId), "1");
+        else window.localStorage?.removeItem(testerKey(accountId));
+      }
     } catch {}
     const active = publishAiTesterState();
     if (active) ensureAiLiveTools().catch((error) => console.error("HerdHarbor AI tester tools failed to load:", error));
@@ -172,8 +186,15 @@
   else bootAiLiveTesterGate();
 
   window.addEventListener?.("storage", (event) => {
-    if (event.key === AI_TESTER_KEY) bootAiLiveTesterGate();
+    const accountId = currentAccountId();
+    if (event.key === null || (accountId && event.key === testerKey(accountId))) bootAiLiveTesterGate();
   });
+  document.addEventListener("herdharbor:auth-boundary", () => {
+    // The cloud bridge sends this before switching the session; hide old
+    // tester controls synchronously, even during rapid A->B->A transitions.
+    if (document.documentElement?.dataset) document.documentElement.dataset.hhAiLiveTester = "false";
+  });
+  document.addEventListener("herdharbor:auth-session", bootAiLiveTesterGate);
 
   window.HerdHarborOptionalTools = Object.freeze({
     ensureSpreadsheetTools,
