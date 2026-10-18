@@ -22,7 +22,7 @@ const REQUIRED_SHELL = [
   "./cloud-legacy-baseline-v1.8.4.js?v=1",
   "./account-boundary-core-v1.8.4.js?v=3",
   "./herdharbor-cloud.js?v=38",
-  "./cloud-sync-rollout-runtime-v1.8.4.js?v=4",
+  "./cloud-sync-rollout-runtime-v1.8.4.js?v=5",
   "./local-cache-v2-v1.8.2.js?v=1",
   "./cloud-sync-v2-flow-v1.8.2.js?v=1",
   "./cloud-sync-v2-diagnostics-v1.8.2.js?v=1",
@@ -50,12 +50,12 @@ const REQUIRED_SHELL = [
   "./herdharbor-app-runtime.js?v=5",
   "./herdharbor-monitoring-config.js?v=2.0.1",
   "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.1",
-  "./how-to/",
   "./icon-192.png",
   "./icon-512.png"
 ];
 
 const RUNTIME_CACHE_PATHS = [
+  "./how-to/",
   "./animal-documents-v2.0.0.js?v=1",
   "./birth-certificate-v2.0.0.js?v=1",
   "./standard-pedigree-print-v2.0.0.js?v=1",
