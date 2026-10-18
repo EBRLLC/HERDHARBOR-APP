@@ -39,10 +39,10 @@ for (const asset of ["registration-safety-v1.8.1.js", "subscription-launch-v1.8.
 
 assert.ok(fs.existsSync(path.join(root, reviewWorkflowPath)), "2.0.0 CI workflow must exist");
 const reviewWorkflow = read(reviewWorkflowPath);
-assert.match(reviewWorkflow, /name: HerdHarbor 2\.0\.0 CI/);
+assert.match(reviewWorkflow, /name: HerdHarbor 2\.0\.1 release-candidate CI/);
 assert.match(reviewWorkflow, /android-review:/);
 assert.match(reviewWorkflow, /\.\/gradlew --no-daemon bundleRelease/);
-assert.match(reviewWorkflow, /herdharbor-v2\.0\.0-unsigned-aab/);
+assert.match(reviewWorkflow, /herdharbor-v2\.0\.1-unsigned-aab/);
 assert.match(reviewWorkflow, /npm run test:release/);
 assert.doesNotMatch(reviewWorkflow, /play.*publish|upload.*play|serviceAccountCredentials/i, "review CI must not publish an Android release");
 
