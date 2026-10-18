@@ -86,6 +86,7 @@ jobs:
             --exclude='package-lock.json' \
             ./ _site/
           node scripts/generate-release-assets.mjs _site
+          node scripts/verify-release-candidate-artifact.mjs _site
           test -s _site/release-asset-manifest.json
           test -s _site/herdharbor-monitoring-config.js
           test -s _site/vendor/herdharbor-monitoring-v1.6.1.min.js
