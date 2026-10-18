@@ -48,6 +48,6 @@ test("distribution status keeps web install available while store releases remai
   assert.match(readme, /App Store availability must not be claimed until that separate release is completed/i);
 });
 
-test("release documentation ties live status to branch-source Pages deployment", () => {
-  assert.match(readme, /2\.0\.0 release is not considered live until the exact merged `main` commit completes the branch-source GitHub Pages deployment/i);
+test("release documentation ties live status to verified Pages deployment", () => {
+  assert.match(readme, /2\.0\.1 candidate cannot publish until the exact approved `main` commit completes the verified GitHub Actions Pages artifact deployment/i);
 });
