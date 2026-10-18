@@ -289,6 +289,6 @@ test("failed local attachment cleanup is reported instead of silently discarded"
 test("auth boundary dispatch excludes same-user token refresh but guards identity drift",()=>{
  const cloud=src("herdharbor-cloud.js");
  assert.match(cloud,/const accountChanged = incomingUserId !== currentUserId/);
- assert.match(cloud,/\["TOKEN_REFRESHED","USER_UPDATED"\]\.includes\(event\) && accountChanged/);
+ assert.match(cloud,/\["SIGNED_IN", "TOKEN_REFRESHED", "USER_UPDATED"\]\.includes\(event\) && accountChanged/);
  assert.match(cloud,/detail: \{ event, previousUserId: currentUserId, nextUserId: incomingUserId \}/);
 });
