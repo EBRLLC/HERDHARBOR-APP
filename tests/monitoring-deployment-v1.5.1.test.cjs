@@ -16,7 +16,7 @@ const cloud = read("herdharbor-cloud.js");
 const readme = read("README.md");
 const sentryAcceptance = read("scripts/sentry-production-acceptance.mjs");
 
-assert.match(readme, /published from the exact reviewed `main` commit through GitHub Pages/);
+assert.match(readme, /fingerprinted, verified, and uploaded as one `_site` artifact from the exact reviewed `main` commit/);
 assert.match(config, /dsn: ""/);
 assert.match(config, /HerdHarbor@2\.0\.1/);
 assert.match(config, /v2.0.1-release-1/);
@@ -29,9 +29,9 @@ assert.match(pagesWorkflow, /secrets\.HERDHARBOR_SENTRY_DSN/);
 assert.match(pagesWorkflow, /HERDHARBOR_MONITORING_ENVIRONMENT: production/);
 assert.match(pagesWorkflow, /npm run test:v2\.0\.0-final/);
 assert.match(pagesWorkflow, /npm run build:monitoring-config/);
-assert.doesNotMatch(pagesWorkflow, /actions\/deploy-pages@v4/, "verification workflow must not become a second Pages publisher");
-assert.match(pagesWorkflow, /Confirm single-publisher contract/);
-assert.match(pagesWorkflow, /Deployment authority remains the branch-source Pages workflow/);
+assert.match(pagesWorkflow, /actions\/deploy-pages@v4/, "only the artifact-verified workflow publishes Pages");
+assert.match(pagesWorkflow, /Require GitHub Actions Pages source before publishing/);
+assert.match(pagesWorkflow, /settings\.get\("build_type"\) != "workflow"/);
 for (const asset of ["registration-safety-v1.8.1.js", "subscription-launch-v1.8.1.js", "subscription-referral-policy-v1.8.1.js", "subscription-admin-credits-v1.8.1.js", "subscription-stripe-launch-bridge-v1.8.1.js"]) {
   assert.ok(pagesWorkflow.includes(asset), `carried-forward v1.8.1 runtime assets keep their real filenames: ${asset}`);
   assert.ok(!pagesWorkflow.includes(asset.replace("v1.8.1", "v1.8.2")), `deployment must not invent a v1.8.2 filename for ${asset}`);
