@@ -23,7 +23,7 @@ test("AI live-test modules are not eagerly loaded for every account", () => {
 
 test("AI tester tools load concurrently only after explicit tester enablement", () => {
   const optional = read("herdharbor-optional-tools.js");
-  assert.match(optional, /if \(!isAiLiveTester\(\)\) throw new Error/);
+  assert.match(optional, /if \(!ownerId \|\| !isAiLiveTester\(\)\) throw new Error/);
   assert.match(optional, /Promise\.all\(\[/);
   assert.match(optional, /HerdHarborVoiceAssistedEntry/);
   assert.match(optional, /HerdHarborPhotoAssistedEntry/);
