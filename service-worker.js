@@ -318,19 +318,28 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith((async () => {
+      const appRoot = new URL("./", self.location.href).pathname;
+      const appIndex = new URL("./index.html", self.location.href).pathname;
+      const isAppShell = url.pathname === appRoot || url.pathname === appIndex;
+      const cacheKey = isAppShell ? "./index.html" : request;
       try {
         const preloaded = await event.preloadResponse;
         const response = preloaded || await fetch(request, { cache: "no-store" });
-        if (response?.ok) {
+        if (response?.ok && response.type === "basic") {
           const copy = response.clone();
+          // A How-To or other HTML route must never replace the offline app
+          // homepage. Each non-app navigation keeps its own cache identity.
           event.waitUntil(
-            caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", copy))
+            caches.open(CACHE_NAME).then((cache) => cache.put(cacheKey, copy))
           );
         }
         return response;
       } catch {
         const cache = await caches.open(CACHE_NAME);
-        return (await cache.match("./index.html")) || cache.match("./");
+        if (isAppShell) return (await cache.match("./index.html")) || cache.match("./");
+        // Never show a cached application or unrelated member document at
+        // another URL merely because the requested route is offline.
+        return (await cache.match(request, { ignoreSearch: true })) || Response.error();
       }
     })());
     return;
