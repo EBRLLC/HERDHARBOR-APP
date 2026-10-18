@@ -57,6 +57,13 @@ for (const [label, options] of [
   });
 }
 
+test("initial SIGNED_OUT with no workspace needs no owner backup; unattributed data remains locked", async () => {
+  const empty = actualPreserver({ raw: "" });
+  assert.equal(await empty.preserve(null, "initial sign-out"), true);
+  const unowned = actualPreserver({ raw: '{"animals":[{"id":"unowned"}]}' });
+  assert.equal(await unowned.preserve(null, "unattributed sign-out"), false);
+});
+
 test("sign-out preserves active state before clearing it, and retains it on failed backup", () => {
   const start = cloud.indexOf('    if (event === "SIGNED_OUT") {');
   const end = cloud.indexOf('\n  });\n\n  window.addEventListener("online"', start);
