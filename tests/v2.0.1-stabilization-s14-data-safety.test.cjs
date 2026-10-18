@@ -134,7 +134,7 @@ test("normalized syncNow result cannot report stale account A success to account
     "let session = {user:{id:'A'}};\n" +
     "const captureAccountOperation = id => fence.capture(id);\n" +
     "const isAccountOperationCurrent = (token) => fence.isCurrent(token,session?.user?.id);\n" +
-    "const pendingSync=null, syncTimer=null; let syncDebounceStartedAt=0;\n" +
+    "let pendingSync=null, syncTimer=null, syncDebounceStartedAt=0;\n" +
     "const localStorage={}, originalGetItem={call:()=>null}, dirtyKey=x=>x;\n" +
     "const normalizedAuthorityActive=()=>true,refreshNormalizedAuthorityIfEligible=async()=>true;\n" +
     "const clearTimeout=()=>{}, setSyncState=(message,type)=>statuses.push({userId:session?.user?.id,message,type});\n" +
