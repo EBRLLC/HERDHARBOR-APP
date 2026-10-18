@@ -158,3 +158,73 @@ test("2.0.1 production acceptance keeps synthetic privacy and protected manual g
   assert.ok(workflow.includes("if: " + "$" + "{{ inputs.run_sentry }}"));
   assert.doesNotMatch(workflow, /\npush:|\npull_request:|deploy-pages|supabase functions deploy/);
 });
+
+/**
+ * Exercise the actual authentication callback, not merely the synchronous
+ * review-cancellation prefix. A changed user in a refresh event must hydrate
+ * the new account and lock the previous account's visible workspace.
+ */
+async function runAuthCallback(event, priorId, incomingId) {
+  const opening = "  client.auth.onAuthStateChange((event, activeSession) => {";
+  const start = cloud.indexOf(opening);
+  const end = cloud.indexOf("\n  });\n\n  window.addEventListener(\"online\"", start);
+  assert.ok(start >= 0 && end > start, "extract live cloud auth callback");
+  const body = cloud.slice(start + opening.length, end);
+  const calls = [];
+  const current = priorId ? { user: { id: priorId } } : null;
+  const incoming = incomingId ? { user: { id: incomingId } } : null;
+  let locked = false;
+  const document = {
+    dispatchEvent(evt) { if (evt.type === "herdharbor:auth-boundary") calls.push("cancel"); },
+    documentElement: { classList: { contains() { return locked; } } }
+  };
+  class CustomEventStub {
+    constructor(type, options) { this.type = type; this.detail = options.detail; }
+  }
+  const deps = {
+    session: current,
+    document,
+    CustomEvent: CustomEventStub,
+    recoveryMode: false,
+    showAccountBoundaryRecovery() { locked = true; calls.push("lock"); },
+    ensureAuthenticatedAccountBoundary: async (active) => {
+      calls.push("boundary:" + active.user.id);
+      return { ok: true };
+    },
+    hydrateUserData: async (active) => { calls.push("hydrate:" + active.user.id); },
+    dispatchAuthSession() { calls.push("session"); },
+    loadAccessProfile: () => Promise.resolve(),
+    window: { HerdHarborBilling: { refresh() { calls.push("billing"); } } },
+    lastHydratedUserId: priorId
+  };
+  const callback = new Function("event", "activeSession", "d",
+    'let session=d.session; const document=d.document, CustomEvent=d.CustomEvent; ' +
+    'const recoveryMode=d.recoveryMode, showAccountBoundaryRecovery=d.showAccountBoundaryRecovery; ' +
+    'const ensureAuthenticatedAccountBoundary=d.ensureAuthenticatedAccountBoundary; ' +
+    'const hydrateUserData=d.hydrateUserData, dispatchAuthSession=d.dispatchAuthSession; ' +
+    'const loadAccessProfile=d.loadAccessProfile, window=d.window; ' +
+    'const lastHydratedUserId=d.lastHydratedUserId; ' + body
+  );
+  callback(event, incoming, deps);
+  await new Promise((resolve) => setImmediate(resolve));
+  return { calls, locked };
+}
+
+test("unexpected identity drift on refresh or user update follows real account recovery", async () => {
+  for (const event of ["TOKEN_REFRESHED", "USER_UPDATED"]) {
+    const switched = await runAuthCallback(event, "account-a", "account-b");
+    assert.deepEqual(switched.calls.slice(0, 3), ["cancel", "lock", "boundary:account-b"], event);
+    assert.ok(switched.calls.includes("hydrate:account-b"), event);
+    assert.ok(switched.locked, event);
+    assert.ok(!switched.calls.includes("session"), "do not grant the new session access before recovery");
+  }
+});
+
+test("same-user refresh still avoids account recovery and preserves the unlocked app", async () => {
+  for (const event of ["TOKEN_REFRESHED", "USER_UPDATED"]) {
+    const same = await runAuthCallback(event, "account-a", "account-a");
+    assert.equal(same.locked, false, event);
+    assert.ok(same.calls.includes("session"), event);
+    assert.ok(!same.calls.some((call) => call.startsWith("boundary:") || call.startsWith("hydrate:")), event);
+  }
+});
