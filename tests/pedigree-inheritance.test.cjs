@@ -16,7 +16,7 @@ assert.ok(engineScriptIndex >= 0, "the canonical pedigree engine is loaded by th
 assert.ok(animalRuntimeIndex > engineScriptIndex, "the engine loads before the animal profile runtime");
 assert.ok(appRuntimeIndex > engineScriptIndex, "the engine loads before the main application runtime");
 assert.match(worker, /\.\/pedigree-engine-v2\.0\.0\.js\?v=1/);
-assert.match(worker, /path\.endsWith\("pedigree-engine-v2\.0\.0\.js"\)/);
+assert.match(worker, /if \(requiredFailures\.length\) throw new Error/);
 
 assert.match(
   appRuntime,
