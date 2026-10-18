@@ -127,6 +127,28 @@ test("in-flight normalized stage read is rejected after account switch, before p
     "stale account A must not initialize or prime its baseline for account B");
 });
 
+test("A-to-B-to-A during an in-flight normalized read still invalidates the original A context", async () => {
+  const testCase = setupSyncRuntime();
+  const starting = testCase.runtime.start({ confirmLegacy: false });
+  await ticks();
+  testCase.released[0]();
+  await starting;
+  testCase.setStage("dual_write");
+  testCase.pauseNextManifest();
+  const pending = testCase.runtime.refreshDualWriteBaseline();
+  await ticks();
+  assert.equal(testCase.manifestPending, true);
+  testCase.switchTo("account-b");
+  await ticks();
+  testCase.switchTo("account-a");
+  await ticks();
+  // Matching the old user ID is not sufficient; the original context was
+  // invalidated by the B boundary, even though the active ID is A again.
+  testCase.resumeManifest();
+  await assert.rejects(pending, error => error.code === "HH_SYNC_ACCOUNT_CHANGED");
+  assert.deepEqual(testCase.baselines, ["account-a"]);
+});
+
 test("failed dependency element is removed; next attempt can create a fresh script", async () => {
   const beginning = syncSource.indexOf("  function browserScriptLoader(root) {");
   const ending = syncSource.indexOf("  function create(options = {}) {", beginning);
