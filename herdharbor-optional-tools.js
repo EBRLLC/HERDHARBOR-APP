@@ -189,12 +189,12 @@
     const accountId = currentAccountId();
     if (event.key === null || (accountId && event.key === testerKey(accountId))) bootAiLiveTesterGate();
   });
-  document.addEventListener("herdharbor:auth-boundary", () => {
+  document.addEventListener?.("herdharbor:auth-boundary", () => {
     // The cloud bridge sends this before switching the session; hide old
     // tester controls synchronously, even during rapid A->B->A transitions.
     if (document.documentElement?.dataset) document.documentElement.dataset.hhAiLiveTester = "false";
   });
-  document.addEventListener("herdharbor:auth-session", bootAiLiveTesterGate);
+  document.addEventListener?.("herdharbor:auth-session", bootAiLiveTesterGate);
 
   window.HerdHarborOptionalTools = Object.freeze({
     ensureSpreadsheetTools,
