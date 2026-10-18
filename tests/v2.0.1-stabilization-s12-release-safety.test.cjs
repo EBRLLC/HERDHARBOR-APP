@@ -228,3 +228,18 @@ test("same-user refresh still avoids account recovery and preserves the unlocked
     assert.ok(!same.calls.some((call) => call.startsWith("boundary:") || call.startsWith("hydrate:")), event);
   }
 });
+
+test("complete Pages artifact validation is required in review CI and production verification", () => {
+  const review = read(".github/workflows/v2.0.0-ci.yml");
+  const pages = read(".github/workflows/v2.0.0-production-pages.yml");
+  const verifier = read("scripts/verify-release-candidate-artifact.mjs");
+  for (const workflow of [review, pages]) {
+    assert.match(workflow, /node scripts\/generate-release-assets\.mjs _site/);
+    assert.match(workflow, /node scripts\/verify-release-candidate-artifact\.mjs _site/);
+  }
+  assert.match(verifier, /manifest\.assets/);
+  assert.match(verifier, /sha256/);
+  assert.match(verifier, /REQUIRED_SHELL/);
+  assert.match(verifier, /required JS\/CSS missing fingerprint/);
+  assert.doesNotMatch(review, /actions\/deploy-pages@|supabase functions deploy/);
+});
