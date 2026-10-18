@@ -1289,8 +1289,13 @@
     if (!rawValue) return true;
     if (!safeParse(rawValue)) return false;
     const cacheId = cacheKey(userId);
-    const localStored = safeStorageSet(cacheId, rawValue) &&
-      originalGetItem.call(localStorage, cacheId) === rawValue;
+    let localStored = false;
+    try {
+      localStored = safeStorageSet(cacheId, rawValue) &&
+        originalGetItem.call(localStorage, cacheId) === rawValue;
+    } catch (error) {
+      console.warn("HerdHarbor local account backup could not be verified:", error);
+    }
     // IndexedDB is the durable fallback when mobile localStorage is full.
     // Wait for its transaction to commit before clearing the active workspace.
     const recovered = await recordRecoverySnapshot(userId, rawValue, reason);
