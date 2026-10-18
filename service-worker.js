@@ -282,22 +282,9 @@ self.addEventListener("install", (event) => {
         .map((result, index) => ({ result, request: requests[index] }))
         .filter(({ result }) => result.status === "rejected")
         .map(({ request }) => new URL(request.url).pathname);
-      const fatal = requiredFailures.filter((path) =>
-        path.endsWith("index.html") ||
-        path.endsWith("herdharbor-build.js") ||
-        path.endsWith("pedigree-engine-v2.0.0.js") ||
-        path.endsWith("pedigree-customization-v2.0.0.js") ||
-        path.endsWith("pedigree-documents-v2.0.0.js") ||
-        path.endsWith("pedigree-renderer-v2.0.0.js") ||
-        path.endsWith("herdharbor-app-runtime.js") ||
-        path.endsWith("herdharbor-cloud.js") ||
-        path.endsWith("canine-identity-v2.0.1.css") ||
-        path.endsWith("canine-breeds-v2.0.1.js") ||
-        path.endsWith("canine-identity-v2.0.1.js") ||
-        path.endsWith("canine-lineage-v2.0.1.js") ||
-        path.endsWith("canine-pedigree-print-v2.0.1.js")
-      );
-      if (fatal.length) throw new Error("Required HerdHarbor shell assets failed to cache: " + fatal.join(", "));
+      // Every entry in REQUIRED_SHELL is essential to a usable offline install.
+      // Optional/lazy assets belong in RUNTIME_CACHE_PATHS, not this list.
+      if (requiredFailures.length) throw new Error("Required HerdHarbor shell assets failed to cache: " + requiredFailures.join(", "));
     })
   );
 });
