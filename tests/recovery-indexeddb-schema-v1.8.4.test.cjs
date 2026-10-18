@@ -270,7 +270,7 @@ function readNumberConstant(name) {
 
 function recoveryHarness(indexedDB, testConsole = console) {
   const start = cloudSource.indexOf("  function recoverySchemaError");
-  const end = cloudSource.indexOf("  function preserveActiveForUser", start);
+  const end = cloudSource.indexOf("  async function preserveActiveForUser", start);
   assert.ok(start >= 0 && end > start, "production recovery helpers must remain extractable for behavioral tests");
 
   const RECOVERY_DB_NAME = readStringConstant("RECOVERY_DB_NAME");
