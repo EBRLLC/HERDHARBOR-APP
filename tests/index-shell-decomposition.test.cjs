@@ -70,9 +70,9 @@ test("static script and stylesheet references resolve once", () => {
 
 test("service worker covers required extracted shell assets", () => {
   for (const { asset, revision } of [
-    { asset: "animal-profile-runtime-v1.8.3.js", revision: "1" },
+    { asset: "animal-profile-runtime-v1.8.3.js", revision: "2" },
     { asset: "production-reporting-runtime-v1.8.3.js", revision: "1" },
-    { asset: "herdharbor-app-runtime.js", revision: "4" },
+    { asset: "herdharbor-app-runtime.js", revision: "5" },
     { asset: "herdharbor-index-shell.css", revision: "1" }
   ]) {
     const escaped = asset.replaceAll(".", "\\.");
