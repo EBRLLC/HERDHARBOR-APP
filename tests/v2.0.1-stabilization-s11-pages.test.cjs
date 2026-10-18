@@ -10,7 +10,7 @@ test("main-branch Pages verification accepts 2.0.1 without bypassing inherited 2
  assert.match(workflow,/npm run test:v2\.0\.1-review/);
  assert.match(workflow,/Verify reviewed PR provenance/);
  assert.match(workflow,/Require production Sentry DSN/);
- assert.match(workflow,/Confirm single-publisher contract/);
+ assert.match(workflow,/Require GitHub Actions Pages source before publishing/);
  assert.doesNotMatch(workflow,/grep -q 'version: "2\.0\.0"'/);
  assert.match(workflow,/grep -q 'version: "2\.0\.1"'/);
  assert.match(workflow,/grep -q '"release": "HerdHarbor@2\.0\.1"'/);
