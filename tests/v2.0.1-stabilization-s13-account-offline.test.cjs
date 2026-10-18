@@ -1,0 +1,196 @@
+"use strict";
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const read = (name) => fs.readFileSync(path.join(__dirname, "..", name), "utf8");
+const syncSource = read("cloud-sync-rollout-runtime-v1.8.4.js");
+const getSyncApi = () => {
+  const global = {};
+  const module = { exports: {} };
+  new Function("globalThis", "module", syncSource)(global, module);
+  return module.exports;
+};
+const ticks = async () => { for (let n = 0; n < 40; n++) await Promise.resolve(); };
+
+function setupSyncRuntime() {
+  const api = getSyncApi();
+  let session = { user: { id: "account-a" } };
+  const listeners = new Map();
+  const released = [];
+  const baselines = [];
+  const root = {
+    document: {
+      addEventListener(type, listener) { listeners.set(type, listener); },
+      dispatchEvent() {}
+    },
+    CustomEvent: class { constructor(_type, options) { this.detail = options.detail; } }
+  };
+  const modules = {
+    normalizer: { mapLegacySnapshot() {}, reassembleAuthoritativeSnapshotWithMetadata() {}, namespace: "farm", formatVersion: 1 },
+    baselineApi: { createIndexedDbStore(options) { baselines.push(options.ownerId); return {}; } },
+    workerApi: { create() { return {}; } },
+    cohortApi: { createCohortGate() { return { evaluate() { return { eligible: true }; } }; } },
+    shadowApi: { createShadowSyncController() { return {}; } },
+    bootstrapApi: { createShadowBootstrap() { return {}; } },
+    reconciliationApi: { reconcileSnapshot() { return {}; }, createRolloutMetrics() { return { recordEvent() {}, snapshot() { return {}; } }; } },
+    rolloutApi: { createRolloutControl() { return {}; } },
+    dualWriteApi: { createDualWriteCoordinator() { return {}; } },
+    readApi: { createReadResolver() { return {}; } }
+  };
+  const cloud = {
+    getSession: () => session,
+    syncNow: async () => true,
+    getNormalizedSyncCohortStatus: async () => ({
+      eligible: true, mode: "allowlist", percentageEnabled: false, schemaVerified: true, stage: "legacy"
+    }),
+    createNormalizedRecordStore: () => ({ getManifest: async () => ({ cutover_stage: "legacy" }) }),
+    readLegacySnapshotForNormalizedSync: async () => ({ snapshot: {} })
+  };
+  const runtime = api.create({
+    root, cloud,
+    stateStore: { getState: () => ({}), getOutbox: () => [] },
+    modules,
+    loadDependencies: () => new Promise(resolve => released.push(resolve))
+  });
+  return {
+    runtime, listeners, released, baselines,
+    switchTo(id, event = "herdharbor:auth-boundary") {
+      session = id ? { user: { id } } : null;
+      listeners.get(event)?.({});
+      if (event !== "herdharbor:auth-session") listeners.get("herdharbor:auth-session")?.({});
+    }
+  };
+}
+
+test("account A cannot publish a normalized context after an A-to-B sign-in during dependency load", async () => {
+  const testCase = setupSyncRuntime();
+  const starting = testCase.runtime.start({ confirmLegacy: false });
+  await ticks();
+  assert.equal(testCase.released.length, 1, "A must be waiting for its module loader");
+  testCase.switchTo("account-b");
+  await ticks();
+  assert.equal(testCase.released.length, 2, "B gets a fresh owner-specific setup");
+  testCase.released[0]();
+  await assert.rejects(starting, error => error.code === "HH_SYNC_ACCOUNT_CHANGED");
+  assert.ok(!testCase.baselines.includes("account-a"), "stale A baseline must not be initialized");
+  testCase.released[1]();
+  await ticks();
+  assert.deepEqual(testCase.baselines, ["account-b"]);
+});
+
+test("same-account session refresh does not restart an active normalized setup", async () => {
+  const testCase = setupSyncRuntime();
+  const starting = testCase.runtime.start({ confirmLegacy: false });
+  await ticks();
+  testCase.switchTo("account-a", "herdharbor:auth-session");
+  await ticks();
+  assert.equal(testCase.released.length, 1);
+  testCase.released[0]();
+  await starting;
+  assert.deepEqual(testCase.baselines, ["account-a"]);
+});
+
+test("failed dependency element is removed; next attempt can create a fresh script", async () => {
+  const beginning = syncSource.indexOf("  function browserScriptLoader(root) {");
+  const ending = syncSource.indexOf("  function create(options = {}) {", beginning);
+  assert.ok(beginning >= 0 && ending > beginning);
+  const loaderBody = syncSource.slice(beginning, ending);
+  const elements = new Map(), attached = [];
+  const root = {
+    setTimeout() { return 7; }, clearTimeout() {},
+    document: {
+      head: { appendChild(node) { elements.set(node.id, node); attached.push(node); } },
+      getElementById(id) { return elements.get(id) || null; },
+      createElement() {
+        return {
+          id: "", dataset: {}, handlers: new Map(),
+          addEventListener(type, fn) { this.handlers.set(type, fn); },
+          removeEventListener(type) { this.handlers.delete(type); },
+          remove() { elements.delete(this.id); }
+        };
+      }
+    }
+  };
+  const loader = new Function("DEPENDENCIES", "root", loaderBody + "\nreturn browserScriptLoader(root);")(
+    [["test-cloud-script", "test-cloud-script.js"]], root
+  );
+  const first = loader();
+  assert.equal(attached.length, 1);
+  attached[0].handlers.get("error")();
+  await assert.rejects(first, /Could not load test-cloud-script/);
+  assert.equal(elements.has("test-cloud-script"), false);
+  const second = loader();
+  assert.equal(attached.length, 2);
+  assert.notEqual(attached[0], attached[1]);
+  attached[1].handlers.get("load")();
+  await second;
+});
+
+test("How-To navigation can fail without aborting mandatory PWA installation", async () => {
+  const source = read("service-worker.js");
+  const handlers = {};
+  const self = {
+    location: { href: "https://app.herdharbor.com/service-worker.js", origin: "https://app.herdharbor.com" },
+    addEventListener(type, fn) { handlers[type] = fn; }
+  };
+  const added = [];
+  const caches = { async open() { return { async add(request) {
+    added.push(request.url);
+    if (new URL(request.url).pathname === "/how-to/") throw new Error("Documentation offline");
+  }}; } };
+  class RequestStub { constructor(url) { this.url = String(url); } }
+  const vm = require("node:vm");
+  vm.runInNewContext(source, { self, caches, Request: RequestStub, URL, Promise, console });
+  let pending;
+  handlers.install({ waitUntil(promise) { pending = promise; } });
+  await pending;
+  assert.equal(added.some(url => new URL(url).pathname === "/how-to/"), false);
+  assert.ok(source.includes('"./how-to/"'), "documentation remains runtime-cacheable");
+});
+
+test("AI tester preference follows authenticated account rather than entire browser", async () => {
+  const values = new Map();
+  let userId = "account-a";
+  const docListeners = new Map();
+  const document = {
+    readyState: "loading",
+    documentElement: { dataset: {}, appendChild() {} },
+    getElementById() { return null; },
+    createElement() { return { id: "", textContent: "" }; },
+    addEventListener(type, fn) { docListeners.set(type, fn); }
+  };
+  const window = {
+    localStorage: {
+      getItem: key => values.get(key) ?? null,
+      setItem: (key, value) => values.set(key, value),
+      removeItem: key => values.delete(key)
+    },
+    HerdHarborCloud: { getSession: () => ({ user: { id: userId } }) },
+    HerdHarborVoiceAssistedEntry: { create() {} },
+    HerdHarborPhotoAssistedEntry: { create() {} },
+    addEventListener() {}
+  };
+  new Function("window", "document", "console", read("herdharbor-optional-tools.js"))(window, document, console);
+  const tools = window.HerdHarborOptionalTools;
+  assert.equal(tools.setAiLiveTesterEnabled(true), true);
+  assert.equal(values.get("herdharbor_ai_live_tester_v1:account-a"), "1");
+  userId = "account-b";
+  docListeners.get("herdharbor:auth-boundary")({});
+  assert.equal(document.documentElement.dataset.hhAiLiveTester, "false");
+  assert.equal(tools.isAiLiveTester(), false);
+  docListeners.get("herdharbor:auth-session")({});
+  assert.equal(document.documentElement.dataset.hhAiLiveTester, "false");
+  userId = "account-a";
+  docListeners.get("herdharbor:auth-session")({});
+  assert.equal(tools.isAiLiveTester(), true);
+  assert.equal(values.has("herdharbor_ai_live_tester_v1"), false);
+});
+
+test("changed browser scripts share a coherent offline release revision", () => {
+  const html = read("index.html"), worker = read("service-worker.js");
+  for (const source of [html, worker]) {
+    assert.ok(source.includes("herdharbor-optional-tools.js?v=4"));
+    assert.ok(source.includes("cloud-sync-rollout-runtime-v1.8.4.js?v=5"));
+  }
+});
