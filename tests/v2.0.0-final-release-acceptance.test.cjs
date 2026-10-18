@@ -51,7 +51,7 @@ test("every dedicated 2.0.0 release phase gate remains wired into the aggregate 
   ]) assert.ok(pkg.scripts["test:v2.0.0-regression"].includes(token), token);
 });
 
-test("authoritative production identities agree on stable 2.0.0", () => {
+test("authoritative production identities agree on candidate 2.0.1", () => {
   assert.equal(pkg.version, "2.0.1");
   assert.equal(manifest.version, "2.0.1");
   assert.equal(String(twa.appVersion), "2.0.1");
