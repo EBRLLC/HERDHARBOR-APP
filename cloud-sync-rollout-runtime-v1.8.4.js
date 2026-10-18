@@ -60,25 +60,45 @@
 
     function loadOne([id, src]) {
       return new Promise((resolve, reject) => {
-        const existing = root.document.getElementById(id);
-        if (existing) {
-          if (existing.dataset?.hhLoaded === "1" || existing.readyState === "complete") resolve();
-          else {
-            existing.addEventListener("load", resolve, { once: true });
-            existing.addEventListener("error", () => reject(new Error(`Could not load ${src}.`)), { once: true });
-          }
+        let node = root.document.getElementById(id);
+        if (node?.dataset?.hhFailed === "1") {
+          node.remove?.();
+          node = null;
+        }
+        if (node?.dataset?.hhLoaded === "1" || node?.readyState === "complete") {
+          resolve();
           return;
         }
-        const node = root.document.createElement("script");
-        node.id = id;
-        node.src = src;
-        node.async = false;
-        node.addEventListener("load", () => {
-          if (node.dataset) node.dataset.hhLoaded = "1";
-          resolve();
-        }, { once: true });
-        node.addEventListener("error", () => reject(new Error(`Could not load ${src}.`)), { once: true });
-        target.appendChild(node);
+        const existing = Boolean(node);
+        if (!node) {
+          node = root.document.createElement("script");
+          node.id = id;
+          node.src = src;
+          node.async = false;
+        }
+        let settled = false;
+        let timeoutId = null;
+        const finish = (ok) => {
+          if (settled) return;
+          settled = true;
+          if (timeoutId != null) root.clearTimeout?.(timeoutId);
+          node.removeEventListener?.("load", onLoad);
+          node.removeEventListener?.("error", onError);
+          if (ok) {
+            if (node.dataset) node.dataset.hhLoaded = "1";
+            resolve();
+          } else {
+            if (node.dataset) node.dataset.hhFailed = "1";
+            node.remove?.();
+            reject(new Error(`Could not load ${src}; retry normalized synchronization when connected.`));
+          }
+        };
+        const onLoad = () => finish(true);
+        const onError = () => finish(false);
+        node.addEventListener("load", onLoad, { once: true });
+        node.addEventListener("error", onError, { once: true });
+        timeoutId = root.setTimeout?.(() => finish(false), 15000) ?? null;
+        if (!existing) target.appendChild(node);
       });
     }
 
@@ -116,10 +136,31 @@
     let eligibility = null;
     let context = null;
     let setupPromise = null;
+    let setupUserId = "";
+    let identityEpoch = 0;
     let commitChain = Promise.resolve();
     let validationPasses = 0;
     let lastValidation = null;
     let lastResult = null;
+
+    function invalidateAccountContext() {
+      identityEpoch += 1;
+      context = null;
+      setupPromise = null;
+      setupUserId = "";
+      eligibility = null;
+      validationPasses = 0;
+      lastValidation = null;
+      lastResult = null;
+    }
+
+    function assertAccountCurrent(userId, epoch) {
+      if (identityEpoch !== epoch || safeText(cloud.getSession?.()?.user?.id) !== userId) {
+        throw Object.assign(new Error("Authenticated account changed during normalized sync initialization."), {
+          code: "HH_SYNC_ACCOUNT_CHANGED"
+        });
+      }
+    }
 
     function emit(type, detail = {}) {
       try {
@@ -165,14 +206,22 @@
     }
 
     async function ensureContext() {
+      const liveUserId = safeText(cloud.getSession?.()?.user?.id);
+      if (context && context.userId !== liveUserId) invalidateAccountContext();
       if (context) return context;
+      if (setupPromise && setupUserId !== liveUserId) invalidateAccountContext();
       if (setupPromise) return setupPromise;
-      setupPromise = (async () => {
+      const epoch = identityEpoch;
+      setupUserId = liveUserId;
+      const pending = (async () => {
         const session = await cloud.getSession();
         const userId = safeText(session?.user?.id);
+        assertAccountCurrent(userId, epoch);
         if (!userId) throw Object.assign(new Error("A signed-in session is required."), { code: "HH_SYNC_NO_SESSION" });
 
-        eligibility = await cloud.getNormalizedSyncCohortStatus();
+        const cohortStatus = await cloud.getNormalizedSyncCohortStatus();
+        assertAccountCurrent(userId, epoch);
+        eligibility = cohortStatus;
         const recoveryAccess =
           (eligibility?.authorityActive === true && eligibility?.stage === "normalized") ||
           eligibility?.recoveryPending === true;
@@ -192,6 +241,7 @@
         }
 
         await loadDependencies();
+        assertAccountCurrent(userId, epoch);
         const m = modules();
         if (
           !m.normalizer?.mapLegacySnapshot ||
@@ -283,6 +333,8 @@
           rollbackAvailable
         });
 
+        const manifest = await recordStore.getManifest();
+        assertAccountCurrent(userId, epoch);
         context = {
           userId,
           cohortGate,
@@ -297,14 +349,20 @@
           rolloutControl,
           normalizer: m.normalizer,
           reconciliationApi: m.reconciliationApi,
-          stage: stageOf(await recordStore.getManifest())
+          stage: stageOf(manifest)
         };
         emit("rollout-ready", { stage: context.stage, ok: true });
         return context;
-      })().finally(() => {
-        setupPromise = null;
-      });
-      return setupPromise;
+      })();
+      setupPromise = pending;
+      try {
+        return await pending;
+      } finally {
+        if (setupPromise === pending) {
+          setupPromise = null;
+          setupUserId = "";
+        }
+      }
     }
 
     async function bootstrapIfNeeded(ctx) {
@@ -1108,7 +1166,13 @@
     }
 
     async function checkEligibility() {
-      eligibility = await cloud.getNormalizedSyncCohortStatus();
+      const userId = safeText(cloud.getSession?.()?.user?.id);
+      const epoch = identityEpoch;
+      const status = await cloud.getNormalizedSyncCohortStatus();
+      if (identityEpoch !== epoch || safeText(cloud.getSession?.()?.user?.id) !== userId) {
+        return Object.freeze({ active: false, reason: "account-changed-during-eligibility" });
+      }
+      eligibility = status;
       const recoveryAccess =
         (eligibility?.authorityActive === true && eligibility?.stage === "normalized") ||
         eligibility?.recoveryPending === true;
@@ -1139,18 +1203,26 @@
         if (event?.detail?.normalizedHandled === true) return;
         commitChain = commitChain.then(afterLegacyCommit, afterLegacyCommit);
       });
+      root?.document?.addEventListener?.("herdharbor:auth-boundary", () => {
+        // Dispatch occurs before the cloud bridge updates its session. Fence
+        // pending setup immediately, including A->B->A rapid transitions.
+        invalidateAccountContext();
+      });
       root?.document?.addEventListener?.("herdharbor:auth-session", () => {
         const currentUserId = safeText(cloud.getSession?.()?.user?.id);
-        if (context && currentUserId && context.userId === currentUserId) {
+        if (currentUserId && (
+          (context && context.userId === currentUserId) ||
+          (setupPromise && setupUserId === currentUserId)
+        )) {
+          const epoch = identityEpoch;
           void cloud.getNormalizedSyncCohortStatus()
-            .then((next) => { eligibility = next; })
+            .then((next) => {
+              if (identityEpoch === epoch && safeText(cloud.getSession?.()?.user?.id) === currentUserId) eligibility = next;
+            })
             .catch(() => {});
           return;
         }
-        context = null;
-        eligibility = null;
-        validationPasses = 0;
-        lastValidation = null;
+        invalidateAccountContext();
         if (currentUserId) void checkEligibility().catch(() => {});
       });
 
