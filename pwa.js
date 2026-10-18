@@ -18,6 +18,7 @@
   let updateActivationInFlight = false;
   let updateActivationTimer = null;
   let updateDeferredUntil = 0;
+  let updateReloadDeferred = false;
   const EARLY_MONITORING_QUEUE_LIMIT = 8;
   let monitoringLoadStarted = false;
   let monitoringLoadSettled = false;
@@ -299,8 +300,38 @@
     updateActivationTimer = null;
   }
 
+  function hasUnfinishedLocalWork() {
+    try {
+      if (window.HerdHarborCloud?.hasUnsyncedChanges?.() === true) return true;
+      // The paper pedigree and photo review dialogs hold corrections in
+      // browser memory until explicitly committed. A controller change in
+      // another tab must never erase them.
+      if (document.querySelector?.(
+        '#hh-paper-pedigree-dialog[open], #photo-entry-review input, #photo-entry-review textarea, ' +
+        'dialog[open] input, dialog[open] textarea, [role="dialog"]:not([hidden]) textarea'
+      )) return true;
+    } catch {}
+    return false;
+  }
+
+  function showDeferredReloadNotice() {
+    if (updateToast) updateToast.remove();
+    updateToast = document.createElement("aside");
+    updateToast.className = "hh-pwa-update";
+    updateToast.setAttribute("role", "status");
+    updateToast.innerHTML = '<strong>App update ready</strong><span>Finish your unsaved entry before reloading. This tab will keep your current work open.</span><div><button type="button" data-hh-reload-ready>Reload when ready</button></div>';
+    updateToast.querySelector("[data-hh-reload-ready]")?.addEventListener("click", () => reloadAfterUpdate());
+    (document.body || document.documentElement)?.appendChild(updateToast);
+  }
+
   function reloadAfterUpdate({ cacheBust = false } = {}) {
     if (reloading) return;
+    if (hasUnfinishedLocalWork()) {
+      updateReloadDeferred = true;
+      showDeferredReloadNotice();
+      return;
+    }
+    updateReloadDeferred = false;
     reloading = true;
     clearUpdateActivationTimer();
     updateActivationInFlight = false;
@@ -435,7 +466,12 @@
   }
 
   function requestForegroundUpdateCheck() {
-    if (document.visibilityState === "visible") checkForAppUpdate();
+    if (document.visibilityState !== "visible") return;
+    if (updateReloadDeferred) {
+      if (!hasUnfinishedLocalWork()) reloadAfterUpdate();
+      return;
+    }
+    checkForAppUpdate();
   }
 
   window.addEventListener("beforeinstallprompt", (event) => { event.preventDefault(); installPrompt = event; refreshInstallUI(); });
