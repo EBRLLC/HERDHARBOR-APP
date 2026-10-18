@@ -127,26 +127,30 @@ test("failed dependency element is removed; next attempt can create a fresh scri
   await second;
 });
 
-test("How-To navigation can fail without aborting mandatory PWA installation", async () => {
+test("How-To and install icons are optional while the operational PWA shell stays mandatory", async () => {
   const source = read("service-worker.js");
-  const handlers = {};
-  const self = {
-    location: { href: "https://app.herdharbor.com/service-worker.js", origin: "https://app.herdharbor.com" },
-    addEventListener(type, fn) { handlers[type] = fn; }
-  };
-  const added = [];
-  const caches = { async open() { return { async add(request) {
-    added.push(request.url);
-    if (new URL(request.url).pathname === "/how-to/") throw new Error("Documentation offline");
-  }}; } };
-  class RequestStub { constructor(url) { this.url = String(url); } }
   const vm = require("node:vm");
-  vm.runInNewContext(source, { self, caches, Request: RequestStub, URL, Promise, console });
-  let pending;
-  handlers.install({ waitUntil(promise) { pending = promise; } });
-  await pending;
-  assert.equal(added.some(url => new URL(url).pathname === "/how-to/"), false);
-  assert.ok(source.includes('"./how-to/"'), "documentation remains runtime-cacheable");
+  for (const unavailable of ["/how-to/", "/icon-192.png", "/icon-512.png"]) {
+    const handlers = {}, added = [];
+    const self = {
+      location: { href: "https://app.herdharbor.com/service-worker.js", origin: "https://app.herdharbor.com" },
+      addEventListener(type, fn) { handlers[type] = fn; }
+    };
+    const caches = { async open() { return { async add(request) {
+      added.push(request.url);
+      if (new URL(request.url).pathname === unavailable) throw new Error("Nonessential asset offline");
+    }}; } };
+    class RequestStub { constructor(url) { this.url = String(url); } }
+    vm.runInNewContext(source, { self, caches, Request: RequestStub, URL, Promise, console });
+    let pending;
+    handlers.install({ waitUntil(promise) { pending = promise; } });
+    await pending;
+    assert.equal(added.some(url => new URL(url).pathname === unavailable), false,
+      unavailable + " must not be required for offline startup");
+    assert.ok(source.includes('"."' + unavailable + '"') ||
+      source.includes('"./' + unavailable.slice(1) + '"'),
+      unavailable + " remains available for runtime caching");
+  }
 });
 
 test("AI tester preference follows authenticated account rather than entire browser", async () => {
