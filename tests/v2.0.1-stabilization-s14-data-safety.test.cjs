@@ -197,10 +197,10 @@ test("background PWA controller changes retain unsaved AI drafts and cloud chang
   const a = s.indexOf("  function hasUnfinishedLocalWork() {");
   const b = s.indexOf("  async function activatePendingUpdate(", a);
   assert.ok(a > 0 && b > a);
-  let dirty = true, reloads = 0, attached = 0;
+  let dirty = true, dialogOpen = false, reloads = 0, attached = 0;
   const doc = {
     documentElement: { dataset: { hhUnsynced: "true" } },
-    querySelector() { return dirty ? {} : null; },
+    querySelector(selector) { return dirty || (dialogOpen && selector.includes("#modal-backdrop:not(.hidden)")) ? {} : null; },
     createElement() {
       return { className: "", innerHTML: "", setAttribute() {},
         querySelector() { return { addEventListener() {} }; },
@@ -223,6 +223,10 @@ test("background PWA controller changes retain unsaved AI drafts and cloud chang
   assert.equal(attached,1);
   dirty=false;
   doc.documentElement.dataset.hhUnsynced = "false";
+  dialogOpen = true;
+  gate.reloadAfterUpdate();
+  assert.equal(reloads,0, "visible animal-editing modal must also defer the update");
+  dialogOpen = false;
   gate.reloadAfterUpdate();
   assert.equal(reloads,1);
   assert.match(s,/serviceWorker\?\.addEventListener\("controllerchange"[\s\S]*?reloadAfterUpdate\(\)/);
