@@ -1448,15 +1448,31 @@
       return Object.freeze({ ok: false, reason: "missing-authenticated-user" });
     }
 
-    if (accountBoundaryRecoveryInFlight?.userId === authenticatedUserId) {
+    if (String(session?.user?.id || "") !== authenticatedUserId) {
+      return Object.freeze({ ok: false, reason: "account-boundary-session-changed" });
+    }
+    if (accountBoundaryRecoveryInFlight?.userId === authenticatedUserId &&
+        isAccountOperationCurrent(accountBoundaryRecoveryInFlight.token, authenticatedUserId)) {
       return accountBoundaryRecoveryInFlight.promise;
     }
 
+    const fenceToken = accountBoundaryFence.advance(authenticatedUserId);
+    const staleBoundary = () => Object.freeze({ ok: false, reason: "account-boundary-session-changed" });
     const run = (async () => {
-      const fenceToken = accountBoundaryFence.advance(authenticatedUserId);
       const activeRaw = activeStateRaw();
       const activeOwnerId = String(originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) || "");
       const legacyOwnerId = String(originalGetItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY) || "");
+      const workspaceUnchanged = () => (
+        isAccountOperationCurrent(fenceToken, authenticatedUserId) &&
+        activeStateRaw() === activeRaw &&
+        String(originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) || "") === activeOwnerId &&
+        String(originalGetItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY) || "") === legacyOwnerId
+      );
+      const parsedActive = safeParse(activeRaw);
+      if (activeRaw && (!parsedActive || typeof parsedActive !== "object" || Array.isArray(parsedActive))) {
+        showAccountBoundaryRecovery("HerdHarbor could not read the local recovery data. The workspace remains locked and was not removed.");
+        return Object.freeze({ ok: false, reason: "invalid-active-state" });
+      }
       const authenticatedCache = originalGetItem.call(localStorage, cacheKey(authenticatedUserId)) || "";
       const authenticatedCacheMatchesActive = Boolean(
         activeRaw &&
@@ -1485,13 +1501,20 @@
             activeRaw,
             options.reason || "Unattributed local state retained during account recovery"
           );
-          if (!preserved) {
+          if (!isAccountOperationCurrent(fenceToken, authenticatedUserId)) return staleBoundary();
+          if (!workspaceUnchanged()) {
+            showAccountBoundaryRecovery("The local workspace changed during recovery. Your current records were not removed. Retry recovery after saving your work.");
+            return Object.freeze({ ok: false, reason: "account-boundary-workspace-changed" });
+          }
+          if (preserved !== true) {
             showAccountBoundaryRecovery(
               "HerdHarbor could not safely preserve the local recovery copy. Your records were not removed."
             );
             return Object.freeze({ ok: false, reason: "unowned-recovery-preserve-failed" });
           }
+          if (!workspaceUnchanged()) return Object.freeze({ ok: false, reason: "account-boundary-workspace-changed" });
           const cleared = clearActiveUserData();
+          if (!isAccountOperationCurrent(fenceToken, authenticatedUserId)) return staleBoundary();
           const ownerWritten = cleared && safeStorageSet(ACTIVE_OWNER_KEY, authenticatedUserId) &&
             originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) === authenticatedUserId;
           if (!ownerWritten) {
@@ -1500,8 +1523,10 @@
             );
             return Object.freeze({ ok: false, reason: "unowned-owner-marker-unverified" });
           }
+          if (!isAccountOperationCurrent(fenceToken, authenticatedUserId)) return staleBoundary();
           resetAccountBoundaryRuntime();
           try {
+            if (!isAccountOperationCurrent(fenceToken, authenticatedUserId)) return staleBoundary();
             originalRemoveItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY);
           } catch {}
           return Object.freeze({
@@ -1520,6 +1545,7 @@
         return Object.freeze({ ok: false, reason: policy?.reason || "boundary-policy-unavailable" });
       }
 
+      let clearedBoundaryWorkspace = false;
       const execution = await window.HerdHarborAccountBoundaryCore?.applyPlan?.({
         authenticatedUserId,
         activeOwnerId,
@@ -1540,29 +1566,39 @@
           );
           // Authentication can advance while the archival transaction commits.
           // Never clear an account after its recovery token became stale.
-          if (!preserved || !isAccountOperationCurrent(fenceToken, authenticatedUserId)) return false;
+          if (!preserved || !workspaceUnchanged()) return false;
           clearAccountSessionMarkers(staleOwnerId);
           clearAccountSessionMarkers(authenticatedUserId);
           return true;
         },
-        clearActive: clearActiveUserData,
-        resetRuntime: resetAccountBoundaryRuntime,
-        setOwner: (userId) => safeStorageSet(ACTIVE_OWNER_KEY, userId) &&
+        clearActive: () => {
+          if (!workspaceUnchanged()) return false;
+          clearedBoundaryWorkspace = clearActiveUserData() === true;
+          return clearedBoundaryWorkspace;
+        },
+        resetRuntime: () => isAccountOperationCurrent(fenceToken, authenticatedUserId) && resetAccountBoundaryRuntime(),
+        setOwner: (userId) => isAccountOperationCurrent(fenceToken, authenticatedUserId) && safeStorageSet(ACTIVE_OWNER_KEY, userId) &&
           originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) === userId,
         verifyOwner: (userId) => originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) === userId,
         restoreOwner: (userId) => {
+          if (!isAccountOperationCurrent(fenceToken, authenticatedUserId)) return false;
+          // Rollback cannot overwrite a replacement workspace created during an await.
+          if (!workspaceUnchanged() && !(clearedBoundaryWorkspace && !activeStateRaw() &&
+              [null, "", authenticatedUserId].includes(originalGetItem.call(localStorage, ACTIVE_OWNER_KEY)))) return false;
           if (userId) return safeStorageSet(ACTIVE_OWNER_KEY, userId) &&
             originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) === userId;
           try { originalRemoveItem.call(localStorage, ACTIVE_OWNER_KEY); } catch { return false; }
           return originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) === null;
         },
         removeLegacy: () => {
+          if (!isAccountOperationCurrent(fenceToken, authenticatedUserId)) return;
           try {
             originalRemoveItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY);
           } catch {}
         }
       });
 
+      if (!isAccountOperationCurrent(fenceToken, authenticatedUserId)) return staleBoundary();
       if (!execution?.ok) {
         showAccountBoundaryRecovery(
           options.message || "HerdHarbor could not safely refresh the local account boundary. Your records were not removed."
@@ -1576,11 +1612,20 @@
       });
     })();
 
-    accountBoundaryRecoveryInFlight = { userId: authenticatedUserId, promise: run };
+    // Cache the fenced, error-normalized promise, not the raw archival work.
+    // Same-generation callers must receive the same fail-closed result.
+    const guarded = run.then((result) =>
+      isAccountOperationCurrent(fenceToken, authenticatedUserId) ? result : staleBoundary(),
+    () => {
+      if (!isAccountOperationCurrent(fenceToken, authenticatedUserId)) return staleBoundary();
+      showAccountBoundaryRecovery("HerdHarbor could not verify recovery storage. The workspace remains locked for recovery.");
+      return Object.freeze({ ok: false, reason: "account-boundary-storage-failed" });
+    });
+    accountBoundaryRecoveryInFlight = { userId: authenticatedUserId, token: fenceToken, promise: guarded };
     try {
-      return await run;
+      return await guarded;
     } finally {
-      if (accountBoundaryRecoveryInFlight?.promise === run) {
+      if (accountBoundaryRecoveryInFlight?.promise === guarded) {
         accountBoundaryRecoveryInFlight = null;
       }
     }
@@ -3867,6 +3912,7 @@
       allowUnownedQuarantine: !alreadyRecovered
     });
     if (!boundary.ok) return boundary;
+    if (!isAccountOperationCurrent(boundary.token, userId)) return Object.freeze({ ok: false, reason: "account-boundary-session-changed" });
 
     if (!alreadyRecovered) {
       clearAccountSessionMarkers(userId);

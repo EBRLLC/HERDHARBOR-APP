@@ -150,7 +150,7 @@ function workerHarness(clients) {
   return { listeners, skips: () => skips };
 }
 
-test("S16-B legacy explicit update consent covers only that old client; silent old tabs still defer activation", async () => {
+test("S16-B/S17 legacy clicks remain requests and cannot prove draft readiness", async () => {
   const silentLegacy = { id: "old-silent", postMessage() {} };
   const h = workerHarness([silentLegacy]);
   let work;
@@ -165,7 +165,7 @@ test("S16-B legacy explicit update consent covers only that old client; silent o
   const h2 = workerHarness([oldClicked, currentReady]);
   h2.listeners.message({ data: { type: "SKIP_WAITING" }, source: { id: "old-clicked" }, waitUntil(promise) { work = promise; } });
   await work;
-  assert.equal(h2.skips(), 1, "an old tab that explicitly asked to update is ready while new tabs still answer the handshake");
+  assert.equal(h2.skips(), 0, "legacy click cannot prove its unsaved drafts are safe even with another ready tab");
 });
 
 test("S16-C foreground retry requests activation and does not reload until controllerchange", () => {

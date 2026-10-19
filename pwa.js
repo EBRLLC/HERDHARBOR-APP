@@ -341,7 +341,7 @@
     updateToast = document.createElement("aside");
     updateToast.className = "hh-pwa-update";
     updateToast.setAttribute("role", "status");
-    updateToast.innerHTML = '<strong>Update waiting</strong><span>Another HerdHarbor tab has unsaved work or is an older version that cannot answer this check. Save and close that tab, then check again. Your records remain open.</span><div><button type="button" data-hh-update-retry>Check again</button><button type="button" data-hh-update-later>Later</button></div>';
+    updateToast.innerHTML = '<strong>Update waiting</strong><span>Another HerdHarbor tab has unsaved work or is an older version that cannot answer this check. Save your work, close older app tabs or installed app windows, then check again. Do not use Update Now in an older version until all work is saved. Your records remain open.</span><div><button type="button" data-hh-update-retry>Check again</button><button type="button" data-hh-update-later>Later</button></div>';
     updateToast.querySelector("[data-hh-update-retry]")?.addEventListener("click", (event) => activatePendingUpdate(event.currentTarget));
     updateToast.querySelector("[data-hh-update-later]")?.addEventListener("click", () => {
       updateDeferredUntil = Date.now() + (4 * 60 * 60 * 1000);

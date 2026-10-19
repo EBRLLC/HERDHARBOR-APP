@@ -297,20 +297,26 @@ async function pruneObsoleteShellCaches() {
   await Promise.all(names.slice(3).map((key) => caches.delete(key)));
 }
 
-const legacyReadyClientIds = new Set();
+// Only the audited, static documentation document is exempt. Its search and
+// feedback controls are ephemeral; it loads no app, account or storage engine.
+function isReadOnlyDocumentationClient(client) {
+  if (!client.id || client.type !== "window" || client.frameType !== "top-level") return false;
+  try {
+    const url = new URL(client.url);
+    const scope = new URL(self.registration?.scope || "./", self.location.href);
+    return url.origin === self.location.origin && !url.username && !url.password &&
+      [new URL("how-to/", scope).pathname, new URL("how-to/index.html", scope).pathname].includes(url.pathname);
+  } catch { return false; }
+}
 
 async function allOpenClientsReadyForUpdate() {
   const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
   if (!clients.length) return true;
-  const openClientIds = new Set(clients.map((client) => client.id));
-  for (const id of legacyReadyClientIds) {
-    if (!openClientIds.has(id)) legacyReadyClientIds.delete(id);
-  }
+  // Copy identities now: WindowClient URL may change while other tabs reply.
+  const scanned = clients.map(({ id, url }) => ({ id, url }));
   const requestId = `${CACHE_NAME}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
   const responses = await Promise.all(clients.map((client) => new Promise((resolve) => {
-    // 2.0.0 pages cannot answer the readiness query. Their explicit legacy
-    // SKIP_WAITING click is their only available readiness signal.
-    if (legacyReadyClientIds.has(client.id)) {
+    if (isReadOnlyDocumentationClient(client)) {
       resolve(true);
       return;
     }
@@ -340,7 +346,12 @@ async function allOpenClientsReadyForUpdate() {
       finish(false);
     }
   })));
-  return responses.length === clients.length && responses.every(Boolean);
+  if (responses.length !== clients.length || !responses.every(Boolean)) return false;
+  // Fail closed if a document navigated or a new editor opened during the
+  // readiness exchange. A later user retry queries the new client set.
+  const current = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  return current.length === scanned.length && current.every((client) =>
+    scanned.some((before) => before.id === client.id && before.url === client.url));
 }
 
 self.addEventListener("install", (event) => {
@@ -372,14 +383,11 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("message", (event) => {
-  // Older 2.0.0 pages cannot answer the new readiness query. Their
-  // SKIP_WAITING message follows an explicit user click, so treat only that
-  // source client as ready and continue to query every other open client.
+  // A legacy click is a request, never proof that its in-memory edits are safe.
+  // Loaded 2.0.0 timeout navigation cannot be stopped by this worker; see the
+  // S17 release blocker and save/close/reopen procedure.
   if (!["HH_CHECK_UPDATE_READINESS", "SKIP_WAITING"].includes(event.data?.type)) return;
   event.waitUntil((async () => {
-    if (event.data?.type === "SKIP_WAITING" && event.source?.id) {
-      legacyReadyClientIds.add(event.source.id);
-    }
     const ready = await allOpenClientsReadyForUpdate();
     if (ready) {
       self.skipWaiting();
