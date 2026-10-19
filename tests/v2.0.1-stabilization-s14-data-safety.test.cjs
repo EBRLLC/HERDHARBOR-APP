@@ -216,7 +216,7 @@ test("background PWA controller changes retain unsaved AI drafts and cloud chang
     clearTimeout() {}
   };
   const gate = new Function("window","document",
-    "let reloading=false,updateReloadDeferred=false,updateToast=null,updateActivationTimer=null,updateActivationInFlight=false;\n" +
+    "let reloading=false,updateReloadDeferred=false,updateControllerChanged=true,updateToast=null,updateActivationTimer=null,updateActivationInFlight=false;\n" +
     "const clearUpdateActivationTimer=()=>{};\n" +
     s.slice(a,b) + "\nreturn {reloadAfterUpdate,deferred:()=>updateReloadDeferred};"
   )(win,doc);

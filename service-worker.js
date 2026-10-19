@@ -297,11 +297,23 @@ async function pruneObsoleteShellCaches() {
   await Promise.all(names.slice(3).map((key) => caches.delete(key)));
 }
 
+const legacyReadyClientIds = new Set();
+
 async function allOpenClientsReadyForUpdate() {
   const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
   if (!clients.length) return true;
+  const openClientIds = new Set(clients.map((client) => client.id));
+  for (const id of legacyReadyClientIds) {
+    if (!openClientIds.has(id)) legacyReadyClientIds.delete(id);
+  }
   const requestId = `${CACHE_NAME}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
   const responses = await Promise.all(clients.map((client) => new Promise((resolve) => {
+    // 2.0.0 pages cannot answer the readiness query. Their explicit legacy
+    // SKIP_WAITING click is their only available readiness signal.
+    if (legacyReadyClientIds.has(client.id)) {
+      resolve(true);
+      return;
+    }
     if (typeof MessageChannel === "undefined") {
       resolve(false);
       return;
@@ -360,11 +372,14 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("message", (event) => {
-  // Older HerdHarbor pages send SKIP_WAITING after an explicit user click.
-  // Keep that message as a request only; it must pass the same all-client
-  // readiness handshake as the new protocol before activation can proceed.
+  // Older 2.0.0 pages cannot answer the new readiness query. Their
+  // SKIP_WAITING message follows an explicit user click, so treat only that
+  // source client as ready and continue to query every other open client.
   if (!["HH_CHECK_UPDATE_READINESS", "SKIP_WAITING"].includes(event.data?.type)) return;
   event.waitUntil((async () => {
+    if (event.data?.type === "SKIP_WAITING" && event.source?.id) {
+      legacyReadyClientIds.add(event.source.id);
+    }
     const ready = await allOpenClientsReadyForUpdate();
     if (ready) {
       self.skipWaiting();

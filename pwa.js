@@ -19,6 +19,8 @@
   let updateActivationTimer = null;
   let updateDeferredUntil = 0;
   let updateReloadDeferred = false;
+  let updateControllerChanged = false;
+  let nextUpdateActivationRetryAt = 0;
   const EARLY_MONITORING_QUEUE_LIMIT = 8;
   let monitoringLoadStarted = false;
   let monitoringLoadSettled = false;
@@ -339,7 +341,7 @@
     updateToast = document.createElement("aside");
     updateToast.className = "hh-pwa-update";
     updateToast.setAttribute("role", "status");
-    updateToast.innerHTML = '<strong>Update waiting</strong><span>Another HerdHarbor tab has unsaved work or did not respond. Save or close that tab, then check again. Your records remain open.</span><div><button type="button" data-hh-update-retry>Check again</button><button type="button" data-hh-update-later>Later</button></div>';
+    updateToast.innerHTML = '<strong>Update waiting</strong><span>Another HerdHarbor tab has unsaved work or is an older version that cannot answer this check. Save and close that tab, then check again. Your records remain open.</span><div><button type="button" data-hh-update-retry>Check again</button><button type="button" data-hh-update-later>Later</button></div>';
     updateToast.querySelector("[data-hh-update-retry]")?.addEventListener("click", (event) => activatePendingUpdate(event.currentTarget));
     updateToast.querySelector("[data-hh-update-later]")?.addEventListener("click", () => {
       updateDeferredUntil = Date.now() + (4 * 60 * 60 * 1000);
@@ -350,6 +352,7 @@
   }
 
   function reloadAfterUpdate({ cacheBust = false } = {}) {
+    if (!updateControllerChanged) return;
     if (reloading) return;
     if (hasUnfinishedLocalWork()) {
       updateReloadDeferred = true;
@@ -404,6 +407,7 @@
     updateActivationTimer = window.setTimeout(() => {
       clearUpdateActivationTimer();
       updateActivationInFlight = false;
+      updateReloadDeferred = true;
       showOtherClientDeferredNotice();
     }, UPDATE_ACTIVATION_TIMEOUT_MS);
 
@@ -441,6 +445,7 @@
     if (event.data?.type === "HH_UPDATE_DEFERRED") {
       clearUpdateActivationTimer();
       updateActivationInFlight = false;
+      updateReloadDeferred = true;
       showOtherClientDeferredNotice();
     }
   });
@@ -528,7 +533,18 @@
   function requestForegroundUpdateCheck() {
     if (document.visibilityState !== "visible") return;
     if (updateReloadDeferred) {
-      if (!hasUnfinishedLocalWork()) reloadAfterUpdate();
+      if (hasUnfinishedLocalWork()) return;
+      if (updateControllerChanged) {
+        reloadAfterUpdate();
+        return;
+      }
+      if (Date.now() < nextUpdateActivationRetryAt) return;
+      nextUpdateActivationRetryAt = Date.now() + UPDATE_CHECK_MIN_INTERVAL_MS;
+      const retryButton = updateToast?.querySelector("[data-hh-update-retry], [data-hh-update-now]") || {
+        disabled: false,
+        textContent: "Update Now"
+      };
+      void activatePendingUpdate(retryButton);
       return;
     }
     checkForAppUpdate();
@@ -541,6 +557,8 @@
   window.addEventListener("pageshow", (event) => { if (event.persisted || document.visibilityState === "visible") checkForAppUpdate(); });
   document.addEventListener("visibilitychange", requestForegroundUpdateCheck);
   navigatorRef().serviceWorker?.addEventListener("controllerchange", () => {
+    updateControllerChanged = true;
+    updateReloadDeferred = true;
     reloadAfterUpdate();
   });
   document.addEventListener("click", (event) => { const trigger = event.target.closest("[data-pwa-install]"); if (trigger) requestInstall(); });
