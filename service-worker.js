@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v2.0.1-v2.0.1-release-1";
+const CACHE_NAME = "herdharbor-shell-v2.0.1-v2.0.1-release-1-s15-1";
 const REQUIRED_SHELL = [
   "./",
   "./index.html",
@@ -20,14 +20,14 @@ const REQUIRED_SHELL = [
   "./herdharbor-billing-v1.6.1.js?v=1.7.1",
   "./herdharbor-access-cache-v1.6.1.js?v=1.7.1",
   "./cloud-legacy-baseline-v1.8.4.js?v=1",
-  "./account-boundary-core-v1.8.4.js?v=3",
-  "./herdharbor-cloud.js?v=38",
+  "./account-boundary-core-v1.8.4.js?v=4",
+  "./herdharbor-cloud.js?v=39",
   "./cloud-sync-rollout-runtime-v1.8.4.js?v=5",
   "./local-cache-v2-v1.8.2.js?v=1",
   "./cloud-sync-v2-flow-v1.8.2.js?v=1",
   "./cloud-sync-v2-diagnostics-v1.8.2.js?v=1",
   "./herdharbor-admin-v1.6.1.js?v=2",
-  "./pwa.js?v=35",
+  "./pwa.js?v=36",
   "./market-analytics-v1.6.5.js?v=1.7.1",
   "./pedigree-engine-v2.0.0.js?v=1",
   "./pedigree-customization-v2.0.0.css?v=1",
@@ -273,6 +273,64 @@ function isImmutableFingerprintAsset(url) {
   return /^[a-f0-9]{12,64}$/i.test(url.searchParams.get("rev") || "");
 }
 
+function shellCacheVersion(name) {
+  const match = String(name || "").match(/v(\d+)\.(\d+)\.(\d+)/i);
+  return match ? match.slice(1).map(Number) : [0, 0, 0];
+}
+
+async function pruneObsoleteShellCaches() {
+  const names = (await caches.keys()).filter((key) => key.startsWith(CACHE_PREFIX));
+  names.sort((left, right) => {
+    const a = shellCacheVersion(left);
+    const b = shellCacheVersion(right);
+    for (let index = 0; index < 3; index += 1) {
+      if (a[index] !== b[index]) return b[index] - a[index];
+    }
+    if (left === CACHE_NAME) return -1;
+    if (right === CACHE_NAME) return 1;
+    return right.localeCompare(left);
+  });
+
+  // Keep the active shell and two prior, provenance-named releases. An update
+  // readiness handshake proves no silent/dirty old client is still depending
+  // on older assets before activation prunes anything beyond that bound.
+  await Promise.all(names.slice(3).map((key) => caches.delete(key)));
+}
+
+async function allOpenClientsReadyForUpdate() {
+  const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  if (!clients.length) return true;
+  const requestId = `${CACHE_NAME}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+  const responses = await Promise.all(clients.map((client) => new Promise((resolve) => {
+    if (typeof MessageChannel === "undefined") {
+      resolve(false);
+      return;
+    }
+    const channel = new MessageChannel();
+    let settled = false;
+    const finish = (ready) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try { channel.port1.close(); } catch {}
+      try { channel.port2.close(); } catch {}
+      resolve(ready === true);
+    };
+    const timer = setTimeout(() => finish(false), 2500);
+    channel.port1.onmessage = (messageEvent) => {
+      const data = messageEvent.data;
+      finish(data?.type === "HH_UPDATE_READINESS_RESPONSE" && data.requestId === requestId && data.ready === true);
+    };
+    channel.port1.start?.();
+    try {
+      client.postMessage({ type: "HH_UPDATE_READINESS_QUERY", requestId }, [channel.port2]);
+    } catch {
+      finish(false);
+    }
+  })));
+  return responses.length === clients.length && responses.every(Boolean);
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
@@ -291,12 +349,7 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(
-        keys
-          .filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
-      ))
+    pruneObsoleteShellCaches()
       .then(async () => {
         try {
           await self.registration?.navigationPreload?.enable?.();
@@ -307,7 +360,18 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("message", (event) => {
-  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
+  // Older HerdHarbor pages send SKIP_WAITING after an explicit user click.
+  // Keep that message as a request only; it must pass the same all-client
+  // readiness handshake as the new protocol before activation can proceed.
+  if (!["HH_CHECK_UPDATE_READINESS", "SKIP_WAITING"].includes(event.data?.type)) return;
+  event.waitUntil((async () => {
+    const ready = await allOpenClientsReadyForUpdate();
+    if (ready) {
+      self.skipWaiting();
+      return;
+    }
+    try { event.source?.postMessage({ type: "HH_UPDATE_DEFERRED" }); } catch {}
+  })());
 });
 
 self.addEventListener("fetch", (event) => {

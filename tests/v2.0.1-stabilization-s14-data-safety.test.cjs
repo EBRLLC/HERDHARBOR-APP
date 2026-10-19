@@ -15,11 +15,11 @@ function actualPreserver({ localSuccess = false, recoverySuccess = false, raw = 
   const storage = new Map();
   let snapshots = 0;
   const preserve = new Function("activeStateRaw", "safeParse", "safeStorageSet", "cacheKey", "originalGetItem",
-    "localStorage", "recordRecoverySnapshot", cloud.slice(a, b) + "\nreturn preserveActiveForUser;")(
+    "localStorage", "recordRecoverySnapshot", "window", cloud.slice(a, b) + "\nreturn preserveActiveForUser;")(
     () => raw, JSON.parse,
     (key, val) => { if (!localSuccess) return false; storage.set(key, val); return true; },
     id => "recover:" + id, { call: (_store, key) => storage.get(key) ?? null },
-    {}, async () => { snapshots++; return recoverySuccess; }
+    {}, async () => { snapshots++; return recoverySuccess; }, { HerdHarborAccountBoundaryCore: core }
   );
   return { preserve, snapshots: () => snapshots };
 }
@@ -31,7 +31,8 @@ test("actual account transition refuses to clear unsynced state when local and I
   const result = await core.applyPlan(
     { authenticatedUserId: "B", activeOwnerId: "A", hasActiveState: true },
     { preserve: async owner => h.preserve(owner, "storage failure", raw),
-      clearActive: () => { cleared++; raw = null; }, resetRuntime() {}, setOwner() {}, removeLegacy() {} }
+      clearActive: () => { cleared++; raw = null; return true; }, resetRuntime() {}, setOwner() { return true; },
+      verifyOwner() { return true; }, restoreOwner() { return true; }, removeLegacy() {} }
   );
   assert.equal(result.ok, false);
   assert.equal(result.reason, "stale-owner-preserve-failed");
@@ -50,7 +51,8 @@ for (const [label, options] of [
     const outcome = await core.applyPlan(
       { authenticatedUserId: "B", activeOwnerId: "A", hasActiveState: true },
       { preserve: owner => h.preserve(owner, "account switch"),
-        clearActive: () => { cleared++; }, resetRuntime() {}, setOwner() {}, removeLegacy() {} }
+        clearActive: () => { cleared++; return true; }, resetRuntime() {}, setOwner() { return true; },
+        verifyOwner() { return true; }, restoreOwner() { return true; }, removeLegacy() {} }
     );
     assert.equal(outcome.ok, true);
     assert.equal(cleared, 1);
@@ -71,7 +73,8 @@ test("sign-out preserves active state before clearing it, and retains it on fail
   const block = cloud.slice(start, end);
   assert.match(block, /const preserved = await preserveActiveForUser/);
   assert.match(block, /if \(!preserved\) \{/);
-  assert.ok(block.indexOf("if (!preserved)") < block.indexOf("clearActiveUserData();"));
+  assert.match(block, /if \(!clearActiveUserData\(\)\) \{/);
+  assert.ok(block.indexOf("if (!preserved)") < block.indexOf("if (!clearActiveUserData())"));
 });
 
 function workerHarness() {

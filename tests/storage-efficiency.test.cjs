@@ -53,7 +53,8 @@ assert.equal(
   "only account-boundary recovery may create a duplicate full-state cache"
 );
 assert.match(cloud, /const cacheId = cacheKey\(userId\)/);
-assert.match(cloud, /localStored = safeStorageSet\(cacheId, rawValue\) &&/);
+assert.match(cloud, /HerdHarborAccountBoundaryCore\.preserveWithFallback/);
+assert.match(cloud, /safeStorageSet\(cacheId, rawValue\) &&\s*originalGetItem\.call\(localStorage, cacheId\) === rawValue/);
 assert.doesNotMatch(cloud, /safeStorageSet\(cacheKey\(userId\), "\{\}"\)/);
 
 console.log("workflow and storage efficiency tests passed");

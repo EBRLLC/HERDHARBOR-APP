@@ -63,27 +63,101 @@
     if (!plan.ok) return plan;
 
     const authenticatedUserId = cleanId(input.authenticatedUserId);
-    if (plan.action === "switch-owner") {
-      if (plan.staleOwnerId && input.hasActiveState === true) {
-        const preserved = await adapters.preserve?.(plan.staleOwnerId);
-        if (preserved === false) {
-          return Object.freeze({
-            ok: false,
-            action: "lock",
-            reason: "stale-owner-preserve-failed",
-            staleOwnerId: plan.staleOwnerId
-          });
+    const staleOwnerId = plan.action === "switch-owner" ? plan.staleOwnerId : "";
+    const failure = (reason) => Object.freeze({
+      ok: false,
+      action: "lock",
+      reason,
+      staleOwnerId
+    });
+
+    try {
+      // Lock before awaiting storage adapters so no caller can render the new
+      // identity while the prior account's workspace is still present.
+      const locked = plan.action === "same-user" ? true : await adapters.lock?.();
+      if (locked === false) return failure("account-boundary-lock-failed");
+      if (typeof adapters.isCurrent === "function" && await adapters.isCurrent(authenticatedUserId) !== true) {
+        return failure("account-boundary-session-changed");
+      }
+
+      if (plan.action === "same-user") {
+        try { await adapters.removeLegacy?.(); } catch {}
+        return Object.freeze({ ...plan, userId: authenticatedUserId });
+      }
+
+      if (plan.action === "switch-owner" && staleOwnerId && input.hasActiveState === true) {
+        if (typeof adapters.preserve !== "function") return failure("stale-owner-preserve-unavailable");
+        const preserved = await adapters.preserve(staleOwnerId);
+        // A mere callback completion is not evidence that data was preserved.
+        if (preserved !== true) return failure("stale-owner-preserve-failed");
+        if (typeof adapters.isCurrent === "function" && await adapters.isCurrent(authenticatedUserId) !== true) {
+          return failure("account-boundary-session-changed");
         }
       }
-      adapters.clearActive?.();
-      adapters.resetRuntime?.();
-      adapters.setOwner?.(authenticatedUserId);
-    } else if (plan.action === "adopt-owner" || plan.action === "clean-login") {
-      adapters.setOwner?.(authenticatedUserId);
-    }
 
-    adapters.removeLegacy?.();
-    return Object.freeze({ ...plan, userId: authenticatedUserId });
+      if (plan.action === "switch-owner") {
+        if (typeof adapters.clearActive !== "function") return failure("active-workspace-clear-unavailable");
+        const cleared = await adapters.clearActive();
+        if (cleared !== true) {
+          try { await adapters.restoreOwner?.(staleOwnerId); } catch {}
+          return failure("active-workspace-clear-failed");
+        }
+        if (typeof adapters.isCurrent === "function" && await adapters.isCurrent(authenticatedUserId) !== true) {
+          try { await adapters.restoreOwner?.(staleOwnerId); } catch {}
+          return failure("account-boundary-session-changed");
+        }
+        await adapters.resetRuntime?.();
+      }
+
+      const ownerWritten = typeof adapters.setOwner === "function"
+        ? await adapters.setOwner(authenticatedUserId)
+        : false;
+      const ownerVerified = ownerWritten === true && (
+        typeof adapters.verifyOwner !== "function" || await adapters.verifyOwner(authenticatedUserId) === true
+      );
+      const sessionStillCurrent = typeof adapters.isCurrent !== "function" ||
+        await adapters.isCurrent(authenticatedUserId) === true;
+      if (!ownerVerified || !sessionStillCurrent) {
+        // A switched workspace is already empty and its former contents are in
+        // the verified recovery copy. Restore old ownership for diagnosis and
+        // keep the app locked; never hydrate the incoming identity on failure.
+        try { await adapters.restoreOwner?.(staleOwnerId); } catch {}
+        return failure(sessionStillCurrent ? "account-owner-marker-unverified" : "account-boundary-session-changed");
+      }
+
+      try { await adapters.removeLegacy?.(); } catch {}
+      return Object.freeze({ ...plan, userId: authenticatedUserId });
+    } catch (error) {
+      try { await adapters.restoreOwner?.(staleOwnerId); } catch {}
+      return Object.freeze({
+        ...failure("account-boundary-adapter-failed"),
+        error: String(error?.message || error || "unknown")
+      });
+    }
+  }
+
+  async function preserveWithFallback({ localPreserve, indexedDbPreserve, timeoutMs = 8000 } = {}) {
+    let localOk = false;
+    try { localOk = typeof localPreserve === "function" && await localPreserve() === true; } catch {}
+    if (localOk) return Object.freeze({ ok: true, source: "local" });
+    if (typeof indexedDbPreserve !== "function") return Object.freeze({ ok: false, source: "none" });
+
+    let timer = null;
+    try {
+      const indexedDbResult = await Promise.race([
+        Promise.resolve().then(indexedDbPreserve).then((value) => value === true),
+        new Promise((resolve) => {
+          timer = setTimeout(() => resolve(false), Math.max(1, Number(timeoutMs) || 8000));
+        })
+      ]);
+      return indexedDbResult
+        ? Object.freeze({ ok: true, source: "indexeddb" })
+        : Object.freeze({ ok: false, source: "none" });
+    } catch {
+      return Object.freeze({ ok: false, source: "none" });
+    } finally {
+      if (timer !== null) clearTimeout(timer);
+    }
   }
 
   function createGenerationFence() {
@@ -124,5 +198,5 @@
     return Object.freeze({ advance, invalidate, capture, isCurrent, status });
   }
 
-  return Object.freeze({ evaluate, applyPlan, createGenerationFence });
+  return Object.freeze({ evaluate, applyPlan, preserveWithFallback, createGenerationFence });
 });

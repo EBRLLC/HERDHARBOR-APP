@@ -350,8 +350,8 @@ test("current whole-app release fallbacks do not regress to the retired 1.8.4 id
   assert.doesNotMatch(runtime, /APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "1\.8\.4"/);
   assert.match(cloud, /CLOUD_SYNC_APP_RELEASE = "2\.0\.1"/);
   assert.match(cloud, /version: window\.HerdHarborBuild\?\.version \|\| "2\.0\.1"[\s\S]*?backupType: "local-safety-backup"/);
-  assert.match(html, /herdharbor-cloud\.js\?v=38/);
-  assert.match(worker, /\.\/herdharbor-cloud\.js\?v=38/);
+  assert.match(html, /herdharbor-cloud\.js\?v=39/);
+  assert.match(worker, /\.\/herdharbor-cloud\.js\?v=39/);
 });
 
 
@@ -367,8 +367,8 @@ test("stable release bootstrap keeps legacy billing isolated and cannot execute 
 
   assert.match(html, /<script id="hh-v151-release-script" src="herdharbor-release-v1\.6\.1\.js\?v=2"><\/script>/);
   assert.match(pwa, /addScript\("hh-v151-release-script", "herdharbor-release-v1\.6\.1\.js\?v=2"\)/);
-  assert.match(html, /pwa\.js\?v=35/);
-  assert.match(worker, /\.\/pwa\.js\?v=35/);
+  assert.match(html, /pwa\.js\?v=36/);
+  assert.match(worker, /\.\/pwa\.js\?v=36/);
 });
 
 

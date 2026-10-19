@@ -7,7 +7,7 @@
   const BUILD_ID = window.HerdHarborBuild?.buildId || "v2.0.1-release-1";
   const PWA_BUILD = `${APP_VERSION}-${BUILD_ID}`;
   const UPDATE_CHECK_MIN_INTERVAL_MS = 60_000;
-  const UPDATE_ACTIVATION_TIMEOUT_MS = 8_000;
+  const UPDATE_ACTIVATION_TIMEOUT_MS = 12_000;
   let installPrompt = null;
   let registration = null;
   let updateToast = null;
@@ -322,8 +322,30 @@
     updateToast = document.createElement("aside");
     updateToast.className = "hh-pwa-update";
     updateToast.setAttribute("role", "status");
-    updateToast.innerHTML = '<strong>App update ready</strong><span>Finish your unsaved entry before reloading. This tab will keep your current work open.</span><div><button type="button" data-hh-reload-ready>Reload when ready</button></div>';
-    updateToast.querySelector("[data-hh-reload-ready]")?.addEventListener("click", () => reloadAfterUpdate());
+    updateToast.innerHTML = '<strong>App update ready</strong><span>Finish your unsaved entry before updating. This tab will keep your current work open.</span><div><button type="button" data-hh-reload-ready>Check again when ready</button></div>';
+    updateToast.querySelector("[data-hh-reload-ready]")?.addEventListener("click", () => {
+      updateReloadDeferred = false;
+      const button = updateToast?.querySelector("[data-hh-reload-ready]");
+      if (button) {
+        button.dataset.hhUpdateNow = "";
+        activatePendingUpdate(button);
+      }
+    });
+    (document.body || document.documentElement)?.appendChild(updateToast);
+  }
+
+  function showOtherClientDeferredNotice() {
+    if (updateToast) updateToast.remove();
+    updateToast = document.createElement("aside");
+    updateToast.className = "hh-pwa-update";
+    updateToast.setAttribute("role", "status");
+    updateToast.innerHTML = '<strong>Update waiting</strong><span>Another HerdHarbor tab has unsaved work or did not respond. Save or close that tab, then check again. Your records remain open.</span><div><button type="button" data-hh-update-retry>Check again</button><button type="button" data-hh-update-later>Later</button></div>';
+    updateToast.querySelector("[data-hh-update-retry]")?.addEventListener("click", (event) => activatePendingUpdate(event.currentTarget));
+    updateToast.querySelector("[data-hh-update-later]")?.addEventListener("click", () => {
+      updateDeferredUntil = Date.now() + (4 * 60 * 60 * 1000);
+      updateToast?.remove();
+      updateToast = null;
+    });
     (document.body || document.documentElement)?.appendChild(updateToast);
   }
 
@@ -351,6 +373,11 @@
 
   async function activatePendingUpdate(button) {
     if (!button || updateActivationInFlight) return;
+    if (hasUnfinishedLocalWork()) {
+      updateReloadDeferred = true;
+      showDeferredReloadNotice();
+      return;
+    }
     let workerToActivate = registration?.waiting || pendingUpdateWorker;
     if (!workerToActivate) {
       button.disabled = true;
@@ -364,21 +391,31 @@
       }
     }
 
+    if (hasUnfinishedLocalWork()) {
+      updateReloadDeferred = true;
+      showDeferredReloadNotice();
+      return;
+    }
+
     updateActivationInFlight = true;
     button.disabled = true;
     button.textContent = "Updating…";
     clearUpdateActivationTimer();
-    updateActivationTimer = window.setTimeout(async () => {
-      try { await registration?.update?.(); } catch (error) {
-        monitorFailure(error, "update_activation_refresh_failure", "dashboard", { operation: "pwa_update_activation_timeout_refresh" });
-      }
-      monitorFailure(new Error("PWA update activation timed out; forcing a fresh navigation."), "update_activation_timeout", "dashboard", { operation: "pwa_update_activation_timeout" });
-      reloadAfterUpdate({ cacheBust: true });
+    updateActivationTimer = window.setTimeout(() => {
+      clearUpdateActivationTimer();
+      updateActivationInFlight = false;
+      showOtherClientDeferredNotice();
     }, UPDATE_ACTIVATION_TIMEOUT_MS);
 
     try {
-      workerToActivate.postMessage({ type: "SKIP_WAITING" });
-      if (workerToActivate.state === "activated") reloadAfterUpdate();
+      if (hasUnfinishedLocalWork()) {
+        clearUpdateActivationTimer();
+        updateActivationInFlight = false;
+        updateReloadDeferred = true;
+        showDeferredReloadNotice();
+        return;
+      }
+      workerToActivate.postMessage({ type: "HH_CHECK_UPDATE_READINESS" });
     } catch (error) {
       clearUpdateActivationTimer();
       updateActivationInFlight = false;
@@ -387,6 +424,26 @@
       monitorFailure(error, "update_activation_failure", "dashboard", { operation: "pwa_update_activation" });
     }
   }
+
+  navigatorRef().serviceWorker?.addEventListener("message", (event) => {
+    if (event.data?.type === "HH_UPDATE_READINESS_QUERY") {
+      const port = event.ports?.[0];
+      try {
+        port?.postMessage({
+          type: "HH_UPDATE_READINESS_RESPONSE",
+          requestId: event.data.requestId,
+          ready: !hasUnfinishedLocalWork()
+        });
+      } catch {}
+      try { port?.close?.(); } catch {}
+      return;
+    }
+    if (event.data?.type === "HH_UPDATE_DEFERRED") {
+      clearUpdateActivationTimer();
+      updateActivationInFlight = false;
+      showOtherClientDeferredNotice();
+    }
+  });
 
   function showUpdateReady(worker) {
     if (!worker) return;
