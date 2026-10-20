@@ -1,0 +1,178 @@
+"use strict";
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const root = path.resolve(__dirname, "..");
+const read = name => fs.readFileSync(path.join(root, name), "utf8");
+const rollout = read("cloud-sync-rollout-runtime-v1.8.4.js");
+const cloudSource = read("herdharbor-cloud.js");
+
+function extract(source, startText, endText) {
+  const start = source.indexOf(startText);
+  const end = source.indexOf(endText, start);
+  assert.ok(start >= 0 && end > start, "Missing production segment: " + startText);
+  return source.slice(start, end);
+}
+
+function cutoverHarness({ dirty = false, conflict = false, online = true, revisionChangeAt = 0, failAt = 0 } = {}) {
+  const events = [], calls = [];
+  let stage = "dual_write", revision = 42, passes = 0;
+  const ctx = { userId: "account-a", stage: "dual_write" };
+  let localDirty = dirty;
+  const code = extract(rollout,
+    "    async function cutoverToNormalizedPrimary(options = {}) {",
+    "    async function rollbackToLegacy() {");
+  const factory = new Function(
+    "ensureContext", "assertContextCurrent", "refreshContextStage", "cloud",
+    "stateStore", "validateNow", "promoteToNormalized", "isNormalizedAuthority",
+    "emit", "requiredValidationPasses",
+    "let validationPasses=0,lastValidation=null;\n" + code +
+    "\nreturn cutoverToNormalizedPrimary;"
+  );
+  const operation = factory(
+    async () => ctx,
+    given => { assert.equal(given, ctx); },
+    async () => ({ stage }),
+    {
+      getSession: () => ({ user: { id: "account-a" } }),
+      getSyncDetails: () => ({ online, syncing: false }),
+      hasUnsyncedChanges: () => localDirty,
+      hasConflict: () => conflict
+    },
+    { getOutbox: () => [], getRevision: () => revision },
+    async () => {
+      passes += 1;
+      calls.push("validate");
+      if (revisionChangeAt === passes) revision++;
+      if (failAt === passes) return { ok: false, stage, reason: "verification-divergence" };
+      return { ok: true, stage };
+    },
+    async () => { calls.push("promote"); stage = "normalized"; return { ok: true, stage }; },
+    () => stage === "normalized",
+    (type) => events.push(type),
+    3
+  );
+  return { operation, calls, events, setDirty: v => { localDirty = v; } };
+}
+
+const approved = Object.freeze({
+  ownerApproved: true, legacyClientsClosed: true, backupVerified: true
+});
+
+test("S18 explicit cutover does not promote without all three migration approvals", async () => {
+  const h = cutoverHarness();
+  for (const options of [{}, { ownerApproved: true }, { ownerApproved: true, legacyClientsClosed: true }]) {
+    const result = await h.operation(options);
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, "normalized-cutover-owner-acceptance-required");
+  }
+  assert.deepEqual(h.calls, []);
+});
+
+test("S18 cutover blocks pending local work, conflicts, offline sessions", async () => {
+  for (const options of [{ dirty: true }, { conflict: true }, { online: false }]) {
+    const h = cutoverHarness(options);
+    const result = await h.operation(approved);
+    assert.equal(result.ok, false, JSON.stringify(options));
+    assert.equal(result.reason, "normalized-cutover-local-work-pending");
+    assert.deepEqual(h.calls, []);
+  }
+});
+
+test("S18 cutover performs three verified checks before activating record authority", async () => {
+  const h = cutoverHarness();
+  const result = await h.operation(approved);
+  assert.equal(result.ok, true);
+  assert.equal(result.stage, "normalized");
+  assert.equal(result.primaryWriter, "record-outbox");
+  assert.equal(result.legacyWriteRequired, false);
+  assert.deepEqual(h.calls, ["validate", "validate", "validate", "promote"]);
+  assert.deepEqual(h.events, ["normalized-primary-active"]);
+});
+
+test("S18 cutover fails closed on a checkpoint divergence or concurrent local change", async () => {
+  for (const options of [{ failAt: 2 }, { revisionChangeAt: 1 }, { revisionChangeAt: 3 }]) {
+    const h = cutoverHarness(options);
+    const result = await h.operation(approved);
+    assert.equal(result.ok, false);
+    assert.equal(h.calls.includes("promote"), false);
+  }
+});
+
+function hydrationHarness({ archived = true, editDuringBaseline = false, remoteNote = "cloud" } = {}) {
+  const oldRaw = JSON.stringify({ animals: [{ id: "rabbit-one", note: "device" }] });
+  const editRaw = JSON.stringify({ animals: [{ id: "rabbit-one", note: "new draft" }] });
+  let actualRaw = oldRaw, wrote = 0, backedUp = 0, unlocked = 0;
+  const messages = [];
+  const segment = extract(cloudSource,
+    "    if (data?.app_state) {",
+    "    const newUserRaw = cachedRaw || activeRaw;");
+  const params = {
+    data: { app_state: { animals: [{ id: "rabbit-one", note: remoteNote }], operation: { name: "Farm A" } }, updated_at: "server-v1" },
+    activeRaw: oldRaw, cachedRaw: null, userId: "account-a",
+    rolloutDecision: { stage: "dual_write" },
+    JSON,
+    sameState: (a,b) => JSON.stringify(JSON.parse(a)) === JSON.stringify(JSON.parse(b)),
+    safeParse: JSON.parse,
+    applyDevicePreferences: raw => raw,
+    allowAnimalStateTransition: () => true,
+    markConflict: () => { throw Error("unexpected conflict"); },
+    recordRecoverySnapshot: async () => { backedUp++; return archived; },
+    isCurrentHydration: () => true,
+    hydrationInputCurrent: () => actualRaw === oldRaw,
+    deferHydrationForNewEdit: () => ({ ok: false, reason: "hydration-local-state-changed" }),
+    normalizedOutboxPending: () => false,
+    hasConfiguredOperationProfile: () => true,
+    hasUnsyncedDomainRecords: () => false,
+    refreshDualWriteBaselineForRemoteState: async () => {
+      if (editDuringBaseline) actualRaw = editRaw;
+      return { ok: true };
+    },
+    setActiveUserData: (id,raw) => { wrote++; actualRaw = raw; return true; },
+    writeCloudBaseline: async () => true,
+    safeStorageSet: () => true,
+    safeStorageRemove: () => {},
+    versionKey: () => "version",
+    dirtyKey: () => "dirty",
+    syncConflict: null,
+    normalizedRollout: null,
+    setSyncState: (...args) => messages.push(args),
+    unlockApp: () => { unlocked++; },
+    window: { HerdHarborApp: { getState: () => ({ operation: { name: "Farm A" } }), applyVerifiedCloudState: () => true },
+      location: { reload: () => {} }, setTimeout: () => {} },
+    sessionStorage: { getItem: () => "1", setItem: () => {} },
+    pendingSync: null
+  };
+  const fn = new Function(...Object.keys(params), "return (async function () {\n" + segment + "\nreturn { ok: true };\n})();");
+  return { run: () => fn(...Object.values(params)), state: () => ({ actualRaw, wrote, backedUp, unlocked, messages, editRaw }) };
+}
+
+test("S18 hydration refuses cloud overwrite when an edit arrives during baseline refresh", async () => {
+  const h = hydrationHarness({ editDuringBaseline: true, remoteNote: "device" });
+  const result = await h.run();
+  assert.equal(result.reason, "hydration-local-state-changed");
+  const state = h.state();
+  assert.equal(state.actualRaw, state.editRaw);
+  assert.equal(state.wrote, 0);
+});
+
+test("S18 hydration refuses replacing a local herd when its safety backup failed", async () => {
+  const h = hydrationHarness({ archived: false });
+  const result = await h.run();
+  assert.equal(result.reason, "legacy-hydration-backup-failed");
+  const state = h.state();
+  assert.equal(state.wrote, 0);
+  assert.equal(state.backedUp, 1);
+  assert.equal(state.unlocked, 0);
+});
+
+test("S18 cloud and service worker refer to the same new content revision", () => {
+  const html = read("index.html");
+  const worker = read("service-worker.js");
+  assert.match(html, /cloud-sync-rollout-runtime-v1\.8\.4\.js\?v=6/);
+  assert.match(worker, /cloud-sync-rollout-runtime-v1\.8\.4\.js\?v=6/);
+  assert.match(html, /herdharbor-cloud\.js\?v=40/);
+  assert.match(worker, /herdharbor-cloud\.js\?v=40/);
+  assert.match(worker, /herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-s18-1/);
+});
