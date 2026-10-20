@@ -267,6 +267,7 @@ test("S18 stale normalized authority cannot silently route back to legacy save",
     "normalizedAuthorityActive", "refreshNormalizedAuthorityIfEligible", "setSyncState",
     "normalizedOutboxPending", "deferNormalizedDualWriteCleanup",
     "clearTimeout", "syncTimer", "syncDebounceStartedAt", "normalizedRollout",
+    "versionKey", "getNormalizedSyncCohortStatus",
     source + "\nreturn syncNow;"
   )(
     { user: { id: "account-a" } },
@@ -285,7 +286,9 @@ test("S18 stale normalized authority cannot silently route back to legacy save",
     () => {},
     null,
     0,
-    {}
+    {},
+    id => "version-" + id,
+    async () => ({ stage: "normalized" })
   );
   const result = await start();
   assert.equal(result, false);

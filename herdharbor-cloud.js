@@ -535,8 +535,11 @@
 
   async function refreshNormalizedAuthorityIfEligible() {
     if (normalizedAuthorityActive()) return true;
-    const status = normalizedRollout?.status?.();
-    if (status?.eligible !== true || !normalizedRollout?.checkEligibility) return false;
+    // S20: freshly provisioned normalized-only accounts deliberately have
+    // no internal_test cohort membership. A cohort gate here would reject
+    // their record-writer initialization even though the server owns
+    // normalized authority. checkEligibility itself validates server state.
+    if (!normalizedRollout?.checkEligibility) return false;
     try {
       const decision = await normalizedRollout.checkEligibility();
       return decision?.authorityActive === true && normalizedAuthorityActive();
@@ -2299,16 +2302,36 @@
       originalGetItem.call(localStorage, dirtyKey(syncUserIdAtStart)) === "1"
     );
 
-    // An account already identified as normalized must never fall back to a
-    // legacy PATCH just because its authority check is temporarily stale.
-    // The record outbox stays durable; wait for normalized authority to be
-    // verified instead of reactivating the old full-state writer.
-    if (!normalizedAuthorityActive() && normalizedRolloutStage() === "normalized") {
-      await refreshNormalizedAuthorityIfEligible();
+    // S20: an account with no confirmed legacy cloud revision may be a new
+    // normalized-only signup. Even if its first edit was staged before the
+    // rollout runtime finished initialization, never send it through the
+    // full-state legacy writer. Verify authority against the authenticated
+    // server manifest BEFORE selecting a save engine. A failed status check
+    // preserves the durable local outbox instead of guessing legacy.
+    const legacyVersionConfirmed = syncUserIdAtStart
+      ? Boolean(originalGetItem.call(localStorage, versionKey(syncUserIdAtStart)))
+      : false;
+    const localStageNormalized = normalizedRolloutStage() === "normalized";
+    if (!normalizedAuthorityActive() &&
+        (localStageNormalized || (syncUserIdAtStart && !legacyVersionConfirmed))) {
+      let serverAuthority = null;
+      try {
+        serverAuthority = await getNormalizedSyncCohortStatus({ force: true });
+      } catch (error) {
+        console.warn("HerdHarbor could not verify first-save authority:", error?.message || error);
+      }
       if (!syncAccountCurrent()) return false;
-      if (!normalizedAuthorityActive()) {
-        setSyncState("Normalized record authority could not be verified; local changes remain protected.", "error");
+      if (!serverAuthority || !["legacy", "shadow", "dual_write", "normalized"].includes(serverAuthority.stage)) {
+        setSyncState("Cloud save authority could not be verified; local changes remain protected.", "error");
         return false;
+      }
+      if (localStageNormalized || serverAuthority.stage === "normalized") {
+        await refreshNormalizedAuthorityIfEligible();
+        if (!syncAccountCurrent()) return false;
+        if (!normalizedAuthorityActive()) {
+          setSyncState("Normalized record authority could not be verified; local changes remain protected.", "error");
+          return false;
+        }
       }
     }
 
@@ -2333,6 +2356,10 @@
         if (!syncAccountCurrent()) return false;
         if (result?.reason !== "normalized-not-authoritative") {
           if (result?.ok) {
+            // A first edit made before the normalized runtime was ready may
+            // still carry the old dirty marker. CAS/outbox has now confirmed
+            // its cloud write, so clear that legacy-only marker.
+            safeStorageRemove(dirtyKey(syncUserIdAtStart));
             setSyncState("Saved to cloud", "success");
             return true;
           }
