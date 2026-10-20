@@ -180,6 +180,8 @@ test("S20 SQL installs normalized-only signup and canonical checkpoint without l
   assert.match(sql,/cutover_stage='normalized'/);
   assert.match(sql,/delete from public\.herdharbor_sync_cohort/i);
   assert.doesNotMatch(sql,/insert into public\.herdharbor_user_data/i);
+  assert.match(sql,/create or replace function public\.herdharbor_normalized_signup_ready\(\)/i);
+  assert.match(sql,/grant execute on function public\.herdharbor_normalized_signup_ready\(\)\s+to anon, authenticated/i);
 });
 test("S20 release assets wire the coordinator before cloud bridge and keep its PWA cache current",()=>{
   const root=path.join(__dirname,"..");
@@ -187,10 +189,15 @@ test("S20 release assets wire the coordinator before cloud bridge and keep its P
   const sw=fs.readFileSync(path.join(root,"service-worker.js"),"utf8");
   const cloud=fs.readFileSync(path.join(root,"herdharbor-cloud.js"),"utf8");
   const pwa=fs.readFileSync(path.join(root,"pwa.js"),"utf8");
-  assert.ok(html.indexOf("cloud-normalized-upgrade-v2.0.1.js?v=1") < html.indexOf("herdharbor-cloud.js?v=41"));
-  assert.match(sw,/herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-s20-1/);
+  assert.ok(html.indexOf("cloud-normalized-upgrade-v2.0.1.js?v=1") < html.indexOf("herdharbor-cloud.js?v=42"));
+  assert.match(sw,/herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-s20-2/);
   assert.match(sw,/cloud-normalized-upgrade-v2\.0\.1\.js\?v=1/);
   assert.match(cloud,/normalizedUpgradeS20 = window\.HerdHarborNormalizedUpgradeS20\.create/);
   assert.match(cloud,/rolloutHydrationPromise\.then\(\(decision\) => \{/);
   assert.match(pwa,/hasUnfinishedLocalWork,/);
+  const signupGuard = cloud.indexOf('"herdharbor_normalized_signup_ready"');
+  const signupCall = cloud.indexOf('client.auth.signUp({');
+  assert.ok(signupGuard > 0 && signupGuard < signupCall, "S20 preflight must run before Auth signup");
+  assert.match(cloud,/if \(!normalizedSignupReady\) \{/);
+  assert.match(html,/herdharbor-cloud\.js\?v=42/);
 });

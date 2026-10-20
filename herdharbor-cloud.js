@@ -3170,8 +3170,30 @@
       }
 
       setFormBusy(form, true);
-      authMessage("Creating your account…", "info");
+      authMessage("Verifying secure cloud account setup…", "info");
 
+      // S20 fail-closed registration gate: if this client reaches a database
+      // without normalized-only provisioning installed, do not create a new
+      // legacy-authoritative account and falsely report signup success.
+      let normalizedSignupReady = false;
+      try {
+        const { data: ready, error: readinessError } = await client.rpc(
+          "herdharbor_normalized_signup_ready"
+        );
+        normalizedSignupReady = !readinessError && ready === true;
+      } catch (error) {
+        console.warn("HerdHarbor normalized signup preflight unavailable:", error?.code || error?.message || error);
+      }
+      if (!normalizedSignupReady) {
+        authMessage(
+          "Registration is temporarily unavailable while HerdHarbor verifies the new cloud save system. No account was created; try again after the update.",
+          "error"
+        );
+        setFormBusy(form, false);
+        return;
+      }
+
+      authMessage("Creating your account…", "info");
       const { data, error } = await client.auth.signUp({
         email: root.querySelector("#hh-signup-email").value.trim(),
         password,

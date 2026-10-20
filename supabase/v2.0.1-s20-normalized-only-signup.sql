@@ -101,6 +101,37 @@ create trigger hh_s20_initialize_normalized_account
   after insert on auth.users
   for each row execute function public.herdharbor_initialize_normalized_signup();
 
+-- Anonymous callers receive only a boolean readiness signal. Never expose
+-- auth.users, the cohort, or any account identifiers through this endpoint.
+-- This prevents a newer client from creating accounts through a legacy
+-- registration path if the database migration was not installed first.
+create or replace function public.herdharbor_normalized_signup_ready()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $s20_signup_ready$
+  select exists (
+    select 1
+      from pg_catalog.pg_trigger t
+     where t.tgrelid = to_regclass('auth.users')
+       and t.tgname = 'hh_s20_initialize_normalized_account'
+       and t.tgenabled in ('O', 'A')
+       and not t.tgisinternal
+  ) and to_regprocedure('public.herdharbor_initialize_normalized_signup()') is not null
+    and to_regclass('public.herdharbor_sync_records') is not null
+    and to_regclass('public.herdharbor_sync_manifest') is not null;
+$s20_signup_ready$;
+
+revoke all on function public.herdharbor_normalized_signup_ready()
+  from public, anon, authenticated;
+grant execute on function public.herdharbor_normalized_signup_ready()
+  to anon, authenticated;
+
+-- PostgREST must see the new RPC before the corresponding client build ships.
+notify pgrst, 'reload schema';
+
 comment on function public.herdharbor_initialize_normalized_signup() is
   'S20: create a canonical normalized empty record checkpoint and authoritative manifest for each NEW auth user; no legacy data row. Fail the signup transaction on any verification failure.';
 
