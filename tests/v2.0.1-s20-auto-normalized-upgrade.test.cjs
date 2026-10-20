@@ -189,4 +189,10 @@ test("S20 release assets wire the coordinator before cloud bridge and keep its P
   assert.match(cloud,/normalizedUpgradeS20 = window\.HerdHarborNormalizedUpgradeS20\.create/);
   assert.match(cloud,/rolloutHydrationPromise\.then\(\(decision\) => \{/);
   assert.match(pwa,/hasUnfinishedLocalWork,/);
+  assert.doesNotMatch(cloud,/HerdHarborPWA/);
+  assert.doesNotMatch(pwa,/HerdHarborCloud/);
+  assert.match(cloud,/herdharbor:s20-check-app-update/);
+  assert.match(pwa,/herdharbor:s20-check-app-update/);
+  assert.match(cloud,/!s20HasUnsavedEditor\(\)/);
+
 });

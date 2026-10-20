@@ -4410,6 +4410,20 @@
     (document.body || document.documentElement)?.appendChild(root);
   }
 
+  // Keep migration coordination independent from the PWA module. The cloud
+  // side can require editor safety without importing the update controller.
+  function s20HasUnsavedEditor() {
+    try {
+      return Boolean(document.querySelector?.(
+        '#hh-paper-pedigree-dialog[open], #photo-entry-review input, #photo-entry-review textarea, ' +
+        'dialog[open] input, dialog[open] textarea, [role="dialog"]:not([hidden]) textarea, ' +
+        '#modal-backdrop:not(.hidden) #modal-content input, ' +
+        '#modal-backdrop:not(.hidden) #modal-content textarea, ' +
+        '#modal-backdrop:not(.hidden) #modal-content select'
+      ));
+    } catch { return true; }
+  }
+
   if (window.HerdHarborNormalizedUpgradeS20?.create && normalizedRollout) {
     normalizedUpgradeS20 = window.HerdHarborNormalizedUpgradeS20.create({
       getUserId: () => session?.user?.id,
@@ -4428,7 +4442,8 @@
         !syncConflict &&
         !hasPendingCloudMutations(userId) &&
         canonicalStateStore?.getOutbox?.(userId)?.length === 0 &&
-        window.HerdHarborPWA?.hasUnfinishedLocalWork?.() !== true
+        !s20HasUnsavedEditor() &&
+        document.documentElement?.dataset?.hhUnsynced !== "true"
       ),
       getRevision: (userId) => Number(canonicalStateStore?.getRevision?.(userId) || 0),
       sync: async () => {
@@ -4454,7 +4469,11 @@
       },
       cutover: (options) => normalizedRollout.cutoverToNormalizedPrimary(options),
       offer: showS20UpgradeOffer,
-      updateAvailable: () => window.HerdHarborPWA?.checkForUpdates?.() || Promise.resolve(false),
+      updateAvailable: () => {
+        const detail = { promise: null };
+        document.dispatchEvent(new CustomEvent("herdharbor:s20-check-app-update", { detail }));
+        return detail.promise || Promise.resolve(false);
+      },
       afterPromotion: async () => {
         setSyncState("Normalized cloud saving activated", "success");
         if (session?.user?.id && !hasPendingCloudMutations(session.user.id)) window.location.reload();

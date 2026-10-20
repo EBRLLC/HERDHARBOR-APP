@@ -563,6 +563,13 @@
     reloadAfterUpdate();
   });
   document.addEventListener("click", (event) => { const trigger = event.target.closest("[data-pwa-install]"); if (trigger) requestInstall(); });
+  // The cloud migration coordinator only requests an update check through an
+  // event. Ordinary service-worker updates remain wholly independent of cloud.
+  document.addEventListener("herdharbor:s20-check-app-update", (event) => {
+    if (event.detail && typeof event.detail === "object") {
+      event.detail.promise = checkForAppUpdate({ force: true });
+    }
+  });
 
   window.HerdHarborPWA = {
     install: requestInstall,
