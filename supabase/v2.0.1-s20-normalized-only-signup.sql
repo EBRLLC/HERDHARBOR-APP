@@ -171,6 +171,12 @@ as $s20_signup_ready$
        and t.tgname = 'hh_s20_initialize_normalized_account'
        and t.tgenabled in ('O', 'A')
        and not t.tgisinternal
+  ) and exists (
+    select 1 from pg_catalog.pg_trigger t
+     where t.tgrelid = to_regclass('public.herdharbor_sync_manifest')
+       and t.tgname = 'hh_s20_guard_normalized_only_signup'
+       and t.tgenabled in ('O', 'A')
+       and not t.tgisinternal
   ) and to_regprocedure('public.herdharbor_initialize_normalized_signup()') is not null
     and to_regclass('public.herdharbor_sync_records') is not null
     and to_regclass('public.herdharbor_sync_manifest') is not null;
