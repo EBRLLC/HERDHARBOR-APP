@@ -38,7 +38,12 @@
       });
     }
     function discardMarker(id) {
-      try { sessionStorage?.removeItem?.(key(id)); } catch {}
+      try {
+        sessionStorage?.removeItem?.(key(id));
+        // This proof is single-use; a future consent must wait for its own
+        // controller activation instead of inheriting an earlier upgrade.
+        sessionStorage?.removeItem?.("hh_s20_update_activated_at");
+      } catch {}
     }
     function readMarker(id) {
       try {
