@@ -2321,7 +2321,8 @@
         console.warn("HerdHarbor could not verify first-save authority:", error?.message || error);
       }
       if (!syncAccountCurrent()) return false;
-      if (!serverAuthority || !["legacy", "shadow", "dual_write", "normalized"].includes(serverAuthority.stage)) {
+      if (!serverAuthority || serverAuthority.schemaVerified !== true ||
+          !["legacy", "shadow", "dual_write", "normalized"].includes(serverAuthority.stage)) {
         setSyncState("Cloud save authority could not be verified; local changes remain protected.", "error");
         return false;
       }
@@ -4317,7 +4318,11 @@
         eligible: data?.eligible === true,
         mode: String(data?.mode || "allowlist") === "allowlist" ? "allowlist" : "invalid",
         percentageEnabled: data?.percentage_enabled === true,
-        schemaVerified: data?.schema_verified === true,
+        // A malformed status payload is not proof that a legacy save is safe.
+        // The writer decision needs both a verified schema and an explicit
+        // authoritative stage from the server.
+        schemaVerified: data?.schema_verified === true &&
+          ["legacy", "shadow", "dual_write", "normalized"].includes(String(data?.stage || "")),
         stage: ["legacy", "shadow", "dual_write", "normalized"].includes(String(data?.stage || "legacy"))
           ? String(data.stage)
           : "legacy",
