@@ -103,6 +103,19 @@ test("S20 normalized authority that cannot initialize stays fail-closed",async()
   assert.match(h.states.at(-1).message,/Normalized record authority/);
 });
 
+test("S21 normalized authority loss never falls through to legacy full-snapshot writer",async()=>{
+  const h=harness({
+    serverStatus:{stage:"normalized"},
+    normalizedResult:{ok:false,reason:"normalized-not-authoritative"},
+    dirty:false
+  });
+  const result=await h.execute();
+  assert.equal(result,false);
+  assert.equal(h.stats.normalizedWrites,1);
+  assert.equal(h.stats.legacyMarkerCleared,0);
+  assert.match(h.states.at(-1).message,/authority changed/i);
+});
+
 test("S20 verified legacy stage can still preserve first legacy save",async()=>{
   const h=harness({serverStatus:{stage:"legacy"},localStage:"legacy"});
   assert.equal(await h.execute(),"legacy-fallthrough");
