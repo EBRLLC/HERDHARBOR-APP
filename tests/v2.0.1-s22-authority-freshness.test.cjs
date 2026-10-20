@@ -11,7 +11,7 @@ assert.ok(start >= 0 && end > start, "authority status function must be extracta
 const source = cloud.slice(start, end);
 
 function harness() {
-  const session = { user: { id: "account-a" } };
+  const session = { user: { id: "account-a" }, generation: 0 };
   let firstFinish = null;
   let firstFail = null;
   let calls = 0;
@@ -36,10 +36,16 @@ function harness() {
     }
   };
   const factory = new Function("client", "session", "Date", "Object",
+    "captureAccountOperation", "isAccountOperationCurrent",
     "let normalizedCohortStatusCache=null,normalizedCohortStatusInFlight=null;\n" +
     "const NORMALIZED_COHORT_STATUS_TTL_MS=30000;\n" +
     source + "\nreturn {query:getNormalizedSyncCohortStatus};");
-  const instance = factory(client, session, Date, Object);
+  const instance = factory(
+    client, session, Date, Object,
+    userId => ({ userId, generation: session.generation }),
+    token => Boolean(token && token.userId === session.user.id &&
+      token.generation === session.generation)
+  );
   return {
     query: instance.query,
     session,
@@ -84,8 +90,26 @@ test("S22 forced authority lookup rejects account changes during older RPC", asy
   const initial = h.query();
   const forced = h.query({ force: true });
   h.session.user.id = "account-b";
+  h.session.generation += 1;
   h.resolveFirst();
-  await initial;
+  await assert.rejects(initial, error => error?.code === "HH_SYNC_ACCOUNT_CHANGED");
   await assert.rejects(forced, error => error?.code === "HH_SYNC_ACCOUNT_CHANGED");
   assert.equal(h.calls, 1, "do not issue an authority RPC for the wrong user");
+});
+
+test("S22 old A status response cannot repopulate authority cache after A-B-A", async () => {
+  const h = harness();
+  const request = h.query();
+  h.session.user.id = "account-b";
+  h.session.generation += 1;
+  h.session.user.id = "account-a";
+  h.session.generation += 1;
+  h.resolveFirst();
+  await assert.rejects(request, error => error?.code === "HH_SYNC_ACCOUNT_CHANGED");
+  assert.equal(h.calls, 1);
+
+  // The next same-user request must issue a new RPC, not serve stale cache.
+  const next = await h.query();
+  assert.equal(next.stage, "normalized");
+  assert.equal(h.calls, 2);
 });
