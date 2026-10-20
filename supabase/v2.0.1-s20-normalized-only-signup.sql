@@ -25,6 +25,17 @@ begin
     raise exception using errcode='22023',message='HH_S20_SIGNUP_INSERT_REQUIRED';
   end if;
 
+  -- Old cached clients do not understand the normalized record writer.
+  -- Protect them at the Auth transaction boundary, not just via a new
+  -- browser preflight that old PWAs never received. This is a client
+  -- compatibility assertion ONLY; never use user metadata for permissions.
+  -- Admin/invitation/SSO creation paths must be deliberately upgraded to
+  -- provide this capability before enabling the trigger.
+  if coalesce(new.raw_user_meta_data ->> 'hh_normalized_signup_client', '')
+       <> 'record-cas-v1' then
+    raise exception using errcode='23514', message='HH_S20_CLIENT_UPDATE_REQUIRED';
+  end if;
+
   -- This trigger runs in the same transaction that creates auth.users.
   -- Never initialize an account over pre-existing farm data.
   if exists (select 1 from public.herdharbor_user_data where user_id=new.id)
