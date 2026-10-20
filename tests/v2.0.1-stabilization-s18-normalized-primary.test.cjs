@@ -27,7 +27,7 @@ function cutoverHarness({ dirty = false, conflict = false, online = true, revisi
     "ensureContext", "assertContextCurrent", "refreshContextStage", "cloud",
     "stateStore", "validateNow", "promoteToNormalized", "isNormalizedAuthority",
     "emit", "requiredValidationPasses",
-    "let validationPasses=0,lastValidation=null;\n" + code +
+    "let validationPasses=0,lastValidation=null,cutoverInFlight=null;\n" + code +
     "\nreturn cutoverToNormalizedPrimary;"
   );
   const operation = factory(
