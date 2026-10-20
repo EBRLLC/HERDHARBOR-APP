@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v2.0.1-v2.0.1-release-1-s21-1";
+const CACHE_NAME = "herdharbor-shell-v2.0.1-v2.0.1-release-1-s21-2";
 const REQUIRED_SHELL = [
   "./",
   "./index.html",
@@ -28,7 +28,7 @@ const REQUIRED_SHELL = [
   "./cloud-sync-v2-flow-v1.8.2.js?v=1",
   "./cloud-sync-v2-diagnostics-v1.8.2.js?v=1",
   "./herdharbor-admin-v1.6.1.js?v=2",
-  "./pwa.js?v=37",
+  "./pwa.js?v=38",
   "./market-analytics-v1.6.5.js?v=1.7.1",
   "./pedigree-engine-v2.0.0.js?v=1",
   "./pedigree-customization-v2.0.0.css?v=1",
