@@ -3564,6 +3564,20 @@
       return;
     }
 
+    // If the server already owns normalized authority but schema/worker
+    // initialization is temporarily unavailable, NEVER hydrate from or write
+    // back to the legacy cloud table. Keep this workspace locked for retry.
+    if (rolloutDecision?.active === false && rolloutDecision?.authoritative !== true) {
+      let serverAuthority = null;
+      try { serverAuthority = await getNormalizedSyncCohortStatus({ force: true }); } catch {}
+      if (!isCurrentHydration()) return staleHydration();
+      if (!serverAuthority || serverAuthority.stage === "normalized") {
+        showAuth("signin");
+        authMessage("Cloud save authority could not be verified. Your records were retained; refresh account data to retry.", "error");
+        return Object.freeze({ ok: false, reason: "s20-normalized-authority-unverified" });
+      }
+    }
+
     if (rolloutDecision?.authoritative === true) {
       if (!rolloutDecision.ok || !rolloutDecision.snapshot) {
         const protectedRaw = activeRaw || cachedRaw;
@@ -4416,7 +4430,14 @@
         window.HerdHarborPWA?.hasUnfinishedLocalWork?.() !== true
       ),
       getRevision: (userId) => Number(canonicalStateStore?.getRevision?.(userId) || 0),
-      sync: syncNow,
+      sync: async () => {
+        // A clean dual-write account already has a confirmed legacy snapshot.
+        // Do not force another full-state PATCH merely to perform cutover:
+        // S18's repeated reconciliation supplies fresh cloud confirmation.
+        const userId = session?.user?.id;
+        if (!userId || navigator.onLine === false) return false;
+        return hasPendingCloudMutations(userId) ? syncNow() : true;
+      },
       prepare: (options) => normalizedRollout.prepareHydration(options),
       validate: () => normalizedRollout.validateNow(),
       readLegacy: readLegacySnapshotForNormalizedSync,
@@ -4437,12 +4458,21 @@
         setSyncState("Normalized cloud saving activated", "success");
         if (session?.user?.id && !hasPendingCloudMutations(session.user.id)) window.location.reload();
       },
-      sessionStorage: window.sessionStorage
+      sessionStorage: (() => {
+        try { return window.sessionStorage; } catch { return null; }
+      })()
     });
     document.addEventListener("herdharbor:auth-boundary", () => {
       normalizedUpgradeS20?.fenceAccountBoundary?.();
       document.querySelector("#hh-s20-upgrade-offer")?.remove();
     });
+    for (const target of ["online", "focus"]) {
+      window.addEventListener(target, () => {
+        if (session?.user?.id && document.documentElement?.classList?.contains?.("hh-auth-locked") === false) {
+          void normalizedUpgradeS20.afterLogin().catch(() => {});
+        }
+      });
+    }
   }
 
   initialize().catch((error) => {

@@ -43,7 +43,11 @@
     function readMarker(id) {
       try {
         const marker = JSON.parse(sessionStorage?.getItem?.(key(id)) || "null");
-        return marker && marker.userId === id && marker.confirmed === true ? marker : null;
+        return marker && marker.userId === id && marker.confirmed === true &&
+          Number.isFinite(Number(marker.issuedAt)) &&
+          Date.now() >= Number(marker.issuedAt) &&
+          Date.now() - Number(marker.issuedAt) < (15 * 60 * 1000)
+          ? marker : null;
       } catch { return null; }
     }
     function writeMarker(id, value) {
@@ -141,7 +145,7 @@
       if (verification?.ok !== true || verification?.stage !== "dual_write") {
         return { ok: false, reason: verification?.reason || "cloud-reconciliation-required" };
       }
-      const marker = { userId: id, confirmed: true, legacyClientsClosed: true };
+      const marker = { userId: id, confirmed: true, legacyClientsClosed: true, issuedAt: Date.now() };
       if (!writeMarker(id, marker)) return { ok: false, reason: "migration-intent-storage-unavailable" };
       try {
         // If an installed update exists, use the PWA's verified update flow.
