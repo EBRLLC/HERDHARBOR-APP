@@ -177,3 +177,63 @@ test("S18 cloud and service worker refer to the same new content revision", () =
   assert.match(worker, /herdharbor-cloud\.js\?v=40/);
   assert.match(worker, /herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-s18-1/);
 });
+
+test("S18 leftover legacy dirty work remains visible to PWA after normalized promotion", () => {
+  const source = extract(cloudSource,
+    "  function hasPendingAuthoritativeCloudMutations(",
+    "  function getSyncDetails()");
+  const helper = new Function(
+    "session", "originalGetItem", "localStorage", "dirtyKey", "pendingSync",
+    "normalizedAuthorityActive", "normalizedOutboxPending",
+    source + "\nreturn hasPendingAuthoritativeCloudMutations;"
+  )(
+    { user: { id: "account-a" } },
+    { call: (storage, key) => key === "dirty-account-a" ? "1" : null },
+    {},
+    id => "dirty-" + id,
+    null,
+    () => true,
+    () => false
+  );
+  assert.equal(helper("account-a"), true);
+});
+
+test("S18 stale normalized authority cannot silently route back to legacy save", async () => {
+  const beginning = extract(cloudSource,
+    "  async function syncNow() {",
+    "    const raw = activeStateRaw();");
+  const source = beginning + "\n    return 'legacy-write-fallthrough';\n  }";
+  const statuses = [];
+  let refreshCalls = 0;
+  const start = new Function(
+    "session", "captureAccountOperation", "isAccountOperationCurrent", "pendingSync",
+    "originalGetItem", "localStorage", "dirtyKey", "normalizedRolloutStage",
+    "normalizedAuthorityActive", "refreshNormalizedAuthorityIfEligible", "setSyncState",
+    "normalizedOutboxPending", "deferNormalizedDualWriteCleanup",
+    "clearTimeout", "syncTimer", "syncDebounceStartedAt", "normalizedRollout",
+    source + "\nreturn syncNow;"
+  )(
+    { user: { id: "account-a" } },
+    () => ({}),
+    () => true,
+    null,
+    { call: () => "1" },
+    {},
+    () => "dirty",
+    () => "normalized",
+    () => false,
+    async () => { refreshCalls += 1; return false; },
+    (message, status) => statuses.push({ message, status }),
+    () => false,
+    () => {},
+    () => {},
+    null,
+    0,
+    {}
+  );
+  const result = await start();
+  assert.equal(result, false);
+  assert.equal(refreshCalls, 1);
+  assert.match(statuses[0].message, /Normalized record authority could not be verified/);
+  assert.equal(statuses[0].status, "error");
+});
