@@ -102,6 +102,7 @@
   let reloadAfterSync = false;
   let accessProfile = null;
   let normalizedRollout = null;
+  let normalizedUpgradeS20 = null;
   let normalizedRefreshInFlight = null;
   let hydrationInFlight = null;
   let hydrationUserId = "";
@@ -3512,11 +3513,9 @@
     };
     let rolloutDecision = null;
 
-    // Start read-only hydration work together. When this clean device already
-    // has a confirmed cloud revision, probe only updated_at first. A matching
-    // revision proves the authoritative legacy row has not changed, so the
-    // existing clean local snapshot can be used without downloading app_state.
-    // Normalized authority can discard either legacy prefetch result.
+    // S20: normalized-only signups must not probe the legacy data table.
+    // Resolve server authority before requesting any legacy snapshot. This also
+    // protects existing normalized accounts from a wasted legacy read on login.
     const knownCloudVersion =
       originalGetItem.call(localStorage, versionKey(userId)) || "";
     const canUseVersionOnlyPrefetch =
@@ -3527,16 +3526,17 @@
       Boolean(knownCloudVersion);
     const baselineRestorePromise = restoreMissingCloudBaseline(userId, "hydrate");
     const legacyCloudPrefetchMode = canUseVersionOnlyPrefetch ? "version" : "record";
+    const rolloutHydrationPromise = normalizedRollout?.prepareHydration
+      ? normalizedRollout.prepareHydration({ legacyDirty: dirty })
+      : Promise.resolve(null);
     const legacyCloudPrefetchPromise = dirty
       ? null
-      : canUseVersionOnlyPrefetch
-        ? fetchCloudVersion(userId)
-        : fetchCloudRecord(userId);
+      : rolloutHydrationPromise.then((decision) => {
+        if (decision?.authoritative === true || decision?.stage === "normalized") return null;
+        return canUseVersionOnlyPrefetch ? fetchCloudVersion(userId) : fetchCloudRecord(userId);
+      }).catch(() => null);
 
     try {
-      const rolloutHydrationPromise = normalizedRollout?.prepareHydration
-        ? normalizedRollout.prepareHydration({ legacyDirty: dirty })
-        : Promise.resolve(null);
       const [, decision] = await Promise.all([
         accessProfilePromise,
         rolloutHydrationPromise
@@ -3944,6 +3944,11 @@
       const appUnlocked = !document.documentElement?.classList?.contains?.("hh-auth-locked");
       if (stillCurrentUser && appUnlocked && !recoveryMode) {
         lastHydratedUserId = userId;
+        // Migration is an additive opt-in handoff; never block account loading
+        // or sign-in on a migration prompt, and never migrate offline/dirty work.
+        void normalizedUpgradeS20?.afterLogin?.().catch((error) => {
+          console.warn("HerdHarbor S20 upgrade readiness postponed:", error?.code || error?.message || error);
+        });
       }
       return result;
     } finally {
@@ -4336,6 +4341,108 @@
       );
       normalizedRollout = null;
     }
+  }
+
+  // S20 migration: verified legacy save, owner-confirmed old-client shutdown,
+  // PWA update handoff, then S18's guarded normalized-primary cutover.
+  function showS20UpgradeOffer({ accept, dismiss }) {
+    if (document.getElementById("hh-s20-upgrade-offer")) return;
+    const root = document.createElement("aside");
+    root.id = "hh-s20-upgrade-offer";
+    root.className = "hh-pwa-update";
+    root.setAttribute("role", "dialog");
+    root.setAttribute("aria-label", "Upgrade HerdHarbor cloud saves");
+    root.innerHTML = `<strong>HerdHarbor cloud save upgrade</strong>
+      <span>Your current records are ready for a safer, record-based save system.
+      Save and close HerdHarbor on your other devices before continuing. Unsaved
+      offline changes on an older version cannot be recovered automatically.</span>
+      <label style="display:block;margin:8px 0;">
+        <input type="checkbox" data-hh-s20-closed>
+        All my other HerdHarbor tabs and devices have finished syncing and are closed.
+      </label>
+      <span data-hh-s20-message role="status" aria-live="polite"></span>
+      <div><button type="button" data-hh-s20-accept>Save &amp; Upgrade</button>
+      <button type="button" data-hh-s20-later>Later</button></div>`;
+    const message = root.querySelector("[data-hh-s20-message]");
+    const button = root.querySelector("[data-hh-s20-accept]");
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      message.textContent = "Verifying cloud saves and recovery backups…";
+      try {
+        const result = await accept({
+          legacyClientsClosed: root.querySelector("[data-hh-s20-closed]").checked
+        });
+        if (result?.ok && result.stage === "update-offered") {
+          message.textContent = "Your cloud save is protected. Select Update Now in the app update prompt to continue.";
+          root.remove();
+        } else if (result?.ok && result.stage === "normalized") {
+          message.textContent = "Normalized cloud saving is active.";
+          root.remove();
+        } else {
+          message.textContent = result?.reason === "close-old-clients-first"
+            ? "Confirm that your other devices have finished saving and are closed."
+            : "Upgrade paused: " + String(result?.reason || "cloud verification incomplete").replace(/[^a-zA-Z0-9 _-]/g, " ");
+        }
+      } catch (error) {
+        message.textContent = "Upgrade paused; your records remain protected. Retry after verifying cloud sync.";
+        console.warn("HerdHarbor S20 cutover stayed pending:", error?.code || error?.message || error);
+      } finally { button.disabled = false; }
+    });
+    root.querySelector("[data-hh-s20-later]").addEventListener("click", () => {
+      dismiss();
+      root.remove();
+    });
+    (document.body || document.documentElement)?.appendChild(root);
+  }
+
+  if (window.HerdHarborNormalizedUpgradeS20?.create && normalizedRollout) {
+    normalizedUpgradeS20 = window.HerdHarborNormalizedUpgradeS20.create({
+      getUserId: () => session?.user?.id,
+      getStatus: async () => {
+        const decision = await normalizedRollout.checkEligibility();
+        return {
+          eligible: decision?.eligible === true,
+          schemaVerified: decision?.schemaVerified === true,
+          stage: decision?.stage || normalizedRollout.status?.()?.stage || "legacy"
+        };
+      },
+      isClean: (userId) => (
+        navigator.onLine !== false &&
+        session?.user?.id === userId &&
+        !recoveryMode &&
+        !syncConflict &&
+        !hasPendingCloudMutations(userId) &&
+        canonicalStateStore?.getOutbox?.(userId)?.length === 0 &&
+        window.HerdHarborPWA?.hasUnfinishedLocalWork?.() !== true
+      ),
+      getRevision: (userId) => Number(canonicalStateStore?.getRevision?.(userId) || 0),
+      sync: syncNow,
+      prepare: (options) => normalizedRollout.prepareHydration(options),
+      validate: () => normalizedRollout.validateNow(),
+      readLegacy: readLegacySnapshotForNormalizedSync,
+      saveRecovery: async (userId, read) => {
+        const original = JSON.stringify(read.snapshot);
+        const archived = await recordRecoverySnapshot(userId, original, "S20 verified cloud snapshot before normalized cutover");
+        if (!archived) return false;
+        const local = activeStateRaw();
+        if (local && !sameState(local, original)) {
+          return Boolean(await recordRecoverySnapshot(userId, local, "S20 local device snapshot before normalized cutover"));
+        }
+        return true;
+      },
+      cutover: (options) => normalizedRollout.cutoverToNormalizedPrimary(options),
+      offer: showS20UpgradeOffer,
+      updateAvailable: () => window.HerdHarborPWA?.checkForUpdates?.() || Promise.resolve(false),
+      afterPromotion: async () => {
+        setSyncState("Normalized cloud saving activated", "success");
+        if (session?.user?.id && !hasPendingCloudMutations(session.user.id)) window.location.reload();
+      },
+      sessionStorage: window.sessionStorage
+    });
+    document.addEventListener("herdharbor:auth-boundary", () => {
+      normalizedUpgradeS20?.fenceAccountBoundary?.();
+      document.querySelector("#hh-s20-upgrade-offer")?.remove();
+    });
   }
 
   initialize().catch((error) => {

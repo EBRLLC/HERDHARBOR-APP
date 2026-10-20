@@ -305,6 +305,9 @@
   function hasUnfinishedLocalWork() {
     try {
       if (document.documentElement?.dataset?.hhUnsynced === "true") return true;
+      // A normalized record outbox or legacy dirty marker must also block
+      // worker activation even if the visual sync indicator has not updated.
+      if (window.HerdHarborCloud?.hasUnsyncedChanges?.() === true) return true;
       // The paper pedigree and photo review dialogs hold corrections in
       // browser memory until explicitly committed. A controller change in
       // another tab must never erase them.
@@ -458,7 +461,7 @@
     updateToast = document.createElement("aside");
     updateToast.className = "hh-pwa-update";
     updateToast.setAttribute("role", "status");
-    updateToast.innerHTML = `<strong>HerdHarbor Update Available</strong><span>A new version of HerdHarbor is ready. Finish any unsaved entry before updating. Cloud Sync is not required.</span><div><button type="button" data-hh-update-now>Update Now</button><button type="button" data-hh-update-later>Later</button></div>`;
+    updateToast.innerHTML = `<strong>HerdHarbor Update Available</strong><span>A new version of HerdHarbor is ready. Finish and save your work before updating. Account migrations require verified cloud synchronization.</span><div><button type="button" data-hh-update-now>Update Now</button><button type="button" data-hh-update-later>Later</button></div>`;
     updateToast.querySelector("[data-hh-update-now]").addEventListener("click", (event) => {
       activatePendingUpdate(event.currentTarget);
     });
@@ -567,6 +570,7 @@
     install: requestInstall,
     refreshInstallUI,
     checkForUpdates: () => checkForAppUpdate({ force: true }),
+    hasUnfinishedLocalWork,
     isInstalled: isStandalone,
     version: APP_VERSION,
     build: PWA_BUILD
