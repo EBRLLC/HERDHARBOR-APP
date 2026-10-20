@@ -3282,7 +3282,10 @@
         email: root.querySelector("#hh-signup-email").value.trim(),
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}${window.location.pathname}`
+          emailRedirectTo: `${window.location.origin}${window.location.pathname}`,
+          // The database rejects signups from older PWAs that cannot use the
+          // normalized-only record writer. This is not an access/role claim.
+          data: { hh_normalized_signup_client: "record-cas-v1" }
         }
       });
 
