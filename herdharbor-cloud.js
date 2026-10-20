@@ -4542,7 +4542,9 @@
       updateAvailable: () => {
         const detail = { promise: null };
         document.dispatchEvent(new CustomEvent("herdharbor:s20-check-app-update", { detail }));
-        return detail.promise || Promise.resolve(false);
+        // Missing PWA listener is an UNKNOWN update state, not permission
+        // to migrate without a verified update check.
+        return detail.promise || Promise.resolve(null);
       },
       afterPromotion: async () => {
         setSyncState("Normalized cloud saving activated", "success");
@@ -4552,8 +4554,8 @@
         try { return window.sessionStorage; } catch { return null; }
       })()
     });
-    document.addEventListener("herdharbor:auth-boundary", () => {
-      normalizedUpgradeS20?.fenceAccountBoundary?.();
+    document.addEventListener("herdharbor:auth-boundary", (event) => {
+      normalizedUpgradeS20?.fenceAccountBoundary?.(event.detail || {});
       document.querySelector("#hh-s20-upgrade-offer")?.remove();
     });
     for (const target of ["online", "focus"]) {
