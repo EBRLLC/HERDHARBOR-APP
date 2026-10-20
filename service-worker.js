@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v2.0.1-v2.0.1-release-1-s18-1";
+const CACHE_NAME = "herdharbor-shell-v2.0.1-v2.0.1-release-1-s20-1";
 const REQUIRED_SHELL = [
   "./",
   "./index.html",
@@ -21,7 +21,8 @@ const REQUIRED_SHELL = [
   "./herdharbor-access-cache-v1.6.1.js?v=1.7.1",
   "./cloud-legacy-baseline-v1.8.4.js?v=1",
   "./account-boundary-core-v1.8.4.js?v=4",
-  "./herdharbor-cloud.js?v=40",
+  "./herdharbor-cloud.js?v=41",
+  "./s20-login-normalized-upgrade.js?v=1",
   "./cloud-sync-rollout-runtime-v1.8.4.js?v=6",
   "./local-cache-v2-v1.8.2.js?v=1",
   "./cloud-sync-v2-flow-v1.8.2.js?v=1",

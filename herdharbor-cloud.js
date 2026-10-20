@@ -3944,6 +3944,13 @@
       const appUnlocked = !document.documentElement?.classList?.contains?.("hh-auth-locked");
       if (stillCurrentUser && appUnlocked && !recoveryMode) {
         lastHydratedUserId = userId;
+        // S20 migration offer may run only after verified cloud hydration.
+        // Headless test harnesses may not expose DOM event dispatch.
+        try {
+          document.dispatchEvent?.(new CustomEvent("herdharbor:cloud-hydrated", {
+            detail: { userId }
+          }));
+        } catch {}
       }
       return result;
     } finally {
@@ -4273,6 +4280,18 @@
     return api.createRecordStore({ client, userId });
   }
 
+  async function getS20MigrationApproval() {
+    const userId = session?.user?.id;
+    if (!userId) return false;
+    try {
+      // The server-owned table cannot be modified by authenticated clients.
+      const { data, error } = await client.rpc("herdharbor_sync_s20_cutover_ready");
+      return !error && session?.user?.id === userId && data === true;
+    } catch {
+      return false;
+    }
+  }
+
   async function readLegacySnapshotForNormalizedSync(expectedUserId = session?.user?.id) {
     const userId = String(expectedUserId || "");
     if (!userId || session?.user?.id !== userId) {
@@ -4299,6 +4318,7 @@
     invokeFunctionWithDiagnostics,
     getSession: () => session,
     getNormalizedSyncCohortStatus,
+    getS20MigrationApproval,
     createNormalizedRecordStore,
     readLegacySnapshotForNormalizedSync,
     getSyncState: () => syncState,
