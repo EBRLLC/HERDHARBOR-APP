@@ -288,7 +288,7 @@ test("S18 stale normalized authority cannot silently route back to legacy save",
     0,
     {},
     id => "version-" + id,
-    async () => ({ stage: "normalized" })
+    async () => ({ stage: "normalized", schemaVerified: true })
   );
   const result = await start();
   assert.equal(result, false);
