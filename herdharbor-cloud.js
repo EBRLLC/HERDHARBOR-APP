@@ -2589,6 +2589,13 @@
         const remoteRaw = JSON.stringify(result.snapshot);
         const activeRaw = activeStateRaw();
         if (!stillCurrent()) return false;
+        // Matching JSON is not proof that this device's outbox/dirty marker
+        // was acknowledged. A queued mutation must never be advertised as
+        // "Saved to cloud" simply because the two snapshots compare equal.
+        if (hasPendingCloudMutations(userId)) {
+          setSyncState("Cloud refresh deferred; this device still has unsynced records.", "working");
+          return false;
+        }
         if (activeRaw && sameState(activeRaw, remoteRaw)) {
           setSyncState("Saved to cloud", "success");
           return false;
