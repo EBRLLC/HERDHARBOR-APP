@@ -3835,8 +3835,17 @@
       }
       if (!hydrationInputCurrent()) return deferHydrationForNewEdit();
       setActiveUserData(userId, deviceCloudRaw);
+      const installedHydrationRaw = activeStateRaw();
       await writeCloudBaseline(userId, cloudRaw);
       if (!isCurrentHydration()) return staleHydration();
+      // Another tab or editor can commit an edit while durable baseline
+      // persistence is pending. Never clear its dirty marker or claim an
+      // earlier cloud revision as current after that edit.
+      if (activeStateRaw() !== installedHydrationRaw ||
+          originalGetItem.call(localStorage, dirtyKey(userId)) === "1") {
+        setSyncState("Newer local changes are awaiting cloud sync; the hydrated records were preserved.", "working");
+        return Object.freeze({ ok: false, reason: "hydration-new-local-edit-after-install" });
+      }
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       safeStorageRemove(dirtyKey(userId));
       syncConflict = null;
