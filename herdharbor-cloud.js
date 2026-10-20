@@ -3944,6 +3944,10 @@
       const appUnlocked = !document.documentElement?.classList?.contains?.("hh-auth-locked");
       if (stillCurrentUser && appUnlocked && !recoveryMode) {
         lastHydratedUserId = userId;
+        // S20 migration offer may run only after verified cloud hydration.
+        document.dispatchEvent(new CustomEvent("herdharbor:cloud-hydrated", {
+          detail: { userId }
+        }));
       }
       return result;
     } finally {
