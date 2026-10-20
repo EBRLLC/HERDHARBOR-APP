@@ -570,7 +570,10 @@
       originalGetItem.call(localStorage, dirtyKey(userId)) === "1" ||
       Boolean(pendingSync);
     if (normalizedAuthorityActive()) {
-      return normalizedOutboxPending(userId);
+      // An inherited dirty legacy marker is still unfinished local work,
+      // even when the record outbox happens to be empty. Do not tell PWA
+      // update safety that the device is clean until it is reconciled.
+      return legacyPending || normalizedOutboxPending(userId);
     }
     return legacyPending;
   }
@@ -2294,6 +2297,19 @@
       syncUserIdAtStart &&
       originalGetItem.call(localStorage, dirtyKey(syncUserIdAtStart)) === "1"
     );
+
+    // An account already identified as normalized must never fall back to a
+    // legacy PATCH just because its authority check is temporarily stale.
+    // The record outbox stays durable; wait for normalized authority to be
+    // verified instead of reactivating the old full-state writer.
+    if (normalizedRolloutStage() === "normalized" && !normalizedAuthorityActive()) {
+      await refreshNormalizedAuthorityIfEligible();
+      if (!syncAccountCurrent()) return false;
+      if (!normalizedAuthorityActive()) {
+        setSyncState("Normalized record authority could not be verified; local changes remain protected.", "error");
+        return false;
+      }
+    }
 
     // In dual-write/legacy authority, never let an authority-readiness check
     // sit in front of a user save. Mobile photo/file pickers can trigger
