@@ -253,7 +253,7 @@ test("S15-C legacy Update Now messages are gated by the same readiness handshake
 });
 
 test("S15-C activation retains current and two prior release caches for old lazy assets", async () => {
-  const current = "herdharbor-shell-v2.0.1-v2.0.1-release-1-s18-1";
+  const current = "herdharbor-shell-v2.0.1-v2.0.1-release-1-s20-1";
   const previous = "herdharbor-shell-v2.0.0-v2.0.0-release-1";
   const older = "herdharbor-shell-v1.8.4-release-1";
   const oldest = "herdharbor-shell-v1.8.2-release-1";
