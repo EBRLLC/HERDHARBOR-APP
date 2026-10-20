@@ -570,7 +570,10 @@
       originalGetItem.call(localStorage, dirtyKey(userId)) === "1" ||
       Boolean(pendingSync);
     if (normalizedAuthorityActive()) {
-      return normalizedOutboxPending(userId);
+      // An inherited dirty legacy marker is still unfinished local work,
+      // even when the record outbox happens to be empty. Do not tell PWA
+      // update safety that the device is clean until it is reconciled.
+      return legacyPending || normalizedOutboxPending(userId);
     }
     return legacyPending;
   }
@@ -2295,6 +2298,19 @@
       originalGetItem.call(localStorage, dirtyKey(syncUserIdAtStart)) === "1"
     );
 
+    // An account already identified as normalized must never fall back to a
+    // legacy PATCH just because its authority check is temporarily stale.
+    // The record outbox stays durable; wait for normalized authority to be
+    // verified instead of reactivating the old full-state writer.
+    if (normalizedRolloutStage() === "normalized" && !normalizedAuthorityActive()) {
+      await refreshNormalizedAuthorityIfEligible();
+      if (!syncAccountCurrent()) return false;
+      if (!normalizedAuthorityActive()) {
+        setSyncState("Normalized record authority could not be verified; local changes remain protected.", "error");
+        return false;
+      }
+    }
+
     // In dual-write/legacy authority, never let an authority-readiness check
     // sit in front of a user save. Mobile photo/file pickers can trigger
     // lifecycle syncNow() calls; if the eligibility cache is cold, that check
@@ -3481,6 +3497,19 @@
     const cachedRaw = originalGetItem.call(localStorage, cacheKey(userId));
     if (activeRaw && safeParse(activeRaw)) removeRedundantStateCache(userId);
     const dirty = originalGetItem.call(localStorage, dirtyKey(userId)) === "1";
+    // An in-flight hydration is read-only until it proves that neither this
+    // session nor another tab has changed the workspace it originally read.
+    // An identity fence alone does not catch same-account edits during RPCs.
+    const hydrationInputCurrent = () => (
+      isCurrentHydration() &&
+      activeStateRaw() === storedActiveRaw &&
+      originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) === activeOwner &&
+      (originalGetItem.call(localStorage, dirtyKey(userId)) === "1") === dirty
+    );
+    const deferHydrationForNewEdit = () => {
+      setSyncState("Newer device edits were detected while loading cloud records. The local workspace was preserved; retry cloud sync.", "error");
+      return Object.freeze({ ok: false, reason: "hydration-local-state-changed" });
+    };
     let rolloutDecision = null;
 
     // Start read-only hydration work together. When this clean device already
@@ -3579,15 +3608,19 @@
       }
 
       if (activeRaw && stateChanged) {
-        await recordRecoverySnapshot(
+        const preserved = await recordRecoverySnapshot(
           userId,
           activeRaw,
           "Local copy before loading normalized authoritative records"
         );
         if (!isCurrentHydration()) return staleHydration();
+        if (!preserved) {
+          showAccountBoundaryRecovery("HerdHarbor could not preserve the local state before normalized hydration. No records were replaced.");
+          return Object.freeze({ ok: false, reason: "normalized-hydration-backup-failed" });
+        }
       }
 
-      if (!isCurrentHydration()) return staleHydration();
+      if (!hydrationInputCurrent()) return deferHydrationForNewEdit();
       setActiveUserData(userId, deviceCloudRaw, "normalized-authority-hydration");
       safeStorageRemove(dirtyKey(userId));
       pendingSync = null;
@@ -3680,6 +3713,7 @@
     if (legacyCloudPrefetchMode === "version") {
       const remoteVersion = String(prefetchedLegacy?.data?.updated_at || "");
       if (remoteVersion && remoteVersion === knownCloudVersion) {
+        if (!hydrationInputCurrent()) return deferHydrationForNewEdit();
         safeStorageRemove(dirtyKey(userId));
         pendingSync = null;
         syncConflict = null;
@@ -3755,8 +3789,12 @@
           unlockApp();
           return;
         }
-        await recordRecoverySnapshot(userId, activeRaw, "Local copy before loading newer cloud records");
+        const preserved = await recordRecoverySnapshot(userId, activeRaw, "Local copy before loading newer cloud records");
         if (!isCurrentHydration()) return staleHydration();
+        if (!preserved) {
+          showAccountBoundaryRecovery("HerdHarbor could not preserve local records before replacing them with cloud data.");
+          return Object.freeze({ ok: false, reason: "legacy-hydration-backup-failed" });
+        }
       }
       const normalizedCleanupNeeded =
         rolloutDecision?.stage === "dual_write" &&
@@ -3795,10 +3833,19 @@
         }
         return;
       }
-      if (!isCurrentHydration()) return staleHydration();
+      if (!hydrationInputCurrent()) return deferHydrationForNewEdit();
       setActiveUserData(userId, deviceCloudRaw);
+      const installedHydrationRaw = activeStateRaw();
       await writeCloudBaseline(userId, cloudRaw);
       if (!isCurrentHydration()) return staleHydration();
+      // Another tab or editor can commit an edit while durable baseline
+      // persistence is pending. Never clear its dirty marker or claim an
+      // earlier cloud revision as current after that edit.
+      if (activeStateRaw() !== installedHydrationRaw ||
+          originalGetItem.call(localStorage, dirtyKey(userId)) === "1") {
+        setSyncState("Newer local changes are awaiting cloud sync; the hydrated records were preserved.", "working");
+        return Object.freeze({ ok: false, reason: "hydration-new-local-edit-after-install" });
+      }
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       safeStorageRemove(dirtyKey(userId));
       syncConflict = null;
@@ -3847,7 +3894,7 @@
     const newUserRaw = cachedRaw || activeRaw;
     if (newUserRaw && safeParse(newUserRaw)) {
       const stateChanged = !activeRaw || !sameState(activeRaw, newUserRaw);
-      if (!isCurrentHydration()) return staleHydration();
+      if (!hydrationInputCurrent()) return deferHydrationForNewEdit();
       setActiveUserData(userId, newUserRaw);
       pendingSync = { rawValue: newUserRaw, sequence: writeSequence };
       await drainSyncQueue();
@@ -3861,11 +3908,19 @@
     }
 
     if (storedActiveRaw && activeOwner && activeOwner !== userId) {
-      await recordRecoverySnapshot(activeOwner, storedActiveRaw, "Retained while switching accounts");
+      const preserved = await recordRecoverySnapshot(activeOwner, storedActiveRaw, "Retained while switching accounts");
+      if (!isCurrentHydration()) return staleHydration();
+      if (!preserved) {
+        showAccountBoundaryRecovery("HerdHarbor could not back up the previous account. Its local records remain intact.");
+        return Object.freeze({ ok: false, reason: "legacy-owner-backup-failed" });
+      }
     }
-    if (!isCurrentHydration()) return staleHydration();
-    clearActiveUserData();
-    safeStorageSet(ACTIVE_OWNER_KEY, userId);
+    if (!hydrationInputCurrent()) return deferHydrationForNewEdit();
+    if (!clearActiveUserData() || !safeStorageSet(ACTIVE_OWNER_KEY, userId) ||
+        originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) !== userId) {
+      showAccountBoundaryRecovery("HerdHarbor could not verify the new account workspace. Local recovery is required.");
+      return Object.freeze({ ok: false, reason: "legacy-owner-switch-unverified" });
+    }
     unlockApp();
     setSyncState("New cloud account ready", "success");
     if (storedActiveRaw) window.location.reload();
