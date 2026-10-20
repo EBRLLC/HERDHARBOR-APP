@@ -12,16 +12,14 @@
   // Only explicitly approved users can enter the client-side cutover. These
   // approvals must be written after an independently verified off-device
   // backup and old-client shutdown. Client flags alone are not authorization.
-  function preflight({ session, status, manifest, details, pending, conflict } = {}) {
+  function preflight({ session, status, manifest, serverApproved, details, pending, conflict } = {}) {
     if (!session?.user?.id) return { ok: false, reason: "signed-out" };
     if (status?.stage === "normalized") return { ok: false, reason: "already-normalized" };
     if (status?.stage !== "dual_write" || status?.eligible !== true ||
         status?.schemaVerified !== true) return { ok: false, reason: "dual-write-not-ready" };
-    const metadata = manifest?.metadata || {};
-    if (manifest?.cutover_stage !== "dual_write" ||
-        metadata.s20_client_cutover_approved !== true ||
-        metadata.s20_offdevice_backup_verified !== true ||
-        metadata.s20_legacy_clients_closed !== true) {
+    // Manifest metadata is client-mutable through legacy batch RPCs;
+    // it is not an approval authority. Require an isolated server-owned gate.
+    if (manifest?.cutover_stage !== "dual_write" || serverApproved !== true) {
       return { ok: false, reason: "server-approval-missing" };
     }
     if (details?.online !== true || details?.syncing === true ||
@@ -65,8 +63,10 @@
         const store = cloud.createNormalizedRecordStore(userId);
         const manifest = await store.getManifest();
         if (!safe(userId, ticket)) return false;
+        const serverApproved = await cloud.getS20MigrationApproval?.();
+        if (!safe(userId, ticket)) return false;
         let eligibility = preflight({
-          session: cloud.getSession(), status: stage, manifest,
+          session: cloud.getSession(), status: stage, manifest, serverApproved,
           details: cloud.getSyncDetails(),
           pending: cloud.hasUnsyncedChanges(), conflict: cloud.hasConflict()
         });
@@ -75,14 +75,15 @@
         if (!safe(userId, ticket) || validated?.ok !== true ||
             validated?.stage !== "dual_write") return false;
         eligibility = preflight({
-          session: cloud.getSession(), status: stage, manifest,
+          session: cloud.getSession(), status: stage, manifest, serverApproved,
           details: cloud.getSyncDetails(),
           pending: cloud.hasUnsyncedChanges(), conflict: cloud.hasConflict()
         });
         if (!eligibility.ok) return false;
         promptedId = userId;
         if (document.getElementById?.("hh-s20-upgrade-dialog")) return true;
-        const dialog = document.createElement("section");
+        const dialog = document.createElement("dialog");
+        dialog.setAttribute("open", "");
         dialog.id = "hh-s20-upgrade-dialog";
         dialog.setAttribute("role", "dialog");
         dialog.setAttribute("aria-modal", "true");
@@ -96,7 +97,10 @@
         const message = dialog.querySelector("[data-hh-s20-message]");
         const refreshButton = () => { startButton.disabled = !backupDownloaded || !closed.checked; };
         closed.addEventListener("change", refreshButton);
-        dialog.querySelector("[data-hh-s20-later]").addEventListener("click", removeDialog);
+        dialog.querySelector("[data-hh-s20-later]").addEventListener("click", () => {
+          promptedId = "";
+          removeDialog();
+        });
         dialog.querySelector("[data-hh-s20-backup]").addEventListener("click", async () => {
           if (!safe(userId, ticket)) return;
           try {
@@ -118,6 +122,7 @@
             if (!safe(userId, ticket)) return;
             const eligible = preflight({
               session: cloud.getSession(), status: await cloud.getNormalizedSyncCohortStatus({force:true}),
+              serverApproved: await cloud.getS20MigrationApproval?.(),
               manifest: latest, details: cloud.getSyncDetails(),
               pending: cloud.hasUnsyncedChanges(), conflict: cloud.hasConflict()
             });

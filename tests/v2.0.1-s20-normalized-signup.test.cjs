@@ -8,6 +8,7 @@ const upgrade=require("../s20-login-normalized-upgrade.js");
 const root=path.resolve(__dirname,"..");
 const sql=fs.readFileSync(path.join(root,"scripts/sql/s20-new-normalized-signups.sql"),"utf8");
 const cloud=fs.readFileSync(path.join(root,"herdharbor-cloud.js"),"utf8");
+const approvalSql=fs.readFileSync(path.join(root,"scripts/sql/s20-cutover-approval-gate.sql"),"utf8");
 const html=fs.readFileSync(path.join(root,"index.html"),"utf8");
 const sw=fs.readFileSync(path.join(root,"service-worker.js"),"utf8");
 const uid="123e4567-e89b-42d3-a456-426614174000";
@@ -46,7 +47,8 @@ test("S20 only offers a cutover on verified clean approved dual-write accounts",
   {session:null},{status:{...state().status,stage:"legacy"}},
   {status:{...state().status,stage:"normalized"}},
   {status:{...state().status,schemaVerified:false}},
-  {manifest:{cutover_stage:"dual_write",metadata:{}}},
+  {manifest:{cutover_stage:"missing",metadata:{}}},
+  {serverApproved:false},
   {manifest:{cutover_stage:"normalized",metadata:state().manifest.metadata}},
   {details:{online:false}},{details:{online:true,syncing:true}},
   {details:{online:true,unsynced:true}},{pending:true},{conflict:true}
@@ -55,8 +57,11 @@ test("S20 only offers a cutover on verified clean approved dual-write accounts",
 test("S20 upgrade uses verified S18 account cutover and never deletes legacy tables",()=>{
  const js=fs.readFileSync(path.join(root,"s20-login-normalized-upgrade.js"),"utf8");
  assert.match(js,/cutoverToNormalizedPrimary/);
- assert.match(js,/s20_offdevice_backup_verified/);
- assert.match(js,/s20_legacy_clients_closed/);
+ assert.match(js,/getS20MigrationApproval/);
+ assert.match(approvalSql,/herdharbor_internal\.s20_cutover_approval/);
+ assert.match(approvalSql,/REVOKE ALL ON TABLE/);
+ assert.match(approvalSql,/source_updated_at = d\.updated_at/);
+ assert.match(js,/document\.createElement\("dialog"\)/);
  assert.match(js,/cloud\.syncNow\(\)/);
  assert.match(js,/getNormalizedSyncCohortStatus\(\{force:true\}\)/);
  assert.doesNotMatch(js,/writeCloudRecord|\.delete\(\)|DROP TABLE/i);
