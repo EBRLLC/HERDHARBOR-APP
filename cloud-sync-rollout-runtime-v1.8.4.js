@@ -1030,11 +1030,19 @@
       const drain = await ctx.worker.drain({ ownerId: ctx.userId });
       assertContextCurrent(ctx);
       const pending = stateStore.getOutbox(ctx.userId).length;
-      const ok = Number(drain?.failed || 0) === 0 && pending === 0;
+      // A skipped or failed drain is NOT confirmation of a successful cloud
+      // save. In particular offline() returns { ok:true, skipped:true } and
+      // may contain zero pending records when an explicit refresh is requested.
+      // Never report an authoritative save merely because failed===0.
+      const drainCompleted = drain?.ok === true && drain?.skipped !== true &&
+        drain?.stage === "normalized";
+      const ok = drainCompleted &&
+        Number(drain?.failed || 0) === 0 && pending === 0;
       const result = Object.freeze({
         ok,
         stage,
         mode: ok ? "normalized-authority" : "normalized-authority-degraded",
+        reason: ok ? null : String(drain?.reason || (pending > 0 ? "normalized-mutations-pending" : "normalized-write-not-confirmed")),
         pending,
         drain
       });
