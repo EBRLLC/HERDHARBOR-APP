@@ -61,6 +61,7 @@ test("S20 upgrade uses verified S18 account cutover and never deletes legacy tab
  assert.match(approvalSql,/herdharbor_internal\.s20_cutover_approval/);
  assert.match(approvalSql,/REVOKE ALL ON TABLE/);
  assert.match(approvalSql,/source_updated_at = d\.updated_at/);
+ assert.doesNotMatch(approvalSql,/AND m\.legacy_snapshot_updated_at = d\.updated_at/);
  assert.match(js,/document\.createElement\("dialog"\)/);
  assert.match(js,/cloud\.syncNow\(\)/);
  assert.match(js,/getNormalizedSyncCohortStatus\(\{force:true\}\)/);

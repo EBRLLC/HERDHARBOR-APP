@@ -28,7 +28,8 @@ AS $s20$
       AND a.legacy_clients_closed IS TRUE
       AND a.approved_at IS NOT NULL
       AND m.cutover_stage = 'dual_write'
-      AND m.legacy_snapshot_updated_at = d.updated_at
+      -- The manifest's legacy_snapshot_updated_at is a backfill checkpoint
+      -- and can legitimately lag the current saved legacy revision.
       AND a.source_updated_at = d.updated_at
       AND a.source_checksum = m.metadata ->> 'source_checksum'
   );
