@@ -161,19 +161,23 @@
       if (verification?.ok !== true || verification?.stage !== "dual_write") {
         return { ok: false, reason: verification?.reason || "cloud-reconciliation-required" };
       }
-      const marker = { userId: id, confirmed: true, legacyClientsClosed: true, issuedAt: Date.now() };
-      if (!writeMarker(id, marker)) return { ok: false, reason: "migration-intent-storage-unavailable" };
       try {
-        // If a waiting update exists, S20 must not activate normalized
-        // authority until the PWA controller really changes.
+        // Do not persist resumable consent until the update check completes.
+        // If that check throws or returns an unknown state, a later login must
+        // never interpret an abandoned marker as approval to cut over.
         const update = await updateAvailable();
         assertCurrent(id, epoch);
-        if (update === true) {
-          if (!writeMarker(id, { ...marker, updateRequired: true })) {
-            return { ok: false, reason: "migration-intent-storage-unavailable" };
-          }
-          return { ok: true, stage: "update-offered" };
+        if (typeof update !== "boolean") {
+          return { ok: false, reason: "pwa-update-state-unverified" };
         }
+        const marker = {
+          userId: id, confirmed: true, legacyClientsClosed: true,
+          issuedAt: Date.now(), updateRequired: update
+        };
+        if (!writeMarker(id, marker)) {
+          return { ok: false, reason: "migration-intent-storage-unavailable" };
+        }
+        if (update) return { ok: true, stage: "update-offered" };
         return await resume();
       } catch (error) {
         if (error?.code === "HH_S20_ACCOUNT_CHANGED") return { ok: false, reason: "account-changed" };
@@ -202,7 +206,18 @@
           }
           if (offeredUser !== id && isClean(id) === true) {
             offeredUser = id;
-            offer({ userId: id, accept, dismiss: () => dismissed.add(id) });
+            // Consent belongs to the identity and generation that received
+            // this offer. A stale dialog must not authorize a different
+            // account or a later sign-in to the same account.
+            offer({
+              userId: id,
+              accept: (approval) => current(id, epoch)
+                ? accept(approval)
+                : Promise.resolve({ ok: false, reason: "account-changed" }),
+              dismiss: () => {
+                if (current(id, epoch)) dismissed.add(id);
+              }
+            });
           }
           return { ok: true, stage: "dual_write", offered: true };
         } catch (error) {
