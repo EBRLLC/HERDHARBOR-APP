@@ -61,7 +61,7 @@ function loadWorkerHarness(cacheKeys) {
 }
 
 test("2.0.1 activation retains current plus two versioned shells and preserves unrelated caches", async () => {
-  const current = "herdharbor-shell-v2.0.1-v2.0.1-release-1-s20-2";
+  const current = "herdharbor-shell-v2.0.1-v2.0.1-release-1-s21-3";
   const old200 = "herdharbor-shell-v2.0.0-v2.0.0-release-1";
   const old184 = "herdharbor-shell-v1.8.4-alpha-v1.8.4-release-9";
   const old182 = "herdharbor-shell-v1.8.2-alpha-cloud-sync-v2-state-integrity-1";
