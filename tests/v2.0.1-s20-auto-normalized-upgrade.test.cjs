@@ -42,7 +42,11 @@ function mock(options = {}) {
       return {ok:true,stage};
     },
     offer: next => { offers += 1; offer = next; },
-    updateAvailable: async () => options.updateWaiting === true,
+    updateAvailable: async () => {
+      if (options.updateError) throw new Error("service worker update state unavailable");
+      if (options.updateUnknown) return undefined;
+      return options.updateWaiting === true;
+    },
     afterPromotion: async () => { promotions += 1; },
     sessionStorage
   });
@@ -101,6 +105,34 @@ test("S20 PWA update handoff retains intent but never silently activates worker"
   assert.equal(ready.stage,"normalized");
   assert.equal(m.calls.cutovers,1);
   assert.equal(m.store.size,0);
+});
+test("S20 never resumes promotion after failed or uncertain PWA state lookup",async()=>{
+  for (const option of [{updateError:true}, {updateUnknown:true}]) {
+    const m=mock(option);
+    await m.coordinator.afterLogin();
+    const result=await m.offer.accept({legacyClientsClosed:true});
+    assert.equal(result.ok,false);
+    assert.equal(m.store.size,0,"no resumable migration consent may survive an unverified update");
+    assert.equal(m.calls.cutovers,0);
+    await m.coordinator.afterLogin();
+    assert.equal(m.calls.cutovers,0,"later login must not silently resume failed acceptance");
+  }
+});
+test("S20 stale upgrade dialogs cannot accept or dismiss consent for another identity epoch",async()=>{
+  const m=mock();
+  await m.coordinator.afterLogin();
+  const staleOffer=m.offer;
+  m.setUser("account-b");
+  m.coordinator.fenceAccountBoundary();
+  assert.deepEqual(await staleOffer.accept({legacyClientsClosed:true}),{ok:false,reason:"account-changed"});
+  staleOffer.dismiss();
+  assert.equal(m.calls.cutovers,0);
+  assert.equal(m.calls.backups,0);
+  m.setUser("account-a");
+  m.coordinator.fenceAccountBoundary();
+  assert.deepEqual(await staleOffer.accept({legacyClientsClosed:true}),{ok:false,reason:"account-changed"});
+  assert.equal((await m.coordinator.afterLogin()).offered,true,"stale dismissal cannot suppress a fresh legitimate offer");
+  assert.equal(m.calls.cutovers,0);
 });
 test("S20 fails closed on dirty workspace, failed reconciliation and missing backup",async()=>{
   const dirty=mock({dirty:true});
