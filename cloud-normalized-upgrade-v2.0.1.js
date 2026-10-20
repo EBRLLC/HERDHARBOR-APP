@@ -71,7 +71,16 @@
         return readMarker(id) !== null;
       } catch { return false; }
     }
-    function fenceAccountBoundary() {
+    function fenceAccountBoundary(boundary = {}) {
+      // An account switch or sign-out invalidates that account's earlier
+      // consent. Preserve only the initial empty -> same-account sign-in
+      // during an intentional PWA reload, which must resume the update.
+      const previous = String(boundary?.previousUserId || "");
+      const next = String(boundary?.nextUserId || "");
+      const event = String(boundary?.event || "");
+      if (previous && (previous !== next || event === "SIGNED_OUT" || event === "PASSWORD_RECOVERY")) {
+        discardMarker(previous);
+      }
       identityEpoch += 1;
       offeredUser = "";
       offerInFlight = null;
