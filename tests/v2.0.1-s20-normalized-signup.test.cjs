@@ -13,7 +13,7 @@ const html=fs.readFileSync(path.join(root,"index.html"),"utf8");
 const sw=fs.readFileSync(path.join(root,"service-worker.js"),"utf8");
 const uid="123e4567-e89b-42d3-a456-426614174000";
 function state(opts={}){
- return {session:{user:{id:uid}},status:{eligible:true,schemaVerified:true,stage:"dual_write"},
+ return {serverApproved:true,session:{user:{id:uid}},status:{eligible:true,schemaVerified:true,stage:"dual_write"},
  manifest:{cutover_stage:"dual_write",metadata:{
   s20_client_cutover_approved:true,
   s20_offdevice_backup_verified:true,
