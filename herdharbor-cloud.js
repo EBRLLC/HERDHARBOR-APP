@@ -4333,6 +4333,8 @@
 
   async function getNormalizedSyncCohortStatus(options = {}) {
     const userId = session?.user?.id;
+    const accountToken = userId ? captureAccountOperation(userId) : null;
+    const stillCurrent = () => isAccountOperationCurrent(accountToken, userId);
     if (!userId) {
       return Object.freeze({
         eligible: false,
@@ -4359,7 +4361,7 @@
       // Reusing a request started BEFORE cutover is not a fresh answer:
       // await it, then issue a separate RPC after its completion.
       try { await pending; } catch {}
-      if (session?.user?.id !== userId) {
+      if (!stillCurrent()) {
         throw Object.assign(new Error("Account changed before authority verification."), {
           code: "HH_SYNC_ACCOUNT_CHANGED"
         });
@@ -4368,6 +4370,13 @@
 
     const request = (async () => {
       const { data, error } = await client.rpc("herdharbor_sync_cohort_status");
+      // An A -> B -> A login transition invalidates a response from the
+      // earlier A generation, even though the user ID now matches again.
+      if (!stillCurrent()) {
+        throw Object.assign(new Error("Account changed while verifying cloud authority."), {
+          code: "HH_SYNC_ACCOUNT_CHANGED"
+        });
+      }
       if (error) throw new Error(error.message || "Normalized sync cohort status could not be read.");
 
       const status = Object.freeze({
@@ -4386,7 +4395,7 @@
         recoveryPending: data?.recovery_pending === true
       });
 
-      if (session?.user?.id === userId) {
+      if (stillCurrent()) {
         normalizedCohortStatusCache = {
           userId,
           checkedAt: Date.now(),
