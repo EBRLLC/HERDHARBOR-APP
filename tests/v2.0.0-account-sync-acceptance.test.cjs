@@ -85,7 +85,8 @@ test("normalized rollout remains controlled and cannot silently become mass auth
 
 test("PWA update remains independent of farm-state clearing and Cloud Sync", () => {
   assert.doesNotMatch(pwa, /localStorage\.(?:clear|removeItem)\(/);
-  assert.doesNotMatch(pwa, /HerdHarborCloud|syncNow\(/);
+  assert.match(pwa, /HerdHarborCloud\?\.hasUnsyncedChanges\?\.\(\)/);
+  assert.doesNotMatch(pwa, /syncNow\(/);
   assert.match(pwa, /controllerchange/);
   assert.match(pwa, /Update Now/);
 });

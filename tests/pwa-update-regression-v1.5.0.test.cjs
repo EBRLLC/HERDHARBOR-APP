@@ -39,7 +39,7 @@ assert.match(pwa, /visibilitychange/);
 assert.match(pwa, /window\.addEventListener\("focus"/);
 assert.match(pwa, /window\.addEventListener\("online"/);
 assert.match(pwa, /window\.addEventListener\("pageshow"/);
-assert.doesNotMatch(pwa, /HerdHarborCloud/);
+assert.match(pwa, /HerdHarborCloud\?\.hasUnsyncedChanges\?\.\(\)/, "Read pending-work state only");
 assert.doesNotMatch(pwa, /syncNow\(/);
 assert.match(pwa, /Account migrations require verified cloud synchronization/);
 assert.match(pwa, /HerdHarbor Update Available/);

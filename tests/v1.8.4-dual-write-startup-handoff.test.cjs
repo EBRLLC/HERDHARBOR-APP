@@ -33,6 +33,7 @@ test("startup hydration dedupes concurrent getSession/SIGNED_IN calls for the sa
     "session",
     "document",
     "recoveryMode",
+    "normalizedUpgradeS20",
     `
       "use strict";
       let hydrationInFlight = null;
@@ -60,7 +61,8 @@ test("startup hydration dedupes concurrent getSession/SIGNED_IN calls for the sa
     },
     sessionState,
     documentState,
-    false
+    false,
+    null
   );
 
   const session = { user: { id: "owner-1" } };
@@ -522,7 +524,7 @@ test("sign-in runs access-profile refresh and rollout hydration concurrently", (
 });
 
 
-test("clean sign-in starts a read-only legacy cloud prefetch before rollout hydration finishes", () => {
+test("S20 waits for normalized authority before any legacy cloud prefetch", () => {
   const hydrateSource = extract(
     cloudSource,
     "  async function hydrateUserDataOnce(activeSession)",
@@ -544,16 +546,16 @@ test("clean sign-in starts a read-only legacy cloud prefetch before rollout hydr
 
   assert.ok(modeIndex >= 0 && prefetchIndex > modeIndex);
   assert.ok(
-    prefetchIndex < rolloutIndex,
-    "legacy cloud read must start before waiting on rollout hydration"
+    rolloutIndex < prefetchIndex,
+    "S20 must resolve authority before starting legacy prefetch"
   );
   assert.ok(
     joinedFetchIndex > rolloutIndex,
     "the prefetched cloud result is consumed only after authority routing is known"
   );
   assert.match(
-    hydrateSource.slice(modeIndex, rolloutIndex),
-    /canUseVersionOnlyPrefetch[\s\S]*fetchCloudVersion\(userId\)[\s\S]*fetchCloudRecord\(userId\)/
+    hydrateSource.slice(rolloutIndex, joinedFetchIndex),
+    /rolloutHydrationPromise\.then\(\(decision\)[\s\S]*decision\?\.authoritative === true[\s\S]*fetchCloudVersion\(userId\)[\s\S]*fetchCloudRecord\(userId\)/
   );
 });
 

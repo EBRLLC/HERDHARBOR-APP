@@ -119,7 +119,8 @@ test("2.0.1 shell bootstrap and required precache agree on the release query ide
 
 test("PWA update stays independent from farm state and hides the internal build id", () => {
   assert.doesNotMatch(pwaSource, /localStorage\.(?:clear|removeItem)\(/);
-  assert.doesNotMatch(pwaSource, /HerdHarborCloud|syncNow\(/);
+  assert.match(pwaSource, /HerdHarborCloud\?\.hasUnsyncedChanges\?\.\(\)/);
+  assert.doesNotMatch(pwaSource, /syncNow\(/);
   assert.match(pwaSource, /const versionText = `Version \$\{APP_VERSION\}`/);
   assert.doesNotMatch(pwaSource, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
   assert.match(pwaSource, /manifest\.json\?build=\$\{encodeURIComponent\(PWA_BUILD\)\}/);
