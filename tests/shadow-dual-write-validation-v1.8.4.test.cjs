@@ -414,7 +414,8 @@ async function harness() {
   let syncNowCalls = 0;
 
   const cloud = {
-    getSession: async () => ({ user: { id: USER_ID } }),
+    // The real HerdHarborCloud.getSession bridge is synchronous, not a network promise.
+    getSession: () => ({ user: { id: USER_ID } }),
     getNormalizedSyncCohortStatus: async () => ({
       eligible: true,
       mode: "allowlist",

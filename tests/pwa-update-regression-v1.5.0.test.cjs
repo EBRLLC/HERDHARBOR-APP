@@ -41,7 +41,7 @@ assert.match(pwa, /window\.addEventListener\("online"/);
 assert.match(pwa, /window\.addEventListener\("pageshow"/);
 assert.doesNotMatch(pwa, /HerdHarborCloud/);
 assert.doesNotMatch(pwa, /syncNow\(/);
-assert.match(pwa, /Cloud Sync is not required/);
+assert.match(pwa, /Account migrations require verified cloud synchronization/);
 assert.match(pwa, /HerdHarbor Update Available/);
 assert.match(pwa, />Update Now</);
 assert.match(pwa, />Later</);
@@ -51,8 +51,9 @@ assert.match(pwa, /4 \* 60 \* 60 \* 1000/);
 const installHandler = worker.match(/self\.addEventListener\("install",[\s\S]*?\n\}\);/);
 assert.ok(installHandler, "service worker install handler exists");
 assert.doesNotMatch(installHandler[0], /skipWaiting/);
-assert.match(worker, /event\.data\?\.type === "SKIP_WAITING"/);
-assert.match(pwa, /workerToActivate\.postMessage\(\{ type: "SKIP_WAITING" \}\)/);
+assert.match(worker, /includes\(event\.data\?\.type\)/);
+assert.match(worker, /allOpenClientsReadyForUpdate/);
+assert.match(pwa, /workerToActivate\.postMessage\(\{ type: "HH_CHECK_UPDATE_READINESS" \}\)/);
 assert.match(pwa, /controllerchange/);
 assert.match(pwa, /window\.location\.reload\(\)/);
 
@@ -65,9 +66,9 @@ assert.match(cloud, /hasUnsyncedChanges/);
 assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
 // Browser/app shell requests favor production over stale frontend caches while retaining offline fallback.
-assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1"/);
+assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-s22-3"/);
 if (webVersion === "1.8.1") assert.match(worker, /herdharbor-shell-v1\.8\.2-alpha-cloud-sync-v2-state-integrity-1/);
-assert.match(worker, /pwa\.js\?v=35/);
+assert.match(worker, /pwa\.js\?v=38/);
 assert.match(worker, /fetch\(request, \{ cache: "no-store" \}\)/);
 assert.match(worker, /NETWORK_FIRST_PATHS/);
 assert.match(worker, /\/manifest\.json/);

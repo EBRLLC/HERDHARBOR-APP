@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
   actions: read
+  pages: read
 
 concurrency:
   group: herdharbor-pages-production-verification
@@ -86,6 +87,7 @@ jobs:
             --exclude='package-lock.json' \
             ./ _site/
           node scripts/generate-release-assets.mjs _site
+          node scripts/verify-release-candidate-artifact.mjs _site
           test -s _site/release-asset-manifest.json
           test -s _site/herdharbor-monitoring-config.js
           test -s _site/vendor/herdharbor-monitoring-v1.6.1.min.js
@@ -124,7 +126,49 @@ jobs:
           grep -q "\"build\": \"${RELEASE_SHA}\"" _site/herdharbor-monitoring-config.js
           ! grep -R -E --include='*.html' --include='*.js' --include='*.css' '\\.(js|css)\\?v=' _site
           grep -E -q 'herdharbor-shell-[a-f0-9]{16}' _site/service-worker.js
-      - name: Confirm single-publisher contract
+      - name: Require GitHub Actions Pages source before publishing
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          test -s _site/release-asset-manifest.json
-          echo "Production Pages artifact verified. Deployment authority remains the branch-source Pages workflow."
+          python - <<'PY'
+          import json, os, urllib.request
+          repo = os.environ["GITHUB_REPOSITORY"]
+          req = urllib.request.Request(
+              f"https://api.github.com/repos/{repo}/pages",
+              headers={
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "Accept": "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              },
+          )
+          with urllib.request.urlopen(req) as response:
+              settings = json.load(response)
+          if settings.get("build_type") != "workflow":
+              raise SystemExit(
+                  "Release blocked: change repository Settings > Pages > Build and deployment > Source to GitHub Actions "
+                  "before approving the 2.0.1 main-branch merge. Branch-source Pages publishes raw main, not _site."
+              )
+          print("Pages source verified: GitHub Actions. Only the previously checked _site artifact will deploy.")
+          PY
+      - name: Upload the exact verified release artifact
+        if: github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy-verified-artifact:
+    name: Publish exact reviewed Pages artifact
+    needs: build-and-verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish only the verified _site Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@v4

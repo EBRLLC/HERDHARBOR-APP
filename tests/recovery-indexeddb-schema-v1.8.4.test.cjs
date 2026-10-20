@@ -270,7 +270,7 @@ function readNumberConstant(name) {
 
 function recoveryHarness(indexedDB, testConsole = console) {
   const start = cloudSource.indexOf("  function recoverySchemaError");
-  const end = cloudSource.indexOf("  function preserveActiveForUser", start);
+  const end = cloudSource.indexOf("  async function preserveActiveForUser", start);
   assert.ok(start >= 0 && end > start, "production recovery helpers must remain extractable for behavioral tests");
 
   const RECOVERY_DB_NAME = readStringConstant("RECOVERY_DB_NAME");
@@ -315,7 +315,7 @@ function recoveryHarness(indexedDB, testConsole = console) {
     MAX_RECOVERY_SNAPSHOTS,
     MAX_RECOVERY_BYTES,
     ...factory(
-      { indexedDB },
+      { indexedDB, setTimeout, clearTimeout },
       indexedDB,
       testConsole,
       RECOVERY_DB_NAME,
@@ -484,6 +484,33 @@ test("recovery retention still enforces count and byte-budget limits", async () 
     .filter((row) => row.userId === "owner-bytes");
   assert.equal(retainedByBytes.length, 1);
   assert.equal(retainedByBytes[0].rawValue, largeB);
+});
+
+test("S15 stalled IndexedDB snapshot transaction aborts and is not reported as preserved", async () => {
+  const indexedDB = new FakeIndexedDB();
+  const harness = recoveryHarness(indexedDB);
+  const database = indexedDB.seed(harness.RECOVERY_DB_NAME, harness.RECOVERY_DB_VERSION, {
+    snapshots: snapshotDefinition()
+  });
+  const transaction = database.transaction.bind(database);
+  let aborts = 0;
+  database.transaction = (storeName, mode = "readonly") => {
+    if (mode !== "readwrite") return transaction(storeName, mode);
+    return {
+      objectStore() {
+        return { index: () => ({ getAll: () => ({ onsuccess: null, onerror: null }) }) };
+      },
+      abort() { aborts += 1; }
+    };
+  };
+
+  const result = await harness.recordRecoverySnapshot(
+    "owner-stalled", JSON.stringify({ animals: [{ id: "uncommitted" }] }), "S15 timeout",
+    { timeoutMs: 15 }
+  );
+  assert.equal(result, false);
+  assert.equal(aborts, 1);
+  assert.deepEqual(indexedDB.records(harness.RECOVERY_DB_NAME, "snapshots"), []);
 });
 
 test("already-version-2 malformed recovery storage fails validation without deleting data", async () => {

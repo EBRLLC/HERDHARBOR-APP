@@ -35,6 +35,7 @@ function loadWorkerHarness(cacheKeys) {
       }
     },
     clients: {
+      async matchAll() { return []; },
       async claim() { claimed += 1; }
     },
     skipWaiting() { skipWaitingCalls += 1; },
@@ -59,8 +60,8 @@ function loadWorkerHarness(cacheKeys) {
   };
 }
 
-test("2.0.1 activation retires prior HerdHarbor shells but preserves current and unrelated caches", async () => {
-  const current = "herdharbor-shell-v2.0.1-v2.0.1-release-1";
+test("2.0.1 activation retains current plus two versioned shells and preserves unrelated caches", async () => {
+  const current = "herdharbor-shell-v2.0.1-v2.0.1-release-1-s22-3";
   const old200 = "herdharbor-shell-v2.0.0-v2.0.0-release-1";
   const old184 = "herdharbor-shell-v1.8.4-alpha-v1.8.4-release-9";
   const old182 = "herdharbor-shell-v1.8.2-alpha-cloud-sync-v2-state-integrity-1";
@@ -73,36 +74,45 @@ test("2.0.1 activation retires prior HerdHarbor shells but preserves current and
   h.listeners.activate({ waitUntil(promise) { activation = promise; } });
   await activation;
 
-  assert.deepEqual(new Set(h.deleted), new Set([old200, old184, old182]));
+  assert.deepEqual(new Set(h.deleted), new Set([old182]));
   assert.equal(h.deleted.includes(current), false);
   assert.equal(h.deleted.includes(unrelated), false);
   assert.equal(h.navigationPreloadEnabled, 1);
   assert.equal(h.claimed, 1);
 });
 
-test("2.0.1 worker still waits for explicit Update Now activation", () => {
+test("2.0.1 worker activates only after an explicit readiness request", async () => {
   const h = loadWorkerHarness([]);
   assert.equal(typeof h.listeners.message, "function");
   h.listeners.message({ data: { type: "NOOP" } });
   assert.equal(h.skipWaitingCalls, 0);
-  h.listeners.message({ data: { type: "SKIP_WAITING" } });
+  let activation;
+  h.listeners.message({ data: { type: "HH_CHECK_UPDATE_READINESS" }, waitUntil(promise) { activation = promise; } });
+  assert.equal(h.skipWaitingCalls, 0, "activation is asynchronous and cannot bypass readiness checks");
+  await activation;
   assert.equal(h.skipWaitingCalls, 1);
+
+  let legacyActivation;
+  h.listeners.message({ data: { type: "SKIP_WAITING" }, waitUntil(promise) { legacyActivation = promise; } });
+  assert.equal(h.skipWaitingCalls, 1, "legacy Update Now messages use the same gated protocol");
+  await legacyActivation;
+  assert.equal(h.skipWaitingCalls, 2);
 
   const install = workerSource.match(/self\.addEventListener\("install",[\s\S]*?\n\}\);/);
   assert.ok(install);
   assert.doesNotMatch(install[0], /skipWaiting/);
-  assert.match(pwaSource, /postMessage\(\{ type: "SKIP_WAITING" \}\)/);
+  assert.match(pwaSource, /postMessage\(\{ type: "HH_CHECK_UPDATE_READINESS" \}\)/);
   assert.match(pwaSource, /controllerchange/);
 });
 
 test("2.0.1 shell bootstrap and required precache agree on the release query identity", () => {
   assert.match(index, /manifest\.json\?v=2\.0\.1/);
   assert.match(index, /herdharbor-build\.js\?v=2\.0\.1/);
-  assert.match(index, /pwa\.js\?v=35/);
+  assert.match(index, /pwa\.js\?v=38/);
   assert.match(workerSource, /herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1/);
   assert.match(workerSource, /\.\/manifest\.json\?v=2\.0\.1/);
   assert.match(workerSource, /\.\/herdharbor-build\.js\?v=2\.0\.1/);
-  assert.match(workerSource, /\.\/pwa\.js\?v=35/);
+  assert.match(workerSource, /\.\/pwa\.js\?v=38/);
   assert.match(workerSource, /\.\/herdharbor-monitoring-config\.js\?v=2\.0\.1/);
   assert.match(workerSource, /\.\/vendor\/herdharbor-monitoring-v1\.6\.1\.min\.js\?v=2\.0\.1/);
 });
@@ -138,6 +148,6 @@ test("2.0.1 offline shell preloads every canine dependency and treats failures a
  for(const asset of expected){
    assert.ok(shell.includes("./"+asset),"not in offline install: "+asset);
    assert.ok(index.includes(asset),"not referenced by browser: "+asset);
-   assert.ok(workerSource.includes('path.endsWith("'+asset.split("?")[0]+'")'),"not install-fatal: "+asset);
+   assert.match(workerSource,/if \(requiredFailures\.length\) throw new Error/,"required-shell failures are fatal for "+asset);
  }
 });

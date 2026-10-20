@@ -46,13 +46,15 @@ assert.match(cloud, /canonicalStateStore\.subscribe\(handleCanonicalStateCommit\
 assert.match(cloud, /captureCleanBaselineBeforeLocalCommit\(userId, previousValue\)/);
 assert.doesNotMatch(cloud, /Storage\.prototype\.(?:setItem|removeItem)\s*=/);
 
-const fullCacheWrites = cloud.match(/safeStorageSet\(cacheKey\(userId\),/g) || [];
+const fullCacheWrites = cloud.match(/safeStorageSet\(cacheId, rawValue\)/g) || [];
 assert.equal(
   fullCacheWrites.length,
   1,
-  "only signed-out account fallback may keep a duplicate full-state cache"
+  "only account-boundary recovery may create a duplicate full-state cache"
 );
-assert.match(cloud, /safeStorageSet\(cacheKey\(userId\), activeRaw\)/);
+assert.match(cloud, /const cacheId = cacheKey\(userId\)/);
+assert.match(cloud, /HerdHarborAccountBoundaryCore\.preserveWithFallback/);
+assert.match(cloud, /safeStorageSet\(cacheId, rawValue\) &&\s*originalGetItem\.call\(localStorage, cacheId\) === rawValue/);
 assert.doesNotMatch(cloud, /safeStorageSet\(cacheKey\(userId\), "\{\}"\)/);
 
 console.log("workflow and storage efficiency tests passed");

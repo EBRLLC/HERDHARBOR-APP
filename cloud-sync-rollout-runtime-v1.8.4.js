@@ -15,7 +15,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const VERSION = "1.2-dual-write-expansion";
+  const VERSION = "1.3-normalized-primary-cutover";
   const RELEASE = "1.8.4";
   const REQUIRED_VALIDATION_PASSES = 3;
   const WRITER_VERSION = "record-cas-v1";
@@ -60,25 +60,45 @@
 
     function loadOne([id, src]) {
       return new Promise((resolve, reject) => {
-        const existing = root.document.getElementById(id);
-        if (existing) {
-          if (existing.dataset?.hhLoaded === "1" || existing.readyState === "complete") resolve();
-          else {
-            existing.addEventListener("load", resolve, { once: true });
-            existing.addEventListener("error", () => reject(new Error(`Could not load ${src}.`)), { once: true });
-          }
+        let node = root.document.getElementById(id);
+        if (node?.dataset?.hhFailed === "1") {
+          node.remove?.();
+          node = null;
+        }
+        if (node?.dataset?.hhLoaded === "1" || node?.readyState === "complete") {
+          resolve();
           return;
         }
-        const node = root.document.createElement("script");
-        node.id = id;
-        node.src = src;
-        node.async = false;
-        node.addEventListener("load", () => {
-          if (node.dataset) node.dataset.hhLoaded = "1";
-          resolve();
-        }, { once: true });
-        node.addEventListener("error", () => reject(new Error(`Could not load ${src}.`)), { once: true });
-        target.appendChild(node);
+        const existing = Boolean(node);
+        if (!node) {
+          node = root.document.createElement("script");
+          node.id = id;
+          node.src = src;
+          node.async = false;
+        }
+        let settled = false;
+        let timeoutId = null;
+        const finish = (ok) => {
+          if (settled) return;
+          settled = true;
+          if (timeoutId != null) root.clearTimeout?.(timeoutId);
+          node.removeEventListener?.("load", onLoad);
+          node.removeEventListener?.("error", onError);
+          if (ok) {
+            if (node.dataset) node.dataset.hhLoaded = "1";
+            resolve();
+          } else {
+            if (node.dataset) node.dataset.hhFailed = "1";
+            node.remove?.();
+            reject(new Error(`Could not load ${src}; retry normalized synchronization when connected.`));
+          }
+        };
+        const onLoad = () => finish(true);
+        const onError = () => finish(false);
+        node.addEventListener("load", onLoad, { once: true });
+        node.addEventListener("error", onError, { once: true });
+        timeoutId = root.setTimeout?.(() => finish(false), 15000) ?? null;
+        if (!existing) target.appendChild(node);
       });
     }
 
@@ -116,10 +136,43 @@
     let eligibility = null;
     let context = null;
     let setupPromise = null;
+    let setupUserId = "";
+    let identityEpoch = 0;
     let commitChain = Promise.resolve();
     let validationPasses = 0;
     let lastValidation = null;
     let lastResult = null;
+    let cutoverInFlight = null;
+
+    function invalidateAccountContext() {
+      identityEpoch += 1;
+      context = null;
+      setupPromise = null;
+      setupUserId = "";
+      eligibility = null;
+      validationPasses = 0;
+      lastValidation = null;
+      lastResult = null;
+    }
+
+    function assertAccountCurrent(userId, epoch) {
+      if (identityEpoch !== epoch || safeText(cloud.getSession?.()?.user?.id) !== userId) {
+        throw Object.assign(new Error("Authenticated account changed during normalized sync initialization."), {
+          code: "HH_SYNC_ACCOUNT_CHANGED"
+        });
+      }
+    }
+
+    // A completed context can outlive its authentication session if a cloud
+    // operation was already awaiting a response. Never hand its data or
+    // baseline state to a later session, including rapid A->B->A switches.
+    function assertContextCurrent(ctx) {
+      if (!ctx || context !== ctx || ctx.identityEpoch !== identityEpoch || safeText(cloud.getSession?.()?.user?.id) !== ctx.userId) {
+        throw Object.assign(new Error("Authenticated account changed during normalized synchronization."), {
+          code: "HH_SYNC_ACCOUNT_CHANGED"
+        });
+      }
+    }
 
     function emit(type, detail = {}) {
       try {
@@ -155,9 +208,11 @@
       };
     }
 
-    async function rollbackAvailable() {
+    async function rollbackAvailable(userId = safeText(cloud.getSession?.()?.user?.id), epoch = identityEpoch) {
       try {
-        const legacy = await cloud.readLegacySnapshotForNormalizedSync();
+        assertAccountCurrent(userId, epoch);
+        const legacy = await cloud.readLegacySnapshotForNormalizedSync(userId);
+        assertAccountCurrent(userId, epoch);
         return Boolean(legacy?.snapshot && typeof legacy.snapshot === "object");
       } catch {
         return false;
@@ -165,14 +220,22 @@
     }
 
     async function ensureContext() {
+      const liveUserId = safeText(cloud.getSession?.()?.user?.id);
+      if (context && context.userId !== liveUserId) invalidateAccountContext();
       if (context) return context;
+      if (setupPromise && setupUserId !== liveUserId) invalidateAccountContext();
       if (setupPromise) return setupPromise;
-      setupPromise = (async () => {
+      const epoch = identityEpoch;
+      setupUserId = liveUserId;
+      const pending = (async () => {
         const session = await cloud.getSession();
         const userId = safeText(session?.user?.id);
+        assertAccountCurrent(userId, epoch);
         if (!userId) throw Object.assign(new Error("A signed-in session is required."), { code: "HH_SYNC_NO_SESSION" });
 
-        eligibility = await cloud.getNormalizedSyncCohortStatus();
+        const cohortStatus = await cloud.getNormalizedSyncCohortStatus();
+        assertAccountCurrent(userId, epoch);
+        eligibility = cohortStatus;
         const recoveryAccess =
           (eligibility?.authorityActive === true && eligibility?.stage === "normalized") ||
           eligibility?.recoveryPending === true;
@@ -192,6 +255,7 @@
         }
 
         await loadDependencies();
+        assertAccountCurrent(userId, epoch);
         const m = modules();
         if (
           !m.normalizer?.mapLegacySnapshot ||
@@ -220,7 +284,8 @@
           throw Object.assign(new Error("Internal cohort gate rejected the approved session."), { code: "HH_SYNC_COHORT_REJECTED" });
         }
 
-        const recordStore = cloud.createNormalizedRecordStore();
+        assertAccountCurrent(userId, epoch);
+        const recordStore = cloud.createNormalizedRecordStore(userId);
         const baselineStore = m.baselineApi.createIndexedDbStore({
           ownerId: userId,
           indexedDB
@@ -231,7 +296,10 @@
           normalizer: m.normalizer,
           baselineStore,
           writerVersion: WRITER_VERSION,
-          readAuthoritativeLegacySnapshot: cloud.readLegacySnapshotForNormalizedSync
+          readAuthoritativeLegacySnapshot: () => {
+            assertAccountCurrent(userId, epoch);
+            return cloud.readLegacySnapshotForNormalizedSync(userId);
+          }
         });
         const metrics = m.reconciliationApi.createRolloutMetrics();
         const shadowController = m.shadowApi.createShadowSyncController({
@@ -243,8 +311,14 @@
         const bootstrap = m.bootstrapApi.createShadowBootstrap({
           featureGate: true,
           cohortGate,
-          getSession: cloud.getSession,
-          readLegacySnapshot: cloud.readLegacySnapshotForNormalizedSync,
+          getSession: () => {
+            assertAccountCurrent(userId, epoch);
+            return cloud.getSession();
+          },
+          readLegacySnapshot: () => {
+            assertAccountCurrent(userId, epoch);
+            return cloud.readLegacySnapshotForNormalizedSync(userId);
+          },
           createRecordStore: () => recordStore,
           createShadowSyncController: () => shadowController,
           onEvent: metrics.recordEvent
@@ -261,7 +335,9 @@
           getManifest: () => recordStore.getManifest(),
           listNormalizedRows: () => recordStore.list(m.normalizer.namespace, { includeDeleted: true }),
           readLegacySnapshot: async () => {
-            const legacy = await cloud.readLegacySnapshotForNormalizedSync();
+            assertAccountCurrent(userId, epoch);
+            const legacy = await cloud.readLegacySnapshotForNormalizedSync(userId);
+            assertAccountCurrent(userId, epoch);
             return legacy?.snapshot || {};
           },
           onEvent: metrics.recordEvent
@@ -280,11 +356,14 @@
             ...metrics.snapshot()
           }),
           telemetryAvailable: async () => telemetryAvailable() === true,
-          rollbackAvailable
+          rollbackAvailable: () => rollbackAvailable(userId, epoch)
         });
 
+        const manifest = await recordStore.getManifest();
+        assertAccountCurrent(userId, epoch);
         context = {
           userId,
+          identityEpoch: epoch,
           cohortGate,
           recordStore,
           baselineStore,
@@ -297,24 +376,35 @@
           rolloutControl,
           normalizer: m.normalizer,
           reconciliationApi: m.reconciliationApi,
-          stage: stageOf(await recordStore.getManifest())
+          stage: stageOf(manifest)
         };
         emit("rollout-ready", { stage: context.stage, ok: true });
         return context;
-      })().finally(() => {
-        setupPromise = null;
-      });
-      return setupPromise;
+      })();
+      setupPromise = pending;
+      try {
+        return await pending;
+      } finally {
+        if (setupPromise === pending) {
+          setupPromise = null;
+          setupUserId = "";
+        }
+      }
     }
 
     async function bootstrapIfNeeded(ctx) {
+      assertContextCurrent(ctx);
       const manifest = await ctx.recordStore.getManifest();
+      assertContextCurrent(ctx);
       const stage = stageOf(manifest);
       ctx.stage = stage;
       if (stage !== "legacy") return { ok: true, skipped: true, stage };
 
+      assertContextCurrent(ctx);
       const result = await ctx.bootstrap.run();
+      assertContextCurrent(ctx);
       const after = await ctx.recordStore.getManifest();
+      assertContextCurrent(ctx);
       ctx.stage = stageOf(after);
       if (result?.verified !== true || ctx.stage !== "shadow") {
         validationPasses = 0;
@@ -326,11 +416,14 @@
     }
 
     async function reconcileDualWriteFromLegacyAuthority(ctx, degradedResult) {
+      assertContextCurrent(ctx);
       const pendingBefore = stateStore.getOutbox(ctx.userId);
       if (!Array.isArray(pendingBefore)) return degradedResult;
       if (typeof stateStore.acknowledgeMutations !== "function") return degradedResult;
 
-      const legacyRead = await cloud.readLegacySnapshotForNormalizedSync();
+      assertContextCurrent(ctx);
+      const legacyRead = await cloud.readLegacySnapshotForNormalizedSync(ctx.userId);
+      assertContextCurrent(ctx);
       const authoritative = ctx.normalizer.mapLegacySnapshot(legacyRead.snapshot);
       const local = ctx.normalizer.mapLegacySnapshot(stateStore.getState());
 
@@ -360,14 +453,18 @@
 
       try {
         const beforeRows = await ctx.recordStore.list(ctx.normalizer.namespace, { includeDeleted: true });
+        assertContextCurrent(ctx);
         const sync = await ctx.shadowController.sync(legacyRead.snapshot, {
           previousRows: beforeRows,
           legacySnapshotUpdatedAt: legacyRead.updatedAt || undefined
         });
+        assertContextCurrent(ctx);
         const verification = await ctx.shadowController.verifyAndRecord(legacyRead.snapshot, {
           expectedChecksum: sync?.checksum || authoritative?.checksum || undefined
         });
+        assertContextCurrent(ctx);
         const rows = await ctx.recordStore.list(ctx.normalizer.namespace, { includeDeleted: true });
+        assertContextCurrent(ctx);
         const reconciliation = ctx.reconciliationApi.reconcileSnapshot(
           ctx.normalizer,
           legacyRead.snapshot,
@@ -396,6 +493,7 @@
           };
         }
 
+        assertContextCurrent(ctx);
         if (coveredMutationIds.length) {
           stateStore.acknowledgeMutations(coveredMutationIds, ctx.userId);
         }
@@ -403,6 +501,7 @@
         // The shadow reconciliation may have advanced normalized record
         // versions. Refresh the durable CAS baseline before the next edit.
         const primed = await ctx.worker.primeBaseline({ force: true });
+        assertContextCurrent(ctx);
         const remaining = stateStore.getOutbox(ctx.userId).length;
         const ok = remaining === 0 && primed?.ok !== false;
 
@@ -436,6 +535,8 @@
           }
         };
       } catch (error) {
+        if (error?.code === "HH_SYNC_ACCOUNT_CHANGED") throw error;
+        assertContextCurrent(ctx);
         emit("dual-write-authority-reconcile-failed", {
           stage: ctx.stage,
           reason: error?.code || error?.message || "unknown"
@@ -454,11 +555,14 @@
     async function afterLegacyCommit(options = {}) {
       const ctx = await ensureContext();
       if (!ctx) return { ok: true, skipped: true, reason: "not-eligible" };
+      assertContextCurrent(ctx);
 
       const boot = await bootstrapIfNeeded(ctx);
+      assertContextCurrent(ctx);
       if (!boot.ok) return boot;
 
       const manifest = await ctx.recordStore.getManifest();
+      assertContextCurrent(ctx);
       ctx.stage = stageOf(manifest);
       if (ctx.stage === "normalized") {
         return { ok: true, skipped: true, reason: "normalized-authority-owned-by-pr7", stage: ctx.stage };
@@ -470,6 +574,7 @@
           ok: true,
           updated_at: null
         });
+        assertContextCurrent(ctx);
         const normalizedErrorCode = String(result?.normalizedErrorCode || "");
         const conflictLikeDegradation =
           Number(result?.normalizedConflicts || 0) > 0 ||
@@ -490,9 +595,11 @@
           )
         ) {
           result = await reconcileDualWriteFromLegacyAuthority(ctx, result);
+          assertContextCurrent(ctx);
         }
       } else {
         const normalizedResult = await ctx.worker.drain({ ownerId: ctx.userId });
+        assertContextCurrent(ctx);
         result = {
           ok: normalizedResult?.failed === 0,
           mode: "shadow-record-write",
@@ -506,6 +613,7 @@
         };
         if (!result.ok) ctx.metrics.record("dualWriteFailures");
       }
+      assertContextCurrent(ctx);
       lastResult = result;
       const normalizedOk = result.mode !== "dual-write-degraded" && result.normalizedPending !== true;
       if (!normalizedOk) validationPasses = 0;
@@ -520,12 +628,16 @@
     async function validateNow() {
       const ctx = await ensureContext();
       if (!ctx) return { ok: false, skipped: true, reason: "not-eligible" };
-
+      assertContextCurrent(ctx);
       const boot = await bootstrapIfNeeded(ctx);
+      assertContextCurrent(ctx);
       if (!boot.ok) return boot;
 
+      assertContextCurrent(ctx);
       const drain = await ctx.worker.drain({ ownerId: ctx.userId });
+      assertContextCurrent(ctx);
       if (Number(drain?.failed || 0) > 0 || stateStore.getOutbox(ctx.userId).length > 0) {
+        assertContextCurrent(ctx);
         validationPasses = 0;
         const result = { ok: false, reason: "pending-normalized-mutations", drain };
         lastValidation = result;
@@ -533,30 +645,42 @@
         return result;
       }
 
-      const legacyRead = await cloud.readLegacySnapshotForNormalizedSync();
+      assertContextCurrent(ctx);
+      const legacyRead = await cloud.readLegacySnapshotForNormalizedSync(ctx.userId);
+      assertContextCurrent(ctx);
       const beforeRows = await ctx.recordStore.list(ctx.normalizer.namespace, { includeDeleted: true });
+      assertContextCurrent(ctx);
       const sync = await ctx.shadowController.sync(legacyRead.snapshot, {
         previousRows: beforeRows,
         legacySnapshotUpdatedAt: legacyRead.updatedAt || undefined
       });
+      assertContextCurrent(ctx);
       const verification = await ctx.shadowController.verifyAndRecord(legacyRead.snapshot, {
         expectedChecksum: sync?.checksum || undefined
       });
+      assertContextCurrent(ctx);
       const rows = await ctx.recordStore.list(ctx.normalizer.namespace, { includeDeleted: true });
+      assertContextCurrent(ctx);
       const reconciliation = ctx.reconciliationApi.reconcileSnapshot(
         ctx.normalizer,
         legacyRead.snapshot,
         rows,
         ctx.metrics.snapshot()
       );
+      assertContextCurrent(ctx);
       const ok = verification?.ok === true &&
         verification?.actualChecksum === verification?.expectedChecksum &&
         reconciliationPass(reconciliation);
 
+      assertContextCurrent(ctx);
+      const manifest = await ctx.recordStore.getManifest();
+      assertContextCurrent(ctx);
+      const stage = stageOf(manifest);
+      assertContextCurrent(ctx);
       validationPasses = ok ? validationPasses + 1 : 0;
       lastValidation = Object.freeze({
         ok,
-        stage: stageOf(await ctx.recordStore.getManifest()),
+        stage,
         verification,
         reconciliation,
         passNumber: validationPasses
@@ -571,7 +695,9 @@
     }
 
     async function refreshContextStage(ctx) {
+      assertContextCurrent(ctx);
       const manifest = await ctx.recordStore.getManifest();
+      assertContextCurrent(ctx);
       ctx.stage = stageOf(manifest);
       const authorityActive =
         ctx.stage === "normalized" &&
@@ -598,16 +724,22 @@
 
     async function resumeRecoveryRollback(ctx) {
       await refreshContextStage(ctx);
+      assertContextCurrent(ctx);
+      assertContextCurrent(ctx);
       if (eligibility?.recoveryPending !== true) {
         return Object.freeze({ ok: true, skipped: true, stage: ctx.stage });
       }
 
       const transitions = [];
       while (ctx.stage !== "legacy") {
+        assertContextCurrent(ctx);
         const result = await ctx.rolloutControl.rollback();
+        assertContextCurrent(ctx);
         transitions.push(result);
         await refreshContextStage(ctx);
+        assertContextCurrent(ctx);
       }
+      assertContextCurrent(ctx);
       validationPasses = 0;
       eligibility = {
         ...(eligibility || {}),
@@ -625,6 +757,7 @@
     }
 
     async function advanceToDualWriteForCleanHydration(ctx) {
+      assertContextCurrent(ctx);
       const current = await refreshContextStage(ctx);
       if (current.stage === "dual_write" || current.stage === "normalized") {
         return Object.freeze({ ok: true, skipped: true, stage: current.stage, reason: "already-advanced" });
@@ -634,6 +767,7 @@
       }
 
       const boot = await bootstrapIfNeeded(ctx);
+      assertContextCurrent(ctx);
       if (!boot?.ok) {
         validationPasses = 0;
         lastValidation = null;
@@ -648,7 +782,9 @@
 
       await refreshContextStage(ctx);
       while (ctx.stage === "shadow" && validationPasses < requiredValidationPasses) {
+        assertContextCurrent(ctx);
         const validation = await validateNow();
+        assertContextCurrent(ctx);
         if (validation?.ok !== true) {
           return Object.freeze({
             ok: false,
@@ -665,7 +801,9 @@
         return Object.freeze({ ok: true, skipped: true, stage: ctx.stage, reason: "stage-changed-during-validation" });
       }
 
+      assertContextCurrent(ctx);
       const promotion = await promoteToDualWrite();
+      assertContextCurrent(ctx);
       return Object.freeze({
         ok: promotion?.ok === true,
         skipped: false,
@@ -678,8 +816,10 @@
     async function prepareHydration(options = {}) {
       const ctx = await ensureContext();
       if (!ctx) return Object.freeze({ active: false, authoritative: false, ok: true, stage: "legacy" });
+      assertContextCurrent(ctx);
 
       const { stage } = await refreshContextStage(ctx);
+      assertContextCurrent(ctx);
       if (eligibility?.recoveryPending === true) {
         const recovery = await resumeRecoveryRollback(ctx);
         return Object.freeze({
@@ -713,6 +853,8 @@
               dualWriteExpansion: expansion
             });
           } catch (error) {
+            if (error?.code === "HH_SYNC_ACCOUNT_CHANGED") throw error;
+            assertContextCurrent(ctx);
             validationPasses = 0;
             lastValidation = null;
             const current = await refreshContextStage(ctx);
@@ -752,7 +894,9 @@
       }
 
       if (outbox.length > 0) {
+        assertContextCurrent(ctx);
         const drain = await ctx.worker.drain({ ownerId: ctx.userId });
+        assertContextCurrent(ctx);
         if (Number(drain?.failed || 0) > 0 || stateStore.getOutbox(ctx.userId).length > 0) {
           const result = Object.freeze({
             active: true,
@@ -767,7 +911,9 @@
         }
       }
 
+      assertContextCurrent(ctx);
       const read = await ctx.readResolver.read();
+      assertContextCurrent(ctx);
       if (read?.source !== "normalized" || read?.fallback === true) {
         const result = Object.freeze({
           active: true,
@@ -781,7 +927,9 @@
         return result;
       }
 
+      assertContextCurrent(ctx);
       const primed = await ctx.worker.primeBaseline({ force: true });
+      assertContextCurrent(ctx);
       if (!primed?.ok) {
         const result = Object.freeze({
           active: true,
@@ -817,6 +965,7 @@
         return Object.freeze({ ok: true, skipped: true, reason: "not-dual-write", stage });
       }
 
+      assertContextCurrent(ctx);
       const pending = stateStore.getOutbox(ctx.userId).length;
       if (pending > 0) {
         validationPasses = 0;
@@ -835,7 +984,9 @@
         return result;
       }
 
+      assertContextCurrent(ctx);
       const primed = await ctx.worker.primeBaseline({ force: true });
+      assertContextCurrent(ctx);
       if (!primed?.ok) {
         validationPasses = 0;
         lastValidation = null;
@@ -871,20 +1022,32 @@
     async function syncNormalizedNow() {
       const ctx = await ensureContext();
       if (!ctx) return Object.freeze({ ok: true, skipped: true, reason: "not-eligible" });
+      assertContextCurrent(ctx);
       const { stage } = await refreshContextStage(ctx);
       if (stage !== "normalized") {
         return Object.freeze({ ok: true, skipped: true, reason: "normalized-not-authoritative", stage });
       }
+      assertContextCurrent(ctx);
       const drain = await ctx.worker.drain({ ownerId: ctx.userId });
+      assertContextCurrent(ctx);
       const pending = stateStore.getOutbox(ctx.userId).length;
-      const ok = Number(drain?.failed || 0) === 0 && pending === 0;
+      // A skipped or failed drain is NOT confirmation of a successful cloud
+      // save. In particular offline() returns { ok:true, skipped:true } and
+      // may contain zero pending records when an explicit refresh is requested.
+      // Never report an authoritative save merely because failed===0.
+      const drainCompleted = drain?.ok === true && drain?.skipped !== true &&
+        drain?.stage === "normalized";
+      const ok = drainCompleted &&
+        Number(drain?.failed || 0) === 0 && pending === 0;
       const result = Object.freeze({
         ok,
         stage,
         mode: ok ? "normalized-authority" : "normalized-authority-degraded",
+        reason: ok ? null : String(drain?.reason || (pending > 0 ? "normalized-mutations-pending" : "normalized-write-not-confirmed")),
         pending,
         drain
       });
+      assertContextCurrent(ctx);
       lastResult = result;
       if (!ok) ctx.metrics.record("dualWriteFailures");
       emit(ok ? "normalized-write-complete" : "normalized-write-degraded", {
@@ -898,6 +1061,7 @@
     async function refreshAuthoritative() {
       const ctx = await ensureContext();
       if (!ctx) return Object.freeze({ ok: true, skipped: true, reason: "not-eligible" });
+      assertContextCurrent(ctx);
       const { stage } = await refreshContextStage(ctx);
       if (stage !== "normalized") {
         return Object.freeze({ ok: true, skipped: true, reason: "normalized-not-authoritative", stage });
@@ -905,9 +1069,12 @@
 
       const beforeRevision = Number(stateStore.getRevision?.(ctx.userId) || 0);
       const sync = await syncNormalizedNow();
+      assertContextCurrent(ctx);
       if (!sync.ok) return Object.freeze({ ...sync, source: null });
 
+      assertContextCurrent(ctx);
       const read = await ctx.readResolver.read();
+      assertContextCurrent(ctx);
       const afterRevision = Number(stateStore.getRevision?.(ctx.userId) || 0);
       if (
         read?.source !== "normalized" ||
@@ -928,7 +1095,9 @@
         });
       }
 
+      assertContextCurrent(ctx);
       await ctx.worker.primeBaseline({ force: true });
+      assertContextCurrent(ctx);
       emit("normalized-refresh-ready", { stage, ok: true });
       return Object.freeze({
         ok: true,
@@ -945,6 +1114,7 @@
     async function promoteToNormalized() {
       const ctx = await ensureContext();
       if (!ctx) throw Object.assign(new Error("This account is not in the internal rollout cohort."), { code: "HH_SYNC_NOT_IN_COHORT" });
+      assertContextCurrent(ctx);
       const { stage } = await refreshContextStage(ctx);
       if (stage === "normalized") return Object.freeze({ ok: true, skipped: true, reason: "already-normalized", stage });
       if (stage !== "dual_write") {
@@ -960,12 +1130,15 @@
         throw Object.assign(new Error("Normalized authority promotion requires an empty record outbox."), { code: "HH_SYNC_PENDING_MUTATIONS" });
       }
 
+      assertContextCurrent(ctx);
       const rows = await ctx.recordStore.list(ctx.normalizer.namespace, { includeDeleted: true });
+      assertContextCurrent(ctx);
       const preview = ctx.normalizer.reassembleAuthoritativeSnapshotWithMetadata(rows);
       if (preview.checkpointStale) {
         throw Object.assign(new Error("Normalized authority promotion requires a current verified checkpoint."), { code: "HH_SYNC_STAGE_VERIFICATION_REQUIRED" });
       }
 
+      assertContextCurrent(ctx);
       const activated = await ctx.rolloutControl.activateAuthority({
         userId: ctx.userId,
         writerVersion: WRITER_VERSION,
@@ -973,78 +1146,183 @@
         formatVersion: ctx.normalizer.formatVersion,
         authorityVersion: AUTHORITY_VERSION
       });
+      assertContextCurrent(ctx);
       await refreshContextStage(ctx);
 
       try {
+        assertContextCurrent(ctx);
         const read = await ctx.readResolver.read();
+        assertContextCurrent(ctx);
         if (ctx.stage !== "normalized" || read?.source !== "normalized" || read?.fallback === true) {
           throw Object.assign(new Error("Normalized authority read verification failed immediately after cutover."), {
             code: "HH_SYNC_NORMALIZED_READ_VERIFY_FAILED"
           });
         }
+        assertContextCurrent(ctx);
         await ctx.worker.primeBaseline({ force: true });
+        assertContextCurrent(ctx);
         validationPasses = 0;
         emit("promoted-normalized", { stage: ctx.stage, ok: true });
         return Object.freeze({ ok: true, stage: ctx.stage, activated, read });
       } catch (error) {
+        if (error?.code === "HH_SYNC_ACCOUNT_CHANGED") throw error;
         try {
+          assertContextCurrent(ctx);
           const manifest = await ctx.recordStore.getManifest();
+          assertContextCurrent(ctx);
           const generation = Number(manifest?.sync_generation ?? manifest?.syncGeneration);
           if (stageOf(manifest) === "normalized" && Number.isSafeInteger(generation) && generation >= 0) {
+            assertContextCurrent(ctx);
             await ctx.recordStore.materializeLegacyRecovery({
               snapshot: preview.snapshot,
               expectedGeneration: generation
             });
+            assertContextCurrent(ctx);
             await refreshContextStage(ctx);
             while (ctx.stage !== "legacy") {
+              assertContextCurrent(ctx);
               await ctx.rolloutControl.rollback();
+              assertContextCurrent(ctx);
               await refreshContextStage(ctx);
             }
           }
         } catch {}
+        assertContextCurrent(ctx);
         validationPasses = 0;
         throw error;
+      }
+    }
+
+    // S18: Explicit, fail-closed transition from dual-write to normalized-first.
+    // Never enable normalized writes just because the account is allowlisted:
+    // the installed clients, durable backups, and server-side checkpoint must
+    // all be verified before the legacy authority is retired.
+    async function cutoverToNormalizedPrimary(options = {}) {
+      if (
+        options.ownerApproved !== true ||
+        options.legacyClientsClosed !== true ||
+        options.backupVerified !== true
+      ) {
+        return Object.freeze({ ok: false, reason: "normalized-cutover-owner-acceptance-required" });
+      }
+      if (cutoverInFlight) return cutoverInFlight;
+      // A second device/click must not interleave checkpoints or authority
+      // transitions with the first invocation.
+      const run = (async () => {
+      const ctx = await ensureContext();
+      if (!ctx) return Object.freeze({ ok: false, reason: "normalized-cutover-not-eligible" });
+      assertContextCurrent(ctx);
+      const current = await refreshContextStage(ctx);
+      assertContextCurrent(ctx);
+      if (current.stage === "normalized") {
+        return Object.freeze({ ok: true, skipped: true, stage: "normalized", reason: "already-normalized" });
+      }
+      if (current.stage !== "dual_write") {
+        return Object.freeze({ ok: false, stage: current.stage, reason: "normalized-cutover-dual-write-required" });
+      }
+      const clean = () => (
+        cloud.getSession?.()?.user?.id === ctx.userId &&
+        cloud.getSyncDetails?.()?.online !== false &&
+        cloud.getSyncDetails?.()?.syncing !== true &&
+        cloud.hasUnsyncedChanges?.() === false &&
+        cloud.hasConflict?.() === false &&
+        stateStore.getOutbox(ctx.userId).length === 0
+      );
+      if (!clean()) {
+        return Object.freeze({ ok: false, stage: ctx.stage, reason: "normalized-cutover-local-work-pending" });
+      }
+      // Even a clean local outbox cannot prove there is no in-memory draft.
+      // The acceptance process must close all older installed app clients.
+      const initialRevision = Number(stateStore.getRevision?.(ctx.userId) || 0);
+      validationPasses = 0;
+      lastValidation = null;
+      for (let checkpoint = 0; checkpoint < requiredValidationPasses; checkpoint += 1) {
+        assertContextCurrent(ctx);
+        if (!clean() || Number(stateStore.getRevision?.(ctx.userId) || 0) !== initialRevision) {
+          return Object.freeze({ ok: false, stage: ctx.stage, reason: "normalized-cutover-local-state-changed" });
+        }
+        const validation = await validateNow();
+        assertContextCurrent(ctx);
+        if (!validation?.ok || validation.stage !== "dual_write") {
+          return Object.freeze({
+            ok: false, stage: ctx.stage, reason: validation?.reason || "normalized-cutover-verification-failed"
+          });
+        }
+      }
+      assertContextCurrent(ctx);
+      if (!clean() || Number(stateStore.getRevision?.(ctx.userId) || 0) !== initialRevision) {
+        return Object.freeze({ ok: false, stage: ctx.stage, reason: "normalized-cutover-local-state-changed" });
+      }
+      // promoteToNormalized performs a second server-backed generation/CAS gate,
+      // normalized-read verification, and rollback on failure.
+      const promoted = await promoteToNormalized();
+      assertContextCurrent(ctx);
+      const authoritative = await refreshContextStage(ctx);
+      assertContextCurrent(ctx);
+      if (promoted?.ok !== true || authoritative.stage !== "normalized" || !isNormalizedAuthority()) {
+        return Object.freeze({ ok: false, stage: authoritative.stage, reason: "normalized-cutover-authority-not-verified" });
+      }
+      emit("normalized-primary-active", { stage: "normalized", ok: true });
+      return Object.freeze({ ok: true, stage: "normalized", primaryWriter: "record-outbox", legacyWriteRequired: false });
+      })();
+      cutoverInFlight = run;
+      try {
+        return await run;
+      } finally {
+        if (cutoverInFlight === run) cutoverInFlight = null;
       }
     }
 
     async function rollbackToLegacy() {
       const ctx = await ensureContext();
       if (!ctx) return Object.freeze({ ok: true, skipped: true, reason: "not-eligible" });
+      assertContextCurrent(ctx);
       await refreshContextStage(ctx);
       let recovery = null;
 
       if (ctx.stage === "normalized") {
+        assertContextCurrent(ctx);
         const sync = await syncNormalizedNow();
+        assertContextCurrent(ctx);
         if (!sync.ok) {
           throw Object.assign(new Error("Rollback blocked while normalized mutations are still pending."), {
             code: "HH_SYNC_ROLLBACK_PENDING_MUTATIONS"
           });
         }
+        assertContextCurrent(ctx);
         const read = await ctx.readResolver.read();
+        assertContextCurrent(ctx);
         if (read?.source !== "normalized" || read?.fallback === true) {
           throw Object.assign(new Error("Rollback blocked because normalized authority could not be read safely."), {
             code: "HH_SYNC_ROLLBACK_READ_REQUIRED"
           });
         }
+        assertContextCurrent(ctx);
         const manifest = await ctx.recordStore.getManifest();
+        assertContextCurrent(ctx);
         const generation = Number(manifest?.sync_generation ?? manifest?.syncGeneration);
         if (!Number.isSafeInteger(generation) || generation < 0) {
           throw Object.assign(new Error("Rollback blocked because manifest generation is missing."), {
             code: "HH_SYNC_ROLLBACK_BLOCKED"
           });
         }
+        assertContextCurrent(ctx);
         recovery = await ctx.recordStore.materializeLegacyRecovery({
           snapshot: read.snapshot,
           expectedGeneration: generation
         });
+        assertContextCurrent(ctx);
       }
 
       const transitions = [];
       while (ctx.stage !== "legacy") {
+        assertContextCurrent(ctx);
         const result = await ctx.rolloutControl.rollback();
+        assertContextCurrent(ctx);
         transitions.push(result);
         await refreshContextStage(ctx);
       }
+      assertContextCurrent(ctx);
       validationPasses = 0;
       emit("rollback-legacy-complete", { stage: ctx.stage, ok: true });
       return Object.freeze({
@@ -1058,7 +1336,10 @@
     async function promoteToDualWrite() {
       const ctx = await ensureContext();
       if (!ctx) throw Object.assign(new Error("This account is not in the internal rollout cohort."), { code: "HH_SYNC_NOT_IN_COHORT" });
+      assertContextCurrent(ctx);
+      assertContextCurrent(ctx);
       const manifest = await ctx.recordStore.getManifest();
+      assertContextCurrent(ctx);
       ctx.stage = stageOf(manifest);
       if (ctx.stage === "dual_write") return { ok: true, skipped: true, reason: "already-dual-write" };
       if (ctx.stage !== "shadow") {
@@ -1070,24 +1351,36 @@
           { code: "HH_SYNC_REPEATED_VALIDATION_REQUIRED" }
         );
       }
+      assertContextCurrent(ctx);
       const promoted = await ctx.rolloutControl.promote("dual_write", { userId: ctx.userId });
+      assertContextCurrent(ctx);
       try {
+        assertContextCurrent(ctx);
         const prepared = await ctx.rolloutControl.prepareWriter({
           userId: ctx.userId,
           writerVersion: WRITER_VERSION,
           namespace: ctx.normalizer.namespace,
           formatVersion: ctx.normalizer.formatVersion
         });
-        ctx.stage = stageOf(await ctx.recordStore.getManifest());
+        assertContextCurrent(ctx);
+        const afterPrepare = await ctx.recordStore.getManifest();
+        assertContextCurrent(ctx);
+        ctx.stage = stageOf(afterPrepare);
         validationPasses = 0;
         emit("promoted-dual-write", { stage: ctx.stage, ok: true });
         return Object.freeze({ ok: true, stage: ctx.stage, promoted, prepared });
       } catch (error) {
+        if (error?.code === "HH_SYNC_ACCOUNT_CHANGED") throw error;
         try {
+          assertContextCurrent(ctx);
           await ctx.rolloutControl.rollback();
-          ctx.stage = stageOf(await ctx.recordStore.getManifest());
+          assertContextCurrent(ctx);
+          const rollbackManifest = await ctx.recordStore.getManifest();
+          assertContextCurrent(ctx);
+          ctx.stage = stageOf(rollbackManifest);
           emit("dual-write-prepare-rollback", { stage: ctx.stage, ok: true, reason: error?.code || "writer-prepare-failed" });
         } catch {}
+        assertContextCurrent(ctx);
         validationPasses = 0;
         throw error;
       }
@@ -1096,19 +1389,30 @@
     async function rollback() {
       const ctx = await ensureContext();
       if (!ctx) return { ok: true, skipped: true, reason: "not-eligible" };
+      assertContextCurrent(ctx);
       await refreshContextStage(ctx);
+      assertContextCurrent(ctx);
       if (ctx.stage === "normalized") {
         return rollbackToLegacy();
       }
+      assertContextCurrent(ctx);
       const result = await ctx.rolloutControl.rollback();
+      assertContextCurrent(ctx);
       await refreshContextStage(ctx);
+      assertContextCurrent(ctx);
       validationPasses = 0;
       emit("rollback", { stage: ctx.stage, ok: true });
       return result;
     }
 
     async function checkEligibility() {
-      eligibility = await cloud.getNormalizedSyncCohortStatus();
+      const userId = safeText(cloud.getSession?.()?.user?.id);
+      const epoch = identityEpoch;
+      const status = await cloud.getNormalizedSyncCohortStatus();
+      if (identityEpoch !== epoch || safeText(cloud.getSession?.()?.user?.id) !== userId) {
+        return Object.freeze({ active: false, reason: "account-changed-during-eligibility" });
+      }
+      eligibility = status;
       const recoveryAccess =
         (eligibility?.authorityActive === true && eligibility?.stage === "normalized") ||
         eligibility?.recoveryPending === true;
@@ -1121,7 +1425,11 @@
         return Object.freeze({ ...eligibility, active: false });
       }
       const ctx = await ensureContext();
-      if (ctx) await refreshContextStage(ctx);
+      if (ctx) {
+        assertContextCurrent(ctx);
+        await refreshContextStage(ctx);
+        assertContextCurrent(ctx);
+      }
       return Object.freeze({
         ...eligibility,
         stage: ctx?.stage || eligibility?.stage || "legacy",
@@ -1139,24 +1447,35 @@
         if (event?.detail?.normalizedHandled === true) return;
         commitChain = commitChain.then(afterLegacyCommit, afterLegacyCommit);
       });
+      root?.document?.addEventListener?.("herdharbor:auth-boundary", () => {
+        // Dispatch occurs before the cloud bridge updates its session. Fence
+        // pending setup immediately, including A->B->A rapid transitions.
+        invalidateAccountContext();
+      });
       root?.document?.addEventListener?.("herdharbor:auth-session", () => {
         const currentUserId = safeText(cloud.getSession?.()?.user?.id);
-        if (context && currentUserId && context.userId === currentUserId) {
+        if (currentUserId && (
+          (context && context.userId === currentUserId) ||
+          (setupPromise && setupUserId === currentUserId)
+        )) {
+          const epoch = identityEpoch;
           void cloud.getNormalizedSyncCohortStatus()
-            .then((next) => { eligibility = next; })
+            .then((next) => {
+              if (identityEpoch === epoch && safeText(cloud.getSession?.()?.user?.id) === currentUserId) eligibility = next;
+            })
             .catch(() => {});
           return;
         }
-        context = null;
-        eligibility = null;
-        validationPasses = 0;
-        lastValidation = null;
+        invalidateAccountContext();
         if (currentUserId) void checkEligibility().catch(() => {});
       });
 
+      const startEpoch = identityEpoch;
       const session = await cloud.getSession();
+      if (identityEpoch !== startEpoch || safeText(cloud.getSession?.()?.user?.id) !== safeText(session?.user?.id)) return status();
       if (session?.user?.id) {
         const decision = await checkEligibility();
+        if (identityEpoch !== startEpoch || safeText(cloud.getSession?.()?.user?.id) !== safeText(session.user.id)) return status();
         if (
           decision.active &&
           decision.recoveryPending !== true &&
@@ -1167,6 +1486,7 @@
           // A pending rollback must be resumed by prepareHydration() before
           // either cloud writer is allowed to run again.
           await cloud.syncNow();
+          if (identityEpoch !== startEpoch || safeText(cloud.getSession?.()?.user?.id) !== safeText(session.user.id)) return status();
         }
       }
       return status();
@@ -1204,6 +1524,7 @@
       validateNow,
       promoteToDualWrite,
       promoteToNormalized,
+      cutoverToNormalizedPrimary,
       rollback,
       rollbackToLegacy,
       status

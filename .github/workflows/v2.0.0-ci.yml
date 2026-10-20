@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: herdharbor-v2.0.0-ci-${{ github.event.pull_request.number || github.ref }}
+  group: herdharbor-v2.0.1-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -80,6 +80,27 @@ jobs:
           grep -q '"release": "HerdHarbor@2.0.1"' herdharbor-monitoring-config.js
           grep -q '"build": "ci-v2.0.1"' herdharbor-monitoring-config.js
           grep -q '"enableTestCrash": true' herdharbor-monitoring-config.js
+          git checkout -- herdharbor-monitoring-config.js
+      - name: Generate and validate a fingerprinted Pages release candidate without publishing
+        env:
+          HERDHARBOR_SENTRY_DSN: https://public@example.invalid/123
+          HERDHARBOR_MONITORING_ENVIRONMENT: production
+        run: |
+          HERDHARBOR_BUILD_ID="$(git rev-parse HEAD)" npm run build:monitoring-config
+          mkdir -p _site
+          rsync -a \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='node_modules/' \
+            --exclude='_site/' \
+            --exclude='monitoring/' \
+            --exclude='scripts/' \
+            --exclude='tests/' \
+            --exclude='package.json' \
+            --exclude='package-lock.json' \
+            ./ _site/
+          node scripts/generate-release-assets.mjs _site
+          node scripts/verify-release-candidate-artifact.mjs _site
           git checkout -- herdharbor-monitoring-config.js
       - name: Ensure tests and build did not mutate source
         run: git diff --exit-code -- . ':!vendor/herdharbor-monitoring-v1.6.1.min.js' ':!herdharbor-monitoring-config.js'

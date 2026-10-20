@@ -121,9 +121,9 @@ if (webVersion === "1.8.1") assert.match(serviceWorker, /v1\.8\.1-alpha-october-
 assert.match(optionalTools, /spreadsheet-import\.js\?v=17/);
 assert.match(serviceWorker, /"\/spreadsheet-import\.js"/);
 assert.match(serviceWorker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
-assert.match(serviceWorker, /herdharbor-cloud\.js\?v=36/);
+assert.match(serviceWorker, /herdharbor-cloud\.js\?v=48/);
 assert.match(serviceWorker, /symptom-guide\.js\?v=1/);
-assert.match(serviceWorker, /pwa\.js\?v=35/);
+assert.match(serviceWorker, /pwa\.js\?v=38/);
 assert.match(serviceWorker, /animal-profile-runtime-v1\.8\.3\.js\?v=2/);
 assert.match(serviceWorker, /breeding-litter-runtime-v1\.8\.3\.js\?v=1/);
 assert.match(serviceWorker, /task-runtime-v1\.8\.3\.js\?v=1/);

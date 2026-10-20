@@ -84,6 +84,7 @@ function storageHarness({ owner = "", active = "", caches = {}, legacyOwner = ""
         state.events.push("clear-active");
         state.active = "";
         state.owner = "";
+        return true;
       },
       resetRuntime() {
         state.events.push("reset-runtime");
@@ -91,6 +92,14 @@ function storageHarness({ owner = "", active = "", caches = {}, legacyOwner = ""
       setOwner(userId) {
         state.events.push(`set-owner:${userId}`);
         state.owner = userId;
+        return true;
+      },
+      verifyOwner(userId) {
+        return state.owner === userId;
+      },
+      restoreOwner(userId) {
+        state.owner = userId;
+        return true;
       },
       removeLegacy() {
         state.events.push("remove-legacy");
@@ -186,4 +195,57 @@ test("legacy owned state is preserved to its legacy owner before authenticated r
   assert.equal(harness.state.caches.B, '{"litters":[{"id":"legacy-b"}]}');
   assert.equal(harness.state.owner, "A");
   assert.equal(harness.state.legacyOwner, "");
+});
+
+test("account switch fails closed when preservation adapter is missing or not explicitly true", async () => {
+  for (const preserve of [undefined, async () => undefined, async () => false, async () => { throw new Error("quota"); }]) {
+    const harness = storageHarness({ owner: "A", active: '{"animals":[{"id":"a"}]}' });
+    const adapters = { ...harness.adapters };
+    if (preserve) adapters.preserve = preserve;
+    else delete adapters.preserve;
+    const result = await Boundary.applyPlan({
+      authenticatedUserId: "B", activeOwnerId: "A", hasActiveState: true
+    }, adapters);
+    assert.equal(result.ok, false);
+    assert.equal(harness.state.active, '{"animals":[{"id":"a"}]}');
+    assert.equal(harness.state.owner, "A");
+    assert.equal(harness.state.events.includes("clear-active"), false);
+  }
+});
+
+test("account switch remains locked and restores prior ownership when marker write is unverifiable", async () => {
+  const harness = storageHarness({ owner: "A", active: '{"rabbits":[{"id":"r1"}]}' });
+  harness.adapters.setOwner = () => false;
+  const result = await Boundary.applyPlan({
+    authenticatedUserId: "B", activeOwnerId: "A", hasActiveState: true
+  }, harness.adapters);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "account-owner-marker-unverified");
+  assert.equal(harness.state.active, "");
+  assert.equal(harness.state.owner, "A");
+  assert.equal(harness.state.caches.A, '{"rabbits":[{"id":"r1"}]}');
+});
+
+test("account switch fails closed when owner marker read-back does not match", async () => {
+  const harness = storageHarness({ owner: "A", active: '{"dogs":[{"id":"dog-a"}]}' });
+  harness.adapters.verifyOwner = () => false;
+  const result = await Boundary.applyPlan({
+    authenticatedUserId: "B", activeOwnerId: "A", hasActiveState: true
+  }, harness.adapters);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "account-owner-marker-unverified");
+  assert.equal(harness.state.owner, "A");
+  assert.equal(harness.state.caches.A, '{"dogs":[{"id":"dog-a"}]}');
+});
+
+test("account switch does not commit when clearing the old workspace fails", async () => {
+  const harness = storageHarness({ owner: "A", active: '{"animals":[{"id":"a"}]}' });
+  harness.adapters.clearActive = () => false;
+  const result = await Boundary.applyPlan({
+    authenticatedUserId: "B", activeOwnerId: "A", hasActiveState: true
+  }, harness.adapters);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "active-workspace-clear-failed");
+  assert.equal(harness.state.owner, "A");
+  assert.equal(harness.state.active, '{"animals":[{"id":"a"}]}');
 });

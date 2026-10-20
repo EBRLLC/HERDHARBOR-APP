@@ -102,6 +102,7 @@
   let reloadAfterSync = false;
   let accessProfile = null;
   let normalizedRollout = null;
+  let normalizedUpgradeS20 = null;
   let normalizedRefreshInFlight = null;
   let hydrationInFlight = null;
   let hydrationUserId = "";
@@ -534,8 +535,11 @@
 
   async function refreshNormalizedAuthorityIfEligible() {
     if (normalizedAuthorityActive()) return true;
-    const status = normalizedRollout?.status?.();
-    if (status?.eligible !== true || !normalizedRollout?.checkEligibility) return false;
+    // S20: freshly provisioned normalized-only accounts deliberately have
+    // no internal_test cohort membership. A cohort gate here would reject
+    // their record-writer initialization even though the server owns
+    // normalized authority. checkEligibility itself validates server state.
+    if (!normalizedRollout?.checkEligibility) return false;
     try {
       const decision = await normalizedRollout.checkEligibility();
       return decision?.authorityActive === true && normalizedAuthorityActive();
@@ -570,7 +574,10 @@
       originalGetItem.call(localStorage, dirtyKey(userId)) === "1" ||
       Boolean(pendingSync);
     if (normalizedAuthorityActive()) {
-      return normalizedOutboxPending(userId);
+      // An inherited dirty legacy marker is still unfinished local work,
+      // even when the record outbox happens to be empty. Do not tell PWA
+      // update safety that the device is clean until it is reconciled.
+      return legacyPending || normalizedOutboxPending(userId);
     }
     return legacyPending;
   }
@@ -599,8 +606,14 @@
 
   function dispatchSyncStatus() {
     try {
+      const details = getSyncDetails();
+      // Shared UI state for PWA update safety without importing Cloud Sync
+      // into the independent installer/update module.
+      if (document.documentElement?.dataset) {
+        document.documentElement.dataset.hhUnsynced = details.unsynced ? "true" : "false";
+      }
       document.dispatchEvent(new CustomEvent("herdharbor:sync-status", {
-        detail: getSyncDetails()
+        detail: details
       }));
     } catch (error) {
       console.warn("HerdHarbor could not publish the sync status:", error);
@@ -1192,13 +1205,27 @@
     return true;
   }
 
-  function openRecoveryDatabase() {
+  function openRecoveryDatabase({ timeoutMs = 8000 } = {}) {
     return new Promise((resolve, reject) => {
       if (!window.indexedDB) {
         reject(new Error("IndexedDB is unavailable."));
         return;
       }
 
+      let settled = false;
+      const finish = (error, database) => {
+        if (settled) {
+          try { database?.close?.(); } catch {}
+          return;
+        }
+        settled = true;
+        window.clearTimeout(timer);
+        if (error) reject(error);
+        else resolve(database);
+      };
+      const timer = window.setTimeout(() => {
+        finish(new Error("Recovery storage open timed out."));
+      }, Math.max(1, Number(timeoutMs) || 8000));
       let upgradeError = null;
       const request = indexedDB.open(RECOVERY_DB_NAME, RECOVERY_DB_VERSION);
       request.onupgradeneeded = () => {
@@ -1211,36 +1238,55 @@
       };
       request.onsuccess = () => {
         const database = request.result;
+        if (settled) {
+          try { database.close(); } catch {}
+          return;
+        }
         try {
           validateRecoveryDatabase(database);
-          resolve(database);
+          finish(null, database);
         } catch (error) {
           try { database.close(); } catch {}
           console.error("HerdHarbor recovery storage schema validation failed:", error);
-          reject(error);
+          finish(error);
         }
       };
-      request.onerror = () => reject(
+      request.onerror = () => finish(
         upgradeError || request.error || new Error("Recovery storage could not open.")
       );
-      request.onblocked = () => reject(
+      request.onblocked = () => finish(
         new Error("Recovery storage upgrade is blocked by another open HerdHarbor tab.")
       );
     });
   }
 
-  async function recordRecoverySnapshot(userId, rawValue, reason) {
+  async function recordRecoverySnapshot(userId, rawValue, reason, { timeoutMs = 8000 } = {}) {
     if (!userId || !rawValue || !safeParse(rawValue)) return false;
 
+    let database = null;
     try {
-      const database = await openRecoveryDatabase();
+      database = await openRecoveryDatabase({ timeoutMs });
       await new Promise((resolve, reject) => {
-        const transaction = database.transaction(RECOVERY_STORE_NAME, "readwrite");
+        let settled = false;
+        let transaction;
+        const finish = (error) => {
+          if (settled) return;
+          settled = true;
+          window.clearTimeout(timer);
+          if (error) reject(error);
+          else resolve();
+        };
+        const timer = window.setTimeout(() => {
+          try { transaction?.abort(); } catch {}
+          finish(new Error("Recovery storage transaction timed out."));
+        }, Math.max(1, Number(timeoutMs) || 8000));
+        transaction = database.transaction(RECOVERY_STORE_NAME, "readwrite");
         const store = transaction.objectStore(RECOVERY_STORE_NAME);
         const index = store.index("userId");
         const request = index.getAll(userId);
 
         request.onsuccess = () => {
+          if (settled) return;
           const snapshots = request.result
             .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)));
 
@@ -1267,28 +1313,44 @@
             }
           });
         };
-        request.onerror = () => reject(request.error);
-        transaction.oncomplete = () => {
-          database.close();
-          resolve();
-        };
-        transaction.onerror = () => reject(transaction.error);
-        transaction.onabort = () => reject(transaction.error);
+        request.onerror = () => finish(request.error || new Error("Recovery snapshot read failed."));
+        transaction.oncomplete = () => finish();
+        transaction.onerror = () => finish(transaction.error || new Error("Recovery snapshot write failed."));
+        transaction.onabort = () => finish(transaction.error || new Error("Recovery snapshot write was aborted."));
       });
       return true;
     } catch (error) {
       console.warn("HerdHarbor local recovery snapshot was not stored:", error);
       return false;
+    } finally {
+      try { database?.close?.(); } catch {}
     }
   }
 
-  function preserveActiveForUser(userId, reason) {
-    if (!userId) return;
-    const activeRaw = activeStateRaw();
-    if (!activeRaw || !safeParse(activeRaw)) return;
-    safeStorageSet(cacheKey(userId), activeRaw);
-    safeStorageSet(ACTIVE_OWNER_KEY, userId);
-    recordRecoverySnapshot(userId, activeRaw, reason);
+  async function preserveActiveForUser(userId, reason, rawValue = activeStateRaw()) {
+    // An empty workspace has nothing to preserve; initial SIGNED_OUT may
+    // arrive before any user or local operation has been established.
+    if (!rawValue) return true;
+    if (!userId) return false;
+    // A malformed or unreadable workspace must not be treated as preserved.
+    if (!safeParse(rawValue)) return false;
+    const cacheId = cacheKey(userId);
+    const result = await window.HerdHarborAccountBoundaryCore.preserveWithFallback({
+      localPreserve: () => {
+        try {
+          return safeStorageSet(cacheId, rawValue) &&
+            originalGetItem.call(localStorage, cacheId) === rawValue;
+        } catch (error) {
+          console.warn("HerdHarbor local account backup could not be verified:", error);
+          return false;
+        }
+      },
+      // A verified localStorage copy is sufficient. IndexedDB is the bounded
+      // fallback only when localStorage could not durably preserve the records.
+      indexedDbPreserve: () => recordRecoverySnapshot(userId, rawValue, reason, { timeoutMs: 8000 }),
+      timeoutMs: 8500
+    });
+    return result.ok === true;
   }
 
   function setActiveUserData(userId, rawValue, reason = "legacy-cloud-state-replace") {
@@ -1314,6 +1376,8 @@
   function clearActiveUserData() {
     removeInternalStorage(STORAGE_KEY);
     removeInternalStorage(ACTIVE_OWNER_KEY);
+    return originalGetItem.call(localStorage, STORAGE_KEY) === null &&
+      originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) === null;
   }
 
   function resetAccountBoundaryRuntime() {
@@ -1391,15 +1455,31 @@
       return Object.freeze({ ok: false, reason: "missing-authenticated-user" });
     }
 
-    if (accountBoundaryRecoveryInFlight?.userId === authenticatedUserId) {
+    if (String(session?.user?.id || "") !== authenticatedUserId) {
+      return Object.freeze({ ok: false, reason: "account-boundary-session-changed" });
+    }
+    if (accountBoundaryRecoveryInFlight?.userId === authenticatedUserId &&
+        isAccountOperationCurrent(accountBoundaryRecoveryInFlight.token, authenticatedUserId)) {
       return accountBoundaryRecoveryInFlight.promise;
     }
 
+    const fenceToken = accountBoundaryFence.advance(authenticatedUserId);
+    const staleBoundary = () => Object.freeze({ ok: false, reason: "account-boundary-session-changed" });
     const run = (async () => {
-      const fenceToken = accountBoundaryFence.advance(authenticatedUserId);
       const activeRaw = activeStateRaw();
       const activeOwnerId = String(originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) || "");
       const legacyOwnerId = String(originalGetItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY) || "");
+      const workspaceUnchanged = () => (
+        isAccountOperationCurrent(fenceToken, authenticatedUserId) &&
+        activeStateRaw() === activeRaw &&
+        String(originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) || "") === activeOwnerId &&
+        String(originalGetItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY) || "") === legacyOwnerId
+      );
+      const parsedActive = safeParse(activeRaw);
+      if (activeRaw && (!parsedActive || typeof parsedActive !== "object" || Array.isArray(parsedActive))) {
+        showAccountBoundaryRecovery("HerdHarbor could not read the local recovery data. The workspace remains locked and was not removed.");
+        return Object.freeze({ ok: false, reason: "invalid-active-state" });
+      }
       const authenticatedCache = originalGetItem.call(localStorage, cacheKey(authenticatedUserId)) || "";
       const authenticatedCacheMatchesActive = Boolean(
         activeRaw &&
@@ -1428,16 +1508,32 @@
             activeRaw,
             options.reason || "Unattributed local state retained during account recovery"
           );
-          if (!preserved) {
+          if (!isAccountOperationCurrent(fenceToken, authenticatedUserId)) return staleBoundary();
+          if (!workspaceUnchanged()) {
+            showAccountBoundaryRecovery("The local workspace changed during recovery. Your current records were not removed. Retry recovery after saving your work.");
+            return Object.freeze({ ok: false, reason: "account-boundary-workspace-changed" });
+          }
+          if (preserved !== true) {
             showAccountBoundaryRecovery(
               "HerdHarbor could not safely preserve the local recovery copy. Your records were not removed."
             );
             return Object.freeze({ ok: false, reason: "unowned-recovery-preserve-failed" });
           }
-          clearActiveUserData();
+          if (!workspaceUnchanged()) return Object.freeze({ ok: false, reason: "account-boundary-workspace-changed" });
+          const cleared = clearActiveUserData();
+          if (!isAccountOperationCurrent(fenceToken, authenticatedUserId)) return staleBoundary();
+          const ownerWritten = cleared && safeStorageSet(ACTIVE_OWNER_KEY, authenticatedUserId) &&
+            originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) === authenticatedUserId;
+          if (!ownerWritten) {
+            showAccountBoundaryRecovery(
+              "HerdHarbor preserved the unattributed records, but could not verify the new account marker. The workspace remains locked for recovery."
+            );
+            return Object.freeze({ ok: false, reason: "unowned-owner-marker-unverified" });
+          }
+          if (!isAccountOperationCurrent(fenceToken, authenticatedUserId)) return staleBoundary();
           resetAccountBoundaryRuntime();
-          safeStorageSet(ACTIVE_OWNER_KEY, authenticatedUserId);
           try {
+            if (!isAccountOperationCurrent(fenceToken, authenticatedUserId)) return staleBoundary();
             originalRemoveItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY);
           } catch {}
           return Object.freeze({
@@ -1456,6 +1552,7 @@
         return Object.freeze({ ok: false, reason: policy?.reason || "boundary-policy-unavailable" });
       }
 
+      let clearedBoundaryWorkspace = false;
       const execution = await window.HerdHarborAccountBoundaryCore?.applyPlan?.({
         authenticatedUserId,
         activeOwnerId,
@@ -1463,25 +1560,52 @@
         hasActiveState: Boolean(activeRaw && safeParse(activeRaw)),
         authenticatedCacheMatchesActive
       }, {
+        lock: () => {
+          document.documentElement.classList.add("hh-auth-locked");
+          return true;
+        },
+        isCurrent: () => isAccountOperationCurrent(fenceToken, authenticatedUserId),
         preserve: async (staleOwnerId) => {
-          preserveActiveForUser(
+          const preserved = await preserveActiveForUser(
             staleOwnerId,
-            options.reason || "Local copy retained before account boundary recovery"
+            options.reason || "Local copy retained before account boundary recovery",
+            activeRaw
           );
+          // Authentication can advance while the archival transaction commits.
+          // Never clear an account after its recovery token became stale.
+          if (!preserved || !workspaceUnchanged()) return false;
           clearAccountSessionMarkers(staleOwnerId);
           clearAccountSessionMarkers(authenticatedUserId);
           return true;
         },
-        clearActive: clearActiveUserData,
-        resetRuntime: resetAccountBoundaryRuntime,
-        setOwner: (userId) => safeStorageSet(ACTIVE_OWNER_KEY, userId),
+        clearActive: () => {
+          if (!workspaceUnchanged()) return false;
+          clearedBoundaryWorkspace = clearActiveUserData() === true;
+          return clearedBoundaryWorkspace;
+        },
+        resetRuntime: () => isAccountOperationCurrent(fenceToken, authenticatedUserId) && resetAccountBoundaryRuntime(),
+        setOwner: (userId) => isAccountOperationCurrent(fenceToken, authenticatedUserId) && safeStorageSet(ACTIVE_OWNER_KEY, userId) &&
+          originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) === userId,
+        verifyOwner: (userId) => originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) === userId,
+        restoreOwner: (userId) => {
+          if (!isAccountOperationCurrent(fenceToken, authenticatedUserId)) return false;
+          // Rollback cannot overwrite a replacement workspace created during an await.
+          if (!workspaceUnchanged() && !(clearedBoundaryWorkspace && !activeStateRaw() &&
+              [null, "", authenticatedUserId].includes(originalGetItem.call(localStorage, ACTIVE_OWNER_KEY)))) return false;
+          if (userId) return safeStorageSet(ACTIVE_OWNER_KEY, userId) &&
+            originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) === userId;
+          try { originalRemoveItem.call(localStorage, ACTIVE_OWNER_KEY); } catch { return false; }
+          return originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) === null;
+        },
         removeLegacy: () => {
+          if (!isAccountOperationCurrent(fenceToken, authenticatedUserId)) return;
           try {
             originalRemoveItem.call(localStorage, LEGACY_ACTIVE_OWNER_KEY);
           } catch {}
         }
       });
 
+      if (!isAccountOperationCurrent(fenceToken, authenticatedUserId)) return staleBoundary();
       if (!execution?.ok) {
         showAccountBoundaryRecovery(
           options.message || "HerdHarbor could not safely refresh the local account boundary. Your records were not removed."
@@ -1495,11 +1619,20 @@
       });
     })();
 
-    accountBoundaryRecoveryInFlight = { userId: authenticatedUserId, promise: run };
+    // Cache the fenced, error-normalized promise, not the raw archival work.
+    // Same-generation callers must receive the same fail-closed result.
+    const guarded = run.then((result) =>
+      isAccountOperationCurrent(fenceToken, authenticatedUserId) ? result : staleBoundary(),
+    () => {
+      if (!isAccountOperationCurrent(fenceToken, authenticatedUserId)) return staleBoundary();
+      showAccountBoundaryRecovery("HerdHarbor could not verify recovery storage. The workspace remains locked for recovery.");
+      return Object.freeze({ ok: false, reason: "account-boundary-storage-failed" });
+    });
+    accountBoundaryRecoveryInFlight = { userId: authenticatedUserId, token: fenceToken, promise: guarded };
     try {
-      return await run;
+      return await guarded;
     } finally {
-      if (accountBoundaryRecoveryInFlight?.promise === run) {
+      if (accountBoundaryRecoveryInFlight?.promise === guarded) {
         accountBoundaryRecoveryInFlight = null;
       }
     }
@@ -2162,10 +2295,66 @@
 
   async function syncNow() {
     const syncUserIdAtStart = session?.user?.id;
+    const syncToken = captureAccountOperation(syncUserIdAtStart);
+    const syncAccountCurrent = () => isAccountOperationCurrent(syncToken, syncUserIdAtStart);
     const legacyWritePendingAtStart = Boolean(pendingSync) || Boolean(
       syncUserIdAtStart &&
       originalGetItem.call(localStorage, dirtyKey(syncUserIdAtStart)) === "1"
     );
+
+    // S20: an account with no confirmed legacy cloud revision may be a new
+    // normalized-only signup. Even if its first edit was staged before the
+    // rollout runtime finished initialization, never send it through the
+    // full-state legacy writer. Verify authority against the authenticated
+    // server manifest BEFORE selecting a save engine. A failed status check
+    // preserves the durable local outbox instead of guessing legacy.
+    const legacyVersionConfirmed = syncUserIdAtStart
+      ? Boolean(originalGetItem.call(localStorage, versionKey(syncUserIdAtStart)))
+      : false;
+    const localStageNormalized = normalizedRolloutStage() === "normalized";
+    if (!normalizedAuthorityActive() &&
+        (localStageNormalized || (syncUserIdAtStart && !legacyVersionConfirmed))) {
+      let serverAuthority = null;
+      try {
+        serverAuthority = await getNormalizedSyncCohortStatus({ force: true });
+      } catch (error) {
+        console.warn("HerdHarbor could not verify first-save authority:", error?.message || error);
+      }
+      if (!syncAccountCurrent()) return false;
+      if (!serverAuthority || serverAuthority.schemaVerified !== true ||
+          !["legacy", "shadow", "dual_write", "normalized"].includes(serverAuthority.stage)) {
+        setSyncState("Cloud save authority could not be verified; local changes remain protected.", "error");
+        return false;
+      }
+      if (!localStageNormalized && serverAuthority.stage !== "normalized" &&
+          !legacyVersionConfirmed) {
+        // An account created before S22 may have Auth/access rows but no
+        // canonical cloud snapshot or normalized manifest. Do not silently
+        // initialize another legacy save account on its first edit.
+        // Existing legacy breeders without a local version remain safe when
+        // their authoritative legacy snapshot is actually present.
+        let legacyCloud = null;
+        try {
+          legacyCloud = await fetchCloudRecord(syncUserIdAtStart);
+        } catch (error) {
+          console.warn("HerdHarbor could not verify a legacy first-save source:", error?.message || error);
+        }
+        if (!syncAccountCurrent()) return false;
+        if (legacyCloud?.error || !legacyCloud?.data ||
+            !legacyCloud.data.app_state || !legacyCloud.data.updated_at) {
+          setSyncState("This existing account has no verified cloud save baseline. Local edits are protected; account migration is required before first cloud save.", "error");
+          return false;
+        }
+      }
+      if (localStageNormalized || serverAuthority.stage === "normalized") {
+        await refreshNormalizedAuthorityIfEligible();
+        if (!syncAccountCurrent()) return false;
+        if (!normalizedAuthorityActive()) {
+          setSyncState("Normalized record authority could not be verified; local changes remain protected.", "error");
+          return false;
+        }
+      }
+    }
 
     // In dual-write/legacy authority, never let an authority-readiness check
     // sit in front of a user save. Mobile photo/file pickers can trigger
@@ -2175,8 +2364,22 @@
     // on the next idle/check path after the save is protected in cloud.
     if (!normalizedAuthorityActive() && !legacyWritePendingAtStart) {
       await refreshNormalizedAuthorityIfEligible();
+      if (!syncAccountCurrent()) return false;
     }
     if (normalizedAuthorityActive()) {
+      // An older client can leave a legacy dirty marker without any durable
+      // record mutations. An empty normalized outbox in that situation is
+      // NOT evidence that those local edits reached the new cloud engine.
+      // Preserve the device copy for explicit recovery rather than claiming
+      // an empty drain means "Saved".
+      const legacyDirtyWithoutOutbox =
+        syncUserIdAtStart &&
+        originalGetItem.call(localStorage, dirtyKey(syncUserIdAtStart)) === "1" &&
+        !(canonicalStateStore?.getOutbox?.(syncUserIdAtStart)?.length > 0);
+      if (legacyDirtyWithoutOutbox) {
+        setSyncState("Older unsynced local records need recovery before normalized cloud saving can continue.", "error");
+        return false;
+      }
       clearTimeout(syncTimer);
       syncTimer = null;
       syncDebounceStartedAt = 0;
@@ -2184,21 +2387,31 @@
       setSyncState("Saving normalized cloud records…", "working");
       try {
         const result = await normalizedRollout.syncNormalizedNow();
-        if (result?.reason !== "normalized-not-authoritative") {
-          if (result?.ok) {
-            setSyncState("Saved to cloud", "success");
-            return true;
-          }
-          setSyncState("Normalized cloud save is pending; local changes remain protected.", "error");
+        if (!syncAccountCurrent()) return false;
+        // Never interpret a normalized authority failure as permission to
+        // PATCH the old whole-account snapshot. A rollback or session race
+        // must be re-verified separately before any save engine can change.
+        if (result?.reason === "normalized-not-authoritative") {
+          setSyncState("Normalized cloud authority changed; local records remain protected. Reconnect before saving.", "error");
           return false;
         }
+        if (result?.ok) {
+          // CAS/outbox has confirmed this account's normalized cloud write.
+          safeStorageRemove(dirtyKey(syncUserIdAtStart));
+          setSyncState("Saved to cloud", "success");
+          return true;
+        }
+        setSyncState("Normalized cloud save is pending; local changes remain protected.", "error");
+        return false;
       } catch (error) {
+        if (!syncAccountCurrent()) return false;
         console.error("HerdHarbor normalized cloud save failed:", error);
         setSyncState("Normalized cloud unavailable; local changes remain protected.", "error");
         return false;
       }
     }
 
+    if (!syncAccountCurrent()) return false;
     const syncUserId = session?.user?.id;
     const legacyDirty = syncUserId
       ? originalGetItem.call(localStorage, dirtyKey(syncUserId)) === "1"
@@ -2348,14 +2561,40 @@
       await refreshNormalizedAuthorityIfEligible();
       if (!stillCurrent()) return false;
     }
-    if (!normalizedAuthorityActive()) return null;
+    if (!normalizedAuthorityActive()) {
+      // A missing normalized JS runtime is not proof that legacy regained
+      // authority. Only the authenticated server may confirm that falling
+      // back to the legacy cloud refresh is safe for this account.
+      let status = null;
+      try {
+        status = await getNormalizedSyncCohortStatus({ force: true });
+      } catch (error) {
+        console.warn("HerdHarbor could not verify refresh authority:", error?.message || error);
+      }
+      if (!stillCurrent()) return false;
+      if (status?.schemaVerified !== true ||
+          !["legacy", "shadow", "dual_write", "normalized"].includes(status?.stage)) {
+        setSyncState("Cloud refresh paused until server save authority can be verified.", "error");
+        return false;
+      }
+      if (status.stage === "normalized" || status.authorityActive === true || status.recoveryPending === true) {
+        setSyncState("Normalized cloud authority is active but the record reader is unavailable; local data was preserved.", "error");
+        return false;
+      }
+      return null; // Server confirmed that a legacy-authoritative refresh is safe.
+    }
     if (normalizedRefreshInFlight) return normalizedRefreshInFlight;
 
     const run = (async () => {
       try {
         const result = await normalizedRollout.refreshAuthoritative();
         if (!stillCurrent()) return false;
-        if (result?.reason === "normalized-not-authoritative") return null;
+        if (result?.reason === "normalized-not-authoritative") {
+          // Stale normalized context does not prove the legacy snapshot is
+          // again authoritative. Preserve local data until fresh hydration.
+          setSyncState("Normalized cloud authority changed; this device copy was not overwritten.", "error");
+          return false;
+        }
         if (!result?.ok) {
           setSyncState("Normalized cloud refresh is unavailable; this device copy was not overwritten.", "error");
           return false;
@@ -2370,6 +2609,13 @@
         const remoteRaw = JSON.stringify(result.snapshot);
         const activeRaw = activeStateRaw();
         if (!stillCurrent()) return false;
+        // Matching JSON is not proof that this device's outbox/dirty marker
+        // was acknowledged. A queued mutation must never be advertised as
+        // "Saved to cloud" simply because the two snapshots compare equal.
+        if (hasPendingCloudMutations(userId)) {
+          setSyncState("Cloud refresh deferred; this device still has unsynced records.", "working");
+          return false;
+        }
         if (activeRaw && sameState(activeRaw, remoteRaw)) {
           setSyncState("Saved to cloud", "success");
           return false;
@@ -2389,19 +2635,26 @@
         }
 
         if (activeRaw) {
-          await recordRecoverySnapshot(
+          const preserved = await recordRecoverySnapshot(
             userId,
             activeRaw,
             "Local copy before receiving normalized cloud changes"
           );
           if (!stillCurrent()) return false;
+          if (preserved !== true) {
+            setSyncState("Normalized cloud refresh paused because the local recovery copy could not be verified.", "error");
+            return false;
+          }
         }
         if (hasPendingCloudMutations(userId)) {
           return false;
         }
         if (!stillCurrent()) return false;
 
-        setActiveUserData(userId, deviceCloudRaw, "normalized-cloud-state-replace");
+        if (setActiveUserData(userId, deviceCloudRaw, "normalized-cloud-state-replace") !== true) {
+          setSyncState("Normalized cloud refresh could not store the verified device copy.", "error");
+          return false;
+        }
         safeStorageRemove(dirtyKey(userId));
         setSyncState("Newer normalized cloud records found; reloading…", "success");
         if (stillCurrent()) window.location.reload();
@@ -3021,13 +3274,38 @@
       }
 
       setFormBusy(form, true);
-      authMessage("Creating your account…", "info");
+      authMessage("Verifying secure cloud account setup…", "info");
 
+      // S20 fail-closed registration gate: if this client reaches a database
+      // without normalized-only provisioning installed, do not create a new
+      // legacy-authoritative account and falsely report signup success.
+      let normalizedSignupReady = false;
+      try {
+        const { data: ready, error: readinessError } = await client.rpc(
+          "herdharbor_normalized_signup_ready"
+        );
+        normalizedSignupReady = !readinessError && ready === true;
+      } catch (error) {
+        console.warn("HerdHarbor normalized signup preflight unavailable:", error?.code || error?.message || error);
+      }
+      if (!normalizedSignupReady) {
+        authMessage(
+          "Registration is temporarily unavailable while HerdHarbor verifies the new cloud save system. No account was created; try again after the update.",
+          "error"
+        );
+        setFormBusy(form, false);
+        return;
+      }
+
+      authMessage("Creating your account…", "info");
       const { data, error } = await client.auth.signUp({
         email: root.querySelector("#hh-signup-email").value.trim(),
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}${window.location.pathname}`
+          emailRedirectTo: `${window.location.origin}${window.location.pathname}`,
+          // The database rejects signups from older PWAs that cannot use the
+          // normalized-only record writer. This is not an access/role claim.
+          data: { hh_normalized_signup_client: "record-cas-v1" }
         }
       });
 
@@ -3281,12 +3559,32 @@
           );
           return;
         }
-        preserveActiveForUser(userId, "Local copy retained at sign out");
+        const preserved = await preserveActiveForUser(userId, "Local copy retained at sign out");
+        if (!preserved) {
+          setSyncState(
+            "Sign-out stopped because HerdHarbor could not verify a local recovery copy. Free storage space and try again; your current records remain open.",
+            "error"
+          );
+          return;
+        }
+        if (!clearActiveUserData()) {
+          showAccountBoundaryRecovery(
+            "Sign-out was not completed because the active workspace could not be cleared. Your verified local recovery copy is retained; refresh account data to continue."
+          );
+          return;
+        }
         clearAccountSessionMarkers(userId);
-        clearActiveUserData();
         resetAccountBoundaryRuntime();
         accountDialog.hidden = true;
-        await client.auth.signOut();
+        try {
+          const { error } = await client.auth.signOut();
+          if (error) throw error;
+        } catch (error) {
+          console.warn("HerdHarbor sign-out did not complete after local preservation:", error);
+          showAccountBoundaryRecovery(
+            "HerdHarbor could not finish signing out. Your local recovery copy is retained; refresh account data before trying again."
+          );
+        }
       });
 
       const accountDialogTarget = document.body || document.documentElement;
@@ -3329,13 +3627,24 @@
     const cachedRaw = originalGetItem.call(localStorage, cacheKey(userId));
     if (activeRaw && safeParse(activeRaw)) removeRedundantStateCache(userId);
     const dirty = originalGetItem.call(localStorage, dirtyKey(userId)) === "1";
+    // An in-flight hydration is read-only until it proves that neither this
+    // session nor another tab has changed the workspace it originally read.
+    // An identity fence alone does not catch same-account edits during RPCs.
+    const hydrationInputCurrent = () => (
+      isCurrentHydration() &&
+      activeStateRaw() === storedActiveRaw &&
+      originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) === activeOwner &&
+      (originalGetItem.call(localStorage, dirtyKey(userId)) === "1") === dirty
+    );
+    const deferHydrationForNewEdit = () => {
+      setSyncState("Newer device edits were detected while loading cloud records. The local workspace was preserved; retry cloud sync.", "error");
+      return Object.freeze({ ok: false, reason: "hydration-local-state-changed" });
+    };
     let rolloutDecision = null;
 
-    // Start read-only hydration work together. When this clean device already
-    // has a confirmed cloud revision, probe only updated_at first. A matching
-    // revision proves the authoritative legacy row has not changed, so the
-    // existing clean local snapshot can be used without downloading app_state.
-    // Normalized authority can discard either legacy prefetch result.
+    // S20: normalized-only signups must not probe the legacy data table.
+    // Resolve server authority before requesting any legacy snapshot. This also
+    // protects existing normalized accounts from a wasted legacy read on login.
     const knownCloudVersion =
       originalGetItem.call(localStorage, versionKey(userId)) || "";
     const canUseVersionOnlyPrefetch =
@@ -3346,16 +3655,17 @@
       Boolean(knownCloudVersion);
     const baselineRestorePromise = restoreMissingCloudBaseline(userId, "hydrate");
     const legacyCloudPrefetchMode = canUseVersionOnlyPrefetch ? "version" : "record";
+    const rolloutHydrationPromise = normalizedRollout?.prepareHydration
+      ? normalizedRollout.prepareHydration({ legacyDirty: dirty })
+      : Promise.resolve(null);
     const legacyCloudPrefetchPromise = dirty
       ? null
-      : canUseVersionOnlyPrefetch
-        ? fetchCloudVersion(userId)
-        : fetchCloudRecord(userId);
+      : rolloutHydrationPromise.then((decision) => {
+        if (decision?.authoritative === true || decision?.stage === "normalized") return null;
+        return canUseVersionOnlyPrefetch ? fetchCloudVersion(userId) : fetchCloudRecord(userId);
+      }).catch(() => null);
 
     try {
-      const rolloutHydrationPromise = normalizedRollout?.prepareHydration
-        ? normalizedRollout.prepareHydration({ legacyDirty: dirty })
-        : Promise.resolve(null);
       const [, decision] = await Promise.all([
         accessProfilePromise,
         rolloutHydrationPromise
@@ -3381,6 +3691,20 @@
       );
       showAuth("signin");
       return;
+    }
+
+    // If the server already owns normalized authority but schema/worker
+    // initialization is temporarily unavailable, NEVER hydrate from or write
+    // back to the legacy cloud table. Keep this workspace locked for retry.
+    if (rolloutDecision?.active === false && rolloutDecision?.authoritative !== true) {
+      let serverAuthority = null;
+      try { serverAuthority = await getNormalizedSyncCohortStatus({ force: true }); } catch {}
+      if (!isCurrentHydration()) return staleHydration();
+      if (!serverAuthority || serverAuthority.stage === "normalized") {
+        showAuth("signin");
+        authMessage("Cloud save authority could not be verified. Your records were retained; refresh account data to retry.", "error");
+        return Object.freeze({ ok: false, reason: "s20-normalized-authority-unverified" });
+      }
     }
 
     if (rolloutDecision?.authoritative === true) {
@@ -3427,15 +3751,19 @@
       }
 
       if (activeRaw && stateChanged) {
-        await recordRecoverySnapshot(
+        const preserved = await recordRecoverySnapshot(
           userId,
           activeRaw,
           "Local copy before loading normalized authoritative records"
         );
         if (!isCurrentHydration()) return staleHydration();
+        if (!preserved) {
+          showAccountBoundaryRecovery("HerdHarbor could not preserve the local state before normalized hydration. No records were replaced.");
+          return Object.freeze({ ok: false, reason: "normalized-hydration-backup-failed" });
+        }
       }
 
-      if (!isCurrentHydration()) return staleHydration();
+      if (!hydrationInputCurrent()) return deferHydrationForNewEdit();
       setActiveUserData(userId, deviceCloudRaw, "normalized-authority-hydration");
       safeStorageRemove(dirtyKey(userId));
       pendingSync = null;
@@ -3528,6 +3856,7 @@
     if (legacyCloudPrefetchMode === "version") {
       const remoteVersion = String(prefetchedLegacy?.data?.updated_at || "");
       if (remoteVersion && remoteVersion === knownCloudVersion) {
+        if (!hydrationInputCurrent()) return deferHydrationForNewEdit();
         safeStorageRemove(dirtyKey(userId));
         pendingSync = null;
         syncConflict = null;
@@ -3603,8 +3932,12 @@
           unlockApp();
           return;
         }
-        await recordRecoverySnapshot(userId, activeRaw, "Local copy before loading newer cloud records");
+        const preserved = await recordRecoverySnapshot(userId, activeRaw, "Local copy before loading newer cloud records");
         if (!isCurrentHydration()) return staleHydration();
+        if (!preserved) {
+          showAccountBoundaryRecovery("HerdHarbor could not preserve local records before replacing them with cloud data.");
+          return Object.freeze({ ok: false, reason: "legacy-hydration-backup-failed" });
+        }
       }
       const normalizedCleanupNeeded =
         rolloutDecision?.stage === "dual_write" &&
@@ -3643,10 +3976,19 @@
         }
         return;
       }
-      if (!isCurrentHydration()) return staleHydration();
+      if (!hydrationInputCurrent()) return deferHydrationForNewEdit();
       setActiveUserData(userId, deviceCloudRaw);
+      const installedHydrationRaw = activeStateRaw();
       await writeCloudBaseline(userId, cloudRaw);
       if (!isCurrentHydration()) return staleHydration();
+      // Another tab or editor can commit an edit while durable baseline
+      // persistence is pending. Never clear its dirty marker or claim an
+      // earlier cloud revision as current after that edit.
+      if (activeStateRaw() !== installedHydrationRaw ||
+          originalGetItem.call(localStorage, dirtyKey(userId)) === "1") {
+        setSyncState("Newer local changes are awaiting cloud sync; the hydrated records were preserved.", "working");
+        return Object.freeze({ ok: false, reason: "hydration-new-local-edit-after-install" });
+      }
       if (data.updated_at) safeStorageSet(versionKey(userId), data.updated_at);
       safeStorageRemove(dirtyKey(userId));
       syncConflict = null;
@@ -3695,7 +4037,7 @@
     const newUserRaw = cachedRaw || activeRaw;
     if (newUserRaw && safeParse(newUserRaw)) {
       const stateChanged = !activeRaw || !sameState(activeRaw, newUserRaw);
-      if (!isCurrentHydration()) return staleHydration();
+      if (!hydrationInputCurrent()) return deferHydrationForNewEdit();
       setActiveUserData(userId, newUserRaw);
       pendingSync = { rawValue: newUserRaw, sequence: writeSequence };
       await drainSyncQueue();
@@ -3709,11 +4051,19 @@
     }
 
     if (storedActiveRaw && activeOwner && activeOwner !== userId) {
-      await recordRecoverySnapshot(activeOwner, storedActiveRaw, "Retained while switching accounts");
+      const preserved = await recordRecoverySnapshot(activeOwner, storedActiveRaw, "Retained while switching accounts");
+      if (!isCurrentHydration()) return staleHydration();
+      if (!preserved) {
+        showAccountBoundaryRecovery("HerdHarbor could not back up the previous account. Its local records remain intact.");
+        return Object.freeze({ ok: false, reason: "legacy-owner-backup-failed" });
+      }
     }
-    if (!isCurrentHydration()) return staleHydration();
-    clearActiveUserData();
-    safeStorageSet(ACTIVE_OWNER_KEY, userId);
+    if (!hydrationInputCurrent()) return deferHydrationForNewEdit();
+    if (!clearActiveUserData() || !safeStorageSet(ACTIVE_OWNER_KEY, userId) ||
+        originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) !== userId) {
+      showAccountBoundaryRecovery("HerdHarbor could not verify the new account workspace. Local recovery is required.");
+      return Object.freeze({ ok: false, reason: "legacy-owner-switch-unverified" });
+    }
     unlockApp();
     setSyncState("New cloud account ready", "success");
     if (storedActiveRaw) window.location.reload();
@@ -3737,6 +4087,12 @@
       const appUnlocked = !document.documentElement?.classList?.contains?.("hh-auth-locked");
       if (stillCurrentUser && appUnlocked && !recoveryMode) {
         lastHydratedUserId = userId;
+        // Migration is an additive opt-in handoff; never block account loading
+        // or sign-in on a migration prompt, and never migrate offline/dirty work.
+        if (typeof normalizedUpgradeS20 !== "undefined")
+        void normalizedUpgradeS20?.afterLogin?.().catch((error) => {
+          console.warn("HerdHarbor S20 upgrade readiness postponed:", error?.code || error?.message || error);
+        });
       }
       return result;
     } finally {
@@ -3760,6 +4116,7 @@
       allowUnownedQuarantine: !alreadyRecovered
     });
     if (!boundary.ok) return boundary;
+    if (!isAccountOperationCurrent(boundary.token, userId)) return Object.freeze({ ok: false, reason: "account-boundary-session-changed" });
 
     if (!alreadyRecovered) {
       clearAccountSessionMarkers(userId);
@@ -3836,12 +4193,12 @@
     // (including A→B→A), even if userId later returns to its original value.
     const currentUserId = String(session?.user?.id || "");
     const incomingUserId = String(activeSession?.user?.id || "");
-    // Same-account token refreshes are not account boundaries. Preserve any
+    // Same-account sign-in and token refresh are not account boundaries. Preserve any
     // human-edited photo review through a routine credential refresh, but
     // immediately fence account switches and sign-out before async hydration.
     const accountChanged = incomingUserId !== currentUserId;
-    if (["SIGNED_IN","SIGNED_OUT","PASSWORD_RECOVERY"].includes(event) ||
-        (["TOKEN_REFRESHED","USER_UPDATED"].includes(event) && accountChanged)) {
+    if (event === "SIGNED_OUT" || event === "PASSWORD_RECOVERY" ||
+        (["SIGNED_IN", "TOKEN_REFRESHED", "USER_UPDATED"].includes(event) && accountChanged)) {
       document.dispatchEvent(new CustomEvent("herdharbor:auth-boundary", {
         detail: { event, previousUserId: currentUserId, nextUserId: incomingUserId }
       }));
@@ -3854,8 +4211,14 @@
       return;
     }
 
-    if (event === "SIGNED_IN" && activeSession) {
+    // A refresh or user-update event with a different account identity must
+    // use full account-boundary recovery, never reuse the prior farm state.
+    if (activeSession && (event === "SIGNED_IN" ||
+        (accountChanged && ["TOKEN_REFRESHED", "USER_UPDATED"].includes(event)))) {
       const signedInUserId = String(activeSession.user?.id || "");
+      if (accountChanged) {
+        showAccountBoundaryRecovery("HerdHarbor is verifying the newly authenticated account.");
+      }
       session = activeSession;
       if (recoveryMode) {
         showRecovery();
@@ -3892,22 +4255,47 @@
 
     if (event === "SIGNED_OUT") {
       const previousUserId = session?.user?.id;
-      preserveActiveForUser(previousUserId, "Local copy retained after session ended");
-      clearAccountSessionMarkers(previousUserId);
-      clearActiveUserData();
-      resetAccountBoundaryRuntime();
+      const previousRaw = activeStateRaw();
+      showAccountBoundaryRecovery("HerdHarbor is securing your local records during sign-out.");
       accountBoundaryFence?.invalidate?.();
       session = null;
-      normalizedCohortStatusCache = null;
-      normalizedCohortStatusInFlight = null;
       dispatchAuthSession();
-      publishAccessProfile(fallbackAccessProfile());
-      if (accountButton) accountButton.remove();
-      if (accountDialog) accountDialog.remove();
-      accountButton = null;
-      accountDialog = null;
-      showAuth("signin");
-      authMessage("Signed out successfully.", "success");
+      void (async () => {
+        const preserved = await preserveActiveForUser(
+          previousUserId, "Local copy retained after session ended", previousRaw
+        );
+        // A newer sign-in owns the workspace. Its own account-boundary
+        // recovery will handle the retained previous account state.
+        if (session?.user?.id) return;
+        if (!preserved) {
+          showAccountBoundaryRecovery(
+            "Sign-out completed, but HerdHarbor could not safely back up offline records. Local data is retained. Free storage space and sign in to the original account before switching."
+          );
+          return;
+        }
+        if (!clearActiveUserData()) {
+          showAccountBoundaryRecovery(
+            "Sign-out completed, but HerdHarbor could not clear the active workspace. The verified local recovery copy is retained; sign in to the original account to recover safely."
+          );
+          return;
+        }
+        clearAccountSessionMarkers(previousUserId);
+        resetAccountBoundaryRuntime();
+        normalizedCohortStatusCache = null;
+        normalizedCohortStatusInFlight = null;
+        publishAccessProfile(fallbackAccessProfile());
+        if (accountButton) accountButton.remove();
+        if (accountDialog) accountDialog.remove();
+        accountButton = null;
+        accountDialog = null;
+        showAuth("signin");
+        authMessage("Signed out successfully.", "success");
+      })().catch((error) => {
+        console.error("HerdHarbor could not securely finish sign-out:", error);
+        if (!session?.user?.id) showAccountBoundaryRecovery(
+          "Your previous local account records could not be safely backed up. They remain on this device."
+        );
+      });
     }
   });
 
@@ -3965,6 +4353,8 @@
 
   async function getNormalizedSyncCohortStatus(options = {}) {
     const userId = session?.user?.id;
+    const accountToken = userId ? captureAccountOperation(userId) : null;
+    const stillCurrent = () => isAccountOperationCurrent(accountToken, userId);
     if (!userId) {
       return Object.freeze({
         eligible: false,
@@ -3985,18 +4375,39 @@
     }
 
     if (normalizedCohortStatusInFlight?.userId === userId) {
-      return normalizedCohortStatusInFlight.promise;
+      const pending = normalizedCohortStatusInFlight.promise;
+      if (!force) return pending;
+      // Forced checks protect the legacy/normalized authority boundary.
+      // Reusing a request started BEFORE cutover is not a fresh answer:
+      // await it, then issue a separate RPC after its completion.
+      try { await pending; } catch {}
+      if (!stillCurrent()) {
+        throw Object.assign(new Error("Account changed before authority verification."), {
+          code: "HH_SYNC_ACCOUNT_CHANGED"
+        });
+      }
     }
 
     const request = (async () => {
       const { data, error } = await client.rpc("herdharbor_sync_cohort_status");
+      // An A -> B -> A login transition invalidates a response from the
+      // earlier A generation, even though the user ID now matches again.
+      if (!stillCurrent()) {
+        throw Object.assign(new Error("Account changed while verifying cloud authority."), {
+          code: "HH_SYNC_ACCOUNT_CHANGED"
+        });
+      }
       if (error) throw new Error(error.message || "Normalized sync cohort status could not be read.");
 
       const status = Object.freeze({
         eligible: data?.eligible === true,
         mode: String(data?.mode || "allowlist") === "allowlist" ? "allowlist" : "invalid",
         percentageEnabled: data?.percentage_enabled === true,
-        schemaVerified: data?.schema_verified === true,
+        // A malformed status payload is not proof that a legacy save is safe.
+        // The writer decision needs both a verified schema and an explicit
+        // authoritative stage from the server.
+        schemaVerified: data?.schema_verified === true &&
+          ["legacy", "shadow", "dual_write", "normalized"].includes(String(data?.stage || "")),
         stage: ["legacy", "shadow", "dual_write", "normalized"].includes(String(data?.stage || "legacy"))
           ? String(data.stage)
           : "legacy",
@@ -4004,7 +4415,7 @@
         recoveryPending: data?.recovery_pending === true
       });
 
-      if (session?.user?.id === userId) {
+      if (stillCurrent()) {
         normalizedCohortStatusCache = {
           userId,
           checkedAt: Date.now(),
@@ -4022,16 +4433,31 @@
     return request;
   }
 
-  function createNormalizedRecordStore() {
-    if (!session?.user?.id) throw new Error("Sign in before creating the normalized record store.");
+  function createNormalizedRecordStore(expectedUserId = session?.user?.id) {
+    const userId = String(expectedUserId || "");
+    if (!userId || session?.user?.id !== userId) {
+      throw Object.assign(new Error("Authenticated account changed before the normalized record store was created."), {
+        code: "HH_SYNC_ACCOUNT_CHANGED"
+      });
+    }
     const api = window.HerdHarborCloudRecordStore;
     if (!api?.createRecordStore) throw new Error("The normalized record-store module is not loaded.");
-    return api.createRecordStore({ client, userId: session.user.id });
+    return api.createRecordStore({ client, userId });
   }
 
-  async function readLegacySnapshotForNormalizedSync() {
-    if (!session?.user?.id) throw new Error("Sign in before reading the legacy cloud snapshot.");
-    const { data, error } = await fetchCloudRecord(session.user.id);
+  async function readLegacySnapshotForNormalizedSync(expectedUserId = session?.user?.id) {
+    const userId = String(expectedUserId || "");
+    if (!userId || session?.user?.id !== userId) {
+      throw Object.assign(new Error("Authenticated account changed before the legacy snapshot was read."), {
+        code: "HH_SYNC_ACCOUNT_CHANGED"
+      });
+    }
+    const { data, error } = await fetchCloudRecord(userId);
+    if (session?.user?.id !== userId) {
+      throw Object.assign(new Error("Authenticated account changed while the legacy snapshot was read."), {
+        code: "HH_SYNC_ACCOUNT_CHANGED"
+      });
+    }
     if (error) throw new Error(error.message || "The legacy cloud snapshot could not be read.");
     return {
       snapshot: data?.app_state && typeof data.app_state === "object" ? data.app_state : {},
@@ -4081,6 +4507,145 @@
         error?.code || error?.message || error
       );
       normalizedRollout = null;
+    }
+  }
+
+  // S20 migration: verified legacy save, owner-confirmed old-client shutdown,
+  // PWA update handoff, then S18's guarded normalized-primary cutover.
+  function showS20UpgradeOffer({ accept, dismiss }) {
+    if (document.getElementById("hh-s20-upgrade-offer")) return;
+    const root = document.createElement("aside");
+    root.id = "hh-s20-upgrade-offer";
+    root.className = "hh-pwa-update";
+    root.setAttribute("role", "dialog");
+    root.setAttribute("aria-label", "Upgrade HerdHarbor cloud saves");
+    root.innerHTML = `<strong>HerdHarbor cloud save upgrade</strong>
+      <span>Your current records are ready for a safer, record-based save system.
+      Save and close HerdHarbor on your other devices before continuing. Unsaved
+      offline changes on an older version cannot be recovered automatically.</span>
+      <label style="display:block;margin:8px 0;">
+        <input type="checkbox" data-hh-s20-closed>
+        All my other HerdHarbor tabs and devices have finished syncing and are closed.
+      </label>
+      <span data-hh-s20-message role="status" aria-live="polite"></span>
+      <div><button type="button" data-hh-s20-accept>Save &amp; Upgrade</button>
+      <button type="button" data-hh-s20-later>Later</button></div>`;
+    const message = root.querySelector("[data-hh-s20-message]");
+    const button = root.querySelector("[data-hh-s20-accept]");
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      message.textContent = "Verifying cloud saves and recovery backups…";
+      try {
+        const result = await accept({
+          legacyClientsClosed: root.querySelector("[data-hh-s20-closed]").checked
+        });
+        if (result?.ok && result.stage === "update-offered") {
+          message.textContent = "Your cloud save is protected. Select Update Now in the app update prompt to continue.";
+          root.remove();
+        } else if (result?.ok && result.stage === "normalized") {
+          message.textContent = "Normalized cloud saving is active.";
+          root.remove();
+        } else {
+          message.textContent = result?.reason === "close-old-clients-first"
+            ? "Confirm that your other devices have finished saving and are closed."
+            : "Upgrade paused: " + String(result?.reason || "cloud verification incomplete").replace(/[^a-zA-Z0-9 _-]/g, " ");
+        }
+      } catch (error) {
+        message.textContent = "Upgrade paused; your records remain protected. Retry after verifying cloud sync.";
+        console.warn("HerdHarbor S20 cutover stayed pending:", error?.code || error?.message || error);
+      } finally { button.disabled = false; }
+    });
+    root.querySelector("[data-hh-s20-later]").addEventListener("click", () => {
+      dismiss();
+      root.remove();
+    });
+    (document.body || document.documentElement)?.appendChild(root);
+  }
+
+  // Keep migration coordination independent from the PWA module. The cloud
+  // side can require editor safety without importing the update controller.
+  function s20HasUnsavedEditor() {
+    try {
+      return Boolean(document.querySelector?.(
+        '#hh-paper-pedigree-dialog[open], #photo-entry-review input, #photo-entry-review textarea, ' +
+        'dialog[open] input, dialog[open] textarea, [role="dialog"]:not([hidden]) textarea, ' +
+        '#modal-backdrop:not(.hidden) #modal-content input, ' +
+        '#modal-backdrop:not(.hidden) #modal-content textarea, ' +
+        '#modal-backdrop:not(.hidden) #modal-content select'
+      ));
+    } catch { return true; }
+  }
+
+  if (window.HerdHarborNormalizedUpgradeS20?.create && normalizedRollout) {
+    normalizedUpgradeS20 = window.HerdHarborNormalizedUpgradeS20.create({
+      getUserId: () => session?.user?.id,
+      getStatus: async () => {
+        const decision = await normalizedRollout.checkEligibility();
+        return {
+          eligible: decision?.eligible === true,
+          schemaVerified: decision?.schemaVerified === true,
+          stage: decision?.stage || normalizedRollout.status?.()?.stage || "legacy"
+        };
+      },
+      isClean: (userId) => (
+        navigator.onLine !== false &&
+        session?.user?.id === userId &&
+        !recoveryMode &&
+        !syncConflict &&
+        !hasPendingCloudMutations(userId) &&
+        canonicalStateStore?.getOutbox?.(userId)?.length === 0 &&
+        !s20HasUnsavedEditor() &&
+        document.documentElement?.dataset?.hhUnsynced !== "true"
+      ),
+      getRevision: (userId) => Number(canonicalStateStore?.getRevision?.(userId) || 0),
+      sync: async () => {
+        // A clean dual-write account already has a confirmed legacy snapshot.
+        // Do not force another full-state PATCH merely to perform cutover:
+        // S18's repeated reconciliation supplies fresh cloud confirmation.
+        const userId = session?.user?.id;
+        if (!userId || navigator.onLine === false) return false;
+        return hasPendingCloudMutations(userId) ? syncNow() : true;
+      },
+      prepare: (options) => normalizedRollout.prepareHydration(options),
+      validate: () => normalizedRollout.validateNow(),
+      readLegacy: readLegacySnapshotForNormalizedSync,
+      saveRecovery: async (userId, read) => {
+        const original = JSON.stringify(read.snapshot);
+        const archived = await recordRecoverySnapshot(userId, original, "S20 verified cloud snapshot before normalized cutover");
+        if (!archived) return false;
+        const local = activeStateRaw();
+        if (local && !sameState(local, original)) {
+          return Boolean(await recordRecoverySnapshot(userId, local, "S20 local device snapshot before normalized cutover"));
+        }
+        return true;
+      },
+      cutover: (options) => normalizedRollout.cutoverToNormalizedPrimary(options),
+      offer: showS20UpgradeOffer,
+      updateAvailable: () => {
+        const detail = { promise: null };
+        document.dispatchEvent(new CustomEvent("herdharbor:s20-check-app-update", { detail }));
+        // Missing PWA listener is an UNKNOWN update state, not permission
+        // to migrate without a verified update check.
+        return detail.promise || Promise.resolve(null);
+      },
+      afterPromotion: async () => {
+        setSyncState("Normalized cloud saving activated", "success");
+        if (session?.user?.id && !hasPendingCloudMutations(session.user.id)) window.location.reload();
+      },
+      sessionStorage: (() => {
+        try { return window.sessionStorage; } catch { return null; }
+      })()
+    });
+    document.addEventListener("herdharbor:auth-boundary", (event) => {
+      normalizedUpgradeS20?.fenceAccountBoundary?.(event.detail || {});
+      document.querySelector("#hh-s20-upgrade-offer")?.remove();
+    });
+    for (const target of ["online", "focus"]) {
+      window.addEventListener(target, () => {
+        if (session?.user?.id && document.documentElement?.classList?.contains?.("hh-auth-locked") === false) {
+          void normalizedUpgradeS20.afterLogin().catch(() => {});
+        }
+      });
     }
   }
 

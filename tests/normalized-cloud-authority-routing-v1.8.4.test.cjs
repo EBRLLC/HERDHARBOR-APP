@@ -82,7 +82,7 @@ test("normal legacy-save completion defers normalized dual-write work without bl
 });
 
 
-test("dual-write diagnostics ignore normalized background outbox when legacy authority is clean", () => {
+test("normalized-authority diagnostics retain unfinished legacy markers for PWA update safety", () => {
   const pending = body(
     "  function hasPendingCloudMutations(userId = session?.user?.id) {",
     "\n  function getSyncDetails()"
@@ -102,7 +102,7 @@ test("dual-write diagnostics ignore normalized background outbox when legacy aut
   );
   assert.match(
     pending,
-    /if \(normalizedAuthorityActive\(\)\) \{[\s\S]*return normalizedOutboxPending\(userId\);/
+    /if \(normalizedAuthorityActive\(\)\) \{[\s\S]*return legacyPending \|\| normalizedOutboxPending\(userId\);/
   );
   assert.match(pending, /return legacyPending;/);
 
