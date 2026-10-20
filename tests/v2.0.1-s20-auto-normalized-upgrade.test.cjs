@@ -201,3 +201,49 @@ test("S20 release assets wire the coordinator before cloud bridge and keep its P
   assert.match(cloud,/if \(!normalizedSignupReady\) \{/);
   assert.match(html,/herdharbor-cloud\.js\?v=42/);
 });
+
+test("S20 signup preflight fails closed on missing or failing RPC and permits verified normalized accounts", async () => {
+  const source = fs.readFileSync(path.join(__dirname,"..","herdharbor-cloud.js"),"utf8");
+  const startToken = 'root.querySelector("#hh-signup-form").addEventListener("submit", async (event) => {';
+  const endToken = '\n    });\n\n    root.querySelector("#hh-forgot-password")';
+  const start = source.indexOf(startToken);
+  const end = source.indexOf(endToken, start + startToken.length);
+  assert.ok(start > 0 && end > start, "signup listener must exist and be extractable");
+  const handlerBody = source.slice(start + startToken.length, end);
+  const fields = {
+    "#hh-signup-password": { value: "longpassword123" },
+    "#hh-signup-confirm": { value: "longpassword123" },
+    "#hh-signup-email": { value: "breeder@example.invalid" }
+  };
+  const root = { querySelector: selector => fields[selector] };
+  const windowMock = { location: { origin: "https://example.invalid", pathname: "/" } };
+  let signups = 0, ready = false, rpcError = null, busy = true;
+  const notices = [];
+  const client = {
+    rpc: async name => {
+      assert.equal(name,"herdharbor_normalized_signup_ready");
+      return { data:ready, error:rpcError };
+    },
+    auth: { signUp: async () => {
+      signups++;
+      return { data:{session:null}, error:null };
+    } }
+  };
+  const handler = new Function("root","client","authMessage","setFormBusy","window","console",
+    "return async function(event) {" + handlerBody + "\n};")(
+    root,client,(_,kind)=>notices.push(kind),
+    (_,flag)=>{busy=flag;},windowMock,{warn:()=>{}}
+  );
+  const formEvent = { preventDefault(){}, currentTarget:{} };
+  await handler(formEvent);
+  assert.equal(signups,0,"readiness false must prevent signup");
+  assert.equal(busy,false,"failed readiness must release the form");
+  rpcError={code:"PGRST202"};
+  ready=true;
+  await handler(formEvent);
+  assert.equal(signups,0,"PostgREST/RPC errors must not silently create an account");
+  rpcError=null;
+  await handler(formEvent);
+  assert.equal(signups,1,"verified readiness must allow normal account creation");
+  assert.ok(notices.includes("error"));
+});
