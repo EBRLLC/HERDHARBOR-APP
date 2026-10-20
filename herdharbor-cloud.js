@@ -2548,7 +2548,12 @@
       try {
         const result = await normalizedRollout.refreshAuthoritative();
         if (!stillCurrent()) return false;
-        if (result?.reason === "normalized-not-authoritative") return null;
+        if (result?.reason === "normalized-not-authoritative") {
+          // Stale normalized context does not prove the legacy snapshot is
+          // again authoritative. Preserve local data until fresh hydration.
+          setSyncState("Normalized cloud authority changed; this device copy was not overwritten.", "error");
+          return false;
+        }
         if (!result?.ok) {
           setSyncState("Normalized cloud refresh is unavailable; this device copy was not overwritten.", "error");
           return false;
@@ -2582,19 +2587,26 @@
         }
 
         if (activeRaw) {
-          await recordRecoverySnapshot(
+          const preserved = await recordRecoverySnapshot(
             userId,
             activeRaw,
             "Local copy before receiving normalized cloud changes"
           );
           if (!stillCurrent()) return false;
+          if (preserved !== true) {
+            setSyncState("Normalized cloud refresh paused because the local recovery copy could not be verified.", "error");
+            return false;
+          }
         }
         if (hasPendingCloudMutations(userId)) {
           return false;
         }
         if (!stillCurrent()) return false;
 
-        setActiveUserData(userId, deviceCloudRaw, "normalized-cloud-state-replace");
+        if (setActiveUserData(userId, deviceCloudRaw, "normalized-cloud-state-replace") !== true) {
+          setSyncState("Normalized cloud refresh could not store the verified device copy.", "error");
+          return false;
+        }
         safeStorageRemove(dirtyKey(userId));
         setSyncState("Newer normalized cloud records found; reloading…", "success");
         if (stillCurrent()) window.location.reload();
