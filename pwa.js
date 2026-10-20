@@ -305,9 +305,6 @@
   function hasUnfinishedLocalWork() {
     try {
       if (document.documentElement?.dataset?.hhUnsynced === "true") return true;
-      // A normalized record outbox or legacy dirty marker must also block
-      // worker activation even if the visual sync indicator has not updated.
-      if (window.HerdHarborCloud?.hasUnsyncedChanges?.() === true) return true;
       // The paper pedigree and photo review dialogs hold corrections in
       // browser memory until explicitly committed. A controller change in
       // another tab must never erase them.
@@ -318,6 +315,11 @@
         '#modal-backdrop:not(.hidden) #modal-content textarea, ' +
         '#modal-backdrop:not(.hidden) #modal-content select'
       )) return true;
+      // Check DOM drafts even if the cloud bridge has not loaded. Then check
+      // the durable record outbox and legacy dirty markers independently of
+      // the visual sync indicator.
+      if (typeof window !== "undefined" &&
+          window.HerdHarborCloud?.hasUnsyncedChanges?.() === true) return true;
     } catch {}
     return false;
   }

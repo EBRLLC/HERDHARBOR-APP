@@ -229,9 +229,9 @@ test("S18 cloud and service worker refer to the same new content revision", () =
   const worker = read("service-worker.js");
   assert.match(html, /cloud-sync-rollout-runtime-v1\.8\.4\.js\?v=6/);
   assert.match(worker, /cloud-sync-rollout-runtime-v1\.8\.4\.js\?v=6/);
-  assert.match(html, /herdharbor-cloud\.js\?v=40/);
-  assert.match(worker, /herdharbor-cloud\.js\?v=40/);
-  assert.match(worker, /herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-s18-1/);
+  assert.match(html, /herdharbor-cloud\.js\?v=41/);
+  assert.match(worker, /herdharbor-cloud\.js\?v=41/);
+  assert.match(worker, /herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-s20-1/);
 });
 
 test("S18 leftover legacy dirty work remains visible to PWA after normalized promotion", () => {
