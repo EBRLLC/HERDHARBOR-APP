@@ -16,6 +16,7 @@ function harness(options = {}) {
   let normalizedWrites = 0;
   let statusCalls = 0;
   let legacyMarkerCleared = 0;
+  let legacySourceChecks = 0;
   const states = [];
   const identity = "new-breeder-account";
   const getItem = { call(_storage, key) {
@@ -29,7 +30,8 @@ function harness(options = {}) {
     "normalizedAuthorityActive", "refreshNormalizedAuthorityIfEligible", "setSyncState",
     "normalizedOutboxPending", "deferNormalizedDualWriteCleanup", "clearTimeout",
     "syncTimer", "syncDebounceStartedAt", "normalizedRollout", "versionKey",
-    "getNormalizedSyncCohortStatus", "safeStorageRemove", "canonicalStateStore"
+    "getNormalizedSyncCohortStatus", "safeStorageRemove", "canonicalStateStore",
+    "fetchCloudRecord"
   ];
   const vals = [
     { user: { id: identity } }, ()=>({}), ()=>true, options.pending === true ? { rawValue:"{}" } : null,
@@ -54,12 +56,21 @@ function harness(options = {}) {
           : {schemaVerified:true,...options.serverStatus};
     },
     () => {legacyMarkerCleared++;},
-    { getOutbox: () => options.noOutbox ? [] : [{mutationId:"first-edit"}] }
+    { getOutbox: () => options.noOutbox ? [] : [{mutationId:"first-edit"}] },
+    async () => {
+      legacySourceChecks++;
+      if (options.legacySourceThrows) throw new Error("legacy source read failed");
+      return options.legacyMissing
+        ? { data: null, error: null }
+        : options.legacySourceError
+          ? { data: null, error: { message: "unavailable" } }
+          : { data: { app_state: {}, updated_at: "2026-10-20T10:00:00Z" }, error: null };
+    }
   ];
   const execute = new Function(...deps, initialSaveSource + "\nreturn syncNow;")(...vals);
   return {
     execute, states,
-    get stats(){return {statusCalls, normalizedWrites,legacyMarkerCleared};}
+    get stats(){return {statusCalls, normalizedWrites,legacyMarkerCleared,legacySourceChecks};}
   };
 }
 
@@ -121,6 +132,26 @@ test("S20 verified legacy stage can still preserve first legacy save",async()=>{
   assert.equal(await h.execute(),"legacy-fallthrough");
   assert.equal(h.stats.statusCalls,1);
   assert.equal(h.stats.normalizedWrites,0);
+});
+
+test("S22 first-save blocks creating a new legacy cloud row for an existing Auth-only account", async()=>{
+  for (const options of [
+    {legacyMissing:true},
+    {legacySourceError:true},
+    {legacySourceThrows:true}
+  ]) {
+    const h=harness({serverStatus:{stage:"legacy"},...options});
+    assert.equal(await h.execute(),false);
+    assert.equal(h.stats.normalizedWrites,0);
+    assert.equal(h.stats.legacySourceChecks,1);
+    assert.match(h.states.at(-1).message,/no verified cloud save baseline/i);
+  }
+});
+
+test("S22 legacy-first-save fallback remains available only after an actual legacy snapshot is verified",async()=>{
+  const h=harness({serverStatus:{stage:"legacy"},localStage:"legacy"});
+  assert.equal(await h.execute(),"legacy-fallthrough");
+  assert.equal(h.stats.legacySourceChecks,1);
 });
 
 test("S20 existing legacy account with a known CAS revision saves without delaying for extra authority preflight",async()=>{
