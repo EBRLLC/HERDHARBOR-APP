@@ -50,6 +50,16 @@
           ? marker : null;
       } catch { return null; }
     }
+    function hasInstalledUpdate(marker) {
+      if (marker?.updateRequired !== true) return true;
+      // A focus, reload or re-login is NOT proof that the waiting worker
+      // activated. The PWA coordinator records only controllerchange.
+      try {
+        const appliedAt = Number(sessionStorage?.getItem?.("hh_s20_update_activated_at") || 0);
+        return Number.isSafeInteger(appliedAt) && appliedAt >= Number(marker.issuedAt) &&
+          appliedAt <= Date.now() && Date.now() - appliedAt < (15 * 60 * 1000);
+      } catch { return false; }
+    }
     function writeMarker(id, value) {
       try {
         sessionStorage?.setItem?.(key(id), JSON.stringify(value));
@@ -123,6 +133,7 @@
       const id = String(getUserId() || "");
       const marker = readMarker(id);
       if (!id || !marker) return { ok: true, skipped: true, reason: "no-pending-upgrade" };
+      if (!hasInstalledUpdate(marker)) return { ok: true, skipped: true, reason: "waiting-for-pwa-activation" };
       if (activationInFlight) return activationInFlight;
       const epoch = identityEpoch;
       const task = activate(id, epoch, marker);
@@ -148,11 +159,16 @@
       const marker = { userId: id, confirmed: true, legacyClientsClosed: true, issuedAt: Date.now() };
       if (!writeMarker(id, marker)) return { ok: false, reason: "migration-intent-storage-unavailable" };
       try {
-        // If an installed update exists, use the PWA's verified update flow.
-        // Never activate a worker automatically; this user click only offers it.
+        // If a waiting update exists, S20 must not activate normalized
+        // authority until the PWA controller really changes.
         const update = await updateAvailable();
         assertCurrent(id, epoch);
-        if (update === true) return { ok: true, stage: "update-offered" };
+        if (update === true) {
+          if (!writeMarker(id, { ...marker, updateRequired: true })) {
+            return { ok: false, reason: "migration-intent-storage-unavailable" };
+          }
+          return { ok: true, stage: "update-offered" };
+        }
         return await resume();
       } catch (error) {
         if (error?.code === "HH_S20_ACCOUNT_CHANGED") return { ok: false, reason: "account-changed" };

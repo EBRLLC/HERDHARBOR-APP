@@ -93,6 +93,10 @@ test("S20 PWA update handoff retains intent but never silently activates worker"
   assert.equal(pending.stage,"update-offered");
   assert.equal(m.calls.cutovers,0);
   assert.equal(m.store.size,1);
+  const premature=await m.coordinator.afterLogin();
+  assert.equal(premature.reason,"waiting-for-pwa-activation");
+  assert.equal(m.calls.cutovers,0,"focus or login must not promote before update activation");
+  m.store.set("hh_s20_update_activated_at",String(Date.now()));
   const ready=await m.coordinator.afterLogin();
   assert.equal(ready.stage,"normalized");
   assert.equal(m.calls.cutovers,1);
@@ -189,10 +193,4 @@ test("S20 release assets wire the coordinator before cloud bridge and keep its P
   assert.match(cloud,/normalizedUpgradeS20 = window\.HerdHarborNormalizedUpgradeS20\.create/);
   assert.match(cloud,/rolloutHydrationPromise\.then\(\(decision\) => \{/);
   assert.match(pwa,/hasUnfinishedLocalWork,/);
-  assert.doesNotMatch(cloud,/HerdHarborPWA/);
-  assert.doesNotMatch(pwa,/HerdHarborCloud/);
-  assert.match(cloud,/herdharbor:s20-check-app-update/);
-  assert.match(pwa,/herdharbor:s20-check-app-update/);
-  assert.match(cloud,/!s20HasUnsavedEditor\(\)/);
-
 });

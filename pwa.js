@@ -558,6 +558,9 @@
   window.addEventListener("pageshow", (event) => { if (event.persisted || document.visibilityState === "visible") checkForAppUpdate(); });
   document.addEventListener("visibilitychange", requestForegroundUpdateCheck);
   navigatorRef().serviceWorker?.addEventListener("controllerchange", () => {
+    // Only a real worker activation may satisfy the S20 update handoff.
+    // A same-build focus, login or ordinary page reload must not cut over.
+    try { window.sessionStorage?.setItem("hh_s20_update_activated_at", String(Date.now())); } catch {}
     updateControllerChanged = true;
     updateReloadDeferred = true;
     reloadAfterUpdate();
