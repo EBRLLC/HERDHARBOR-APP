@@ -134,6 +134,43 @@ test("S20 stale upgrade dialogs cannot accept or dismiss consent for another ide
   assert.equal((await m.coordinator.afterLogin()).offered,true,"stale dismissal cannot suppress a fresh legitimate offer");
   assert.equal(m.calls.cutovers,0);
 });
+test("S21 account switch revokes pending upgrade authorization instead of resuming on return",async()=>{
+  const m=mock({updateWaiting:true});
+  await m.coordinator.afterLogin();
+  const offered=await m.offer.accept({legacyClientsClosed:true});
+  assert.equal(offered.stage,"update-offered");
+  assert.equal(m.store.size,1);
+  m.coordinator.fenceAccountBoundary({
+    event:"SIGNED_IN",previousUserId:"account-a",nextUserId:"account-b"
+  });
+  assert.equal(m.store.size,0,"A's approval must not survive a real account switch");
+  m.setUser("account-b");
+  m.coordinator.fenceAccountBoundary({
+    event:"SIGNED_IN",previousUserId:"account-b",nextUserId:"account-a"
+  });
+  m.setUser("account-a");
+  m.store.set("hh_s20_update_activated_at",String(Date.now()));
+  const result=await m.coordinator.afterLogin();
+  assert.equal(result.offered,true,"A must obtain fresh consent after the account switch");
+  assert.equal(m.calls.cutovers,0);
+});
+test("S21 intentional PWA reload preserves only the original account's pending consent",async()=>{
+  const m=mock({updateWaiting:true});
+  await m.coordinator.afterLogin();
+  assert.equal((await m.offer.accept({legacyClientsClosed:true})).stage,"update-offered");
+  m.coordinator.fenceAccountBoundary({
+    event:"SIGNED_IN",previousUserId:"",nextUserId:"account-a"
+  });
+  assert.equal(m.store.size,1,"fresh page load is not an account switch");
+  m.store.set("hh_s20_update_activated_at",String(Date.now()));
+  assert.equal((await m.coordinator.afterLogin()).stage,"normalized");
+  assert.equal(m.calls.cutovers,1);
+});
+test("S21 missing PWA update listener cannot silently approve cutover",()=>{
+  const cloud=fs.readFileSync(path.join(__dirname,"..","herdharbor-cloud.js"),"utf8");
+  assert.match(cloud,/return detail\.promise \|\| Promise\.resolve\(null\)/);
+  assert.match(cloud,/fenceAccountBoundary\?\.\(event\.detail \|\| \{\}\)/);
+});
 test("S20 fails closed on dirty workspace, failed reconciliation and missing backup",async()=>{
   const dirty=mock({dirty:true});
   assert.equal((await dirty.coordinator.afterLogin()).reason,"local-work-pending");
