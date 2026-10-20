@@ -100,7 +100,7 @@ test("S18 cutover fails closed on a checkpoint divergence or concurrent local ch
   }
 });
 
-function hydrationHarness({ archived = true, editDuringBaseline = false, remoteNote = "cloud" } = {}) {
+function hydrationHarness({ archived = true, editDuringBaseline = false, editDuringPersist = false, remoteNote = "cloud" } = {}) {
   const oldRaw = JSON.stringify({ animals: [{ id: "rabbit-one", note: "device" }] });
   const editRaw = JSON.stringify({ animals: [{ id: "rabbit-one", note: "new draft" }] });
   let actualRaw = oldRaw, wrote = 0, backedUp = 0, unlocked = 0;
@@ -130,7 +130,13 @@ function hydrationHarness({ archived = true, editDuringBaseline = false, remoteN
       return { ok: true };
     },
     setActiveUserData: (id,raw) => { wrote++; actualRaw = raw; return true; },
-    writeCloudBaseline: async () => true,
+    writeCloudBaseline: async () => {
+      if (editDuringPersist) actualRaw = editRaw;
+      return true;
+    },
+    activeStateRaw: () => actualRaw,
+    originalGetItem: { call: () => editDuringPersist ? "1" : null },
+    localStorage: {},
     safeStorageSet: () => true,
     safeStorageRemove: () => {},
     versionKey: () => "version",
@@ -166,6 +172,45 @@ test("S18 hydration refuses replacing a local herd when its safety backup failed
   assert.equal(state.wrote, 0);
   assert.equal(state.backedUp, 1);
   assert.equal(state.unlocked, 0);
+});
+
+test("S18 hydrated data cannot silently clear a dirty edit committed during baseline storage", async () => {
+  const h = hydrationHarness({ editDuringPersist: true });
+  const result = await h.run();
+  assert.equal(result.reason, "hydration-new-local-edit-after-install");
+  assert.equal(h.state().actualRaw, h.state().editRaw);
+});
+
+function normalizedSaveHarness(drain, outbox=[]) {
+  const start = rollout.indexOf("    async function syncNormalizedNow() {");
+  const end = rollout.indexOf("    async function refreshAuthoritative() {", start);
+  assert.ok(start >= 0 && end > start);
+  const compiled = new Function(
+    "ensureContext", "assertContextCurrent", "refreshContextStage",
+    "stateStore", "emit",
+    "let lastResult=null;const ctx={userId:'A',stage:'normalized',worker:{drain:async()=>drain},metrics:{record:()=>{}}};" +
+    rollout.slice(start,end) + "return syncNormalizedNow;"
+  );
+  return compiled(async()=>({ userId:"A", stage:"normalized", worker:{drain:async()=>drain}, metrics:{record:()=>{}}}),
+    ()=>{}, async()=>({stage:"normalized"}),{getOutbox:()=>outbox},()=>{});
+}
+
+test("S18 normalized-primary rejects offline/skipped/failed writes, including empty outboxes", async () => {
+  for (const drain of [
+    {ok:true,skipped:true,reason:"offline",processed:0,failed:0},
+    {ok:false,skipped:true,reason:"pending-local-mutations",failed:0},
+    {ok:true,skipped:false,stage:"normalized",failed:1}
+  ]) {
+    const save=normalizedSaveHarness(drain);
+    const result=await save();
+    assert.equal(result.ok,false,JSON.stringify(drain));
+  }
+});
+
+test("S18 normalized-primary confirms successful non-skipped writes only with empty outbox", async () => {
+  const good={ok:true,skipped:false,stage:"normalized",failed:0};
+  assert.equal((await normalizedSaveHarness(good)()).ok,true);
+  assert.equal((await normalizedSaveHarness(good,[{mutationId:"uncommitted"}])()).ok,false);
 });
 
 test("S18 cloud and service worker refer to the same new content revision", () => {
