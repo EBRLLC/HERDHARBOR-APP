@@ -138,6 +138,7 @@ function hydrationHarness({ archived = true, editDuringBaseline = false, remoteN
     syncConflict: null,
     normalizedRollout: null,
     setSyncState: (...args) => messages.push(args),
+    showAccountBoundaryRecovery: (...args) => messages.push(args),
     unlockApp: () => { unlocked++; },
     window: { HerdHarborApp: { getState: () => ({ operation: { name: "Farm A" } }), applyVerifiedCloudState: () => true },
       location: { reload: () => {} }, setTimeout: () => {} },
