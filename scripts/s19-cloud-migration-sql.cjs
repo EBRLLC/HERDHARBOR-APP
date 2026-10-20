@@ -4,7 +4,7 @@
 const { planMigration } = require("./s19-cloud-migration-core.cjs");
 function encoded(value) { return Buffer.from(JSON.stringify(value), "utf8").toString("base64"); }
 function sqlForCutover(input, plan = planMigration(input)) {
-  if (plan.stage !== "missing" && plan.stage !== "dual_write") throw new Error("S19_UNSUPPORTED_STAGE");
+  if (plan.stage !== "dual_write") throw new Error("S19_ONLINE_BOOTSTRAP_REQUIRED");
   if (!Number.isSafeInteger(Number(input.manifest?.sync_generation ?? 0))) throw new Error("S19_INVALID_GENERATION");
   const uid = plan.accountId;  // validated UUID in planMigration
   const generation = Number(input.manifest?.sync_generation ?? 0);
