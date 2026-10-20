@@ -34,7 +34,7 @@ function harness(options = {}) {
     },
     JSON,
     activeStateRaw: () => options.noLocal ? null : local,
-    sameState: () => false,
+    sameState: () => options.sameSnapshot === true,
     applyDevicePreferences: value => value,
     allowAnimalStateTransition: () => true,
     recordRecoverySnapshot: async () => {
@@ -134,6 +134,17 @@ test("S21 legacy refresh fallback requires explicit verified non-normalized serv
   });
   assert.equal(await h.operation(), null);
   assert.equal(h.counts.writes, 0);
+});
+
+test("S21 matching snapshots cannot claim cloud saved with a pending mutation outbox", async () => {
+  const h = harness({ pending: true, sameSnapshot: true });
+  assert.equal(await h.operation(), false);
+  assert.equal(h.counts.backups, 0);
+  assert.equal(h.counts.writes, 0);
+  assert.equal(h.counts.cleared, 0);
+  assert.equal(h.counts.reloads, 0);
+  assert.match(h.states.at(-1).message, /still has unsynced records/i);
+  assert.notEqual(h.states.at(-1).status, "success");
 });
 
 test("S21 verified normalized refresh applies cloud data after recovery succeeds", async () => {
