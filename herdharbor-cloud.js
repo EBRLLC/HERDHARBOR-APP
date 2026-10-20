@@ -2326,6 +2326,26 @@
         setSyncState("Cloud save authority could not be verified; local changes remain protected.", "error");
         return false;
       }
+      if (!localStageNormalized && serverAuthority.stage !== "normalized" &&
+          !legacyVersionConfirmed) {
+        // An account created before S22 may have Auth/access rows but no
+        // canonical cloud snapshot or normalized manifest. Do not silently
+        // initialize another legacy save account on its first edit.
+        // Existing legacy breeders without a local version remain safe when
+        // their authoritative legacy snapshot is actually present.
+        let legacyCloud = null;
+        try {
+          legacyCloud = await fetchCloudRecord(syncUserIdAtStart);
+        } catch (error) {
+          console.warn("HerdHarbor could not verify a legacy first-save source:", error?.message || error);
+        }
+        if (!syncAccountCurrent()) return false;
+        if (legacyCloud?.error || !legacyCloud?.data ||
+            !legacyCloud.data.app_state || !legacyCloud.data.updated_at) {
+          setSyncState("This existing account has no verified cloud save baseline. Local edits are protected; account migration is required before first cloud save.", "error");
+          return false;
+        }
+      }
       if (localStageNormalized || serverAuthority.stage === "normalized") {
         await refreshNormalizedAuthorityIfEligible();
         if (!syncAccountCurrent()) return false;
