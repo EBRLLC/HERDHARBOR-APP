@@ -2368,18 +2368,21 @@
       try {
         const result = await normalizedRollout.syncNormalizedNow();
         if (!syncAccountCurrent()) return false;
-        if (result?.reason !== "normalized-not-authoritative") {
-          if (result?.ok) {
-            // A first edit made before the normalized runtime was ready may
-            // still carry the old dirty marker. CAS/outbox has now confirmed
-            // its cloud write, so clear that legacy-only marker.
-            safeStorageRemove(dirtyKey(syncUserIdAtStart));
-            setSyncState("Saved to cloud", "success");
-            return true;
-          }
-          setSyncState("Normalized cloud save is pending; local changes remain protected.", "error");
+        // Never interpret a normalized authority failure as permission to
+        // PATCH the old whole-account snapshot. A rollback or session race
+        // must be re-verified separately before any save engine can change.
+        if (result?.reason === "normalized-not-authoritative") {
+          setSyncState("Normalized cloud authority changed; local records remain protected. Reconnect before saving.", "error");
           return false;
         }
+        if (result?.ok) {
+          // CAS/outbox has confirmed this account's normalized cloud write.
+          safeStorageRemove(dirtyKey(syncUserIdAtStart));
+          setSyncState("Saved to cloud", "success");
+          return true;
+        }
+        setSyncState("Normalized cloud save is pending; local changes remain protected.", "error");
+        return false;
       } catch (error) {
         if (!syncAccountCurrent()) return false;
         console.error("HerdHarbor normalized cloud save failed:", error);
