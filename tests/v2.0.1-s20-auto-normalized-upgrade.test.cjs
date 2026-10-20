@@ -245,6 +245,8 @@ test("S20 SQL installs normalized-only signup and canonical checkpoint without l
   assert.ok(sql.includes(expected.checksum));
   assert.ok(sql.includes(checkpoint.payload_checksum));
   assert.match(sql,/after insert on auth\.users/i);
+  assert.match(sql,/new\.raw_user_meta_data\s*->>\s*'hh_normalized_signup_client'/i);
+  assert.match(sql,/HH_S20_CLIENT_UPDATE_REQUIRED/i);
   assert.match(sql,/s20_signup_normalized_only/i);
   assert.match(sql,/cutover_stage='normalized'/);
   assert.match(sql,/delete from public\.herdharbor_sync_cohort/i);
@@ -286,14 +288,15 @@ test("S20 signup preflight fails closed on missing or failing RPC and permits ve
   };
   const root = { querySelector: selector => fields[selector] };
   const windowMock = { location: { origin: "https://example.invalid", pathname: "/" } };
-  let signups = 0, ready = false, rpcError = null, busy = true;
+  let signups = 0, ready = false, rpcError = null, busy = true, lastSignup = null;
   const notices = [];
   const client = {
     rpc: async name => {
       assert.equal(name,"herdharbor_normalized_signup_ready");
       return { data:ready, error:rpcError };
     },
-    auth: { signUp: async () => {
+    auth: { signUp: async (argumentsProvided) => {
+      lastSignup = argumentsProvided;
       signups++;
       return { data:{session:null}, error:null };
     } }
@@ -315,4 +318,6 @@ test("S20 signup preflight fails closed on missing or failing RPC and permits ve
   await handler(formEvent);
   assert.equal(signups,1,"verified readiness must allow normal account creation");
   assert.ok(notices.includes("error"));
+  assert.equal(lastSignup?.options?.data?.hh_normalized_signup_client, "record-cas-v1",
+    "new browser signups must identify record-writer compatibility");
 });
