@@ -2541,7 +2541,28 @@
       await refreshNormalizedAuthorityIfEligible();
       if (!stillCurrent()) return false;
     }
-    if (!normalizedAuthorityActive()) return null;
+    if (!normalizedAuthorityActive()) {
+      // A missing normalized JS runtime is not proof that legacy regained
+      // authority. Only the authenticated server may confirm that falling
+      // back to the legacy cloud refresh is safe for this account.
+      let status = null;
+      try {
+        status = await getNormalizedSyncCohortStatus({ force: true });
+      } catch (error) {
+        console.warn("HerdHarbor could not verify refresh authority:", error?.message || error);
+      }
+      if (!stillCurrent()) return false;
+      if (status?.schemaVerified !== true ||
+          !["legacy", "shadow", "dual_write", "normalized"].includes(status?.stage)) {
+        setSyncState("Cloud refresh paused until server save authority can be verified.", "error");
+        return false;
+      }
+      if (status.stage === "normalized" || status.authorityActive === true || status.recoveryPending === true) {
+        setSyncState("Normalized cloud authority is active but the record reader is unavailable; local data was preserved.", "error");
+        return false;
+      }
+      return null; // Server confirmed that a legacy-authoritative refresh is safe.
+    }
     if (normalizedRefreshInFlight) return normalizedRefreshInFlight;
 
     const run = (async () => {
