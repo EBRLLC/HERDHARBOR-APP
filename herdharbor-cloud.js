@@ -4353,7 +4353,17 @@
     }
 
     if (normalizedCohortStatusInFlight?.userId === userId) {
-      return normalizedCohortStatusInFlight.promise;
+      const pending = normalizedCohortStatusInFlight.promise;
+      if (!force) return pending;
+      // Forced checks protect the legacy/normalized authority boundary.
+      // Reusing a request started BEFORE cutover is not a fresh answer:
+      // await it, then issue a separate RPC after its completion.
+      try { await pending; } catch {}
+      if (session?.user?.id !== userId) {
+        throw Object.assign(new Error("Account changed before authority verification."), {
+          code: "HH_SYNC_ACCOUNT_CHANGED"
+        });
+      }
     }
 
     const request = (async () => {
