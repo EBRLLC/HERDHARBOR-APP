@@ -34,6 +34,12 @@
       textareaField, todayISO, addDays, uid, recordActivity, saveState, renderCurrentView
     } = deps;
     const stateNow = () => deps.getState() || {};
+    function taskAnimalLabel(animalId) {
+      const animal=(stateNow().animals||[]).find(item=>String(item.id)===String(animalId));
+      const name=animalName(animalId);
+      // Species is display-derived; never duplicate it in persisted task rows.
+      return animal && String(animal.species||"").trim().toLowerCase()==="dog" ? name+" · Dog" : name;
+    }
     const confirm = typeof root?.confirm === "function" ? root.confirm.bind(root) : () => false;
     let taskView = {
       status: "Today",
@@ -261,7 +267,11 @@
           return;
         }
 
-        const priorFingerprint = String(existing.automationFingerprint || "");
+        // Compare actual lifecycle fields before mutating the saved task.
+        // Legacy fingerprints included title/notes, so comparing persisted
+        // fingerprints would reopen completed tasks on a presentation upgrade.
+        const priorLifecycle = automation.taskFingerprint?.(existing) || "";
+        const nextLifecycle = automation.taskFingerprint?.(definition) || "";
         const fields = [
           "title", "category", "dueDate", "animalId", "notes", "sourceType", "sourceRecordId",
           "reminderType", "recurrence", "recurrenceDays"
@@ -287,7 +297,7 @@
           existing.completedAt = now;
           completed += 1;
           rowChanged = true;
-        } else if (!definition.completed && existing.completed && priorFingerprint && priorFingerprint !== fingerprint && !existing.nextTaskId) {
+        } else if (!definition.completed && existing.completed && priorLifecycle && priorLifecycle !== nextLifecycle && !existing.nextTaskId) {
           existing.completed = false;
           delete existing.completedAt;
           reopened += 1;
@@ -394,7 +404,7 @@
           <input class="task-check" type="checkbox" data-toggle-task="${task.id}" ${task.completed ? "checked" : ""} aria-label="${task.completed ? "Reopen" : "Complete"} ${esc(task.title)}">
           <div class="list-item-main">
             <strong style="${task.completed ? "text-decoration:line-through;opacity:.65" : ""}">${esc(task.title)}</strong>
-            <span>${esc(task.category || "Task")} · ${formatDate(task.dueDate)}${task.animalId ? ` · ${esc(animalName(task.animalId))}` : ""}${taskRecurrenceLabel(task) ? ` · ${esc(taskRecurrenceLabel(task))}` : ""}</span>
+            <span>${esc(task.category || "Task")} · ${formatDate(task.dueDate)}${task.animalId ? ` · ${esc(taskAnimalLabel(task.animalId))}` : ""}${taskRecurrenceLabel(task) ? ` · ${esc(taskRecurrenceLabel(task))}` : ""}</span>
           </div>
           <span class="badge ${status.tone}">${status.label}</span>
           <div class="list-item-actions">

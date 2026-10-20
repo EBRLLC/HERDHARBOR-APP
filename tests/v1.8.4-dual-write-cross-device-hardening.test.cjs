@@ -104,7 +104,8 @@ function createRuntimeHarness({ outbox = [] } = {}) {
   };
 
   const cloud = {
-    async getSession() {
+    // Match the synchronous public HerdHarborCloud.getSession contract.
+    getSession() {
       return { user: { id: "11111111-1111-1111-1111-111111111111" } };
     },
     async syncNow() { return true; },

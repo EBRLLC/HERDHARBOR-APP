@@ -53,6 +53,15 @@ Established runtime components may keep older component identities in filenames 
 
 Historical SQL migration files and historical release documentation remain intact as implementation history.
 
+## 2.0.1 review candidate
+
+HerdHarbor 2.0.1 (canine breeder-maintained identities/pedigrees and optional AI public readiness) is staged in an **unmerged PR stack**, not yet production. Current public release remains 2.0.0.
+
+- Dog registrations and title records are breeder-entered; printed HerdHarbor canine pedigrees are not official AKC documents.
+- AI remains entirely optional; broad public eligibility is disabled pending an owner-approved tier matrix, provider/quotas/privacy acceptance and user opt-in.
+- Paper pedigree AI image recognition currently supports rabbit pedigrees only; canine images are deliberately not supported until reference corpus testing proves quality.
+- See `RELEASE_NOTES-v2.0.1.md` and `docs/2.0.1-owner-acceptance.md` for exact work-in-review scope and outstanding release gates.
+
 ## Development and verification
 
 Node.js 22 or newer is required for repository tooling.
@@ -73,10 +82,10 @@ The production application is served from `https://app.herdharbor.com`.
 
 On iPhone/iPad, Safari can install the web app through **Share → Add to Home Screen**. Other supported browsers can use HerdHarbor's **Install app** control or their browser installation option.
 
-Production static assets are published from the exact reviewed `main` commit through GitHub Pages using the protected release workflow. A PR or release document alone does not mean that version is live.
+Production static assets must be generated, fingerprinted, verified, and uploaded as one `_site` artifact from the exact reviewed `main` commit through the protected GitHub Actions Pages workflow. GitHub Pages must be configured to use **GitHub Actions** rather than branch-source publishing; otherwise the workflow fails closed. A PR or release document alone does not mean that version is live.
 
 ### Distribution status for the 2.0.0 release
 
-- **Web / installable web app:** HerdHarbor's production web channel is `https://app.herdharbor.com`, and the web app can be installed on supported mobile and desktop browsers. The 2.0.0 release is not considered live until the exact merged `main` commit completes the branch-source GitHub Pages deployment.
+- **Web / installable web app:** HerdHarbor's production web channel is `https://app.herdharbor.com`, and the web app can be installed on supported mobile and desktop browsers. The 2.0.1 candidate cannot publish until the exact approved `main` commit completes the verified GitHub Actions Pages artifact deployment. Existing 2.0.0 production status is separate.
 - **Google Play:** coming soon. The Android 2.0.0 package and Play submission material are prepared, but store publication must not be claimed until Play Console confirms the production release.
 - **Apple App Store:** coming soon. This repository does not currently contain an iOS App Store release package, so App Store availability must not be claimed until that separate release is completed.

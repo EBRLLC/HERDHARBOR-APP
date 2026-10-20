@@ -1,13 +1,13 @@
 (() => {
   "use strict";
 
-  // Current release contract: const APP_VERSION = "2.0.0";
+  // Current release contract: const APP_VERSION = "2.0.1";
   // Current build contract: const BUILD_ID = "cloud-sync-v2-state-integrity-1";
-  const APP_VERSION = window.HerdHarborBuild?.version || "2.0.0";
-  const BUILD_ID = window.HerdHarborBuild?.buildId || "v2.0.0-release-1";
+  const APP_VERSION = window.HerdHarborBuild?.version || "2.0.1";
+  const BUILD_ID = window.HerdHarborBuild?.buildId || "v2.0.1-release-1";
   const PWA_BUILD = `${APP_VERSION}-${BUILD_ID}`;
   const UPDATE_CHECK_MIN_INTERVAL_MS = 60_000;
-  const UPDATE_ACTIVATION_TIMEOUT_MS = 8_000;
+  const UPDATE_ACTIVATION_TIMEOUT_MS = 12_000;
   let installPrompt = null;
   let registration = null;
   let updateToast = null;
@@ -18,6 +18,9 @@
   let updateActivationInFlight = false;
   let updateActivationTimer = null;
   let updateDeferredUntil = 0;
+  let updateReloadDeferred = false;
+  let updateControllerChanged = false;
+  let nextUpdateActivationRetryAt = 0;
   const EARLY_MONITORING_QUEUE_LIMIT = 8;
   let monitoringLoadStarted = false;
   let monitoringLoadSettled = false;
@@ -184,9 +187,9 @@
   }
 
   function loadMonitoring(done) {
-    addOptionalScript("hh-monitoring-config", "herdharbor-monitoring-config.js?v=2.0.0", (configLoaded) => {
+    addOptionalScript("hh-monitoring-config", "herdharbor-monitoring-config.js?v=2.0.1", (configLoaded) => {
       if (!configLoaded) { done?.(); return; }
-      addOptionalScript("hh-monitoring-v151", "vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.0", () => done?.());
+      addOptionalScript("hh-monitoring-v151", "vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.1", () => done?.());
     });
   }
 
@@ -299,8 +302,65 @@
     updateActivationTimer = null;
   }
 
+  function hasUnfinishedLocalWork() {
+    try {
+      if (document.documentElement?.dataset?.hhUnsynced === "true") return true;
+      // The paper pedigree and photo review dialogs hold corrections in
+      // browser memory until explicitly committed. A controller change in
+      // another tab must never erase them.
+      if (document.querySelector?.(
+        '#hh-paper-pedigree-dialog[open], #photo-entry-review input, #photo-entry-review textarea, ' +
+        'dialog[open] input, dialog[open] textarea, [role="dialog"]:not([hidden]) textarea, ' +
+        '#modal-backdrop:not(.hidden) #modal-content input, ' +
+        '#modal-backdrop:not(.hidden) #modal-content textarea, ' +
+        '#modal-backdrop:not(.hidden) #modal-content select'
+      )) return true;
+
+    } catch {}
+    return false;
+  }
+
+  function showDeferredReloadNotice() {
+    if (updateToast) updateToast.remove();
+    updateToast = document.createElement("aside");
+    updateToast.className = "hh-pwa-update";
+    updateToast.setAttribute("role", "status");
+    updateToast.innerHTML = '<strong>App update ready</strong><span>Finish your unsaved entry before updating. This tab will keep your current work open.</span><div><button type="button" data-hh-reload-ready>Check again when ready</button></div>';
+    updateToast.querySelector("[data-hh-reload-ready]")?.addEventListener("click", () => {
+      updateReloadDeferred = false;
+      const button = updateToast?.querySelector("[data-hh-reload-ready]");
+      if (button) {
+        button.dataset.hhUpdateNow = "";
+        activatePendingUpdate(button);
+      }
+    });
+    (document.body || document.documentElement)?.appendChild(updateToast);
+  }
+
+  function showOtherClientDeferredNotice() {
+    if (updateToast) updateToast.remove();
+    updateToast = document.createElement("aside");
+    updateToast.className = "hh-pwa-update";
+    updateToast.setAttribute("role", "status");
+    updateToast.innerHTML = '<strong>Update waiting</strong><span>Another HerdHarbor tab has unsaved work or is an older version that cannot answer this check. Save your work, close older app tabs or installed app windows, then check again. Do not use Update Now in an older version until all work is saved. Your records remain open.</span><div><button type="button" data-hh-update-retry>Check again</button><button type="button" data-hh-update-later>Later</button></div>';
+    updateToast.querySelector("[data-hh-update-retry]")?.addEventListener("click", (event) => activatePendingUpdate(event.currentTarget));
+    updateToast.querySelector("[data-hh-update-later]")?.addEventListener("click", () => {
+      updateDeferredUntil = Date.now() + (4 * 60 * 60 * 1000);
+      updateToast?.remove();
+      updateToast = null;
+    });
+    (document.body || document.documentElement)?.appendChild(updateToast);
+  }
+
   function reloadAfterUpdate({ cacheBust = false } = {}) {
+    if (!updateControllerChanged) return;
     if (reloading) return;
+    if (hasUnfinishedLocalWork()) {
+      updateReloadDeferred = true;
+      showDeferredReloadNotice();
+      return;
+    }
+    updateReloadDeferred = false;
     reloading = true;
     clearUpdateActivationTimer();
     updateActivationInFlight = false;
@@ -317,6 +377,11 @@
 
   async function activatePendingUpdate(button) {
     if (!button || updateActivationInFlight) return;
+    if (hasUnfinishedLocalWork()) {
+      updateReloadDeferred = true;
+      showDeferredReloadNotice();
+      return;
+    }
     let workerToActivate = registration?.waiting || pendingUpdateWorker;
     if (!workerToActivate) {
       button.disabled = true;
@@ -330,21 +395,32 @@
       }
     }
 
+    if (hasUnfinishedLocalWork()) {
+      updateReloadDeferred = true;
+      showDeferredReloadNotice();
+      return;
+    }
+
     updateActivationInFlight = true;
     button.disabled = true;
     button.textContent = "Updating…";
     clearUpdateActivationTimer();
-    updateActivationTimer = window.setTimeout(async () => {
-      try { await registration?.update?.(); } catch (error) {
-        monitorFailure(error, "update_activation_refresh_failure", "dashboard", { operation: "pwa_update_activation_timeout_refresh" });
-      }
-      monitorFailure(new Error("PWA update activation timed out; forcing a fresh navigation."), "update_activation_timeout", "dashboard", { operation: "pwa_update_activation_timeout" });
-      reloadAfterUpdate({ cacheBust: true });
+    updateActivationTimer = window.setTimeout(() => {
+      clearUpdateActivationTimer();
+      updateActivationInFlight = false;
+      updateReloadDeferred = true;
+      showOtherClientDeferredNotice();
     }, UPDATE_ACTIVATION_TIMEOUT_MS);
 
     try {
-      workerToActivate.postMessage({ type: "SKIP_WAITING" });
-      if (workerToActivate.state === "activated") reloadAfterUpdate();
+      if (hasUnfinishedLocalWork()) {
+        clearUpdateActivationTimer();
+        updateActivationInFlight = false;
+        updateReloadDeferred = true;
+        showDeferredReloadNotice();
+        return;
+      }
+      workerToActivate.postMessage({ type: "HH_CHECK_UPDATE_READINESS" });
     } catch (error) {
       clearUpdateActivationTimer();
       updateActivationInFlight = false;
@@ -354,6 +430,27 @@
     }
   }
 
+  navigatorRef().serviceWorker?.addEventListener("message", (event) => {
+    if (event.data?.type === "HH_UPDATE_READINESS_QUERY") {
+      const port = event.ports?.[0];
+      try {
+        port?.postMessage({
+          type: "HH_UPDATE_READINESS_RESPONSE",
+          requestId: event.data.requestId,
+          ready: !hasUnfinishedLocalWork()
+        });
+      } catch {}
+      try { port?.close?.(); } catch {}
+      return;
+    }
+    if (event.data?.type === "HH_UPDATE_DEFERRED") {
+      clearUpdateActivationTimer();
+      updateActivationInFlight = false;
+      updateReloadDeferred = true;
+      showOtherClientDeferredNotice();
+    }
+  });
+
   function showUpdateReady(worker) {
     if (!worker) return;
     pendingUpdateWorker = worker;
@@ -362,7 +459,7 @@
     updateToast = document.createElement("aside");
     updateToast.className = "hh-pwa-update";
     updateToast.setAttribute("role", "status");
-    updateToast.innerHTML = `<strong>HerdHarbor Update Available</strong><span>A new version of HerdHarbor is ready. Finish any unsaved entry before updating. Cloud Sync is not required.</span><div><button type="button" data-hh-update-now>Update Now</button><button type="button" data-hh-update-later>Later</button></div>`;
+    updateToast.innerHTML = `<strong>HerdHarbor Update Available</strong><span>A new version of HerdHarbor is ready. Finish and save your work before updating. Account migrations require verified cloud synchronization.</span><div><button type="button" data-hh-update-now>Update Now</button><button type="button" data-hh-update-later>Later</button></div>`;
     updateToast.querySelector("[data-hh-update-now]").addEventListener("click", (event) => {
       activatePendingUpdate(event.currentTarget);
     });
@@ -385,7 +482,10 @@
   }
 
   async function checkForAppUpdate({ force = false } = {}) {
-    if (!registration || navigatorRef().onLine === false) return false;
+    // An unavailable service-worker registration or offline connection
+    // cannot establish that no upgrade is waiting. Forced migration checks
+    // must report UNKNOWN instead of authorizing a cutover.
+    if (!registration || navigatorRef().onLine === false) return force ? null : false;
     if (registration.waiting && navigatorRef().serviceWorker?.controller) {
       showUpdateReady(registration.waiting);
       return true;
@@ -407,7 +507,9 @@
           console.warn("HerdHarbor could not check for an app update:", error);
           monitorFailure(error, "update_check_failure", "dashboard", { operation: "pwa_update_check" });
         }
-        return false;
+        // Failure is not evidence that the installed app is current.
+        // The S20 upgrade coordinator accepts only a definite boolean.
+        return null;
       }
     })();
     try {
@@ -435,7 +537,23 @@
   }
 
   function requestForegroundUpdateCheck() {
-    if (document.visibilityState === "visible") checkForAppUpdate();
+    if (document.visibilityState !== "visible") return;
+    if (updateReloadDeferred) {
+      if (hasUnfinishedLocalWork()) return;
+      if (updateControllerChanged) {
+        reloadAfterUpdate();
+        return;
+      }
+      if (Date.now() < nextUpdateActivationRetryAt) return;
+      nextUpdateActivationRetryAt = Date.now() + UPDATE_CHECK_MIN_INTERVAL_MS;
+      const retryButton = updateToast?.querySelector("[data-hh-update-retry], [data-hh-update-now]") || {
+        disabled: false,
+        textContent: "Update Now"
+      };
+      void activatePendingUpdate(retryButton);
+      return;
+    }
+    checkForAppUpdate();
   }
 
   window.addEventListener("beforeinstallprompt", (event) => { event.preventDefault(); installPrompt = event; refreshInstallUI(); });
@@ -445,14 +563,27 @@
   window.addEventListener("pageshow", (event) => { if (event.persisted || document.visibilityState === "visible") checkForAppUpdate(); });
   document.addEventListener("visibilitychange", requestForegroundUpdateCheck);
   navigatorRef().serviceWorker?.addEventListener("controllerchange", () => {
+    // Only a real worker activation may satisfy the S20 update handoff.
+    // A same-build focus, login or ordinary page reload must not cut over.
+    try { window.sessionStorage?.setItem("hh_s20_update_activated_at", String(Date.now())); } catch {}
+    updateControllerChanged = true;
+    updateReloadDeferred = true;
     reloadAfterUpdate();
   });
   document.addEventListener("click", (event) => { const trigger = event.target.closest("[data-pwa-install]"); if (trigger) requestInstall(); });
+  // The cloud migration coordinator only requests an update check through an
+  // event. Ordinary service-worker updates remain wholly independent of cloud.
+  document.addEventListener("herdharbor:s20-check-app-update", (event) => {
+    if (event.detail && typeof event.detail === "object") {
+      event.detail.promise = checkForAppUpdate({ force: true });
+    }
+  });
 
   window.HerdHarborPWA = {
     install: requestInstall,
     refreshInstallUI,
     checkForUpdates: () => checkForAppUpdate({ force: true }),
+    hasUnfinishedLocalWork,
     isInstalled: isStandalone,
     version: APP_VERSION,
     build: PWA_BUILD

@@ -30,7 +30,7 @@ const mobileGrowth = fs.readFileSync(path.join(root, "tests/mobile-growth-layout
 // Current release remains additive: established data/runtime contracts and mobile protections stay intact.
 const webVersion = build.match(/version:\s*"([^"]+)"/)?.[1];
 const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
-assert.ok(["1.7.1", "1.8.0", "1.8.1", "1.8.2", "1.8.3", "1.8.4", "2.0.0"].includes(webVersion), `unexpected web release ${webVersion}`);
+assert.ok(["1.7.1", "1.8.0", "1.8.1", "1.8.2", "1.8.3", "1.8.4", "2.0.1"].includes(webVersion), `unexpected web release ${webVersion}`);
 if (webVersion === "1.7.1") assert.equal(buildId, "multispecies-genetics-foundation-1");
 if (webVersion === "1.8.0") assert.match(buildId, /^subscription-engine-/);
 if (webVersion === "1.8.1") {
@@ -41,8 +41,8 @@ if (webVersion === "1.8.2") {
   assert.match(buildId, /^cloud-sync-v2-/);
   assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=2/);
 }
-if (webVersion === "2.0.0") {
-  assert.equal(buildId, "v2.0.0-release-1");
+if (webVersion === "2.0.1") {
+  assert.equal(buildId, "v2.0.1-release-1");
   assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=3/);
 }
 assert.match(html, /HerdHarbor production application shell/);
@@ -51,7 +51,7 @@ assert.match(settingsRuntime, /id="settings-sync-now"/);
 assert.match(settingsRuntime, /id="settings-last-synced"/);
 assert.match(settingsRuntime, /id="export-excel"/);
 assert.match(settingsRuntime, /HerdHarbor v\$\{appVersion\(\)\}/);
-assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.0"/);
+assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.1"/);
 assert.match(appRuntime, /Guided pedigree builder/);
 assert.doesNotMatch(appRuntime, /Guided pedigree builder · v/i);
 assert.doesNotMatch(appRuntime, /let animalView =/);
@@ -116,15 +116,15 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /const CACHE_NAME = "herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1/);
+assert.match(serviceWorker, /const CACHE_NAME = "herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1/);
 if (webVersion === "1.8.1") assert.match(serviceWorker, /v1\.8\.1-alpha-october-subscription-launch-/);
 assert.match(optionalTools, /spreadsheet-import\.js\?v=17/);
 assert.match(serviceWorker, /"\/spreadsheet-import\.js"/);
 assert.match(serviceWorker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
-assert.match(serviceWorker, /herdharbor-cloud\.js\?v=35/);
+assert.match(serviceWorker, /herdharbor-cloud\.js\?v=48/);
 assert.match(serviceWorker, /symptom-guide\.js\?v=1/);
-assert.match(serviceWorker, /pwa\.js\?v=34/);
-assert.match(serviceWorker, /animal-profile-runtime-v1\.8\.3\.js\?v=1/);
+assert.match(serviceWorker, /pwa\.js\?v=38/);
+assert.match(serviceWorker, /animal-profile-runtime-v1\.8\.3\.js\?v=2/);
 assert.match(serviceWorker, /breeding-litter-runtime-v1\.8\.3\.js\?v=1/);
 assert.match(serviceWorker, /task-runtime-v1\.8\.3\.js\?v=1/);
 assert.match(serviceWorker, /sales-customer-runtime-v1\.8\.3\.js\?v=1/);
@@ -146,7 +146,7 @@ assert.match(serviceWorker, /rabbit-genetics-ui-advanced-v1\.6\.1\.js\?v=4/);
 assert.match(serviceWorker, /qrcode-generator-1\.4\.4\.js/);
 assert.match(serviceWorker, /NETWORK_FIRST_PATHS/);
 assert.match(serviceWorker, /fetch\(request, \{ cache: "no-store" \}\)/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "v2.0.0-release-1"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "v2.0.1-release-1"/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
 assert.match(pwa, /loadShows/);

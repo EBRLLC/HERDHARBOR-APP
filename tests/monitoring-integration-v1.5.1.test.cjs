@@ -18,7 +18,7 @@ const instrumentation = read("monitoring/herdharbor-monitoring-instrumentation.m
 const cloud = read("herdharbor-cloud.js");
 const shows = read("shows-v1.6.1.js");
 
-assert.equal(pkg.version, "2.0.0");
+assert.equal(pkg.version, "2.0.1");
 assert.equal(pkg.dependencies["@sentry/browser"], "10.71.0");
 assert.ok(pkg.devDependencies.esbuild);
 assert.match(browser, /import \* as Sentry from "@sentry\/browser"/);
@@ -27,11 +27,11 @@ assert.doesNotMatch(browser, /loader\.js|browser\.sentry-cdn\.com|sentry\.io\/ap
 
 assert.match(config, /dsn: ""/);
 assert.doesNotMatch(config, /https:\/\/[^"']+@[^"']*sentry/i, "DSN is not hard-coded in source");
-assert.match(config, /HerdHarbor@2\.0\.0/);
-assert.match(config, /build: "v2.0.0-release-1"/);
+assert.match(config, /HerdHarbor@2\.0\.1/);
+assert.match(config, /build: "v2.0.1-release-1"/);
 assert.match(config, /enableTestCrash: false/);
-assert.match(generator, /release: "HerdHarbor@2\.0\.0"/);
-assert.match(generator, /v2.0.0-release-1/);
+assert.match(generator, /release: "HerdHarbor@2\.0\.1"/);
+assert.match(generator, /v2.0.1-release-1/);
 
 assert.match(core, /beforeSend:/);
 assert.match(core, /beforeBreadcrumb:/);
@@ -64,8 +64,8 @@ assert.match(instrumentation, /local_storage_remove/);
 assert.doesNotMatch(instrumentation, /localStorage\.getItem/);
 assert.doesNotMatch(instrumentation, /JSON\.parse\(value\)|String\(value\)|JSON\.stringify\(value\)/, "storage instrumentation never inspects stored values");
 
-assert.match(pwa, /herdharbor-monitoring-config\.js\?v=2\.0\.0/);
-assert.match(pwa, /vendor\/herdharbor-monitoring-v1\.6\.1\.min\.js\?v=2\.0\.0/);
+assert.match(pwa, /herdharbor-monitoring-config\.js\?v=2\.0\.1/);
+assert.match(pwa, /vendor\/herdharbor-monitoring-v1\.6\.1\.min\.js\?v=2\.0\.1/);
 assert.match(pwa, /addOptionalScript/);
 assert.match(pwa, /startMonitoringLoad\(\)/);
 assert.match(pwa, /bootApplication\(\);/);
@@ -78,12 +78,13 @@ assert.doesNotMatch(pwa, /HerdHarborCloud.*syncNow[\s\S]*SKIP_WAITING/, "app upd
 // Monitoring is a preserved v1.7.1 subsystem, while the application shell may
 // advance independently. Guard the shell identity shape plus the exact monitoring
 // assets instead of pinning this integration test to the retired v1.7.1 shell.
-assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1"/);
-assert.match(worker, /herdharbor-monitoring-config\.js\?v=2\.0\.0/);
-assert.match(worker, /herdharbor-monitoring-v1\.6\.1\.min\.js\?v=2\.0\.0/);
+assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-s22-3"/);
+assert.match(worker, /herdharbor-monitoring-config\.js\?v=2\.0\.1/);
+assert.match(worker, /herdharbor-monitoring-v1\.6\.1\.min\.js\?v=2\.0\.1/);
 assert.match(worker, /cache: "no-store"/);
 assert.doesNotMatch(worker, /install[\s\S]{0,500}skipWaiting\(\)/, "waiting-worker update UX remains intact");
-assert.match(worker, /event\.data\?\.type === "SKIP_WAITING"/);
+assert.match(worker, /includes\(event\.data\?\.type\)/);
+assert.match(worker, /allOpenClientsReadyForUpdate/);
 
 assert.doesNotMatch(cloud, /Sentry|HerdHarborMonitoring/, "Cloud Sync behavior is not rewritten around Sentry");
 assert.match(cloud, /const STORAGE_KEY = "herdharbor_pre_alpha_v1"/, "farm state storage key is unchanged");

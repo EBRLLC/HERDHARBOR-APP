@@ -89,7 +89,9 @@ test("retryable provider failure keeps the same draft request pending without ca
 test("photo entry is camera-first, uses prepared images, and resumes on mobile lifecycle signals", () => {
   assert.match(photo, /capture="environment"/);
   assert.match(photo, /mobileCapture\(\)/);
-  assert.match(photo, /prepareImage\(selectedFile\)/);
+  assert.match(photo, /prepareImage\(meta\.file\)/);
+  assert.match(photo, /isCurrentAttempt\(meta\)/);
+  assert.match(photo, /meta\.ownerId/);
   assert.match(photo, /createRetryController/);
   assert.match(photo, /photo_analysis_queued/);
   assert.match(photo, /addEventListener\?\.\("online"/);
@@ -124,14 +126,14 @@ test("canonical cloud retry safeguards remain untouched", () => {
 
 test("mobile capture remains in the core shell while photo AI is live-tester lazy-loaded", () => {
   const mobileIndex = html.indexOf("mobile-capture-v1.8.3.js?v=1");
-  const appIndex = html.indexOf("herdharbor-app-runtime.js?v=4");
+  const appIndex = html.indexOf("herdharbor-app-runtime.js?v=5");
   const optional = read("herdharbor-optional-tools.js");
   assert.ok(mobileIndex >= 0 && appIndex > mobileIndex);
   assert.doesNotMatch(html, /<script[^>]+photo-assisted-entry-v1\.8\.3\.js/);
-  assert.match(optional, /photoAi:\s*"photo-assisted-entry-v1\.8\.3\.js\?v=2"/);
+  assert.match(optional, /photoAi:\s*"photo-assisted-entry-v1\.8\.3\.js\?v=3"/);
   assert.match(optional, /ensureAiLiveTools/);
   assert.match(worker, /\.\/mobile-capture-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /"\/mobile-capture-v1\.8\.3\.js"/);
-  assert.match(worker, /\.\/photo-assisted-entry-v1\.8\.3\.js\?v=2/);
+  assert.match(worker, /\.\/photo-assisted-entry-v1\.8\.3\.js\?v=3/);
   assert.match(pkg.scripts["test:v1.8.3"], /offline-mobile-capture-v1\.8\.3\.test\.cjs/);
 });

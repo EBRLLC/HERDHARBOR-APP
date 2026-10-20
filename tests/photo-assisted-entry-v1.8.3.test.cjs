@@ -171,13 +171,13 @@ test("canonical Animal and Health runtimes remain final save owners", () => {
 
 test("photo AI stays production-deployed but lazy-loads only for approved live testers", () => {
   const optional = read("herdharbor-optional-tools.js");
-  const appIndex = html.indexOf("herdharbor-app-runtime.js?v=4");
+  const appIndex = html.indexOf("herdharbor-app-runtime.js?v=5");
   assert.ok(appIndex >= 0);
   assert.doesNotMatch(html, /<script[^>]+photo-assisted-entry-v1\.8\.3\.js/);
-  assert.match(optional, /photoAi:\s*"photo-assisted-entry-v1\.8\.3\.js\?v=2"/);
+  assert.match(optional, /photoAi:\s*"photo-assisted-entry-v1\.8\.3\.js\?v=3"/);
   assert.match(optional, /isAiLiveTester/);
   assert.match(optional, /ensureAiLiveTools/);
-  assert.match(worker, /\.\/photo-assisted-entry-v1\.8\.3\.js\?v=2/);
+  assert.match(worker, /\.\/photo-assisted-entry-v1\.8\.3\.js\?v=3/);
   assert.match(pkg.scripts["test:v1.8.3"], /photo-assisted-entry-v1\.8\.3\.test\.cjs/);
 });
 

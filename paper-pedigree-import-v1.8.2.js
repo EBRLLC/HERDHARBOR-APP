@@ -45,6 +45,40 @@
   let extraction = null;
   let reviewConfirmed = false;
   let observer = null;
+  let generation = 0;
+  let dialogActive = false;
+  let dialogOwnerId = "";
+  let reviewedAttempt = null;
+  let commitPending = false;
+  const sessionUserId = () => String(cloud()?.getSession?.()?.user?.id || "");
+  const getDialog = () => root.document?.getElementById(DIALOG_ID);
+  const isOptedIn = () => root.document?.querySelector(`#${DIALOG_ID} [data-pp-ai-optin]`)?.checked === true;
+  function invalidateWork() {
+    generation += 1;
+    preparedImage = null;
+    extraction = null;
+    reviewedAttempt = null;
+    reviewConfirmed = false;
+    const dialog = getDialog();
+    const review = dialog?.querySelector("[data-pp-review]");
+    if (review) review.innerHTML = "";
+    const confirm = dialog?.querySelector("[data-pp-confirm-review]");
+    if (confirm) { confirm.checked = false; confirm.disabled = true; }
+    const commit = dialog?.querySelector("[data-pp-commit]");
+    if (commit && !commitPending) commit.disabled = true;
+    const read = dialog?.querySelector("[data-pp-read]");
+    if (read) read.disabled = false;
+  }
+  function isCurrentAttempt(attempt) {
+    return Boolean(dialogActive && attempt &&
+      attempt.generation === generation &&
+      attempt.file === selectedFile &&
+      attempt.userId && attempt.userId === sessionUserId() &&
+      isOptedIn() && getDialog());
+  }
+  function isReviewedAttempt() {
+    return Boolean(reviewedAttempt && isCurrentAttempt(reviewedAttempt) && extraction);
+  }
 
   const clean = (value) => String(value == null ? "" : value).trim();
   const esc = (value) => clean(value).replace(/[&<>"']/g, (char) => ({
@@ -112,15 +146,19 @@
     dialog = root.document.createElement("dialog");
     dialog.id = DIALOG_ID;
     (root.document.body || root.document.documentElement).appendChild(dialog);
-    dialog.addEventListener("close", reset);
+    dialog.addEventListener("close", () => { dialogActive = false; invalidateWork(); reset(); });
     return dialog;
   }
 
   function reset() {
+    generation += 1;
     selectedFile = null;
     preparedImage = null;
     extraction = null;
+    reviewedAttempt = null;
     reviewConfirmed = false;
+    // Commit ownership belongs to commitReviewedPedigree's finally block.
+    // Closing a dialog must not make a pending asynchronous import reentrant.
   }
 
   function setStatus(message, type = "") {
@@ -167,8 +205,11 @@
         const transaction = db.transaction(ATTACHMENT_STORE, mode);
         const store = transaction.objectStore(ATTACHMENT_STORE);
         const request = action(store);
-        request.onsuccess = () => resolve(request.result);
+        // IndexedDB request success precedes transaction durability. Do not
+        // resolve and close the DB until the entire transaction commits.
         request.onerror = () => reject(request.error || new Error("Pedigree attachment storage failed."));
+        transaction.oncomplete = () => resolve(request.result);
+        transaction.onerror = () => reject(transaction.error || new Error("Pedigree attachment storage failed."));
         transaction.onabort = () => reject(transaction.error || new Error("Pedigree attachment storage was interrupted."));
       });
     } finally {
@@ -300,6 +341,8 @@
       } else if (conflict.type === "duplicate-pedigree-conflict") {
         const fields = (conflict.fields || []).map((row) => row.field).join(", ");
         messages.push(`${ROLE_LABELS[conflict.role] || conflict.role}: the same ancestor appears elsewhere on this pedigree with different ${fields}. Verify both entries before importing.`);
+      } else if (conflict.type === "unsupported-species") {
+        messages.push(`${ROLE_LABELS[conflict.role] || conflict.role}: this AI reader supports rabbit pedigrees only. Use the manual dog profile for canine parentage.`);
       } else if (conflict.type === "missing-required-field") {
         messages.push(`${ROLE_LABELS[conflict.role] || conflict.role}: enter a name before importing this pedigree entry.`);
       }
@@ -310,20 +353,36 @@
 
   async function readPedigree() {
     if (!selectedFile) return setStatus("Choose a JPG or PNG pedigree photo first.", "error");
-    if (!cloud()?.getSession?.()?.user?.id) return setStatus("Sign in before using automatic pedigree reading.", "error");
-    const button = root.document.querySelector(`#${DIALOG_ID} [data-pp-read]`);
+    const userId = sessionUserId();
+    if (!userId) return setStatus("Sign in before using automatic pedigree reading.", "error");
+    if (!isOptedIn())
+      return setStatus("Choose to send this rabbit pedigree photo to the optional AI reader before uploading.", "error");
+    if (commitPending) return setStatus("Finish the current pedigree import before starting another read.", "error");
+    invalidateWork();
+    const attempt = { file: selectedFile, userId, generation };
+    const button = getDialog()?.querySelector("[data-pp-read]");
     if (button) button.disabled = true;
     setStatus("Preparing and reading the pedigree…");
     try {
-      preparedImage = await prepareImage(selectedFile);
-      const preview = root.document.querySelector(`#${DIALOG_ID} [data-pp-preview]`);
-      if (preview) preview.innerHTML = `<img src="${preparedImage.dataUrl}" alt="Selected paper pedigree">`;
-      const response = typeof cloud().invokeFunctionWithDiagnostics === "function"
-        ? await cloud().invokeFunctionWithDiagnostics("paper-pedigree-extract", preparedImage)
-        : await cloud().invokeFunction("paper-pedigree-extract", preparedImage);
+      const image = await prepareImage(attempt.file);
+      // Check again after async preparation. Consent and the authenticated
+      // farm must still match immediately before network transmission.
+      if (!isCurrentAttempt(attempt)) return false;
+      const payload = { ...image, species: "Rabbit", aiOptIn: true };
+      const preview = getDialog()?.querySelector("[data-pp-preview]");
+      if (preview) preview.innerHTML = `<img src="${image.dataUrl}" alt="Selected paper pedigree">`;
+      const service = cloud();
+      if (!isCurrentAttempt(attempt)) return false;
+      const response = typeof service?.invokeFunctionWithDiagnostics === "function"
+        ? await service.invokeFunctionWithDiagnostics("paper-pedigree-extract", payload)
+        : await service.invokeFunction("paper-pedigree-extract", payload);
+      if (!isCurrentAttempt(attempt)) return false;
       if (!response?.extraction) throw new Error(response?.error || "The pedigree reader returned no draft.");
+      const normalized = core().normalizeExtraction(asCoreExtraction(response.extraction));
+      if (!isCurrentAttempt(attempt)) return false;
+      preparedImage = image;
       extraction = response.extraction;
-      const normalized = core().normalizeExtraction(asCoreExtraction(extraction));
+      reviewedAttempt = attempt;
       renderReview(normalized);
       const warnings = [...new Set([...(response.extraction.warnings || []), ...(normalized.warnings || [])])];
       const diagnostics = response.extraction.diagnostics || {};
@@ -340,12 +399,15 @@
           : "Draft ready. Review every field before importing.",
         warnings.length || ambiguous || lowCount ? "" : "success"
       );
+      return true;
     } catch (error) {
+      if (!isCurrentAttempt(attempt)) return false;
       const code = clean(error?.code || "");
       const suffix = code && code !== "secure_service_error" ? ` [${code}]` : "";
       setStatus((error?.message || "HerdHarbor could not read that pedigree photo.") + suffix, "error");
+      return false;
     } finally {
-      if (button) button.disabled = false;
+      if (button && attempt.generation === generation) button.disabled = false;
     }
   }
 
@@ -356,7 +418,21 @@
       if (action.role !== "subject" && action.animalId) ancestorIds[action.role] = action.animalId;
     }
     const importedAt = new Date().toISOString();
-    const id = `pedigree_ai_${String(reviewed.extractionId || Date.now()).replace(/[^a-z0-9_-]/gi, "").slice(0, 80)}`;
+    // An extraction ID identifies a model response, not a unique imported
+    // document. Re-imports must never overwrite an older attachment or reuse
+    // its cleanup key if this import later fails.
+    const extractionKey = String(reviewed.extractionId || "draft")
+      .replace(/[^a-z0-9_-]/gi, "").slice(0, 48) || "draft";
+    let id = "";
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const nonce = (root.crypto?.randomUUID?.() ||
+        (Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 14)))
+        .replace(/[^a-z0-9_-]/gi, "");
+      id = `pedigree_ai_${extractionKey}_${nonce}`;
+      if (!(nextState.pedigrees || []).some(row => String(row.id) === id)) break;
+      id = "";
+    }
+    if (!id) throw new Error("A unique pedigree attachment key could not be created.");
     const record = {
       id,
       subjectAnimalId: result.subjectAnimalId,
@@ -377,54 +453,108 @@
   }
 
   async function commitReviewedPedigree() {
-    const confirm = root.document.querySelector(`#${DIALOG_ID} [data-pp-confirm-review]`);
+    if (commitPending) return false;
+    const attempt = reviewedAttempt;
+    if (!isReviewedAttempt()) {
+      setStatus("This photo review is no longer current. Read the selected photo again.", "error");
+      return false;
+    }
+    const confirm = getDialog()?.querySelector("[data-pp-confirm-review]");
     if (!confirm?.checked || reviewConfirmed !== true) {
       return setStatus("Confirm that you reviewed the extracted pedigree draft before importing.", "error");
     }
     const reviewed = collectReviewedExtraction();
     if (!reviewed) return setStatus("Read a pedigree photo before importing.", "error");
+    if ((reviewed.nodes || []).some(node => String(node.species || "Rabbit").trim().toLowerCase() !== "rabbit")) {
+      return setStatus("This AI reader has not been validated for canine or other species. Use manual animal records and pedigrees.", "error");
+    }
     const current = app()?.getState?.();
     if (!current || !core()) return setStatus("HerdHarbor is not ready to import this pedigree.", "error");
     const plan = core().buildImportPlan(current, asCoreExtraction(reviewed));
     if (renderPlanProblems(plan) || !plan.canCommit) {
       setStatus("Resolve the pedigree items listed above before importing.", "error");
-      return;
+      return false;
     }
-    const commitButton = root.document.querySelector(`#${DIALOG_ID} [data-pp-commit]`);
+    const commitButton = getDialog()?.querySelector("[data-pp-commit]");
+    const readButton = getDialog()?.querySelector("[data-pp-read]");
+    commitPending = true;
     if (commitButton) commitButton.disabled = true;
+    if (readButton) readButton.disabled = true;
     let storedAttachmentId = "";
     try {
       const applied = core().applyImportPlan(current, plan);
-      const subject = applied.state.animals.find((row) => String(row.id) === String(applied.subjectAnimalId));
+      const subject = applied.state.animals.find(row => String(row.id) === String(applied.subjectAnimalId));
       if (subject && String(subject.status || "").toLowerCase().includes("ancestor")) subject.status = "Active";
-      const record = makePedigreeRecord(applied.state, { ...applied, plan }, reviewed, preparedImage);
-      if (preparedImage?.dataUrl) {
-        await putPedigreeAttachment(record.id, preparedImage);
+      const file = preparedImage;
+      const record = makePedigreeRecord(applied.state, { ...applied, plan }, reviewed, file);
+      if (file?.dataUrl) {
+        // Record the cleanup key before I/O; a failed or aborted transaction
+        // must not leave a committed attachment without a pedigree record.
         storedAttachmentId = record.id;
+        await putPedigreeAttachment(record.id, file);
       }
+      if (!isCurrentAttempt(attempt) || reviewedAttempt !== attempt || app()?.getState?.() !== current)
+        throw new Error("The selected photo, account or farm data changed. Import cancelled.");
       const saved = app().commitState(applied.state, "Paper pedigree imported.");
-      if (saved === false) throw new Error("HerdHarbor could not save the reviewed pedigree.");
+      if (saved !== true) throw new Error("HerdHarbor could not save the reviewed pedigree.");
       setStatus("Paper pedigree imported successfully.", "success");
-      root.setTimeout(() => ensureDialog().close(), 700);
+      root.setTimeout(() => {
+        if (getDialog()?.open && isCurrentAttempt(attempt)) getDialog().close();
+      }, 700);
+      return true;
     } catch (error) {
-      if (storedAttachmentId) await deletePedigreeAttachment(storedAttachmentId).catch(() => {});
-      setStatus(error?.message || "The reviewed pedigree could not be imported.", "error");
-      if (commitButton) commitButton.disabled = false;
+      let cleanupFailure = null;
+      if (storedAttachmentId) {
+        // Attachment deletion is best-effort but must never be silent. Retry
+        // transient IndexedDB failures, then alert the member when a local
+        // orphan may remain. Never claim an aborted import succeeded.
+        for (let retry = 0; retry < 2; retry += 1) {
+          try {
+            await deletePedigreeAttachment(storedAttachmentId);
+            cleanupFailure = null;
+            break;
+          } catch (cause) {
+            cleanupFailure = cause;
+          }
+        }
+      }
+      if (cleanupFailure) {
+        root.console?.warn?.("herdharbor_pedigree_attachment_cleanup_failed", cleanupFailure);
+      }
+      if (isCurrentAttempt(attempt)) {
+        const reason = error?.message || "The reviewed pedigree could not be imported.";
+        const cleanupWarning = cleanupFailure
+          ? " The temporary image could not be removed from this device. Your farm records were not imported; contact HerdHarbor support before clearing local app data."
+          : "";
+        setStatus(reason + cleanupWarning, "error");
+      }
+      return false;
+    } finally {
+      commitPending = false;
+      if (commitButton && isCurrentAttempt(attempt)) commitButton.disabled = false;
+      if (readButton && isCurrentAttempt(attempt)) readButton.disabled = false;
     }
   }
 
   function open() {
     if (!core() || !app()) return;
+    if (commitPending) {
+      app()?.toast?.("A pedigree import is still finishing. Try again after it completes.", "error");
+      return false;
+    }
     const dialog = ensureDialog();
     reset();
+    dialogOwnerId = sessionUserId();
+    dialogActive = true;
     dialog.innerHTML = `<div class="hh-pp-shell">
       <header class="hh-pp-head"><div><small class="muted">HerdHarbor paper pedigree</small><h2>Import pedigree from a photo</h2></div><button type="button" class="button button-ghost" data-pp-close>Close</button></header>
       <div class="hh-pp-body">
-        <div class="hh-pp-notice"><strong>Review required.</strong> Automatic reading can misread printed or handwritten pedigree information. When you choose Read pedigree photo, the selected image is sent through HerdHarbor's authenticated AI processing service to prepare a draft. Nothing is added to your farm records until you review the draft and confirm the import.</div>
+        <div class="hh-pp-notice"><strong>Review required.</strong> Automatic reading can misread printed or handwritten pedigree information. This automatic reader currently supports rabbit pedigrees only; for dogs, enter parents and titles manually. When you choose Read pedigree photo, the selected image is sent through HerdHarbor's authenticated AI processing service to prepare a draft. Nothing is added to your farm records until you review the draft and confirm the import.</div>
         <div class="hh-pp-upload">
           <div class="hh-pp-drop"><strong>Choose a clear photo of the pedigree</strong><p class="muted">JPG or PNG. Photograph the page straight-on with all names and identifiers visible.</p><input type="file" accept="image/jpeg,image/png" data-pp-file></div>
           <div class="hh-pp-preview" data-pp-preview><span class="muted">Photo preview</span></div>
         </div>
+        <label class="hh-pp-confirm"><input type="checkbox" data-pp-ai-optin><span>I choose to send this rabbit pedigree image to HerdHarbor's optional AI service to create an editable draft. Manual pedigree entry remains available.</span></label>
         <div><button type="button" class="button button-primary" data-pp-read>Read pedigree photo</button></div>
         <div class="hh-pp-status" data-type=""></div>
         <div data-pp-problems></div>
@@ -433,9 +563,24 @@
       </div>
       <footer class="hh-pp-foot"><button type="button" class="button button-ghost" data-pp-close>Cancel</button><button type="button" class="button button-primary" data-pp-commit disabled>Review complete — import pedigree</button></footer>
     </div>`;
-    dialog.querySelectorAll("[data-pp-close]").forEach((button) => button.addEventListener("click", () => dialog.close()));
+    dialog.querySelectorAll("[data-pp-close]").forEach((button) => button.addEventListener("click", () => {
+      dialogActive = false;
+      invalidateWork();
+      dialog.close();
+    }));
+    dialog.querySelector("[data-pp-ai-optin]")?.addEventListener("change", (event) => {
+      if (event.currentTarget?.checked) return;
+      invalidateWork();
+      setStatus("AI processing cancelled. Manual pedigree entry remains available.");
+    });
     dialog.querySelector("[data-pp-file]")?.addEventListener("change", async (event) => {
+      invalidateWork();
       selectedFile = event.target.files?.[0] || null;
+      const previewGeneration = generation;
+      const previewFile = selectedFile;
+      // Consent is image-specific. Selecting a new file requires a fresh choice.
+      const optIn = dialog.querySelector("[data-pp-ai-optin]");
+      if (optIn) optIn.checked = false;
       extraction = null;
       preparedImage = null;
       const review = dialog.querySelector("[data-pp-review]");
@@ -450,12 +595,14 @@
       if (commit) commit.disabled = true;
       if (!selectedFile) return;
       try {
-        const localPreview = await readFileAsDataUrl(selectedFile);
+        const localPreview = await readFileAsDataUrl(previewFile);
+        if (generation !== previewGeneration || selectedFile !== previewFile || !dialogActive) return;
         const preview = dialog.querySelector("[data-pp-preview]");
         if (preview) preview.innerHTML = `<img src="${localPreview}" alt="Selected paper pedigree">`;
         setStatus("Photo selected. Nothing has been added to your records yet.");
       } catch (error) {
-        setStatus(error?.message || "The photo could not be opened.", "error");
+        if (generation === previewGeneration && dialogActive)
+          setStatus(error?.message || "The photo could not be opened.", "error");
       }
     });
     dialog.querySelector("[data-pp-read]")?.addEventListener("click", readPedigree);
@@ -489,6 +636,23 @@
       quickPedigree.insertAdjacentElement("afterend", button);
     }
   }
+
+  const onPaperAuthBoundary = (event) => {
+    // A hydrated event for the SAME account is not a logout. Preserve the
+    // member's corrected review on routine token refresh. Immediate true
+    // boundaries always invalidate (including A→B→A in quick succession).
+    if (event?.type === "herdharbor:auth-session" &&
+        dialogOwnerId && dialogOwnerId === sessionUserId()) return;
+    // Invalidate even an image still decoding, where no prepared payload
+    // exists yet; A→B→A must not revive old consent.
+    if (!dialogActive) return;
+    invalidateWork();
+    const optIn = getDialog()?.querySelector("[data-pp-ai-optin]");
+    if (optIn) optIn.checked = false;
+    setStatus("Your account session changed. Select and review the photo again.", "error");
+  };
+  root.document?.addEventListener?.("herdharbor:auth-boundary", onPaperAuthBoundary);
+  root.document?.addEventListener?.("herdharbor:auth-session", onPaperAuthBoundary);
 
   function start() {
     addStyles();

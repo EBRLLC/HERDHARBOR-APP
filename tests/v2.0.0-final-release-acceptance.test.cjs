@@ -51,17 +51,17 @@ test("every dedicated 2.0.0 release phase gate remains wired into the aggregate 
   ]) assert.ok(pkg.scripts["test:v2.0.0-regression"].includes(token), token);
 });
 
-test("authoritative production identities agree on stable 2.0.0", () => {
-  assert.equal(pkg.version, "2.0.0");
-  assert.equal(manifest.version, "2.0.0");
-  assert.equal(String(twa.appVersion), "2.0.0");
-  assert.equal(Number(twa.appVersionCode), 19);
+test("authoritative production identities agree on candidate 2.0.1", () => {
+  assert.equal(pkg.version, "2.0.1");
+  assert.equal(manifest.version, "2.0.1");
+  assert.equal(String(twa.appVersion), "2.0.1");
+  assert.equal(Number(twa.appVersionCode), 20);
   assert.match(build, /channel:\s*"Stable"/);
-  assert.match(build, /version:\s*"2\.0\.0"/);
-  assert.match(gradle, /versionName\s+"2\.0\.0"/);
-  assert.match(gradle, /versionCode\s+19/);
-  assert.match(worker, /herdharbor-shell-v2\.0\.0-v2\.0\.0-release-1/);
-  assert.match(index, /herdharbor-cloud\.js\?v=35/);
+  assert.match(build, /version:\s*"2\.0\.1"/);
+  assert.match(gradle, /versionName\s+"2\.0\.1"/);
+  assert.match(gradle, /versionCode\s+20/);
+  assert.match(worker, /herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1/);
+  assert.match(index, /herdharbor-cloud\.js\?v=48/);
 });
 
 test("normal member and store surfaces contain no pre-release or internal-component branding", () => {
@@ -98,9 +98,9 @@ test("both protected production workflows require the final release gate", () =>
   assert.doesNotMatch(productionAcceptance, /Alpha v1\.8\.4/);
 });
 
-test("final gate does not imply deployment before branch-source Pages succeeds", () => {
+test("final gate does not imply deployment before the verified Pages artifact publishes", () => {
   const readme = read("README.md");
-  assert.match(readme, /2\.0\.0 release is not considered live until the exact merged `main` commit completes the branch-source GitHub Pages deployment/i);
+  assert.match(readme, /2\.0\.1 candidate cannot publish until the exact approved `main` commit completes the verified GitHub Actions Pages artifact deployment/i);
   assert.match(readme, /Google Play:\*\* coming soon/i);
   assert.match(readme, /Apple App Store:\*\* coming soon/i);
 });

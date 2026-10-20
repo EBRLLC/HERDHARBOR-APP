@@ -151,7 +151,10 @@ test("cloud checks throttle before normalized cohort lookup and dedupe cohort RP
   assert.match(cloud, /const NORMALIZED_COHORT_STATUS_TTL_MS = 60000;/);
   assert.match(cloud, /normalizedCohortStatusCache\?\.userId === userId/);
   assert.match(cloud, /normalizedCohortStatusInFlight\?\.userId === userId/);
-  assert.match(cloud, /return normalizedCohortStatusInFlight\.promise/);
+  assert.match(cloud, /const pending = normalizedCohortStatusInFlight\.promise/);
+  assert.match(cloud, /if \(!force\) return pending/);
+  assert.match(cloud, /try \{ await pending; \} catch \{\}/);
+  assert.match(cloud, /HH_SYNC_ACCOUNT_CHANGED/);
   assert.match(cloud, /normalizedCohortStatusInFlight = \{ userId, promise: request \}/);
 });
 

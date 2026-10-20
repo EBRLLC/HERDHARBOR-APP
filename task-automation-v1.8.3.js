@@ -25,6 +25,14 @@
   function animalName(state, animalId) {
     return array(state, "animals").find((animal) => String(animal.id) === String(animalId))?.name || "Unknown animal";
   }
+  function dogFor(state, animalId) {
+    const animal = array(state,"animals").find(record=>String(record.id)===String(animalId));
+    return String(animal?.species || "").trim().toLowerCase()==="dog" ? animal : null;
+  }
+  function historicalDog(state, animalId) {
+    const animal=dogFor(state,animalId);
+    return Boolean(animal)&&["sold","deceased","archived","ancestor only"].includes(String(animal.status||"").trim().toLowerCase());
+  }
 
   function birthLiveRemaining(litter = {}) {
     const count = (value) => Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -40,9 +48,9 @@
   }
 
   function taskFingerprint(definition = {}) {
+    // Stable scheduling identity, not UI copy. Changing an animal name, Dog
+    // label or notes must never reopen a previously completed reminder.
     return JSON.stringify([
-      clean(definition.title),
-      clean(definition.category),
       clean(definition.dueDate),
       clean(definition.animalId),
       clean(definition.sourceType),
@@ -54,6 +62,8 @@
   }
 
   function breedingDefinitions(state, breeding = {}) {
+    // Existing breeding records are authoritative regardless of species. Suppressing
+    // a formerly valid Dog definition would silently mark its task as completed.
     if (!breeding.id) return [];
     return [{
       id: workflowTaskId("breeding", breeding.id, "breeding-follow-up"),
@@ -72,6 +82,7 @@
   }
 
   function litterDefinitions(state, litter = {}) {
+    // Keep historical task fingerprints and IDs stable across release upgrades.
     if (!litter.id) return [];
     return [{
       id: workflowTaskId("birth", litter.id, "litter-follow-up"),
@@ -91,6 +102,11 @@
 
   function healthDefinition(state, record = {}) {
     if (!record.id) return null;
+    // Do not introduce new work for archived dog ancestors, but do not mark
+    // an *existing* tracked reminder complete merely because a status changed.
+    if (historicalDog(state,record.animalId) &&
+        !array(state,"tasks").some(task=>task.automationManaged &&
+          task.sourceType==="health" && String(task.sourceRecordId)===String(record.id))) return null;
     const type = clean(record.type);
     const reminderType = type === "Medication"
       ? "medication-follow-up"
@@ -105,7 +121,7 @@
     const recurrence = recurrenceFor(record);
     return {
       id: workflowTaskId("health", record.id, reminderType),
-      title: label + ": " + animalName(state, record.animalId),
+      title: label + ": " + animalName(state, record.animalId) + (dogFor(state,record.animalId) ? " (Dog)" : ""),
       category: "Health",
       dueDate: clean(record.followUpDate),
       animalId: clean(record.animalId),

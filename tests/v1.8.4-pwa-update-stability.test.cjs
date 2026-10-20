@@ -12,16 +12,18 @@ test("PWA update remains explicit and waits for the current client",()=>{
   const install=sw.match(/self\.addEventListener\("install",[\s\S]*?\n\}\);/);
   assert.ok(install);
   assert.doesNotMatch(install[0],/skipWaiting/);
-  assert.match(sw,/event\.data\?\.type === "SKIP_WAITING"/);
-  assert.match(pwa,/postMessage\(\{ type: "SKIP_WAITING" \}\)/);
+  assert.match(sw,/includes\(event\.data\?\.type\)/);
+  assert.match(sw,/allOpenClientsReadyForUpdate/);
+  assert.match(pwa,/postMessage\(\{ type: "HH_CHECK_UPDATE_READINESS" \}\)/);
+  assert.match(pwa,/hasUnfinishedLocalWork\(\)[\s\S]*?HH_CHECK_UPDATE_READINESS/);
   assert.match(pwa,/controllerchange/);
   assert.match(pwa,/Update Now/);
 });
 
 test("service worker rotates only HerdHarbor shell caches and preserves offline shell fallback",()=>{
   assert.match(sw,/CACHE_PREFIX = "herdharbor-shell-"/);
-  assert.match(sw,/key\.startsWith\(CACHE_PREFIX\) && key !== CACHE_NAME/);
-  assert.match(sw,/caches\.delete\(key\)/);
+  assert.match(sw,/names\.slice\(3\)\.map\(\(key\) => caches\.delete\(key\)\)/);
+  assert.match(sw,/Keep the active shell and two prior/);
   assert.match(sw,/cache\.match\("\.\/index\.html"\)/);
   assert.match(sw,/cache\.match\("\.\/"\)/);
 });
