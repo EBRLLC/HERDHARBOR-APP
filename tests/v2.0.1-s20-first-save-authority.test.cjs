@@ -29,7 +29,7 @@ function harness(options = {}) {
     "normalizedAuthorityActive", "refreshNormalizedAuthorityIfEligible", "setSyncState",
     "normalizedOutboxPending", "deferNormalizedDualWriteCleanup", "clearTimeout",
     "syncTimer", "syncDebounceStartedAt", "normalizedRollout", "versionKey",
-    "getNormalizedSyncCohortStatus", "safeStorageRemove"
+    "getNormalizedSyncCohortStatus", "safeStorageRemove", "canonicalStateStore"
   ];
   const vals = [
     { user: { id: identity } }, ()=>({}), ()=>true, options.pending === true ? { rawValue:"{}" } : null,
@@ -49,7 +49,8 @@ function harness(options = {}) {
       if (options.statusError) throw new Error("offline");
       return options.serverStatus === undefined ? {stage:"normalized"} : options.serverStatus;
     },
-    () => {legacyMarkerCleared++;}
+    () => {legacyMarkerCleared++;},
+    { getOutbox: () => options.noOutbox ? [] : [{mutationId:"first-edit"}] }
   ];
   const execute = new Function(...deps, initialSaveSource + "\nreturn syncNow;")(...vals);
   return {
@@ -101,4 +102,13 @@ test("S20 confirmed normalized save clears old dirty marker only after a success
   assert.equal(await h.execute(),false);
   assert.equal(h.stats.normalizedWrites,1);
   assert.equal(h.stats.legacyMarkerCleared,0);
+});
+
+test("S20 never claims a normalized save for an unmatched legacy dirty marker", async()=>{
+  const h=harness({noOutbox:true});
+  const result=await h.execute();
+  assert.equal(result,false);
+  assert.equal(h.stats.normalizedWrites,0);
+  assert.equal(h.stats.legacyMarkerCleared,0);
+  assert.match(h.states.at(-1).message,/unsynced local records need recovery/i);
 });

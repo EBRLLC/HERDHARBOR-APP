@@ -2346,6 +2346,19 @@
       if (!syncAccountCurrent()) return false;
     }
     if (normalizedAuthorityActive()) {
+      // An older client can leave a legacy dirty marker without any durable
+      // record mutations. An empty normalized outbox in that situation is
+      // NOT evidence that those local edits reached the new cloud engine.
+      // Preserve the device copy for explicit recovery rather than claiming
+      // an empty drain means "Saved".
+      const legacyDirtyWithoutOutbox =
+        syncUserIdAtStart &&
+        originalGetItem.call(localStorage, dirtyKey(syncUserIdAtStart)) === "1" &&
+        !(canonicalStateStore?.getOutbox?.(syncUserIdAtStart)?.length > 0);
+      if (legacyDirtyWithoutOutbox) {
+        setSyncState("Older unsynced local records need recovery before normalized cloud saving can continue.", "error");
+        return false;
+      }
       clearTimeout(syncTimer);
       syncTimer = null;
       syncDebounceStartedAt = 0;
