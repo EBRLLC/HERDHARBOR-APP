@@ -47,7 +47,11 @@ function harness(options = {}) {
     async()=>{
       statusCalls++;
       if (options.statusError) throw new Error("offline");
-      return options.serverStatus === undefined ? {stage:"normalized"} : options.serverStatus;
+      return options.serverStatus === undefined
+        ? {stage:"normalized",schemaVerified:true}
+        : options.serverStatus === null
+          ? null
+          : {schemaVerified:true,...options.serverStatus};
     },
     () => {legacyMarkerCleared++;},
     { getOutbox: () => options.noOutbox ? [] : [{mutationId:"first-edit"}] }
@@ -77,6 +81,21 @@ test("S20 never interprets a missing authority RPC as permission for legacy full
   assert.match(h.states.at(-1).message,/authority could not be verified/i);
 });
 
+test("S20 refuses first-save legacy fallback on unverified or malformed server status",async()=>{
+  for (const serverStatus of [
+    {stage:"legacy",schemaVerified:false},
+    {stage:"normalized",schemaVerified:false},
+    {stage:"unknown"}, null
+  ]) {
+    const h=harness({serverStatus});
+    assert.equal(await h.execute(),false);
+    assert.equal(h.stats.normalizedWrites,0);
+    assert.match(h.states.at(-1).message,/authority could not be verified/i);
+  }
+});
+test("S20 status normalizer requires an explicit server stage before schema can be trusted",()=>{
+  assert.match(src,/schemaVerified: data\?\.schema_verified === true &&\s*\["legacy", "shadow", "dual_write", "normalized"\]\.includes\(String\(data\?\.stage \|\| ""\)\)/);
+});
 test("S20 normalized authority that cannot initialize stays fail-closed",async()=>{
   const h=harness({refreshSuccess:false});
   assert.equal(await h.execute(),false);
