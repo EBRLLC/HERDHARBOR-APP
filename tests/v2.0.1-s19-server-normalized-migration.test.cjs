@@ -61,7 +61,7 @@ test("S19 detects stale source changes and checksum drift in plan digest",()=>{
   assert.notEqual(planMigration(a).digest,planMigration(b).digest);
 });
 test("S19 generated SQL is serializable, backup-gated outside SQL, and source fenced",()=>{
-  for(const stage of ["missing","dual_write"]) {
+  for(const stage of ["dual_write"]) {
     const a=account(stage);
     const sql=sqlForCutover(a,planMigration(a));
     assert.match(sql,/BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE/i);
@@ -73,6 +73,9 @@ test("S19 generated SQL is serializable, backup-gated outside SQL, and source fe
     assert.match(sql,/COMMIT;/);
     assert.doesNotMatch(sql,/Dog|Rabbit|Test Farm/);
   }
+});
+test("S19 forbids direct SQL creation of normalized authority for a missing manifest",()=>{
+  assert.throws(()=>sqlForCutover(account("missing")),/S19_ONLINE_BOOTSTRAP_REQUIRED/);
 });
 test("S19 defaults to non-writing planning and rejects unapproved execution",()=>{
   let wrote=false;

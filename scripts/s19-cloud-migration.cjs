@@ -82,7 +82,7 @@ function execute(argv=process.argv.slice(2), reader=readAccount, query=runPsql) 
   }
   demand(flags["--legacy-clients-closed"],"owner must confirm all legacy clients have saved and closed");
   demand(flags["--expect-digest"]===plan.digest,"source plan changed since owner review");
-  demand(plan.stage!=="normalized","account already normalized");
+  demand(plan.stage==="dual_write","non-dual-write accounts must bootstrap through the S20 authenticated sign-in workflow");
   const backup=storeBackup(before,flags["--backup-dir"],process.env.S19_BACKUP_PASSPHRASE);
   // Plan and DB revision are checked again in the serializable SQL transaction.
   query(sqlForCutover(before,plan));
