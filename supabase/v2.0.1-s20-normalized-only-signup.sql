@@ -112,6 +112,47 @@ create trigger hh_s20_initialize_normalized_account
   after insert on auth.users
   for each row execute function public.herdharbor_initialize_normalized_signup();
 
+-- Normalized-only accounts have NO authoritative legacy snapshot. The existing
+-- authenticated stage RPC supports normalized -> dual_write for older breeder
+-- recovery. That rollback must never be available to normalized-only signups:
+-- otherwise a client could re-enable the legacy full-snapshot writer even
+-- though no legacy recovery source was ever recorded.
+--
+-- This trigger is intentionally restricted to manifests ALREADY normalized.
+-- Initial signup's transactional legacy -> shadow -> dual_write -> normalized
+-- path remains permitted and invisible to all other transactions.
+create or replace function public.herdharbor_guard_normalized_only_signup()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $s20_rollback_guard$
+begin
+  if old.cutover_stage = 'normalized'
+     and old.metadata ->> 's20_signup_normalized_only' = 'true'
+     and (
+       new.cutover_stage is distinct from 'normalized'
+       or new.metadata ->> 's20_signup_normalized_only' is distinct from 'true'
+     ) then
+    raise exception using errcode = '55000',
+      message = 'HH_S20_NORMALIZED_ONLY_ROLLBACK_FORBIDDEN';
+  end if;
+  return new;
+end;
+$s20_rollback_guard$;
+
+revoke all on function public.herdharbor_guard_normalized_only_signup()
+  from public, anon, authenticated;
+
+drop trigger if exists hh_s20_guard_normalized_only_signup
+  on public.herdharbor_sync_manifest;
+create trigger hh_s20_guard_normalized_only_signup
+  before update on public.herdharbor_sync_manifest
+  for each row execute function public.herdharbor_guard_normalized_only_signup();
+
+comment on function public.herdharbor_guard_normalized_only_signup() is
+  'S22 safety: forbid a normalized-only signup from downgrading to an unbacked legacy writer or erasing its normalized-only marker.';
+
 -- Anonymous callers receive only a boolean readiness signal. Never expose
 -- auth.users, the cohort, or any account identifiers through this endpoint.
 -- This prevents a newer client from creating accounts through a legacy
