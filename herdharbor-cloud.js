@@ -2302,7 +2302,7 @@
     // legacy PATCH just because its authority check is temporarily stale.
     // The record outbox stays durable; wait for normalized authority to be
     // verified instead of reactivating the old full-state writer.
-    if (normalizedRolloutStage() === "normalized" && !normalizedAuthorityActive()) {
+    if (!normalizedAuthorityActive() && normalizedRolloutStage() === "normalized") {
       await refreshNormalizedAuthorityIfEligible();
       if (!syncAccountCurrent()) return false;
       if (!normalizedAuthorityActive()) {
