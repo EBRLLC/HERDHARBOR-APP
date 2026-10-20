@@ -20,8 +20,15 @@ function harness(options = {}) {
     session: { user: { id: "account-a" } },
     captureAccountOperation: () => ({}),
     isAccountOperationCurrent: () => current,
-    normalizedAuthorityActive: () => true,
-    refreshNormalizedAuthorityIfEligible: async () => true,
+    normalizedAuthorityActive: () => options.runtimeMissing !== true,
+    refreshNormalizedAuthorityIfEligible: async () => options.runtimeMissing !== true,
+    getNormalizedSyncCohortStatus: async () => {
+      if (options.statusError) throw new Error("status offline");
+      return options.serverStatus === undefined
+        ? { stage: "legacy", schemaVerified: true }
+        : options.serverStatus;
+    },
+    console: { warn: () => {} },
     normalizedRollout: {
       refreshAuthoritative: async () => options.result || { ok: true, source: "normalized", snapshot: remote }
     },
@@ -92,6 +99,41 @@ test("S21 unfinished local edits prohibit replacement even with a recovery backu
   assert.equal(h.counts.backups, 1);
   assert.equal(h.counts.writes, 0);
   assert.equal(h.counts.cleared, 0);
+});
+
+test("S21 normalized server authority never falls through to legacy if record reader is missing", async () => {
+  for (const serverStatus of [
+    { stage: "normalized", schemaVerified: true, authorityActive: true },
+    { stage: "dual_write", schemaVerified: true, recoveryPending: true }
+  ]) {
+    const h = harness({ runtimeMissing: true, serverStatus });
+    assert.equal(await h.operation(), false);
+    assert.equal(h.counts.backups, 0);
+    assert.equal(h.counts.writes, 0);
+    assert.match(h.states.at(-1).message, /record reader is unavailable/i);
+  }
+});
+
+test("S21 uncertain cloud refresh authority cannot route to legacy hydration", async () => {
+  for (const options of [
+    { runtimeMissing: true, statusError: true },
+    { runtimeMissing: true, serverStatus: null },
+    { runtimeMissing: true, serverStatus: { stage: "legacy", schemaVerified: false } }
+  ]) {
+    const h = harness(options);
+    assert.equal(await h.operation(), false);
+    assert.equal(h.counts.writes, 0);
+    assert.match(h.states.at(-1).message, /authority can be verified/i);
+  }
+});
+
+test("S21 legacy refresh fallback requires explicit verified non-normalized server stage", async () => {
+  const h = harness({
+    runtimeMissing: true,
+    serverStatus: { stage: "dual_write", schemaVerified: true, authorityActive: false }
+  });
+  assert.equal(await h.operation(), null);
+  assert.equal(h.counts.writes, 0);
 });
 
 test("S21 verified normalized refresh applies cloud data after recovery succeeds", async () => {
