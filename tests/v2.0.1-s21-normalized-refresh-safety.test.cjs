@@ -93,10 +93,10 @@ test("S21 identity change during recovery backup prevents applying another accou
   assert.equal(h.counts.reloads, 0);
 });
 
-test("S21 unfinished local edits prohibit replacement even with a recovery backup", async () => {
+test("S21 unfinished local edits block cloud refresh before backup or replacement", async () => {
   const h = harness({ pending: true });
   assert.equal(await h.operation(), false);
-  assert.equal(h.counts.backups, 1);
+  assert.equal(h.counts.backups, 0);
   assert.equal(h.counts.writes, 0);
   assert.equal(h.counts.cleared, 0);
 });
