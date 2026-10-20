@@ -46,10 +46,10 @@ assert.match(cloud, /navigator\.onLine === false/);
 assert.match(cloud, /dirty && !\(await syncNow\(\)\)/);
 assert.doesNotMatch(cloud, /SKIP_WAITING|registration\.update|HerdHarborPWA/);
 
-assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-s18-1"/);
+assert.match(worker, /const CACHE_NAME = "herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-s20-1"/);
 assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
-assert.match(worker, /herdharbor-cloud\.js\?v=40/);
-assert.match(worker, /pwa\.js\?v=36/);
+assert.match(worker, /herdharbor-cloud\.js\?v=41/);
+assert.match(worker, /pwa\.js\?v=37/);
 assert.match(worker, /pedigree-genetics-v1\.6\.1\.js\?v=2/);
 assert.match(worker, /rabbit-genetics-runtime-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /shows-v1\.6\.1\.js\?v=1\.7\.1/);

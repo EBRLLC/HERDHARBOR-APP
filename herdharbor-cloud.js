@@ -3960,6 +3960,7 @@
         lastHydratedUserId = userId;
         // Migration is an additive opt-in handoff; never block account loading
         // or sign-in on a migration prompt, and never migrate offline/dirty work.
+        if (typeof normalizedUpgradeS20 !== "undefined")
         void normalizedUpgradeS20?.afterLogin?.().catch((error) => {
           console.warn("HerdHarbor S20 upgrade readiness postponed:", error?.code || error?.message || error);
         });

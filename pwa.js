@@ -315,11 +315,7 @@
         '#modal-backdrop:not(.hidden) #modal-content textarea, ' +
         '#modal-backdrop:not(.hidden) #modal-content select'
       )) return true;
-      // Check DOM drafts even if the cloud bridge has not loaded. Then check
-      // the durable record outbox and legacy dirty markers independently of
-      // the visual sync indicator.
-      if (typeof window !== "undefined" &&
-          window.HerdHarborCloud?.hasUnsyncedChanges?.() === true) return true;
+
     } catch {}
     return false;
   }

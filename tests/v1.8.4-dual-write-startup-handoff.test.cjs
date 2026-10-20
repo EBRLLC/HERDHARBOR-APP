@@ -522,39 +522,19 @@ test("sign-in runs access-profile refresh and rollout hydration concurrently", (
 });
 
 
-test("clean sign-in starts a read-only legacy cloud prefetch before rollout hydration finishes", () => {
+test("S20 normalized sign-in does not request legacy before cloud authority decision", () => {
   const hydrateSource = extract(
     cloudSource,
     "  async function hydrateUserDataOnce(activeSession)",
     "  async function hydrateUserData(activeSession)"
   );
-
-  const modeIndex = hydrateSource.indexOf(
-    "const canUseVersionOnlyPrefetch"
-  );
-  const prefetchIndex = hydrateSource.indexOf(
-    "const legacyCloudPrefetchPromise = dirty"
-  );
-  const rolloutIndex = hydrateSource.indexOf(
-    "const rolloutHydrationPromise = normalizedRollout?.prepareHydration"
-  );
-  const joinedFetchIndex = hydrateSource.indexOf(
-    "legacyCloudPrefetchPromise || fetchCloudRecord(userId)"
-  );
-
-  assert.ok(modeIndex >= 0 && prefetchIndex > modeIndex);
-  assert.ok(
-    prefetchIndex < rolloutIndex,
-    "legacy cloud read must start before waiting on rollout hydration"
-  );
-  assert.ok(
-    joinedFetchIndex > rolloutIndex,
-    "the prefetched cloud result is consumed only after authority routing is known"
-  );
-  assert.match(
-    hydrateSource.slice(modeIndex, rolloutIndex),
-    /canUseVersionOnlyPrefetch[\s\S]*fetchCloudVersion\(userId\)[\s\S]*fetchCloudRecord\(userId\)/
-  );
+  const rolloutIndex = hydrateSource.indexOf("const rolloutHydrationPromise = normalizedRollout?.prepareHydration");
+  const prefetchIndex = hydrateSource.indexOf("const legacyCloudPrefetchPromise = dirty");
+  const joinIndex = hydrateSource.indexOf("const [prefetchedLegacy] = await Promise.all([");
+  assert.ok(rolloutIndex >= 0 && prefetchIndex > rolloutIndex);
+  assert.ok(joinIndex > prefetchIndex);
+  assert.match(hydrateSource.slice(prefetchIndex,joinIndex),
+    /rolloutHydrationPromise\.then\(\(decision\) => \{[\s\S]*decision\?\.authoritative === true[\s\S]*decision\?\.stage === "normalized"[\s\S]*fetchCloudVersion\(userId\)/);
 });
 
 test("login cloud prefetch setup remains read-only", () => {
@@ -681,7 +661,7 @@ test("dirty startup preserves configured local changes but recovers empty onboar
 
   assert.match(
     hydrateSource,
-    /const legacyCloudPrefetchPromise = dirty[\s\S]*\? null[\s\S]*canUseVersionOnlyPrefetch/
+    /const legacyCloudPrefetchPromise = dirty[\s\S]*\? null[\s\S]*rolloutHydrationPromise\.then[\s\S]*canUseVersionOnlyPrefetch/
   );
   const emptyLocalGuard = hydrateSource.indexOf(
     "if (dirty && !hasConfiguredOperationProfile(activeRaw || cachedRaw))"
