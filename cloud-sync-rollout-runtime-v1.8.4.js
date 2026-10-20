@@ -142,6 +142,7 @@
     let validationPasses = 0;
     let lastValidation = null;
     let lastResult = null;
+    let cutoverInFlight = null;
 
     function invalidateAccountContext() {
       identityEpoch += 1;
@@ -1204,6 +1205,10 @@
       ) {
         return Object.freeze({ ok: false, reason: "normalized-cutover-owner-acceptance-required" });
       }
+      if (cutoverInFlight) return cutoverInFlight;
+      // A second device/click must not interleave checkpoints or authority
+      // transitions with the first invocation.
+      const run = (async () => {
       const ctx = await ensureContext();
       if (!ctx) return Object.freeze({ ok: false, reason: "normalized-cutover-not-eligible" });
       assertContextCurrent(ctx);
@@ -1259,6 +1264,13 @@
       }
       emit("normalized-primary-active", { stage: "normalized", ok: true });
       return Object.freeze({ ok: true, stage: "normalized", primaryWriter: "record-outbox", legacyWriteRequired: false });
+      })();
+      cutoverInFlight = run;
+      try {
+        return await run;
+      } finally {
+        if (cutoverInFlight === run) cutoverInFlight = null;
+      }
     }
 
     async function rollbackToLegacy() {
