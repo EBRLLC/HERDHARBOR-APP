@@ -482,7 +482,10 @@
   }
 
   async function checkForAppUpdate({ force = false } = {}) {
-    if (!registration || navigatorRef().onLine === false) return false;
+    // An unavailable service-worker registration or offline connection
+    // cannot establish that no upgrade is waiting. Forced migration checks
+    // must report UNKNOWN instead of authorizing a cutover.
+    if (!registration || navigatorRef().onLine === false) return force ? null : false;
     if (registration.waiting && navigatorRef().serviceWorker?.controller) {
       showUpdateReady(registration.waiting);
       return true;
@@ -504,7 +507,9 @@
           console.warn("HerdHarbor could not check for an app update:", error);
           monitorFailure(error, "update_check_failure", "dashboard", { operation: "pwa_update_check" });
         }
-        return false;
+        // Failure is not evidence that the installed app is current.
+        // The S20 upgrade coordinator accepts only a definite boolean.
+        return null;
       }
     })();
     try {
