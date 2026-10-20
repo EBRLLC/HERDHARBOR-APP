@@ -424,8 +424,10 @@ test("syncNow prioritizes a pending legacy save before normalized authority read
   const source = cloudSource;
   const syncNowIndex = source.indexOf("async function syncNow()");
   const pendingCheckIndex = source.indexOf("const legacyWritePendingAtStart", syncNowIndex);
-  const refreshIndex = source.indexOf("await refreshNormalizedAuthorityIfEligible();", syncNowIndex);
   const guardIndex = source.indexOf("!legacyWritePendingAtStart", syncNowIndex);
+  // S18 also checks stale normalized authority before the legacy-only fast
+  // path; inspect the refresh protected by this specific legacy-work guard.
+  const refreshIndex = source.indexOf("await refreshNormalizedAuthorityIfEligible();", guardIndex);
 
   assert.ok(syncNowIndex >= 0);
   assert.ok(pendingCheckIndex > syncNowIndex, "syncNow must determine whether legacy work is already pending");
