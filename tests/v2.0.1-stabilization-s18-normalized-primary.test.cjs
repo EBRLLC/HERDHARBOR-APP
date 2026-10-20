@@ -91,6 +91,17 @@ test("S18 cutover performs three verified checks before activating record author
   assert.deepEqual(h.events, ["normalized-primary-active"]);
 });
 
+test("S18 concurrent requests share one verified cutover and cannot double-promote", async () => {
+  const h = cutoverHarness();
+  const [first, second] = await Promise.all([
+    h.operation(approved),
+    h.operation(approved)
+  ]);
+  assert.equal(first.ok, true);
+  assert.equal(second.ok, true);
+  assert.deepEqual(h.calls, ["validate", "validate", "validate", "promote"]);
+});
+
 test("S18 cutover fails closed on a checkpoint divergence or concurrent local change", async () => {
   for (const options of [{ failAt: 2 }, { revisionChangeAt: 1 }, { revisionChangeAt: 3 }]) {
     const h = cutoverHarness(options);
