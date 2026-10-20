@@ -260,8 +260,8 @@ test("S20 release assets wire the coordinator before cloud bridge and keep its P
   const sw=fs.readFileSync(path.join(root,"service-worker.js"),"utf8");
   const cloud=fs.readFileSync(path.join(root,"herdharbor-cloud.js"),"utf8");
   const pwa=fs.readFileSync(path.join(root,"pwa.js"),"utf8");
-  assert.ok(html.indexOf("cloud-normalized-upgrade-v2.0.1.js?v=2") < html.indexOf("herdharbor-cloud.js?v=47"));
-  assert.match(sw,/herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-s22-2/);
+  assert.ok(html.indexOf("cloud-normalized-upgrade-v2.0.1.js?v=2") < html.indexOf("herdharbor-cloud.js?v=48"));
+  assert.match(sw,/herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-s22-3/);
   assert.match(sw,/cloud-normalized-upgrade-v2\.0\.1\.js\?v=2/);
   assert.match(cloud,/normalizedUpgradeS20 = window\.HerdHarborNormalizedUpgradeS20\.create/);
   assert.match(cloud,/rolloutHydrationPromise\.then\(\(decision\) => \{/);
@@ -270,7 +270,7 @@ test("S20 release assets wire the coordinator before cloud bridge and keep its P
   const signupCall = cloud.indexOf('client.auth.signUp({');
   assert.ok(signupGuard > 0 && signupGuard < signupCall, "S20 preflight must run before Auth signup");
   assert.match(cloud,/if \(!normalizedSignupReady\) \{/);
-  assert.match(html,/herdharbor-cloud\.js\?v=47/);
+  assert.match(html,/herdharbor-cloud\.js\?v=48/);
 });
 
 test("S20 signup preflight fails closed on missing or failing RPC and permits verified normalized accounts", async () => {
