@@ -150,8 +150,8 @@ test("Phase 3 modern profile and shared animal-action router remain authoritativ
 test("shell loads and caches extracted runtime before application composition", () => {
   const html = read("index.html");
   const worker = read("service-worker.js");
-  const domainIndex = html.indexOf("animal-profile-runtime-v1.8.3.js?v=2");
-  const compositionIndex = html.indexOf("herdharbor-app-runtime.js?v=5");
+  const domainIndex = html.indexOf("animal-profile-runtime-v1.8.3.js?v=3");
+  const compositionIndex = html.indexOf("herdharbor-app-runtime.js?v=6");
   assert.ok(domainIndex >= 0 && compositionIndex > domainIndex);
   assert.match(worker, /\.\/animal-profile-runtime-v1\.8\.3\.js\?v=2/);
   assert.match(worker, /"\/animal-profile-runtime-v1\.8\.3\.js"/);
