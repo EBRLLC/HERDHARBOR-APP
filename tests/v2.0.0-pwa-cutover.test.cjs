@@ -138,7 +138,7 @@ test("fingerprinted release assets remain cache-first while mutable release asse
 
 test("2.0.1 offline shell preloads every canine dependency and treats failures as fatal",()=>{
  const expected=[
-   "canine-identity-v2.0.1.css?v=2",
+   "canine-identity-v2.0.1.css?v=1",
    "canine-breeds-v2.0.1.js?v=4",
    "canine-identity-v2.0.1.js?v=2",
    "canine-lineage-v2.0.1.js?v=1",
