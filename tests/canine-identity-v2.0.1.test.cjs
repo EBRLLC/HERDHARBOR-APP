@@ -63,3 +63,61 @@ test("existing animal form remains canonical dog metadata save authority",()=>{
   assert.match(shell,/canine-breeds-v2\.0\.1\.js/);
   assert.match(shell,/canine-identity-v2\.0\.1\.js/);
 });
+
+test("dog breed picker renders visible catalog selection with an editable custom-breed fallback", () => {
+  const dog = breeds.pickerHtml("Dog", "Great Pyrenees");
+  assert.match(dog, /data-hh-dog-breed-select/);
+  assert.match(dog, /Browse dog breeds \(AKC recognized\)/);
+  assert.match(dog, /<option value="Great Pyrenees" selected>/);
+  assert.match(dog, /<option value="Golden Retriever">/);
+  assert.match(dog, /Other \/ mixed breed \/ not listed/);
+  assert.doesNotMatch(dog, /data-hh-dog-breed-picker[^>]*hidden/);
+  assert.match(breeds.pickerHtml("Rabbit", "Holland Lop"), /data-hh-dog-breed-picker[^>]*hidden/);
+  assert.match(breeds.pickerHtml("Dog", "Goldendoodle"), /__hh_custom_dog_breed__" selected/);
+  assert.equal((dog.match(/<option value="/g) || []).length, 207);
+});
+
+test("dog breed picker updates canonical Breed input, preserves user-entered crosses and never changes rabbits", () => {
+  const picker = { hidden: false, classList: { toggle(label, hidden) {
+    assert.equal(label, "hidden"); this.hiddenClass = hidden;
+  } } };
+  const breedInput = { value: "Holland Lop", focus() { this.focused = true; }, listeners: {}, addEventListener(event, cb) { this.listeners[event] = cb; } };
+  const selector = { value: "", disabled: false, listeners: {}, addEventListener(event, cb) { this.listeners[event] = cb; } };
+  const species = { value: "Rabbit", listeners: {}, addEventListener(event, cb) { this.listeners[event] = cb; } };
+  const elements = { '[data-hh-dog-breed-picker]': picker,
+    '[data-hh-dog-breed-select]': selector, 'input[name="breed"]': breedInput };
+  const form = { querySelector(query) { return elements[query] || null; } };
+  assert.equal(breeds.bindPicker(form, species), true);
+  assert.equal(picker.hidden, true);
+  assert.equal(selector.disabled, true);
+  assert.equal(breedInput.value, "Holland Lop");
+
+  species.value = "Dog"; species.listeners.change();
+  assert.equal(picker.hidden, false);
+  assert.equal(selector.disabled, false);
+  assert.equal(breedInput.value, "", "rabbit breed must not transfer to dog");
+  selector.value = "Great Pyrenees"; selector.listeners.change();
+  assert.equal(breedInput.value, "Great Pyrenees", "selection writes canonical animal.breed");
+  selector.value = "__hh_custom_dog_breed__"; selector.listeners.change();
+  assert.equal(breedInput.value, "", "explicitly selecting Other clears old recognized breed");
+  breedInput.value = "Goldendoodle"; breedInput.listeners.input();
+  assert.equal(selector.value, "__hh_custom_dog_breed__", "crossbred dogs remain editable");
+  selector.listeners.change();
+  assert.equal(breedInput.value, "Goldendoodle");
+  assert.equal(breedInput.focused, true);
+  species.value = "Rabbit"; species.listeners.change();
+  assert.equal(picker.hidden, true);
+  assert.equal(selector.disabled, true);
+  assert.equal(breedInput.value, "", "dog breed must not transfer to rabbit");
+});
+
+test("shared canonical animal editor wires the native canine picker without replacing breed persistence", () => {
+  const root = path.join(__dirname, "..");
+  const profile = fs.readFileSync(path.join(root, "animal-profile-runtime-v1.8.3.js"), "utf8");
+  const main = fs.readFileSync(path.join(root, "herdharbor-app-runtime.js"), "utf8");
+  assert.match(profile, /HerdHarborCanineBreeds\?\.pickerHtml\?\./);
+  assert.match(profile, /HerdHarborCanineBreeds\?\.bindPicker\?\./);
+  assert.match(main, /HerdHarborCanineBreeds\?\.list\?\.\(\)/);
+  assert.match(profile, /const data = Object\.fromEntries\(new FormData\(form\)\)/);
+  assert.match(profile, /deps\.saveState\("Animal added\."\)/);
+});

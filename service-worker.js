@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v2.0.1-v2.0.1-release-1-s15-1";
+const CACHE_NAME = "herdharbor-shell-v2.0.1-v2.0.1-release-1-dog-breeds-1";
 const REQUIRED_SHELL = [
   "./",
   "./index.html",
@@ -35,11 +35,11 @@ const REQUIRED_SHELL = [
   "./pedigree-renderer-v2.0.0.css?v=1",
   "./pedigree-renderer-v2.0.0.js?v=1",
   "./canine-identity-v2.0.1.css?v=1",
-  "./canine-breeds-v2.0.1.js?v=1",
+  "./canine-breeds-v2.0.1.js?v=2",
   "./canine-identity-v2.0.1.js?v=1",
   "./canine-lineage-v2.0.1.js?v=1",
   "./canine-pedigree-print-v2.0.1.js?v=1",
-  "./animal-profile-runtime-v1.8.3.js?v=2",
+  "./animal-profile-runtime-v1.8.3.js?v=3",
   "./breeding-litter-runtime-v1.8.3.js?v=1",
   "./task-automation-v1.8.3.js?v=1",
   "./health-runtime-v1.8.3.js?v=1",
@@ -47,7 +47,7 @@ const REQUIRED_SHELL = [
   "./sales-customer-runtime-v1.8.3.js?v=1",
   "./production-reporting-runtime-v1.8.3.js?v=1",
   "./mobile-capture-v1.8.3.js?v=1",
-  "./herdharbor-app-runtime.js?v=5",
+  "./herdharbor-app-runtime.js?v=6",
   "./herdharbor-monitoring-config.js?v=2.0.1",
   "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.1"
 ];

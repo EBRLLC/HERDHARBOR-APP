@@ -68,5 +68,68 @@
     return breed ? { status: "recognized", breed } :
       { status: "user-entered", breed: null, name: String(name || "").trim() };
   }
-  return Object.freeze({ SOURCE, list, search, resolve, classify });
+
+  // The browser datalist remains useful for typing but iOS does not present it
+  // consistently. A native select makes the complete recognized catalog
+  // browsable on mobile while the existing canonical breed input stays editable.
+  const escapeHtml = value => String(value == null ? "" : value).replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  const CUSTOM = "__hh_custom_dog_breed__";
+
+  function pickerHtml(species = "", value = "") {
+    const dog = norm(species) === "dog";
+    const existing = resolve(value)?.name || (String(value || "").trim() ? CUSTOM : "");
+    return '<label data-hh-dog-breed-picker class="hh-dog-breed-picker' + (dog ? '' : ' hidden') + '"' +
+      (dog ? '' : ' hidden') + '>Browse dog breeds (AKC recognized)' +
+      '<select data-hh-dog-breed-select aria-label="Browse recognized dog breeds"' +
+      (dog ? '' : ' disabled') + '>' +
+      '<option value="">Select a dog breed</option>' +
+      RECORDS.map(row => '<option value="' + escapeHtml(row.name) + '"' +
+        (existing === row.name ? ' selected' : '') + '>' + escapeHtml(row.name) + '</option>').join("") +
+      '<option value="' + CUSTOM + '"' + (existing === CUSTOM ? ' selected' : '') +
+      '>Other / mixed breed / not listed</option></select>' +
+      '<small class="muted">For crosses, mixed breeds or breeds outside the AKC catalog, type the breed in the Breed field above.</small></label>';
+  }
+
+  function bindPicker(form, speciesSelect) {
+    const wrapper = form?.querySelector?.('[data-hh-dog-breed-picker]');
+    const select = form?.querySelector?.('[data-hh-dog-breed-select]');
+    const breed = form?.querySelector?.('input[name="breed"]');
+    if (!wrapper || !select || !breed || !speciesSelect) return false;
+    const sync = () => {
+      const dog = norm(speciesSelect.value) === "dog";
+      wrapper.hidden = !dog;
+      wrapper.classList?.toggle?.("hidden", !dog);
+      select.disabled = !dog;
+      if (dog) {
+        select.value = resolve(breed.value)?.name || (String(breed.value || "").trim() ? CUSTOM : "");
+      }
+    };
+    let previousSpecies = norm(speciesSelect.value);
+    speciesSelect.addEventListener?.("change", () => {
+      const nextSpecies = norm(speciesSelect.value);
+      // Avoid silently assigning a previously-entered rabbit breed to a Dog,
+      // or preserving a Dog breed after an explicit change to another species.
+      if (nextSpecies !== previousSpecies && (nextSpecies === "dog" || previousSpecies === "dog")) {
+        breed.value = "";
+      }
+      previousSpecies = nextSpecies;
+      sync();
+    });
+    select.addEventListener?.("change", () => {
+      if (select.value === CUSTOM) {
+        // A prior recognized selection must not be silently retained as a
+        // "custom" breed when the breeder explicitly chooses Other.
+        if (resolve(breed.value)) breed.value = "";
+        breed.focus?.();
+      } else {
+        breed.value = select.value;
+      }
+    });
+    breed.addEventListener?.("input", sync);
+    sync();
+    return true;
+  }
+
+  return Object.freeze({ SOURCE, list, search, resolve, classify, pickerHtml, bindPicker });
 });

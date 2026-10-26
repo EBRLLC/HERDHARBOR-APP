@@ -61,7 +61,7 @@ function loadWorkerHarness(cacheKeys) {
 }
 
 test("2.0.1 activation retains current plus two versioned shells and preserves unrelated caches", async () => {
-  const current = "herdharbor-shell-v2.0.1-v2.0.1-release-1-s15-1";
+  const current = "herdharbor-shell-v2.0.1-v2.0.1-release-1-dog-breeds-1";
   const old200 = "herdharbor-shell-v2.0.0-v2.0.0-release-1";
   const old184 = "herdharbor-shell-v1.8.4-alpha-v1.8.4-release-9";
   const old182 = "herdharbor-shell-v1.8.2-alpha-cloud-sync-v2-state-integrity-1";
@@ -139,7 +139,7 @@ test("fingerprinted release assets remain cache-first while mutable release asse
 test("2.0.1 offline shell preloads every canine dependency and treats failures as fatal",()=>{
  const expected=[
    "canine-identity-v2.0.1.css?v=1",
-   "canine-breeds-v2.0.1.js?v=1",
+   "canine-breeds-v2.0.1.js?v=2",
    "canine-identity-v2.0.1.js?v=1",
    "canine-lineage-v2.0.1.js?v=1",
    "canine-pedigree-print-v2.0.1.js?v=1"
