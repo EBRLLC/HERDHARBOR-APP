@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.111.0";
+import { decideAiAccess } from "../_shared/herdharbor-ai-access-v2.0.1.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -95,6 +96,7 @@ const OUTPUT_SCHEMA = {
 function extractionInstructions() {
   return `You extract livestock pedigree information from a photographed paper pedigree for HerdHarbor.
 Return only pedigree information that is actually visible. Do not invent missing names, registration numbers, tattoos, tags, breeders, birth dates, colors, varieties, breeds, species, or other facts.
+Set species to Rabbit only when supported by visible evidence (for example, a documented rabbit breed); otherwise output an empty string. Uncertain or non-rabbit species cannot be imported by this reader.
 
 Use these exact lineage roles:
 subject = the animal the pedigree belongs to
@@ -247,12 +249,36 @@ Deno.serve(async (req) => {
       return fail("authentication_invalid", "The authentication session is invalid or expired.", 401);
     }
 
+    // Fail closed until the owner's approved access matrix or an explicit
+    // server-side tester allowlist authorizes this authenticated account.
+    const { data: access, error: accessError } = await admin.from("account_access")
+      .select("membership_tier, account_status, subscription_status")
+      .eq("user_id", authData.user.id).maybeSingle();
+    if (accessError) return fail("access_policy_unavailable", "AI access could not be verified. Manual entry remains available.", 503, true);
+    const gate = decideAiAccess({
+      userId: authData.user.id, feature: "paper_pedigree",
+      account: access, env: (key) => Deno.env.get(key)
+    });
+    if (!gate.allowed) return fail("access_not_enabled", "This AI feature is not enabled for your account. Manual entry remains available.", 403);
+
     const contentLength = Number(req.headers.get("content-length") || 0);
     if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
       return fail("image_too_large", "That pedigree photo is too large to read automatically. Resize it and try again.", 413);
     }
 
     const body = await req.json().catch(() => null);
+    // Confirm explicit consent to send this image to the optional provider on
+    // every request, even for allowlisted testers. Client flags are not access
+    // credentials; the server eligibility gate above is still mandatory.
+    if (body?.aiOptIn !== true)
+      return fail("consent_required", "Choose to send this photo to the optional AI reader before uploading. Manual entry remains available.", 403);
+
+    // The existing reader is validated for rabbit pedigrees only. A dog photo
+    // cannot enter the rabbit importer through an unvalidated species switch.
+    const expectedSpecies = clean(body?.species, 80).toLowerCase();
+    if (expectedSpecies !== "rabbit") {
+      return fail("unsupported_species", "Canine pedigree AI scanning is not yet validated. Enter your dog pedigree manually.", 422);
+    }
     const mimeType = clean(body?.mimeType, 80).toLowerCase();
     const fileName = clean(body?.fileName, 240) || "paper-pedigree";
     const dataUrl = typeof body?.dataUrl === "string" ? body.dataUrl : "";
@@ -384,6 +410,10 @@ Deno.serve(async (req) => {
     }
 
     const normalized = normalizeResult(parsed, fileName);
+    if (normalized.nodes.some((node) => node.species.toLowerCase() !== "rabbit")) {
+      await recordMetric(admin, "rejected_output");
+      return fail("unsupported_species", "This image appears to be for another species. Use manual animal entry until this reader is validated for that species.", 422);
+    }
     if (!normalized.nodes.length) {
       await recordMetric(admin, "rejected_output");
       return fail("no_pedigree_detected", "No pedigree animals could be read from that image. Try a clearer, straighter photo.", 422);

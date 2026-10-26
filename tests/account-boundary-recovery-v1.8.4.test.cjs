@@ -63,6 +63,7 @@ function accountHarness({
         state.events.push("clear-active");
         state.active = "";
         state.owner = "";
+        return true;
       },
       resetRuntime() {
         state.events.push("reset-runtime");
@@ -70,6 +71,14 @@ function accountHarness({
       setOwner(nextUser) {
         state.events.push(`set-owner:${nextUser}`);
         state.owner = nextUser;
+        return true;
+      },
+      verifyOwner(nextUser) {
+        return state.owner === nextUser;
+      },
+      restoreOwner(previousUser) {
+        state.owner = previousUser;
+        return true;
       },
       removeLegacy() {
         state.events.push("remove-legacy");
@@ -273,7 +282,7 @@ test("production runtime exposes member-safe recovery and targeted legacy cleanu
   const pwa = fs.readFileSync(path.join(__dirname, "..", "pwa.js"), "utf8");
   const worker = fs.readFileSync(path.join(__dirname, "..", "service-worker.js"), "utf8");
   assert.match(pwa, /registration\.update\(\)/);
-  assert.match(worker, /key\.startsWith\(CACHE_PREFIX\) && key !== CACHE_NAME/);
+  assert.match(worker, /pruneObsoleteShellCaches/);
   assert.doesNotMatch(cloud, /localStorage\.clear\(\)|indexedDB\.deleteDatabase\(/);
 });
 

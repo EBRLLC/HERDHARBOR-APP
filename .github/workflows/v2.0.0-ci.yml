@@ -1,15 +1,15 @@
-name: HerdHarbor 2.0.0 CI
+name: HerdHarbor 2.0.1 release-candidate CI
 
 on:
   pull_request:
-    branches: [main, 'release-2.0.0-phase-*', 'breeder-docs/phase-*', 'breeding-intel/phase-*', 'marketplace-site/app-*', 'marketplace-comms/app-*', 'ownership-transfer/phase-*']
+    branches: [main, 'herdharbor-2.0.1/**', 'release-2.0.0-phase-*', 'breeder-docs/phase-*', 'breeding-intel/phase-*', 'marketplace-site/app-*', 'marketplace-comms/app-*', 'ownership-transfer/phase-*']
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: herdharbor-v2.0.0-ci-${{ github.event.pull_request.number || github.ref }}
+  group: herdharbor-v2.0.1-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -29,12 +29,16 @@ jobs:
           npx esbuild supabase/functions/marketplace-public-media/index.ts --format=esm --platform=neutral --log-level=error --outfile=/tmp/marketplace-public-media.mjs
           npx esbuild supabase/functions/marketplace-pedigree-snapshot/index.ts --format=esm --platform=neutral --log-level=error --outfile=/tmp/marketplace-pedigree-snapshot.mjs
           npx esbuild supabase/functions/animal-transfer/index.ts --format=esm --platform=neutral --log-level=error --outfile=/tmp/animal-transfer.mjs
-      - name: Verify repository governance and current 2.0.0 release contract
+          npx esbuild supabase/functions/paper-pedigree-extract/index.ts --bundle --format=esm --platform=neutral --external:npm:* --log-level=error --outfile=/tmp/hh-ai-paper-2.0.1.mjs
+          npx esbuild supabase/functions/record-photo-extract/index.ts --bundle --format=esm --platform=neutral --external:npm:* --log-level=error --outfile=/tmp/hh-ai-photo-2.0.1.mjs
+      - name: Verify repository governance and current 2.0.1 release-candidate contract
         run: npm run test:release
       - name: Verify canonical engine ownership explicitly
         run: npm run test:governance
       - name: Run lifecycle state-integrity E2E gate
         run: npm run test:state-integrity
+      - name: Validate combined 2.0.1 canine and optional AI review contract
+        run: npm run test:v2.0.1-review
       - name: Run complete HerdHarbor regression suite in UTC
         env:
           TZ: UTC
@@ -68,35 +72,56 @@ jobs:
         env:
           HERDHARBOR_SENTRY_DSN: https://public@example.invalid/123
           HERDHARBOR_MONITORING_ENVIRONMENT: test
-          HERDHARBOR_BUILD_ID: ci-v2.0.0
+          HERDHARBOR_BUILD_ID: ci-v2.0.1
           HERDHARBOR_ENABLE_MONITORING_TEST: "true"
         run: |
           npm run build:monitoring-config
           grep -q '"environment": "test"' herdharbor-monitoring-config.js
-          grep -q '"release": "HerdHarbor@2.0.0"' herdharbor-monitoring-config.js
-          grep -q '"build": "ci-v2.0.0"' herdharbor-monitoring-config.js
+          grep -q '"release": "HerdHarbor@2.0.1"' herdharbor-monitoring-config.js
+          grep -q '"build": "ci-v2.0.1"' herdharbor-monitoring-config.js
           grep -q '"enableTestCrash": true' herdharbor-monitoring-config.js
+          git checkout -- herdharbor-monitoring-config.js
+      - name: Generate and validate a fingerprinted Pages release candidate without publishing
+        env:
+          HERDHARBOR_SENTRY_DSN: https://public@example.invalid/123
+          HERDHARBOR_MONITORING_ENVIRONMENT: production
+        run: |
+          HERDHARBOR_BUILD_ID="$(git rev-parse HEAD)" npm run build:monitoring-config
+          mkdir -p _site
+          rsync -a \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='node_modules/' \
+            --exclude='_site/' \
+            --exclude='monitoring/' \
+            --exclude='scripts/' \
+            --exclude='tests/' \
+            --exclude='package.json' \
+            --exclude='package-lock.json' \
+            ./ _site/
+          node scripts/generate-release-assets.mjs _site
+          node scripts/verify-release-candidate-artifact.mjs _site
           git checkout -- herdharbor-monitoring-config.js
       - name: Ensure tests and build did not mutate source
         run: git diff --exit-code -- . ':!vendor/herdharbor-monitoring-v1.6.1.min.js' ':!herdharbor-monitoring-config.js'
       - uses: actions/upload-artifact@v4
         with:
-          name: herdharbor-v2.0.0-monitoring-bundle
+          name: herdharbor-v2.0.1-monitoring-bundle
           path: vendor/herdharbor-monitoring-v1.6.1.min.js
           if-no-files-found: error
           retention-days: 14
 
   android-review:
-    name: Android 2.0.0 review bundle
+    name: Android 2.0.1 review bundle
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Verify Android release identity
         run: |
-          grep -q 'versionName "2.0.0"' android/app/build.gradle
-          grep -q 'versionCode 19' android/app/build.gradle
-          grep -q '"appVersion": "2.0.0"' twa-manifest.json
-          grep -q '"appVersionCode": 19' twa-manifest.json
+          grep -q 'versionName "2.0.1"' android/app/build.gradle
+          grep -q 'versionCode 20' android/app/build.gradle
+          grep -q '"appVersion": "2.0.1"' twa-manifest.json
+          grep -q '"appVersionCode": 20' twa-manifest.json
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -115,7 +140,62 @@ jobs:
         run: test -s android/app/build/outputs/bundle/release/app-release.aab
       - uses: actions/upload-artifact@v4
         with:
-          name: herdharbor-v2.0.0-unsigned-aab
+          name: herdharbor-v2.0.1-unsigned-aab
           path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 14
+
+  pages-release-readiness:
+    name: Pages source readiness (2.0.1 release hold)
+    if: github.event_name == 'pull_request' && github.head_ref == 'release/2.0.1-canine-ai-only'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - name: Verify Pages source is GitHub Actions before 2.0.1 merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json, os, sys, urllib.request, urllib.error
+          repo = os.environ["GITHUB_REPOSITORY"]
+          request = urllib.request.Request(
+              f"https://api.github.com/repos/{repo}/pages",
+              headers={
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "Accept": "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              },
+          )
+          try:
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  settings = json.load(response)
+          except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ValueError) as exc:
+              print(f"::error title=Pages source not verified::Could not read GitHub Pages source: {type(exc).__name__}. A verified GitHub Actions Pages source is required before #505 merges.")
+              sys.exit(1)
+          kind = settings.get("build_type")
+          if kind != "workflow":
+              print(f"::error title=Unsafe Pages publishing configuration::Pages build_type={kind!r}. Open Settings > Pages > Build and deployment > Source and select GitHub Actions BEFORE merging #505. Branch publishing could expose unverified raw main files.")
+              sys.exit(1)
+          print("2.0.1 pre-merge Pages source check PASS: GitHub Actions workflow.")
+          PY
+
+  canine-pdf-render-acceptance:
+    name: Real canine PDF render (Letter/A4, 3/4 generations)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check actual PDF rendering tools
+        run: |
+          command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser
+          if ! command -v pdftotext >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends poppler-utils
+          fi
+          command -v pdftotext
+      - name: Render and verify genuine pedigree PDF text
+        run: node scripts/verify-canine-pdf-render.cjs

@@ -11,19 +11,31 @@
   const clean = (value) => String(value == null ? "" : value).replace(/\s+/g, " ").trim();
   const lower = (value) => clean(value).toLowerCase();
 
+  function identityValues(animal, field) {
+    const base = [animal?.[field]];
+    if (lower(animal?.species) !== "dog") return base.map(lower).filter(Boolean);
+    const canine = animal?.canine || {};
+    if (field === "name") base.push(canine.registeredName,canine.callName);
+    if (field === "registrationNumber" && Array.isArray(canine.registrations)) {
+      for (const entry of canine.registrations) {
+        base.push(entry?.number, [entry?.registry,entry?.number].filter(Boolean).join(" "));
+      }
+    }
+    return base.map(lower).filter(Boolean);
+  }
   function exactAnimalMatches(hints = {}, animals = []) {
     const records = Array.isArray(animals) ? animals : [];
     const identifier = lower(hints.identifier);
     if (identifier) {
-      const matches = records.filter((animal) =>
-        ["registrationNumber","tattoo","tag","earTagNumber"].some((field) => lower(animal?.[field]) === identifier)
-      );
+      const matches = records.filter(animal=>
+        ["registrationNumber","tattoo","tag","earTagNumber"].some(field=>
+          identityValues(animal,field).includes(identifier)));
       if (matches.length) return matches;
     }
     for (const field of ["registrationNumber","tattoo","tag","earTagNumber","name"]) {
       const value = lower(hints[field]);
       if (!value) continue;
-      const matches = records.filter((animal) => lower(animal?.[field]) === value);
+      const matches = records.filter(animal=>identityValues(animal,field).includes(value));
       if (matches.length) return matches;
     }
     return [];
@@ -101,6 +113,9 @@
 
     if (classification === "registration_document") {
       const registration = providerDraft.registration || {};
+      if (!clean(registration.species)) warnings.push("Species was not identified in the source. Select and verify the correct species before continuing.");
+      if (exactAnimalMatches({registrationNumber:registration.registrationNumber,name:registration.name},animals).length)
+        warnings.push("An existing animal may already have this registered identity. Review before creating another animal.");
       return {
         classification,
         classificationConfidence: Number(providerDraft.classificationConfidence || 0),
@@ -111,7 +126,7 @@
           tattoo: clean(registration.tattoo),
           tag: clean(registration.tag || registration.earTagNumber),
           breeder: clean(registration.breeder),
-          species: clean(registration.species) || "Rabbit",
+          species: clean(registration.species),
           breed: clean(registration.breed),
           sex: ["Male","Female","Unknown"].includes(registration.sex) ? registration.sex : "Unknown",
           dob: clean(registration.dob),
@@ -184,6 +199,7 @@
     if (draft.classification === "registration_document") {
       if (!clean(values.name)) issues.push("Animal name is required.");
       if (!clean(values.species)) issues.push("Species is required.");
+      if (lower(values.species) === "dog" && !clean(values.name)) issues.push("Review the dog identity before continuing.");
       if (!["Male","Female","Unknown"].includes(values.sex)) issues.push("Choose a valid sex.");
     } else {
       const animal = (Array.isArray(animals) ? animals : []).find((row) => String(row.id) === String(values.animalId));
@@ -207,7 +223,34 @@
     let reviewed = null;
     let retryController = null;
     let lastPreparedPayload = null;
+    let requestGeneration = 0;
+    let photoDialogActive = false;
+    let photoDialogOwnerId = "";
+    let draftOwnerId = "";
     const byId = (id) => root.document?.getElementById(id);
+    const sessionUserId = () => String(root.HerdHarborCloud?.getSession?.()?.user?.id || "");
+    function invalidatePhotoWork() {
+      requestGeneration += 1;
+      retryController?.clear?.();
+      retryController = null;
+      lastPreparedPayload = null;
+      reviewed = null;
+      draftOwnerId = "";
+      const button = byId("photo-entry-analyze");
+      if (button) button.disabled = false;
+    }
+    function isCurrentAttempt(meta) {
+      return photoDialogActive && Boolean(meta) &&
+        meta.generation === requestGeneration && meta.file === selectedFile &&
+        Boolean(meta.ownerId) && sessionUserId() === meta.ownerId &&
+        byId("photo-entry-consent")?.checked === true &&
+        Boolean(byId("photo-entry-form"));
+    }
+    function cancelledPhotoError() {
+      const error = new Error("Photo analysis cancelled or account changed.");
+      error.code = "capture_cancelled";
+      return error;
+    }
     const animals = () => {
       const state = deps.getState() || {};
       return Array.isArray(state.animals) ? state.animals : [];
@@ -224,50 +267,67 @@
     }
 
     async function invokePhotoService(payload) {
+      // This also executes on offline retry. The original account/selection
+      // and live consent must still match immediately before network dispatch.
+      const { __hhAttempt, ...wirePayload } = payload || {};
+      if (!isCurrentAttempt(__hhAttempt)) throw cancelledPhotoError();
       const service = cloud();
-      if (!service?.getSession?.()?.user?.id) {
-        const error = new Error("Sign in before using photo-assisted entry.");
-        error.code = "authentication_required";
-        throw error;
-      }
+      if (!service?.getSession?.()?.user?.id) throw cancelledPhotoError();
       return typeof service.invokeFunctionWithDiagnostics === "function"
-        ? service.invokeFunctionWithDiagnostics("record-photo-extract", payload)
-        : service.invokeFunction("record-photo-extract", payload);
+        ? service.invokeFunctionWithDiagnostics("record-photo-extract", wirePayload)
+        : service.invokeFunction("record-photo-extract", wirePayload);
     }
 
     function ensureRetryController() {
       if (retryController) return retryController;
       const helper = mobileCapture();
       if (!helper?.createRetryController) throw new Error("Mobile capture support did not load.");
-      retryController = helper.createRetryController({
+      let controller;
+      controller = helper.createRetryController({
         isOnline: () => root.navigator?.onLine !== false,
         execute: invokePhotoService,
-        onStatus: ({ state, message }) => setCaptureStatus(state, message)
+        onStatus: ({ state, message }) => {
+          if (retryController === controller) setCaptureStatus(state, message);
+        }
       });
-      return retryController;
+      retryController = controller;
+      return controller;
     }
 
-    function acceptProviderResponse(response) {
+    function acceptProviderResponse(response, meta) {
+      // Never render an old response for a different photo or signed-in user.
+      if (!isCurrentAttempt(meta)) return false;
       if (!response?.draft) {
         const error = new Error(response?.error || "The photo reader returned no review draft.");
         error.code = "empty_extraction";
         throw error;
       }
       reviewed = canonicalDraft(response.draft, animals());
+      draftOwnerId = meta.ownerId;
       telemetry("photo_draft_created", reviewed.classification === "unsupported" ? "failure" : "success", reviewed.classification);
       renderReview();
       return reviewed;
     }
 
     async function resumePendingAnalysis(reason = "resume") {
-      if (!retryController?.getState?.().pending || root.navigator?.onLine === false) return false;
+      const payload = lastPreparedPayload;
+      const meta = payload?.__hhAttempt;
+      if (!payload || !retryController?.getState?.().pending) return false;
+      if (!isCurrentAttempt(meta)) {
+        invalidatePhotoWork();
+        return false;
+      }
+      if (root.navigator?.onLine === false) return false;
+      const controller = retryController;
       try {
-        const response = await retryController.resume(reason);
-        if (response?.draft) return acceptProviderResponse(response);
+        const response = await controller.resume(reason);
+        if (!isCurrentAttempt(meta) || controller !== retryController) return false;
+        if (response?.draft) return acceptProviderResponse(response, meta);
         return response;
       } catch (error) {
+        if (!isCurrentAttempt(meta)) return false;
         const code = clean(error?.code);
-        if (!error?.retryable && code !== "secure_service_error") {
+        if (!error?.retryable && code !== "secure_service_error" && code !== "capture_cancelled") {
           const suffix = code && code !== "secure_service_error" ? " [" + code + "]" : "";
           deps.toast((error?.message || "HerdHarbor could not read that image.") + suffix, "error");
         }
@@ -402,6 +462,11 @@
     }
 
     function confirmReview() {
+      if (!photoDialogActive || !draftOwnerId || sessionUserId() !== draftOwnerId) {
+        invalidatePhotoWork();
+        deps.toast("The account changed. Reopen photo entry and review a new draft.", "error");
+        return false;
+      }
       const next = collectReview();
       const validation = validateReview(next, animals());
       if (!validation.ok) {
@@ -409,6 +474,8 @@
         return false;
       }
       telemetry("photo_draft_confirmed", "success", next.classification);
+      photoDialogActive = false;
+      invalidatePhotoWork();
       deps.closeModal();
       return next.classification === "registration_document"
         ? deps.openAnimalForm("", next.defaults)
@@ -428,6 +495,10 @@
         deps.toast("Sign in before using photo-assisted entry.", "error");
         return false;
       }
+      if (!byId("photo-entry-consent")?.checked) {
+        deps.toast("Choose to send this record photo to the optional AI reader before uploading.", "error");
+        return false;
+      }
 
       const helper = mobileCapture();
       if (!helper?.prepareImage) {
@@ -435,15 +506,22 @@
         return false;
       }
 
+      // Snapshot the initiating user and selected File across all awaits.
+      // A changed file, account, or consent invalidates this entire attempt.
+      invalidatePhotoWork();
+      const meta = { generation: requestGeneration, ownerId: sessionUserId(), file: selectedFile };
       const button = byId("photo-entry-analyze");
       if (button) button.disabled = true;
       setCaptureStatus("working", "Preparing photo…");
       try {
-        const prepared = await helper.prepareImage(selectedFile);
+        const prepared = await helper.prepareImage(meta.file);
+        if (!isCurrentAttempt(meta)) return false;
         lastPreparedPayload = {
           dataUrl: prepared.dataUrl,
           mimeType: prepared.mimeType,
-          fileName: prepared.fileName
+          fileName: prepared.fileName,
+          aiOptIn: true,
+          __hhAttempt: meta
         };
         const sizeText = prepared.compressed
           ? "Photo prepared for reliable upload."
@@ -453,13 +531,16 @@
             ? sizeText + " You are offline; analysis will retry when connection returns."
             : sizeText);
 
-        const response = await ensureRetryController().run(lastPreparedPayload);
+        const controller = ensureRetryController();
+        const response = await controller.run(lastPreparedPayload);
+        if (!isCurrentAttempt(meta) || controller !== retryController) return false;
         if (response?.queued) {
           telemetry("photo_analysis_queued", "pending", "");
           return response;
         }
-        return acceptProviderResponse(response);
+        return acceptProviderResponse(response, meta);
       } catch (error) {
+        if (!isCurrentAttempt(meta)) return false;
         telemetry("photo_extraction_failed", "failure", reviewed?.classification || "");
         const code = clean(error?.code);
         const retryable = error?.retryable === true || Boolean(retryController?.getState?.().pending);
@@ -469,28 +550,29 @@
         }
         return false;
       } finally {
-        if (button) button.disabled = false;
+        if (button && meta.generation === requestGeneration) button.disabled = false;
       }
     }
 
     function open() {
+      invalidatePhotoWork();
+      photoDialogOwnerId = sessionUserId();
+      photoDialogActive = true;
       selectedFile = null;
-      reviewed = null;
-      lastPreparedPayload = null;
-      retryController?.clear?.();
       deps.openModal("Photo-assisted entry",
         '<form id="photo-entry-form"><label>Record photo<input id="photo-entry-file" type="file" accept="image/jpeg,image/png" capture="environment"></label>' +
         '<p class="muted">Take a clear photo or choose an existing JPG/PNG. HerdHarbor prepares large phone images for upload and creates a review draft only.</p>' +
+        '<label><input id="photo-entry-consent" type="checkbox"> I choose to send this record photo to HerdHarbor\'s optional AI service for an editable draft. I can enter the record manually instead.</label>' +
         '<div id="photo-entry-status" class="notice hidden" aria-live="polite"></div>' +
         '<div class="modal-actions"><button type="button" class="button button-ghost" id="photo-entry-cancel">Cancel</button><button type="submit" class="button button-primary" id="photo-entry-analyze">Analyze photo</button></div></form>' +
         '<div id="photo-entry-review"></div>',
         "Reviewed assistant"
       );
       byId("photo-entry-file")?.addEventListener("change", (event) => {
+        invalidatePhotoWork();
         selectedFile = event.target?.files?.[0] || null;
-        reviewed = null;
-        lastPreparedPayload = null;
-        retryController?.clear?.();
+        const consent = byId("photo-entry-consent");
+        if (consent) consent.checked = false;
         const reviewHost = byId("photo-entry-review");
         if (reviewHost) reviewHost.innerHTML = "";
         setCaptureStatus(selectedFile ? "ready" : "idle",
@@ -498,9 +580,15 @@
             ? "Photo selected. You are offline; prepare it now and HerdHarbor will retry analysis when connection returns."
             : "Photo selected and ready to prepare.") : "");
       });
+      byId("photo-entry-consent")?.addEventListener("change", (event) => {
+        if (event.currentTarget?.checked) return;
+        invalidatePhotoWork();
+        const host = byId("photo-entry-review");
+        if (host) host.innerHTML = "";
+      });
       byId("photo-entry-cancel")?.addEventListener("click", () => {
-        retryController?.clear?.();
-        lastPreparedPayload = null;
+        photoDialogActive = false;
+        invalidatePhotoWork();
         telemetry("photo_entry_cancelled", "cancelled", "");
         deps.closeModal();
       });
@@ -511,6 +599,25 @@
       return true;
     }
 
+    // The cloud layer emits this when an authenticated account changes or
+    // signs out. Never retain a prepared image across that boundary.
+    const onPhotoAuthBoundary = (event) => {
+      // An ordinary same-user session update must not discard a prepared
+      // review. Early auth-boundary signals still invalidate unconditionally.
+      if (event?.type === "herdharbor:auth-session" &&
+          photoDialogOwnerId && photoDialogOwnerId === sessionUserId()) return;
+      // Any auth boundary/refresh invalidates running work, including image
+      // preparation before lastPreparedPayload exists. A→B→A cannot reuse
+      // old consent or revive a stale in-flight upload.
+      if (!photoDialogActive) return;
+      invalidatePhotoWork();
+      const host = byId("photo-entry-review");
+      if (host) host.innerHTML = "";
+      const consent = byId("photo-entry-consent");
+      if (consent) consent.checked = false;
+    };
+    root.document?.addEventListener?.("herdharbor:auth-boundary", onPhotoAuthBoundary);
+    root.document?.addEventListener?.("herdharbor:auth-session", onPhotoAuthBoundary);
     root.addEventListener?.("online", () => { void resumePendingAnalysis("online"); });
     root.addEventListener?.("pageshow", () => { void resumePendingAnalysis("pageshow"); });
     root.document?.addEventListener?.("visibilitychange", () => {

@@ -193,7 +193,8 @@ function createHarness({ localState, legacyState, pending = ["m-1"], coordinator
   };
 
   const cloud = {
-    async getSession() {
+    // Match the synchronous public HerdHarborCloud.getSession contract.
+    getSession() {
       return { user: { id: "owner-1" } };
     },
     async syncNow() { return true; },

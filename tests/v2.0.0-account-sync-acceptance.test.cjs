@@ -39,7 +39,7 @@ test("normal account switching preserves old-account state before clearing the a
   );
   assert.match(switchBlock, /preserve:\s*async \(staleOwnerId\)/);
   assert.match(switchBlock, /preserveActiveForUser/);
-  assert.match(switchBlock, /clearActive:\s*clearActiveUserData/);
+  assert.match(switchBlock, /clearActive:\s*\(\) => \{\s*if \(!workspaceUnchanged\(\)\) return false;\s*clearedBoundaryWorkspace = clearActiveUserData\(\) === true;/);
 
   const applyStart = boundary.indexOf("async function applyPlan");
   const applyEnd = boundary.indexOf("function createGenerationFence", applyStart);

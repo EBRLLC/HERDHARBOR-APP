@@ -1,6 +1,6 @@
 # HerdHarbor Product Roadmap — Post 2.0.0
 
-Updated: 2026-10-05
+Updated: 2026-10-26 (release split; prior roadmap superseded where versions conflict)
 
 ## Baseline
 
@@ -43,85 +43,79 @@ This roadmap replaces older planning that treated 1.8.x as the active product li
 
 ---
 
-# Release 2.0.1 — AI-Assisted Workflow Public Release
+# Release 2.0.1 — Canine Foundation + Optional AI Public Release
 
-**Priority:** highest product feature release.
+**Priority:** highest product feature release. **State:** development, not public-enabled.
 
-**Goal:** move the already deployed controlled-access AI workflows into a deliberate public release without allowing AI to become a second persistence path.
+**Goal:** add canine identities, breeder-maintained registrations, titles and safe pedigrees to the shared animal-first application, while independently preparing existing optional paper-pedigree/photo/voice AI for public readiness. Neither feature may be silently enabled in production.
 
-### Stack 2.0.1-A — AI access and entitlement contract
-- Define Member/Founder/Junior availability for each AI action.
-- Keep provider credentials server-side.
-- Keep per-user/global usage quotas and abuse controls.
-- Add explicit feature flags and emergency disable controls.
-- Preserve aggregate-only telemetry and privacy boundaries.
+### Required review stack
+K0 audit/governance → K1 canine catalog/registry/title model → K2 animal-first dog profile → K3 protected dog pedigree links → K4 canine print/export → A1 AI entitlements/controls → A2 paper reader → A3 photo/voice → K5 mixed-species Today/tasks → R1 final acceptance.
 
-### Stack 2.0.1-B — Paper Pedigree Reader
-- Publicly expose paper-pedigree photo reading to eligible accounts.
-- Require structured extraction validation.
-- Keep uncertain values visibly uncertain.
-- Require human review before committing.
-- Reuse the canonical pedigree graph/save path.
-- Add duplicate/conflict checks before save.
-- Add production acceptance tests using representative pedigree layouts.
+- Every branch must descend from its immediate predecessor and PRs must target their immediate predecessor's branch.
+- Preserve existing rabbits/livestock, canonical records, existing cloud/CAS/outbox boundaries and the current-farm species hardlock.
+- Canine 2.0.1 is **manual registration/title/pedigree management**, not a canine reproduction or official AKC document/verification service.
+- Support 3-/4-generation breeder-maintained pedigrees with explicit unofficial document labels; never fabricate registry confirmation.
+- Canine AI scanning may remain disabled if a verified image corpus does not meet quality gates.
+- Human-confirmed draft AI only; manual entry works with AI disabled, out of quota or unavailable.
+- Separate canine feature control and AI operation-level server-authoritative gates; public entitlement matrix requires owner approval.
+- Any missing owner approval leaves public flags off, without blocking safe review of complete implementation.
 
-### Stack 2.0.1-C — Photo-Assisted Entry
-- Publicly expose supported photo-assisted Animal/Health entry.
-- AI prepares a draft only.
-- Canonical Animal/Health forms remain final save owners.
-- Unsupported or incomplete extraction fails closed.
-- Add explicit review, correction, and cancel paths.
+### Exit and stop contract
+2.0.1 release gate is **draft PR #505**, branched at the S17 stabilization boundary. It contains K0–K5, A1–A3, and S1–S17 safety fixes but **no S18–S22 normalized-primary migration**. Automated tests must be green at the exact head and owner/device/2.0.0 PWA-upgrade acceptance must be completed before the PR can be marked merge-ready. Do not merge, enable public AI, publish, or change production cloud authority from CI alone.
+---
 
-### Stack 2.0.1-D — Voice-Assisted Entry
-- Publicly expose voice-assisted entry for supported workflows.
-- Voice creates review drafts only.
-- Canonical Health/Breeding/Animal forms remain final persistence owners.
-- Require confirmation for ambiguous dates, animals, dosages, breeding events, and other material fields.
+# Release 2.0.2 — Normalized Cloud Replacement and Account Cutover
 
-### Stack 2.0.1-E — Multi-input provenance and conflict UX
-- Define deterministic field provenance for AI-assisted drafts.
-- Show source/conflict state when multiple inputs disagree.
-- Do not auto-resolve conflicting pedigree lineage.
-- Multi-photo pedigree merging may ship only after this contract is proven.
+**Priority:** after an accepted 2.0.1 release; **state:** draft and blocked pending staging/database/device acceptance. [Release PR #506](https://github.com/EBRLLC/HERDHARBOR-APP/pull/506) targets the 2.0.1 release branch for review and must be rebased/retargeted to the actually merged `main` before approval.
 
-### Stack 2.0.1-F — Public release and acceptance
-- Add user-facing help/how-to content.
-- Change website AI messaging from Coming Soon only after production acceptance.
-- Verify quotas, fail-closed behavior, canonical save ownership, privacy, and rollback.
-- Keep a one-switch ability to disable AI availability without affecting canonical records.
+**Goal:** make the normalized per-record store the verified source of truth while protecting every existing device and all ten known Auth accounts. Never treat missing cloud data as proof of an empty offline device. Keep the legacy snapshots available for recovery until their retirement is independently approved.
 
-### 2.0.1 exit criteria
-- no AI path can directly bypass canonical save owners;
-- no provider secret reaches browser code;
-- uncertain/conflicting values cannot silently become canonical data;
-- AI can be disabled without data migration;
-- full regression and production acceptance are green.
+### Required review stack
+- S18: normalized-primary record CAS/outbox, cloud authority and account-boundary safeguards.
+- S19: encrypted, readback-verified off-host recovery plan; serializable, digest-guarded account cutover tools.
+- S20: controlled sign-in/update migration, normalized-only signup initialization, server readiness/compatibility checks, first-save protection.
+- S21: fail-closed authority reads, update consent and cross-account/session fencing.
+- S22: old-client signup compatibility, stale authority response protection, normalized-only downgrade prevention and explicit reconciliation of pre-existing Auth-only accounts.
+
+### 2.0.2 hard release gates
+- [ ] Explicit owner authorization for any paid isolated Supabase staging resources; no cost incurred without approval.
+- [ ] Actual staging Auth-trigger, RLS, first-record, dual-write-to-normalized, rollback and downgrade tests on a disposable, isolated database.
+- [ ] Independently exported and restored backups of each account before any promotion, with digest/readback verification and tested recovery.
+- [ ] Reconcile all **ten** known Auth users (five original migration cohort, five previously Auth-only) and device-local unsynced work before provisioning or promotion.
+- [ ] Old 2.0.0/2.0.1 PWA and real iOS/Android upgrade acceptance; verify changes made during hydration, account A→B→A, offline outbox, conflict recovery and cross-device sync.
+- [ ] Rename S18–S22 version-specific source/test/migration identifiers to 2.0.2 as appropriate and update release isolation tests; no deploy or automatic migration based only on green CI.
+
+### Exit criteria
+- New accounts use normalized authority after validated server initializer deployment; existing accounts move only after recoverable, individually verified migrations.
+- Cloud saves and refreshes remain accurate across offline, dirty drafts, two devices and changed accounts; no successful-save claims while uncommitted work exists.
+- Legacy snapshots remain intact until an independent later deprecation decision. **Do not merge #506 until #505 is accepted and merged.**
 
 ---
 
-# Release 2.0.2 — Distribution and Install Quality
+# Release 2.0.3 — Distribution and Install Quality
 
-**Goal:** finish platform distribution without mixing store work into feature development.
+**Goal:** finish platform distribution without mixing store work into feature or storage migration releases.
 
-### Stack 2.0.2-A — Android production release
+### Stack 2.0.3-A — Android production release
 - Final Play Console production package review.
 - Validate signing, package/version identity, deep links, install/update behavior, notification/permission behavior, and PWA/TWA fallback.
 - Publish only after store-side production confirmation.
 
-### Stack 2.0.2-B — iOS distribution path
+### Stack 2.0.3-B — iOS distribution path
 - Define the iOS packaging strategy.
 - Add the required iOS project/package and store metadata.
 - Verify sign-in, camera/photo access, file export, offline/update behavior, and account switching on iOS.
 - Do not claim App Store availability before store confirmation.
 
-### Stack 2.0.2-C — Install/update reliability
+### Stack 2.0.3-C — Install/update reliability
 - Harden PWA update prompts and stale-cache retirement.
 - Verify recovery does not require clearing browser/site data.
 - Add production install/update smoke tests for desktop, Android, and iOS-supported web install paths.
 
-### 2.0.2 exit criteria
-- store availability claims match actual store status;
-- app updates preserve user data/session boundaries;
+### 2.0.3 exit criteria
+- Store availability claims match actual store status.
+- App updates preserve user data/session boundaries.
 - PWA and packaged-app release identities remain traceable to reviewed commits.
 
 ---
@@ -204,16 +198,14 @@ This roadmap replaces older planning that treated 1.8.x as the active product li
 
 ---
 
-# Release 2.3.0 — Sync Authority and Scale
+# Release 2.3.0 — Legacy Retirement and Sync Scale
 
-**Goal:** finish normalized-sync rollout only after production evidence supports it.
+**Goal:** measure 2.0.2's normalized production authority at scale and consider a later independent legacy-deprecation release only after extensive recovery evidence supports it.
 
 ### Work
-- Continue account-by-account/cohort rollout using existing readiness contracts.
-- Measure reconciliation, conflict, rollback, and recovery behavior.
-- Expand normalized read/write authority only when production evidence is clean.
-- Retire legacy recovery/full-state paths only after an explicit reviewed deprecation plan proves they are no longer needed.
-- Add scale/performance limits and recovery drills.
+- Measure reconciliation, conflict, rollback, and recovery behavior following verified 2.0.2 cutover.
+- Add scale/performance limits, account-restore testing and recovery drills.
+- Evaluate retirement of legacy recovery/full-state paths only after an explicit reviewed deprecation plan and recovery evidence prove they are no longer needed.
 
 ### Exit criteria
 - no account requires manual local-storage clearing as normal recovery;
@@ -236,11 +228,12 @@ These are not allowed to silently enter an earlier release:
 ## Priority order
 
 1. Phase 0 — repository/release governance
-2. 2.0.1 — AI-assisted workflow public release
-3. 2.0.2 — distribution/install quality
-4. 2.1.0 — Marketplace production completion
-5. 2.1.1 — Business membership
-6. 2.2.0 — farm operations/decision support
-7. 2.3.0 — sync authority and scale
+2. 2.0.1 — canine pedigrees, optional AI and S1–S17 stability
+3. 2.0.2 — normalized cloud primary, account migration and recovery
+4. 2.0.3 — distribution/install quality
+5. 2.1.0 — Marketplace production completion
+6. 2.1.1 — Business membership
+7. 2.2.0 — farm operations/decision support
+8. 2.3.0 — legacy retirement decision and sync scale
 
 This order intentionally keeps high-risk infrastructure, AI, Marketplace, billing/roles, and sync changes in separate releases so failures can be isolated and rolled back without unwinding unrelated product work.

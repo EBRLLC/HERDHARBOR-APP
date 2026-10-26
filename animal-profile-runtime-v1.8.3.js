@@ -53,7 +53,11 @@
         const haystack = [
           animal?.name, animal?.tag, animal?.earTagNumber, animal?.earTagColor,
           animal?.registrationNumber, animal?.tattoo, animal?.breeder, animal?.breed,
-          animal?.location, animal?.color
+          animal?.location, animal?.color,
+          animal?.canine?.callName, animal?.canine?.registeredName,
+          ...(Array.isArray(animal?.canine?.registrations) ?
+            animal.canine.registrations.flatMap(item => [item.registry, item.number, [item.registry,item.number].filter(Boolean).join(" ")]) : []),
+          ...(Array.isArray(animal?.canine?.titles) ? animal.canine.titles.map(item => item.abbreviation) : [])
         ].join(" ").toLowerCase();
         return haystack.includes(query);
       });
@@ -132,6 +136,8 @@
       const state = stateNow();
       const existing = (state.animals || []).find((record) => record.id === id) || null;
       const animal = id ? { ...defaults, ...(existing || {}) } : { ...defaults };
+      const canineIdentity = root.HerdHarborCanineIdentity;
+      const canineLineage = root.HerdHarborCanineLineage;
       let pendingPhotoData = animal.photoData || "";
       let pendingPhotoFileName = animal.photoFileName || "";
       let photoPreparationPromise = null;
@@ -177,6 +183,7 @@
             ${deps.selectAnimalField("Sire", "sireId", animal.sireId, "Male")}
             ${deps.selectAnimalField("Dam", "damId", animal.damId, "Female")}
           </div>
+          ${canineIdentity?.editorHtml?.(animal) || ""}
           ${deps.textareaField("Notes", "notes", animal.notes)}
           <div class="modal-actions">
             ${id ? '<button type="button" class="button button-danger" id="delete-animal">Delete</button>' : ""}
@@ -194,11 +201,15 @@
       const birthWeightUnit = $('[name="birthWeightUnit"]', $("#animal-form"));
       const birthWeightOunces = $(".birth-weight-ounces", $("#animal-form"));
       const breedList = $("#animal-breed-options");
-      const cattleEarFields = $$(".cattle-ear-field", $("#animal-form"));
+      const cattleEarFields = $(".cattle-ear-field", $("#animal-form"));
+      const refreshCanineParents = () => canineLineage?.filterParentSelectors?.($("#animal-form"),stateNow().animals || [],{...animal,species:speciesSelect?.value||animal.species,id:id||animal.id||""});
 
       const refreshBreedOptions = () => {
         if (!breedList) return;
-        breedList.innerHTML = deps.breedOptionsFor(speciesSelect?.value || "Rabbit")
+        const breedSource = canineIdentity?.isDog(speciesSelect?.value) && root.HerdHarborCanineBreeds
+          ? root.HerdHarborCanineBreeds.list().map((breed) => breed.name)
+          : deps.breedOptionsFor(speciesSelect?.value || "Rabbit");
+        breedList.innerHTML = breedSource
           .map((breed) => `<option value="${esc(breed)}"></option>`)
           .join("");
       };
@@ -235,9 +246,12 @@
         refreshPhotoPreview();
         refreshBreedOptions();
         refreshCattleEarFields();
+        refreshCanineParents();
       });
+      canineIdentity?.bindEditor?.($("#animal-form"), speciesSelect);
       refreshBreedOptions();
       refreshCattleEarFields();
+      refreshCanineParents();
       birthWeightUnit?.addEventListener("change", refreshBirthWeightFields);
       refreshBirthWeightFields();
 
@@ -300,6 +314,15 @@
         const liveState = stateNow();
         const data = Object.fromEntries(new FormData(form));
         data.breed = String(data.breed || "").trim();
+        if (canineIdentity?.isDog(data.species)) {
+          const checked = canineIdentity.readEditor(form, animal.canine);
+          if (!checked?.valid) {
+            deps.toast((checked?.errors || ["Dog registration/title fields could not be validated."]).join(" "), "error");
+            return;
+          }
+          data.canine = checked.value;
+          const candidate = { ...(id ? (liveState.animals || []).find(item => item.id === id) : {}), ...data, id: id || "__new_dog__" };
+        }
         if (String(data.species || "").trim().toLowerCase() !== "cattle") {
           data.earTagNumber = "";
           data.earTagColor = "";
@@ -329,20 +352,46 @@
         data.photoData = pendingPhotoData;
         data.photoFileName = pendingPhotoFileName;
 
+        // Enforce child/parent integrity for every edit, not just Dog saves.
+        const previousAnimal = id ? (liveState.animals || []).find((record) => record.id === id) : null;
+        const proposedAnimal = { ...(previousAnimal || {}), ...data, id: id || "__new_dog__" };
+        const mutationCheck = canineLineage?.validateMutation?.(liveState.animals || [], proposedAnimal);
+        if (!mutationCheck?.valid) {
+          deps.toast((mutationCheck?.issues || ["Animal relationship validation is unavailable."]).join(" "), "error");
+          return;
+        }
+
+        // Breed suggestions and activity are also part of the attempted save.
+        // Restore both when persistence fails, not just the animal record.
+        const previousBreedMap = liveState.settings?.breedsBySpecies === undefined
+          ? undefined : { ...liveState.settings.breedsBySpecies };
+        const previousActivity = Array.isArray(liveState.activity)
+          ? liveState.activity.slice() : liveState.activity;
+        const rollbackAuxiliarySaveState = () => {
+          if (liveState.settings) {
+            if (previousBreedMap === undefined) delete liveState.settings.breedsBySpecies;
+            else liveState.settings.breedsBySpecies = previousBreedMap;
+          }
+          liveState.activity = previousActivity;
+        };
+
         if (id) {
           const currentAnimal = (liveState.animals || []).find((record) => record.id === id);
           if (!currentAnimal) return;
           const nextAnimal = { ...currentAnimal, ...data, updatedAt: new Date().toISOString() };
+          const leavingDog = canineIdentity?.isDog(currentAnimal) && !canineIdentity?.isDog(nextAnimal);
+          if (leavingDog) delete nextAnimal.canine;
           const nextAnimals = liveState.animals.map((item) => item.id === id ? nextAnimal : item);
           if (!deps.allowsAnimalTransition(liveState.animals, nextAnimals)) return;
           const original = { ...currentAnimal };
+          if (leavingDog) delete currentAnimal.canine;
           Object.assign(currentAnimal, nextAnimal);
           deps.rememberBreed(data.species, data.breed);
           deps.recordActivity(`Updated ${data.name}.`, "animal");
           if (!deps.saveState("Animal updated.")) {
             Object.keys(currentAnimal).forEach((key) => delete currentAnimal[key]);
             Object.assign(currentAnimal, original);
-            liveState.activity?.shift?.();
+            rollbackAuxiliarySaveState();
             return;
           }
         } else {
@@ -353,7 +402,7 @@
           deps.recordActivity(`Added ${data.name} to animal records.`, "animal");
           if (!deps.saveState("Animal added.")) {
             liveState.animals = liveState.animals.filter((item) => item.id !== newAnimal.id);
-            liveState.activity?.shift?.();
+            rollbackAuxiliarySaveState();
             return;
           }
         }
@@ -363,25 +412,28 @@
 
       $("#delete-animal")?.addEventListener("click", () => {
         const liveState = stateNow();
-        const currentAnimal = (liveState.animals || []).find((record) => record.id === id);
+        const currentAnimal = (liveState.animals || []).find(record => record.id === id);
         if (!currentAnimal) return;
-        if ((liveState.sales || []).some((sale) => (sale.items || []).some((item) => item.animalId === id))) {
-          deps.toast("This animal is connected to a sale record. Keep the animal for invoices, transfers, and buyer history.", "error");
+        // Reject deletion of a linked animal instead of silently removing
+        // health, breeding, litter or pedigree history. Archive is available.
+        const deleteCheck = canineLineage?.validateDeletion?.(liveState.animals || [], id, liveState);
+        if (!deleteCheck?.valid) {
+          deps.toast((deleteCheck?.issues || ["Animal dependency validation is unavailable."]).join(" "), "error");
           return;
         }
         if (!root.confirm?.(`Delete ${currentAnimal.name}? This cannot be undone.`)) return;
-        const removedBreedingIds = (liveState.breedings || [])
-          .filter((record) => record.femaleId === id || record.maleId === id)
-          .map((record) => record.id);
-        removedBreedingIds.forEach((breedingId) => deps.completeWorkflowTasks("breeding", breedingId));
-        liveState.animals = (liveState.animals || []).filter((record) => record.id !== id);
-        liveState.breedings = (liveState.breedings || []).filter((record) => record.femaleId !== id && record.maleId !== id);
-        liveState.health = (liveState.health || []).filter((record) => record.animalId !== id);
-        liveState.pedigrees = (liveState.pedigrees || []).filter((record) => record.subjectAnimalId !== id);
-        liveState.pedigreeDrafts = (liveState.pedigreeDrafts || []).filter((record) => record.subjectAnimalId !== id);
-        liveState.tasks = (liveState.tasks || []).map((task) => task.animalId === id ? { ...task, animalId: "" } : task);
+        // Only an unreferenced animal reaches this branch. Keep a snapshot so
+        // failed durable writes cannot leave the active in-memory state deleted.
+        const previousAnimals = liveState.animals;
+        const previousActivity = Array.isArray(liveState.activity) ? liveState.activity.slice() : liveState.activity;
+        liveState.animals = previousAnimals.filter(record => record.id !== id);
         deps.recordActivity(`Deleted ${currentAnimal.name}.`, "animal");
-        deps.saveState("Animal deleted.");
+        if (!deps.saveState("Animal deleted.")) {
+          liveState.animals = previousAnimals;
+          liveState.activity = previousActivity;
+          deps.toast("Deletion was not saved. The animal remains in your records.", "error");
+          return;
+        }
         deps.closeModal();
         deps.renderCurrentView();
       });
@@ -422,6 +474,9 @@
       const health = (state.health || []).filter((record) => record.animalId === id).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
       const breedings = (state.breedings || []).filter((record) => record.femaleId === id || record.maleId === id);
       const pedigreeImports = (state.pedigrees || []).filter((record) => record.subjectAnimalId === id);
+      const isCanine = root.HerdHarborCanineIdentity?.isDog(animal);
+      const canineInfo = isCanine ? root.HerdHarborCanineIdentity.normalize(animal.canine) : null;
+      const preferredCanineRegistration = isCanine ? root.HerdHarborCanineIdentity.preferredRegistration(animal) : null;
 
       deps.openModal(animal.name, `
         <div class="animal-detail-hero">
@@ -440,7 +495,9 @@
           ${String(animal.species || "").toLowerCase() === "cattle" ? deps.detailField("Ear tag number", animal.earTagNumber) : ""}
           ${String(animal.species || "").toLowerCase() === "cattle" ? deps.detailField("Ear tag color", animal.earTagColor) : ""}
           ${deps.detailField("Tattoo / ear number", animal.tattoo)}
-          ${deps.detailField("Registration", animal.registrationNumber)}
+          ${deps.detailField("Registration", isCanine && preferredCanineRegistration
+             ? [preferredCanineRegistration.registry,preferredCanineRegistration.number].filter(Boolean).join(" ")
+             : animal.registrationNumber)}
           ${deps.detailField("Breeder", animal.breeder)}
           ${deps.detailField("Born", deps.formatDate(animal.dob))}
           ${deps.detailField("Age", deps.ageText(animal.dob))}
@@ -448,12 +505,13 @@
           ${deps.detailField("Status", animal.status)}
           ${deps.detailField("Asking price", animal.askingPrice ? deps.formatMoney(animal.askingPrice) : "—")}
         </div>
-        <h3 style="margin-top:22px">Pedigree preview</h3>
-        ${pedigreeRecordPreviewHtml(animal, pedigreeImports.slice().sort((left, right) => String(right.importedAt || "").localeCompare(String(left.importedAt || "")))[0] || null)}
-        ${root.HerdHarborAnimalDocuments?.centerHtml?.({
-          animalName: animal.name,
-          pedigreeCount: pedigreeImports.length
-        }) || ""}
+        ${isCanine ? '<h3 style="margin-top:22px">Canine identity and pedigree</h3><p class="muted">Breeder-maintained; not independently registry verified.</p>'+
+           '<p><strong>Registered name:</strong> '+esc(canineInfo.registeredName || animal.name)+'</p>'+
+           '<p><strong>Titles:</strong> '+esc(canineInfo.titles.map(item=>item.abbreviation).join(" ") || "None recorded")+'</p>'+
+           '<p><strong>Registrations:</strong> '+esc(canineInfo.registrations.map(item=>[item.registry,item.number].filter(Boolean).join(" ")).join(" · ") || "None recorded")+'</p>'
+           : '<h3 style="margin-top:22px">Pedigree preview</h3>'+
+           pedigreeRecordPreviewHtml(animal, pedigreeImports.slice().sort((left, right) => String(right.importedAt || "").localeCompare(String(left.importedAt || "")))[0] || null)+
+           (root.HerdHarborAnimalDocuments?.centerHtml?.({animalName:animal.name,pedigreeCount:pedigreeImports.length}) || "")}
         <h3 style="margin-top:22px">Notes</h3>
         <p class="muted">${esc(animal.notes || "No notes recorded.")}</p>
         <h3 style="margin-top:22px">Record summary</h3>
@@ -462,9 +520,11 @@
           <button class="button button-ghost" id="detail-close">Close</button>
           <button class="button button-ghost" id="detail-analytics">View analytics</button>
           <button class="button button-ghost" id="detail-print-qr">Print QR card</button>
-          <button class="button button-ghost" id="detail-import-pedigree">Build / import pedigree</button>
-          <button class="button button-ghost" id="detail-birth-certificate">Create Birth Certificate</button>
-          <button class="button button-ghost" id="detail-compare-pedigree">Linebreeding Coefficient</button>
+          ${isCanine ?
+            '<button class="button button-ghost" id="detail-print-canine">Print Dog Pedigree</button>' :
+            '<button class="button button-ghost" id="detail-import-pedigree">Build / import pedigree</button>' +
+            '<button class="button button-ghost" id="detail-birth-certificate">Create Birth Certificate</button>' +
+            '<button class="button button-ghost" id="detail-compare-pedigree">Linebreeding Coefficient</button>'}
           <button class="button button-primary" id="detail-edit">Edit animal</button>
         </div>
       `, `${animal.species || "Animal"} record`);
@@ -475,7 +535,7 @@
         root.HerdHarborAnalytics?.openAnimal?.(id);
         deps.navigate("analytics");
       });
-      root.HerdHarborAnimalDocuments?.bindCenter?.(
+      if (!isCanine) root.HerdHarborAnimalDocuments?.bindCenter?.(
         document.querySelector("[data-hh-animal-documents]"),
         {
           openPedigree: () => deps.openPrintPedigreeForm(id),
@@ -484,6 +544,7 @@
         }
       );
       $("#detail-print-qr")?.addEventListener("click", (event) => openAnimalQrCardForm(id, event.currentTarget));
+      $("#detail-print-canine")?.addEventListener("click", () => root.HerdHarborCaninePedigreePrint?.openForAnimal?.(id));
       $("#detail-import-pedigree")?.addEventListener("click", () => deps.openPedigreeImport(id));
       $("#detail-birth-certificate")?.addEventListener("click", () => deps.openBirthCertificateForm(id));
       $("#detail-compare-pedigree")?.addEventListener("click", () => {

@@ -140,6 +140,7 @@
       if (females.length !== 1) draft.issues.push("Choose exactly one recorded female/dam.");
       if (males.length !== 1) draft.issues.push("Choose exactly one recorded male/sire.");
       if (females[0] && males[0] && females[0].species && males[0].species && females[0].species !== males[0].species) draft.issues.push("Dam and sire must be the same species.");
+      if (matches.some(a => lower(a.species) === "dog")) draft.issues.push("Canine breeding workflows are not supported in this release. Use manual dog pedigree records.");
       draft.defaults = {
         femaleId: females.length === 1 ? String(females[0].id) : "",
         maleId: males.length === 1 ? String(males[0].id) : "",
@@ -156,13 +157,13 @@
     const issues = [];
     animals = Array.isArray(animals) ? animals : [];
     if (!draft || !TYPES.includes(draft.recordType)) return { ok: false, issues: ["Choose a supported record type."] };
-    if (!draft.date) issues.push("Date is required.");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(clean(draft.date))) issues.push("A valid date is required.");
     if (draft.recordType === "weight") {
-      if (!draft.defaults.animalId) issues.push("Animal is required.");
+      if (!animals.some(a => String(a.id) === String(draft.defaults.animalId))) issues.push("Choose an existing animal.");
       if (!draft.defaults.weight) issues.push("Weight is required.");
     }
     if (draft.recordType === "medication") {
-      if (!draft.defaults.animalId) issues.push("Animal is required.");
+      if (!animals.some(a => String(a.id) === String(draft.defaults.animalId))) issues.push("Choose an existing animal.");
       if (!clean(draft.defaults.details)) issues.push("Medication name and dose are required.");
     }
     if (draft.recordType === "breeding") {
@@ -172,6 +173,7 @@
       if (!male || lower(male.sex) !== "male") issues.push("A recorded male/sire is required.");
       if (female && male && String(female.id) === String(male.id)) issues.push("Dam and sire must be different animals.");
       if (female && male && female.species && male.species && female.species !== male.species) issues.push("Dam and sire must be the same species.");
+      if ([female,male].some(a => lower(a?.species) === "dog")) issues.push("Canine breeding workflows are not supported in this release.");
     }
     return { ok: issues.length === 0, issues };
   }

@@ -1,18 +1,18 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v2.0.0-v2.0.0-release-1";
+const CACHE_NAME = "herdharbor-shell-v2.0.1-v2.0.1-release-1-s15-1";
 const REQUIRED_SHELL = [
   "./",
   "./index.html",
-  "./manifest.json?v=2.0.0",
+  "./manifest.json?v=2.0.1",
   "./herdharbor-core-v1.6.1.css?v=1.7.1",
   "./herdharbor-v1.6.1.css?v=1.7.1",
   "./herdharbor-index-shell.css?v=1",
   "./analytics-v1.6.1.css?v=2",
   "./vendor/supabase-2.111.0.js",
-  "./herdharbor-optional-tools.js?v=2",
-  "./herdharbor-build.js?v=2.0.0",
+  "./herdharbor-optional-tools.js?v=4",
+  "./herdharbor-build.js?v=2.0.1",
   "./herdharbor-state-store-v1.8.4.js?v=2",
   "./herdharbor-release-v1.6.1.js?v=2",
   "./herdharbor-membership-v1.6.1.js?v=1.7.1",
@@ -20,21 +20,26 @@ const REQUIRED_SHELL = [
   "./herdharbor-billing-v1.6.1.js?v=1.7.1",
   "./herdharbor-access-cache-v1.6.1.js?v=1.7.1",
   "./cloud-legacy-baseline-v1.8.4.js?v=1",
-  "./account-boundary-core-v1.8.4.js?v=3",
-  "./herdharbor-cloud.js?v=35",
-  "./cloud-sync-rollout-runtime-v1.8.4.js?v=3",
+  "./account-boundary-core-v1.8.4.js?v=4",
+  "./herdharbor-cloud.js?v=39",
+  "./cloud-sync-rollout-runtime-v1.8.4.js?v=5",
   "./local-cache-v2-v1.8.2.js?v=1",
   "./cloud-sync-v2-flow-v1.8.2.js?v=1",
   "./cloud-sync-v2-diagnostics-v1.8.2.js?v=1",
   "./herdharbor-admin-v1.6.1.js?v=2",
-  "./pwa.js?v=34",
+  "./pwa.js?v=36",
   "./market-analytics-v1.6.5.js?v=1.7.1",
   "./pedigree-engine-v2.0.0.js?v=1",
   "./pedigree-customization-v2.0.0.css?v=1",
   "./pedigree-customization-v2.0.0.js?v=1",
   "./pedigree-renderer-v2.0.0.css?v=1",
   "./pedigree-renderer-v2.0.0.js?v=1",
-  "./animal-profile-runtime-v1.8.3.js?v=1",
+  "./canine-identity-v2.0.1.css?v=1",
+  "./canine-breeds-v2.0.1.js?v=1",
+  "./canine-identity-v2.0.1.js?v=1",
+  "./canine-lineage-v2.0.1.js?v=1",
+  "./canine-pedigree-print-v2.0.1.js?v=1",
+  "./animal-profile-runtime-v1.8.3.js?v=2",
   "./breeding-litter-runtime-v1.8.3.js?v=1",
   "./task-automation-v1.8.3.js?v=1",
   "./health-runtime-v1.8.3.js?v=1",
@@ -42,15 +47,23 @@ const REQUIRED_SHELL = [
   "./sales-customer-runtime-v1.8.3.js?v=1",
   "./production-reporting-runtime-v1.8.3.js?v=1",
   "./mobile-capture-v1.8.3.js?v=1",
-  "./herdharbor-app-runtime.js?v=4",
-  "./herdharbor-monitoring-config.js?v=2.0.0",
-  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.0",
-  "./how-to/",
-  "./icon-192.png",
-  "./icon-512.png"
+  "./herdharbor-app-runtime.js?v=5",
+  "./herdharbor-monitoring-config.js?v=2.0.1",
+  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.1"
 ];
 
 const RUNTIME_CACHE_PATHS = [
+  "./how-to/",
+  "./icon-192.png",
+  "./icon-512.png",
+  "./animal-documents-v2.0.0.js?v=1",
+  "./birth-certificate-v2.0.0.js?v=1",
+  "./standard-pedigree-print-v2.0.0.js?v=1",
+  "./document-export-v2.0.0.js?v=1",
+  "./pedigree-documents-v2.0.0.js?v=1",
+  "./animal-documents-v2.0.0.css?v=1",
+  "./birth-certificate-v2.0.0.css?v=1",
+  "./pedigree-documents-v2.0.0.css?v=1",
   "./profitability-analytics-v1.8.3.js?v=1",
   "./settings-runtime-v1.8.3.js?v=1",
   "./analytics-v1.6.1.js?v=2",
@@ -68,13 +81,13 @@ const RUNTIME_CACHE_PATHS = [
   "./cloud-dual-write-coordinator-v1.8.3.js?v=1",
   "./cloud-normalized-read-fallback-v1.8.3.js?v=1",
   "./voice-assisted-entry-v1.8.3.js?v=1",
-  "./photo-assisted-entry-v1.8.3.js?v=2",
+  "./photo-assisted-entry-v1.8.3.js?v=3",
   "./how-to-navigation-v1.8.1.js?v=1",
   "./direct-transfer-core-v1.8.2.js?v=1",
   "./direct-transfer-v1.8.2.js?v=1",
   "./direct-transfer-v1.8.2.css?v=1",
   "./paper-pedigree-import-core-v1.8.2.js?v=1",
-  "./paper-pedigree-import-v1.8.2.js?v=2",
+  "./paper-pedigree-import-v1.8.2.js?v=3",
   "./registration-safety-v1.8.1.js?v=1",
   "./subscription-referral-policy-v1.8.1.js?v=3",
   "./subscription-admin-credits-v1.8.1.js?v=1",
@@ -114,14 +127,6 @@ const RUNTIME_CACHE_PATHS = [
   "./flow-phase1-v1.8.2.css?v=1",
   "./health-intelligence-v1.7.1.js?v=1.7.1",
   "./health-intelligence-v1.7.1.css?v=1.7.1",
-  "./pedigree-documents-v2.0.0.css?v=1",
-  "./pedigree-documents-v2.0.0.js?v=1",
-  "./document-export-v2.0.0.js?v=1",
-  "./standard-pedigree-print-v2.0.0.js?v=1",
-  "./birth-certificate-v2.0.0.css?v=1",
-  "./birth-certificate-v2.0.0.js?v=1",
-  "./animal-documents-v2.0.0.css?v=1",
-  "./animal-documents-v2.0.0.js?v=1",
   "./pedigree-visual.css?v=2",
   "./pedigree-visual.js?v=2",
   "./pedigree-genetics-v1.6.1.css?v=1.7.1",
@@ -268,6 +273,87 @@ function isImmutableFingerprintAsset(url) {
   return /^[a-f0-9]{12,64}$/i.test(url.searchParams.get("rev") || "");
 }
 
+function shellCacheVersion(name) {
+  const match = String(name || "").match(/v(\d+)\.(\d+)\.(\d+)/i);
+  return match ? match.slice(1).map(Number) : [0, 0, 0];
+}
+
+async function pruneObsoleteShellCaches() {
+  const names = (await caches.keys()).filter((key) => key.startsWith(CACHE_PREFIX));
+  names.sort((left, right) => {
+    const a = shellCacheVersion(left);
+    const b = shellCacheVersion(right);
+    for (let index = 0; index < 3; index += 1) {
+      if (a[index] !== b[index]) return b[index] - a[index];
+    }
+    if (left === CACHE_NAME) return -1;
+    if (right === CACHE_NAME) return 1;
+    return right.localeCompare(left);
+  });
+
+  // Keep the active shell and two prior, provenance-named releases. An update
+  // readiness handshake proves no silent/dirty old client is still depending
+  // on older assets before activation prunes anything beyond that bound.
+  await Promise.all(names.slice(3).map((key) => caches.delete(key)));
+}
+
+// Only the audited, static documentation document is exempt. Its search and
+// feedback controls are ephemeral; it loads no app, account or storage engine.
+function isReadOnlyDocumentationClient(client) {
+  if (!client.id || client.type !== "window" || client.frameType !== "top-level") return false;
+  try {
+    const url = new URL(client.url);
+    const scope = new URL(self.registration?.scope || "./", self.location.href);
+    return url.origin === self.location.origin && !url.username && !url.password &&
+      [new URL("how-to/", scope).pathname, new URL("how-to/index.html", scope).pathname].includes(url.pathname);
+  } catch { return false; }
+}
+
+async function allOpenClientsReadyForUpdate() {
+  const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  if (!clients.length) return true;
+  // Copy identities now: WindowClient URL may change while other tabs reply.
+  const scanned = clients.map(({ id, url }) => ({ id, url }));
+  const requestId = `${CACHE_NAME}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+  const responses = await Promise.all(clients.map((client) => new Promise((resolve) => {
+    if (isReadOnlyDocumentationClient(client)) {
+      resolve(true);
+      return;
+    }
+    if (typeof MessageChannel === "undefined") {
+      resolve(false);
+      return;
+    }
+    const channel = new MessageChannel();
+    let settled = false;
+    const finish = (ready) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try { channel.port1.close(); } catch {}
+      try { channel.port2.close(); } catch {}
+      resolve(ready === true);
+    };
+    const timer = setTimeout(() => finish(false), 2500);
+    channel.port1.onmessage = (messageEvent) => {
+      const data = messageEvent.data;
+      finish(data?.type === "HH_UPDATE_READINESS_RESPONSE" && data.requestId === requestId && data.ready === true);
+    };
+    channel.port1.start?.();
+    try {
+      client.postMessage({ type: "HH_UPDATE_READINESS_QUERY", requestId }, [channel.port2]);
+    } catch {
+      finish(false);
+    }
+  })));
+  if (responses.length !== clients.length || !responses.every(Boolean)) return false;
+  // Fail closed if a document navigated or a new editor opened during the
+  // readiness exchange. A later user retry queries the new client set.
+  const current = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  return current.length === scanned.length && current.every((client) =>
+    scanned.some((before) => before.id === client.id && before.url === client.url));
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
@@ -277,29 +363,16 @@ self.addEventListener("install", (event) => {
         .map((result, index) => ({ result, request: requests[index] }))
         .filter(({ result }) => result.status === "rejected")
         .map(({ request }) => new URL(request.url).pathname);
-      const fatal = requiredFailures.filter((path) =>
-        path.endsWith("index.html") ||
-        path.endsWith("herdharbor-build.js") ||
-        path.endsWith("pedigree-engine-v2.0.0.js") ||
-        path.endsWith("pedigree-customization-v2.0.0.js") ||
-        path.endsWith("pedigree-documents-v2.0.0.js") ||
-        path.endsWith("pedigree-renderer-v2.0.0.js") ||
-        path.endsWith("herdharbor-app-runtime.js") ||
-        path.endsWith("herdharbor-cloud.js")
-      );
-      if (fatal.length) throw new Error("Required HerdHarbor shell assets failed to cache: " + fatal.join(", "));
+      // Every entry in REQUIRED_SHELL is essential to a usable offline install.
+      // Optional/lazy assets belong in RUNTIME_CACHE_PATHS, not this list.
+      if (requiredFailures.length) throw new Error("Required HerdHarbor shell assets failed to cache: " + requiredFailures.join(", "));
     })
   );
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(
-        keys
-          .filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
-      ))
+    pruneObsoleteShellCaches()
       .then(async () => {
         try {
           await self.registration?.navigationPreload?.enable?.();
@@ -310,7 +383,18 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("message", (event) => {
-  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
+  // A legacy click is a request, never proof that its in-memory edits are safe.
+  // Loaded 2.0.0 timeout navigation cannot be stopped by this worker; see the
+  // S17 release blocker and save/close/reopen procedure.
+  if (!["HH_CHECK_UPDATE_READINESS", "SKIP_WAITING"].includes(event.data?.type)) return;
+  event.waitUntil((async () => {
+    const ready = await allOpenClientsReadyForUpdate();
+    if (ready) {
+      self.skipWaiting();
+      return;
+    }
+    try { event.source?.postMessage({ type: "HH_UPDATE_DEFERRED" }); } catch {}
+  })());
 });
 
 self.addEventListener("fetch", (event) => {
@@ -321,19 +405,28 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith((async () => {
+      const appRoot = new URL("./", self.location.href).pathname;
+      const appIndex = new URL("./index.html", self.location.href).pathname;
+      const isAppShell = url.pathname === appRoot || url.pathname === appIndex;
+      const cacheKey = isAppShell ? "./index.html" : request;
       try {
         const preloaded = await event.preloadResponse;
         const response = preloaded || await fetch(request, { cache: "no-store" });
-        if (response?.ok) {
+        if (response?.ok && response.type === "basic") {
           const copy = response.clone();
+          // A How-To or other HTML route must never replace the offline app
+          // homepage. Each non-app navigation keeps its own cache identity.
           event.waitUntil(
-            caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", copy))
+            caches.open(CACHE_NAME).then((cache) => cache.put(cacheKey, copy))
           );
         }
         return response;
       } catch {
         const cache = await caches.open(CACHE_NAME);
-        return (await cache.match("./index.html")) || cache.match("./");
+        if (isAppShell) return (await cache.match("./index.html")) || cache.match("./");
+        // Never show a cached application or unrelated member document at
+        // another URL merely because the requested route is offline.
+        return (await cache.match(request, { ignoreSearch: true })) || Response.error();
       }
     })());
     return;

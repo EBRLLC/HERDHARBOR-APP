@@ -27,7 +27,7 @@ test('core accepts the extractor node-array shape directly', () => {
 test('runtime loader installs the paper pedigree core before the UI', () => {
   const build = read('herdharbor-build.js');
   const coreIndex = build.indexOf('paper-pedigree-import-core-v1.8.2.js?v=1');
-  const uiIndex = build.indexOf('paper-pedigree-import-v1.8.2.js?v=2');
+  const uiIndex = build.indexOf('paper-pedigree-import-v1.8.2.js?v=3');
   assert.ok(coreIndex >= 0, 'paper pedigree core must be loaded');
   assert.ok(uiIndex > coreIndex, 'paper pedigree UI must load after the core');
 });
@@ -35,7 +35,7 @@ test('runtime loader installs the paper pedigree core before the UI', () => {
 test('service worker includes paper pedigree runtime in shell and network-first policy', () => {
   const worker = read('service-worker.js');
   assert.match(worker, /\.\/paper-pedigree-import-core-v1\.8\.2\.js\?v=1/);
-  assert.match(worker, /\.\/paper-pedigree-import-v1\.8\.2\.js\?v=2/);
+  assert.match(worker, /\.\/paper-pedigree-import-v1\.8\.2\.js\?v=3/);
   assert.match(worker, /"\/paper-pedigree-import-core-v1\.8\.2\.js"/);
   assert.match(worker, /"\/paper-pedigree-import-v1\.8\.2\.js"/);
 });
@@ -44,7 +44,9 @@ test('reviewed source photo uses local attachment storage instead of canonical c
   const ui = read('paper-pedigree-import-v1.8.2.js');
   assert.match(ui, /ATTACHMENT_DB = "herdharbor_attachments_v1"/);
   assert.match(ui, /ATTACHMENT_STORE = "pedigreeDocuments"/);
-  assert.match(ui, /putPedigreeAttachment\(record\.id, preparedImage\)/);
+  assert.match(ui, /await putPedigreeAttachment\(record\.id, file\)/);
+  assert.match(ui, /storedAttachmentId = record\.id/);
+  assert.match(ui, /deletePedigreeAttachment\(storedAttachmentId\)/);
   assert.match(ui, /sourceDataUrl:\s*""/);
   assert.match(ui, /attachmentStored:\s*Boolean\(file\?\.dataUrl\)/);
   assert.doesNotMatch(ui, /sourceDataUrl:\s*file\?\.dataUrl/);

@@ -138,15 +138,15 @@ test("shell loads and caches Task runtime before application composition", () =>
   const worker = read("service-worker.js");
   const health = html.indexOf("health-runtime-v1.8.3.js?v=1");
   const task = html.indexOf("task-runtime-v1.8.3.js?v=1");
-  const composition = html.indexOf("herdharbor-app-runtime.js?v=4");
+  const composition = html.indexOf("herdharbor-app-runtime.js?v=5");
   assert.ok(health >= 0 && task > health && composition > task);
   assert.match(worker, /\.\/task-runtime-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /"\/task-runtime-v1\.8\.3\.js"/);
 });
 
 test("Phase 6E extraction remains compatible with formal v2.0.0 and changes no normalized-sync authority", () => {
-  assert.equal(packageJson.version, "2.0.0");
-  assert.match(read("herdharbor-build.js"), /version:\s*"2\.0\.0"/);
+  assert.equal(packageJson.version, "2.0.1");
+  assert.match(read("herdharbor-build.js"), /version:\s*"2\.0\.1"/);
   assert.match(packageJson.scripts["test:v1.8.3"], /runtime-task-extraction-v1\.8\.3\.test\.cjs/);
   for (const asset of [
     "cloud-sync-cohort-gate-v1.8.3.js",

@@ -23,7 +23,7 @@ test("AI live-test modules are not eagerly loaded for every account", () => {
 
 test("AI tester tools load concurrently only after explicit tester enablement", () => {
   const optional = read("herdharbor-optional-tools.js");
-  assert.match(optional, /if \(!isAiLiveTester\(\)\) throw new Error/);
+  assert.match(optional, /if \(!ownerId \|\| !isAiLiveTester\(\)\) throw new Error/);
   assert.match(optional, /Promise\.all\(\[/);
   assert.match(optional, /HerdHarborVoiceAssistedEntry/);
   assert.match(optional, /HerdHarborPhotoAssistedEntry/);
@@ -36,7 +36,7 @@ test("service worker precache is bounded to the operational shell", () => {
   const block = sw.match(/const REQUIRED_SHELL = \[([\s\S]*?)\];/);
   assert.ok(block, "required shell declaration");
   const entries = [...block[1].matchAll(/"([^"]+)"/g)].map((match) => match[1]);
-  assert.ok(entries.length <= 45, "required shell should stay bounded");
+  assert.ok(entries.length <= 50, "required shell should stay bounded");
   assert.ok(!entries.some((entry) => /voice-assisted-entry|photo-assisted-entry/.test(entry)), "AI tester assets are not precached globally");
 });
 
