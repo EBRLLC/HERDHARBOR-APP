@@ -118,6 +118,9 @@
     });
     select.addEventListener?.("change", () => {
       if (select.value === CUSTOM) {
+        // A prior recognized selection must not be silently retained as a
+        // "custom" breed when the breeder explicitly chooses Other.
+        if (resolve(breed.value)) breed.value = "";
         breed.focus?.();
       } else {
         breed.value = select.value;
