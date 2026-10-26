@@ -101,7 +101,7 @@ test("essential startup identity agrees with the bounded offline shell, while do
     "herdharbor-cloud.js?v=39",
     "cloud-sync-rollout-runtime-v1.8.4.js?v=5",
     "herdharbor-app-runtime.js?v=6",
-    "animal-profile-runtime-v1.8.3.js?v=4",
+    "animal-profile-runtime-v1.8.3.js?v=5",
     "health-runtime-v1.8.3.js?v=1",
     "task-runtime-v1.8.3.js?v=1",
     "canine-lineage-v2.0.1.js?v=1"
