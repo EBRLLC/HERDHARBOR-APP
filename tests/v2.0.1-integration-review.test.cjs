@@ -87,5 +87,6 @@ test("all canine modules load in one existing app and stable production is not s
   assert.match(shell,new RegExp(name.replace(/\./g,"\\.")));
  const status=fs.readFileSync(path.join(root,"RELEASE-STATUS.md"),"utf8");
  assert.match(status,/Stable production version: 2\.0\.0/);
- assert.match(status,/Canine Foundation \+ Optional AI Public Release/);
+ assert.match(status,/2\.0\.1 — canine pedigrees, optional AI/);
+  assert.match(status,/2\.0\.2 — normalized-primary cloud/);
 });
