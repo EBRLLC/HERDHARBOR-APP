@@ -201,7 +201,7 @@
       const birthWeightUnit = $('[name="birthWeightUnit"]', $("#animal-form"));
       const birthWeightOunces = $(".birth-weight-ounces", $("#animal-form"));
       const breedList = $("#animal-breed-options");
-      const cattleEarFields = $(".cattle-ear-field", $("#animal-form"));
+      const cattleEarFields = $$(".cattle-ear-field", $("#animal-form"));
       const refreshCanineParents = () => canineLineage?.filterParentSelectors?.($("#animal-form"),stateNow().animals || [],{...animal,species:speciesSelect?.value||animal.species,id:id||animal.id||""});
 
       const refreshBreedOptions = () => {
