@@ -217,3 +217,47 @@ test("animal search still covers identity breed breeder location and color field
     assert.equal(api.filterAnimals(state.animals, { search, species: "", sex: "", status: "" }).length, 1, search);
   }
 });
+
+test("Add Animal opens without crashing when there are no cattle ear-tag fields mounted", () => {
+  // Reproduces the 2.0.1 production regression: single-node $() returned null
+  // and refreshCattleEarFields tried to call null.forEach() on form open.
+  const state = { settings: { species: ["Rabbit", "Dog", "Cattle"] }, animals: [], activity: [] };
+  const api = extracted.create(stubDeps(state));
+  assert.equal(api.openAnimalForm(), true);
+  assert.equal(state.animals.length, 0, "opening the form must not mutate records");
+});
+
+test("Add Animal handles all cattle ear-tag fields as a collection when species changes", () => {
+  const state = { settings: { species: ["Rabbit", "Dog", "Cattle"] }, animals: [], activity: [] };
+  const first = { hidden: false, classList: { toggle(name, hidden) { assert.equal(name, "hidden"); first.isHidden = hidden; } } };
+  const second = { hidden: false, classList: { toggle(name, hidden) { assert.equal(name, "hidden"); second.isHidden = hidden; } } };
+  const tagInputs = new Map([[first, { disabled: false }], [second, { disabled: false }]]);
+  const handlers = {};
+  const species = { value: "Rabbit", addEventListener(event, handler) { handlers[event] = handler; } };
+  const deps = stubDeps(state);
+  deps.$ = (selector, context) => {
+    if (selector === '[name="species"]') return species;
+    if (selector === "input") return tagInputs.get(context) || null;
+    return null;
+  };
+  deps.$$ = (selector) => selector === ".cattle-ear-field" ? [first, second] : [];
+  const api = extracted.create(deps);
+  assert.equal(api.openAnimalForm(), true);
+  assert.equal(first.hidden, true);
+  assert.equal(second.hidden, true);
+  assert.equal(tagInputs.get(first).disabled, true);
+  assert.equal(tagInputs.get(second).disabled, true);
+  assert.equal(typeof handlers.change, "function", "species selector must update the form");
+  species.value = "Cattle";
+  handlers.change();
+  assert.equal(first.hidden, false);
+  assert.equal(second.hidden, false);
+  assert.equal(tagInputs.get(first).disabled, false);
+  assert.equal(tagInputs.get(second).disabled, false);
+  species.value = "Dog";
+  handlers.change();
+  assert.equal(first.hidden, true);
+  assert.equal(second.hidden, true);
+  assert.equal(tagInputs.get(first).disabled, true);
+  assert.equal(tagInputs.get(second).disabled, true);
+});
