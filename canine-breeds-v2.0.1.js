@@ -153,7 +153,15 @@
     "Poodle": ["Apricot", "Black", "Blue", "Brown", "Cream", "Red", "Silver", "Silver Beige", "White", "Cafe Au Lait", "Gray", "Black & Cream", "Black & Gray", "Black & Silver", "Black & White", "Blue & White", "Brown & Apricot", "Brown & White", "Black & Apricot", "Cream & White", "Black & Brown", "Gray & White", "Red & Apricot", "Red & White", "White & Apricot", "White & Silver", "Black & Tan"],
     "Bernese Mountain Dog": ["Black Rust & White", "Black Tan & White", "Black & Rust", "Black & White", "Rust & White"],
     "Siberian Husky": ["Agouti & White", "Black & White", "Gray & White", "Red & White", "Sable & White", "White", "Brown & White", "Black Tan & White", "Black"],
-    "Boxer": ["Brindle", "Fawn", "White"]
+    "Boxer": ["Brindle", "Fawn", "White"],
+    "Cardigan Welsh Corgi": ["Black & White", "Blue Merle & White", "Brindle & White", "Red & White", "Sable & White", "Brindle Merle & White", "Gray & White", "Liver & White", "Red Merle & White", "Sable Merle & White", "White Merle"],
+    "Pomeranian": ["Blue Merle", "Blue Brindle", "Chocolate Merle", "Blue Sable", "Black", "Black & Tan", "Blue", "Blue & Tan", "Chocolate", "Chocolate & Tan", "Cream", "Cream Sable", "Orange", "Orange Sable", "Red", "Red Sable", "Beaver", "Brindle", "Chocolate Sable", "White", "Wolf Sable", "Beaver Sable", "Tri-Colored", "Black & Brindle"],
+    "Staffordshire Bull Terrier": ["Black", "Black & White", "Blue", "Blue & White", "Brindle", "Brindle & White", "Fawn", "Fawn & White", "Red", "Red & White", "White", "White & Brindle", "White & Fawn", "White & Red", "Black & Tan", "Liver"],
+    "American Staffordshire Terrier": ["Black", "White", "Brown", "Blue", "Fawn Sable", "Blue Fawn", "Red Brindle", "Blue Fawn Brindle", "Liver", "Black Brindle", "Fawn Brindle", "Blue Brindle", "Liver Brindle", "Fawn", "Red", "Seal Brown", "Red Sable", "Brown Brindle"],
+    "American Hairless Terrier": ["Apricot", "Black", "Black Sable Red", "Blue", "Blue Fawn", "Chocolate", "Lemon", "Lilac Dilute", "Red", "Red Sable", "White & Apricot", "White & Black", "White, Black Sable Red", "White & Blue", "White & Blue Fawn", "White & Chocolate", "White & Lemon", "White & Red", "Black & Tan", "Black Tan & White", "Black Brindle", "Black Brindle & White", "Blue & Tan", "Blue Tan & White", "Blue Brindle", "Blue Brindle & White", "Blue Fawn & White", "Chocolate Brindle", "Chocolate & Tan", "Lemon & White", "Red & Tan", "Red & White", "Red Brindle", "Red Brindle & White", "Seal"],
+    "Italian Greyhound": ["Fawn", "Blue", "Red", "Red Fawn", "Black", "Blue Fawn", "Sable", "Seal", "White & Black", "White & Blue", "White & Fawn", "White & Red", "White & Red Fawn", "White & Blue Fawn", "White & Seal", "White & Sable", "Black & Tan", "White", "Brindle", "Blue & Tan", "Chocolate", "Cream"],
+    "Chinese Crested": ["Apricot", "Black", "Black White & Tan", "Blue", "Chocolate", "Cream", "Palomino", "Pink & Chocolate", "Pink & Slate", "Slate", "White", "Black & Tan", "Black & White", "Brown", "Pink", "Red", "Sable", "Silver", "White & Black", "White & Chocolate"],
+    "Greyhound": ["Black", "Black Brindle", "Blue Brindle", "Red", "Red Brindle", "White", "White & Black", "White & Blue Brindle", "White & Red", "Blue", "Blue Fawn", "White & Black Brindle", "White & Blue", "White & Blue Fawn", "White & Red Brindle", "Black & White", "Blue Brindle & White", "Red & White", "Black Brindle & White", "Blue & White", "Blue Fawn & White", "Fawn"]
   });
   const AKC_COAT_SOURCES = Object.freeze(Object.fromEntries(Object.keys(AKC_COAT_COLORS).map(name =>
     [name, "https://www.akc.org/dog-breeds/" +
@@ -248,7 +256,7 @@
           : !choices.length
             ? "No verified AKC color table is loaded for this breed yet. Enter its observed coat color."
             : "AKC registration color descriptions for " + recognized.name +
-              ". AKC show-standard eligibility can differ; record markings separately in Notes.";
+              ". AKC show-standard eligibility can differ; record markings separately below.";
       }
     };
     speciesSelect.addEventListener?.("change", sync);
@@ -277,6 +285,124 @@
     sync();
     return true;
   }
+
+  // Official AKC Breed Colors & Markings tables (reviewed 2026-10-26).
+  // Empty or missing lists must never be replaced with generic rabbit or
+  // all-breed markings. Breeders can always record a custom observed marking.
+  const AKC_MARKINGS = Object.freeze({
+    "Labrador Retriever": ["White Markings"],
+    "Great Pyrenees": ["Badger Markings", "Tan Markings", "Gray Markings", "Reddish Brown Markings"],
+    "Australian Shepherd": ["White Markings", "Tan Points", "White Markings, Tan Points"],
+    "Cavalier King Charles Spaniel": ["Tan Markings"],
+    "Pembroke Welsh Corgi": ["White Markings"],
+    "French Bulldog": ["Black Markings", "White Markings", "Black Mask", "Brindle Markings", "Piebald", "Tan Points"],
+    "Pomeranian": ["Parti-Color", "Mask", "White Markings", "Tan Markings", "Brindle", "Irish Marked", "Tri Color Markings", "Sable", "Merle Markings"],
+    "Staffordshire Bull Terrier": ["Brindle Markings"],
+    "American Staffordshire Terrier": ["White Markings", "Spotted", "Black Mask", "Patched"],
+    "American Hairless Terrier": ["Brindle Points", "Brindle", "Tan Markings", "Tan Points", "Sable", "White Markings", "White Markings, Tan Points", "Piebald"],
+    "Italian Greyhound": ["White Markings", "Black Mask", "Blue Mask", "White Markings, Black Mask", "White Markings, Blue Mask"],
+    "Chinese Crested": ["Spotted", "White Markings"],
+    "Cardigan Welsh Corgi": ["Black Mask", "Black Mask & Ticked", "Brindle Points", "Brindle Points & Ticked", "Tan Points", "Tan Points & Ticked", "Ticked"]
+  });
+  function markingChoices(breed) {
+    const entry = resolve(breed);
+    return entry && Array.isArray(AKC_MARKINGS[entry.name]) ? AKC_MARKINGS[entry.name].slice() : [];
+  }
+  const OTHER_MARKING = "__hh_other_canine_marking__";
+  function markingsHtml(species = "", breed = "", marking = "") {
+    const isCanine = norm(species) === "dog";
+    const choices = isCanine ? markingChoices(breed) : [];
+    const current = String(marking || "").trim();
+    const match = choices.find(choice => norm(choice) === norm(current)) || "";
+    const useManual = !choices.length || Boolean(current && !match);
+    return '<div data-hh-canine-markings-panel class="hh-canine-markings-panel' +
+      (isCanine ? "" : " hidden") + '"' + (isCanine ? "" : " hidden") + '>' +
+      '<label>Dog markings (separate from coat color)' +
+      '<select data-hh-canine-marking-select' + (!isCanine || !choices.length ? ' disabled' : '') + '>' +
+      '<option value="">None / not specified</option>' +
+      choices.map(value => '<option value="' + escapeHtml(value) + '"' +
+        (value === match ? ' selected' : '') + '>' + escapeHtml(value) + '</option>').join("") +
+      '<option value="' + OTHER_MARKING + '"' + (useManual && choices.length ? ' selected' : '') +
+      '>Other / observed markings</option></select></label>' +
+      '<label data-hh-canine-marking-custom-row' + (!isCanine || !useManual ? ' hidden' : '') + '>' +
+      'Describe markings<input type="text" data-hh-canine-marking-custom maxlength="160"' +
+      ' value="' + escapeHtml(useManual ? current : "") + '" placeholder="e.g. white chest patch"></label>' +
+      '<input type="hidden" data-hh-canine-markings-value value="' + escapeHtml(current) + '">' +
+      '<small data-hh-canine-marking-note class="muted"></small></div>';
+  }
+  function bindMarkings(form, speciesSelect) {
+    const panel = form?.querySelector?.('[data-hh-canine-markings-panel]');
+    const picker = form?.querySelector?.('[data-hh-canine-marking-select]');
+    const manualRow = form?.querySelector?.('[data-hh-canine-marking-custom-row]');
+    const manual = form?.querySelector?.('[data-hh-canine-marking-custom]');
+    const value = form?.querySelector?.('[data-hh-canine-markings-value]');
+    const note = form?.querySelector?.('[data-hh-canine-marking-note]');
+    const breed = form?.querySelector?.('input[name="breed"]');
+    const breedPicker = form?.querySelector?.('[data-hh-dog-breed-select]');
+    if (!panel || !picker || !manualRow || !manual || !value || !breed || !speciesSelect) return false;
+    const visible = (el, on) => {
+      el.hidden = !on;
+      el.classList?.toggle?.("hidden", !on);
+    };
+    const identity = () => norm(speciesSelect.value) + "|" + norm(breed.value);
+    let previousIdentity = identity();
+    const sync = () => {
+      const dog = norm(speciesSelect.value) === "dog";
+      visible(panel, dog);
+      if (!dog) {
+        if (previousIdentity.startsWith("dog|")) value.value = "";
+        picker.disabled = true;
+        visible(manualRow, false);
+        previousIdentity = identity();
+        return;
+      }
+      const next = identity();
+      if (previousIdentity !== next) value.value = "";
+      previousIdentity = next;
+      const options = markingChoices(breed.value);
+      const existing = String(value.value || "").trim();
+      const match = options.find(option => norm(option) === norm(existing)) || "";
+      const custom = !options.length || Boolean(existing && !match);
+      picker.innerHTML = '<option value="">None / not specified</option>' +
+        options.map(option => '<option value="' + escapeHtml(option) + '">' +
+          escapeHtml(option) + '</option>').join("") +
+        '<option value="' + OTHER_MARKING + '">Other / observed markings</option>';
+      picker.disabled = !options.length;
+      picker.value = !options.length ? OTHER_MARKING : match || (custom ? OTHER_MARKING : "");
+      manual.value = custom ? existing : "";
+      visible(manualRow, custom);
+      if (note) {
+        const recognized = resolve(breed.value);
+        note.textContent = !recognized
+          ? "Mixed/unlisted breed: describe the observed markings."
+          : !options.length
+            ? "No reviewed AKC marking table available here; describe observed markings."
+            : "Breed-specific AKC registration marking descriptions; eligibility for conformation may differ.";
+      }
+    };
+    speciesSelect.addEventListener?.("change", sync);
+    breed.addEventListener?.("input", sync);
+    breed.addEventListener?.("change", sync);
+    breedPicker?.addEventListener?.("change", sync);
+    picker.addEventListener?.("change", () => {
+      if (picker.value === OTHER_MARKING) {
+        if (markingChoices(breed.value).some(x => norm(x) === norm(value.value))) value.value = "";
+        manual.value = value.value;
+        visible(manualRow, true);
+        manual.focus?.();
+      } else {
+        value.value = picker.value;
+        manual.value = "";
+        visible(manualRow, false);
+      }
+    });
+    manual.addEventListener?.("input", () => {
+      if (norm(speciesSelect.value) === "dog") value.value = manual.value;
+    });
+    sync();
+    return true;
+  }
   return Object.freeze({ SOURCE, list, search, resolve, classify, pickerHtml, bindPicker,
-    coatColorChoices, coatColorHtml, bindCoatColor, AKC_COAT_SOURCES });
+    coatColorChoices, coatColorHtml, bindCoatColor, AKC_COAT_SOURCES,
+    markingChoices, markingsHtml, bindMarkings, AKC_MARKINGS });
 });
