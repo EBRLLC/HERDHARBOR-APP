@@ -121,3 +121,99 @@ test("shared canonical animal editor wires the native canine picker without repl
   assert.match(profile, /const data = Object\.fromEntries\(new FormData\(form\)\)/);
   assert.match(profile, /deps\.saveState\("Animal added\."\)/);
 });
+
+
+test("breed-specific AKC color choices never leak rabbit terminology or another dog's colors", () => {
+  assert.deepEqual(breeds.coatColorChoices("Labrador Retriever"), ["Black", "Chocolate", "Yellow"]);
+  assert.deepEqual(breeds.coatColorChoices("Golden Retriever"), ["Dark Golden", "Golden", "Light Golden"]);
+  assert.deepEqual(breeds.coatColorChoices("Great Pyrenees"), ["White"]);
+  assert.deepEqual(breeds.coatColorChoices("Australian Shepherd"), ["Black", "Blue Merle", "Red", "Red Merle"]);
+  assert.deepEqual(breeds.coatColorChoices("Rottweiler"), ["Black & Rust", "Black & Mahogany", "Black & Tan"]);
+  assert.deepEqual(breeds.coatColorChoices("Lab"), ["Black", "Chocolate", "Yellow"]);
+  assert.deepEqual(breeds.coatColorChoices("Goldendoodle"), []);
+  assert.deepEqual(breeds.coatColorChoices("Holland Lop"), []);
+  assert.deepEqual(breeds.coatColorChoices("Danish-Swedish Farmdog"), [], "unreviewed AKC breed must not borrow generic colors");
+  assert.ok(!breeds.coatColorChoices("Golden Retriever").includes("Chocolate"));
+  assert.ok(!breeds.coatColorChoices("Great Pyrenees").includes("Blue Merle"));
+});
+
+test("canine color form renders species-specific choices; rabbits use the unchanged canonical field", () => {
+  const lab = breeds.coatColorHtml("Dog", "Labrador Retriever", "Chocolate");
+  assert.match(lab, /data-hh-canine-coat-panel/);
+  assert.match(lab, /<option value="Chocolate" selected>/);
+  assert.doesNotMatch(lab, /<option value="Golden">/);
+  assert.doesNotMatch(lab, /<option value="Otter">/);
+  assert.doesNotMatch(lab, /data-hh-canine-coat-panel[^>]*hidden/);
+  assert.match(breeds.coatColorHtml("Rabbit", "Holland Lop", "Blue"), /data-hh-canine-coat-panel[^>]*hidden/);
+  assert.match(breeds.coatColorHtml("Dog", "Goldendoodle", "Blue merle & tan"), /data-hh-canine-coat-custom[^>]*Blue merle &amp; tan/);
+});
+
+test("canine color input saves through existing Animal.color and clears stale colors on breed change", () => {
+  const listeners = () => ({ listeners: {}, addEventListener(name, fn) { this.listeners[name] = fn; } });
+  const cl = () => ({ toggle() {} });
+  const canonicalRow = { hidden: false, classList: cl() };
+  const panel = { hidden: true, classList: cl() };
+  const customRow = { hidden: true, classList: cl() };
+  const canonical = { value: "Chocolate", closest() { return canonicalRow; } };
+  const breed = { ...listeners(), value: "Labrador Retriever" };
+  const species = { ...listeners(), value: "Dog" };
+  const picker = { ...listeners() };
+  const select = { ...listeners(), disabled: false, value: "", innerHTML: "" };
+  const manual = { ...listeners(), value: "", focus() { this.focused = true; } };
+  const note = { textContent: "" };
+  const nodes = {
+    '[data-hh-canine-coat-panel]': panel,
+    '[data-hh-canine-coat-select]': select,
+    '[data-hh-canine-coat-custom-row]': customRow,
+    '[data-hh-canine-coat-custom]': manual,
+    '[data-hh-canine-coat-note]': note,
+    'input[name="color"]': canonical,
+    'input[name="breed"]': breed,
+    '[data-hh-dog-breed-select]': picker
+  };
+  assert.equal(breeds.bindCoatColor({ querySelector(query) { return nodes[query] || null; } }, species), true);
+  assert.equal(canonical.value, "Chocolate", "edit must preserve saved dog color");
+  assert.equal(select.value, "Chocolate");
+  assert.equal(canonicalRow.hidden, true, "dog must not show rabbit / generic color field");
+  assert.equal(panel.hidden, false);
+  assert.equal(select.innerHTML.includes('value="Yellow"'), true);
+  assert.equal(select.innerHTML.includes('value="Golden"'), false);
+
+  breed.value = "Golden Retriever";
+  picker.listeners.change();
+  assert.equal(canonical.value, "", "breed change must not persist invalid Labrador color");
+  assert.equal(select.value, "");
+  assert.ok(select.innerHTML.includes('value="Light Golden"'));
+  assert.ok(!select.innerHTML.includes('value="Chocolate"'));
+
+  select.value = "Golden"; select.listeners.change();
+  assert.equal(canonical.value, "Golden", "selected dog color saves to original Animal.color input");
+  select.value = "__hh_other_canine_color__"; select.listeners.change();
+  assert.equal(canonical.value, "", "custom choice must clear previous recognized color");
+  assert.equal(customRow.hidden, false);
+  manual.value = "Observed unusual coat"; manual.listeners.input();
+  assert.equal(canonical.value, "Observed unusual coat");
+
+  breed.value = "Goldendoodle"; breed.listeners.input();
+  assert.equal(canonical.value, "", "changing to mixed breed must not retain purebred color");
+  assert.equal(select.disabled, true);
+  assert.equal(customRow.hidden, false);
+  manual.value = "Blue merle & tan"; manual.listeners.input();
+  assert.equal(canonical.value, "Blue merle & tan");
+
+  species.value = "Rabbit"; species.listeners.change();
+  assert.equal(canonicalRow.hidden, false);
+  assert.equal(panel.hidden, true);
+  assert.equal(select.disabled, true);
+  assert.equal(canonical.value, "");
+});
+
+test("canine color selectors are unpersisted UI only and every persisted value stays canonical", () => {
+  const source = fs.readFileSync(path.join(__dirname, "../animal-profile-runtime-v1.8.3.js"), "utf8");
+  assert.match(source, /HerdHarborCanineBreeds\?\.coatColorHtml\?\./);
+  assert.match(source, /HerdHarborCanineBreeds\?\.bindCoatColor\?\./);
+  assert.match(source, /const data = Object\.fromEntries\(new FormData\(form\)\)/);
+  const html = breeds.coatColorHtml("Dog", "Labrador Retriever");
+  assert.doesNotMatch(html, /name="color"/, "UI widgets must not shadow canonical Animal.color");
+  assert.ok(breeds.AKC_COAT_SOURCES["Golden Retriever"].startsWith("https://www.akc.org/dog-breeds/"));
+});

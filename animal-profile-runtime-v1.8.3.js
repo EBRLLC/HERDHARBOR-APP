@@ -178,6 +178,7 @@
             ${deps.selectField("Birth weight unit", "birthWeightUnit", ["lb", "lb+oz", "oz", "kg", "g"], animal.birthWeightUnit || "lb")}
             <label class="birth-weight-ounces ${animal.birthWeightUnit === "lb+oz" ? "" : "hidden"}">Birth weight ounces<input name="birthWeightOunces" type="number" min="0" max="15.9" step="0.1" value="${esc(animal.birthWeightOunces || "")}" ${animal.birthWeightUnit === "lb+oz" ? "" : "disabled"}></label>
             ${deps.field("Color or variety", "color", animal.color)}
+            ${root.HerdHarborCanineBreeds?.coatColorHtml?.(animal.species || "Rabbit", animal.breed, animal.color) || ""}
             ${deps.field("Location / cage / pen", "location", animal.location)}
             ${deps.selectField("Status", "status", ["Active", "Breeding", "Growing", "Retired", "For Sale", "Reserved", "Sold", "Deceased", "Archived", "Ancestor Only"], animal.status || "Active", true)}
             ${deps.field("Asking price (optional)", "askingPrice", animal.askingPrice, false, "number")}
@@ -251,6 +252,7 @@
       });
       canineIdentity?.bindEditor?.($("#animal-form"), speciesSelect);
       root.HerdHarborCanineBreeds?.bindPicker?.($("#animal-form"), speciesSelect);
+      root.HerdHarborCanineBreeds?.bindCoatColor?.($("#animal-form"), speciesSelect);
       refreshBreedOptions();
       refreshCattleEarFields();
       refreshCanineParents();
