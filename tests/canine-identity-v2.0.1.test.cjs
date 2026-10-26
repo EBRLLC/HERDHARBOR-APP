@@ -318,3 +318,25 @@ test("separate canine coatMarkings metadata round trips without requiring new cl
   const html = breeds.markingsHtml("Dog", "Labrador Retriever", "White Markings");
   assert.doesNotMatch(html, /name="(?:color|canine|coatMarkings)"/);
 });
+
+
+test("the actual Dog editor reads separate coatMarkings and preserves existing metadata when the control is unavailable", () => {
+  const panel = {
+    hidden: false,
+    querySelectorAll: () => [],
+    querySelector: query => ({
+      '[data-canine-call-name]': { value: "Snow" },
+      '[data-canine-registered-name]': { value: "Evergreen's Snow" }
+    })[query] || null
+  };
+  const read = markingControl => canine.readEditor({
+    querySelector: query => query === '[data-canine-panel]' ? panel :
+      query === '[data-hh-canine-markings-value]' ? markingControl : null
+  }, { coatMarkings: "Badger Markings" });
+  const changed = read({ value: "Tan Markings" });
+  assert.equal(changed.valid, true);
+  assert.equal(changed.value.coatMarkings, "Tan Markings");
+  const existing = read(null);
+  assert.equal(existing.valid, true);
+  assert.equal(existing.value.coatMarkings, "Badger Markings");
+});
