@@ -50,7 +50,7 @@ test("classic script and stylesheet order is preserved", () => {
   const coreCss = html.indexOf("herdharbor-core-v1.6.1.css?v=1.7.1");
   assert.ok(baseCss >= 0 && shellCssIndex > baseCss && coreCss > shellCssIndex);
 
-  const animalProfileRuntimeIndex = html.indexOf("animal-profile-runtime-v1.8.3.js?v=3");
+  const animalProfileRuntimeIndex = html.indexOf("animal-profile-runtime-v1.8.3.js?v=4");
   const appRuntimeIndex = html.indexOf("herdharbor-app-runtime.js?v=6");
   assert.ok(animalProfileRuntimeIndex >= 0 && appRuntimeIndex > animalProfileRuntimeIndex);
   assert.doesNotMatch(html, /<script[^>]+analytics-v1\.6\.1\.js/);
@@ -70,7 +70,7 @@ test("static script and stylesheet references resolve once", () => {
 
 test("service worker covers required extracted shell assets", () => {
   for (const { asset, revision } of [
-    { asset: "animal-profile-runtime-v1.8.3.js", revision: "3" },
+    { asset: "animal-profile-runtime-v1.8.3.js", revision: "4" },
     { asset: "production-reporting-runtime-v1.8.3.js", revision: "1" },
     { asset: "herdharbor-app-runtime.js", revision: "6" },
     { asset: "herdharbor-index-shell.css", revision: "1" }
