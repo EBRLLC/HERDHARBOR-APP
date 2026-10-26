@@ -49,7 +49,7 @@ const webVersion=build.match(/version:\s*"([^"]+)"/)?.[1];
 assert.ok(["1.7.1","1.8.0","1.8.1","1.8.2","1.8.3","1.8.4","2.0.1"].includes(webVersion),`unexpected web release ${webVersion}`);
 if(webVersion==="1.8.2")assert.match(build,/buildId:\s*"cloud-sync-v2-/);
 if(webVersion==="2.0.1")assert.match(build,/buildId:\s*"v2\.0\.1-release-1"/);
-assert.match(worker,/const CACHE_NAME = "herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-canine-colors-1"/);
+assert.match(worker,/const CACHE_NAME = "herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-canine-markings-1"/);
 if(webVersion==="1.8.1")assert.match(worker,/v1\.8\.1-alpha-october-subscription-launch-/);
 assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /herdharbor-cloud\.js\?v=39/);
