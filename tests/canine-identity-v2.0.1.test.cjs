@@ -98,6 +98,8 @@ test("dog breed picker updates canonical Breed input, preserves user-entered cro
   assert.equal(breedInput.value, "", "rabbit breed must not transfer to dog");
   selector.value = "Great Pyrenees"; selector.listeners.change();
   assert.equal(breedInput.value, "Great Pyrenees", "selection writes canonical animal.breed");
+  selector.value = "__hh_custom_dog_breed__"; selector.listeners.change();
+  assert.equal(breedInput.value, "", "explicitly selecting Other clears old recognized breed");
   breedInput.value = "Goldendoodle"; breedInput.listeners.input();
   assert.equal(selector.value, "__hh_custom_dog_breed__", "crossbred dogs remain editable");
   selector.listeners.change();
