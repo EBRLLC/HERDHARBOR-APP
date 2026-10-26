@@ -214,6 +214,9 @@
       visible(panel, dog);
       visible(canonicalRow, !dog);
       if (!dog) {
+        // Dog -> another species must never retain a canine-only color.
+        // Keep existing rabbit/other-species colors on ordinary edits.
+        if (previousIdentity.startsWith("dog|")) canonical.value = "";
         select.disabled = true;
         visible(manualRow, false);
         previousIdentity = identity();
