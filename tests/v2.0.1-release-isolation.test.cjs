@@ -47,7 +47,7 @@ test("2.0.1 does not ship the 2.0.2 normalized-primary cutover or Auth trigger",
     "pwa.js",
     "service-worker.js",
   ]) {
-    assert.doesNotMatch(read(file), /hh_normalized_signup_client|herdharbor_normalized_signup_ready|s20_signup_normalized_only|cloud-normalized-upgrade-v2\\.0\\.1\\.js/,
+    assert.doesNotMatch(read(file), /hh_normalized_signup_client|herdharbor_normalized_signup_ready|s20_signup_normalized_only|cloud-normalized-upgrade-v2\.0\.1\.js/,
       `2.0.1 must not activate 2.0.2 signup or migration from ${file}`);
   }
   const html = read("index.html");
@@ -78,6 +78,6 @@ test("release instructions authorize #505 only and keep 2.0.2 migration deferred
   assert.match(owner, /S17-B-LEGACY-TIMER/);
   assert.doesNotMatch(owner, /Only #497 may|merge of #497|exact green #497/);
   assert.match(stability, /S17-B-LEGACY-TIMER remains an unresolved production upgrade blocker/);
-  assert.match(roadmap, /# Release 2\\.0\\.2 — Normalized Cloud Replacement/);
-  assert.match(roadmap, /# Release 2\\.0\\.3 — Distribution and Install Quality/);
+  assert.match(roadmap, /# Release 2\.0\.2 — Normalized Cloud Replacement/);
+  assert.match(roadmap, /# Release 2\.0\.3 — Distribution and Install Quality/);
 });
