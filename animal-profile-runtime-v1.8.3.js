@@ -171,6 +171,7 @@
             <label class="cattle-ear-field ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "hidden"}" ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "hidden"}>Ear tag number<input name="earTagNumber" value="${esc(animal.earTagNumber || "")}" ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "disabled"}></label>
             <label class="cattle-ear-field ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "hidden"}" ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "hidden"}>Ear tag color<input name="earTagColor" value="${esc(animal.earTagColor || "")}" placeholder="Blue, yellow, green, or other" ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "disabled"}></label>
             ${deps.breedComboboxField(animal.species || "Rabbit", animal.breed)}
+            ${root.HerdHarborCanineBreeds?.pickerHtml?.(animal.species || "Rabbit", animal.breed) || ""}
             ${deps.selectField("Sex", "sex", ["Female", "Male", "Unknown"], animal.sex || "Unknown", true)}
             ${deps.field("Date of birth", "dob", animal.dob, false, "date")}
             ${deps.field("Birth weight (optional)", "birthWeight", animal.birthWeight, false, "number")}
@@ -249,6 +250,7 @@
         refreshCanineParents();
       });
       canineIdentity?.bindEditor?.($("#animal-form"), speciesSelect);
+      root.HerdHarborCanineBreeds?.bindPicker?.($("#animal-form"), speciesSelect);
       refreshBreedOptions();
       refreshCattleEarFields();
       refreshCanineParents();
