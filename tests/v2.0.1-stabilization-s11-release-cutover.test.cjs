@@ -27,7 +27,7 @@ test("staged candidate release versions are 2.0.1 with a new native code",()=>{
  assert.match(build,/version: "2\.0\.1"/);
  assert.match(build,/buildId: "v2\.0\.1-release-1"/);
  assert.match(pwa,/HerdHarborBuild\?\.version \|\| "2\.0\.1"/);
- assert.match(worker,/const CACHE_NAME = "herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-dog-breeds-1"/);
+ assert.match(worker,/const CACHE_NAME = "herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-canine-colors-1"/);
 });
 test("2.0.1 HTML queries match the service-worker preload identities",()=>{
  const shell=worker.slice(worker.indexOf("const REQUIRED_SHELL"),worker.indexOf("const RUNTIME_CACHE_PATHS"));
@@ -37,9 +37,9 @@ test("2.0.1 HTML queries match the service-worker preload identities",()=>{
   "herdharbor-optional-tools.js?v=4",
   "herdharbor-cloud.js?v=39",
   "pwa.js?v=36",
-  "animal-profile-runtime-v1.8.3.js?v=3",
+  "animal-profile-runtime-v1.8.3.js?v=4",
   "canine-identity-v2.0.1.css?v=1",
-  "canine-breeds-v2.0.1.js?v=2",
+  "canine-breeds-v2.0.1.js?v=3",
   "canine-identity-v2.0.1.js?v=1",
   "canine-lineage-v2.0.1.js?v=1",
   "canine-pedigree-print-v2.0.1.js?v=1"
