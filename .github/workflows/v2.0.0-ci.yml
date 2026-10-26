@@ -180,3 +180,18 @@ jobs:
               sys.exit(1)
           print("2.0.1 pre-merge Pages source check PASS: GitHub Actions workflow.")
           PY
+
+  canine-pdf-render-acceptance:
+    name: Real canine PDF render (Letter/A4, 3/4 generations)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check actual PDF rendering tools
+        run: |
+          command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser
+          command -v pdftotext
+      - name: Render and verify genuine pedigree PDF text
+        run: node scripts/verify-canine-pdf-render.cjs
