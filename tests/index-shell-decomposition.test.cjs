@@ -26,7 +26,7 @@ test("index shell keeps only the early bootstrap inline", () => {
   assert.match(inlineScripts[0], /herdharbor_theme/);
   assert.equal((html.match(/<style\b/gi) || []).length, 0, "page-owned CSS is external");
   assert.match(html, /herdharbor-index-shell\.css\?v=1/);
-  assert.match(html, /animal-profile-runtime-v1\.8\.3\.js\?v=4/);
+  assert.match(html, /animal-profile-runtime-v1\.8\.3\.js\?v=5/);
   assert.match(html, /production-reporting-runtime-v1\.8\.3\.js\?v=1/);
   assert.doesNotMatch(html, /<script[^>]+settings-runtime-v1\.8\.3\.js/);
   assert.match(appRuntime, /"settings-runtime-v1\.8\.3\.js\?v=1"/);
