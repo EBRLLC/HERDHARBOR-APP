@@ -131,5 +131,149 @@
     return true;
   }
 
-  return Object.freeze({ SOURCE, list, search, resolve, classify, pickerHtml, bindPicker });
+
+  // Curated from the AKC breed pages' "Breed Colors & Markings" / COLORS
+  // registration tables as checked 2026-10-26. These are AKC-listed color
+  // descriptions, NOT assertions of conformation eligibility; AKC also lists
+  // alternate or disqualifying colors for some breeds. An incomplete breed
+  // mapping MUST fall back to observed free text, never rabbit colors or a
+  // borrowed all-dogs palette.
+  const AKC_COAT_COLORS = Object.freeze({
+    "Labrador Retriever": ["Black", "Chocolate", "Yellow"],
+    "Golden Retriever": ["Dark Golden", "Golden", "Light Golden"],
+    "Great Pyrenees": ["White"],
+    "Australian Shepherd": ["Black", "Blue Merle", "Red", "Red Merle"],
+    "Cavalier King Charles Spaniel": ["Blenheim", "Black & Tan", "Black & White", "Ruby"],
+    "Pembroke Welsh Corgi": ["Black & Tan", "Fawn", "Red", "Sable"],
+    "Rottweiler": ["Black & Rust", "Black & Mahogany", "Black & Tan"],
+    "French Bulldog": ["Brindle", "Brindle & White", "Cream", "Fawn", "Fawn & White", "Fawn Brindle", "White", "White & Brindle", "Fawn Brindle & White", "White & Fawn"],
+    "Bulldog": ["Red Brindle & White", "Fawn Brindle & White", "Fawn & Brindle", "Fallow", "White", "Red", "Red & White", "Fawn", "Red Brindle", "Brindle & White", "Fawn & White"],
+    "Beagle": ["Black & White", "Lemon", "Lemon & White", "White", "Black", "Brown", "Tan", "Black & Tan", "Red", "Red & White", "Brown & White", "Black White & Tan", "Brown White & Tan", "Blue", "Black Tan & White", "White Black & Tan", "Blue & White", "Blue Tan & White", "Black Red & White", "Tan & White", "Red Black & White", "Red & Black", "Black Tan & Redtick", "Black Fawn & White", "Black Tan & Bluetick"],
+    "German Shepherd Dog": ["Black", "Black & Cream", "Black & Red", "Black & Silver", "Black & Tan", "Gray", "Sable", "White", "Liver", "Blue", "Bi-Color"],
+    "Poodle": ["Apricot", "Black", "Blue", "Brown", "Cream", "Red", "Silver", "Silver Beige", "White", "Cafe Au Lait", "Gray", "Black & Cream", "Black & Gray", "Black & Silver", "Black & White", "Blue & White", "Brown & Apricot", "Brown & White", "Black & Apricot", "Cream & White", "Black & Brown", "Gray & White", "Red & Apricot", "Red & White", "White & Apricot", "White & Silver", "Black & Tan"],
+    "Bernese Mountain Dog": ["Black Rust & White", "Black Tan & White", "Black & Rust", "Black & White", "Rust & White"],
+    "Siberian Husky": ["Agouti & White", "Black & White", "Gray & White", "Red & White", "Sable & White", "White", "Brown & White", "Black Tan & White", "Black"],
+    "Boxer": ["Brindle", "Fawn", "White"]
+  });
+  const AKC_COAT_SOURCES = Object.freeze(Object.fromEntries(Object.keys(AKC_COAT_COLORS).map(name =>
+    [name, "https://www.akc.org/dog-breeds/" +
+      (name === "Poodle" ? "poodle-standard" : slug(name)) + "/"]
+  )));
+  const coatColorChoices = breed => {
+    const recognized = resolve(breed);
+    const row = recognized && AKC_COAT_COLORS[recognized.name];
+    return Array.isArray(row) ? row.slice() : [];
+  };
+  const COAT_OTHER = "__hh_other_canine_color__";
+  function coatColorHtml(species = "", breed = "", color = "") {
+    const dog = norm(species) === "dog";
+    const choices = dog ? coatColorChoices(breed) : [];
+    const observed = String(color || "").trim();
+    const match = choices.find(choice => norm(choice) === norm(observed));
+    const custom = !choices.length || Boolean(observed && !match);
+    return '<div data-hh-canine-coat-panel class="hh-canine-coat-panel' + (dog ? "" : " hidden") + '"' +
+      (dog ? "" : " hidden") + '>' +
+      '<label>Dog coat color (breed-specific AKC listings)' +
+      '<select data-hh-canine-coat-select' + (!dog || !choices.length ? ' disabled' : '') + '>' +
+      '<option value="">Select a coat color</option>' +
+      choices.map(choice => '<option value="' + escapeHtml(choice) + '"' +
+        (match === choice ? ' selected' : '') + '>' + escapeHtml(choice) + '</option>').join("") +
+      '<option value="' + COAT_OTHER + '"' + (custom && choices.length ? ' selected' : '') +
+      '>Other / observed color not listed</option></select></label>' +
+      '<label data-hh-canine-coat-custom-row' + (!dog || !custom ? ' hidden' : '') + '>' +
+      'Describe coat color<input data-hh-canine-coat-custom type="text" maxlength="160"' +
+      ' value="' + escapeHtml(custom ? observed : "") + '" placeholder="e.g. Blue merle & tan"></label>' +
+      '<small data-hh-canine-coat-note class="muted"></small>' +
+      '</div>';
+  }
+
+  // Color always persists through the original Animal.color field. The new
+  // select/custom input have no form names, so FormData cannot overwrite it.
+  function bindCoatColor(form, speciesSelect) {
+    const panel = form?.querySelector?.('[data-hh-canine-coat-panel]');
+    const select = form?.querySelector?.('[data-hh-canine-coat-select]');
+    const manualRow = form?.querySelector?.('[data-hh-canine-coat-custom-row]');
+    const manual = form?.querySelector?.('[data-hh-canine-coat-custom]');
+    const note = form?.querySelector?.('[data-hh-canine-coat-note]');
+    const canonical = form?.querySelector?.('input[name="color"]');
+    const breed = form?.querySelector?.('input[name="breed"]');
+    const dogBreedSelect = form?.querySelector?.('[data-hh-dog-breed-select]');
+    if (!panel || !select || !manualRow || !manual || !canonical || !breed || !speciesSelect) return false;
+
+    const canonicalRow = canonical.closest?.("label");
+    const visible = (element, on) => {
+      if (!element) return;
+      element.hidden = !on;
+      element.classList?.toggle?.("hidden", !on);
+    };
+    const identity = () => norm(speciesSelect.value) + "|" + norm(breed.value);
+    let previousIdentity = identity();
+
+    const sync = () => {
+      const dog = norm(speciesSelect.value) === "dog";
+      visible(panel, dog);
+      visible(canonicalRow, !dog);
+      if (!dog) {
+        select.disabled = true;
+        visible(manualRow, false);
+        previousIdentity = identity();
+        return;
+      }
+      const key = identity();
+      if (key !== previousIdentity) {
+        // Deliberate breed/species change invalidates prior color. Do not
+        // silently save a Labrador color for a Golden Retriever.
+        canonical.value = "";
+      }
+      previousIdentity = key;
+      const choices = coatColorChoices(breed.value);
+      const current = String(canonical.value || "").trim();
+      const match = choices.find(choice => norm(choice) === norm(current)) || "";
+      const custom = !choices.length || Boolean(current && !match);
+      select.innerHTML = '<option value="">Select a coat color</option>' +
+        choices.map(choice => '<option value="' + escapeHtml(choice) + '">' +
+        escapeHtml(choice) + '</option>').join("") +
+        '<option value="' + COAT_OTHER + '">Other / observed color not listed</option>';
+      select.disabled = !choices.length;
+      select.value = !choices.length ? COAT_OTHER : match || (custom ? COAT_OTHER : "");
+      manual.value = custom ? current : "";
+      visible(manualRow, custom);
+      if (note) {
+        const recognized = resolve(breed.value);
+        note.textContent = !recognized
+          ? "Mixed or unlisted breed: enter the observed coat color; no rabbit colors are used."
+          : !choices.length
+            ? "No verified AKC color table is loaded for this breed yet. Enter its observed coat color."
+            : "AKC registration color descriptions for " + recognized.name +
+              ". AKC show-standard eligibility can differ; record markings separately in Notes.";
+      }
+    };
+    speciesSelect.addEventListener?.("change", sync);
+    breed.addEventListener?.("input", sync);
+    breed.addEventListener?.("change", sync);
+    // The breed picker sets the canonical breed field without firing "input".
+    // Register after its own listener so this callback sees the new breed.
+    dogBreedSelect?.addEventListener?.("change", sync);
+    select.addEventListener?.("change", () => {
+      if (select.value === COAT_OTHER) {
+        if (coatColorChoices(breed.value).some(x => norm(x) === norm(canonical.value))) {
+          canonical.value = "";
+        }
+        manual.value = canonical.value;
+        visible(manualRow, true);
+        manual.focus?.();
+      } else {
+        canonical.value = select.value;
+        manual.value = "";
+        visible(manualRow, false);
+      }
+    });
+    manual.addEventListener?.("input", () => {
+      if (norm(speciesSelect.value) === "dog") canonical.value = manual.value;
+    });
+    sync();
+    return true;
+  }
+  return Object.freeze({ SOURCE, list, search, resolve, classify, pickerHtml, bindPicker,
+    coatColorChoices, coatColorHtml, bindCoatColor, AKC_COAT_SOURCES });
 });
