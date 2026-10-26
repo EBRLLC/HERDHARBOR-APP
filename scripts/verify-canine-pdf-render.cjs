@@ -22,7 +22,7 @@ function available(binary) {
 const chrome = [process.env.HERDHARBOR_CHROME_PATH, "google-chrome", "google-chrome-stable", "chromium", "chromium-browser"]
   .filter(Boolean).find(available);
 assert.ok(chrome, "A Chromium/Chrome browser is required to render real canine PDFs.");
-assert.ok(available("pdftotext"), "Install poppler-utils (pdftotext) for printable-content verification.");
+assert.equal(cp.spawnSync("sh", ["-c", "command -v pdftotext"], {encoding:"utf8",timeout:4000}).status, 0, "Install poppler-utils (pdftotext) for printable-content verification.");
 const dogs = [{
   id:"dog-subject",species:"Dog",sex:"Female",name:"Journey",
   sireId:"male-0",damId:"female-0",breed:"Golden Retriever",
