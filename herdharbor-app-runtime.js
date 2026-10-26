@@ -3408,7 +3408,9 @@
   }
 
   function breedOptionsFor(species = "") {
-    const common = COMMON_BREEDS[species] || [];
+    const catalog = String(species).trim().toLowerCase() === "dog"
+      ? (window.HerdHarborCanineBreeds?.list?.() || []).map(row => row.name) : [];
+    const common = [...(COMMON_BREEDS[species] || []), ...catalog];
     const remembered = Array.isArray(state.settings?.breedsBySpecies?.[species])
       ? state.settings.breedsBySpecies[species]
       : [];
