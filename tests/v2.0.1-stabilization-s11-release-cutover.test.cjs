@@ -27,7 +27,7 @@ test("staged candidate release versions are 2.0.1 with a new native code",()=>{
  assert.match(build,/version: "2\.0\.1"/);
  assert.match(build,/buildId: "v2\.0\.1-release-1"/);
  assert.match(pwa,/HerdHarborBuild\?\.version \|\| "2\.0\.1"/);
- assert.match(worker,/const CACHE_NAME = "herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-canine-reproduction-2"/);
+ assert.match(worker,/const CACHE_NAME = "herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-canine-reproduction-3"/);
 });
 test("2.0.1 HTML queries match the service-worker preload identities",()=>{
  const shell=worker.slice(worker.indexOf("const REQUIRED_SHELL"),worker.indexOf("const RUNTIME_CACHE_PATHS"));

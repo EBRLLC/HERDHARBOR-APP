@@ -256,7 +256,7 @@ test("Phase 9F shell loads Task automation before Health and Task runtimes and k
   const automationIndex = html.indexOf("task-automation-v1.8.3.js?v=1");
   assert.ok(automationIndex >= 0);
   assert.ok(automationIndex < html.indexOf("health-runtime-v1.8.3.js?v=1"));
-  assert.ok(automationIndex < html.indexOf("task-runtime-v1.8.3.js?v=1"));
+  assert.ok(automationIndex < html.indexOf("task-runtime-v1.8.3.js?v=2"));
   assert.match(worker, /\.\/task-automation-v1\.8\.3\.js\?v=1/);
   assert.match(worker, /"\/task-automation-v1\.8\.3\.js"/);
   assert.match(pkg.scripts["test:v1.8.3"], /derived-task-automation-v1\.8\.3\.test\.cjs/);
