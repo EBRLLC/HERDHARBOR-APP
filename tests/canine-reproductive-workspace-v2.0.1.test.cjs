@@ -313,8 +313,8 @@ test("whelped plans reject new mating, pregnancy downgrade and cancellation with
   env.workspace.openForAnimal("dam");
   env.document.overlay.planTab.listeners.click();
   const html = env.document.overlay.innerHTML;
-  assert.match(html, /Add mating event.*disabled/);
-  assert.match(html, /Save assessment and estimate.*disabled/);
+  assert.match(html, /disabled>Add mating event/);
+  assert.match(html, /disabled>Save assessment and estimate/);
 });
 
 test("unchanged completed pregnancy reminders stay completed; changed dates reopen only the rescheduled task", () => {
