@@ -93,7 +93,7 @@
       birthDate: input.birthDate, birthTime: clean(input.time), birthType: input.method,
       bornAlive: String(Number(input.bornAlive)), stillborn: String(Number(input.stillborn)),
       lostBeforeWeaning: String(Number(input.neonatalLosses)), weaned: String(litter?.weaned || 0),
-      expectedWeanDate: Object.hasOwn(input, "expectedWeanDate") ? clean(input.expectedWeanDate) : (litter?.expectedWeanDate || ""), followUpDate: "",
+      expectedWeanDate: Object.hasOwn(input, "expectedWeanDate") ? clean(input.expectedWeanDate) : (litter?.expectedWeanDate || ""), followUpDate: litter?.followUpDate || "",
       litterName: clean(input.litterName), notes: clean(input.notes), offspringIds,
       createdAt: litter?.createdAt || now, updatedAt: now
     };
@@ -119,22 +119,30 @@
       const task = next.tasks.find(row => row.id === taskId);
       const values = { id: taskId, title: clean(input.followUpTitle), category: "Canine puppy care", dueDate: input.followUpDate,
         animalId: livePlan.damId, sourceType: "canine_whelping", sourceRecordId: id, reminderType: "custom_breeder_reminder" };
-      if (task) Object.assign(task, values, { completed: false, updatedAt: now });
+      if (task) {
+        const rescheduled = task.dueDate !== values.dueDate || task.title !== values.title || task.completionReason === "canine_reminder_removed";
+        Object.assign(task, values, { completed: rescheduled ? false : task.completed === true, updatedAt: now });
+        if (rescheduled) { task.completedAt = ""; delete task.completionReason; }
+      }
       else next.tasks.push({ ...values, recurrence: "None", recurrenceDays: "", completed: false, createdAt: now, updatedAt: now });
     } else {
       next.tasks.filter(task => task.id === `task_canine_whelping_${safe(id)}_custom` && !task.completed)
-        .forEach(task => Object.assign(task, { completed: true, completedAt: now, updatedAt: now }));
+        .forEach(task => Object.assign(task, { completed: true, completedAt: now, updatedAt: now, completionReason: "canine_reminder_removed" }));
     }
     if (input.expectedWeanDate) {
       const taskId = `task_canine_whelping_${safe(id)}_weaning`;
       const task = next.tasks.find(row => row.id === taskId);
       const values = { id: taskId, title: "Owner-scheduled puppy weaning follow-up", category: "Canine puppy care", dueDate: input.expectedWeanDate,
         animalId: livePlan.damId, sourceType: "canine_whelping", sourceRecordId: id, reminderType: "owner_scheduled_weaning" };
-      if (task) Object.assign(task, values, { completed: false, updatedAt: now });
+      if (task) {
+        const rescheduled = task.dueDate !== values.dueDate || task.title !== values.title || task.completionReason === "canine_reminder_removed";
+        Object.assign(task, values, { completed: rescheduled ? false : task.completed === true, updatedAt: now });
+        if (rescheduled) { task.completedAt = ""; delete task.completionReason; }
+      }
       else next.tasks.push({ ...values, recurrence: "None", recurrenceDays: "", completed: false, createdAt: now, updatedAt: now });
     } else {
       next.tasks.filter(task => task.id === `task_canine_whelping_${safe(id)}_weaning` && !task.completed)
-        .forEach(task => Object.assign(task, { completed: true, completedAt: now, updatedAt: now }));
+        .forEach(task => Object.assign(task, { completed: true, completedAt: now, updatedAt: now, completionReason: "canine_reminder_removed" }));
     }
     return { valid: true, issues: [], state: next, whelping, litter: genericLitter };
   }
@@ -271,15 +279,35 @@
     const options = `<option value="unknown">Unknown / unresolved</option>${candidates.filter(ref=>ref.type!=="unknown").map(ref=>`<option value="${esc(ref.type+":"+ref.id)}">${esc(sireName(ref))}</option>`).join("")}`;
     return `<article class="hh-canine-repro-plan"><h4>${esc(whelping.litterName || litter?.litterName || "Whelping")} · ${esc(whelping.birthDate)}</h4><p>${Number(litter?.bornAlive||0)} born alive · ${Number(litter?.stillborn||0)} stillborn · ${Number(litter?.lostBeforeWeaning||0)} neonatal losses. ${candidates.length>1?"Multiple potential sires; no sire was assigned automatically.":`Recorded sire: ${esc(sireName(whelping.sireRef))}.`}</p><p>${puppies.length} individual puppy record${puppies.length===1?"":"s"} · recorded total ${Number(litter?.bornAlive||0)}. Correcting totals does not delete existing puppy profiles.</p><div class="modal-actions"><button type="button" class="button button-primary" data-generate="${esc(whelping.id)}">Generate / reconcile puppy records</button><button type="button" class="button button-ghost" data-manage-litter="${esc(whelping.litterId)}">Manage puppy development</button></div>${puppies.map(puppy=>`<form data-form="parentage" data-puppy="${esc(puppy.id)}" class="hh-canine-repro-inline"><strong>${esc(puppy.name)} · ${esc(puppy.sex)} · ${esc(puppy.status)}</strong><label>Confirmed individual sire<select name="sireRef">${options}</select></label><label>Evidence / breeder note<input name="evidenceNote" maxlength="2000" placeholder="Required when assigning a sire"></label><button type="submit" class="button button-ghost">Save individual parentage</button></form>`).join("")}</article>`;
   }
+  function whelpingFormValues(state, planId) {
+    const empty = { birthDate: "", time: "", method: "unknown", bornAlive: "0", stillborn: "0",
+      neonatalLosses: "0", litterName: "", expectedWeanDate: "", veterinaryInvolvement: "",
+      followUpTitle: "", followUpDate: "", notes: "" };
+    const whelp = arr(state?.canineWhelpings).find(row => row.planId === planId);
+    const litter = arr(state?.litters).find(row => row.id === whelp?.litterId);
+    if (!whelp || !litter) return empty; // Do not transfer another litter's fields to a new plan.
+    const custom = arr(state?.tasks).find(row =>
+      row.id === `task_canine_whelping_${safe(whelp.id)}_custom` &&
+      row.sourceType === "canine_whelping" && row.sourceRecordId === whelp.id);
+    const existingFollowUp = custom && custom.completionReason !== "canine_reminder_removed";
+    return {
+      birthDate: whelp.birthDate || "", time: whelp.time || "", method: whelp.method || "unknown",
+      bornAlive: litter.bornAlive || "0", stillborn: litter.stillborn || "0",
+      neonatalLosses: litter.lostBeforeWeaning || "0", litterName: whelp.litterName || "",
+      expectedWeanDate: litter.expectedWeanDate || "", veterinaryInvolvement: whelp.veterinaryInvolvement || "",
+      followUpTitle: existingFollowUp ? custom.title || "" : "",
+      followUpDate: existingFollowUp ? custom.dueDate || "" : "",
+      notes: whelp.notes || ""
+    };
+  }
   function bind(overlay) {
     overlay.querySelectorAll("[data-close]").forEach(button=>button.addEventListener("click",close));
     overlay.querySelectorAll("[data-generate]").forEach(button=>button.addEventListener("click",()=>mutate("generate",button.dataset.generate)));
     overlay.querySelectorAll("[data-manage-litter]").forEach(button=>button.addEventListener("click",()=>{const id=button.dataset.manageLitter;close();root.HerdHarborBreedingWorkspace?.open?.(id);}));
     overlay.querySelectorAll('select[name="planId"]').forEach(select=>select.addEventListener("change",()=>{
-      const planId=select.value;const whelp=arr(stateNow()?.canineWhelpings).find(row=>row.planId===planId);const litter=arr(stateNow()?.litters).find(row=>row.id===whelp?.litterId);
-      if(!whelp||!litter)return;
       const form=select.closest("form");
-      for(const [name,value] of Object.entries({birthDate:whelp.birthDate,time:whelp.time,method:whelp.method,bornAlive:litter.bornAlive,stillborn:litter.stillborn,neonatalLosses:litter.lostBeforeWeaning,litterName:whelp.litterName,expectedWeanDate:litter.expectedWeanDate,veterinaryInvolvement:whelp.veterinaryInvolvement,notes:whelp.notes}))if(form.elements[name])form.elements[name].value=value||"";
+      const values=whelpingFormValues(stateNow(),select.value);
+      for(const [name,value] of Object.entries(values))if(form?.elements?.[name])form.elements[name].value=value;
     }));
     overlay.querySelectorAll("form").forEach(form=>form.addEventListener("submit",event=>{event.preventDefault();const values=Object.fromEntries(new FormData(form));mutate(form.dataset.form,form.dataset.planId||form.dataset.puppy||values.planId,values);}));
   }
@@ -298,5 +326,5 @@
   }
   function parseSireRef(value) { const [type,...rest]=clean(value).split(":");return type==="owned_dog"||type==="external_stud"?{type,id:rest.join(":")}:{type:"unknown"}; }
 
-  return Object.freeze({ VERSION, whelpingIdForPlan, puppyIdForOrder, potentialSireRefs, singleRecordedSire, validateWhelping, recordWhelping, generatePuppies, updatePuppyParentage, ensureReferenceSire, openForAnimal, close });
+  return Object.freeze({ VERSION, whelpingIdForPlan, puppyIdForOrder, potentialSireRefs, singleRecordedSire, validateWhelping, recordWhelping, generatePuppies, updatePuppyParentage, ensureReferenceSire, whelpingFormValues, openForAnimal, close });
 });
