@@ -158,6 +158,8 @@
   }
 
   function estimateForPlan(state, plan) {
+    const stored = plan?.pregnancy?.estimate;
+    if (["manual", "vet_expected"].includes(stored?.method) && Core()?.isDateOnly(stored.startDate) && Core()?.isDateOnly(stored.endDate)) return stored;
     const cycle = cycles(state).find(row => row.id === plan.cycleId);
     if (cycle?.ovulation?.confirmed) return Core()?.estimateWhelpingWindow({ method: "vet_confirmed_ovulation", ovulationDate: cycle.ovulation.date, now: new Date().toISOString() });
     return Core()?.estimateWhelpingWindow({ method: "breeding_range", breedingDates: (plan.events || []).map(row => row.date), now: new Date().toISOString() });
@@ -170,7 +172,7 @@
     const paternity = sourceSires.length > 1 ? "Multiple potential sires recorded; puppy parentage remains unresolved until individually established." : `Plan sire: ${sireLabel(state, plan.sireRef)}.`;
     return `<article class="hh-canine-repro-plan"><div class="hh-canine-repro-card-head"><div><h4>${esc(sireLabel(state, plan.sireRef))}</h4><span class="muted">${esc(plan.status || "planned")} · ${eventRows.length} completed mating event${eventRows.length === 1 ? "" : "s"}</span></div></div>
       <p>${esc(paternity)}</p><p class="muted">Planned: ${(plan.plannedDates || []).map(esc).join(", ") || "No date set"} · ${esc(plan.plannedMethod || "")}</p>
-      ${estimate ? `<p class="hh-canine-repro-estimate"><strong>Estimated whelping window:</strong> ${estimate.startDate}–${estimate.endDate}<br><span class="muted">${estimate.method === "vet_confirmed_ovulation" ? "Based on veterinarian-confirmed ovulation" : "Broad range from recorded mating dates"}. Estimate only.</span></p>` : ""}
+      ${estimate ? `<p class="hh-canine-repro-estimate"><strong>Expected whelping window:</strong> ${esc(estimate.startDate)}–${esc(estimate.endDate)}<br><span class="muted">${esc(estimate.method === "vet_expected" ? "Veterinarian-provided expected dates" : estimate.method === "manual" ? "Manually entered expected dates" : estimate.method === "vet_confirmed_ovulation" ? "Estimate based on veterinarian-confirmed ovulation" : "Broad estimate from recorded mating dates")}. ${estimate.method === "manual" || estimate.method === "vet_expected" ? "Saved date range." : "Estimate only."}</span></p>` : ""}
       <form data-form="plan-cancel" data-plan="${esc(plan.id)}" class="hh-canine-repro-inline"><h5>Plan status</h5><p class="muted">Cancellation retains this plan and its recorded events for the history.</p><button type="submit" class="button button-ghost" ${plan.status === "cancelled" ? "disabled" : ""}>Cancel this breeding plan</button></form>
       <form data-form="event" data-plan="${esc(plan.id)}" class="hh-canine-repro-inline"><h5>Record a completed mating</h5><label>Date<input type="date" name="date" required></label><label>Time<input type="time" name="time"></label><label>Sire for this event<select name="sireRef">${sireChoices(state, `${plan.sireRef.type}:${plan.sireRef.id}`)}</select></label><label>Actual method<select name="method"><option value="natural_service">Natural service</option><option value="artificial_insemination">Artificial insemination</option><option value="other">Other</option></select></label><label>Outcome<input name="outcome" maxlength="300"></label><label>Veterinary involvement<input name="veterinaryInvolvement" maxlength="500"></label><label>Event notes<textarea name="notes" maxlength="2000"></textarea></label><button type="submit" class="button button-ghost">Add mating event</button></form>
       <form data-form="pregnancy" data-plan="${esc(plan.id)}" class="hh-canine-repro-inline"><h5>Pregnancy assessment and dating</h5><label>Status<select name="status">${Core().PREGNANCY_STATUSES.map(status => `<option value="${status}" ${status === pregnancy.status ? "selected" : ""}>${status.replace(/_/g, " ")}</option>`).join("")}</select></label><label>Assessment date<input type="date" name="assessmentDate" value="${esc(pregnancy.assessmentDate || "")}"></label><label>Veterinarian<input name="veterinarian" maxlength="200" value="${esc(pregnancy.veterinarian || "")}"></label><label><input type="checkbox" name="veterinarianConfirmed" ${pregnancy.veterinarianConfirmed ? "checked" : ""}>Veterinarian confirmed pregnancy</label><label>Veterinarian expected start<input type="date" name="vetStart" value="${esc(pregnancy.estimate?.method === "vet_expected" ? pregnancy.estimate.startDate : "")}"></label><label>Veterinarian expected end<input type="date" name="vetEnd" value="${esc(pregnancy.estimate?.method === "vet_expected" ? pregnancy.estimate.endDate : "")}"></label><label>Manual estimate start<input type="date" name="manualStart" value="${esc(pregnancy.estimate?.method === "manual" ? pregnancy.estimate.startDate : "")}"></label><label>Manual estimate end<input type="date" name="manualEnd" value="${esc(pregnancy.estimate?.method === "manual" ? pregnancy.estimate.endDate : "")}"></label><label>Pregnancy notes<textarea name="notes" maxlength="3000">${esc(pregnancy.notes || "")}</textarea></label><button type="submit" class="button button-ghost">Save assessment and estimate</button></form>
@@ -219,8 +221,10 @@
       if (!row) return false;
       const checked = Core().validateCycle({ ...row, observedStage: values.observedStage, status: values.status, notes: values.notes, updatedAt: now }, next.animals, { ownerId: active.sessionOwner });
       if (!checked.valid) { toast(checked.issues.join(" "), "error"); return false; }
+      const wasClosed = ["closed", "cancelled"].includes(row.status);
       Object.assign(row, checked.value, { updatedAt: now });
       if (["closed", "cancelled"].includes(values.status)) closeCycleTasks(next, row.id, now);
+      else if (wasClosed) reopenCycleTasks(next, row, now);
     } else if (["observation", "test", "appointment", "ovulation", "interpretation", "cycle-reminder"].includes(kind)) {
       const cycle = next.canineReproductiveCycles.find(row => row.id === dataset.id && row.femaleId === active.animalId);
       if (!cycle) return false;
@@ -240,6 +244,7 @@
         normalized.clinicalInterpretations.push({ id: id("clinical"), date: values.date, time: values.time, veterinarian: values.veterinarian, interpretation: values.interpretation });
       }
       if (kind === "cycle-reminder") {
+        if (["closed", "cancelled"].includes(normalized.status)) { toast("Reopen this heat cycle before scheduling another reminder.", "error"); return false; }
         if (!Core().isDateOnly(values.date) || !clean(values.title)) { toast("Enter a reminder title and valid due date.", "error"); return false; }
         const reminderId = id("reminder");
         const taskId = `task_canine_cycle_${cycle.id}_${reminderId}`;
@@ -313,7 +318,7 @@
         if (!estimate) { toast("Enter a valid manual estimate date or range.", "error"); return false; }
       }
       const prior = plan.pregnancy?.estimate;
-      if (prior?.method === "manual" && !values.manualStart && !values.manualEnd) estimate = prior;
+      if (["manual", "vet_expected"].includes(prior?.method) && !values.manualStart && !values.manualEnd && !values.vetStart && !values.vetEnd) estimate = prior;
       plan.pregnancy = { status: status.status, assessmentDate: values.assessmentDate || "", veterinarian: text(values.veterinarian), veterinarianConfirmed: values.veterinarianConfirmed === "on", estimate, notes: text(values.notes), updatedAt: now };
       plan.updatedAt = now;
       upsertTask(next, plan.id, "pregnancy-assessment", values.assessmentDate || "", "Canine pregnancy assessment", active.animalId, now);
@@ -358,7 +363,13 @@
 
   function closeCycleTasks(state, cycleId, now) {
     state.tasks.filter(task => task.sourceType === "canine_reproductive_cycle" && task.sourceRecordId === cycleId && !task.completed)
-      .forEach(task => Object.assign(task, { completed: true, completedAt: now, updatedAt: now }));
+      .forEach(task => Object.assign(task, { completed: true, completedAt: now, updatedAt: now, completionReason: "canine_cycle_closed" }));
+  }
+  function reopenCycleTasks(state, cycle, now) {
+    const ids = new Set((cycle.customReminders || []).map(reminder => reminder.taskId));
+    state.tasks.filter(task => ids.has(task.id) && task.sourceType === "canine_reproductive_cycle" &&
+      task.sourceRecordId === cycle.id && task.completed && task.completionReason === "canine_cycle_closed")
+      .forEach(task => { task.completed = false; task.completedAt = ""; task.updatedAt = now; delete task.completionReason; });
   }
 
   return Object.freeze({ VERSION, openForAnimal, close });
