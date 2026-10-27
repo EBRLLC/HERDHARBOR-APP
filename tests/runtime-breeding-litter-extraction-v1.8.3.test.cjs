@@ -187,7 +187,7 @@ test("offspring creation keeps canonical parent links and animal-limit gate", ()
   assert.match(extractedSource, /sireId: litter\.sireId \|\| ""/);
   assert.match(extractedSource, /damId: litter\.damId \|\| ""/);
   assert.match(extractedSource, /sourceBirthId: litter\.id/);
-  assert.match(extractedSource, /litter\.offspringIds = \[\.\.\.new Set/);
+  assert.match(extractedSource, /currentLitter\.offspringIds = \[\.\.\.new Set/);
   assert.match(extractedSource, /rememberBreed\(dam\?\.species \|\| sire\?\.species \|\| "", breed\)/);
 });
 
