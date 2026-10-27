@@ -284,3 +284,72 @@ test("closed heat cycles cannot create new active custom reminders", () => {
   assert.equal((env.state.tasks || []).length, 0);
   assert.match(env.messages.at(-1).message, /Reopen this heat cycle/);
 });
+
+test("whelped plans reject new mating, pregnancy downgrade and cancellation without changing linked birth records", () => {
+  const env = setup();
+  env.state.canineBreedingPlans = [{
+    id: "plan-1", damId: "dam", sireRef: { type: "owned_dog", id: "owned-sire" },
+    status: "whelped", events: [{ id: "mating-1", date: "2026-04-01" }],
+    pregnancy: { status: "whelped", whelpedAt: "2026-06-05" }
+  }];
+  env.state.canineWhelpings = [{ id: "whelp-1", planId: "plan-1", damId: "dam", birthDate: "2026-06-05" }];
+  env.state.litters = [{ id: "whelp-1", canineWhelping: true, species: "Dog", damId: "dam", offspringIds: ["puppy-1"] }];
+  const prior = JSON.stringify(env.state);
+  for (const [kind, values] of [
+    ["event", { date: "2026-06-01", method: "natural_service", sireRef: "owned_dog:owned-sire" }],
+    ["pregnancy", { status: "not_pregnant", assessmentDate: "2026-06-06" }],
+    ["plan-cancel", {}]
+  ]) {
+    env.workspace.openForAnimal("dam");
+    const form = env.form(kind, values, { plan: "plan-1" });
+    env.document.overlay.forms = [form];
+    env.workspace.openForAnimal("dam");
+    env.document.overlay.forms = [form];
+    assert.equal(boundSubmit(env, form), true, kind + " should still prevent normal form navigation");
+    assert.equal(JSON.stringify(env.state), prior, kind + " cannot modify a whelped plan or litter");
+    assert.equal(env.saves, 0);
+    assert.match(env.messages.at(-1).message, /already-whelped/);
+  }
+  env.workspace.openForAnimal("dam");
+  env.document.overlay.planTab.listeners.click();
+  const html = env.document.overlay.innerHTML;
+  assert.match(html, /Add mating event.*disabled/);
+  assert.match(html, /Save assessment and estimate.*disabled/);
+});
+
+test("unchanged completed pregnancy reminders stay completed; changed dates reopen only the rescheduled task", () => {
+  const env = setup();
+  env.state.canineBreedingPlans = [{
+    id: "plan-1", damId: "dam", sireRef: { type: "owned_dog", id: "owned-sire" },
+    status: "in_progress", events: [{ id: "mating-1", date: "2026-04-01" }],
+    pregnancy: { status: "awaiting_assessment", estimate: null }
+  }];
+  const savePregnancy = manualStart => {
+    const form = env.form("pregnancy", {
+      status: "awaiting_assessment", assessmentDate: "2026-05-10",
+      manualStart, manualEnd: manualStart, notes: "Breeder-entered"
+    }, { plan: "plan-1" });
+    env.document.overlay.forms = [form];
+    env.workspace.openForAnimal("dam");
+    env.document.overlay.forms = [form];
+    assert.equal(boundSubmit(env, form), true);
+  };
+  savePregnancy("2026-06-05");
+  const current = env.state.tasks.filter(t => t.sourceRecordId === "plan-1");
+  assert.equal(current.length, 2);
+  for (const task of current) {
+    task.completed = true;
+    task.completedAt = "2026-05-11T10:00:00.000Z";
+  }
+  savePregnancy("2026-06-05");
+  for (const task of env.state.tasks.filter(t => t.sourceRecordId === "plan-1")) {
+    assert.equal(task.completed, true, "unchanged completed breeder task must remain completed");
+    assert.equal(task.completedAt, "2026-05-11T10:00:00.000Z");
+  }
+  savePregnancy("2026-06-08");
+  const assessment = env.state.tasks.find(t => t.reminderType === "pregnancy-assessment");
+  const delivery = env.state.tasks.find(t => t.reminderType === "whelping-window");
+  assert.equal(assessment.completed, true);
+  assert.equal(delivery.completed, false);
+  assert.equal(delivery.dueDate, "2026-06-08");
+});
