@@ -101,11 +101,12 @@ test("essential startup identity agrees with the bounded offline shell, while do
     "herdharbor-cloud.js?v=39",
     "cloud-sync-rollout-runtime-v1.8.4.js?v=5",
     "herdharbor-app-runtime.js?v=6",
-    "animal-profile-runtime-v1.8.3.js?v=6",
+    "animal-profile-runtime-v1.8.3.js?v=7",
     "health-runtime-v1.8.3.js?v=1",
     "task-runtime-v1.8.3.js?v=1",
     "canine-lineage-v2.0.1.js?v=1",
     "canine-reproductive-core-v2.0.1.js?v=1",
+    "canine-whelping-workspace-v2.0.1.js?v=1",
     "canine-reproductive-workspace-v2.0.1.js?v=1",
     "canine-reproductive-workspace-v2.0.1.css?v=1"
   ]) {
@@ -130,7 +131,8 @@ test("a missing operational task, health, animal, cloud or canine module aborts 
     "herdharbor-cloud.js",
     "canine-lineage-v2.0.1.js",
     "canine-reproductive-core-v2.0.1.js",
-    "canine-reproductive-workspace-v2.0.1.js"
+    "canine-reproductive-workspace-v2.0.1.js",
+    "canine-whelping-workspace-v2.0.1.js"
   ]) {
     const install = installWithFailure(asset);
     await assert.rejects(install.pending, (error) => {

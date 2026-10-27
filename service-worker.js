@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v2.0.1-v2.0.1-release-1-canine-reproduction-1";
+const CACHE_NAME = "herdharbor-shell-v2.0.1-v2.0.1-release-1-canine-reproduction-2";
 const REQUIRED_SHELL = [
   "./",
   "./index.html",
@@ -28,7 +28,6 @@ const REQUIRED_SHELL = [
   "./cloud-sync-v2-diagnostics-v1.8.2.js?v=1",
   "./herdharbor-admin-v1.6.1.js?v=2",
   "./pwa.js?v=36",
-  "./market-analytics-v1.6.5.js?v=1.7.1",
   "./pedigree-engine-v2.0.0.js?v=1",
   "./pedigree-customization-v2.0.0.css?v=1",
   "./pedigree-customization-v2.0.0.js?v=1",
@@ -40,9 +39,10 @@ const REQUIRED_SHELL = [
   "./canine-lineage-v2.0.1.js?v=1",
   "./canine-pedigree-print-v2.0.1.js?v=1",
   "./canine-reproductive-core-v2.0.1.js?v=1",
+  "./canine-whelping-workspace-v2.0.1.js?v=1",
   "./canine-reproductive-workspace-v2.0.1.js?v=1",
   "./canine-reproductive-workspace-v2.0.1.css?v=1",
-  "./animal-profile-runtime-v1.8.3.js?v=6",
+  "./animal-profile-runtime-v1.8.3.js?v=7",
   "./breeding-litter-runtime-v1.8.3.js?v=1",
   "./task-automation-v1.8.3.js?v=1",
   "./health-runtime-v1.8.3.js?v=1",
@@ -64,6 +64,7 @@ const RUNTIME_CACHE_PATHS = [
   "./standard-pedigree-print-v2.0.0.js?v=1",
   "./document-export-v2.0.0.js?v=1",
   "./pedigree-documents-v2.0.0.js?v=1",
+  "./market-analytics-v1.6.5.js?v=1.7.1",
   "./animal-documents-v2.0.0.css?v=1",
   "./birth-certificate-v2.0.0.css?v=1",
   "./pedigree-documents-v2.0.0.css?v=1",

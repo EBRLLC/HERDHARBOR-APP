@@ -491,6 +491,7 @@
             <p class="eyebrow">${esc(animal.species || "Animal")} profile</p>
             <h2 style="margin-bottom:5px">${esc(animal.name)}</h2>
             <p class="muted">${esc([animal.earTagNumber ? `Ear tag ${animal.earTagNumber}` : animal.tag || animal.tattoo, animal.earTagColor, animal.breed, animal.color].filter(Boolean).join(" · ") || "No additional identity details")}</p>
+            ${animal.ownershipScope === "external_reference" ? '<p class="muted"><strong>External pedigree reference only · not owned by this account</strong></p>' : ""}
           </div>
         </div>
         <div class="detail-grid">

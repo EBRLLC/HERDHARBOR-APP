@@ -580,7 +580,7 @@
             <div class="meta">${Number(litter.weaned || 0)} weaned · ${Number(litter.lostBeforeWeaning || 0)} lost · ${offspringCount} offspring record${offspringCount === 1 ? "" : "s"}</div>
             <div class="meta">Expected weaning: ${formatDate(litter.expectedWeanDate)}</div>
             <div class="animal-card-footer">
-              <button class="button button-ghost button-small" data-create-offspring="${litter.id}">${offspringCount ? "Add offspring" : "Create offspring"}</button>
+              <button class="button button-ghost button-small" data-create-offspring="${litter.id}">${litter.canineWhelping ? "Manage puppies" : offspringCount ? "Add offspring" : "Create offspring"}</button>
               <button class="button button-ghost button-small" data-edit-litter="${litter.id}">Edit</button>
             </div>
           </article>`;
@@ -590,7 +590,14 @@
       $$('[data-edit-litter]', $("#view-litters")).forEach((button) =>
         button.addEventListener("click", () => openLitterForm(button.dataset.editLitter)));
       $$('[data-create-offspring]', $("#view-litters")).forEach((button) =>
-        button.addEventListener("click", () => openOffspringCreator(button.dataset.createOffspring)));
+        button.addEventListener("click", () => {
+          const litter = stateNow().litters.find((record) => record.id === button.dataset.createOffspring);
+          if (litter?.canineWhelping) {
+            root.HerdHarborCanineWhelpingWorkspace?.openForAnimal?.(litter.damId);
+            return;
+          }
+          openOffspringCreator(button.dataset.createOffspring);
+        }));
     }
   
     function openLitterForm(id = "", breedingId = "") {
@@ -679,6 +686,9 @@
         const linkedRecord = stateNow().breedings.find((record) => record.id === data.breedingId);
         if (linkedRecord && (linkedRecord.femaleId !== data.damId || linkedRecord.maleId !== data.sireId)) return toast("The selected parents must match the linked breeding record.", "error");
         if (data.breedingId && stateNow().litters.some((record) => record.id !== id && record.breedingId === data.breedingId)) return toast("That breeding already has a linked birth record. Edit the existing birth instead.", "error");
+        const canineWhelpingRecord = id ? stateNow().litters.find((record) => record.id === id && record.canineWhelping) : null;
+        if (canineWhelpingRecord && (data.damId !== canineWhelpingRecord.damId || data.sireId !== (canineWhelpingRecord.sireId || "") || data.birthDate !== canineWhelpingRecord.birthDate || (data.breedingId || "") !== (canineWhelpingRecord.breedingId || "")))
+          return toast("Canine whelping identity and date are linked to the reproductive plan. Update them in Whelpings & puppies; this form can still correct counts and notes.", "error");
         const maximumWeaned = birthLiveRemaining(data);
         if (maximumWeaned < 0) return toast("Fostered-out young and losses cannot exceed the live young available.", "error");
         if (Number(data.weaned) > Math.max(0, maximumWeaned)) return toast("Weaned cannot exceed the live young remaining after foster-outs and losses.", "error");
@@ -720,6 +730,7 @@
         renderCurrentView();
       });
       $("#delete-litter")?.addEventListener("click", () => {
+        if (litter.canineWhelping) return toast("Canine whelping records cannot be deleted from the generic litter form. Keep the linked record and correct its totals or status instead.", "error");
         const existingOffspring = offspringForLitter(litter);
         if (!confirm(`Delete this birth record? ${existingOffspring.length ? `${existingOffspring.length} linked offspring record${existingOffspring.length === 1 ? "" : "s"} will stay in Animals.` : "Any linked offspring will stay in Animals."}`)) return;
         const now = new Date().toISOString();

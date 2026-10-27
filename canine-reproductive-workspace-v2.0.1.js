@@ -102,7 +102,7 @@
     }
     overlay.innerHTML = `<section class="hh-canine-repro-panel" aria-labelledby="hh-canine-repro-title">
       <header><div><p class="eyebrow">Canine reproduction</p><h2 id="hh-canine-repro-title">${esc(dam.name)} · ${active.tab === "cycles" ? "Heat cycles" : "Breeding plans"}</h2><p class="muted">Breeder records and veterinarian-entered information. Dates are estimates unless identified as veterinarian-provided.</p></div><button type="button" class="button button-ghost" data-close aria-label="Close">Close</button></header>
-      <nav class="hh-canine-repro-tabs"><button type="button" data-tab="cycles" class="${active.tab === "cycles" ? "active" : ""}">Heat cycles</button><button type="button" data-tab="plans" class="${active.tab === "plans" ? "active" : ""}">Breeding plans</button></nav>
+      <nav class="hh-canine-repro-tabs"><button type="button" data-tab="cycles" class="${active.tab === "cycles" ? "active" : ""}">Heat cycles</button><button type="button" data-tab="plans" class="${active.tab === "plans" ? "active" : ""}">Breeding plans</button><button type="button" data-open-whelping>Whelpings & puppies</button></nav>
       <main>${active.tab === "cycles" ? renderCycles(state, dam) : renderPlans(state, dam)}</main>
       <footer><span class="muted">Saved to this device first. Cloud synchronization may still be pending.</span></footer>
     </section>`;
@@ -154,7 +154,7 @@
       <label>Planned dates (comma-separated)<input name="plannedDates" placeholder="YYYY-MM-DD, YYYY-MM-DD"></label>
       <label>Planned method<select name="plannedMethod"><option value="natural_service">Natural service</option><option value="artificial_insemination">Artificial insemination</option><option value="other">Other</option></select></label>
       <label>Registration details<textarea name="registrationDetails" maxlength="4000"></textarea></label><label>Health-testing information<textarea name="healthTesting" maxlength="4000"></textarea></label><label>Notes<textarea name="notes" maxlength="8000"></textarea></label><button type="submit" class="button button-primary">Save breeding plan</button>
-      </form></section><section class="hh-canine-repro-card"><h3>Plans · ${list.length}</h3>${list.map(plan => renderPlanCard(state, plan)).join("") || `<p class="muted">No plans yet.</p>`}</section></div>`;
+      </form><form data-form="link-stud"><h4>Link an external stud to an imported Dog</h4><label>External stud<select name="externalStudId" required><option value="">Choose external stud</option>${(state.canineExternalStuds||[]).filter(row=>row.accountId===active.sessionOwner&&row.ownerScope==="external_reference").map(row=>`<option value="${esc(row.id)}">${esc(row.registeredName||row.displayName||row.id)}</option>`).join("")}</select></label><label>Imported same-account male Dog<select name="linkedAnimalId" required><option value="">Choose imported Dog</option>${ownedSires.filter(row=>belongsToAccount(row,active.sessionOwner)).map(row=>`<option value="${esc(row.id)}">${esc(row.name||row.id)} · ${esc(row.breed||"Breed not entered")}</option>`).join("")}</select></label><p class="muted">Linking reuses this account's imported record and does not grant access to another member's private animal.</p><button type="submit" class="button button-ghost">Link stud reference</button></form></section><section class="hh-canine-repro-card"><h3>Plans · ${list.length}</h3>${list.map(plan => renderPlanCard(state, plan)).join("") || `<p class="muted">No plans yet.</p>`}</section></div>`;
   }
 
   function estimateForPlan(state, plan) {
@@ -179,6 +179,7 @@
 
   function bind(overlay) {
     overlay.querySelectorAll("[data-close]").forEach(button => button.addEventListener("click", close));
+    overlay.querySelectorAll("[data-open-whelping]").forEach(button => button.addEventListener("click", () => { const id=active?.animalId; close(); root.HerdHarborCanineWhelpingWorkspace?.openForAnimal?.(id); }));
     overlay.querySelectorAll("[data-tab]").forEach(button => button.addEventListener("click", () => { active.tab = button.dataset.tab; active.selectedCycle = ""; render(); }));
     overlay.querySelectorAll("[data-cycle]").forEach(button => button.addEventListener("click", () => { active.selectedCycle = button.dataset.cycle; render(); }));
     overlay.querySelectorAll("form").forEach(form => form.addEventListener("submit", event => {
@@ -253,6 +254,12 @@
       const checked = Core().validateCycle(normalized, next.animals, { ownerId: active.sessionOwner });
       if (!checked.valid) { toast(checked.issues.join(" "), "error"); return false; }
       Object.assign(cycle, checked.value, { updatedAt: now });
+    } else if (kind === "link-stud") {
+      const stud = next.canineExternalStuds.find(row => row.id === values.externalStudId && row.accountId === active.sessionOwner && row.ownerScope === "external_reference");
+      if (!stud) { toast("Choose an external stud saved in this account.", "error"); return false; }
+      const checked = Core().validateExternalStudCollection(next.canineExternalStuds, { ...stud, linkedAnimalId: values.linkedAnimalId, updatedAt: now }, active.sessionOwner, next.animals);
+      if (!checked.valid) { toast(checked.issues.join(" "), "error"); return false; }
+      Object.assign(stud, checked.value, { updatedAt: now });
     } else if (kind === "plan") {
       const plannedDates = clean(values.plannedDates).split(",").map(value => value.trim()).filter(Boolean);
       if (plannedDates.some(date => !Core().isDateOnly(date)) || new Set(plannedDates).size !== plannedDates.length || !Core().METHODS.includes(values.plannedMethod)) { toast("Enter unique, valid planned calendar dates and a breeding method.", "error"); return false; }
