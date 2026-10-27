@@ -107,7 +107,7 @@ test("essential startup identity agrees with the bounded offline shell, while do
     "canine-lineage-v2.0.1.js?v=1",
     "canine-reproductive-core-v2.0.1.js?v=1",
     "canine-whelping-workspace-v2.0.1.js?v=2",
-    "canine-reproductive-workspace-v2.0.1.js?v=1",
+    "canine-reproductive-workspace-v2.0.1.js?v=2",
     "canine-reproductive-workspace-v2.0.1.css?v=1"
   ]) {
     assert.ok(requiredAssets.includes(asset), "missing or stale core offline URL: " + asset);
