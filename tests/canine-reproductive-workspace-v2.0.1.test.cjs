@@ -10,7 +10,15 @@ class FakeOverlay {
   addEventListener(name, fn) { this.listeners[name] = fn; }
   appendChild(node) { if (this.owner) this.owner.overlay = node; else this.overlay = node; }
   remove() { this.removed = true; }
-  querySelectorAll(selector) { return selector === "form" ? this.forms : []; }
+  querySelectorAll(selector) {
+    if (selector === "form") return this.forms;
+    if (selector === "[data-tab]") {
+      const plans = { dataset: { tab: "plans" }, listeners: {}, addEventListener(name, fn) { this.listeners[name] = fn; } };
+      this.planTab = plans;
+      return [plans];
+    }
+    return [];
+  }
 }
 
 class FakeDocument {
@@ -208,6 +216,7 @@ test("saved manual and veterinarian whelping estimates display their actual sour
       estimate: { method: "manual", startDate: "2026-06-18", endDate: "2026-06-21" } }
   }];
   assert.equal(env.workspace.openForAnimal("dam"), true);
+  env.document.overlay.planTab.listeners.click();
   let html = env.document.overlay.innerHTML;
   assert.match(html, /2026-06-18/);
   assert.match(html, /2026-06-21/);
@@ -217,6 +226,7 @@ test("saved manual and veterinarian whelping estimates display their actual sour
     method: "vet_expected", startDate: "2026-06-16", endDate: "2026-06-19", veterinarian: "Dr. Smith"
   };
   env.workspace.openForAnimal("dam");
+  env.document.overlay.planTab.listeners.click();
   html = env.document.overlay.innerHTML;
   assert.match(html, /2026-06-16/);
   assert.match(html, /Veterinarian-provided expected dates/);
