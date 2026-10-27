@@ -196,3 +196,81 @@ test("cancelling a plan closes its own stable reminders and retains unrelated ta
   assert.equal(env.state.tasks[1].completed, true);
   assert.equal(env.state.tasks[2].completed, false);
 });
+
+
+test("saved manual and veterinarian whelping estimates display their actual source, not a mating-date replacement", () => {
+  const env = setup();
+  const base = { id: "plan-dating", damId: "dam", sireRef: { type: "owned_dog", id: "owned-sire" },
+    status: "mated", plannedDates: [], plannedMethod: "natural_service",
+    events: [{ id: "event-one", date: "2026-04-01", sireRef: { type: "owned_dog", id: "owned-sire" }, method: "natural_service" }] };
+  env.state.canineBreedingPlans = [{
+    ...base, pregnancy: { status: "awaiting_assessment",
+      estimate: { method: "manual", startDate: "2026-06-18", endDate: "2026-06-21" } }
+  }];
+  assert.equal(env.workspace.openForAnimal("dam"), true);
+  let html = env.document.overlay.innerHTML;
+  assert.match(html, /2026-06-18/);
+  assert.match(html, /2026-06-21/);
+  assert.match(html, /Manually entered expected dates/);
+  assert.doesNotMatch(html, /Broad estimate from recorded mating dates/);
+  env.state.canineBreedingPlans[0].pregnancy.estimate = {
+    method: "vet_expected", startDate: "2026-06-16", endDate: "2026-06-19", veterinarian: "Dr. Smith"
+  };
+  env.workspace.openForAnimal("dam");
+  html = env.document.overlay.innerHTML;
+  assert.match(html, /2026-06-16/);
+  assert.match(html, /Veterinarian-provided expected dates/);
+  assert.doesNotMatch(html, /Manually entered expected dates/);
+});
+
+test("closing then reopening a heat cycle restores only reminders automatically closed by that cycle", () => {
+  const env = setup();
+  const linked = "task_canine_cycle_cycle-1_reminder-1";
+  const manuallyDone = "task_canine_cycle_cycle-1_manual-done";
+  env.state.canineReproductiveCycles = [{
+    id: "cycle-1", femaleId: "dam", observedHeatStartDate: "2026-03-01",
+    observedStage: "unknown", status: "open", customReminders: [
+      { id: "reminder-1", taskId: linked, title: "Call clinic", date: "2026-03-10" },
+      { id: "manually-done", taskId: manuallyDone, title: "Done appointment", date: "2026-03-02" }
+    ], eventHistory: []
+  }];
+  env.state.tasks = [
+    { id: linked, sourceType: "canine_reproductive_cycle", sourceRecordId: "cycle-1", completed: false },
+    { id: manuallyDone, sourceType: "canine_reproductive_cycle", sourceRecordId: "cycle-1", completed: true, completedAt: "2026-03-02" },
+    { id: "rabbit-task", sourceType: "rabbit_breeding", sourceRecordId: "rabbit", completed: false }
+  ];
+  env.workspace.openForAnimal("dam");
+  const close = env.form("cycle-update", { observedStage: "unknown", status: "cancelled", notes: "" }, { id: "cycle-1" });
+  env.document.overlay.forms = [close];
+  env.workspace.openForAnimal("dam");
+  env.document.overlay.forms = [close];
+  assert.equal(boundSubmit(env, close), true);
+  assert.equal(env.state.tasks.find(row => row.id === linked).completed, true);
+  assert.equal(env.state.tasks.find(row => row.id === linked).completionReason, "canine_cycle_closed");
+  const reopen = env.form("cycle-update", { observedStage: "unknown", status: "open", notes: "" }, { id: "cycle-1" });
+  env.document.overlay.forms = [reopen];
+  env.workspace.openForAnimal("dam");
+  env.document.overlay.forms = [reopen];
+  assert.equal(boundSubmit(env, reopen), true);
+  assert.equal(env.state.tasks.find(row => row.id === linked).completed, false);
+  assert.equal(env.state.tasks.find(row => row.id === linked).completionReason, undefined);
+  assert.equal(env.state.tasks.find(row => row.id === manuallyDone).completed, true,
+    "a reminder manually completed before cycle closure must remain done");
+  assert.equal(env.state.tasks.find(row => row.id === "rabbit-task").completed, false);
+});
+
+test("closed heat cycles cannot create new active custom reminders", () => {
+  const env = setup();
+  env.state.canineReproductiveCycles = [{
+    id: "closed-cycle", femaleId: "dam", observedHeatStartDate: "2026-03-01", status: "closed"
+  }];
+  env.workspace.openForAnimal("dam");
+  const form = env.form("cycle-reminder", { date: "2026-03-12", title: "Call vet" }, { id: "closed-cycle" });
+  env.document.overlay.forms = [form];
+  env.workspace.openForAnimal("dam");
+  env.document.overlay.forms = [form];
+  boundSubmit(env, form);
+  assert.equal(env.saves, 0);
+  assert.equal((env.state.tasks || []).length, 0);
+  assert.match(env.messages.at(-1).message, /Reopen this heat cycle/);
+});
