@@ -68,6 +68,10 @@
         veterinarian: tidy(row?.veterinarian).slice(0, 200), interpretation: tidy(row?.interpretation).slice(0, 4000),
         relatedTestIds: [...new Set(recordArray(row?.relatedTestIds).map(tidy).filter(Boolean))]
       })).filter(row => row.id && row.date && row.interpretation),
+      customReminders: recordArray(cycle.customReminders).map(row => ({
+        id: tidy(row?.id), date: isDateOnly(row?.date) ? row.date : "", title: tidy(row?.title).slice(0, 200),
+        notes: tidy(row?.notes).slice(0, 2000), taskId: tidy(row?.taskId)
+      })).filter(row => row.id && row.date && row.title && row.taskId),
       ovulation: ovulation && ovulation.confirmed === true && isDateOnly(ovulation.date) ? {
         date: ovulation.date, confirmed: true, source: "veterinarian",
         veterinarian: tidy(ovulation.veterinarian).slice(0, 200),

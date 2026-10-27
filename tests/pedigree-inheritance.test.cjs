@@ -10,7 +10,7 @@ const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 const worker = fs.readFileSync(path.join(__dirname, "..", "service-worker.js"), "utf8");
 
 const engineScriptIndex = html.indexOf('pedigree-engine-v2.0.0.js?v=1');
-const animalRuntimeIndex = html.indexOf('animal-profile-runtime-v1.8.3.js?v=5');
+const animalRuntimeIndex = html.indexOf('animal-profile-runtime-v1.8.3.js?v=6');
 const appRuntimeIndex = html.indexOf('herdharbor-app-runtime.js?v=6');
 assert.ok(engineScriptIndex >= 0, "the canonical pedigree engine is loaded by the application shell");
 assert.ok(animalRuntimeIndex > engineScriptIndex, "the engine loads before the animal profile runtime");

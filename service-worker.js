@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v2.0.1-v2.0.1-release-1-canine-markings-1";
+const CACHE_NAME = "herdharbor-shell-v2.0.1-v2.0.1-release-1-canine-reproduction-1";
 const REQUIRED_SHELL = [
   "./",
   "./index.html",
@@ -39,7 +39,10 @@ const REQUIRED_SHELL = [
   "./canine-identity-v2.0.1.js?v=2",
   "./canine-lineage-v2.0.1.js?v=1",
   "./canine-pedigree-print-v2.0.1.js?v=1",
-  "./animal-profile-runtime-v1.8.3.js?v=5",
+  "./canine-reproductive-core-v2.0.1.js?v=1",
+  "./canine-reproductive-workspace-v2.0.1.js?v=1",
+  "./canine-reproductive-workspace-v2.0.1.css?v=1",
+  "./animal-profile-runtime-v1.8.3.js?v=6",
   "./breeding-litter-runtime-v1.8.3.js?v=1",
   "./task-automation-v1.8.3.js?v=1",
   "./health-runtime-v1.8.3.js?v=1",
