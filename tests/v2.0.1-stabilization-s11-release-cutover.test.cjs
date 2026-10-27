@@ -45,7 +45,7 @@ test("2.0.1 HTML queries match the service-worker preload identities",()=>{
   "canine-pedigree-print-v2.0.1.js?v=1",
   "canine-reproductive-core-v2.0.1.js?v=1",
   "canine-whelping-workspace-v2.0.1.js?v=2",
-  "canine-reproductive-workspace-v2.0.1.js?v=1",
+  "canine-reproductive-workspace-v2.0.1.js?v=2",
   "canine-reproductive-workspace-v2.0.1.css?v=1"
  ];
  for(const asset of important){
