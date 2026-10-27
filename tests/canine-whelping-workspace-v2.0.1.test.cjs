@@ -235,3 +235,81 @@ test("the shared Manage Litter workspace records dog weights and health without 
   assert.ok(health.created.every(row=>row.type==="Veterinary visit"&&row.followUpDate===""));
   assert.equal(health.state.tasks.some(row=>/deworm|vaccin|treatment schedule/i.test(row.title)), false);
 });
+
+test("editing a whelping retains completed canine reminders instead of reopening them", () => {
+  const first = record();
+  const prior = structuredClone(first.state);
+  const tasks = prior.tasks.filter(row => row.sourceType === "canine_whelping");
+  assert.equal(tasks.length, 2);
+  for (const task of tasks) {
+    task.completed = true;
+    task.completedAt = "2026-07-07T15:00:00.000Z";
+  }
+  const edited = record(prior);
+  assert.equal(edited.valid, true);
+  for (const task of edited.state.tasks.filter(row => row.sourceType === "canine_whelping")) {
+    assert.equal(task.completed, true, "unchanged, breeder-completed task must remain done");
+    assert.equal(task.completedAt, "2026-07-07T15:00:00.000Z");
+  }
+  assert.deepEqual(first.state.litters[0].offspringIds, edited.state.litters[0].offspringIds);
+});
+
+test("rescheduling one follow-up reopens only that task and preserves manually completed weaning", () => {
+  const first = record();
+  const saved = structuredClone(first.state);
+  const tasks = saved.tasks.filter(row => row.sourceType === "canine_whelping");
+  for (const task of tasks) {
+    task.completed = true;
+    task.completedAt = "2026-07-07T15:00:00.000Z";
+  }
+  const updated = record(saved, { followUpDate: "2026-07-09" });
+  assert.equal(updated.valid, true);
+  const followUp = updated.state.tasks.find(row => row.reminderType === "custom_breeder_reminder");
+  const weaning = updated.state.tasks.find(row => row.reminderType === "owner_scheduled_weaning");
+  assert.equal(followUp.dueDate, "2026-07-09");
+  assert.equal(followUp.completed, false, "changed follow-up is a new pending task");
+  assert.equal(weaning.completed, true, "unmodified manually completed reminder stays completed");
+});
+
+test("removed breeder reminder can be restored without confusing it with manual completion", () => {
+  const first = record();
+  const removed = record(first.state, { followUpDate: "", followUpTitle: "" });
+  assert.equal(removed.valid, true);
+  const task = removed.state.tasks.find(row => row.reminderType === "custom_breeder_reminder");
+  assert.equal(task.completed, true);
+  assert.equal(task.completionReason, "canine_reminder_removed");
+  const restored = record(removed.state);
+  assert.equal(restored.valid, true);
+  const reopened = restored.state.tasks.find(row => row.reminderType === "custom_breeder_reminder");
+  assert.equal(reopened.completed, false);
+  assert.equal(reopened.completionReason, undefined);
+  assert.equal(restored.state.tasks.filter(row => row.reminderType === "custom_breeder_reminder").length, 1);
+});
+
+test("reopening an existing litter loads saved follow-up details, switching plans clears stale data", () => {
+  const first = record();
+  const form = Whelp.whelpingFormValues(first.state, "plan-1");
+  assert.equal(form.followUpTitle, "Call the clinic");
+  assert.equal(form.followUpDate, "2026-07-06");
+  assert.equal(form.expectedWeanDate, "2026-09-01");
+  assert.equal(form.bornAlive, "3");
+  const fresh = Whelp.whelpingFormValues(first.state, "plan-2");
+  assert.equal(fresh.birthDate, "");
+  assert.equal(fresh.followUpTitle, "");
+  assert.equal(fresh.followUpDate, "");
+  assert.equal(fresh.bornAlive, "0");
+  assert.equal(fresh.neonatalLosses, "0");
+  assert.equal(fresh.method, "unknown");
+  const removed = record(first.state, { followUpDate: "", followUpTitle: "" });
+  assert.equal(Whelp.whelpingFormValues(removed.state, "plan-1").followUpDate, "");
+});
+
+test("whelping corrections preserve existing generic litter follow-up dates", () => {
+  const first = record();
+  const saved = structuredClone(first.state);
+  saved.litters[0].followUpDate = "2026-07-20";
+  const corrected = record(saved, { litterName: "Corrected litter" });
+  assert.equal(corrected.valid, true);
+  assert.equal(corrected.state.litters[0].followUpDate, "2026-07-20");
+  assert.equal(corrected.state.litters[0].litterName, "Corrected litter");
+});
