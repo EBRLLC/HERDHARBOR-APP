@@ -173,9 +173,9 @@
     return `<article class="hh-canine-repro-plan"><div class="hh-canine-repro-card-head"><div><h4>${esc(sireLabel(state, plan.sireRef))}</h4><span class="muted">${esc(plan.status || "planned")} · ${eventRows.length} completed mating event${eventRows.length === 1 ? "" : "s"}</span></div></div>
       <p>${esc(paternity)}</p><p class="muted">Planned: ${(plan.plannedDates || []).map(esc).join(", ") || "No date set"} · ${esc(plan.plannedMethod || "")}</p>
       ${estimate ? `<p class="hh-canine-repro-estimate"><strong>Expected whelping window:</strong> ${esc(estimate.startDate)}–${esc(estimate.endDate)}<br><span class="muted">${esc(estimate.method === "vet_expected" ? "Veterinarian-provided expected dates" : estimate.method === "manual" ? "Manually entered expected dates" : estimate.method === "vet_confirmed_ovulation" ? "Estimate based on veterinarian-confirmed ovulation" : "Broad estimate from recorded mating dates")}. ${estimate.method === "manual" || estimate.method === "vet_expected" ? "Saved date range." : "Estimate only."}</span></p>` : ""}
-      <form data-form="plan-cancel" data-plan="${esc(plan.id)}" class="hh-canine-repro-inline"><h5>Plan status</h5><p class="muted">Cancellation retains this plan and its recorded events for the history.</p><button type="submit" class="button button-ghost" ${plan.status === "cancelled" ? "disabled" : ""}>Cancel this breeding plan</button></form>
-      <form data-form="event" data-plan="${esc(plan.id)}" class="hh-canine-repro-inline"><h5>Record a completed mating</h5><label>Date<input type="date" name="date" required></label><label>Time<input type="time" name="time"></label><label>Sire for this event<select name="sireRef">${sireChoices(state, `${plan.sireRef.type}:${plan.sireRef.id}`)}</select></label><label>Actual method<select name="method"><option value="natural_service">Natural service</option><option value="artificial_insemination">Artificial insemination</option><option value="other">Other</option></select></label><label>Outcome<input name="outcome" maxlength="300"></label><label>Veterinary involvement<input name="veterinaryInvolvement" maxlength="500"></label><label>Event notes<textarea name="notes" maxlength="2000"></textarea></label><button type="submit" class="button button-ghost">Add mating event</button></form>
-      <form data-form="pregnancy" data-plan="${esc(plan.id)}" class="hh-canine-repro-inline"><h5>Pregnancy assessment and dating</h5><label>Status<select name="status">${Core().PREGNANCY_STATUSES.map(status => `<option value="${status}" ${status === pregnancy.status ? "selected" : ""}>${status.replace(/_/g, " ")}</option>`).join("")}</select></label><label>Assessment date<input type="date" name="assessmentDate" value="${esc(pregnancy.assessmentDate || "")}"></label><label>Veterinarian<input name="veterinarian" maxlength="200" value="${esc(pregnancy.veterinarian || "")}"></label><label><input type="checkbox" name="veterinarianConfirmed" ${pregnancy.veterinarianConfirmed ? "checked" : ""}>Veterinarian confirmed pregnancy</label><label>Veterinarian expected start<input type="date" name="vetStart" value="${esc(pregnancy.estimate?.method === "vet_expected" ? pregnancy.estimate.startDate : "")}"></label><label>Veterinarian expected end<input type="date" name="vetEnd" value="${esc(pregnancy.estimate?.method === "vet_expected" ? pregnancy.estimate.endDate : "")}"></label><label>Manual estimate start<input type="date" name="manualStart" value="${esc(pregnancy.estimate?.method === "manual" ? pregnancy.estimate.startDate : "")}"></label><label>Manual estimate end<input type="date" name="manualEnd" value="${esc(pregnancy.estimate?.method === "manual" ? pregnancy.estimate.endDate : "")}"></label><label>Pregnancy notes<textarea name="notes" maxlength="3000">${esc(pregnancy.notes || "")}</textarea></label><button type="submit" class="button button-ghost">Save assessment and estimate</button></form>
+      <form data-form="plan-cancel" data-plan="${esc(plan.id)}" class="hh-canine-repro-inline"><h5>Plan status</h5><p class="muted">Cancellation retains this plan and its recorded events for the history.</p><button type="submit" class="button button-ghost" ${["cancelled", "whelped"].includes(plan.status) ? "disabled" : ""}>Cancel this breeding plan</button></form>
+      <form data-form="event" data-plan="${esc(plan.id)}" class="hh-canine-repro-inline"><h5>Record a completed mating</h5><label>Date<input type="date" name="date" required></label><label>Time<input type="time" name="time"></label><label>Sire for this event<select name="sireRef">${sireChoices(state, `${plan.sireRef.type}:${plan.sireRef.id}`)}</select></label><label>Actual method<select name="method"><option value="natural_service">Natural service</option><option value="artificial_insemination">Artificial insemination</option><option value="other">Other</option></select></label><label>Outcome<input name="outcome" maxlength="300"></label><label>Veterinary involvement<input name="veterinaryInvolvement" maxlength="500"></label><label>Event notes<textarea name="notes" maxlength="2000"></textarea></label><button type="submit" class="button button-ghost" ${plan.status === "whelped" ? "disabled" : ""}>Add mating event</button></form>
+      <form data-form="pregnancy" data-plan="${esc(plan.id)}" class="hh-canine-repro-inline"><h5>Pregnancy assessment and dating</h5><label>Status<select name="status">${Core().PREGNANCY_STATUSES.map(status => `<option value="${status}" ${status === pregnancy.status ? "selected" : ""}>${status.replace(/_/g, " ")}</option>`).join("")}</select></label><label>Assessment date<input type="date" name="assessmentDate" value="${esc(pregnancy.assessmentDate || "")}"></label><label>Veterinarian<input name="veterinarian" maxlength="200" value="${esc(pregnancy.veterinarian || "")}"></label><label><input type="checkbox" name="veterinarianConfirmed" ${pregnancy.veterinarianConfirmed ? "checked" : ""}>Veterinarian confirmed pregnancy</label><label>Veterinarian expected start<input type="date" name="vetStart" value="${esc(pregnancy.estimate?.method === "vet_expected" ? pregnancy.estimate.startDate : "")}"></label><label>Veterinarian expected end<input type="date" name="vetEnd" value="${esc(pregnancy.estimate?.method === "vet_expected" ? pregnancy.estimate.endDate : "")}"></label><label>Manual estimate start<input type="date" name="manualStart" value="${esc(pregnancy.estimate?.method === "manual" ? pregnancy.estimate.startDate : "")}"></label><label>Manual estimate end<input type="date" name="manualEnd" value="${esc(pregnancy.estimate?.method === "manual" ? pregnancy.estimate.endDate : "")}"></label><label>Pregnancy notes<textarea name="notes" maxlength="3000">${esc(pregnancy.notes || "")}</textarea></label><button type="submit" class="button button-ghost" ${plan.status === "whelped" ? "disabled" : ""}>Save assessment and estimate</button></form>
       <ol class="hh-canine-repro-event-list">${eventRows.map(event => `<li><strong>${esc(event.date)}${event.time ? ` ${esc(event.time)}` : ""}</strong> · ${esc(sireLabel(state, event.sireRef))} · ${esc(event.method)}${event.outcome ? ` · ${esc(event.outcome)}` : ""}${event.notes ? `<span>${esc(event.notes)}</span>` : ""}</li>`).join("")}</ol></article>`;
   }
 
@@ -289,7 +289,7 @@
       upsertTask(next, plan.id, "planned-breeding", plan.plannedDates.slice().sort()[0] || "", "Planned canine breeding", active.animalId, now);
     } else if (kind === "event") {
       const plan = next.canineBreedingPlans.find(row => row.id === dataset.plan && row.damId === active.animalId);
-      if (!plan || plan.status === "cancelled") return false;
+      if (!plan || ["cancelled", "whelped"].includes(plan.status)) { toast("A cancelled or already-whelped breeding plan cannot be changed from this form. Its historical records are retained.", "error"); return false; }
       if (!Core().isDateOnly(values.date) || (values.time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(values.time)) || !Core().METHODS.includes(values.method)) { toast("Enter a valid mating date, optional time, and method.", "error"); return false; }
       const ref = parseSireRef(values.sireRef);
       const checkedRef = Core().validateSireReference(ref, { animals: next.animals, externalStuds: next.canineExternalStuds, accountId: active.sessionOwner });
@@ -304,7 +304,7 @@
       }
     } else if (kind === "pregnancy") {
       const plan = next.canineBreedingPlans.find(row => row.id === dataset.plan && row.damId === active.animalId);
-      if (!plan || plan.status === "cancelled") return false;
+      if (!plan || ["cancelled", "whelped"].includes(plan.status)) { toast("A cancelled or already-whelped breeding plan cannot be changed from this form. Its historical records are retained.", "error"); return false; }
       const status = Core().mayConfirmPregnancy(values.status, { veterinarianConfirmed: values.veterinarianConfirmed === "on" });
       if (!status.valid) { toast(status.issues.join(" "), "error"); return false; }
       if (values.assessmentDate && !Core().isDateOnly(values.assessmentDate)) { toast("Enter a valid pregnancy assessment date.", "error"); return false; }
@@ -326,7 +326,7 @@
       else upsertTask(next, plan.id, "whelping-window", "", "Prepare for expected whelping window", active.animalId, now);
     } else if (kind === "plan-cancel") {
       const plan = next.canineBreedingPlans.find(row => row.id === dataset.plan && row.damId === active.animalId);
-      if (!plan || plan.status === "cancelled") return false;
+      if (!plan || ["cancelled", "whelped"].includes(plan.status)) { toast("A cancelled or already-whelped breeding plan cannot be changed from this form. Its historical records are retained.", "error"); return false; }
       plan.status = "cancelled";
       plan.updatedAt = now;
       next.tasks.filter(task => task.sourceType === "canine_breeding_plan" && task.sourceRecordId === plan.id && !task.completed)
@@ -345,11 +345,15 @@
     const taskId = `task_canine_${planId}_${kind}`;
     const row = state.tasks.find(task => task.id === taskId);
     if (!dueDate) {
-      if (row && !row.completed) Object.assign(row, { completed: true, completedAt: now, updatedAt: now });
+      if (row && !row.completed) Object.assign(row, { completed: true, completedAt: now, updatedAt: now, completionReason: "canine_reminder_removed" });
       return;
     }
     const values = { id: taskId, title, category: "Canine breeding", dueDate, animalId, sourceType: "canine_breeding_plan", sourceRecordId: planId, reminderType: kind };
-    if (row) Object.assign(row, values, { completed: false, updatedAt: now });
+    if (row) {
+      const rescheduled = row.dueDate !== values.dueDate || row.title !== values.title || row.completionReason === "canine_reminder_removed";
+      Object.assign(row, values, { completed: rescheduled ? false : row.completed === true, updatedAt: now });
+      if (rescheduled) { row.completedAt = ""; delete row.completionReason; }
+    }
     else state.tasks.push({ ...values, recurrence: "None", recurrenceDays: "", completed: false, createdAt: now, updatedAt: now });
   }
 
