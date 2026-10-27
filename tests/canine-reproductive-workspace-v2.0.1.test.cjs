@@ -329,6 +329,7 @@ test("unchanged completed pregnancy reminders stay completed; changed dates reop
       status: "awaiting_assessment", assessmentDate: "2026-05-10",
       manualStart, manualEnd: manualStart, notes: "Breeder-entered"
     }, { plan: "plan-1" });
+    env.workspace.openForAnimal("dam");
     env.document.overlay.forms = [form];
     env.workspace.openForAnimal("dam");
     env.document.overlay.forms = [form];
