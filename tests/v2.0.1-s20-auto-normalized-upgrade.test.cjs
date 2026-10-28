@@ -261,7 +261,7 @@ test("S20 release assets wire the coordinator before cloud bridge and keep its P
   const cloud=fs.readFileSync(path.join(root,"herdharbor-cloud.js"),"utf8");
   const pwa=fs.readFileSync(path.join(root,"pwa.js"),"utf8");
   assert.ok(html.indexOf("cloud-normalized-upgrade-v2.0.1.js?v=2") < html.indexOf("herdharbor-cloud.js?v=49"));
-  assert.match(sw,/herdharbor-shell-v2\.0\.1-v2\.0\.2-integration-s22-canine-1/);
+  assert.match(sw,/herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-s22-canine-1/);
   assert.match(sw,/cloud-normalized-upgrade-v2\.0\.1\.js\?v=2/);
   assert.match(cloud,/normalizedUpgradeS20 = window\.HerdHarborNormalizedUpgradeS20\.create/);
   assert.match(cloud,/rolloutHydrationPromise\.then\(\(decision\) => \{/);

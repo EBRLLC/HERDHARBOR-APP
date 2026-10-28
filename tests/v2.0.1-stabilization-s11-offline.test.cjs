@@ -43,7 +43,7 @@ test("release identities agree across app, PWA, manifest and Android package",()
   assert.match(read("pwa.js"),/const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.1"/);
   assert.match(index,/manifest\.json\?v=2\.0\.1/);
   assert.match(index,/herdharbor-build\.js\?v=2\.0\.1/);
-  assert.match(sw,/const CACHE_NAME = "herdharbor-shell-v2\.0\.1-v2\.0\.2-integration-s22-canine-1"/);
+  assert.match(sw,/const CACHE_NAME = "herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-s22-canine-1"/);
 });
 test("cold PWA install preloads every versioned canine script and style",async()=>{
   const canine=getCanineAssets();

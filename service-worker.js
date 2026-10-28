@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v2.0.1-v2.0.2-integration-s22-canine-1";
+const CACHE_NAME = "herdharbor-shell-v2.0.1-v2.0.1-release-1-s22-canine-1";
 const REQUIRED_SHELL = [
   "./",
   "./index.html",
