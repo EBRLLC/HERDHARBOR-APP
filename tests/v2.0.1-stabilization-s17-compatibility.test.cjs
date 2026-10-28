@@ -79,11 +79,9 @@ function workerHarness(initial,{rescan}={}){
   const listeners={},messages=[],deleted=[];let skips=0,scans=0;
   const scope={self:{location:{href:'https://app.herdharbor.com/service-worker.js',origin:'https://app.herdharbor.com'},registration:{scope:'https://app.herdharbor.com/'},
     clients:{matchAll:async()=>++scans>1&&rescan?rescan():initial,claim:async()=>{}},skipWaiting:()=>skips++,addEventListener:(name,handler)=>listeners[name]=handler},
-    caches:{keys:async()=>[],delete:async key=>deleted.push(key)},URL,MessageChannel,Promise,console,// MessageChannel responses are queued by Node's event loop; a 15 ms mock
-    // timeout sporadically won the race under concurrent CI workloads, even
-    // when the reply was ready. Keep the real worker logic, just avoid a
-    // test-only scheduling deadline smaller than routine runner jitter.
-    setTimeout:fn=>setTimeout(fn,250),clearTimeout};
+    caches:{keys:async()=>[],delete:async key=>deleted.push(key)},URL,MessageChannel,// Use a realistic reply window: a 15 ms test-only timeout races a
+    // genuine MessageChannel reply on loaded CI runners, producing false skips.
+    Promise,console,setTimeout:fn=>setTimeout(fn,500),clearTimeout};
   vm.runInNewContext(read('service-worker.js'),scope);
   return {listeners,messages,deleted,skips:()=>skips,async request(type='HH_CHECK_UPDATE_READINESS',id='app'){
     let pending;listeners.message({data:{type},source:{id,postMessage:m=>messages.push(m)},waitUntil:p=>pending=p});await pending;

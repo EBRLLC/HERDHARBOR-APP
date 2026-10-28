@@ -50,6 +50,7 @@
       schemaVersion: 1,
       callName: trim(obj.callName, 160),
       registeredName: trim(obj.registeredName, 200),
+      coatMarkings: trim(obj.coatMarkings, 160),
       preferredRegistrationId: trim(obj.preferredRegistrationId, 90),
       registrations: regs.map(registration).filter(r => r.registry || r.number),
       titles: titles.map(title).filter(t => t.abbreviation || t.fullLabel)
@@ -172,6 +173,7 @@
     return validate({
       callName: panel.querySelector('[data-canine-call-name]')?.value,
       registeredName: panel.querySelector('[data-canine-registered-name]')?.value,
+      coatMarkings: form?.querySelector?.('[data-hh-canine-markings-value]')?.value ?? previous?.coatMarkings ?? "",
       registrations, titles, preferredRegistrationId: registrations.some(row=>row.id===previous?.preferredRegistrationId) ? previous.preferredRegistrationId : ""
     });
   }

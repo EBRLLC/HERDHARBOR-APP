@@ -56,7 +56,11 @@
       const patch={};
       ["name","color","tattoo","tag"].forEach(key=>{if(Object.prototype.hasOwnProperty.call(update,key))patch[key]=clean(update[key]);});
       if(Object.prototype.hasOwnProperty.call(update,"sex")&&["Unknown","Female","Male"].includes(clean(update.sex)))patch.sex=clean(update.sex);
-      const differs=Object.entries(patch).some(([key,value])=>String(animal[key]||"")!==String(value));
+      if(lower(animal.species)==="dog"){
+        if(Object.prototype.hasOwnProperty.call(update,"breed"))patch.breed=clean(update.breed);
+        if(Object.prototype.hasOwnProperty.call(update,"coatMarkings"))patch.canine={...(animal.canine||{}),coatMarkings:clean(update.coatMarkings).slice(0,160)};
+      }
+      const differs=Object.entries(patch).some(([key,value])=>key==="canine"?String(value.coatMarkings||"")!==String(animal.canine?.coatMarkings||""):String(animal[key]||"")!==String(value));
       if(!differs)return animal;
       changed+=1;
       return{...animal,...patch,updatedAt:now};
@@ -169,10 +173,12 @@
   }
 
   function commit(next,message){
-    const ok=root.HerdHarborApp?.commitState?.(next,message);
+    let ok=false;
+    try{ok=root.HerdHarborApp?.commitState?.(next,message)===true;}catch{ok=false;}
+    if(!ok){root.HerdHarborApp?.toast?.("The local save failed. Existing litter and puppy records were retained; retry when this device can save.","error");render();return false;}
     root.HerdHarborApp?.refresh?.();
     try{root.dispatchEvent?.(new root.CustomEvent("herdharbor:litter-workspace-changed",{detail:{litterId:activeLitterId}}));}catch{}
-    render();return ok;
+    render();return true;
   }
 
   function sexOptions(value,species){
@@ -188,7 +194,7 @@
     const dam=animalById(state,litter.damId);const species=dam?.species||offspring[0]?.species||"";
     return`<form id="hh-bw-offspring-form"><div class="hh-bw-toolbar"><div><strong>Bulk offspring editor</strong><span>Update the whole litter once. Pedigree and birth links stay untouched.</span></div><button class="button button-primary button-small" type="submit">Save litter updates</button></div>
       ${lossTargetId?(()=>{const target=animalById(state,lossTargetId);return target?`<section class="hh-bw-loss-box"><div><strong>Record loss — ${esc(target.name||"Offspring")}</strong><span>This keeps the animal profile for breeding statistics and history.</span></div><label>Date<input type="date" name="lossDate" value="${today()}"></label><label>Reason<input name="lossReason" placeholder="Reason or observation" required></label><div class="hh-bw-loss-actions"><button type="button" class="button button-ghost button-small" data-hh-bw-loss-cancel>Cancel</button><button type="button" class="button button-danger button-small" data-hh-bw-loss-confirm>Record loss</button></div></section>`:"";})():""}
-      <div class="hh-bw-offspring-grid">${offspring.map(animal=>`<article class="hh-bw-offspring-card" data-animal-id="${esc(animal.id)}"><div class="hh-bw-card-head"><div><strong>${esc(animal.name||"Offspring")}</strong><small>${esc(animal.status||"Active")}</small></div><button type="button" class="button button-ghost button-small" data-hh-bw-open-animal="${esc(animal.id)}">Profile</button></div><div class="hh-bw-fields"><label>Name<input data-hh-bw-field="name" value="${esc(animal.name||"")}"></label><label>Sex<select data-hh-bw-field="sex">${sexOptions(animal.sex,species)}</select></label><label>Color<input data-hh-bw-field="color" value="${esc(animal.color||"")}"></label><label>Tattoo<input data-hh-bw-field="tattoo" value="${esc(animal.tattoo||"")}"></label><label>Tag / ID<input data-hh-bw-field="tag" value="${esc(animal.tag||"")}"></label></div>${lower(animal.status)!=="deceased"?`<button type="button" class="hh-bw-text-danger" data-hh-bw-loss="${esc(animal.id)}">Record loss</button>`:`<span class="hh-bw-deceased-note">Loss recorded ${animal.deathDate?`· ${esc(fmt(animal.deathDate))}`:""}</span>`}</article>`).join("")}</div></form>`;
+      <div class="hh-bw-offspring-grid">${offspring.map(animal=>`<article class="hh-bw-offspring-card" data-animal-id="${esc(animal.id)}"><div class="hh-bw-card-head"><div><strong>${esc(animal.name||"Offspring")}</strong><small>${esc(animal.status||"Active")}</small></div><button type="button" class="button button-ghost button-small" data-hh-bw-open-animal="${esc(animal.id)}">Profile</button></div><div class="hh-bw-fields"><label>Name<input data-hh-bw-field="name" value="${esc(animal.name||"")}"></label><label>Sex<select data-hh-bw-field="sex">${sexOptions(animal.sex,species)}</select></label>${lower(species)==="dog"?`<label>Breed<input data-hh-bw-field="breed" value="${esc(animal.breed||"")}"></label>`:""}<label>Color<input data-hh-bw-field="color" value="${esc(animal.color||"")}"></label>${lower(species)==="dog"?`<label>Dog markings<input data-hh-bw-field="coatMarkings" value="${esc(animal.canine?.coatMarkings||"")}" maxlength="160"></label>`:""}<label>Tattoo<input data-hh-bw-field="tattoo" value="${esc(animal.tattoo||"")}"></label><label>Tag / ID<input data-hh-bw-field="tag" value="${esc(animal.tag||"")}"></label></div>${lower(animal.status)!=="deceased"?`<button type="button" class="hh-bw-text-danger" data-hh-bw-loss="${esc(animal.id)}">Record loss</button>`:`<span class="hh-bw-deceased-note">Loss recorded ${animal.deathDate?`· ${esc(fmt(animal.deathDate))}`:""}</span>`}</article>`).join("")}</div></form>`;
   }
 
   function weightsPanel(state,litter,offspring){

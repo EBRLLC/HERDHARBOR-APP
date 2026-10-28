@@ -21,8 +21,7 @@
     Goat: { gestationDays: 150, checkDays: 30, prepareDaysBefore: 14, weanDays: 60, birthLabel: "kidding", prepareLabel: "Prepare kidding area" },
     Sheep: { gestationDays: 147, checkDays: 30, prepareDaysBefore: 14, weanDays: 60, birthLabel: "lambing", prepareLabel: "Prepare lambing area" },
     Pig: { gestationDays: 114, checkDays: 28, prepareDaysBefore: 7, weanDays: 56, birthLabel: "farrowing", prepareLabel: "Prepare farrowing area" },
-    Horse: { gestationDays: 340, checkDays: 45, prepareDaysBefore: 21, weanDays: 180, birthLabel: "foaling", prepareLabel: "Prepare foaling area" },
-    Dog: { gestationDays: 63, checkDays: 28, prepareDaysBefore: 7, weanDays: 56, birthLabel: "whelping", prepareLabel: "Prepare whelping area" }
+    Horse: { gestationDays: 340, checkDays: 45, prepareDaysBefore: 21, weanDays: 180, birthLabel: "foaling", prepareLabel: "Prepare foaling area" }
   };
   
 
@@ -48,6 +47,37 @@
     const stateNow = () => deps.getState() || {};
     const confirm = typeof root?.confirm === "function" ? root.confirm.bind(root) : () => false;
     let breedingViewYear = "";
+
+    function snapshotState() {
+      try { return JSON.parse(JSON.stringify(stateNow())); }
+      catch { return null; }
+    }
+
+    function restoreState(snapshot) {
+      if (!snapshot) return false;
+      const live = stateNow();
+      for (const key of Object.keys(live)) delete live[key];
+      Object.assign(live, snapshot);
+      return true;
+    }
+
+    function persistMutation(message, mutate) {
+      const snapshot = snapshotState();
+      if (!snapshot) {
+        toast("This change could not be prepared safely. No records were changed.", "error");
+        return false;
+      }
+      try {
+        mutate();
+        if (saveState(message) === true) return true;
+      } catch (error) {
+        restoreState(snapshot);
+        toast(error?.message || "This change could not be saved. No records were changed.", "error");
+        return false;
+      }
+      restoreState(snapshot);
+      return false;
+    }
 
     function normalizeBreedingStatus(value = "") {
       const aliases = { Confirmed: "Confirmed pregnant", "Due Soon": "Due soon", Completed: "Delivered" };
@@ -136,7 +166,7 @@
       const rule = GESTATION_RULES[female?.species];
       const inactive = ["Not pregnant", "Delivered", "Cancelled"].includes(status);
       const checkDone = inactive || (breeding.pregnancyCheckStatus && breeding.pregnancyCheckStatus !== "Not checked");
-      const birthLabel = rule?.birthLabel || "birth";
+      const birthLabel = rule?.birthLabel || (female?.species === "Dog" ? "whelping" : "birth");
       const definitions = [
         {
           id: workflowTaskId("breeding", breeding.id, "pregnancy-check"),
@@ -152,7 +182,7 @@
         },
         {
           id: workflowTaskId("breeding", breeding.id, "prepare-birth"),
-          title: `${rule?.prepareLabel || "Prepare birth area"}: ${animalName(breeding.femaleId)}`,
+          title: `${rule?.prepareLabel || (female?.species === "Dog" ? "Prepare whelping area" : "Prepare birth area")}: ${animalName(breeding.femaleId)}`,
           category: female?.species === "Rabbit" ? "Nest box" : "Breeding",
           dueDate: breeding.nestBoxDate || breeding.preparationDate || "",
           animalId: breeding.femaleId || "",
@@ -463,14 +493,16 @@
         if (data.pregnancyCheckStatus === "Negative") data.status = "Not pregnant";
         const now = new Date().toISOString();
         let saved = breeding;
-        if (id) Object.assign(saved, data, { updatedAt: now });
-        else {
-          saved = { id: uid("breeding"), ...data, createdAt: now, updatedAt: now };
-          stateNow().breedings.push(saved);
-        }
-        syncBreedingReminders(saved, { now });
-        recordActivity(`${id ? "Updated" : "Added"} breeding: ${animalName(data.femaleId)} × ${animalName(data.maleId)}.`, "breeding");
-        saveState(id ? "Breeding and reminders updated." : "Breeding and reminders added.");
+        const committed = persistMutation(id ? "Breeding and reminders updated." : "Breeding and reminders added.", () => {
+          if (id) Object.assign(saved, data, { updatedAt: now });
+          else {
+            saved = { id: uid("breeding"), ...data, createdAt: now, updatedAt: now };
+            stateNow().breedings.push(saved);
+          }
+          syncBreedingReminders(saved, { now });
+          recordActivity(`${id ? "Updated" : "Added"} breeding: ${animalName(data.femaleId)} × ${animalName(data.maleId)}.`, "breeding");
+        });
+        if (!committed) return;
         closeModal();
         renderCurrentView();
       });
@@ -478,15 +510,17 @@
       $("#delete-breeding")?.addEventListener("click", () => {
         if (!confirm("Delete this breeding record? Linked birth records and offspring will stay available, and its automatic reminders will be closed.")) return;
         const now = new Date().toISOString();
-        completeWorkflowTasks("breeding", id, now);
-        stateNow().litters.forEach((litter) => {
-          if (litter.breedingId === id) {
-            litter.breedingId = "";
-            litter.updatedAt = now;
-          }
+        const committed = persistMutation("Breeding deleted; linked births and offspring were preserved.", () => {
+          completeWorkflowTasks("breeding", id, now);
+          stateNow().litters.forEach((litter) => {
+            if (litter.breedingId === id) {
+              litter.breedingId = "";
+              litter.updatedAt = now;
+            }
+          });
+          stateNow().breedings = stateNow().breedings.filter((record) => record.id !== id);
         });
-        stateNow().breedings = stateNow().breedings.filter((record) => record.id !== id);
-        saveState("Breeding deleted; linked births and offspring were preserved.");
+        if (!committed) return;
         closeModal();
         renderCurrentView();
       });
@@ -546,17 +580,24 @@
             <div class="meta">${Number(litter.weaned || 0)} weaned · ${Number(litter.lostBeforeWeaning || 0)} lost · ${offspringCount} offspring record${offspringCount === 1 ? "" : "s"}</div>
             <div class="meta">Expected weaning: ${formatDate(litter.expectedWeanDate)}</div>
             <div class="animal-card-footer">
-              <button class="button button-ghost button-small" data-create-offspring="${litter.id}">${offspringCount ? "Add offspring" : "Create offspring"}</button>
+              <button class="button button-ghost button-small" data-create-offspring="${litter.id}">${litter.canineWhelping ? "Manage puppies" : offspringCount ? "Add offspring" : "Create offspring"}</button>
               <button class="button button-ghost button-small" data-edit-litter="${litter.id}">Edit</button>
             </div>
           </article>`;
         }).join("")}</div>` : emptyState("No births recorded.", "Record the result of a breeding when offspring arrive.")}`;
   
       $("#add-litter").addEventListener("click", () => openLitterForm());
-      $('[data-edit-litter]', $("#view-litters")).forEach((button) =>
+      $$('[data-edit-litter]', $("#view-litters")).forEach((button) =>
         button.addEventListener("click", () => openLitterForm(button.dataset.editLitter)));
-      $('[data-create-offspring]', $("#view-litters")).forEach((button) =>
-        button.addEventListener("click", () => openOffspringCreator(button.dataset.createOffspring)));
+      $$('[data-create-offspring]', $("#view-litters")).forEach((button) =>
+        button.addEventListener("click", () => {
+          const litter = stateNow().litters.find((record) => record.id === button.dataset.createOffspring);
+          if (litter?.canineWhelping) {
+            root.HerdHarborCanineWhelpingWorkspace?.openForAnimal?.(litter.damId);
+            return;
+          }
+          openOffspringCreator(button.dataset.createOffspring);
+        }));
     }
   
     function openLitterForm(id = "", breedingId = "") {
@@ -645,62 +686,70 @@
         const linkedRecord = stateNow().breedings.find((record) => record.id === data.breedingId);
         if (linkedRecord && (linkedRecord.femaleId !== data.damId || linkedRecord.maleId !== data.sireId)) return toast("The selected parents must match the linked breeding record.", "error");
         if (data.breedingId && stateNow().litters.some((record) => record.id !== id && record.breedingId === data.breedingId)) return toast("That breeding already has a linked birth record. Edit the existing birth instead.", "error");
+        const canineWhelpingRecord = id ? stateNow().litters.find((record) => record.id === id && record.canineWhelping) : null;
+        if (canineWhelpingRecord && (data.damId !== canineWhelpingRecord.damId || data.sireId !== (canineWhelpingRecord.sireId || "") || data.birthDate !== canineWhelpingRecord.birthDate || (data.breedingId || "") !== (canineWhelpingRecord.breedingId || "")))
+          return toast("Canine whelping identity and date are linked to the reproductive plan. Update them in Whelpings & puppies; this form can still correct counts and notes.", "error");
         const maximumWeaned = birthLiveRemaining(data);
         if (maximumWeaned < 0) return toast("Fostered-out young and losses cannot exceed the live young available.", "error");
         if (Number(data.weaned) > Math.max(0, maximumWeaned)) return toast("Weaned cannot exceed the live young remaining after foster-outs and losses.", "error");
         const now = new Date().toISOString();
         let saved = litter;
-        if (id) Object.assign(saved, data, { updatedAt: now, offspringIds: Array.isArray(saved.offspringIds) ? saved.offspringIds : [] });
-        else {
-          saved = {
-            id: data.breedingId ? birthRecordIdForBreeding(data.breedingId) : uid("litter"),
-            ...data,
-            offspringIds: [],
-            createdAt: now,
-            updatedAt: now
-          };
-          stateNow().litters.push(saved);
-        }
-        if (previousBreedingId && previousBreedingId !== data.breedingId) {
-          const previousBreeding = stateNow().breedings.find((record) => record.id === previousBreedingId);
-          if (previousBreeding?.litterId === saved.id) {
-            previousBreeding.litterId = "";
-            previousBreeding.updatedAt = now;
+        const committed = persistMutation(id ? "Birth, outcomes, and reminders updated." : "Birth recorded and reminders updated.", () => {
+          if (id) Object.assign(saved, data, { updatedAt: now, offspringIds: Array.isArray(saved.offspringIds) ? saved.offspringIds : [] });
+          else {
+            saved = {
+              id: data.breedingId ? birthRecordIdForBreeding(data.breedingId) : uid("litter"),
+              ...data,
+              offspringIds: [],
+              createdAt: now,
+              updatedAt: now
+            };
+            stateNow().litters.push(saved);
           }
-        }
-        if (data.breedingId) {
-          const breeding = stateNow().breedings.find((record) => record.id === data.breedingId);
-          if (breeding) {
-            breeding.status = "Delivered";
-            breeding.litterId = saved.id;
-            breeding.updatedAt = now;
-            syncBreedingReminders(breeding, { now });
+          if (previousBreedingId && previousBreedingId !== data.breedingId) {
+            const previousBreeding = stateNow().breedings.find((record) => record.id === previousBreedingId);
+            if (previousBreeding?.litterId === saved.id) {
+              previousBreeding.litterId = "";
+              previousBreeding.updatedAt = now;
+            }
           }
-        }
-        syncBirthReminder(saved, { now });
-        recordActivity(`${id ? "Updated" : "Recorded"} birth for ${animalName(data.damId)}.`, "litter");
-        saveState(id ? "Birth, outcomes, and reminders updated." : "Birth recorded and reminders updated.");
+          if (data.breedingId) {
+            const breeding = stateNow().breedings.find((record) => record.id === data.breedingId);
+            if (breeding) {
+              breeding.status = "Delivered";
+              breeding.litterId = saved.id;
+              breeding.updatedAt = now;
+              syncBreedingReminders(breeding, { now });
+            }
+          }
+          syncBirthReminder(saved, { now });
+          recordActivity(`${id ? "Updated" : "Recorded"} birth for ${animalName(data.damId)}.`, "litter");
+        });
+        if (!committed) return;
         closeModal();
         renderCurrentView();
       });
       $("#delete-litter")?.addEventListener("click", () => {
+        if (litter.canineWhelping) return toast("Canine whelping records cannot be deleted from the generic litter form. Keep the linked record and correct its totals or status instead.", "error");
         const existingOffspring = offspringForLitter(litter);
         if (!confirm(`Delete this birth record? ${existingOffspring.length ? `${existingOffspring.length} linked offspring record${existingOffspring.length === 1 ? "" : "s"} will stay in Animals.` : "Any linked offspring will stay in Animals."}`)) return;
         const now = new Date().toISOString();
-        completeWorkflowTasks("birth", id, now);
-        stateNow().breedings.forEach((record) => {
-          if (record.litterId === id) {
-            record.litterId = "";
-            record.updatedAt = now;
-          }
+        const committed = persistMutation("Birth record deleted; offspring animal records were preserved.", () => {
+          completeWorkflowTasks("birth", id, now);
+          stateNow().breedings.forEach((record) => {
+            if (record.litterId === id) {
+              record.litterId = "";
+              record.updatedAt = now;
+            }
+          });
+          stateNow().animals.forEach((animal) => {
+            if (animal.sourceBirthId !== id) return;
+            animal.sourceBirthId = "";
+            animal.updatedAt = now;
+          });
+          stateNow().litters = stateNow().litters.filter((record) => record.id !== id);
         });
-        stateNow().animals.forEach((animal) => {
-          if (animal.sourceBirthId !== id) return;
-          animal.sourceBirthId = "";
-          animal.updatedAt = now;
-        });
-        stateNow().litters = stateNow().litters.filter((record) => record.id !== id);
-        saveState("Birth record deleted; offspring animal records were preserved.");
+        if (!committed) return;
         closeModal();
         renderCurrentView();
       });
@@ -795,12 +844,18 @@
           created.push(animal);
         }
         if (!allowsAnimalTransition(stateNow().animals, [...stateNow().animals, ...created])) return;
-        stateNow().animals.push(...created);
-        litter.offspringIds = [...new Set([...(Array.isArray(litter.offspringIds) ? litter.offspringIds : []), ...created.map((animal) => animal.id)])];
-        litter.updatedAt = now;
+        const committed = persistMutation(`${created.length} offspring record${created.length === 1 ? "" : "s"} created with parent and pedigree links.`, () => {
+          const currentLitter = stateNow().litters.find((row) => row.id === litterId);
+          if (!currentLitter) throw new Error("This litter was removed before offspring could be saved.");
+          const conflicting = created.some((animal) => stateNow().animals.some((row) => row.id === animal.id));
+          if (conflicting) throw new Error("Some offspring records already exist. Reopen the litter to reconcile before retrying.");
+          stateNow().animals.push(...created);
+          currentLitter.offspringIds = [...new Set([...(Array.isArray(currentLitter.offspringIds) ? currentLitter.offspringIds : []), ...created.map((animal) => animal.id)])];
+          currentLitter.updatedAt = now;
+          recordActivity(`Created ${created.length} offspring animal record${created.length === 1 ? "" : "s"} from ${animalName(currentLitter.damId)}'s birth record.`, "animal");
+        });
+        if (!committed) return;
         rememberBreed(dam?.species || sire?.species || "", breed);
-        recordActivity(`Created ${created.length} offspring animal record${created.length === 1 ? "" : "s"} from ${animalName(litter.damId)}'s birth record.`, "animal");
-        saveState(`${created.length} offspring record${created.length === 1 ? "" : "s"} created with parent and pedigree links.`);
         closeModal();
         renderCurrentView();
       });
@@ -810,6 +865,7 @@
 
     return Object.freeze({
       VERSION,
+      persistMutation,
       normalizeBreedingStatus,
       breedingSchedule,
       offspringAnimalId,

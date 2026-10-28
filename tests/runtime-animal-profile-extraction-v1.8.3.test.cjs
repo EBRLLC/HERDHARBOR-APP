@@ -150,10 +150,10 @@ test("Phase 3 modern profile and shared animal-action router remain authoritativ
 test("shell loads and caches extracted runtime before application composition", () => {
   const html = read("index.html");
   const worker = read("service-worker.js");
-  const domainIndex = html.indexOf("animal-profile-runtime-v1.8.3.js?v=2");
-  const compositionIndex = html.indexOf("herdharbor-app-runtime.js?v=5");
+  const domainIndex = html.indexOf("animal-profile-runtime-v1.8.3.js?v=7");
+  const compositionIndex = html.indexOf("herdharbor-app-runtime.js?v=6");
   assert.ok(domainIndex >= 0 && compositionIndex > domainIndex);
-  assert.match(worker, /\.\/animal-profile-runtime-v1\.8\.3\.js\?v=2/);
+  assert.match(worker, /\.\/animal-profile-runtime-v1\.8\.3\.js\?v=7/);
   assert.match(worker, /"\/animal-profile-runtime-v1\.8\.3\.js"/);
 });
 
@@ -216,4 +216,48 @@ test("animal search still covers identity breed breeder location and color field
   for (const search of ["daisy", "t-22", "44", "blue", "reg123", "d44", "bluegrass", "holland", "barn a", "harlequin"]) {
     assert.equal(api.filterAnimals(state.animals, { search, species: "", sex: "", status: "" }).length, 1, search);
   }
+});
+
+test("Add Animal opens without crashing when there are no cattle ear-tag fields mounted", () => {
+  // Reproduces the 2.0.1 production regression: single-node $() returned null
+  // and refreshCattleEarFields tried to call null.forEach() on form open.
+  const state = { settings: { species: ["Rabbit", "Dog", "Cattle"] }, animals: [], activity: [] };
+  const api = extracted.create(stubDeps(state));
+  assert.equal(api.openAnimalForm(), true);
+  assert.equal(state.animals.length, 0, "opening the form must not mutate records");
+});
+
+test("Add Animal handles all cattle ear-tag fields as a collection when species changes", () => {
+  const state = { settings: { species: ["Rabbit", "Dog", "Cattle"] }, animals: [], activity: [] };
+  const first = { hidden: false, classList: { toggle(name, hidden) { assert.equal(name, "hidden"); first.isHidden = hidden; } } };
+  const second = { hidden: false, classList: { toggle(name, hidden) { assert.equal(name, "hidden"); second.isHidden = hidden; } } };
+  const tagInputs = new Map([[first, { disabled: false }], [second, { disabled: false }]]);
+  const handlers = {};
+  const species = { value: "Rabbit", addEventListener(event, handler) { handlers[event] = handler; } };
+  const deps = stubDeps(state);
+  deps.$ = (selector, context) => {
+    if (selector === '[name="species"]') return species;
+    if (selector === "input") return tagInputs.get(context) || null;
+    return null;
+  };
+  deps.$$ = (selector) => selector === ".cattle-ear-field" ? [first, second] : [];
+  const api = extracted.create(deps);
+  assert.equal(api.openAnimalForm(), true);
+  assert.equal(first.hidden, true);
+  assert.equal(second.hidden, true);
+  assert.equal(tagInputs.get(first).disabled, true);
+  assert.equal(tagInputs.get(second).disabled, true);
+  assert.equal(typeof handlers.change, "function", "species selector must update the form");
+  species.value = "Cattle";
+  handlers.change();
+  assert.equal(first.hidden, false);
+  assert.equal(second.hidden, false);
+  assert.equal(tagInputs.get(first).disabled, false);
+  assert.equal(tagInputs.get(second).disabled, false);
+  species.value = "Dog";
+  handlers.change();
+  assert.equal(first.hidden, true);
+  assert.equal(second.hidden, true);
+  assert.equal(tagInputs.get(first).disabled, true);
+  assert.equal(tagInputs.get(second).disabled, true);
 });

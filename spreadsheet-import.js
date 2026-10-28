@@ -1760,9 +1760,9 @@
     const duplicateKeys = new Set((context.breedings || []).map((record) =>
       [record.femaleId, record.maleId, record.breedingDate].join("|")
     ));
-    const gestationDays = { Rabbit: 31, Cattle: 283, Goat: 150, Sheep: 147, Pig: 114, Horse: 340, Dog: 63 };
-    const checkDays = { Rabbit: 14, Cattle: 30, Goat: 30, Sheep: 30, Pig: 28, Horse: 45, Dog: 28 };
-    const preparationDays = { Rabbit: 3, Cattle: 14, Goat: 14, Sheep: 14, Pig: 7, Horse: 21, Dog: 7 };
+    const gestationDays = { Rabbit: 31, Cattle: 283, Goat: 150, Sheep: 147, Pig: 114, Horse: 340 };
+    const checkDays = { Rabbit: 14, Cattle: 30, Goat: 30, Sheep: 30, Pig: 28, Horse: 45 };
+    const preparationDays = { Rabbit: 3, Cattle: 14, Goat: 14, Sheep: 14, Pig: 7, Horse: 21 };
 
     sheets.forEach(({ worksheet, header, map }) => {
       worksheetRows(worksheet, header).forEach((row) => {

@@ -98,14 +98,17 @@ test("essential startup identity agrees with the bounded offline shell, while do
   const requiredAssets = [...required.matchAll(/"\.\/([^"]+)"/g)].map((match) => match[1]);
   assert.ok(requiredAssets.length <= 50, "do not grow the required PWA install beyond the bounded operational shell");
   for (const asset of [
-    "cloud-normalized-upgrade-v2.0.1.js?v=2",
-    "herdharbor-cloud.js?v=48",
-    "cloud-sync-rollout-runtime-v1.8.4.js?v=6",
-    "herdharbor-app-runtime.js?v=5",
-    "animal-profile-runtime-v1.8.3.js?v=2",
+    "herdharbor-cloud.js?v=39",
+    "cloud-sync-rollout-runtime-v1.8.4.js?v=5",
+    "herdharbor-app-runtime.js?v=6",
+    "animal-profile-runtime-v1.8.3.js?v=7",
     "health-runtime-v1.8.3.js?v=1",
-    "task-runtime-v1.8.3.js?v=1",
-    "canine-lineage-v2.0.1.js?v=1"
+    "task-runtime-v1.8.3.js?v=2",
+    "canine-lineage-v2.0.1.js?v=1",
+    "canine-reproductive-core-v2.0.1.js?v=1",
+    "canine-whelping-workspace-v2.0.1.js?v=2",
+    "canine-reproductive-workspace-v2.0.1.js?v=2",
+    "canine-reproductive-workspace-v2.0.1.css?v=1"
   ]) {
     assert.ok(requiredAssets.includes(asset), "missing or stale core offline URL: " + asset);
     assert.ok(index.includes(asset), "browser must request the same core revision: " + asset);
@@ -126,7 +129,10 @@ test("a missing operational task, health, animal, cloud or canine module aborts 
     "health-runtime-v1.8.3.js",
     "animal-profile-runtime-v1.8.3.js",
     "herdharbor-cloud.js",
-    "canine-lineage-v2.0.1.js"
+    "canine-lineage-v2.0.1.js",
+    "canine-reproductive-core-v2.0.1.js",
+    "canine-reproductive-workspace-v2.0.1.js",
+    "canine-whelping-workspace-v2.0.1.js"
   ]) {
     const install = installWithFailure(asset);
     await assert.rejects(install.pending, (error) => {

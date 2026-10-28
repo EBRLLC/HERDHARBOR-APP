@@ -15,6 +15,10 @@
   const TASK_RECURRENCE_OPTIONS = [
     "None", "Daily", "Weekly", "Every 2 weeks", "Monthly", "Custom"
   ];
+
+  function taskCategoryOptions(task = {}) {
+    return [...new Set([...TASK_CATEGORIES, String(task.category || "").trim()].filter(Boolean))];
+  }
   
 
   function create(deps = {}) {
@@ -451,7 +455,7 @@
         <form id="task-form">
           <div class="form-grid two">
             ${field("Task title", "title", task.title, true)}
-            ${selectField("Category", "category", TASK_CATEGORIES, task.category || "Other", true)}
+            ${selectField("Category", "category", taskCategoryOptions(task), task.category || "Other", true)}
             ${field("Due date", "dueDate", task.dueDate || todayISO(), true, "date")}
             ${selectAnimalField("Linked animal", "animalId", task.animalId)}
             ${selectField("Repeat", "recurrence", TASK_RECURRENCE_OPTIONS, recurrence, true)}
@@ -563,6 +567,7 @@
     VERSION,
     TASK_CATEGORIES,
     TASK_RECURRENCE_OPTIONS,
+    taskCategoryOptions,
     create
   });
 });
