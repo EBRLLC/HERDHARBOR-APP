@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v2.0.1-v2.0.1-release-1-canine-reproduction-4";
+const CACHE_NAME = "herdharbor-shell-v2.0.1-v2.0.1-release-1-s22-canine-1";
 const REQUIRED_SHELL = [
   "./",
   "./index.html",
@@ -21,13 +21,14 @@ const REQUIRED_SHELL = [
   "./herdharbor-access-cache-v1.6.1.js?v=1.7.1",
   "./cloud-legacy-baseline-v1.8.4.js?v=1",
   "./account-boundary-core-v1.8.4.js?v=4",
-  "./herdharbor-cloud.js?v=39",
-  "./cloud-sync-rollout-runtime-v1.8.4.js?v=5",
+  "./cloud-normalized-upgrade-v2.0.1.js?v=2",
+  "./herdharbor-cloud.js?v=49",
+  "./cloud-sync-rollout-runtime-v1.8.4.js?v=7",
   "./local-cache-v2-v1.8.2.js?v=1",
   "./cloud-sync-v2-flow-v1.8.2.js?v=1",
   "./cloud-sync-v2-diagnostics-v1.8.2.js?v=1",
   "./herdharbor-admin-v1.6.1.js?v=2",
-  "./pwa.js?v=36",
+  "./pwa.js?v=39",
   "./pedigree-engine-v2.0.0.js?v=1",
   "./pedigree-customization-v2.0.0.css?v=1",
   "./pedigree-customization-v2.0.0.js?v=1",
@@ -171,6 +172,7 @@ const NETWORK_FIRST_PATHS = [
   "/manifest.json",
   "/herdharbor-build.js",
   "/herdharbor-cloud.js",
+  "/cloud-normalized-upgrade-v2.0.1.js",
   "/account-boundary-core-v1.8.4.js",
   "/herdharbor-monitoring-config.js",
   "/herdharbor-release-v1.6.1.js",

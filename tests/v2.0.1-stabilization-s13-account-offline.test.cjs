@@ -265,6 +265,6 @@ test("changed browser scripts share a coherent offline release revision", () => 
   const html = read("index.html"), worker = read("service-worker.js");
   for (const source of [html, worker]) {
     assert.ok(source.includes("herdharbor-optional-tools.js?v=4"));
-    assert.ok(source.includes("cloud-sync-rollout-runtime-v1.8.4.js?v=5"));
+    assert.ok(source.includes("cloud-sync-rollout-runtime-v1.8.4.js?v=7"));
   }
 });
