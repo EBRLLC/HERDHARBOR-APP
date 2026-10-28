@@ -43,17 +43,17 @@ test("release identities agree across app, PWA, manifest and Android package",()
   assert.match(read("pwa.js"),/const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.1"/);
   assert.match(index,/manifest\.json\?v=2\.0\.1/);
   assert.match(index,/herdharbor-build\.js\?v=2\.0\.1/);
-  assert.match(sw,/const CACHE_NAME = "herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-canine-markings-1"/);
+  assert.match(sw,/const CACHE_NAME = "herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-canine-reproduction-4"/);
 });
 test("cold PWA install preloads every versioned canine script and style",async()=>{
   const canine=getCanineAssets();
-  assert.equal(canine.length,5);
+  assert.equal(canine.length,9);
   const h=installHarness();await h.pending;
   for(const asset of canine){
     const expected="https://app.herdharbor.com/"+asset;
     assert.ok(h.added.includes(expected),asset);
   }
-  assert.deepEqual(h.opened,["herdharbor-shell-v2.0.1-v2.0.1-release-1-canine-markings-1"]);
+  assert.deepEqual(h.opened,["herdharbor-shell-v2.0.1-v2.0.1-release-1-canine-reproduction-4"]);
 });
 test("incomplete canine asset download rejects PWA shell installation",async()=>{
   const h=installHarness("canine-pedigree-print-v2.0.1.js");

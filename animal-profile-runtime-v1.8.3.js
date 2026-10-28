@@ -491,6 +491,7 @@
             <p class="eyebrow">${esc(animal.species || "Animal")} profile</p>
             <h2 style="margin-bottom:5px">${esc(animal.name)}</h2>
             <p class="muted">${esc([animal.earTagNumber ? `Ear tag ${animal.earTagNumber}` : animal.tag || animal.tattoo, animal.earTagColor, animal.breed, animal.color].filter(Boolean).join(" · ") || "No additional identity details")}</p>
+            ${animal.ownershipScope === "external_reference" ? '<p class="muted"><strong>External pedigree reference only · not owned by this account</strong></p>' : ""}
           </div>
         </div>
         <div class="detail-grid">
@@ -527,7 +528,8 @@
           <button class="button button-ghost" id="detail-analytics">View analytics</button>
           <button class="button button-ghost" id="detail-print-qr">Print QR card</button>
           ${isCanine ?
-            '<button class="button button-ghost" id="detail-print-canine">Print Dog Pedigree</button>' :
+            '<button class="button button-ghost" id="detail-print-canine">Print Dog Pedigree</button>' +
+            (String(animal.sex || "").toLowerCase() === "female" ? '<button class="button button-primary" id="detail-canine-repro">Heat cycles & breeding</button>' : '') :
             '<button class="button button-ghost" id="detail-import-pedigree">Build / import pedigree</button>' +
             '<button class="button button-ghost" id="detail-birth-certificate">Create Birth Certificate</button>' +
             '<button class="button button-ghost" id="detail-compare-pedigree">Linebreeding Coefficient</button>'}
@@ -551,6 +553,7 @@
       );
       $("#detail-print-qr")?.addEventListener("click", (event) => openAnimalQrCardForm(id, event.currentTarget));
       $("#detail-print-canine")?.addEventListener("click", () => root.HerdHarborCaninePedigreePrint?.openForAnimal?.(id));
+      $("#detail-canine-repro")?.addEventListener("click", () => root.HerdHarborCanineReproductiveWorkspace?.openForAnimal?.(id));
       $("#detail-import-pedigree")?.addEventListener("click", () => deps.openPedigreeImport(id));
       $("#detail-birth-certificate")?.addEventListener("click", () => deps.openBirthCertificateForm(id));
       $("#detail-compare-pedigree")?.addEventListener("click", () => {
