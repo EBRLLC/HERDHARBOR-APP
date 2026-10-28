@@ -227,11 +227,11 @@ test("S18 normalized-primary confirms successful non-skipped writes only with em
 test("S18 cloud and service worker refer to the same new content revision", () => {
   const html = read("index.html");
   const worker = read("service-worker.js");
-  assert.match(html, /cloud-sync-rollout-runtime-v1\.8\.4\.js\?v=6/);
-  assert.match(worker, /cloud-sync-rollout-runtime-v1\.8\.4\.js\?v=6/);
-  assert.match(html, /herdharbor-cloud\.js\?v=48/);
-  assert.match(worker, /herdharbor-cloud\.js\?v=48/);
-  assert.match(worker, /herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1-s22-3/);
+  assert.match(html, /cloud-sync-rollout-runtime-v1\.8\.4\.js\?v=7/);
+  assert.match(worker, /cloud-sync-rollout-runtime-v1\.8\.4\.js\?v=7/);
+  assert.match(html, /herdharbor-cloud\.js\?v=49/);
+  assert.match(worker, /herdharbor-cloud\.js\?v=49/);
+  assert.match(worker, /herdharbor-shell-v2\.0\.1-v2\.0\.2-integration-s22-canine-1/);
 });
 
 test("S18 leftover legacy dirty work remains visible to PWA after normalized promotion", () => {
