@@ -53,7 +53,7 @@ test("cold PWA install preloads every versioned canine script and style",async()
     const expected="https://app.herdharbor.com/"+asset;
     assert.ok(h.added.includes(expected),asset);
   }
-  assert.deepEqual(h.opened,["herdharbor-shell-v2.0.1-v2.0.1-release-1-canine-reproduction-4"]);
+  assert.deepEqual(h.opened,["herdharbor-shell-v2.0.1-v2.0.1-release-1-s22-canine-1"]);
 });
 test("incomplete canine asset download rejects PWA shell installation",async()=>{
   const h=installHarness("canine-pedigree-print-v2.0.1.js");
