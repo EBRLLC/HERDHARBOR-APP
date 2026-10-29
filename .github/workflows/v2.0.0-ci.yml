@@ -16,6 +16,21 @@ jobs:
   web-regression:
     name: Web, security and regression
     runs-on: ubuntu-latest
+    # Ephemeral CI-only database; no Supabase project, tenant data or paid branch.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic-ci-only
+          POSTGRES_DB: herdharbor_s19_restore
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d herdharbor_s19_restore"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,6 +54,21 @@ jobs:
         run: npm run test:state-integrity
       - name: Validate integrated 2.0.2 cloud, canine and optional-AI review contract
         run: npm run test:v2.0.2-review
+      - name: Verify independent encrypted archive restoration in disposable PostgreSQL 17
+        env:
+          HH_RECOVERY_POSTGRES_CI: "1"
+          PGHOST: 127.0.0.1
+          PGPORT: "5432"
+          PGUSER: postgres
+          PGPASSWORD: synthetic-ci-only
+          PGDATABASE: herdharbor_s19_restore
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends postgresql-client
+          fi
+          pg_isready -h 127.0.0.1 -U postgres -d herdharbor_s19_restore
+          node --test tests/v2.0.2-postgres-restore.test.cjs
       - name: Run complete HerdHarbor regression suite in UTC
         env:
           TZ: UTC
