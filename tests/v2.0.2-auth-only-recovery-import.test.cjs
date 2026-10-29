@@ -15,18 +15,19 @@ async function simulate({
   consent=true, backup=true, matchingOwner=true, profile=true, changed=false,
   rpcError=null, rpcData={ok:true}, remoteMatches=true, baseline=true,
   accountSwitch=false, rpcThrows=false, readThrows=false, baselineThrows=false,
-  refreshThrows=false, refreshResult=true
+  refreshThrows=false, refreshResult=true, refreshInvalidatesToken=false, refreshChangesAccount=false
 }={}){
   const userId="owner-A";
   const state={profile:profile?{operationName:"Synthetic breeder"}:{},animals:[{id:"rabbit-1"}]};
   const raw=JSON.stringify(state);
   const calls={rpc:0,backup:0,reads:0,baseline:0,refresh:0,messages:[],versions:[],confirmed:0};
   let currentRaw=raw;
+  let tokenCurrent=true;
   let authOnlyRecoveryOwner=userId;
   const deps={
     session:{user:{id:userId}},
     captureAccountOperation:()=>({owner:userId}),
-    isAccountOperationCurrent:()=>!accountSwitch,
+    isAccountOperationCurrent:()=>!accountSwitch && tokenCurrent,
     activeStateRaw:()=>currentRaw,
     safeParse:value=>{try{return JSON.parse(value)}catch{return null}},
     hasConfiguredOperationProfile:s=>!!s?.profile?.operationName,
@@ -42,7 +43,13 @@ async function simulate({
     safeStorageSet:(...args)=>{calls.versions.push(args);return true},
     versionKey:id=>"version_"+id,
     updateAuthOnlyRecoveryControls:()=>{},
-    refreshAuthenticatedAccountData:async()=>{calls.refresh++;if(refreshThrows)throw new Error("refresh interrupted");return refreshResult}
+    refreshAuthenticatedAccountData:async()=>{
+      calls.refresh++;
+      if(refreshThrows)throw new Error("refresh interrupted");
+      if(refreshInvalidatesToken)tokenCurrent=false;
+      if(refreshChangesAccount)deps.session.user.id="owner-B";
+      return refreshResult;
+    }
   };
   const exec=new Function("deps",`
     return async function execute() {
@@ -131,4 +138,16 @@ test("failed post-claim auth refresh does not claim migration readiness",async()
     assert.equal(result,false);assert.equal(calls.refresh,1);
     assert.match(calls.messages.at(-1)[0],/refresh/i);
   }
+});
+
+test("successful same-owner refresh deliberately invalidates old fence but completes import",async()=>{
+  const {result,calls}=await simulate({refreshInvalidatesToken:true});
+  assert.equal(result,true);
+  assert.equal(calls.refresh,1);
+  assert.equal(calls.baseline,1);
+});
+test("account change during refresh cannot claim successful import",async()=>{
+  const {result,calls}=await simulate({refreshInvalidatesToken:true,refreshChangesAccount:true});
+  assert.equal(result,false);
+  assert.equal(calls.refresh,1);
 });
