@@ -262,6 +262,8 @@ jobs:
           HH_STAGE_USER_A_PASSWORD: ${{ secrets.HH_STAGE_USER_A_PASSWORD }}
           HH_STAGE_USER_B_EMAIL: ${{ secrets.HH_STAGE_USER_B_EMAIL }}
           HH_STAGE_USER_B_PASSWORD: ${{ secrets.HH_STAGE_USER_B_PASSWORD }}
+          HH_STAGE_USER_C_EMAIL: ${{ secrets.HH_STAGE_USER_C_EMAIL }}
+          HH_STAGE_USER_C_PASSWORD: ${{ secrets.HH_STAGE_USER_C_PASSWORD }}
         run: |
           npm ci --no-audit --no-fund
           node scripts/v2.0.2-staging-auth-http-acceptance.mjs
