@@ -3608,7 +3608,11 @@
     // Preserve dirty/outbox flags. On refresh, new edits enter CAS/merge paths.
     try {
       const refreshed = await refreshAuthenticatedAccountData();
-      if (!stillCurrent()) return false;
+      // The refresh function intentionally invalidates the old account
+      // boundary token, even for a successful same-owner refresh. Do not
+      // misreport a verified import as failed merely because that old token
+      // became stale. Verify the refreshed authenticated user instead.
+      if (String(session?.user?.id || "") !== userId) return false;
       if (refreshed !== true) {
         setSyncState("Recovery copy verified, but account refresh remains pending. Retry Refresh account data; keep the local backup.", "error");
         return false;
@@ -4417,7 +4421,10 @@
     });
     if (!boundary.ok) return false;
 
-    await hydrateUserData(data.session);
+    const hydrated = await hydrateUserData(data.session);
+    if (String(session?.user?.id || "") !== userId) return false;
+    // A protected recovery stop is not a successful completed refresh.
+    if (hydrated?.ok === false || hydrated?.stale === true) return false;
     return true;
   }
 
