@@ -171,12 +171,15 @@
             <label class="cattle-ear-field ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "hidden"}" ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "hidden"}>Ear tag number<input name="earTagNumber" value="${esc(animal.earTagNumber || "")}" ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "disabled"}></label>
             <label class="cattle-ear-field ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "hidden"}" ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "hidden"}>Ear tag color<input name="earTagColor" value="${esc(animal.earTagColor || "")}" placeholder="Blue, yellow, green, or other" ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "disabled"}></label>
             ${deps.breedComboboxField(animal.species || "Rabbit", animal.breed)}
+            ${root.HerdHarborCanineBreeds?.pickerHtml?.(animal.species || "Rabbit", animal.breed) || ""}
             ${deps.selectField("Sex", "sex", ["Female", "Male", "Unknown"], animal.sex || "Unknown", true)}
             ${deps.field("Date of birth", "dob", animal.dob, false, "date")}
             ${deps.field("Birth weight (optional)", "birthWeight", animal.birthWeight, false, "number")}
             ${deps.selectField("Birth weight unit", "birthWeightUnit", ["lb", "lb+oz", "oz", "kg", "g"], animal.birthWeightUnit || "lb")}
             <label class="birth-weight-ounces ${animal.birthWeightUnit === "lb+oz" ? "" : "hidden"}">Birth weight ounces<input name="birthWeightOunces" type="number" min="0" max="15.9" step="0.1" value="${esc(animal.birthWeightOunces || "")}" ${animal.birthWeightUnit === "lb+oz" ? "" : "disabled"}></label>
             ${deps.field("Color or variety", "color", animal.color)}
+            ${root.HerdHarborCanineBreeds?.coatColorHtml?.(animal.species || "Rabbit", animal.breed, animal.color) || ""}
+            ${root.HerdHarborCanineBreeds?.markingsHtml?.(animal.species || "Rabbit", animal.breed, animal.canine?.coatMarkings || "") || ""}
             ${deps.field("Location / cage / pen", "location", animal.location)}
             ${deps.selectField("Status", "status", ["Active", "Breeding", "Growing", "Retired", "For Sale", "Reserved", "Sold", "Deceased", "Archived", "Ancestor Only"], animal.status || "Active", true)}
             ${deps.field("Asking price (optional)", "askingPrice", animal.askingPrice, false, "number")}
@@ -201,7 +204,7 @@
       const birthWeightUnit = $('[name="birthWeightUnit"]', $("#animal-form"));
       const birthWeightOunces = $(".birth-weight-ounces", $("#animal-form"));
       const breedList = $("#animal-breed-options");
-      const cattleEarFields = $(".cattle-ear-field", $("#animal-form"));
+      const cattleEarFields = $$(".cattle-ear-field", $("#animal-form"));
       const refreshCanineParents = () => canineLineage?.filterParentSelectors?.($("#animal-form"),stateNow().animals || [],{...animal,species:speciesSelect?.value||animal.species,id:id||animal.id||""});
 
       const refreshBreedOptions = () => {
@@ -249,6 +252,9 @@
         refreshCanineParents();
       });
       canineIdentity?.bindEditor?.($("#animal-form"), speciesSelect);
+      root.HerdHarborCanineBreeds?.bindPicker?.($("#animal-form"), speciesSelect);
+      root.HerdHarborCanineBreeds?.bindCoatColor?.($("#animal-form"), speciesSelect);
+      root.HerdHarborCanineBreeds?.bindMarkings?.($("#animal-form"), speciesSelect);
       refreshBreedOptions();
       refreshCattleEarFields();
       refreshCanineParents();
@@ -485,6 +491,7 @@
             <p class="eyebrow">${esc(animal.species || "Animal")} profile</p>
             <h2 style="margin-bottom:5px">${esc(animal.name)}</h2>
             <p class="muted">${esc([animal.earTagNumber ? `Ear tag ${animal.earTagNumber}` : animal.tag || animal.tattoo, animal.earTagColor, animal.breed, animal.color].filter(Boolean).join(" · ") || "No additional identity details")}</p>
+            ${animal.ownershipScope === "external_reference" ? '<p class="muted"><strong>External pedigree reference only · not owned by this account</strong></p>' : ""}
           </div>
         </div>
         <div class="detail-grid">
@@ -521,7 +528,8 @@
           <button class="button button-ghost" id="detail-analytics">View analytics</button>
           <button class="button button-ghost" id="detail-print-qr">Print QR card</button>
           ${isCanine ?
-            '<button class="button button-ghost" id="detail-print-canine">Print Dog Pedigree</button>' :
+            '<button class="button button-ghost" id="detail-print-canine">Print Dog Pedigree</button>' +
+            (String(animal.sex || "").toLowerCase() === "female" ? '<button class="button button-primary" id="detail-canine-repro">Heat cycles & breeding</button>' : '') :
             '<button class="button button-ghost" id="detail-import-pedigree">Build / import pedigree</button>' +
             '<button class="button button-ghost" id="detail-birth-certificate">Create Birth Certificate</button>' +
             '<button class="button button-ghost" id="detail-compare-pedigree">Linebreeding Coefficient</button>'}
@@ -545,6 +553,7 @@
       );
       $("#detail-print-qr")?.addEventListener("click", (event) => openAnimalQrCardForm(id, event.currentTarget));
       $("#detail-print-canine")?.addEventListener("click", () => root.HerdHarborCaninePedigreePrint?.openForAnimal?.(id));
+      $("#detail-canine-repro")?.addEventListener("click", () => root.HerdHarborCanineReproductiveWorkspace?.openForAnimal?.(id));
       $("#detail-import-pedigree")?.addEventListener("click", () => deps.openPedigreeImport(id));
       $("#detail-birth-certificate")?.addEventListener("click", () => deps.openBirthCertificateForm(id));
       $("#detail-compare-pedigree")?.addEventListener("click", () => {

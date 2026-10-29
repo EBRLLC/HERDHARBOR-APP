@@ -1,6 +1,6 @@
 # HerdHarbor 2.0.1 — Release Candidate Notes
 
-**Status: code in stacked pull requests, not released.** Stable production remains **2.0.0** until explicitly reviewed, merged and deployed. Date: 2026-10-16.
+**Status: release-isolated draft [PR #505](https://github.com/EBRLLC/HERDHARBOR-APP/pull/505), NOT MERGE-READY and not deployed.** Stable production remains **2.0.0** until explicitly accepted, merged and deployed. Updated 2026-10-26.
 
 ## Canine breeder-managed foundation
 - Dog registration profile includes call name, registered name, breed lookup, repeatable registry/number entries and separate prefix/suffix title records.
@@ -18,10 +18,12 @@
 - Photo review no longer defaults an unknown species to Rabbit; voice drafts require a resolved animal/date. Both retain canonical form handoffs and explicit review/cancel steps.
 - Voice is browser-local speech parsing, not a cloud voice model; no AI setup is required for core app use.
 
+**Separate release contract:** the normalized-primary cloud cutover, server migration tooling, automatic account conversion and new-account normalized-only signup are excluded from 2.0.1 and staged independently in [2.0.2 PR #506](https://github.com/EBRLLC/HERDHARBOR-APP/pull/506). Existing cloud sync and controlled dual-write remain intact. Historical combined PR #497 is closed unmerged.
+
 ## Deliberate exclusions
 No AKC document issuance or official AKC branding/verification, registry API scraping, canine breeding/whelping, new native push infrastructure, Marketplace changes, subscription pricing changes, Business account release, Android/iOS store publication, new persistence authority, RLS migration or sync cohort expansion.
 
 ## Evidence and approvals
-The stacked PR CI suite tests the full inherited 2.0.0 regression in UTC and America/New_York, Android unsigned release review, 2.0.1 model/UI static contracts and canonical serialization. These checks are required but **not proof of human device/print acceptance**.
+The #505 release-candidate CI suite tests the full inherited 2.0.0 regression in UTC and America/New_York, Android unsigned release review, 2.0.1 model/UI static contracts and canonical serialization. These checks are required but **not proof of human device/print acceptance**.
 
-Before a public rollout, the owner must review the final PR stack, complete the device and cross-account acceptance checklist in `docs/2.0.1-owner-acceptance.md`, approve the access matrix and any operational feature flags, and verify the exact release commit after merge. Until then, 2.0.1 must not be described as live.
+Before merging #505, the owner must approve a controlled save/close/reopen upgrade from older 2.0.0 PWAs (see the unresolved S17-B-LEGACY-TIMER), verify GitHub Pages Source = GitHub Actions and complete the device and cross-account acceptance checklist in `docs/2.0.1-owner-acceptance.md`, approve the access matrix and any operational feature flags, and verify the exact release commit after merge. Until then, 2.0.1 must not be described as live.

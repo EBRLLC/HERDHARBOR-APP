@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v2.0.1-v2.0.1-release-1-s22-3";
+const CACHE_NAME = "herdharbor-shell-v2.0.2-normalized-cloud-1";
 const REQUIRED_SHELL = [
   "./",
   "./index.html",
@@ -29,26 +29,29 @@ const REQUIRED_SHELL = [
   "./cloud-sync-v2-diagnostics-v1.8.2.js?v=1",
   "./herdharbor-admin-v1.6.1.js?v=2",
   "./pwa.js?v=38",
-  "./market-analytics-v1.6.5.js?v=1.7.1",
   "./pedigree-engine-v2.0.0.js?v=1",
   "./pedigree-customization-v2.0.0.css?v=1",
   "./pedigree-customization-v2.0.0.js?v=1",
   "./pedigree-renderer-v2.0.0.css?v=1",
   "./pedigree-renderer-v2.0.0.js?v=1",
   "./canine-identity-v2.0.1.css?v=1",
-  "./canine-breeds-v2.0.1.js?v=1",
-  "./canine-identity-v2.0.1.js?v=1",
+  "./canine-breeds-v2.0.1.js?v=4",
+  "./canine-identity-v2.0.1.js?v=2",
   "./canine-lineage-v2.0.1.js?v=1",
   "./canine-pedigree-print-v2.0.1.js?v=1",
-  "./animal-profile-runtime-v1.8.3.js?v=2",
+  "./canine-reproductive-core-v2.0.1.js?v=1",
+  "./canine-whelping-workspace-v2.0.1.js?v=2",
+  "./canine-reproductive-workspace-v2.0.1.js?v=2",
+  "./canine-reproductive-workspace-v2.0.1.css?v=1",
+  "./animal-profile-runtime-v1.8.3.js?v=7",
   "./breeding-litter-runtime-v1.8.3.js?v=1",
   "./task-automation-v1.8.3.js?v=1",
   "./health-runtime-v1.8.3.js?v=1",
-  "./task-runtime-v1.8.3.js?v=1",
+  "./task-runtime-v1.8.3.js?v=2",
   "./sales-customer-runtime-v1.8.3.js?v=1",
   "./production-reporting-runtime-v1.8.3.js?v=1",
   "./mobile-capture-v1.8.3.js?v=1",
-  "./herdharbor-app-runtime.js?v=5",
+  "./herdharbor-app-runtime.js?v=6",
   "./herdharbor-monitoring-config.js?v=2.0.1",
   "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.1"
 ];
@@ -62,6 +65,7 @@ const RUNTIME_CACHE_PATHS = [
   "./standard-pedigree-print-v2.0.0.js?v=1",
   "./document-export-v2.0.0.js?v=1",
   "./pedigree-documents-v2.0.0.js?v=1",
+  "./market-analytics-v1.6.5.js?v=1.7.1",
   "./animal-documents-v2.0.0.css?v=1",
   "./birth-certificate-v2.0.0.css?v=1",
   "./pedigree-documents-v2.0.0.css?v=1",

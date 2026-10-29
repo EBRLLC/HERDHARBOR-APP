@@ -1,0 +1,20 @@
+.hh-canine-repro-overlay{position:fixed;inset:0;z-index:10020;background:rgba(15,23,42,.72);display:grid;place-items:center;padding:clamp(8px,3vw,28px);overflow:auto}
+.hh-canine-repro-panel{background:var(--surface,#fff);color:var(--text,#18212f);border-radius:18px;width:min(1120px,100%);max-height:min(94vh,1100px);overflow:auto;padding:clamp(16px,3vw,30px);box-shadow:0 24px 80px rgba(0,0,0,.3)}
+.hh-canine-repro-panel>header,.hh-canine-repro-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.hh-canine-repro-panel>header h2{margin:0 0 6px}.hh-canine-repro-panel>header p{margin:0 0 8px}
+.hh-canine-repro-tabs{display:flex;gap:8px;border-bottom:1px solid var(--border,#d8dee8);margin:16px 0;padding-bottom:8px}
+.hh-canine-repro-tabs button{border:1px solid var(--border,#d8dee8);background:transparent;color:inherit;border-radius:999px;padding:8px 14px;cursor:pointer}
+.hh-canine-repro-tabs button.active{background:var(--primary,#305e55);color:#fff;border-color:var(--primary,#305e55)}
+.hh-canine-repro-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:12px 0}
+.hh-canine-repro-card,.hh-canine-repro-plan{border:1px solid var(--border,#d8dee8);border-radius:14px;padding:16px;margin:12px 0;background:var(--surface,#fff)}
+.hh-canine-repro-card h3,.hh-canine-repro-card h4,.hh-canine-repro-plan h4{margin-top:0}
+.hh-canine-repro-card form,.hh-canine-repro-plan form{display:grid;gap:10px;align-content:start}
+.hh-canine-repro-card label,.hh-canine-repro-plan label{display:grid;gap:5px;font-size:.92rem;font-weight:600}
+.hh-canine-repro-panel input:not([type=checkbox]),.hh-canine-repro-panel select,.hh-canine-repro-panel textarea{width:100%;min-width:0;border:1px solid var(--border,#cbd5e1);border-radius:8px;padding:9px 10px;background:var(--surface,#fff);color:inherit;font:inherit}
+.hh-canine-repro-panel textarea{min-height:68px;resize:vertical}.hh-canine-repro-panel details{border:1px solid var(--border,#d8dee8);border-radius:10px;padding:10px}.hh-canine-repro-panel summary{cursor:pointer;font-weight:700;margin-bottom:9px}
+.hh-canine-repro-row{width:100%;display:flex;justify-content:space-between;gap:10px;text-align:left;border:1px solid var(--border,#d8dee8);border-radius:10px;padding:10px;background:transparent;color:inherit;margin:6px 0;cursor:pointer}.hh-canine-repro-row.active{border-color:var(--primary,#305e55);box-shadow:0 0 0 1px var(--primary,#305e55)}
+.hh-canine-repro-inline{grid-template-columns:repeat(2,minmax(0,1fr))!important;border-top:1px solid var(--border,#d8dee8);padding-top:12px;margin-top:14px}.hh-canine-repro-inline h4,.hh-canine-repro-inline h5,.hh-canine-repro-inline p,.hh-canine-repro-inline button{grid-column:1/-1}
+.hh-canine-repro-history ol,.hh-canine-repro-event-list{display:grid;gap:8px;padding-left:22px}.hh-canine-repro-history li,.hh-canine-repro-event-list li{padding-left:3px}.hh-canine-repro-history li span,.hh-canine-repro-event-list li span{display:block;color:var(--muted,#596579)}
+.hh-canine-repro-estimate{border-left:3px solid var(--primary,#305e55);padding:8px 12px;background:color-mix(in srgb,var(--primary,#305e55) 8%,transparent)}
+.hh-canine-repro-panel>footer{border-top:1px solid var(--border,#d8dee8);padding-top:12px;margin-top:14px;font-size:.85rem}
+@media(max-width:760px){.hh-canine-repro-overlay{padding:0;place-items:stretch}.hh-canine-repro-panel{border-radius:0;max-height:100dvh;min-height:100dvh;padding:14px}.hh-canine-repro-grid{grid-template-columns:1fr}.hh-canine-repro-inline{grid-template-columns:1fr!important}.hh-canine-repro-row{flex-direction:column}}
