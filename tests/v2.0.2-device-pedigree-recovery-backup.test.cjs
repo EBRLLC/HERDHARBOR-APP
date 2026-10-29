@@ -48,3 +48,45 @@ test("download safety backup surfaces missing attachments without reporting succ
   assert.match(portion,/try\s*\{[\s\S]*stateWithPedigreeAttachments\(\)/);
   assert.match(portion,/catch \(error\)[\s\S]*return false/);
 });
+
+async function simulateExportStart({references=true,reader=null}={}){
+  const from=cloudSource.indexOf("  async function downloadSafetyBackup() {");
+  const to=cloudSource.indexOf("    const payload = JSON.stringify({",from);
+  assert.ok(from>0 && to>from);
+  const sourceSlice=cloudSource.slice(from,to) + "    return true;\n  }";
+  const state={
+    profile:{operationName:"Synthetic Ranch"},
+    pedigrees:references?[{id:"p-1",attachmentStored:true,sourceDataUrl:""}]:[],
+    pedigreeDrafts:[]
+  };
+  const statuses=[];
+  const deps={
+    activeStateRaw:()=>JSON.stringify(state),
+    safeParse:x=>JSON.parse(x),
+    setSyncState:(...a)=>statuses.push(a),
+    window:{HerdHarborAttachments:reader?{stateWithPedigreeAttachments:reader}:null}
+  };
+  const fn=new Function("deps",`
+    const {activeStateRaw,safeParse,setSyncState,window}=deps;
+    ${sourceSlice}
+    return downloadSafetyBackup();
+  `);
+  return {result:await fn(deps),statuses};
+}
+test("backup refuses device-only source references when attachment reader is unavailable",async()=>{
+  const {result,statuses}=await simulateExportStart({references:true});
+  assert.equal(result,false);
+  assert.match(statuses[0][0],/No incomplete backup/);
+});
+test("backup may proceed without a reader when no device-only source documents exist",async()=>{
+  const {result,statuses}=await simulateExportStart({references:false});
+  assert.equal(result,true);
+  assert.equal(statuses.length,0);
+});
+test("backup refuses a failed document reader, not just a missing reader",async()=>{
+  const {result,statuses}=await simulateExportStart({
+    references:true,reader:async()=>{throw Error("IndexedDB unavailable")}
+  });
+  assert.equal(result,false);
+  assert.match(statuses[0][0],/incomplete backup/);
+});
