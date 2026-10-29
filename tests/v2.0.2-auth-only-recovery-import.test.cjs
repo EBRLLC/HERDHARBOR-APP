@@ -16,7 +16,8 @@ async function simulate({
   rpcError=null, rpcData={ok:true}, remoteMatches=true, baseline=true,
   accountSwitch=false, rpcThrows=false, readThrows=false, baselineThrows=false,
   refreshThrows=false, refreshResult=true, refreshInvalidatesToken=false, refreshChangesAccount=false,
-  storedPedigree=false, attachmentReaderMissing=false, attachmentReadThrows=false
+  storedPedigree=false, attachmentReaderMissing=false, attachmentReadThrows=false,
+  attachmentWrongOwner=false
 }={}){
   const userId="owner-A";
   const state={profile:profile?{operationName:"Synthetic breeder"}:{},animals:[{id:"rabbit-1"}]};
@@ -38,7 +39,7 @@ async function simulate({
     window:{confirm:()=>{calls.confirmed++;return consent},
       HerdHarborAttachments:attachmentReaderMissing?null:{stateWithPedigreeAttachments:async()=>{
         if(attachmentReadThrows)throw new Error("IndexedDB document missing");
-        return {...state,pedigrees:[{id:"ped-1",attachmentStored:true,sourceDataUrl:"data:application/pdf;base64,dGVzdA=="}]};
+        return {...state,pedigrees:attachmentWrongOwner ? [] : [{id:"ped-1",attachmentStored:true,sourceDataUrl:"data:application/pdf;base64,dGVzdA=="}]};
       }}},
     setSyncState:(...args)=>calls.messages.push(args),
     recordRecoverySnapshot:async()=>{calls.backup++;if(changed)currentRaw=JSON.stringify({...state,animals:[{id:"new-edit"}]});return backup},
@@ -173,4 +174,11 @@ test("import stops when device-only pedigree original cannot be loaded",async()=
   const {result,calls}=await simulate({storedPedigree:true,attachmentReadThrows:true});
   assert.equal(result,false);
   assert.equal(calls.rpc,0);
+});
+
+test("stale or different-account runtime attachment export cannot satisfy current owner recovery",async()=>{
+  const {result,calls}=await simulate({storedPedigree:true,attachmentWrongOwner:true});
+  assert.equal(result,false);
+  assert.equal(calls.rpc,0);
+  assert.equal(calls.confirmed,0);
 });
