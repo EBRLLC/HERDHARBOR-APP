@@ -4014,11 +4014,20 @@
 
       const cloudProbe = await fetchCloudRecord(userId);
       if (!isCurrentHydration()) return staleHydration();
-      if (cloudProbe?.error || !hasConfiguredOperationProfile(cloudProbe?.data?.app_state)) {
+      if (cloudProbe?.error) {
+        setSyncState("Cloud baseline could not be checked. Device records remain protected; retry when connected.", "error");
+        return Object.freeze({ ok: false, reason: "dirty-unconfigured-cloud-probe-failed" });
+      }
+      if (cloudProbe?.data?.app_state &&
+          !hasConfiguredOperationProfile(cloudProbe.data.app_state)) {
+        // A malformed existing cloud operation is NOT a new blank account.
         unlockApp();
         setSyncState("The existing cloud operation could not be verified. Automatic upload is paused; device records were retained.", "error");
-        return;
+        return Object.freeze({ ok: false, reason: "dirty-unconfigured-cloud-profile-invalid" });
       }
+      // If the authenticated account truly has no legacy row, proceed to
+      // the Auth-only hold and owner-consented recovery/new-operation choice.
+      // Never unlock a blank workspace just because it was marked dirty.
       verifiedExistingCloudRecord = cloudProbe;
     }
 
