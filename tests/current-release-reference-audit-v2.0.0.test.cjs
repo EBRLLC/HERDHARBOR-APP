@@ -21,7 +21,7 @@ const worker = read("service-worker.js");
 const monitoring = read("herdharbor-monitoring-config.js");
 const index = read("index.html");
 
-test("all authoritative whole-app release owners identify stable 2.0.0", () => {
+test("all authoritative whole-app release owners identify the 2.0.2 candidate", () => {
   assert.equal(pkg.version, "2.0.2");
   assert.equal(lock.version, "2.0.2");
   assert.equal(lock.packages[""].version, "2.0.2");
@@ -33,7 +33,7 @@ test("all authoritative whole-app release owners identify stable 2.0.0", () => {
   assert.match(build, /version:\s*"2\.0\.2"/);
   assert.match(build, /buildId:\s*"v2\.0\.2-release-1"/);
   assert.match(gradle, /versionName\s+"2\.0\.2"/);
-  assert.match(gradle, /versionCode\s+20/);
+  assert.match(gradle, /versionCode\s+21/);
 });
 
 test("runtime and monitoring identify the 2.0.0 release", () => {
