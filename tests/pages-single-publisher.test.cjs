@@ -12,7 +12,7 @@ const ci = fs.readFileSync(
 );
 
 test("only one main-branch GitHub Actions Pages publisher deploys the exact verified artifact", () => {
-  assert.match(workflow, /name: HerdHarbor 2\.0\.1 production Pages verification/);
+  assert.match(workflow, /name: HerdHarbor 2\.0\.2 production Pages verification/);
   assert.match(workflow, /node scripts\/verify-release-candidate-artifact\.mjs _site/);
   assert.match(workflow, /Require GitHub Actions Pages source before publishing/);
   assert.match(workflow, /settings\.get\("build_type"\) != "workflow"/);

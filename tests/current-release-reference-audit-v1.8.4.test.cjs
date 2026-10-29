@@ -75,7 +75,7 @@ test("v1.8.4 keeps normalized authority gated and AI expansion deferred", () => 
   const contract = read("V1.8.4-STABILITY-RELEASE-CONTRACT.md");
   assert.match(release, /not mass-enabled/i);
   assert.match(release, /legacy full-state sync remains the authoritative recovery path/i);
-  assert.match(release, /v2\.0\.2/);
+  assert.match(release, /v2\.0\.1/);
   assert.match(contract, /does not expand AI functionality/i);
 });
 

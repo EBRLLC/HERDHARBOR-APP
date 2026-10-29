@@ -24,9 +24,9 @@ test("current 2.0.2 monitoring retains historical production-acceptance context"
   assert.match(config, /build:\s*"v2\.0\.2-release-1"/);
   assert.match(generator, /release:\s*"HerdHarbor@2\.0\.2"/);
   assert.match(generator, /v2\.0\.2-release-1/);
-  assert.match(acceptance, /release:\s*"HerdHarbor@2\.0\.1"/);
-  assert.match(acceptance, /build:\s*"v2\.0\.1-production-acceptance"/);
-  assert.match(acceptance, /herdharbor-release-acceptance\/2\.0\.1/);
+  assert.match(acceptance, /release:\s*"HerdHarbor@2\.0\.2"/);
+  assert.match(acceptance, /build:\s*"v2\.0\.2-production-acceptance"/);
+  assert.match(acceptance, /herdharbor-release-acceptance\/2\.0\.2/);
   assert.doesNotMatch(acceptance, /HerdHarbor@1\.8\.4|v1\.8\.4-production-acceptance|acceptance\/1\.8\.4/);
 });
 
