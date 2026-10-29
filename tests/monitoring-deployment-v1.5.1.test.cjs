@@ -23,7 +23,11 @@ assert.match(config, /v2.0.2-release-1/);
 assert.doesNotMatch(config, /https:\/\/[^"']+@[^"']*sentry/i);
 
 assert.match(pagesWorkflow, /workflow_dispatch:/);
-assert.match(pagesWorkflow, /push:\s*\n\s*branches: \[main\]/, "Pages deployment is restricted to main");
+assert.doesNotMatch(pagesWorkflow, /\n  push:\n/, "A main merge must not publish Pages");
+assert.match(pagesWorkflow, /workflow_dispatch:[\s\S]*release_sha:[\s\S]*approve_production_deploy:/);
+assert.match(pagesWorkflow, /test "\$\{EXPECTED_SHA\}" = "\$\{GITHUB_SHA\}"/);
+assert.match(pagesWorkflow, /test "\$\{APPROVED\}" = "true"/);
+assert.match(pagesWorkflow, /github\.ref == 'refs\/heads\/main' && inputs\.approve_production_deploy && inputs\.release_sha == github\.sha/);
 assert.match(pagesWorkflow, /ref: \$\{\{ github\.sha \}\}/);
 assert.match(pagesWorkflow, /secrets\.HERDHARBOR_SENTRY_DSN/);
 assert.match(pagesWorkflow, /HERDHARBOR_MONITORING_ENVIRONMENT: production/);
