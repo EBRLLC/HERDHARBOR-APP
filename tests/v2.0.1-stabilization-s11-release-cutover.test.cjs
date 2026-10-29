@@ -22,11 +22,11 @@ test("staged candidate release versions are 2.0.2 with a new native code",()=>{
  assert.equal(embedded.version,"2.0.2");
  assert.equal(twa.appVersion,"2.0.2");
  assert.equal(twa.appVersionCode,21);
- assert.match(gradle,/versionName "2\.0\.1"/);
+ assert.match(gradle,/versionName "2\.0\.2"/);
  assert.match(gradle,/versionCode 21/);
- assert.match(build,/version: "2\.0\.1"/);
- assert.match(build,/buildId: "v2\.0\.1-release-1"/);
- assert.match(pwa,/HerdHarborBuild\?\.version \|\| "2\.0\.1"/);
+ assert.match(build,/version: "2\.0\.2"/);
+ assert.match(build,/buildId: "v2\.0\.2-release-1"/);
+ assert.match(pwa,/HerdHarborBuild\?\.version \|\| "2\.0\.2"/);
  assert.match(worker,/const CACHE_NAME = "herdharbor-shell-v2\.0\.2-normalized-cloud-1"/);
 });
 test("2.0.1 HTML queries match the service-worker preload identities",()=>{
