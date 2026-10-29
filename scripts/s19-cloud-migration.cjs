@@ -53,12 +53,11 @@ function storeBackup(data, dir, secret) {
   const handle = fs.openSync(name,"wx",0o600);
   try { fs.writeFileSync(handle,JSON.stringify(pack)); fs.fsyncSync(handle); }
   finally { fs.closeSync(handle); }
-  const saved=JSON.parse(fs.readFileSync(name,"utf8"));
-  const dec=crypto.createDecipheriv("aes-256-gcm",key,Buffer.from(saved.iv,"hex"));
-  dec.setAuthTag(Buffer.from(saved.tag,"hex"));
-  const proof=Buffer.concat([dec.update(Buffer.from(saved.data,"base64")),dec.final()]);
-  demand(sha(proof)===saved.sha256 && proof.equals(plain),"backup readback verification failed");
-  return { file:name,checksum:saved.sha256 };
+  // Verify through the independent recovery reader, not only the writer's cipher.
+  const recovered=restoreBackup(name,secret);
+  demand(Buffer.from(JSON.stringify(recovered),"utf8").equals(plain),
+    "backup readback verification failed");
+  return { file:name,checksum:sha(plain) };
 }
 // Independently open and authenticate a saved recovery artifact before cutover.
 function restoreBackup(file, secret) {
