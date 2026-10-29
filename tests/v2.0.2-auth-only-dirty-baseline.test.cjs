@@ -99,3 +99,49 @@ test("legacy sync writer refuses any new full-state row without a confirmed vers
   assert.equal(existing.result,true);
   assert.equal(existing.calls.length,0);
 });
+
+const emptyGuardStart=source.indexOf("    let verifiedExistingCloudRecord = null;",source.indexOf("async function hydrateUserDataOnce"));
+const emptyGuardEnd=source.indexOf("    if (dirty && !verifiedExistingCloudRecord) {",emptyGuardStart);
+assert.ok(emptyGuardStart>0 && emptyGuardEnd>emptyGuardStart,"dirty unconfigured pre-hydration guard exists");
+const emptyGuard=source.slice(emptyGuardStart,emptyGuardEnd);
+async function simulateDirtyUnconfigured(cloud) {
+  const calls={probes:0,uploads:0,unlocks:0,errors:[]};
+  const execute=new Function("args",`
+    return async function run(){
+      const {dirty,activeRaw,cachedRaw,hasConfiguredOperationProfile,
+        hasUnsyncedDomainRecords,unlockApp,setSyncState,fetchCloudRecord,
+        userId,isCurrentHydration,staleHydration}=args;
+      ${emptyGuard}
+      return {ok:true,verifiedExistingCloudRecord};
+    };`)({
+      dirty:true,activeRaw:null,cachedRaw:null,
+      hasConfiguredOperationProfile:s=>!!s?.profile?.operationName,
+      hasUnsyncedDomainRecords:()=>false,
+      unlockApp:()=>calls.unlocks++,
+      setSyncState:(...a)=>calls.errors.push(a),
+      fetchCloudRecord:async()=>{calls.probes++;return cloud},
+      userId:"owner-A",isCurrentHydration:()=>true,
+      staleHydration:()=>({stale:true})
+    });
+  return {result:await execute(),calls};
+}
+test("dirty empty account without any cloud row still reaches the consented Auth-only recovery hold",async()=>{
+  const {result,calls}=await simulateDirtyUnconfigured({data:null,error:null});
+  assert.equal(result.ok,true);assert.deepEqual(result.verifiedExistingCloudRecord,{data:null,error:null});
+  assert.equal(calls.probes,1);assert.equal(calls.unlocks,0);
+});
+test("dirty empty account with cloud read error stays locked",async()=>{
+  const {result,calls}=await simulateDirtyUnconfigured({error:{code:"network"}});
+  assert.equal(result.reason,"dirty-unconfigured-cloud-probe-failed");assert.equal(calls.unlocks,0);
+});
+test("dirty empty onboarding does not overwrite malformed existing cloud state",async()=>{
+  const {result,calls}=await simulateDirtyUnconfigured({data:{app_state:{profile:{}}}});
+  assert.equal(result.reason,"dirty-unconfigured-cloud-profile-invalid");
+  assert.equal(calls.errors.length,1);
+});
+test("dirty startup recognizes existing valid cloud operation",async()=>{
+  const cloud={data:{app_state:{profile:{operationName:"Existing farm"}},updated_at:"current"}};
+  const {result,calls}=await simulateDirtyUnconfigured(cloud);
+  assert.equal(result.ok,true);assert.deepEqual(result.verifiedExistingCloudRecord,cloud);
+  assert.equal(calls.unlocked,0);
+});
