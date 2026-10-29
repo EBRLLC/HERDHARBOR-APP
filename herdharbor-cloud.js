@@ -3435,6 +3435,15 @@
       return;
     }
 
+    const hasDeviceOnlyPedigreeFiles =
+      (Array.isArray(appState.pedigrees) &&
+        appState.pedigrees.some(x => x?.attachmentStored && !x?.sourceDataUrl)) ||
+      (Array.isArray(appState.pedigreeDrafts) &&
+        appState.pedigreeDrafts.some(x => x?.sourceDocument?.attachmentStored && !x.sourceDocument?.dataUrl));
+    if (hasDeviceOnlyPedigreeFiles && !window.HerdHarborAttachments?.stateWithPedigreeAttachments) {
+      setSyncState("Safety backup stopped: pedigree originals are stored on this device but the document reader is unavailable. No incomplete backup was downloaded.", "error");
+      return false;
+    }
     if (window.HerdHarborAttachments?.stateWithPedigreeAttachments) {
       try {
         appState = await window.HerdHarborAttachments.stateWithPedigreeAttachments();
