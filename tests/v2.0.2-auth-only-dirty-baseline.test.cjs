@@ -93,7 +93,7 @@ function simulateWriter(remoteRecord) {
 test("legacy sync writer refuses any new full-state row without a confirmed version",()=>{
   const missing=simulateWriter(null);
   assert.equal(missing.result,false);
-  assert.match(missing.calls[0][0],/reconciliation required/);
+  assert.match(missing.calls[0][0],/reconciliation is required/);
   assert.equal(simulateWriter({app_state:{}}).result,false);
   const existing=simulateWriter({updated_at:"2026-10-28T10:00:00Z"});
   assert.equal(existing.result,true);
