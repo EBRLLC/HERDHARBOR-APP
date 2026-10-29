@@ -84,6 +84,18 @@ for (const owner of [A,B]) {
     "Current owner is missing its signed-in authority status");
 }
 
+// Existing owners (legacy or normalized) MUST NOT be able to claim a new
+// Auth-only recovery baseline. Exercise the real authenticated REST/RPC
+// privilege boundary; SQL auth.uid emulation is not equivalent.
+for (const owner of [A,B]) {
+  const overwrite = await request("/rest/v1/rpc/herdharbor_claim_auth_only_local_recovery",{
+    method:"POST",accessToken:owner.access_token,
+    body:{p_app_state:{profile:{operationName:"Synthetic attempted overwrite"}}}
+  });
+  assert.ok(!overwrite.ok,
+    "Existing cloud owner could overwrite its cloud baseline through Auth-only recovery RPC");
+}
+
 const writable = [[A,aManifest[0]],[B,bManifest[0]]].find(([,m])=>
   m.cutover_stage==="normalized" &&
   m.metadata?.normalized_authority_ready===true &&
