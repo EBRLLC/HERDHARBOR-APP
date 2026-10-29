@@ -75,7 +75,7 @@ for (const file of [
 }
 const monitoring = await read("herdharbor-monitoring-config.js");
 assert.match(monitoring, /"environment": "production"/);
-assert.match(monitoring, /"release": "HerdHarbor@2\.0\.1"/);
+assert.match(monitoring, /"release": "HerdHarbor@2\.0\.2"/);
 assert.doesNotMatch(monitoring, /"dsn": ""/);
 assert.match(monitoring, /"enableTestCrash": false/);
 
