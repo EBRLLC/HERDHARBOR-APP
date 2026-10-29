@@ -18,7 +18,7 @@ async function simulate({ cloud, authority = false, activeRaw = null, cachedRaw 
     "unlockApp", "setSyncState", "showAccountBoundaryRecovery"
   ];
   const values = [
-    cloud, { authoritative: authority, stage: authority ? "normalized" : "legacy" },
+    cloud?.data ?? null, { authoritative: authority, stage: authority ? "normalized" : "legacy" },
     () => fresh, () => { calls.deferred++; return {ok:false, reason:"stale-local-edit"}; },
     activeRaw, cachedRaw,
     raw => { try {return Boolean(JSON.parse(raw));} catch {return false;} },
