@@ -19,14 +19,14 @@ const pwa = read("pwa.js");
 const index = read("index.html");
 const worker = read("service-worker.js");
 
-test("monitoring configuration and controlled acceptance identify 2.0.1", () => {
-  assert.match(config, /release:\s*"HerdHarbor@2\.0\.1"/);
-  assert.match(config, /build:\s*"v2\.0\.1-release-1"/);
-  assert.match(generator, /release:\s*"HerdHarbor@2\.0\.1"/);
-  assert.match(generator, /v2\.0\.1-release-1/);
-  assert.match(acceptance, /release:\s*"HerdHarbor@2\.0\.1"/);
-  assert.match(acceptance, /build:\s*"v2\.0\.1-production-acceptance"/);
-  assert.match(acceptance, /herdharbor-release-acceptance\/2\.0\.1/);
+test("current 2.0.2 monitoring retains historical production-acceptance context", () => {
+  assert.match(config, /release:\s*"HerdHarbor@2\.0\.2"/);
+  assert.match(config, /build:\s*"v2\.0\.2-release-1"/);
+  assert.match(generator, /release:\s*"HerdHarbor@2\.0\.2"/);
+  assert.match(generator, /v2\.0\.2-release-1/);
+  assert.match(acceptance, /release:\s*"HerdHarbor@2\.0\.2"/);
+  assert.match(acceptance, /build:\s*"v2\.0\.2-production-acceptance"/);
+  assert.match(acceptance, /herdharbor-release-acceptance\/2\.0\.2/);
   assert.doesNotMatch(acceptance, /HerdHarbor@1\.8\.4|v1\.8\.4-production-acceptance|acceptance\/1\.8\.4/);
 });
 
@@ -38,8 +38,8 @@ test("controlled Sentry acceptance is synthetic-only and wired only through prot
   assert.match(productionWorkflow, /node scripts\/sentry-production-acceptance\.mjs/);
 });
 
-test("Cloud Sync telemetry reports app 2.0.1 while retaining independent component build identity", () => {
-  assert.match(cloud, /CLOUD_SYNC_APP_RELEASE = "2\.0\.1"/);
+test("Cloud Sync telemetry reports app 2.0.2 while retaining independent component build identity", () => {
+  assert.match(cloud, /CLOUD_SYNC_APP_RELEASE = "2\.0\.2"/);
   assert.match(cloud, /CLOUD_SYNC_COMPONENT_BUILD = "legacy-full-state-observability-3"/);
   assert.match(cloud, /app_release:\s*CLOUD_SYNC_APP_RELEASE/);
   assert.match(cloud, /component_build:\s*CLOUD_SYNC_COMPONENT_BUILD/);
@@ -67,8 +67,8 @@ test("monitoring remains privacy-hardened and non-blocking", () => {
 });
 
 test("changed Cloud Sync telemetry runtime uses a revised served identity", () => {
-  assert.match(index, /herdharbor-cloud\.js\?v=39/);
-  assert.match(worker, /\.\/herdharbor-cloud\.js\?v=39/);
+  assert.match(index, /herdharbor-cloud\.js\?v=48/);
+  assert.match(worker, /\.\/herdharbor-cloud\.js\?v=48/);
   assert.doesNotMatch(index, /herdharbor-cloud\.js\?v=32/);
   assert.doesNotMatch(worker, /\.\/herdharbor-cloud\.js\?v=32/);
 });

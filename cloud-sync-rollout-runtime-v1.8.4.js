@@ -15,7 +15,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const VERSION = "1.2-dual-write-expansion";
+  const VERSION = "1.3-normalized-primary-cutover";
   const RELEASE = "1.8.4";
   const REQUIRED_VALIDATION_PASSES = 3;
   const WRITER_VERSION = "record-cas-v1";
@@ -142,6 +142,7 @@
     let validationPasses = 0;
     let lastValidation = null;
     let lastResult = null;
+    let cutoverInFlight = null;
 
     function invalidateAccountContext() {
       identityEpoch += 1;
@@ -1030,11 +1031,19 @@
       const drain = await ctx.worker.drain({ ownerId: ctx.userId });
       assertContextCurrent(ctx);
       const pending = stateStore.getOutbox(ctx.userId).length;
-      const ok = Number(drain?.failed || 0) === 0 && pending === 0;
+      // A skipped or failed drain is NOT confirmation of a successful cloud
+      // save. In particular offline() returns { ok:true, skipped:true } and
+      // may contain zero pending records when an explicit refresh is requested.
+      // Never report an authoritative save merely because failed===0.
+      const drainCompleted = drain?.ok === true && drain?.skipped !== true &&
+        drain?.stage === "normalized";
+      const ok = drainCompleted &&
+        Number(drain?.failed || 0) === 0 && pending === 0;
       const result = Object.freeze({
         ok,
         stage,
         mode: ok ? "normalized-authority" : "normalized-authority-degraded",
+        reason: ok ? null : String(drain?.reason || (pending > 0 ? "normalized-mutations-pending" : "normalized-write-not-confirmed")),
         pending,
         drain
       });
@@ -1181,6 +1190,86 @@
         assertContextCurrent(ctx);
         validationPasses = 0;
         throw error;
+      }
+    }
+
+    // S18: Explicit, fail-closed transition from dual-write to normalized-first.
+    // Never enable normalized writes just because the account is allowlisted:
+    // the installed clients, durable backups, and server-side checkpoint must
+    // all be verified before the legacy authority is retired.
+    async function cutoverToNormalizedPrimary(options = {}) {
+      if (
+        options.ownerApproved !== true ||
+        options.legacyClientsClosed !== true ||
+        options.backupVerified !== true
+      ) {
+        return Object.freeze({ ok: false, reason: "normalized-cutover-owner-acceptance-required" });
+      }
+      if (cutoverInFlight) return cutoverInFlight;
+      // A second device/click must not interleave checkpoints or authority
+      // transitions with the first invocation.
+      const run = (async () => {
+      const ctx = await ensureContext();
+      if (!ctx) return Object.freeze({ ok: false, reason: "normalized-cutover-not-eligible" });
+      assertContextCurrent(ctx);
+      const current = await refreshContextStage(ctx);
+      assertContextCurrent(ctx);
+      if (current.stage === "normalized") {
+        return Object.freeze({ ok: true, skipped: true, stage: "normalized", reason: "already-normalized" });
+      }
+      if (current.stage !== "dual_write") {
+        return Object.freeze({ ok: false, stage: current.stage, reason: "normalized-cutover-dual-write-required" });
+      }
+      const clean = () => (
+        cloud.getSession?.()?.user?.id === ctx.userId &&
+        cloud.getSyncDetails?.()?.online !== false &&
+        cloud.getSyncDetails?.()?.syncing !== true &&
+        cloud.hasUnsyncedChanges?.() === false &&
+        cloud.hasConflict?.() === false &&
+        stateStore.getOutbox(ctx.userId).length === 0
+      );
+      if (!clean()) {
+        return Object.freeze({ ok: false, stage: ctx.stage, reason: "normalized-cutover-local-work-pending" });
+      }
+      // Even a clean local outbox cannot prove there is no in-memory draft.
+      // The acceptance process must close all older installed app clients.
+      const initialRevision = Number(stateStore.getRevision?.(ctx.userId) || 0);
+      validationPasses = 0;
+      lastValidation = null;
+      for (let checkpoint = 0; checkpoint < requiredValidationPasses; checkpoint += 1) {
+        assertContextCurrent(ctx);
+        if (!clean() || Number(stateStore.getRevision?.(ctx.userId) || 0) !== initialRevision) {
+          return Object.freeze({ ok: false, stage: ctx.stage, reason: "normalized-cutover-local-state-changed" });
+        }
+        const validation = await validateNow();
+        assertContextCurrent(ctx);
+        if (!validation?.ok || validation.stage !== "dual_write") {
+          return Object.freeze({
+            ok: false, stage: ctx.stage, reason: validation?.reason || "normalized-cutover-verification-failed"
+          });
+        }
+      }
+      assertContextCurrent(ctx);
+      if (!clean() || Number(stateStore.getRevision?.(ctx.userId) || 0) !== initialRevision) {
+        return Object.freeze({ ok: false, stage: ctx.stage, reason: "normalized-cutover-local-state-changed" });
+      }
+      // promoteToNormalized performs a second server-backed generation/CAS gate,
+      // normalized-read verification, and rollback on failure.
+      const promoted = await promoteToNormalized();
+      assertContextCurrent(ctx);
+      const authoritative = await refreshContextStage(ctx);
+      assertContextCurrent(ctx);
+      if (promoted?.ok !== true || authoritative.stage !== "normalized" || !isNormalizedAuthority()) {
+        return Object.freeze({ ok: false, stage: authoritative.stage, reason: "normalized-cutover-authority-not-verified" });
+      }
+      emit("normalized-primary-active", { stage: "normalized", ok: true });
+      return Object.freeze({ ok: true, stage: "normalized", primaryWriter: "record-outbox", legacyWriteRequired: false });
+      })();
+      cutoverInFlight = run;
+      try {
+        return await run;
+      } finally {
+        if (cutoverInFlight === run) cutoverInFlight = null;
       }
     }
 
@@ -1435,6 +1524,7 @@
       validateNow,
       promoteToDualWrite,
       promoteToNormalized,
+      cutoverToNormalizedPrimary,
       rollback,
       rollbackToLegacy,
       status

@@ -4,8 +4,8 @@
   window.HerdHarborMonitoringConfig = Object.freeze({
     dsn: "",
     environment: "",
-    release: "HerdHarbor@2.0.1",
-    build: "v2.0.1-release-1",
+    release: "HerdHarbor@2.0.2",
+    build: "v2.0.2-release-1",
     enableTestCrash: false
   });
 })();

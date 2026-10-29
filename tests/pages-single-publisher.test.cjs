@@ -12,14 +12,19 @@ const ci = fs.readFileSync(
 );
 
 test("only one main-branch GitHub Actions Pages publisher deploys the exact verified artifact", () => {
-  assert.match(workflow, /name: HerdHarbor 2\.0\.1 production Pages verification/);
+  assert.match(workflow, /name: HerdHarbor 2\.0\.2 production Pages verification/);
   assert.match(workflow, /node scripts\/verify-release-candidate-artifact\.mjs _site/);
   assert.match(workflow, /Require GitHub Actions Pages source before publishing/);
   assert.match(workflow, /settings\.get\("build_type"\) != "workflow"/);
   assert.match(workflow, /actions\/upload-pages-artifact@v3/);
   assert.match(workflow, /actions\/deploy-pages@v4/);
   assert.match(workflow, /path: _site/);
-  assert.match(workflow, /github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'/);
+  assert.match(workflow, /github\.event_name == 'workflow_dispatch' && github\.ref == 'refs\/heads\/main'/);
+  assert.doesNotMatch(workflow, /\n  push:\n/);
+  assert.match(workflow, /workflow_dispatch:\n    inputs:\n      release_sha:/);
+  assert.match(workflow, /approve_production_deploy:/);
+  assert.match(workflow, /test "\$\{EXPECTED_SHA\}" = "\$\{GITHUB_SHA\}"/);
+  assert.match(workflow, /test "\$\{APPROVED\}" = "true"/);
   assert.equal((workflow.match(/actions\/deploy-pages@/g) || []).length, 1);
   assert.doesNotMatch(ci, /actions\/deploy-pages@|actions\/upload-pages-artifact@/);
 });

@@ -1,10 +1,10 @@
 (() => {
   "use strict";
 
-  // Current release contract: const APP_VERSION = "2.0.1";
+  // Current release contract: const APP_VERSION = "2.0.2";
   // Current build contract: const BUILD_ID = "cloud-sync-v2-state-integrity-1";
-  const APP_VERSION = window.HerdHarborBuild?.version || "2.0.1";
-  const BUILD_ID = window.HerdHarborBuild?.buildId || "v2.0.1-release-1";
+  const APP_VERSION = window.HerdHarborBuild?.version || "2.0.2";
+  const BUILD_ID = window.HerdHarborBuild?.buildId || "v2.0.2-release-1";
   const PWA_BUILD = `${APP_VERSION}-${BUILD_ID}`;
   const UPDATE_CHECK_MIN_INTERVAL_MS = 60_000;
   const UPDATE_ACTIVATION_TIMEOUT_MS = 12_000;
@@ -187,9 +187,9 @@
   }
 
   function loadMonitoring(done) {
-    addOptionalScript("hh-monitoring-config", "herdharbor-monitoring-config.js?v=2.0.1", (configLoaded) => {
+    addOptionalScript("hh-monitoring-config", "herdharbor-monitoring-config.js?v=2.0.2", (configLoaded) => {
       if (!configLoaded) { done?.(); return; }
-      addOptionalScript("hh-monitoring-v151", "vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.1", () => done?.());
+      addOptionalScript("hh-monitoring-v151", "vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.2", () => done?.());
     });
   }
 
@@ -315,6 +315,7 @@
         '#modal-backdrop:not(.hidden) #modal-content textarea, ' +
         '#modal-backdrop:not(.hidden) #modal-content select'
       )) return true;
+
     } catch {}
     return false;
   }
@@ -458,7 +459,7 @@
     updateToast = document.createElement("aside");
     updateToast.className = "hh-pwa-update";
     updateToast.setAttribute("role", "status");
-    updateToast.innerHTML = `<strong>HerdHarbor Update Available</strong><span>A new version of HerdHarbor is ready. Finish any unsaved entry before updating. Cloud Sync is not required.</span><div><button type="button" data-hh-update-now>Update Now</button><button type="button" data-hh-update-later>Later</button></div>`;
+    updateToast.innerHTML = `<strong>HerdHarbor Update Available</strong><span>A new version of HerdHarbor is ready. Finish and save your work before updating. Account migrations require verified cloud synchronization.</span><div><button type="button" data-hh-update-now>Update Now</button><button type="button" data-hh-update-later>Later</button></div>`;
     updateToast.querySelector("[data-hh-update-now]").addEventListener("click", (event) => {
       activatePendingUpdate(event.currentTarget);
     });
@@ -481,7 +482,10 @@
   }
 
   async function checkForAppUpdate({ force = false } = {}) {
-    if (!registration || navigatorRef().onLine === false) return false;
+    // An unavailable service-worker registration or offline connection
+    // cannot establish that no upgrade is waiting. Forced migration checks
+    // must report UNKNOWN instead of authorizing a cutover.
+    if (!registration || navigatorRef().onLine === false) return force ? null : false;
     if (registration.waiting && navigatorRef().serviceWorker?.controller) {
       showUpdateReady(registration.waiting);
       return true;
@@ -503,7 +507,9 @@
           console.warn("HerdHarbor could not check for an app update:", error);
           monitorFailure(error, "update_check_failure", "dashboard", { operation: "pwa_update_check" });
         }
-        return false;
+        // Failure is not evidence that the installed app is current.
+        // The S20 upgrade coordinator accepts only a definite boolean.
+        return null;
       }
     })();
     try {
@@ -557,16 +563,27 @@
   window.addEventListener("pageshow", (event) => { if (event.persisted || document.visibilityState === "visible") checkForAppUpdate(); });
   document.addEventListener("visibilitychange", requestForegroundUpdateCheck);
   navigatorRef().serviceWorker?.addEventListener("controllerchange", () => {
+    // Only a real worker activation may satisfy the S20 update handoff.
+    // A same-build focus, login or ordinary page reload must not cut over.
+    try { window.sessionStorage?.setItem("hh_s20_update_activated_at", String(Date.now())); } catch {}
     updateControllerChanged = true;
     updateReloadDeferred = true;
     reloadAfterUpdate();
   });
   document.addEventListener("click", (event) => { const trigger = event.target.closest("[data-pwa-install]"); if (trigger) requestInstall(); });
+  // The cloud migration coordinator only requests an update check through an
+  // event. Ordinary service-worker updates remain wholly independent of cloud.
+  document.addEventListener("herdharbor:s20-check-app-update", (event) => {
+    if (event.detail && typeof event.detail === "object") {
+      event.detail.promise = checkForAppUpdate({ force: true });
+    }
+  });
 
   window.HerdHarborPWA = {
     install: requestInstall,
     refreshInstallUI,
     checkForUpdates: () => checkForAppUpdate({ force: true }),
+    hasUnfinishedLocalWork,
     isInstalled: isStandalone,
     version: APP_VERSION,
     build: PWA_BUILD

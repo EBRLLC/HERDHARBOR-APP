@@ -1,9 +1,19 @@
-name: HerdHarbor 2.0.1 production Pages verification
+name: HerdHarbor 2.0.2 production Pages verification
 
 on:
-  push:
-    branches: [main]
+  # Merging to main must never publish automatically. An owner must launch
+  # an explicitly SHA-bound deployment after the separate release approval.
   workflow_dispatch:
+    inputs:
+      release_sha:
+        description: 'Exact reviewed main commit SHA approved for deployment'
+        required: true
+        type: string
+      approve_production_deploy:
+        description: 'I approve publishing this exact reviewed main SHA to production'
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -27,8 +37,15 @@ jobs:
           node-version: 22
       - name: Install pinned dependencies
         run: npm ci --no-audit --no-fund
+      - name: Confirm manual release approval and exact main SHA
+        env:
+          APPROVED: ${{ inputs.approve_production_deploy }}
+          EXPECTED_SHA: ${{ inputs.release_sha }}
+        run: |
+          test "${GITHUB_REF}" = "refs/heads/main"
+          test "${APPROVED}" = "true"
+          test "${EXPECTED_SHA}" = "${GITHUB_SHA}"
       - name: Verify reviewed PR provenance
-        if: ${{ github.event_name == 'push' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -51,10 +68,10 @@ jobs:
               raise SystemExit("Production verification blocked: main commit is not traceable to a merged PR.")
           print("Reviewed PR provenance:", ", ".join(f"#{pr['number']}" for pr in merged))
           PY
-      - name: Verify 2.0.1 candidate and complete inherited web regression contract
+      - name: Verify 2.0.2 candidate and complete inherited web regression contract
         run: |
           npm run test:v2.0.0-final
-          npm run test:v2.0.1-review
+          npm run test:v2.0.2-review
           node --test tests/workflow-phase1-v1.7.1.test.cjs
           npm run test:health
           npm run test:genetics
@@ -118,16 +135,15 @@ jobs:
           test -s _site/photo-assisted-entry-v1.8.3.js
           test -s _site/how-to-navigation-v1.8.1.js
           test -s _site/how-to/index.html
-          grep -q 'version: "2.0.1"' _site/herdharbor-build.js
+          grep -q 'version: "2.0.2"' _site/herdharbor-build.js
           grep -q '2026-10-01T00:00:00-04:00' _site/subscription-launch-v1.8.1.js
           ! grep -q '"dsn": ""' _site/herdharbor-monitoring-config.js
           grep -q '"environment": "production"' _site/herdharbor-monitoring-config.js
-          grep -q '"release": "HerdHarbor@2.0.1"' _site/herdharbor-monitoring-config.js
+          grep -q '"release": "HerdHarbor@2.0.2"' _site/herdharbor-monitoring-config.js
           grep -q "\"build\": \"${RELEASE_SHA}\"" _site/herdharbor-monitoring-config.js
           ! grep -R -E --include='*.html' --include='*.js' --include='*.css' '\\.(js|css)\\?v=' _site
           grep -E -q 'herdharbor-shell-[a-f0-9]{16}' _site/service-worker.js
       - name: Require GitHub Actions Pages source before publishing
-        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -147,12 +163,11 @@ jobs:
           if settings.get("build_type") != "workflow":
               raise SystemExit(
                   "Release blocked: change repository Settings > Pages > Build and deployment > Source to GitHub Actions "
-                  "before approving the 2.0.1 main-branch merge. Branch-source Pages publishes raw main, not _site."
+                  "before approving the 2.0.2 main-branch merge. Branch-source Pages publishes raw main, not _site."
               )
           print("Pages source verified: GitHub Actions. Only the previously checked _site artifact will deploy.")
           PY
       - name: Upload the exact verified release artifact
-        if: github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
           path: _site
@@ -160,7 +175,7 @@ jobs:
   deploy-verified-artifact:
     name: Publish exact reviewed Pages artifact
     needs: build-and-verify
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.approve_production_deploy && inputs.release_sha == github.sha
     runs-on: ubuntu-latest
     permissions:
       pages: write

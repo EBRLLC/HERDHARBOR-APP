@@ -3,9 +3,9 @@
   root.HerdHarborBuild = Object.freeze({
     product: "HerdHarbor",
     channel: "Stable",
-    version: "2.0.1",
-    buildId: "v2.0.1-release-1",
-    build: "2.0.1-v2.0.1-release-1"
+    version: "2.0.2",
+    buildId: "v2.0.2-release-1",
+    build: "2.0.2-v2.0.2-release-1"
   });
 
   // Keep authentication and the first cloud hydration from waiting forever while
@@ -73,7 +73,7 @@
     };
   }
 
-  // HerdHarbor 2.0.1 is the candidate application release identity. Established domain component identities remain independently versioned.
+  // HerdHarbor 2.0.2 is the candidate application release identity. Established domain component identities remain independently versioned.
   if (!root.document) return;
 
   root.document.addEventListener("submit", (event) => {

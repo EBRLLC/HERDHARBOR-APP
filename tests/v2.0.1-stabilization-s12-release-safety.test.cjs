@@ -98,8 +98,9 @@ test("essential startup identity agrees with the bounded offline shell, while do
   const requiredAssets = [...required.matchAll(/"\.\/([^"]+)"/g)].map((match) => match[1]);
   assert.ok(requiredAssets.length <= 50, "do not grow the required PWA install beyond the bounded operational shell");
   for (const asset of [
-    "herdharbor-cloud.js?v=39",
-    "cloud-sync-rollout-runtime-v1.8.4.js?v=5",
+    "cloud-normalized-upgrade-v2.0.1.js?v=2",
+    "herdharbor-cloud.js?v=48",
+    "cloud-sync-rollout-runtime-v1.8.4.js?v=6",
     "herdharbor-app-runtime.js?v=6",
     "animal-profile-runtime-v1.8.3.js?v=7",
     "health-runtime-v1.8.3.js?v=1",
@@ -150,18 +151,18 @@ test("optional lazy assets do not become startup requirements", async () => {
   assert.ok(!install.added.some((url) => url.includes("settings-runtime-v1.8.3.js")));
 });
 
-test("2.0.1 production acceptance keeps synthetic privacy and protected manual gate", () => {
+test("2.0.2 production acceptance keeps synthetic privacy and protected manual gate", () => {
   const acceptance = read("scripts/sentry-production-acceptance.mjs");
   const workflow = read(".github/workflows/v2.0.0-production-acceptance.yml");
-  assert.match(acceptance, /release: "HerdHarbor@2\.0\.1"/);
-  assert.match(acceptance, /build: "v2\.0\.1-production-acceptance"/);
-  assert.match(acceptance, /herdharbor-release-acceptance\/2\.0\.1/);
+  assert.match(acceptance, /release: "HerdHarbor@2\.0\.2"/);
+  assert.match(acceptance, /build: "v2\.0\.2-production-acceptance"/);
+  assert.match(acceptance, /herdharbor-release-acceptance\/2\.0\.2/);
   assert.match(acceptance, /privacy: "synthetic_only"/);
-  assert.match(workflow, /^name: HerdHarbor 2\.0\.1 production acceptance$/m);
+  assert.match(workflow, /^name: HerdHarbor 2\.0\.2 production acceptance$/m);
   assert.match(workflow, /environment: production/);
   assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /npm run test:v2\.0\.0-final/);
-  assert.match(workflow, /npm run test:v2\.0\.1-review/);
+  assert.match(workflow, /npm run test:v2\.0\.2-review/);
   assert.ok(workflow.includes("if: " + "$" + "{{ inputs.run_sentry }}"));
   assert.doesNotMatch(workflow, /\npush:|\npull_request:|deploy-pages|supabase functions deploy/);
 });

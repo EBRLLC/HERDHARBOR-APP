@@ -116,7 +116,7 @@ test("Settings runtime is lazy-loaded while remaining offline/runtime-cache safe
 test("Phase 6H preserves lazy optional tools under the formal v2.0.0 identity", () => {
   assert.match(settings, /await ensureSpreadsheetToolsReady\(\)/);
   assert.doesNotMatch(html, /<script[^>]+(?:exceljs|jszip|spreadsheet-import)/i);
-  assert.equal(pkg.version, "2.0.1");
-  assert.match(read("herdharbor-build.js"), /version:\s*"2\.0\.1"/);
+  assert.equal(pkg.version, "2.0.2");
+  assert.match(read("herdharbor-build.js"), /version:\s*"2\.0\.2"/);
   assert.doesNotMatch(html, /cloud-sync-rollout-control-v1\.8\.3\.js/);
 });

@@ -3,7 +3,7 @@
   "use strict";
 
   // The release identity comes from herdharbor-build.js; this fallback must match the current public release.
-  const APP_VERSION = window.HerdHarborBuild?.version || "2.0.1";
+  const APP_VERSION = window.HerdHarborBuild?.version || "2.0.2";
   const STORAGE_KEY = "herdharbor_pre_alpha_v1";
   const ATTACHMENT_DB = "herdharbor_attachments_v1";
   const ATTACHMENT_STORE = "pedigreeDocuments";
@@ -372,13 +372,17 @@
     const copy = structuredClone(state);
     for (const record of copy.pedigrees || []) {
       if (!record.attachmentStored || record.sourceDataUrl) continue;
-      const document = await getPedigreeAttachment(record.id).catch(() => null);
-      if (document?.dataUrl) record.sourceDataUrl = document.dataUrl;
+      // Do not silently export a safety backup with a missing document.
+      // A cloud JSON pointer is not a recoverable copy of an IndexedDB blob.
+      const document = await getPedigreeAttachment(record.id);
+      if (!document?.dataUrl) throw new Error("A stored pedigree source document is missing from this device. Backup was stopped.");
+      record.sourceDataUrl = document.dataUrl;
     }
     for (const draft of copy.pedigreeDrafts || []) {
       if (!draft.sourceDocument?.attachmentStored || draft.sourceDocument.dataUrl) continue;
-      const document = await getPedigreeAttachment(draft.id).catch(() => null);
-      if (document?.dataUrl) draft.sourceDocument = document;
+      const document = await getPedigreeAttachment(draft.id);
+      if (!document?.dataUrl) throw new Error("A stored pedigree draft attachment is missing from this device. Backup was stopped.");
+      draft.sourceDocument = document;
     }
     return copy;
   }

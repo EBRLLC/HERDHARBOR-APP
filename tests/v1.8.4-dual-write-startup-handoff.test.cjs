@@ -424,8 +424,10 @@ test("syncNow prioritizes a pending legacy save before normalized authority read
   const source = cloudSource;
   const syncNowIndex = source.indexOf("async function syncNow()");
   const pendingCheckIndex = source.indexOf("const legacyWritePendingAtStart", syncNowIndex);
-  const refreshIndex = source.indexOf("await refreshNormalizedAuthorityIfEligible();", syncNowIndex);
   const guardIndex = source.indexOf("!legacyWritePendingAtStart", syncNowIndex);
+  // S18 also checks stale normalized authority before the legacy-only fast
+  // path; inspect the refresh protected by this specific legacy-work guard.
+  const refreshIndex = source.indexOf("await refreshNormalizedAuthorityIfEligible();", guardIndex);
 
   assert.ok(syncNowIndex >= 0);
   assert.ok(pendingCheckIndex > syncNowIndex, "syncNow must determine whether legacy work is already pending");
@@ -520,39 +522,19 @@ test("sign-in runs access-profile refresh and rollout hydration concurrently", (
 });
 
 
-test("clean sign-in starts a read-only legacy cloud prefetch before rollout hydration finishes", () => {
+test("S20 normalized sign-in does not request legacy before cloud authority decision", () => {
   const hydrateSource = extract(
     cloudSource,
     "  async function hydrateUserDataOnce(activeSession)",
     "  async function hydrateUserData(activeSession)"
   );
-
-  const modeIndex = hydrateSource.indexOf(
-    "const canUseVersionOnlyPrefetch"
-  );
-  const prefetchIndex = hydrateSource.indexOf(
-    "const legacyCloudPrefetchPromise = dirty"
-  );
-  const rolloutIndex = hydrateSource.indexOf(
-    "const rolloutHydrationPromise = normalizedRollout?.prepareHydration"
-  );
-  const joinedFetchIndex = hydrateSource.indexOf(
-    "legacyCloudPrefetchPromise || fetchCloudRecord(userId)"
-  );
-
-  assert.ok(modeIndex >= 0 && prefetchIndex > modeIndex);
-  assert.ok(
-    prefetchIndex < rolloutIndex,
-    "legacy cloud read must start before waiting on rollout hydration"
-  );
-  assert.ok(
-    joinedFetchIndex > rolloutIndex,
-    "the prefetched cloud result is consumed only after authority routing is known"
-  );
-  assert.match(
-    hydrateSource.slice(modeIndex, rolloutIndex),
-    /canUseVersionOnlyPrefetch[\s\S]*fetchCloudVersion\(userId\)[\s\S]*fetchCloudRecord\(userId\)/
-  );
+  const rolloutIndex = hydrateSource.indexOf("const rolloutHydrationPromise = normalizedRollout?.prepareHydration");
+  const prefetchIndex = hydrateSource.indexOf("const legacyCloudPrefetchPromise = dirty");
+  const joinIndex = hydrateSource.indexOf("const [prefetchedLegacy] = await Promise.all([");
+  assert.ok(rolloutIndex >= 0 && prefetchIndex > rolloutIndex);
+  assert.ok(joinIndex > prefetchIndex);
+  assert.match(hydrateSource.slice(prefetchIndex,joinIndex),
+    /rolloutHydrationPromise\.then\(\(decision\) => \{[\s\S]*decision\?\.authoritative === true[\s\S]*decision\?\.stage === "normalized"[\s\S]*fetchCloudVersion\(userId\)/);
 });
 
 test("login cloud prefetch setup remains read-only", () => {
@@ -679,7 +661,7 @@ test("dirty startup preserves configured local changes but recovers empty onboar
 
   assert.match(
     hydrateSource,
-    /const legacyCloudPrefetchPromise = dirty[\s\S]*\? null[\s\S]*canUseVersionOnlyPrefetch/
+    /const legacyCloudPrefetchPromise = dirty[\s\S]*\? null[\s\S]*rolloutHydrationPromise\.then[\s\S]*canUseVersionOnlyPrefetch/
   );
   const emptyLocalGuard = hydrateSource.indexOf(
     "if (dirty && !hasConfiguredOperationProfile(activeRaw || cachedRaw))"
@@ -703,8 +685,18 @@ test("dirty startup preserves configured local changes but recovers empty onboar
   );
   assert.match(
     hydrateSource,
-    /if \(cloudProbe\?\.error \|\| !hasConfiguredOperationProfile\(cloudProbe\?\.data\?\.app_state\)\)/,
-    "an unconfigured local state may use only a verified existing cloud operation"
+    /if \(cloudProbe\?\.error\)/,
+    "dirty unconfigured startup must fail closed on a cloud verification error"
+  );
+  assert.match(
+    hydrateSource,
+    /if \(cloudProbe\?\.data\?\.app_state &&[\s\S]*!hasConfiguredOperationProfile\(cloudProbe\.data\.app_state\)\)/,
+    "existing malformed cloud state must not be treated as a new operation"
+  );
+  assert.match(
+    hydrateSource,
+    /verifiedExistingCloudRecord = cloudProbe;/,
+    "verified missing cloud data must enter the Auth-only reconciliation hold"
   );
 });
 

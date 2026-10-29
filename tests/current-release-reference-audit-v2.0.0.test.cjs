@@ -21,27 +21,27 @@ const worker = read("service-worker.js");
 const monitoring = read("herdharbor-monitoring-config.js");
 const index = read("index.html");
 
-test("all authoritative whole-app release owners identify stable 2.0.0", () => {
-  assert.equal(pkg.version, "2.0.1");
-  assert.equal(lock.version, "2.0.1");
-  assert.equal(lock.packages[""].version, "2.0.1");
-  assert.equal(manifest.version, "2.0.1");
-  assert.equal(embeddedManifest.version, "2.0.1");
-  assert.equal(String(twa.appVersion), "2.0.1");
-  assert.equal(Number(twa.appVersionCode), 20);
+test("all authoritative whole-app release owners identify the 2.0.2 candidate", () => {
+  assert.equal(pkg.version, "2.0.2");
+  assert.equal(lock.version, "2.0.2");
+  assert.equal(lock.packages[""].version, "2.0.2");
+  assert.equal(manifest.version, "2.0.2");
+  assert.equal(embeddedManifest.version, "2.0.2");
+  assert.equal(String(twa.appVersion), "2.0.2");
+  assert.equal(Number(twa.appVersionCode), 21);
   assert.match(build, /channel:\s*"Stable"/);
-  assert.match(build, /version:\s*"2\.0\.1"/);
-  assert.match(build, /buildId:\s*"v2\.0\.1-release-1"/);
-  assert.match(gradle, /versionName\s+"2\.0\.1"/);
-  assert.match(gradle, /versionCode\s+20/);
+  assert.match(build, /version:\s*"2\.0\.2"/);
+  assert.match(build, /buildId:\s*"v2\.0\.2-release-1"/);
+  assert.match(gradle, /versionName\s+"2\.0\.2"/);
+  assert.match(gradle, /versionCode\s+21/);
 });
 
 test("runtime and monitoring identify the 2.0.0 release", () => {
-  assert.match(pwa, /version \|\| "2\.0\.1"/);
-  assert.match(pwa, /buildId \|\| "v2\.0\.1-release-1"/);
+  assert.match(pwa, /version \|\| "2\.0\.2"/);
+  assert.match(pwa, /buildId \|\| "v2\.0\.2-release-1"/);
   assert.match(pwa, /PWA_BUILD = `\$\{APP_VERSION\}-\$\{BUILD_ID\}`/);
-  assert.match(monitoring, /release:\s*"HerdHarbor@2\.0\.1"/);
-  assert.match(monitoring, /build:\s*"v2\.0\.1-release-1"/);
+  assert.match(monitoring, /release:\s*"HerdHarbor@2\.0\.2"/);
+  assert.match(monitoring, /build:\s*"v2\.0\.2-release-1"/);
 });
 
 test("formal 2.0.0 release artifacts and member-language gates exist", () => {
@@ -100,12 +100,12 @@ test("stable carried-forward component identities remain present", () => {
   ]) assert.equal(exists(p), true, p);
 });
 
-test("PWA shell and bootstrap use the 2.0.0 cutover identity", () => {
-  assert.match(worker, /herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1/);
+test("PWA shell and bootstrap retain the integrated 2.0.2 upgrade identity", () => {
+  assert.match(worker, /herdharbor-shell-v2\.0\.2-normalized-cloud-1/);
   assert.doesNotMatch(worker, /const CACHE_NAME = "herdharbor-shell-v1\.8\.4/);
-  assert.match(index, /manifest\.json\?v=2\.0\.1/);
-  assert.match(index, /herdharbor-build\.js\?v=2\.0\.1/);
-  assert.match(index, /pwa\.js\?v=36/);
+  assert.match(index, /manifest\.json\?v=2\.0\.2/);
+  assert.match(index, /herdharbor-build\.js\?v=2\.0\.2/);
+  assert.match(index, /pwa\.js\?v=38/);
   assert.match(pkg.scripts["test:v2.0.0-regression"], /v2\.0\.0-pwa-cutover/);
 });
 
@@ -121,8 +121,8 @@ test("current release workflows are stable 2.0.0 workflows", () => {
     ".github/workflows/v1.8.4-production-acceptance.yml"
   ]) assert.equal(exists(p), false, p);
   const ci = read(".github/workflows/v2.0.0-ci.yml");
-  assert.match(ci, /HerdHarbor@2\.0\.1/);
-  assert.match(ci, /versionName "2\.0\.1"/);
-  assert.match(ci, /versionCode 20/);
+  assert.match(ci, /HerdHarbor@2\.0\.2/);
+  assert.match(ci, /versionName "2\.0\.2"/);
+  assert.match(ci, /versionCode 21/);
   assert.match(ci, /release-2\.0\.0-phase-\*/);
 });

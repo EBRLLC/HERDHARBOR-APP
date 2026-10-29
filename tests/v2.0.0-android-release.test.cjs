@@ -15,14 +15,14 @@ test("Android/TWA package identity is stable HerdHarbor 2.0.0", () => {
 
   assert.equal(twa.packageId, "com.ebrllc.herdharbor");
   assert.equal(twa.host, "app.herdharbor.com");
-  assert.equal(twa.appVersion, "2.0.1");
-  assert.equal(twa.appVersionCode, 20);
-  assert.equal(embedded.version, "2.0.1");
+  assert.equal(twa.appVersion, "2.0.2");
+  assert.equal(twa.appVersionCode, 21);
+  assert.equal(embedded.version, "2.0.2");
 
   assert.match(gradle, /namespace "com\.ebrllc\.herdharbor"/);
   assert.match(gradle, /applicationId "com\.ebrllc\.herdharbor"/);
-  assert.match(gradle, /versionName "2\.0\.1"/);
-  assert.match(gradle, /versionCode 20/);
+  assert.match(gradle, /versionName "2\.0\.2"/);
+  assert.match(gradle, /versionCode 21/);
   assert.match(gradle, /targetSdkVersion 36/);
 });
 

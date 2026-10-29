@@ -16,8 +16,17 @@ const printer = require("../canine-pedigree-print-v2.0.1.js");
 const deps = { engine, standard, canine, lineage };
 
 function available(binary) {
-  const result = cp.spawnSync(binary, ["--version"], { encoding:"utf8", timeout:4000 });
-  return !result.error && result.status === 0;
+  // GitHub runners may be CPU-starved while the parallel PostgreSQL/Android
+  // jobs start. A four-second Chrome startup probe intermittently timed out
+  // even though /usr/bin/google-chrome was present. Still require actual
+  // executable/version and real generated PDF output; never skip rendering.
+  const result = cp.spawnSync(binary, ["--version"], { encoding:"utf8", timeout:15000 });
+  if (result.error || result.status !== 0) {
+    console.warn("Chrome version probe unavailable for", binary,
+      result.error?.code || ("exit-"+result.status));
+    return false;
+  }
+  return true;
 }
 const chrome = [process.env.HERDHARBOR_CHROME_PATH, "google-chrome", "google-chrome-stable", "chromium", "chromium-browser"]
   .filter(Boolean).find(available);

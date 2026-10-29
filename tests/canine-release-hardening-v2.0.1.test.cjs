@@ -73,7 +73,8 @@ test("editing preserves an existing canine task category and cache-busted task r
   assert.match(taskSource, /taskCategoryOptions\(task\), task\.category \|\| "Other"/);
   assert.match(html, /task-runtime-v1\.8\.3\.js\?v=2/);
   assert.match(worker, /\.\/task-runtime-v1\.8\.3\.js\?v=2/);
-  assert.match(worker, /canine-reproduction-4/);
+  assert.match(worker, /herdharbor-shell-v2\.0\.2-normalized-cloud-1/);
+  assert.match(worker, /canine-reproductive-workspace-v2\.0\.1\.js/);
 });
 
 test("shared dashboard considers canine breeder reminders through the existing task array", () => {
