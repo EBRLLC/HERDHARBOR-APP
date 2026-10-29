@@ -1444,6 +1444,8 @@
       root.hidden = false;
       const refresh = root.querySelector("#hh-refresh-account-data");
       if (refresh) refresh.hidden = false;
+      const blankStart = root.querySelector("#hh-auth-only-empty-start");
+      if (blankStart) blankStart.hidden = true;
     }
     authMessage(message, "info");
   }
@@ -3120,6 +3122,7 @@
           <div id="hh-auth-message" class="hh-auth-message" role="status" aria-live="polite"></div>
 
           <button id="hh-refresh-account-data" class="hh-auth-button hh-auth-primary" type="button" hidden>Refresh account data</button>
+          <button id="hh-auth-only-empty-start" class="hh-auth-button hh-auth-primary" type="button" hidden>Start a new local operation after recovery review</button>
 
           <div id="hh-standard-auth">
             <h2 id="hh-auth-title">Sign in</h2>
@@ -3205,6 +3208,8 @@
 
     const refresh = root.querySelector("#hh-refresh-account-data");
     if (refresh) refresh.hidden = true;
+    const blankStart = root.querySelector("#hh-auth-only-empty-start");
+    if (blankStart) blankStart.hidden = true;
 
     const isSignin = mode === "signin";
     root.querySelector("#hh-signin-form").hidden = !isSignin;
@@ -3245,6 +3250,13 @@
     root.querySelector("#hh-signup-tab").addEventListener("click", () => {
       authMessage();
       showAuth("signup");
+    });
+
+    root.querySelector("#hh-auth-only-empty-start").addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try { await startFreshAuthOnlyWorkspace(); }
+      finally { button.disabled = false; }
     });
 
     root.querySelector("#hh-refresh-account-data").addEventListener("click", async (event) => {
@@ -3441,6 +3453,68 @@
     link.click();
     URL.revokeObjectURL(url);
     setSyncState("Safety backup downloaded.", "success");
+  }
+
+  // A formerly registered account with no local data on THIS device may start
+  // an intentionally empty local operation only after an explicit warning
+  // and fresh server reads. This DOES NOT create a cloud record; the owner
+  // must still complete a profile and approve the durable recovery claim.
+  async function startFreshAuthOnlyWorkspace() {
+    const userId = String(session?.user?.id || "");
+    const token = captureAccountOperation(userId);
+    const stillCurrent = () => isAccountOperationCurrent(token, userId);
+    if (!userId || !stillCurrent() || authOnlyRecoveryOwner !== userId) return false;
+
+    const localWorkspaceClear = () => {
+      const activeOwner = String(originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) || "");
+      return (!activeOwner || activeOwner === userId) &&
+        !activeStateRaw() &&
+        !originalGetItem.call(localStorage, cacheKey(userId));
+    };
+    if (!localWorkspaceClear()) {
+      showAccountBoundaryRecovery("Other device or account records are present. Preserve them first; do not start a blank operation.");
+      return false;
+    }
+    if (!window.confirm(
+      "This device has no operation records for the signed-in account. Have you checked your ORIGINAL devices " +
+      "for unsynced animals, pedigrees, litters and medical information? Starting a local operation does not " +
+      "restore any older records. Do not continue if another device contains data that must be recovered."
+    )) return false;
+
+    let legacy, manifest, normalizedRecords, authority;
+    try {
+      [legacy, manifest, normalizedRecords, authority] = await Promise.all([
+        fetchCloudRecord(userId),
+        client.from("herdharbor_sync_manifest").select("user_id")
+          .eq("user_id", userId).maybeSingle(),
+        client.from("herdharbor_sync_records").select("record_id")
+          .eq("user_id", userId).limit(1).maybeSingle(),
+        getNormalizedSyncCohortStatus({ force: true })
+      ]);
+    } catch (error) {
+      if (stillCurrent()) setSyncState("The server could not verify this account as empty. No local operation was started.", "error");
+      return false;
+    }
+    if (!stillCurrent()) return false;
+    if (legacy?.error || legacy?.data || manifest?.error || manifest?.data ||
+        normalizedRecords?.error || normalizedRecords?.data ||
+        !authority || authority.schemaVerified !== true || authority.stage !== "legacy" ||
+        !localWorkspaceClear()) {
+      setSyncState("Cloud or device records may exist. Starting from an empty operation was stopped for account recovery.", "error");
+      return false;
+    }
+    if (!safeStorageSet(ACTIVE_OWNER_KEY, userId) ||
+        String(originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) || "") !== userId ||
+        !stillCurrent()) {
+      setSyncState("The new account workspace owner could not be verified. No local operation was started.", "error");
+      return false;
+    }
+    const root = document.querySelector("#hh-auth-root");
+    const blankStart = root?.querySelector("#hh-auth-only-empty-start");
+    if (blankStart) blankStart.hidden = true;
+    unlockApp();
+    setSyncState("Local setup only. After creating your operation, use Account to explicitly import this device's records; no cloud baseline exists yet.", "error");
+    return true;
   }
 
   // Auth-only recovery is owner-initiated. Every unknown cloud account stays
@@ -4209,9 +4283,12 @@
         );
         return Object.freeze({ ok: false, reason: "auth-only-reconciliation-required", localPreserved: true });
       }
+      authOnlyRecoveryOwner = userId;
       showAccountBoundaryRecovery(
         "This account has no verified cloud save. Another device may contain unsynced records. Use the original device to preserve and reconcile records before creating a cloud baseline."
       );
+      const blankStart = document.querySelector("#hh-auth-only-empty-start");
+      if (blankStart) blankStart.hidden = false;
       return Object.freeze({ ok: false, reason: "auth-only-reconciliation-required", localPreserved: false });
     }
 
