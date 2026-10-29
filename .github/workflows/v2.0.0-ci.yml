@@ -4,6 +4,12 @@ on:
   pull_request:
     branches: [main, 'feature/2.0.1-canine-*', 'herdharbor-2.0.1/**', 'release-2.0.0-phase-*', 'breeder-docs/phase-*', 'breeding-intel/phase-*', 'marketplace-site/app-*', 'marketplace-comms/app-*', 'ownership-transfer/phase-*']
   workflow_dispatch:
+    inputs:
+      run_staging_auth:
+        description: 'Execute real GoTrue/JWT and normalized HTTP staging integration using synthetic secret-backed users'
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -230,3 +236,29 @@ jobs:
           command -v pdftotext
       - name: Render and verify genuine pedigree PDF text
         run: node scripts/verify-canine-pdf-render.cjs
+
+  staging-authenticated-http:
+    name: Real GoTrue staging Auth/REST/RPC (manual isolated gate)
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/release/2.0.2-normalized-cloud' && inputs.run_staging_auth
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify staging-only auth test prerequisites
+        env:
+          HH_STAGE_SUPABASE_URL: ${{ vars.HH_STAGE_SUPABASE_URL }}
+          HH_STAGE_PUBLISHABLE_KEY: ${{ secrets.HH_STAGE_PUBLISHABLE_KEY }}
+          HH_STAGE_USER_A_EMAIL: ${{ secrets.HH_STAGE_USER_A_EMAIL }}
+          HH_STAGE_USER_A_PASSWORD: ${{ secrets.HH_STAGE_USER_A_PASSWORD }}
+          HH_STAGE_USER_B_EMAIL: ${{ secrets.HH_STAGE_USER_B_EMAIL }}
+          HH_STAGE_USER_B_PASSWORD: ${{ secrets.HH_STAGE_USER_B_PASSWORD }}
+        run: |
+          npm ci --no-audit --no-fund
+          node scripts/v2.0.2-staging-auth-http-acceptance.mjs
