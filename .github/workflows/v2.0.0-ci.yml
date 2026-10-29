@@ -52,6 +52,8 @@ jobs:
           npx esbuild supabase/functions/animal-transfer/index.ts --format=esm --platform=neutral --log-level=error --outfile=/tmp/animal-transfer.mjs
           npx esbuild supabase/functions/paper-pedigree-extract/index.ts --bundle --format=esm --platform=neutral --external:npm:* --log-level=error --outfile=/tmp/hh-ai-paper-2.0.1.mjs
           npx esbuild supabase/functions/record-photo-extract/index.ts --bundle --format=esm --platform=neutral --external:npm:* --log-level=error --outfile=/tmp/hh-ai-photo-2.0.1.mjs
+      - name: Syntax-check real staging HTTP/JWT acceptance without contacting staging
+        run: node --check scripts/v2.0.2-staging-auth-http-acceptance.mjs
       - name: Verify repository governance and current 2.0.2 release-candidate contract
         run: npm run test:release
       - name: Verify canonical engine ownership explicitly
