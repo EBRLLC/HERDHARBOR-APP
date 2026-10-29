@@ -3551,8 +3551,18 @@
       }
       try {
         const exportState = await window.HerdHarborAttachments.stateWithPedigreeAttachments();
-        const unresolvedPedigrees = (exportState?.pedigrees || []).some(x => x?.attachmentStored && !x?.sourceDataUrl);
-        const unresolvedDrafts = (exportState?.pedigreeDrafts || []).some(x => x?.sourceDocument?.attachmentStored && !x.sourceDocument?.dataUrl);
+        // Validate references from the *current authenticated owner's raw
+        // snapshot*, not just the rows returned by the runtime. An empty or
+        // stale different-account runtime export cannot prove these originals
+        // exist, even if it contains no unresolved attachment flags.
+        const savedPedigrees = new Map((exportState?.pedigrees || []).map(x => [String(x?.id || ""), x]));
+        const savedDrafts = new Map((exportState?.pedigreeDrafts || []).map(x => [String(x?.id || ""), x]));
+        const unresolvedPedigrees = (state.pedigrees || [])
+          .filter(x => x?.attachmentStored && !x?.sourceDataUrl)
+          .some(x => !savedPedigrees.get(String(x.id || ""))?.sourceDataUrl);
+        const unresolvedDrafts = (state.pedigreeDrafts || [])
+          .filter(x => x?.sourceDocument?.attachmentStored && !x?.sourceDocument?.dataUrl)
+          .some(x => !savedDrafts.get(String(x.id || ""))?.sourceDocument?.dataUrl);
         if (unresolvedPedigrees || unresolvedDrafts || !exportState) {
           setSyncState("At least one pedigree source document is not recoverable from this device. First cloud import is blocked.", "error");
           return false;
