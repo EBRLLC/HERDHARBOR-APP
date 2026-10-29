@@ -3396,6 +3396,19 @@
     });
   }
 
+  let authOnlyRecoveryOwner = null;
+
+  function updateAuthOnlyRecoveryControls() {
+    if (!accountDialog) return;
+    const control = accountDialog.querySelector("#hh-auth-only-recovery-actions");
+    if (control) control.hidden = !(
+      authOnlyRecoveryOwner &&
+      authOnlyRecoveryOwner === String(session?.user?.id || "") &&
+      String(originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) || "") === authOnlyRecoveryOwner &&
+      hasConfiguredOperationProfile(activeStateRaw())
+    );
+  }
+
   function updateConflictControls() {
     if (!accountDialog) return;
     const controls = accountDialog.querySelector("#hh-conflict-actions");
@@ -3428,6 +3441,82 @@
     link.click();
     URL.revokeObjectURL(url);
     setSyncState("Safety backup downloaded.", "success");
+  }
+
+  // Auth-only recovery is owner-initiated. Every unknown cloud account stays
+  // protected until a real local checkpoint and verified cloud readback exist.
+  async function claimAuthOnlyDeviceRecovery() {
+    const userId = String(session?.user?.id || "");
+    const token = captureAccountOperation(userId);
+    const stillCurrent = () => isAccountOperationCurrent(token, userId);
+    if (!userId || !stillCurrent() || authOnlyRecoveryOwner !== userId) return false;
+
+    const raw = activeStateRaw();
+    const state = safeParse(raw);
+    if (String(originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) || "") !== userId ||
+        !state || !hasConfiguredOperationProfile(state)) {
+      setSyncState("The local operation owner or profile could not be verified. No cloud import was attempted.", "error");
+      return false;
+    }
+
+    const consent = window.confirm(
+      "Use this device's operation records as the FIRST cloud recovery copy for this account? " +
+      "Records on another offline device may differ. Download a separate safety backup and reconcile those devices. " +
+      "This action cannot automatically merge other devices."
+    );
+    if (!consent) return false;
+
+    const preserved = await recordRecoverySnapshot(
+      userId, raw, "Owner-approved Auth-only device recovery before first cloud import"
+    );
+    if (!stillCurrent()) return false;
+    if (!preserved) {
+      setSyncState("Local recovery checkpoint failed. No cloud import was attempted.", "error");
+      return false;
+    }
+    if (activeStateRaw() !== raw ||
+        String(originalGetItem.call(localStorage, ACTIVE_OWNER_KEY) || "") !== userId) {
+      setSyncState("Device records changed during recovery preparation. No cloud import was attempted.", "error");
+      return false;
+    }
+
+    // Server RPC derives the owner solely from auth.uid(), rejects any prior
+    // cloud data, and atomically claims the initial recovery snapshot/cohort.
+    const { data, error } = await client.rpc("herdharbor_claim_auth_only_local_recovery", {
+      p_app_state: state
+    });
+    if (!stillCurrent()) return false;
+    if (error || data?.ok !== true) {
+      setSyncState("The recovery claim was not confirmed. Local records were kept; refresh to inspect cloud state before retrying.", "error");
+      return false;
+    }
+
+    const readback = await fetchCloudRecord(userId);
+    if (!stillCurrent()) return false;
+    if (readback?.error || !readback?.data?.app_state ||
+        !sameState(JSON.stringify(readback.data.app_state), raw) ||
+        !readback.data.updated_at) {
+      setSyncState("The first cloud recovery copy could not be verified. Keep the local checkpoint and stop for review.", "error");
+      return false;
+    }
+    const baseline = await writeCloudBaseline(userId, raw);
+    if (!stillCurrent()) return false;
+    if (baseline === false) {
+      setSyncState("Cloud recovery was saved but the device baseline is unverified. Do not clear local records.", "error");
+      return false;
+    }
+    safeStorageSet(versionKey(userId), readback.data.updated_at);
+    authOnlyRecoveryOwner = null;
+    updateAuthOnlyRecoveryControls();
+    setSyncState(
+      activeStateRaw() !== raw
+        ? "Recovery baseline verified; newer device changes remain pending."
+        : "First cloud recovery baseline verified. Preparing normalized migration.",
+      "working"
+    );
+    // Preserve dirty/outbox flags. On refresh, new edits enter CAS/merge paths.
+    await refreshAuthenticatedAccountData();
+    return true;
   }
 
   async function resolveConflict(choice) {
