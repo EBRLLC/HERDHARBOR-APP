@@ -14,16 +14,16 @@ const pwa=read("pwa.js");
 const gradle=read("android/app/build.gradle");
 const optional=read("herdharbor-optional-tools.js");
 
-test("staged candidate release versions are 2.0.1 with a new native code",()=>{
- assert.equal(pkg.version,"2.0.1");
- assert.equal(lock.version,"2.0.1");
- assert.equal(lock.packages[""].version,"2.0.1");
- assert.equal(manifest.version,"2.0.1");
- assert.equal(embedded.version,"2.0.1");
- assert.equal(twa.appVersion,"2.0.1");
- assert.equal(twa.appVersionCode,20);
+test("staged candidate release versions are 2.0.2 with a new native code",()=>{
+ assert.equal(pkg.version,"2.0.2");
+ assert.equal(lock.version,"2.0.2");
+ assert.equal(lock.packages[""].version,"2.0.2");
+ assert.equal(manifest.version,"2.0.2");
+ assert.equal(embedded.version,"2.0.2");
+ assert.equal(twa.appVersion,"2.0.2");
+ assert.equal(twa.appVersionCode,21);
  assert.match(gradle,/versionName "2\.0\.1"/);
- assert.match(gradle,/versionCode 20/);
+ assert.match(gradle,/versionCode 21/);
  assert.match(build,/version: "2\.0\.1"/);
  assert.match(build,/buildId: "v2\.0\.1-release-1"/);
  assert.match(pwa,/HerdHarborBuild\?\.version \|\| "2\.0\.1"/);
@@ -32,8 +32,8 @@ test("staged candidate release versions are 2.0.1 with a new native code",()=>{
 test("2.0.1 HTML queries match the service-worker preload identities",()=>{
  const shell=worker.slice(worker.indexOf("const REQUIRED_SHELL"),worker.indexOf("const RUNTIME_CACHE_PATHS"));
  const important=[
-  "manifest.json?v=2.0.1",
-  "herdharbor-build.js?v=2.0.1",
+  "manifest.json?v=2.0.2",
+  "herdharbor-build.js?v=2.0.2",
   "herdharbor-optional-tools.js?v=4",
   "herdharbor-cloud.js?v=48",
   "pwa.js?v=38",
