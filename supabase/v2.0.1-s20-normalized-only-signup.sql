@@ -153,7 +153,9 @@ create trigger hh_s20_guard_normalized_only_signup
 comment on function public.herdharbor_guard_normalized_only_signup() is
   'S22 safety: forbid a normalized-only signup from downgrading to an unbacked legacy writer or erasing its normalized-only marker.';
 
--- Anonymous callers receive only a boolean readiness signal. Never expose
+-- Anonymous callers receive only a boolean readiness signal.
+-- The catalog-only probe needs no elevated privileges; SECURITY INVOKER
+-- avoids exposing an unnecessary SECURITY DEFINER RPC to anonymous users. Never expose
 -- auth.users, the cohort, or any account identifiers through this endpoint.
 -- This prevents a newer client from creating accounts through a legacy
 -- registration path if the database migration was not installed first.
@@ -161,7 +163,7 @@ create or replace function public.herdharbor_normalized_signup_ready()
 returns boolean
 language sql
 stable
-security definer
+security invoker
 set search_path = ''
 as $s20_signup_ready$
   select exists (
