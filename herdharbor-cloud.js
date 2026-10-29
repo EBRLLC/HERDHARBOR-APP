@@ -3597,6 +3597,7 @@
         membership.innerHTML = `${String(tier).replace(/^./, (letter) => letter.toUpperCase())} membership · ${String(role).replace(/^./, (letter) => letter.toUpperCase())} account<small>${String(accountStatus).replace(/^./, (letter) => letter.toUpperCase())}</small>`;
         const status = accountDialog.querySelector("#hh-account-sync-status");
         status.textContent = syncState;
+        updateAuthOnlyRecoveryControls();
       });
       const accountButtonTarget = document.body || document.documentElement;
       if (accountButtonTarget) accountButtonTarget.appendChild(accountButton);
@@ -3612,6 +3613,10 @@
           <p id="hh-account-email" class="hh-account-email"></p>
           <p id="hh-account-membership" class="hh-account-membership">Member membership · User account<small>Active</small></p>
           <p id="hh-account-sync-status">Checking sync status…</p>
+          <div id="hh-auth-only-recovery-actions" class="hh-conflict-actions" hidden>
+            <p>No verified cloud copy exists. Use the original device and download a separate safety backup before importing. Other devices may contain different offline records.</p>
+            <button id="hh-auth-only-claim" class="hh-conflict-local" type="button">Import this device's records to cloud</button>
+          </div>
           <div id="hh-conflict-actions" class="hh-conflict-actions" hidden>
             <p>Both copies are protected. Choose which version should become the current record set.</p>
             <button id="hh-keep-local" class="hh-conflict-local" type="button">Keep this device's records</button>
@@ -3640,6 +3645,13 @@
 
       accountDialog.querySelector("#hh-download-safety").addEventListener("click", () => {
         downloadSafetyBackup();
+      });
+
+      accountDialog.querySelector("#hh-auth-only-claim").addEventListener("click", async (event) => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        try { await claimAuthOnlyDeviceRecovery(); }
+        finally { button.disabled = false; }
       });
 
       accountDialog.querySelector("#hh-keep-local").addEventListener("click", async () => {
@@ -3703,6 +3715,8 @@
     );
     const staleHydration = () => Object.freeze({ stale: true, userId });
     if (!userId || !isCurrentHydration()) return staleHydration();
+    authOnlyRecoveryOwner = null;
+    updateAuthOnlyRecoveryControls();
     dispatchAuthSession();
 
     // Access/profile and sync-rollout hydration are independent network
@@ -4159,7 +4173,9 @@
       const retainedRaw = activeRaw || cachedRaw;
       if (retainedRaw && safeParse(retainedRaw)) {
         if (!activeRaw) setActiveUserData(userId, retainedRaw, "auth-only-reconciliation-hold");
+        authOnlyRecoveryOwner = userId;
         unlockApp();
+        updateAuthOnlyRecoveryControls();
         setSyncState(
           "No verified cloud save exists for this account. Device records were retained; first-login reconciliation is required before cloud upload.",
           "error"
@@ -4223,7 +4239,8 @@
       const result = await run;
       const stillCurrentUser = String(session?.user?.id || "") === userId;
       const appUnlocked = !document.documentElement?.classList?.contains?.("hh-auth-locked");
-      if (stillCurrentUser && appUnlocked && !recoveryMode) {
+      if (stillCurrentUser && appUnlocked && !recoveryMode &&
+          result?.reason !== "auth-only-reconciliation-required") {
         lastHydratedUserId = userId;
         // Migration is an additive opt-in handoff; never block account loading
         // or sign-in on a migration prompt, and never migrate offline/dirty work.
