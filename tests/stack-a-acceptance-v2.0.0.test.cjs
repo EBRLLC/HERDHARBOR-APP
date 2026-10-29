@@ -85,7 +85,9 @@ test("optional document assets remain outside the bounded required shell", () =>
   const block = sw.match(/const REQUIRED_SHELL = \[([\s\S]*?)\];/);
   assert.ok(block);
   const required = [...block[1].matchAll(/"([^"]+)"/g)].map((match) => match[1]);
-  assert.ok(required.length <= 50, `required shell grew to ${required.length}`);
+  // The 2.0.2 migration bridge expands the required offline shell to 51 files.
+  // Keep a small bounded allowance rather than dropping canine/offline assets.
+  assert.ok(required.length <= 55, `required shell grew to ${required.length}`);
   assert.ok(!required.some((entry) => /document-export|birth-certificate|animal-documents|standard-pedigree-print/.test(entry)));
   for (const asset of [
     "document-export-v2.0.0.js",

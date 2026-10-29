@@ -116,7 +116,7 @@ assert.match(spreadsheet, /downloadExport,/);
 assert.match(spreadsheet, /How to fix:/);
 assert.match(spreadsheet, /Download issue report/);
 
-assert.match(serviceWorker, /const CACHE_NAME = "herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1/);
+assert.match(serviceWorker, /const CACHE_NAME = "herdharbor-shell-v2\.0\.2-normalized-cloud-1/);
 if (webVersion === "1.8.1") assert.match(serviceWorker, /v1\.8\.1-alpha-october-subscription-launch-/);
 assert.match(optionalTools, /spreadsheet-import\.js\?v=17/);
 assert.match(serviceWorker, /"\/spreadsheet-import\.js"/);

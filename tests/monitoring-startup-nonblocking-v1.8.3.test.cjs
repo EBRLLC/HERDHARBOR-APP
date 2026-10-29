@@ -226,6 +226,6 @@ test("PWA asset revision remains current under the 2.0.0 release", () => {
   assert.equal(packageJson.version, "2.0.1");
   assert.match(index, /pwa\.js\?v=38/);
   assert.match(worker, /\.\/pwa\.js\?v=38/);
-  assert.match(worker, /herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1/);
+  assert.match(worker, /herdharbor-shell-v2\.0\.2-normalized-cloud-1/);
   assert.match(packageJson.scripts["test:v1.8.3"], /monitoring-startup-nonblocking-v1\.8\.3\.test\.cjs/);
 });
