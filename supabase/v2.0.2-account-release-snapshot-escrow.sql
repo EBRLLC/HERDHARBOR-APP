@@ -74,9 +74,8 @@ begin
   select '2.0.2',r.user_id,r.legacy_row,r.manifest_row,r.normalized_rows,
     (r.legacy_row is not null or r.manifest_row is not null or
       pg_catalog.jsonb_array_length(r.normalized_rows)>0),
-    pg_catalog.encode(extensions.digest(
-      pg_catalog.jsonb_build_object('legacy',r.legacy_row,'manifest',r.manifest_row,
-        'records',r.normalized_rows)::text::bytea,'sha256'),'hex')
+    pg_catalog.encode(extensions.digest(pg_catalog.convert_to(pg_catalog.jsonb_build_object('legacy',r.legacy_row,'manifest',r.manifest_row,
+        'records',r.normalized_rows)::text,'UTF8'),'sha256'),'hex')
   from rows_to_capture r
   on conflict (release_id,user_id) do nothing;
 
@@ -93,10 +92,8 @@ begin
   select count(*) into v_mismatch
   from public.herdharbor_202_release_snapshots s
   where s.release_id='2.0.2' and
-    s.source_sha256 <> pg_catalog.encode(extensions.digest(
-      pg_catalog.jsonb_build_object('legacy',s.legacy_row,
-        'manifest',s.manifest_row,'records',s.normalized_rows)::text::bytea,
-        'sha256'),'hex');
+    s.source_sha256 <> pg_catalog.encode(extensions.digest(pg_catalog.convert_to(pg_catalog.jsonb_build_object('legacy',s.legacy_row,
+        'manifest',s.manifest_row,'records',s.normalized_rows)::text,'UTF8'),'sha256'),'hex');
   if v_mismatch>0 then
     raise exception using errcode='23514',message='HH_202_SNAPSHOT_DIGEST_MISMATCH';
   end if;
