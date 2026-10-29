@@ -6,7 +6,7 @@
   "scripts": {
     "test": "node --test tests/*.test.cjs",
     "test:v2.0.1-review": "node --test tests/canine-*.test.cjs tests/ai-access-gate-v2.0.1.test.cjs tests/paper-pedigree-species-gate-v2.0.1.test.cjs tests/photo-voice-readiness-v2.0.1.test.cjs tests/v2.0.1-integration-review.test.cjs tests/v2.0.1-release-isolation.test.cjs tests/v2.0.1-stabilization-*.test.cjs",
-    "test:v2.0.2-review": "npm run test:v2.0.1-review && node --test tests/v2.0.2-migration-backup-restore.test.cjs tests/v2.0.1-s19-server-normalized-migration.test.cjs tests/v2.0.1-s20-auto-normalized-upgrade.test.cjs tests/v2.0.1-s20-first-save-authority.test.cjs tests/v2.0.1-s21-normalized-refresh-safety.test.cjs tests/v2.0.1-s21-pwa-update-state.test.cjs tests/v2.0.1-s22-authority-freshness.test.cjs tests/v2.0.1-s22-normalized-only-downgrade.test.cjs tests/v2.0.1-stabilization-s18-normalized-primary.test.cjs",
+    "test:v2.0.2-review": "npm run test:v2.0.1-review && node --test tests/v2.0.2-auth-only-first-login-hold.test.cjs tests/v2.0.2-migration-backup-restore.test.cjs tests/v2.0.1-s19-server-normalized-migration.test.cjs tests/v2.0.1-s20-auto-normalized-upgrade.test.cjs tests/v2.0.1-s20-first-save-authority.test.cjs tests/v2.0.1-s21-normalized-refresh-safety.test.cjs tests/v2.0.1-s21-pwa-update-state.test.cjs tests/v2.0.1-s22-authority-freshness.test.cjs tests/v2.0.1-s22-normalized-only-downgrade.test.cjs tests/v2.0.1-stabilization-s18-normalized-primary.test.cjs",
     "build:monitoring": "node scripts/build-monitoring.mjs",
     "build:monitoring-config": "node scripts/build-monitoring-config.mjs",
     "audit:security": "node scripts/repository-security-audit.mjs",
