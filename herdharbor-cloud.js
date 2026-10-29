@@ -3494,7 +3494,7 @@
     const readback = await fetchCloudRecord(userId);
     if (!stillCurrent()) return false;
     if (readback?.error || !readback?.data?.app_state ||
-        !sameState(JSON.stringify(readback.data.app_state), raw) ||
+        !exactSameState(JSON.stringify(readback.data.app_state), raw) ||
         !readback.data.updated_at) {
       setSyncState("The first cloud recovery copy could not be verified. Keep the local checkpoint and stop for review.", "error");
       return false;
