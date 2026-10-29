@@ -16,7 +16,7 @@ async function simulate({ cloud, authority = false, activeRaw = null, cachedRaw 
     "data", "rolloutDecision", "hydrationInputCurrent", "deferHydrationForNewEdit",
     "activeRaw", "cachedRaw", "safeParse", "setActiveUserData", "userId",
     "unlockApp", "setSyncState", "showAccountBoundaryRecovery",
-    "authOnlyRecoveryOwner", "updateAuthOnlyRecoveryControls"
+    "authOnlyRecoveryOwner", "updateAuthOnlyRecoveryControls", "document"
   ];
   const values = [
     cloud?.data ?? null, { authoritative: authority, stage: authority ? "normalized" : "legacy" },
@@ -26,7 +26,7 @@ async function simulate({ cloud, authority = false, activeRaw = null, cachedRaw 
     (...args) => calls.updated.push(args), "owner-A",
     () => {calls.unlocked++;}, (...args) => calls.states.push(args),
     value => calls.held.push(value),
-    null, () => {}
+    null, () => {}, {querySelector:()=>({hidden:true})}
   ];
   const execute = new Function(...dependencies,
     "return async function executeGuard() {\n" + guard + "\nreturn { ok: true, reason: 'continue-legacy-hydration' };\n}"
