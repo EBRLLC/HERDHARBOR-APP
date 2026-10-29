@@ -60,7 +60,7 @@ test("authoritative production identities agree on candidate 2.0.1", () => {
   assert.match(build, /version:\s*"2\.0\.1"/);
   assert.match(gradle, /versionName\s+"2\.0\.1"/);
   assert.match(gradle, /versionCode\s+20/);
-  assert.match(worker, /herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1/);
+  assert.match(worker, /herdharbor-shell-v2\.0\.2-normalized-cloud-1/);
   assert.match(index, /herdharbor-cloud\.js\?v=48/);
 });
 

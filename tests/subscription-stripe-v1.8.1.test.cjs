@@ -143,7 +143,7 @@ test("v1.8.3 web runtime loads carried-forward v1.8.1 referral policy before Str
 });
 
 test("PWA keeps referral, admin-credit and Stripe subscription assets network-first", () => {
-  assert.match(sw, /herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1/);
+  assert.match(sw, /herdharbor-shell-v2\.0\.2-normalized-cloud-1/);
   for (const asset of [
     "subscription-referral-policy-v1.8.1.js",
     "subscription-admin-credits-v1.8.1.js",
@@ -196,5 +196,5 @@ test("updated launch and provider assets remain cache-busted under the 2.0.0 rel
   assert.match(sw, /\.\/subscription-launch-v1\.8\.1\.js\?v=3/);
   assert.match(sw, /\.\/subscription-stripe-provider-v1\.8\.0\.js\?v=3/);
   assert.match(build, /version:\s*"2\.0\.1"/);
-  assert.match(sw, /herdharbor-shell-v2\.0\.1-v2\.0\.1-release-1/);
+  assert.match(sw, /herdharbor-shell-v2\.0\.2-normalized-cloud-1/);
 });
