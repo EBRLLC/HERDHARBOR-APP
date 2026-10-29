@@ -143,5 +143,5 @@ test("dirty startup recognizes existing valid cloud operation",async()=>{
   const cloud={data:{app_state:{profile:{operationName:"Existing farm"}},updated_at:"current"}};
   const {result,calls}=await simulateDirtyUnconfigured(cloud);
   assert.equal(result.ok,true);assert.deepEqual(result.verifiedExistingCloudRecord,cloud);
-  assert.equal(calls.unlocked,0);
+  assert.equal(calls.unlocks,0);
 });
