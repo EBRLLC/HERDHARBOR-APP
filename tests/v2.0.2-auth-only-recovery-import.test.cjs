@@ -15,10 +15,12 @@ async function simulate({
   consent=true, backup=true, matchingOwner=true, profile=true, changed=false,
   rpcError=null, rpcData={ok:true}, remoteMatches=true, baseline=true,
   accountSwitch=false, rpcThrows=false, readThrows=false, baselineThrows=false,
-  refreshThrows=false, refreshResult=true, refreshInvalidatesToken=false, refreshChangesAccount=false
+  refreshThrows=false, refreshResult=true, refreshInvalidatesToken=false, refreshChangesAccount=false,
+  storedPedigree=false, attachmentReaderMissing=false, attachmentReadThrows=false
 }={}){
   const userId="owner-A";
   const state={profile:profile?{operationName:"Synthetic breeder"}:{},animals:[{id:"rabbit-1"}]};
+  if (storedPedigree) state.pedigrees=[{id:"ped-1",attachmentStored:true,sourceDataUrl:""}];
   const raw=JSON.stringify(state);
   const calls={rpc:0,backup:0,reads:0,baseline:0,refresh:0,messages:[],versions:[],confirmed:0};
   let currentRaw=raw;
@@ -33,7 +35,11 @@ async function simulate({
     hasConfiguredOperationProfile:s=>!!s?.profile?.operationName,
     originalGetItem:{call:(_storage,key)=>key==="ACTIVE_OWNER"?matchingOwner?userId:"owner-B":null},
     localStorage:{}, ACTIVE_OWNER_KEY:"ACTIVE_OWNER",
-    window:{confirm:()=>{calls.confirmed++;return consent}},
+    window:{confirm:()=>{calls.confirmed++;return consent},
+      HerdHarborAttachments:attachmentReaderMissing?null:{stateWithPedigreeAttachments:async()=>{
+        if(attachmentReadThrows)throw new Error("IndexedDB document missing");
+        return {...state,pedigrees:[{id:"ped-1",attachmentStored:true,sourceDataUrl:"data:application/pdf;base64,dGVzdA=="}]};
+      }}},
     setSyncState:(...args)=>calls.messages.push(args),
     recordRecoverySnapshot:async()=>{calls.backup++;if(changed)currentRaw=JSON.stringify({...state,animals:[{id:"new-edit"}]});return backup},
     client:{rpc:async(_name,args)=>{calls.rpc++;assert.equal(_name,"herdharbor_claim_auth_only_local_recovery");assert.deepEqual(args,{p_app_state:state});if(rpcThrows)throw new Error("network interrupted");return {data:rpcData,error:rpcError}}},
@@ -150,4 +156,21 @@ test("account change during refresh cannot claim successful import",async()=>{
   const {result,calls}=await simulate({refreshInvalidatesToken:true,refreshChangesAccount:true});
   assert.equal(result,false);
   assert.equal(calls.refresh,1);
+});
+
+test("import with IndexedDB-only pedigree originals requires a second explicit consent",async()=>{
+  const {result,calls}=await simulate({storedPedigree:true});
+  assert.equal(result,true);
+  assert.equal(calls.confirmed,2);
+  assert.equal(calls.rpc,1);
+});
+test("import stops when device-only pedigree reader is unavailable",async()=>{
+  const {result,calls}=await simulate({storedPedigree:true,attachmentReaderMissing:true});
+  assert.equal(result,false);
+  assert.equal(calls.rpc,0);
+});
+test("import stops when device-only pedigree original cannot be loaded",async()=>{
+  const {result,calls}=await simulate({storedPedigree:true,attachmentReadThrows:true});
+  assert.equal(result,false);
+  assert.equal(calls.rpc,0);
 });
