@@ -69,6 +69,7 @@ jobs:
           fi
           pg_isready -h 127.0.0.1 -U postgres -d herdharbor_s19_restore
           node --test tests/v2.0.2-postgres-restore.test.cjs
+          node --test tests/v2.0.2-recovery-rollback-guard.test.cjs
       - name: Run complete HerdHarbor regression suite in UTC
         env:
           TZ: UTC
