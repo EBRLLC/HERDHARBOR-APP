@@ -60,6 +60,24 @@ function storeBackup(data, dir, secret) {
   demand(sha(proof)===saved.sha256 && proof.equals(plain),"backup readback verification failed");
   return { file:name,checksum:saved.sha256 };
 }
+// Independently open and authenticate a saved recovery artifact before cutover.
+function restoreBackup(file, secret) {
+  demand(typeof secret === "string" && secret.length >= 24, "S19_BACKUP_PASSPHRASE must contain 24 or more characters");
+  const pack=JSON.parse(fs.readFileSync(file,"utf8"));
+  demand(pack.format==="hh-s19-aes256gcm-v1","unsupported backup format");
+  demand(/^[0-9a-f]{32}$/i.test(pack.salt||"") && /^[0-9a-f]{24}$/i.test(pack.iv||"") &&
+    /^[0-9a-f]{32}$/i.test(pack.tag||"") && /^[0-9a-f]{64}$/i.test(pack.sha256||""),
+    "invalid backup envelope");
+  const key=crypto.scryptSync(secret,Buffer.from(pack.salt,"hex"),32);
+  const dec=crypto.createDecipheriv("aes-256-gcm",key,Buffer.from(pack.iv,"hex"));
+  dec.setAuthTag(Buffer.from(pack.tag,"hex"));
+  const plain=Buffer.concat([dec.update(Buffer.from(pack.data,"base64")),dec.final()]);
+  demand(sha(plain)===pack.sha256,"backup checksum mismatch");
+  const account=JSON.parse(plain.toString("utf8"));
+  demand(account && typeof account.userId==="string" && account.legacy && Array.isArray(account.rows),
+    "backup account payload incomplete");
+  return account;
+}
 function options(argv) {
   const parsed = {};
   for(let i=0;i<argv.length;i++) {
@@ -94,7 +112,7 @@ function execute(argv=process.argv.slice(2), reader=readAccount, query=runPsql) 
     normalized:true,backupSha256:backup.checksum}));
   return {plan,backup,executed:true};
 }
-module.exports={readAccount,storeBackup,options,execute,runPsql};
+module.exports={readAccount,storeBackup,restoreBackup,options,execute,runPsql};
 if (require.main===module) {
   try { execute(); } catch(error) {
     console.error(String(error?.message||error).replace(/password=\S+/gi,"password=[REDACTED]"));
