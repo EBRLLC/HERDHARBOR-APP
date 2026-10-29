@@ -3436,7 +3436,12 @@
     }
 
     if (window.HerdHarborAttachments?.stateWithPedigreeAttachments) {
-      appState = await window.HerdHarborAttachments.stateWithPedigreeAttachments();
+      try {
+        appState = await window.HerdHarborAttachments.stateWithPedigreeAttachments();
+      } catch (error) {
+        setSyncState("Safety backup stopped: a pedigree source document could not be recovered from this device. No incomplete backup was downloaded.", "error");
+        return false;
+      }
     }
     const payload = JSON.stringify({
       app: "HerdHarbor",
@@ -3531,6 +3536,37 @@
         !state || !hasConfiguredOperationProfile(state)) {
       setSyncState("The local operation owner or profile could not be verified. No cloud import was attempted.", "error");
       return false;
+    }
+
+    // Pedigree originals may live only in this device's IndexedDB. Never
+    // treat JSON references as proof the source files survived the recovery.
+    const storedDocuments = [
+      ...(Array.isArray(state.pedigrees) ? state.pedigrees.filter(x => x?.attachmentStored && !x?.sourceDataUrl) : []),
+      ...(Array.isArray(state.pedigreeDrafts) ? state.pedigreeDrafts.filter(x => x?.sourceDocument?.attachmentStored && !x.sourceDocument?.dataUrl) : [])
+    ];
+    if (storedDocuments.length) {
+      if (!window.HerdHarborAttachments?.stateWithPedigreeAttachments) {
+        setSyncState("Pedigree attachments are stored only on this device and cannot be checked. Preserve the device and download a complete safety backup before migration.", "error");
+        return false;
+      }
+      try {
+        const exportState = await window.HerdHarborAttachments.stateWithPedigreeAttachments();
+        const unresolvedPedigrees = (exportState?.pedigrees || []).some(x => x?.attachmentStored && !x?.sourceDataUrl);
+        const unresolvedDrafts = (exportState?.pedigreeDrafts || []).some(x => x?.sourceDocument?.attachmentStored && !x.sourceDocument?.dataUrl);
+        if (unresolvedPedigrees || unresolvedDrafts || !exportState) {
+          setSyncState("At least one pedigree source document is not recoverable from this device. First cloud import is blocked.", "error");
+          return false;
+        }
+      } catch (error) {
+        setSyncState("A pedigree source attachment could not be verified. Keep the original device and preserve its records; first cloud import was blocked.", "error");
+        return false;
+      }
+      if (!stillCurrent() || activeStateRaw() !== raw) return false;
+      if (!window.confirm(
+        "Pedigree source files in device storage are NOT included in the cloud JSON baseline. " +
+        "Before continuing you must use Account > Download safety backup and verify the exported JSON contains the originals. " +
+        "Keep this original device. Continue only after completing that separate backup?"
+      )) return false;
     }
 
     const consent = window.confirm(
