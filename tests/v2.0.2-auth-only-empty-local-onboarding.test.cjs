@@ -19,18 +19,6 @@ async function simulate({
   const actions={confirmed:0,cloudReads:0,manifestReads:0,recordReads:0,authorityReads:0,
     ownerWrites:0,unlocked:0,states:[],held:[],clickedHidden:false};
   let owner=activeOwner;
-  const query=()=>{
-    return {
-      select:()=>query(),
-      eq:()=>query(),
-      limit:()=>query(),
-      maybeSingle:async()=>{
-        const selected=query.table;
-        if(selected==="manifest"){actions.manifestReads++;return {data:manifestData,error:manifestError};}
-        actions.recordReads++;return {data:recordsData,error:recordsError};
-      }
-    };
-  };
   const deps={
     session:{user:{id:"owner-A"}},captureAccountOperation:()=>({}),
     isAccountOperationCurrent:()=>!switched,
@@ -44,7 +32,7 @@ async function simulate({
       select:()=>({
         eq:()=>({
           maybeSingle:async()=>{actions.manifestReads++;return {data:manifestData,error:manifestError}},
-          limit:()=>({maybeSingle:async()=>{actions.recordReads++;return {data:recordsData,error:recordsError}})}
+          limit:()=>({maybeSingle:async()=>{actions.recordReads++;return {data:recordsData,error:recordsError};}})
         })
       })
     })},
