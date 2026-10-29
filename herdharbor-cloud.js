@@ -1887,6 +1887,18 @@
       }
     }
 
+    // 2.0.2: Never INSERT a whole-account legacy snapshot solely because this
+    // authenticated identity has no cloud row. Older Auth-only accounts may
+    // still have unreconciled data on another device. New signups use the
+    // normalized writer and must never create their first legacy snapshot.
+    if (!remoteRecord?.updated_at) {
+      setSyncState(
+        "No verified legacy cloud baseline exists. Local records were retained; first-login reconciliation is required before cloud upload.",
+        "error"
+      );
+      return false;
+    }
+
     const remoteRaw = remoteRecord?.app_state
       ? JSON.stringify(remoteRecord.app_state)
       : null;
@@ -3807,20 +3819,33 @@
     }
 
     if (dirty && !verifiedExistingCloudRecord) {
-      await baselineRestorePromise;
+      // A dirty flag must not bypass the Auth-only first-login hold below.
+      // First verify a materialized cloud row before starting ANY legacy
+      // write. A missing row falls through to reconciliation; a network
+      // failure must never be interpreted as permission to initialize one.
+      const firstLoginCloudProbe = await fetchCloudRecord(userId);
       if (!isCurrentHydration()) return staleHydration();
-      const unsyncedRaw = activeRaw || cachedRaw;
-      if (unsyncedRaw && safeParse(unsyncedRaw)) {
-        if (!activeRaw) {
-          if (!isCurrentHydration()) return staleHydration();
-          setActiveUserData(userId, unsyncedRaw);
-        }
-        unlockApp();
-        setSyncState("Unsynced local changes found; saving…", "working");
-        pendingSync = { rawValue: unsyncedRaw, sequence: writeSequence };
-        await drainSyncQueue();
+      if (firstLoginCloudProbe?.error) {
+        setSyncState("Cloud baseline could not be checked. Device changes remain protected; retry when connected.", "error");
+        return Object.freeze({ ok: false, reason: "first-login-cloud-probe-failed" });
+      }
+      if (!firstLoginCloudProbe?.data?.app_state || !firstLoginCloudProbe?.data?.updated_at) {
+        verifiedExistingCloudRecord = firstLoginCloudProbe;
+      } else {
+        await baselineRestorePromise;
         if (!isCurrentHydration()) return staleHydration();
-        return;
+        const unsyncedRaw = activeRaw || cachedRaw;
+        if (unsyncedRaw && safeParse(unsyncedRaw)) {
+          if (!hydrationInputCurrent()) return deferHydrationForNewEdit();
+          if (!activeRaw) setActiveUserData(userId, unsyncedRaw);
+          unlockApp();
+          setSyncState("Unsynced local changes found; saving…", "working");
+          pendingSync = { rawValue: unsyncedRaw, sequence: writeSequence };
+          await drainSyncQueue();
+          if (!isCurrentHydration()) return staleHydration();
+          return;
+        }
+        verifiedExistingCloudRecord = firstLoginCloudProbe;
       }
     }
 
