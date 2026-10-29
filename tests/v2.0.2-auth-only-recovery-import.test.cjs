@@ -36,7 +36,7 @@ async function simulate({
     recordRecoverySnapshot:async()=>{calls.backup++;if(changed)currentRaw=JSON.stringify({...state,animals:[{id:"new-edit"}]});return backup},
     client:{rpc:async(_name,args)=>{calls.rpc++;assert.equal(_name,"herdharbor_claim_auth_only_local_recovery");assert.deepEqual(args,{p_app_state:state});return {data:rpcData,error:rpcError}}},
     fetchCloudRecord:async()=>{calls.reads++;return {data:{app_state:remoteMatches?state:{profile:{operationName:"Other device"}},updated_at:"2026-10-29T18:00:00Z"},error:null}},
-    sameState:(left,right)=>JSON.stringify(JSON.parse(left))===JSON.stringify(JSON.parse(right)),
+    exactSameState:(left,right)=>JSON.stringify(JSON.parse(left))===JSON.stringify(JSON.parse(right)),
     writeCloudBaseline:async()=>{calls.baseline++;return baseline},
     safeStorageSet:(...args)=>{calls.versions.push(args);return true},
     versionKey:id=>"version_"+id,
@@ -47,7 +47,7 @@ async function simulate({
     return async function execute() {
       let {session,captureAccountOperation,isAccountOperationCurrent,activeStateRaw,
         safeParse,hasConfiguredOperationProfile,originalGetItem,localStorage,ACTIVE_OWNER_KEY,
-        window,setSyncState,recordRecoverySnapshot,client,fetchCloudRecord,sameState,
+        window,setSyncState,recordRecoverySnapshot,client,fetchCloudRecord,exactSameState,
         writeCloudBaseline,safeStorageSet,versionKey,updateAuthOnlyRecoveryControls,
         refreshAuthenticatedAccountData}=deps;
       let authOnlyRecoveryOwner="owner-A";
