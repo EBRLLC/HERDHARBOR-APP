@@ -88,7 +88,7 @@ test("2.0.2 independent restore fails closed for wrong identity, key, digest and
     assert.notEqual(reader(artifact.file,"a".repeat(64),noPlaintext).status,0);
     assert.equal(fs.existsSync(noPlaintext),false);
     const tampered=JSON.parse(fs.readFileSync(artifact.file,"utf8"));
-    tampered.data=tampered.data.replace(/^[A-Za-z0-9]/,"B");
+    tampered.data=(tampered.data[0] === "A" ? "B" : "A") + tampered.data.slice(1);
     fs.writeFileSync(artifact.file,JSON.stringify(tampered));
     assert.notEqual(reader(artifact.file,artifact.checksum,noPlaintext).status,0);
     assert.equal(fs.existsSync(noPlaintext),false);
