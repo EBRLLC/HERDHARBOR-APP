@@ -58,9 +58,11 @@ INSERT INTO auth.users VALUES
  ('00000000-0000-4000-8000-000000000001',NULL),
  ('00000000-0000-4000-8000-000000000002',NULL),
  ('00000000-0000-4000-8000-000000000003',NULL);
-INSERT INTO public.herdharbor_user_data(user_id,app_state) VALUES
- ('00000000-0000-4000-8000-000000000001',
-  '{"profile":{"operationName":"Original ranch"},"animals":[{"id":"a"}]}');
+INSERT INTO public.herdharbor_user_data(user_id,app_state)
+SELECT '00000000-0000-4000-8000-000000000001',
+ jsonb_build_object('profile',jsonb_build_object('operationName','Original ranch'),
+   'animals',jsonb_build_array(jsonb_build_object('id','a')),
+   'legacy_escaped_note', chr(92)||'xZZ-invalid-bytea-hex');
 INSERT INTO public.herdharbor_sync_manifest(
  user_id,cutover_stage,metadata,sync_generation) VALUES
  ('00000000-0000-4000-8000-000000000002','normalized',
