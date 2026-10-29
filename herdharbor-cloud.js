@@ -3482,16 +3482,28 @@
 
     // Server RPC derives the owner solely from auth.uid(), rejects any prior
     // cloud data, and atomically claims the initial recovery snapshot/cohort.
-    const { data, error } = await client.rpc("herdharbor_claim_auth_only_local_recovery", {
-      p_app_state: state
-    });
+    let claim;
+    try {
+      claim = await client.rpc("herdharbor_claim_auth_only_local_recovery", {
+        p_app_state: state
+      });
+    } catch (error) {
+      if (stillCurrent()) setSyncState("Cloud recovery request was interrupted. Local data is retained; refresh to check for a completed claim.", "error");
+      return false;
+    }
+    const { data, error } = claim || {};
     if (!stillCurrent()) return false;
     if (error || data?.ok !== true) {
       setSyncState("The recovery claim was not confirmed. Local records were kept; refresh to inspect cloud state before retrying.", "error");
       return false;
     }
 
-    const readback = await fetchCloudRecord(userId);
+    let readback;
+    try { readback = await fetchCloudRecord(userId); }
+    catch (error) {
+      if (stillCurrent()) setSyncState("Cloud recovery readback failed. Do not retry the import until the server copy is checked.", "error");
+      return false;
+    }
     if (!stillCurrent()) return false;
     if (readback?.error || !readback?.data?.app_state ||
         !exactSameState(JSON.stringify(readback.data.app_state), raw) ||
@@ -3499,7 +3511,12 @@
       setSyncState("The first cloud recovery copy could not be verified. Keep the local checkpoint and stop for review.", "error");
       return false;
     }
-    const baseline = await writeCloudBaseline(userId, raw);
+    let baseline = false;
+    try { baseline = await writeCloudBaseline(userId, raw); }
+    catch (error) {
+      if (stillCurrent()) setSyncState("Cloud recovery was saved but the local baseline failed. Keep the local checkpoint and retry account verification.", "error");
+      return false;
+    }
     if (!stillCurrent()) return false;
     if (baseline === false) {
       setSyncState("Cloud recovery was saved but the device baseline is unverified. Do not clear local records.", "error");
@@ -3515,8 +3532,18 @@
       "working"
     );
     // Preserve dirty/outbox flags. On refresh, new edits enter CAS/merge paths.
-    await refreshAuthenticatedAccountData();
-    return true;
+    try {
+      const refreshed = await refreshAuthenticatedAccountData();
+      if (!stillCurrent()) return false;
+      if (refreshed !== true) {
+        setSyncState("Recovery copy verified, but account refresh remains pending. Retry Refresh account data; keep the local backup.", "error");
+        return false;
+      }
+      return true;
+    } catch (error) {
+      if (stillCurrent()) setSyncState("Recovery copy verified, but account refresh was interrupted. Retry Refresh account data.", "error");
+      return false;
+    }
   }
 
   async function resolveConflict(choice) {
