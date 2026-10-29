@@ -92,7 +92,9 @@ test("browser patch includes species API aliases, current-farm symptom filtering
 
 test("production Pages verification is current-SHA based and does not duplicate deployment", () => {
   const workflow = fs.readFileSync(path.resolve(__dirname, "../.github/workflows/v2.0.0-production-pages.yml"), "utf8");
-  assert.match(workflow, /branches: \[main\]/);
+  assert.doesNotMatch(workflow, /\n  push:\n/, "No deployment side effect on merge");
+  assert.match(workflow, /workflow_dispatch:[\s\S]*release_sha:[\s\S]*approve_production_deploy:/);
+  assert.match(workflow, /github\.event_name == 'workflow_dispatch' && github\.ref == 'refs\/heads\/main'/);
   assert.match(workflow, /ref: \${{ github\.sha }}/);
 assert.match(workflow, /node scripts\/verify-release-candidate-artifact\.mjs _site/);
   assert.match(workflow, /herdharbor-v1\.7\.1-stability-hotfix\.js/);
