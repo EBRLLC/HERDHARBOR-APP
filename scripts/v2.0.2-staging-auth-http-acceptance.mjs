@@ -1,5 +1,5 @@
 // Real staging Auth/REST/RPC acceptance, NEVER an emulated PostgreSQL JWT session.
-// Requires two confirmed, synthetic staging Auth users configured as protected
+// Requires three confirmed, synthetic staging Auth users configured as protected
 // GitHub Actions environment secrets. No customer data, billing, or migrations.
 // Refuses the production Supabase project even if credentials are misconfigured.
 import assert from "node:assert/strict";
@@ -17,13 +17,15 @@ assert.ok(apiKey.startsWith("sb_publishable_") || apiKey.startsWith("eyJ"),
   "Missing staging publishable key");
 const accounts = [
   [process.env.HH_STAGE_USER_A_EMAIL, process.env.HH_STAGE_USER_A_PASSWORD],
-  [process.env.HH_STAGE_USER_B_EMAIL, process.env.HH_STAGE_USER_B_PASSWORD]
+  [process.env.HH_STAGE_USER_B_EMAIL, process.env.HH_STAGE_USER_B_PASSWORD],
+  [process.env.HH_STAGE_USER_C_EMAIL, process.env.HH_STAGE_USER_C_PASSWORD]
 ];
 for (const [email,password] of accounts) {
   assert.ok(email && password && password.length >= 12,
-    "Two preprovisioned confirmed synthetic staging users are required");
+    "Three preprovisioned confirmed synthetic staging users are required");
 }
-assert.notEqual(accounts[0][0],accounts[1][0],"Expected distinct synthetic Auth owners");
+assert.equal(new Set(accounts.map(([email])=>email)).size,3,
+  "All three synthetic Auth owner emails must be distinct");
 
 async function request(path,{method="GET",accessToken="",body}={}) {
   const headers = {apikey:apiKey,Accept:"application/json"};
@@ -65,8 +67,9 @@ async function rpc(subject,name,args={}) {
     method:"POST",accessToken:headersFor(subject),body:args
   }),name+" authenticated RPC");
 }
-const [A,B]=await Promise.all(accounts.map(([email,password])=>signIn(email,password)));
-assert.notEqual(A.userId,B.userId,"Synthetic owners must have different JWT subjects");
+const [A,B,C]=await Promise.all(accounts.map(([email,password])=>signIn(email,password)));
+assert.equal(new Set([A.userId,B.userId,C.userId]).size,3,
+  "Three synthetic owners must have different signed-in JWT subjects");
 const manifestQuery=id=>"select=user_id,cutover_stage,sync_generation,metadata&user_id=eq."+encodeURIComponent(id);
 const [aManifest,bManifest,bCannotReadA,aCannotReadB]=await Promise.all([
   table(A,"herdharbor_sync_manifest",manifestQuery(A.userId)),
@@ -95,6 +98,56 @@ for (const owner of [A,B]) {
   assert.ok(!overwrite.ok,
     "Existing cloud owner could overwrite its cloud baseline through Auth-only recovery RPC");
 }
+
+// Owner C is a deliberately provisioned pre-existing Auth-only synthetic
+// identity. Exercise the positive one-time recovery claim through real GoTrue
+// and PostgREST rather than merely simulating auth.uid() in PostgreSQL.
+// Re-runs are idempotent: a prior synthetic claim must be readable and exact.
+const cQuery = "select=user_id,app_state,updated_at&user_id=eq."+
+  encodeURIComponent(C.userId);
+const recoveryState={
+  profile:{operationName:"HH 2.0.2 synthetic Auth-only recovery fixture"},
+  animals:[{id:"synthetic-http-recovery-rabbit",species:"rabbit"}]
+};
+const [preLegacy,preManifest,preRecords]=await Promise.all([
+  table(C,"herdharbor_user_data",cQuery),
+  table(C,"herdharbor_sync_manifest",manifestQuery(C.userId)),
+  table(C,"herdharbor_sync_records","select=record_id&user_id=eq."+
+    encodeURIComponent(C.userId)+"&limit=1")
+]);
+if (preLegacy.length===0 && preManifest.length===0 && preRecords.length===0) {
+  const claimed=await rpc(C,"herdharbor_claim_auth_only_local_recovery",{
+    p_app_state:recoveryState
+  });
+  assert.equal(claimed?.ok,true,"Real JWT first owner recovery claim failed");
+} else {
+  assert.equal(preLegacy.length,1,
+    "Synthetic recovery account already has cloud authority without its expected recovery baseline");
+  assert.deepEqual(preLegacy[0].app_state,recoveryState,
+    "Existing owner-C staging records differ from the exact recovery fixture; do not overwrite");
+}
+const [cReadback,aCannotReadRecovery,bCannotReadRecovery]=await Promise.all([
+  table(C,"herdharbor_user_data",cQuery),
+  table(A,"herdharbor_user_data",cQuery),
+  table(B,"herdharbor_user_data",cQuery)
+]);
+assert.equal(cReadback.length,1,"Recovery owner cannot read the first cloud snapshot");
+assert.deepEqual(cReadback[0].app_state,recoveryState,
+  "Recovery cloud JSON differs from exact owner-approved synthetic records");
+assert.ok(cReadback[0].updated_at,"Recovered cloud baseline has no server version");
+assert.equal(aCannotReadRecovery.length,0,
+  "Owner A could read C's recovered operation: cross-owner disclosure");
+assert.equal(bCannotReadRecovery.length,0,
+  "Owner B could read C's recovered operation: cross-owner disclosure");
+const duplicateClaim=await request("/rest/v1/rpc/herdharbor_claim_auth_only_local_recovery",{
+  method:"POST",accessToken:C.access_token,
+  body:{p_app_state:{profile:{operationName:"Attempted second-device overwrite"}}}
+});
+assert.ok(!duplicateClaim.ok,
+  "Second-device recovery claim unexpectedly overwrote the first cloud baseline");
+const cCohort=await rpc(C,"herdharbor_sync_cohort_status");
+assert.equal(cCohort?.eligible,true,
+  "Recovered Auth-only account was not admitted to guarded normalized migration");
 
 const writable = [[A,aManifest[0]],[B,bManifest[0]]].find(([,m])=>
   m.cutover_stage==="normalized" &&
@@ -154,5 +207,6 @@ console.log(JSON.stringify({
   authentication:"GoTrue password JWT, user lookup, refresh, logout and re-login",
   ownerIsolation:"two signed-in users; cross-owner manifest/record access denied",
   normalizedCAS:"create, own read, stale rejection, tombstone, cross-owner denial",
+  authOnlyRecovery:"third JWT owner, consented claim fixture, exact readback, cohort, replay denial, cross-owner denial",
   customerDataUsed:false
 }));
