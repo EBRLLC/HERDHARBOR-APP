@@ -34,10 +34,10 @@ function installHarness(failAsset=""){
   return{pending,added,opened};
 }
 test("release identities agree across app, PWA, manifest and Android package",()=>{
-  assert.equal(pkg.version,"2.0.1");
-  assert.equal(manifest.version,"2.0.1");
-  assert.equal(twa.appVersion,"2.0.1");
-  assert.equal(twa.appVersionCode,20);
+  assert.equal(pkg.version,"2.0.2");
+  assert.equal(manifest.version,"2.0.2");
+  assert.equal(twa.appVersion,"2.0.2");
+  assert.equal(twa.appVersionCode,21);
   assert.match(build,/version:\s*"2\.0\.1"/);
   assert.match(build,/buildId:\s*"v2\.0\.1-release-1"/);
   assert.match(read("pwa.js"),/const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.1"/);
