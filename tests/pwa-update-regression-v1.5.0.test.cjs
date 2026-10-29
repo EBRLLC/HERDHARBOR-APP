@@ -15,20 +15,20 @@ const html = read("index.html");
 const build = read("herdharbor-build.js");
 
 // The web runtime and service-worker shell now share the stable 2.0.0 identity.
-assert.equal(manifest.version, "2.0.1");
+assert.equal(manifest.version, "2.0.2");
 const webVersion = build.match(/version:\s*"([^"]+)"/)?.[1];
 const buildId = build.match(/buildId:\s*"([^"]+)"/)?.[1];
-assert.ok(["1.7.1", "1.8.0", "1.8.1", "1.8.2", "1.8.3", "1.8.4", "2.0.1"].includes(webVersion), `unexpected web release ${webVersion}`);
+assert.ok(["1.7.1", "1.8.0", "1.8.1", "1.8.2", "1.8.3", "1.8.4", "2.0.2"].includes(webVersion), `unexpected web release ${webVersion}`);
 if (webVersion === "1.7.1") assert.equal(buildId, "multispecies-genetics-foundation-1");
 if (webVersion === "1.8.0") assert.match(buildId, /^subscription-engine-/);
 if (webVersion === "1.8.1") assert.match(buildId, /^october-subscription-launch-/);
 if (webVersion === "1.8.2") assert.match(buildId, /^cloud-sync-v2-/);
-if (webVersion === "2.0.1") assert.equal(buildId, "v2.0.1-release-1");
-assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "2\.0\.1"/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "v2.0.1-release-1"/);
+if (webVersion === "2.0.2") assert.equal(buildId, "v2.0.2-release-1");
+assert.match(pwa, /window\.HerdHarborBuild\?\.version \|\| "2\.0\.2"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "v2.0.2-release-1"/);
 assert.match(pwa, /Version \$\{APP_VERSION\}/);
 assert.doesNotMatch(pwa, /Version \$\{APP_VERSION\} · Build \$\{BUILD_ID\}/);
-assert.match(html, /herdharbor-build\.js\?v=2\.0\.1/, "the packaged shell bootstrap uses the 2.0.0 cache identity");
+assert.match(html, /herdharbor-build\.js\?v=2\.0\.2/, "the packaged shell bootstrap uses the 2.0.0 cache identity");
 
 // Service-worker discovery is explicit and independent from Cloud Sync.
 assert.match(pwa, /navigatorRef\(\)\.serviceWorker\.register\("service-worker\.js"/);

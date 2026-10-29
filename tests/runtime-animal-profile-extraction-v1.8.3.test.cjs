@@ -158,9 +158,9 @@ test("shell loads and caches extracted runtime before application composition", 
 });
 
 test("Phase 6B extraction remains compatible with formal v1.8.4 and does not activate normalized-sync authority", () => {
-  assert.equal(packageJson.version, "2.0.1");
+  assert.equal(packageJson.version, "2.0.2");
   const build = read("herdharbor-build.js");
-  assert.match(build, /version:\s*"2\.0\.1"/);
+  assert.match(build, /version:\s*"2\.0\.2"/);
   for (const asset of [
     "cloud-sync-cohort-gate-v1.8.3.js",
     "cloud-sync-reconciliation-v1.8.3.js",

@@ -17,7 +17,7 @@ const showsCss = fs.readFileSync(path.join(root, "shows-v1.6.1.css"), "utf8");
 const build = fs.readFileSync(path.join(root, "herdharbor-build.js"), "utf8");
 
 // The web runtime may advance independently while the native/PWA shell shares the 2.0.0 identity.
-assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.1"/);
+assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.2"/);
 assert.match(shellCss, /html \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
 assert.match(shellCss, /body \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: hidden;[\s\S]*?overscroll-behavior-x: none;/);
 assert.match(shellCss, /\.app-shell \{[\s\S]*?grid-template-columns: minmax\(0, var\(--sidebar-width\)\) minmax\(0, 1fr\);[\s\S]*?overflow-x: clip;/);
@@ -32,9 +32,9 @@ assert.match(shellCss, /\.list-item \{[\s\S]*?max-width: 100%;[\s\S]*?min-width:
 assert.match(shellCss, /\.data-table-wrap \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: auto;[\s\S]*?overscroll-behavior-inline: contain;/);
 assert.match(shellCss, /@media \(max-width: 820px\) \{[\s\S]*?#quick-add-button[\s\S]*?width: 42px;/);
 assert.equal(manifest.orientation, "portrait");
-assert.equal(manifest.version, "2.0.1");
+assert.equal(manifest.version, "2.0.2");
 
-assert.match(cloud, /version: window\.HerdHarborBuild\?\.version \|\| "2\.0\.1"/);
+assert.match(cloud, /version: window\.HerdHarborBuild\?\.version \|\| "2\.0\.2"/);
 assert.match(cloud, /html\[data-theme="dark"\] #hh-auth-root/);
 assert.match(cloud, /#hh-auth-root \.hh-auth-form label/);
 assert.match(cloud, /#hh-auth-root \.hh-auth-form input/);
@@ -46,9 +46,9 @@ assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog \{[\s\S]*?col
 assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog h2 \{ color: #0D2540; \}/);
 assert.match(cloud, /html\[data-theme="dark"\] \.hh-account-dialog \.hh-account-email \{ color: #526474; \}/);
 const webVersion=build.match(/version:\s*"([^"]+)"/)?.[1];
-assert.ok(["1.7.1","1.8.0","1.8.1","1.8.2","1.8.3","1.8.4","2.0.1"].includes(webVersion),`unexpected web release ${webVersion}`);
+assert.ok(["1.7.1","1.8.0","1.8.1","1.8.2","1.8.3","1.8.4","2.0.2"].includes(webVersion),`unexpected web release ${webVersion}`);
 if(webVersion==="1.8.2")assert.match(build,/buildId:\s*"cloud-sync-v2-/);
-if(webVersion==="2.0.1")assert.match(build,/buildId:\s*"v2\.0\.1-release-1"/);
+if(webVersion==="2.0.2")assert.match(build,/buildId:\s*"v2\.0\.2-release-1"/);
 assert.match(worker,/const CACHE_NAME = "herdharbor-shell-v2\.0\.2-normalized-cloud-1"/);
 if(webVersion==="1.8.1")assert.match(worker,/v1\.8\.1-alpha-october-subscription-launch-/);
 assert.match(worker, /herdharbor-access-cache-v1\.6\.1\.js\?v=1\.7\.1/);

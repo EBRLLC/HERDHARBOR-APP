@@ -20,26 +20,26 @@ const worker = read("service-worker.js");
 const index = read("index.html");
 const monitoring = read("herdharbor-monitoring-config.js");
 
-test("all whole-app release owners identify 2.0.1 release candidate", () => {
-  assert.equal(pkg.version, "2.0.1");
-  assert.equal(lock.version, "2.0.1");
-  assert.equal(lock.packages[""].version, "2.0.1");
-  assert.equal(manifest.version, "2.0.1");
-  assert.equal(String(twa.appVersion), "2.0.1");
-  assert.equal(Number(twa.appVersionCode), 20);
-  assert.match(build, /version:\s*"2\.0\.1"/);
+test("all whole-app release owners identify 2.0.2 release candidate", () => {
+  assert.equal(pkg.version, "2.0.2");
+  assert.equal(lock.version, "2.0.2");
+  assert.equal(lock.packages[""].version, "2.0.2");
+  assert.equal(manifest.version, "2.0.2");
+  assert.equal(String(twa.appVersion), "2.0.2");
+  assert.equal(Number(twa.appVersionCode), 21);
+  assert.match(build, /version:\s*"2\.0\.2"/);
   assert.match(build, /channel:\s*"Stable"/);
-  assert.match(build, /buildId:\s*"v2\.0\.1-release-1"/);
-  assert.match(gradle, /versionName\s+"2\.0\.1"/);
-  assert.match(gradle, /versionCode\s+20/);
+  assert.match(build, /buildId:\s*"v2\.0\.2-release-1"/);
+  assert.match(gradle, /versionName\s+"2\.0\.2"/);
+  assert.match(gradle, /versionCode\s+21/);
 });
 
-test("runtime and monitoring fallbacks use the v2.0.1 release identity", () => {
-  assert.match(pwa, /version \|\| "2\.0\.1"/);
-  assert.match(pwa, /buildId \|\| "v2\.0\.1-release-1"/);
+test("runtime and monitoring fallbacks use the v2.0.2 release identity", () => {
+  assert.match(pwa, /version \|\| "2\.0\.2"/);
+  assert.match(pwa, /buildId \|\| "v2\.0\.2-release-1"/);
   assert.match(pwa, /PWA_BUILD = `\$\{APP_VERSION\}-\$\{BUILD_ID\}`/);
-  assert.match(monitoring, /release:\s*"HerdHarbor@2\.0\.1"/);
-  assert.match(monitoring, /build:\s*"v2\.0\.1-release-1"/);
+  assert.match(monitoring, /release:\s*"HerdHarbor@2\.0\.2"/);
+  assert.match(monitoring, /build:\s*"v2\.0\.2-release-1"/);
 });
 
 test("historical v1.8.4 coverage coexists with the current 2.0.0 workflows", () => {
@@ -75,7 +75,7 @@ test("v1.8.4 keeps normalized authority gated and AI expansion deferred", () => 
   const contract = read("V1.8.4-STABILITY-RELEASE-CONTRACT.md");
   assert.match(release, /not mass-enabled/i);
   assert.match(release, /legacy full-state sync remains the authoritative recovery path/i);
-  assert.match(release, /v2\.0\.1/);
+  assert.match(release, /v2\.0\.2/);
   assert.match(contract, /does not expand AI functionality/i);
 });
 

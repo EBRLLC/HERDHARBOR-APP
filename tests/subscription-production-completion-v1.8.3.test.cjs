@@ -127,7 +127,7 @@ test("backend refresh failure is fail-open for application access", () => {
 });
 
 test("carried-forward subscription assets remain correct under the 2.0.0 release", () => {
-  assert.equal(packageJson.version, "2.0.1");
+  assert.equal(packageJson.version, "2.0.2");
   assert.match(build, /subscription-launch-v1\.8\.1\.js\?v=3/);
   assert.match(build, /subscription-stripe-provider-v1\.8\.0\.js\?v=3/);
   assert.match(worker, /\.\/subscription-launch-v1\.8\.1\.js\?v=3/);
