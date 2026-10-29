@@ -4034,6 +4034,30 @@
       return;
     }
 
+    // 2.0.2: An existing Auth identity without a verified cloud record is
+    // NOT a new empty account. Its owner may have unsynced records stored
+    // only on a different/offline device. Never initialize an empty server
+    // state or report a successful cloud setup from this hydration path.
+    // Brand-new signups with verified normalized authority use the earlier
+    // authoritative branch and do not reach this legacy/no-cloud hold.
+    if (!data?.app_state && rolloutDecision?.authoritative !== true) {
+      if (!hydrationInputCurrent()) return deferHydrationForNewEdit();
+      const retainedRaw = activeRaw || cachedRaw;
+      if (retainedRaw && safeParse(retainedRaw)) {
+        if (!activeRaw) setActiveUserData(userId, retainedRaw, "auth-only-reconciliation-hold");
+        unlockApp();
+        setSyncState(
+          "No verified cloud save exists for this account. Device records were retained; first-login reconciliation is required before cloud upload.",
+          "error"
+        );
+        return Object.freeze({ ok: false, reason: "auth-only-reconciliation-required", localPreserved: true });
+      }
+      showAccountBoundaryRecovery(
+        "This account has no verified cloud save. Another device may contain unsynced records. Use the original device to preserve and reconcile records before creating a cloud baseline."
+      );
+      return Object.freeze({ ok: false, reason: "auth-only-reconciliation-required", localPreserved: false });
+    }
+
     const newUserRaw = cachedRaw || activeRaw;
     if (newUserRaw && safeParse(newUserRaw)) {
       const stateChanged = !activeRaw || !sameState(activeRaw, newUserRaw);
