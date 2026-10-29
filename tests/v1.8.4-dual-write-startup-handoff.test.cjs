@@ -685,8 +685,18 @@ test("dirty startup preserves configured local changes but recovers empty onboar
   );
   assert.match(
     hydrateSource,
-    /if \(cloudProbe\?\.error \|\| !hasConfiguredOperationProfile\(cloudProbe\?\.data\?\.app_state\)\)/,
-    "an unconfigured local state may use only a verified existing cloud operation"
+    /if \(cloudProbe\?\.error\)/,
+    "dirty unconfigured startup must fail closed on a cloud verification error"
+  );
+  assert.match(
+    hydrateSource,
+    /if \(cloudProbe\?\.data\?\.app_state &&[\s\S]*!hasConfiguredOperationProfile\(cloudProbe\.data\.app_state\)\)/,
+    "existing malformed cloud state must not be treated as a new operation"
+  );
+  assert.match(
+    hydrateSource,
+    /verifiedExistingCloudRecord = cloudProbe;/,
+    "verified missing cloud data must enter the Auth-only reconciliation hold"
   );
 });
 
