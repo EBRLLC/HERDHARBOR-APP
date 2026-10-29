@@ -79,6 +79,7 @@ jobs:
           node --test tests/v2.0.2-postgres-restore.test.cjs
           node --test tests/v2.0.2-recovery-rollback-guard.test.cjs
            node --test tests/v2.0.2-auth-only-recovery-sql.test.cjs
+           node --test tests/v2.0.2-release-snapshot-escrow.test.cjs
       - name: Run complete HerdHarbor regression suite in UTC
         env:
           TZ: UTC
