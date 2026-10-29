@@ -186,7 +186,7 @@
   const CLOUD_SYNC_ENGINE = "legacy-full-state";
   const CLOUD_PROVIDER = "supabase";
   const CLOUD_SYNC_COMPONENT_BUILD = "legacy-full-state-observability-3";
-  const CLOUD_SYNC_APP_RELEASE = "2.0.1";
+  const CLOUD_SYNC_APP_RELEASE = "2.0.2";
   const CLOUD_RETRY_DELAYS_MS = [750, 2000];
 
   function sanitizeCloudDiagnosticText(value, maxLength = 240) {
@@ -3403,7 +3403,7 @@
     }
     const payload = JSON.stringify({
       app: "HerdHarbor",
-      version: window.HerdHarborBuild?.version || "2.0.1",
+      version: window.HerdHarborBuild?.version || "2.0.2",
       backupType: "local-safety-backup",
       exportedAt: new Date().toISOString(),
       data: appState

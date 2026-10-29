@@ -5,14 +5,14 @@ const CACHE_NAME = "herdharbor-shell-v2.0.2-normalized-cloud-1";
 const REQUIRED_SHELL = [
   "./",
   "./index.html",
-  "./manifest.json?v=2.0.1",
+  "./manifest.json?v=2.0.2",
   "./herdharbor-core-v1.6.1.css?v=1.7.1",
   "./herdharbor-v1.6.1.css?v=1.7.1",
   "./herdharbor-index-shell.css?v=1",
   "./analytics-v1.6.1.css?v=2",
   "./vendor/supabase-2.111.0.js",
   "./herdharbor-optional-tools.js?v=4",
-  "./herdharbor-build.js?v=2.0.1",
+  "./herdharbor-build.js?v=2.0.2",
   "./herdharbor-state-store-v1.8.4.js?v=2",
   "./herdharbor-release-v1.6.1.js?v=2",
   "./herdharbor-membership-v1.6.1.js?v=1.7.1",
@@ -52,8 +52,8 @@ const REQUIRED_SHELL = [
   "./production-reporting-runtime-v1.8.3.js?v=1",
   "./mobile-capture-v1.8.3.js?v=1",
   "./herdharbor-app-runtime.js?v=6",
-  "./herdharbor-monitoring-config.js?v=2.0.1",
-  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.1"
+  "./herdharbor-monitoring-config.js?v=2.0.2",
+  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.2"
 ];
 
 const RUNTIME_CACHE_PATHS = [

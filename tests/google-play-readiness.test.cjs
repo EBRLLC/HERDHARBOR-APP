@@ -21,20 +21,20 @@ const fullDescription = read("google-play/listing/en-US/full-description.txt").t
 const androidManifest = read("android/app/src/main/AndroidManifest.xml");
 
 assert.doesNotMatch(html, /pre[ -]?alpha/i);
-assert.equal(manifest.version, "2.0.1");
+assert.equal(manifest.version, "2.0.2");
 assert.equal(manifest.display, "standalone");
 assert.ok(manifest.shortcuts.some((shortcut) => shortcut.url === "./#shows"));
 assert.equal(twa.packageId, "com.ebrllc.herdharbor");
-assert.equal(twa.appVersion, "2.0.1");
-assert.equal(twa.appVersionCode, 20);
+assert.equal(twa.appVersion, "2.0.2");
+assert.equal(twa.appVersionCode, 21);
 assert.equal(twa.host, "app.herdharbor.com");
 assert.match(appGradle, /applicationId:\s*'com\.ebrllc\.herdharbor'/);
 assert.match(appGradle, /namespace "com\.ebrllc\.herdharbor"/);
 assert.match(appGradle, /applicationId "com\.ebrllc\.herdharbor"/);
 assert.match(appGradle, /compileSdkVersion 36/);
 assert.match(appGradle, /targetSdkVersion 36/);
-assert.match(appGradle, /versionCode 20/);
-assert.match(appGradle, /versionName "2\.0\.1"/);
+assert.match(appGradle, /versionCode 21/);
+assert.match(appGradle, /versionName "2\.0\.2"/);
 assert.match(appGradle, /https:\/\/app\.herdharbor\.com\/manifest\.json/);
 // Verify the current native/TWA package and service worker share the current
 // release identity while preserving every older-named domain asset required by
@@ -46,7 +46,7 @@ assert.match(worker, /shows-v1\.6\.1\.css\?v=1\.7\.1/);
 assert.match(worker, /shows-v1\.6\.1\.js\?v=1\.7\.1/);
 assert.match(worker, /shows-v1\.6\.1-hardening\.js\?v=1\.7\.1/);
 assert.match(pwa, /\$\{APP_VERSION\}-\$\{BUILD_ID\}/);
-assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "v2.0.1-release-1"/);
+assert.match(pwa, /window\.HerdHarborBuild\?\.buildId \|\| "v2.0.2-release-1"/);
 assert.match(pwa, /loadPedigreeVisuals/);
 assert.match(pwa, /loadBreedingIntelligence/);
 assert.match(pwa, /loadShows/);
@@ -76,4 +76,4 @@ assert.ok(fs.statSync(path.join(root, "android/store_icon.png")).size <= 1024 * 
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/app-icon-512.png")));
 assert.ok(fs.existsSync(path.join(root, "google-play/assets/feature-graphic-1024x500.png")));
 
-console.log("Google Play 2.0.1 native readiness tests passed against current web shell");
+console.log("Google Play 2.0.2 native readiness tests passed against current web shell");

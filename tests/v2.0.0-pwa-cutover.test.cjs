@@ -60,7 +60,7 @@ function loadWorkerHarness(cacheKeys) {
   };
 }
 
-test("2.0.1 activation retains current plus two versioned shells and preserves unrelated caches", async () => {
+test("2.0.2 activation retains current plus two versioned shells and preserves unrelated caches", async () => {
   const current = "herdharbor-shell-v2.0.2-normalized-cloud-1";
   const old200 = "herdharbor-shell-v2.0.0-v2.0.0-release-1";
   const old184 = "herdharbor-shell-v1.8.4-alpha-v1.8.4-release-9";
@@ -81,7 +81,7 @@ test("2.0.1 activation retains current plus two versioned shells and preserves u
   assert.equal(h.claimed, 1);
 });
 
-test("2.0.1 worker activates only after an explicit readiness request", async () => {
+test("2.0.2 worker activates only after an explicit readiness request", async () => {
   const h = loadWorkerHarness([]);
   assert.equal(typeof h.listeners.message, "function");
   h.listeners.message({ data: { type: "NOOP" } });
@@ -105,16 +105,16 @@ test("2.0.1 worker activates only after an explicit readiness request", async ()
   assert.match(pwaSource, /controllerchange/);
 });
 
-test("2.0.1 shell bootstrap and required precache agree on the release query identity", () => {
-  assert.match(index, /manifest\.json\?v=2\.0\.1/);
-  assert.match(index, /herdharbor-build\.js\?v=2\.0\.1/);
+test("2.0.2 shell bootstrap and required precache agree on the release query identity", () => {
+  assert.match(index, /manifest\.json\?v=2\.0\.2/);
+  assert.match(index, /herdharbor-build\.js\?v=2\.0\.2/);
   assert.match(index, /pwa\.js\?v=38/);
   assert.match(workerSource, /herdharbor-shell-v2\.0\.2-normalized-cloud-1/);
-  assert.match(workerSource, /\.\/manifest\.json\?v=2\.0\.1/);
-  assert.match(workerSource, /\.\/herdharbor-build\.js\?v=2\.0\.1/);
+  assert.match(workerSource, /\.\/manifest\.json\?v=2\.0\.2/);
+  assert.match(workerSource, /\.\/herdharbor-build\.js\?v=2\.0\.2/);
   assert.match(workerSource, /\.\/pwa\.js\?v=38/);
-  assert.match(workerSource, /\.\/herdharbor-monitoring-config\.js\?v=2\.0\.1/);
-  assert.match(workerSource, /\.\/vendor\/herdharbor-monitoring-v1\.6\.1\.min\.js\?v=2\.0\.1/);
+  assert.match(workerSource, /\.\/herdharbor-monitoring-config\.js\?v=2\.0\.2/);
+  assert.match(workerSource, /\.\/vendor\/herdharbor-monitoring-v1\.6\.1\.min\.js\?v=2\.0\.2/);
 });
 
 test("PWA update stays independent from farm state and hides the internal build id", () => {

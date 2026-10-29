@@ -52,13 +52,13 @@ test("every dedicated 2.0.0 release phase gate remains wired into the aggregate 
 });
 
 test("authoritative production identities agree on candidate 2.0.1", () => {
-  assert.equal(pkg.version, "2.0.1");
-  assert.equal(manifest.version, "2.0.1");
-  assert.equal(String(twa.appVersion), "2.0.1");
-  assert.equal(Number(twa.appVersionCode), 20);
+  assert.equal(pkg.version, "2.0.2");
+  assert.equal(manifest.version, "2.0.2");
+  assert.equal(String(twa.appVersion), "2.0.2");
+  assert.equal(Number(twa.appVersionCode), 21);
   assert.match(build, /channel:\s*"Stable"/);
-  assert.match(build, /version:\s*"2\.0\.1"/);
-  assert.match(gradle, /versionName\s+"2\.0\.1"/);
+  assert.match(build, /version:\s*"2\.0\.2"/);
+  assert.match(gradle, /versionName\s+"2\.0\.2"/);
   assert.match(gradle, /versionCode\s+20/);
   assert.match(worker, /herdharbor-shell-v2\.0\.2-normalized-cloud-1/);
   assert.match(index, /herdharbor-cloud\.js\?v=48/);

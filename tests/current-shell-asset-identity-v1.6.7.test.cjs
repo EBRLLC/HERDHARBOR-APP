@@ -28,7 +28,7 @@ assert.ok(worker.includes("analytics-v1.6.1.js?v=2"), "analytics-v1.6.1.js remai
 assert.doesNotMatch(html, /<script[^>]+analytics-v1\.6\.1\.js/);
 const appRuntime = fs.readFileSync(path.join(root, "herdharbor-app-runtime.js"), "utf8");
 assert.match(appRuntime, /"analytics-v1\.6\.1\.js\?v=2"/);
-assert.match(html, /herdharbor-build\.js\?v=2\.0\.1/);
+assert.match(html, /herdharbor-build\.js\?v=2\.0\.2/);
 assert.match(html, /cloud-legacy-baseline-v1\.8\.4\.js\?v=1/);
 assert.match(html, /herdharbor-cloud\.js\?v=48/);
 assert.match(html, /pwa\.js\?v=38/);

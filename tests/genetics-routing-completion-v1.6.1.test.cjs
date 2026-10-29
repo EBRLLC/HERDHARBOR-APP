@@ -42,7 +42,7 @@ test("current web release and PWA cache move together while preserving the v1.7.
     assert.equal(buildId, "cloud-sync-v2-state-integrity-1");
     assert.match(worker, /herdharbor-shell-v1\.8\.2-alpha-cloud-sync-v2-state-integrity-1/);
   } else {
-    assert.equal(buildId, "v2.0.1-release-1");
+    assert.equal(buildId, "v2.0.2-release-1");
     assert.match(worker, /herdharbor-shell-v2\.0\.2-normalized-cloud-1/);
   }
   assert.match(worker, /herdharbor-release-v1\.6\.1\.js\?v=2/);

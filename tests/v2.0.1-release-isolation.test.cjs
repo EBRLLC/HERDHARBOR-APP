@@ -22,7 +22,7 @@ test("2.0.1 retains canine pedigree and optional AI capabilities", () => {
     assert.ok(exists(filename), `2.0.1 must include ${filename}`);
   }
   assert.match(read("index.html"), /canine-identity-v2\.0\.1\.js/);
-  assert.match(read("package.json"), /"version":\s*"2\.0\.1"/);
+  assert.match(read("package.json"), /"version":\s*"2\.0\.2"/);
 });
 
 test("2.0.2 integrates the separately gated migration without dropping 2.0.1 features", () => {
