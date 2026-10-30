@@ -17,7 +17,9 @@ const stateStore = fs.readFileSync(path.join(root, "herdharbor-state-store-v1.8.
 assert.match(appRuntime, /const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.2"/);
 assert.match(appRuntime, /const canonicalStateStore = window\.HerdHarborStateStore \|\| null/);
 assert.match(appRuntime, /let lastSavedRaw = canonicalStateStore\?\.getRaw\?\.\(\) \|\| localStorage\.getItem\(STORAGE_KEY\) \|\| ""/);
-assert.match(appRuntime, /canonicalStateStore\.commit\(state,[\s\S]*?lastSavedRaw = result\.rawValue/);
+assert.match(appRuntime, /canonicalStateStore\.commit\(nextState,[\s\S]*?lastSavedRaw = result\.rawValue/);
+assert.match(appRuntime, /const candidate = \{ \.\.\.state, animals: state\.animals\.map/);
+assert.doesNotMatch(appRuntime, /const candidate = structuredClone\(state\)/);
 assert.doesNotMatch(appRuntime, /localStorage\.setItem\(STORAGE_KEY/);
 assert.match(stateStore, /if \(previousRaw === rawValue\)/);
 assert.match(appRuntime, /function scheduleUiWork\(key, callback\)/);
