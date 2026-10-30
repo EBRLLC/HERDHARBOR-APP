@@ -283,9 +283,15 @@
       const genetics = window.HerdHarborBreedingIntelligenceCore;
       if (inheritance?.reconcile && genetics?.normalizeGenetics &&
           Array.isArray(state.animals) && state.animals.some(animal => /^rabbit$/i.test(String(animal?.species || "")))) {
-        const candidate = structuredClone(state);
-        const update = inheritance.reconcile(candidate, genetics);
-        if (update.changed > 0) nextState = candidate;
+        try {
+          const candidate = structuredClone(state);
+          const update = inheritance.reconcile(candidate, genetics);
+          if (update.changed > 0) nextState = candidate;
+        } catch (error) {
+          // Genetics is additive; a recalculation failure must never block
+          // saving the breeder's primary animal or litter records.
+          console.warn("Rabbit genetic inference was skipped for this save.", error);
+        }
       }
       const result = canonicalStateStore.commit(nextState, {
         source: "local",
