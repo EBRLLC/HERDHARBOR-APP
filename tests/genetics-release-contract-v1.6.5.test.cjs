@@ -103,6 +103,11 @@ test("browser/runtime contract opens, edits, saves, reopens, renders Pair Analys
   const edits={loci:{}};for(const locus of Engine.EDITABLE_LOCI){const alleles=Engine.LOCI[locus].dominance;edits.loci[locus]={alleles:[alleles[0],alleles[Math.min(1,alleles.length-1)]],status:"confirmed",source:"breeder",note:`${locus} contract edit`};}
   await api.saveProfileEdits("buck",edits);
   const saved=JSON.parse(localStorage.getItem("herdharbor_pre_alpha_v1")),savedBuck=saved.animals.find(a=>a.id==="buck");
+  const provenanceBefore = savedBuck.genetics.history.length;
+  await api.saveProfileEdits("buck",edits);
+  const savedAgain = JSON.parse(localStorage.getItem("herdharbor_pre_alpha_v1")).animals.find(a=>a.id==="buck");
+  assert.equal(savedAgain.genetics.history.length,provenanceBefore,"unchanged rabbit genetics must not append duplicate history");
+  assert.equal(savedAgain.genetics.evidence.length,savedBuck.genetics.evidence.length,"unchanged rabbit genetics must not append duplicate evidence");
   assert.equal(savedBuck.genetics.schemaVersion,3);assert.equal(Object.hasOwn(savedBuck.genetics,"vienna"),false);assert.equal(Object.hasOwn(savedBuck.genetics,"modifiers"),false);for(const locus of Engine.EDITABLE_LOCI)assert.equal(savedBuck.genetics.loci[locus].note,`${locus} contract edit`);
   opened=api.openProfile("buck");assert.match(opened.innerHTML,/Lutino carrier/);
   const pairView=api.openPrediction("buck","doe",true);assert.ok(pairView);assert.match(pairView.innerHTML,/Save Prediction Snapshot/);assert.match(pairView.innerHTML,/Rf · Rufus intensity/);assert.match(pairView.innerHTML,/Si · Silvering/);assert.match(pairView.innerHTML,/Lop · Lop ear \/ ear carriage/);assert.match(pairView.innerHTML,/No Mendelian percentage/);
