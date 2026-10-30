@@ -57,6 +57,7 @@ const REQUIRED_SHELL = [
 ];
 
 const RUNTIME_CACHE_PATHS = [
+  "./rabbit-genetics-inheritance-v2.0.3.js?v=1",
   "./how-to/",
   "./icon-192.png",
   "./icon-512.png",

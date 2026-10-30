@@ -276,11 +276,33 @@
       if (!canonicalStateStore?.commit) {
         throw new Error("The canonical HerdHarbor state store is unavailable.");
       }
-      const result = canonicalStateStore.commit(state, {
+      // Recalculate only reversible, evidence-backed rabbit genetics in a
+      // private candidate. Never mutate the live in-memory state if storage fails.
+      let nextState = state;
+      const inheritance = window.HerdHarborRabbitInheritance;
+      const genetics = window.HerdHarborBreedingIntelligenceCore;
+      if (inheritance?.reconcile && genetics?.normalizeGenetics &&
+          Array.isArray(state.animals) && state.animals.some(animal => /^rabbit$/i.test(String(animal?.species || "")))) {
+        try {
+          // Shallow-copy only rabbit records; the reconciler creates new
+          // genetics objects and never mutates existing nested animal records.
+          // Avoid doubling the full account snapshot and attachment metadata.
+          const candidate = { ...state, animals: state.animals.map(animal =>
+            /^rabbit$/i.test(String(animal?.species || "")) ? { ...animal } : animal) };
+          const update = inheritance.reconcile(candidate, genetics);
+          if (update.changed > 0) nextState = candidate;
+        } catch (error) {
+          // Genetics is additive; a recalculation failure must never block
+          // saving the breeder's primary animal or litter records.
+          console.warn("Rabbit genetic inference was skipped for this save.", error);
+        }
+      }
+      const result = canonicalStateStore.commit(nextState, {
         source: "local",
         reason: message || "state-save"
       });
       if (!result?.ok) throw result?.error || new Error("The local state commit failed.");
+      if (nextState !== state) state = nextState;
       lastSavedRaw = result.rawValue || JSON.stringify(state);
       if (message) toast(message, "success");
       return true;
