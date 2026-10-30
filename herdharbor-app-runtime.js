@@ -276,11 +276,23 @@
       if (!canonicalStateStore?.commit) {
         throw new Error("The canonical HerdHarbor state store is unavailable.");
       }
-      const result = canonicalStateStore.commit(state, {
+      // Recalculate only reversible, evidence-backed rabbit genetics in a
+      // private candidate. Never mutate the live in-memory state if storage fails.
+      let nextState = state;
+      const inheritance = window.HerdHarborRabbitInheritance;
+      const genetics = window.HerdHarborBreedingIntelligenceCore;
+      if (inheritance?.reconcile && genetics?.normalizeGenetics &&
+          Array.isArray(state.animals) && state.animals.some(animal => /^rabbit$/i.test(String(animal?.species || "")))) {
+        const candidate = structuredClone(state);
+        const update = inheritance.reconcile(candidate, genetics);
+        if (update.changed > 0) nextState = candidate;
+      }
+      const result = canonicalStateStore.commit(nextState, {
         source: "local",
         reason: message || "state-save"
       });
       if (!result?.ok) throw result?.error || new Error("The local state commit failed.");
+      if (nextState !== state) state = nextState;
       lastSavedRaw = result.rawValue || JSON.stringify(state);
       if (message) toast(message, "success");
       return true;
