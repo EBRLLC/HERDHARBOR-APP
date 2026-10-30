@@ -32,6 +32,14 @@
     }
     const rabbits = state.animals.filter(isRabbit);
     const byId = new Map(rabbits.map(a => [id(a.id), a]));
+    const childrenByParent = new Map();
+    for (const child of rabbits) {
+      for (const parentId of new Set([id(child.sireId), id(child.damId)])) {
+        if (!parentId || parentId === id(child.id) || !byId.has(parentId)) continue;
+        if (!childrenByParent.has(parentId)) childrenByParent.set(parentId, []);
+        childrenByParent.get(parentId).push(child);
+      }
+    }
     const base = new Map(rabbits.map(a => [id(a.id), stripAuto(a)]));
     const loci = engine.EDITABLE_LOCI || Object.keys(engine.LOCI);
     const optionsCache = new Map();
@@ -52,10 +60,11 @@
     for (const animal of rabbits) {
       const parents = [byId.get(id(animal.sireId)), byId.get(id(animal.damId))]
         .filter(p => p && id(p.id) !== id(animal.id));
-      const children = rabbits.filter(child =>
-        id(child.id) !== id(animal.id) &&
-        (id(child.sireId) === id(animal.id) || id(child.damId) === id(animal.id)));
-      if (!parents.length && !children.length && !animal.genetics?.loci) continue;
+      const children = childrenByParent.get(id(animal.id)) || [];
+      if (!parents.length && !children.length &&
+          !Object.values(animal.genetics?.loci || {}).some(auto) &&
+          !(animal.genetics?.conflicts || []).some(c => c?.source === SOURCE) &&
+          !(animal.genetics?.evidence || []).some(e => e?.source === SOURCE)) continue;
       const updated = { ...(animal.genetics || {}) };
       const updatedLoci = { ...(updated.loci || {}) };
       const oldConflicts = Array.isArray(updated.conflicts) ? updated.conflicts : [];
@@ -132,8 +141,12 @@
         if (next) familyEvidence.push({
           id: SOURCE + ":" + id(animal.id) + ":" + locus,
           source: SOURCE, status: next.status, locus, alleles: next.alleles.slice(),
-          note: next.note, relatedAnimalIds: [...new Set([id(animal.sireId), id(animal.damId),
-            ...children.map(child => id(child.id))])].filter(Boolean)
+          note: next.note, relatedAnimalIds: [...new Set([
+            ...(notes.some(note => note === "parent genotypes" || note.startsWith("fixed allele"))
+              ? [id(animal.sireId), id(animal.damId)] : []),
+            ...children.filter(child => notes.includes("homozygous offspring " + id(child.id)))
+              .map(child => id(child.id))
+          ])].filter(Boolean)
         });
         if (oldIsAuto) {
           if (next) {
