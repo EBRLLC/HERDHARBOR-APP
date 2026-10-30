@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v2.0.2-normalized-cloud-1";
+const CACHE_NAME = "herdharbor-shell-v2.0.2-rabbit-inheritance-1";
 const REQUIRED_SHELL = [
   "./",
   "./index.html",
@@ -51,6 +51,7 @@ const REQUIRED_SHELL = [
   "./sales-customer-runtime-v1.8.3.js?v=1",
   "./production-reporting-runtime-v1.8.3.js?v=1",
   "./mobile-capture-v1.8.3.js?v=1",
+  "./rabbit-genetics-inheritance-v2.0.3.js?v=1",
   "./herdharbor-app-runtime.js?v=6",
   "./herdharbor-monitoring-config.js?v=2.0.2",
   "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.2"
