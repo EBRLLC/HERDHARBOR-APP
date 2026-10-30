@@ -111,7 +111,8 @@
           (alleleList(engine.normalizeGenetics({ loci: { [locus]: original } }).loci[locus].alleles).length > 0 ||
            (original.status && original.status !== "unknown") || original.value);
         let next = null;
-        if (constrained && candidates.length && candidates.length < baseOptions.length && !manual) {
+        if (constrained && candidates.length &&
+            (candidates.length < baseOptions.length || baseOptions.length === 1) && !manual) {
           let alleles = null;
           if (candidates.length === 1) alleles = candidates[0];
           else {
