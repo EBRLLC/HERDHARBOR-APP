@@ -60,6 +60,9 @@
       const updatedLoci = { ...(updated.loci || {}) };
       const oldConflicts = Array.isArray(updated.conflicts) ? updated.conflicts : [];
       const keptConflicts = oldConflicts.filter(c => c?.source !== SOURCE);
+      const oldEvidence = Array.isArray(updated.evidence) ? updated.evidence : [];
+      const keptEvidence = oldEvidence.filter(e => e?.source !== SOURCE);
+      const familyEvidence = [];
       const familyConflicts = [];
       for (const locus of loci) {
         if (engine.LOCI[locus]?.predictionModel !== "mendelian") continue;
@@ -126,6 +129,12 @@
               ". Recomputed when family records change; not DNA-confirmed."
           };
         }
+        if (next) familyEvidence.push({
+          id: SOURCE + ":" + id(animal.id) + ":" + locus,
+          source: SOURCE, status: next.status, locus, alleles: next.alleles.slice(),
+          note: next.note, relatedAnimalIds: [...new Set([id(animal.sireId), id(animal.damId),
+            ...children.map(child => id(child.id))])].filter(Boolean)
+        });
         if (oldIsAuto) {
           if (next) {
             if (!same([original.alleles, original.status, original.source, original.note],
@@ -146,11 +155,15 @@
         }
       }
       const allConflicts = keptConflicts.concat(familyConflicts);
-      if (!same(allConflicts, oldConflicts)) { updated.conflicts = allConflicts; changed++; }
+      const allEvidence = keptEvidence.concat(familyEvidence);
+      const evidenceChanged = !same(allEvidence, oldEvidence);
+      const conflictChanged = !same(allConflicts, oldConflicts);
+      if (conflictChanged) { updated.conflicts = allConflicts; changed++; }
+      if (evidenceChanged) { updated.evidence = allEvidence; changed++; }
       if (!same(updatedLoci, animal.genetics?.loci || {})) {
         updated.loci = updatedLoci;
         animal.genetics = updated;
-      } else if (!same(allConflicts, oldConflicts)) {
+      } else if (conflictChanged || evidenceChanged) {
         animal.genetics = updated;
       }
     }
