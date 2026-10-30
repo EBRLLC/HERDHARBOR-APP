@@ -191,7 +191,9 @@ test("canonical persistence no longer depends on Storage prototype interception"
   }
 
   const app = fs.readFileSync(path.join(root, "herdharbor-app-runtime.js"), "utf8");
-  assert.match(app, /canonicalStateStore\.commit\(state/);
+  assert.match(app, /canonicalStateStore\.commit\(nextState/);
+  assert.match(app, /if \(nextState !== state\) state = nextState/);
+  assert.match(app, /if \(!result\?\.ok\) throw/);
   assert.doesNotMatch(app, /localStorage\.setItem\(STORAGE_KEY/);
 
   const cloud = fs.readFileSync(path.join(root, "herdharbor-cloud.js"), "utf8");
