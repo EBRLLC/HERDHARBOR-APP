@@ -49,6 +49,11 @@
 
   async function writeState(state) {
     state[ROOT_KEY] = Object.assign({ version: 1, predictions: [], conflicts: [] }, state[ROOT_KEY], { updatedAt: new Date().toISOString() });
+    const app = window.HerdHarborApp;
+    if (typeof app?.commitState === "function") {
+      if (app.commitState(state) !== true) throw new Error("The canonical genetics save failed.");
+      return;
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     try { if (window.HerdHarborCloud?.syncNow) await window.HerdHarborCloud.syncNow(); }
     catch (error) { console.warn("Breeding Intelligence saved locally; cloud sync can retry normally.", error); }
