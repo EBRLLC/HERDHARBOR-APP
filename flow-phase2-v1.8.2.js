@@ -307,7 +307,7 @@
   }
 
   function currentTabs(model){
-    if(root.HerdHarborCanineIdentity?.isDog(model?.animal))return ["overview","health","pedigree","history"];
+    if(root.HerdHarborCanineIdentity?.isDog(model?.animal))return lower(model.animal.sex)==="female"?["overview","health","breeding","pedigree","history"]:["overview","health","pedigree","history"];
     const tabs=Array.isArray(model?.tabs)?model.tabs.map(normalizeTab):["overview","health","pedigree","history"];
     return[...new Set(tabs.filter(tab=>TABS.includes(tab)))];
   }
@@ -397,13 +397,18 @@
     const latestSale=lifecycle.latestSale;
     const latestTransfer=lifecycle.latestTransfer;
     const healthCount=(model.health?.legacy?.length||0)+(model.health?.episodes?.length||0)+(model.health?.care?.length||0)+(model.health?.groups?.length||0);
+    const isDog=Boolean(root.HerdHarborCanineIdentity?.isDog(animal));
+    const isFemaleDog=isDog&&lower(animal.sex)==="female";
+    const canineCycles=array(state,"canineReproductiveCycles").filter(row=>String(row.femaleId)===String(animal.id)).length;
+    const caninePlans=array(state,"canineBreedingPlans").filter(row=>String(row.damId)===String(animal.id)).length;
+    const canineWhelpings=array(state,"canineWhelpings").filter(row=>String(row.damId)===String(animal.id)).length;
     return`<div class="hh-p2-overview-grid">
       <section class="panel hh-p2-summary-card"><div class="panel-header hh-p2-identity-header"><h3>Identity</h3><div class="hh-p2-identity-tools"><small>Canonical animal record</small><button type="button" class="icon-button hh-p2-identity-settings" data-hh-p2-identity-settings="${esc(animal.id)}" aria-label="Customize Identity" title="Customize Identity">⚙</button></div></div><div class="hh-p2-detail-grid">${rows.map(row=>`<div data-hh-p2-identity-field="${esc(row.key)}"><span>${esc(row.label)}</span><strong>${esc(row.value)}</strong>${row.detail?`<small class="hh-p2-identity-detail">${esc(row.detail)}</small>`:""}</div>`).join("")}</div></section>
       ${canineIdentitySummary(animal)}
       <section class="panel hh-p2-summary-card"><div class="panel-header"><h3>Lifecycle</h3><small>Live status across HerdHarbor</small></div><div class="hh-p2-lifecycle-grid">
         <div><span>Status</span><strong>${esc(lifecycle.status)}</strong><small>${lifecycle.current?"Current animal":"Historical record"}</small></div>
         <div><span>Health</span><strong>${lifecycle.quarantined?"Quarantined":`${healthCount} records`}</strong><small>${lifecycle.quarantined?"Breeding actions are blocked":"Connected health history"}</small></div>
-        ${root.HerdHarborCanineIdentity?.isDog(animal) ? '<div><span>Canine reproduction</span><strong>Not available in 2.0.1</strong><small>Manual pedigree and records are available</small></div>' : `<div><span>Breeding</span><strong>${latestBreeding?esc(latestBreeding.status):"No breeding yet"}</strong><small>${latestBreeding?`${formatDate(latestBreeding.date)}${latestBreeding.dueDate?` · Due ${formatDate(latestBreeding.dueDate)}`:""}`:"Start from this profile when ready"}</small></div>`}
+        ${isDog ? `<div><span>Canine reproduction</span><strong>${isFemaleDog?"Breeding records available":"Sire records available"}</strong><small>${isFemaleDog?`${canineCycles} heat cycles · ${caninePlans} plans · ${canineWhelpings} whelpings`:"Male dogs can be selected as sires in female breeding plans"}</small></div>` : `<div><span>Breeding</span><strong>${latestBreeding?esc(latestBreeding.status):"No breeding yet"}</strong><small>${latestBreeding?`${formatDate(latestBreeding.date)}${latestBreeding.dueDate?` · Due ${formatDate(latestBreeding.dueDate)}`:""}`:"Start from this profile when ready"}</small></div>`}
         <div><span>Sale / transfer</span><strong>${esc(latestTransfer?.status||latestSale?.status||"No transfer activity")}</strong><small>${esc(latestTransfer?.transferId||latestSale?.number||"Ownership stays with this account")}</small></div>
       </div></section>
     </div>
@@ -420,6 +425,16 @@
   }
 
   function breedingPanel(state,model){
+    if(root.HerdHarborCanineIdentity?.isDog(model.animal)){
+      const id=String(model.animal.id);
+      const cycles=array(state,"canineReproductiveCycles").filter(row=>String(row.femaleId)===id);
+      const plans=array(state,"canineBreedingPlans").filter(row=>String(row.damId)===id);
+      const whelpings=array(state,"canineWhelpings").filter(row=>String(row.damId)===id);
+      const editable=Boolean(model.current&&!model.quarantined&&lower(model.animal.sex)==="female");
+      const actions=editable?'<button type="button" class="button button-primary button-small" data-hh-p2-action="breeding">Heat cycles &amp; breeding</button><button type="button" class="button button-ghost button-small" data-hh-p2-action="canine-whelping">Whelpings &amp; puppies</button>':"";
+      const details=[...plans.map(row=>({title:"Breeding plan",detail:row.status||"Recorded",meta:formatDate(row.updatedAt||row.createdAt)})),...whelpings.map(row=>({title:"Whelping",detail:row.litterName||"Puppy records",meta:formatDate(row.birthDate)}))];
+      return `<div class="hh-p2-panel-head"><div><h3>Canine breeding</h3><p>Breeder-entered heat cycles, mating plans, whelpings, and puppy records.</p><p>${cycles.length} heat cycles · ${plans.length} breeding plans · ${whelpings.length} whelpings</p></div><div>${actions}</div></div>${recordList(details,"No canine breeding or whelping records yet.")}`;
+    }
     const rows=(model.breedings||[]).slice().sort((a,b)=>String(b.breedingDate||"").localeCompare(String(a.breedingDate||""))).map(record=>({title:`${animalName(state,record.femaleId)} × ${animalName(state,record.maleId)}`,detail:record.dueDate?`Due ${formatDate(record.dueDate)}`:"",meta:`${formatDate(record.breedingDate)} · ${record.status||"Recorded"}`}));
     const blocked=model.quarantined?"Breeding is unavailable while this animal is quarantined.":!model.current?"Historical animals cannot start a new breeding.":"Pairings and birth outcomes remain part of one animal lifecycle.";
     return`<div class="hh-p2-panel-head"><div><h3>Breeding lifecycle</h3><p>${esc(blocked)}</p></div>${model.current&&!model.quarantined?'<button class="button button-primary button-small" data-hh-p2-action="breeding">Start breeding</button>':""}</div>${recordList(rows,"No breeding history is connected to this animal yet.")}`;
@@ -481,9 +496,14 @@
   }
 
   function actionButtons(model){
-    if(root.HerdHarborCanineIdentity?.isDog(model.animal))
-      return [["weight","Add weight","primary"],["episode","Health episode","ghost"],["edit","Edit / status","ghost"]]
-        .map(([action,label,tone])=>`<button type="button" class="button button-${tone} button-small" data-hh-p2-action="${action}">${esc(label)}</button>`).join("");
+    if(root.HerdHarborCanineIdentity?.isDog(model.animal)){
+      const actions=[["weight","Add weight","primary"],["episode","Health episode","ghost"]];
+      if(model.current&&!model.quarantined&&lower(model.animal.sex)==="female"){
+        actions.push(["breeding","Heat cycles & breeding","ghost"],["canine-whelping","Whelpings & puppies","ghost"]);
+      }
+      actions.push(["edit","Edit / status","ghost"]);
+      return actions.map(([action,label,tone])=>`<button type="button" class="button button-${tone} button-small" data-hh-p2-action="${action}">${esc(label)}</button>`).join("");
+    }
     const actions=[["weight","Add weight","primary"],["episode","Health episode","ghost"]];
     if(model.current&&["female","male"].includes(lower(model.animal?.sex))&&!model.quarantined)actions.push(["breeding","Breed","ghost"]);
     if(currentTabs(model).includes("genetics"))actions.push(["genetics","Genetics","ghost"]);
