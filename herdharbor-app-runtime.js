@@ -1090,7 +1090,7 @@
 
     $("#view-dashboard").innerHTML = `
       ${headerHtml(
-        `Good ${greeting()}, ${state.profile.ownerName.split(" ")[0]}.`,
+        `Good ${greeting()}, ${String(state.profile?.ownerName || "").trim().split(/\s+/)[0] || "breeder"}.`,
         "Here is the current picture of your operation.",
         `<button class="button button-ghost" data-action="add-task">+ Add task</button>
          <button class="button button-primary" data-action="add-animal">+ Add animal</button>`
