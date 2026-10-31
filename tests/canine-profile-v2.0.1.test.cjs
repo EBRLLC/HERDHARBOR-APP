@@ -9,15 +9,18 @@ const canine=require("../canine-identity-v2.0.1.js");
 const voice=require("../voice-assisted-entry-v1.8.3.js");
 const read=(name)=>fs.readFileSync(path.join(root,name),"utf8");
 
-test("Dog profile explicitly excludes rabbit breeding/genetics/show actions",()=>{
+test("Dog profile exposes female-only canine breeding without rabbit genetics/show actions",()=>{
   const profile=read("flow-phase2-v1.8.2.js");
-  assert.match(profile,/if\(root\.HerdHarborCanineIdentity\?\.isDog\(model\?\.animal\)\)return \["overview","health","pedigree","history"\]/);
+  assert.match(profile,/lower\(model\.animal\.sex\)==="female"\?\["overview","health","breeding","pedigree","history"\]/);
   assert.match(profile,/canineIdentitySummary\(animal\)/);
   assert.match(profile,/Dog registration &amp; titles/);
   assert.match(profile,/Canine reproduction/);
+  assert.doesNotMatch(profile,/Not available in 2\.0\.1/);
+  assert.match(profile,/data-hh-p2-action="canine-whelping"/);
+  assert.match(profile,/Breeding records available/);
   assert.match(profile,/Edit dog and parent links/);
 });
-test("Dog action router denies rabbit breeding/import/genetics and birth certificate even on manipulated action clicks",()=>{
+test("Dog action router denies unsupported rabbit genetics/import/birth/show actions",()=>{
   const module={exports:{}},toasts=[];
   const sandbox={module,globalThis:null,HerdHarborCanineIdentity:canine,HerdHarborApp:{
     getState:()=>({animals:[{id:"dog1",species:"Dog",name:"Rex"}]}),
@@ -25,10 +28,10 @@ test("Dog action router denies rabbit breeding/import/genetics and birth certifi
   }};
   sandbox.globalThis=sandbox;
   vm.runInNewContext(read("animal-action-router-v1.8.3.js"),sandbox);
-  for(const action of ["breeding","genetics","pedigree","birth-certificate","show-entry"]){
+  for(const action of ["genetics","pedigree","birth-certificate","show-entry"]){
     assert.equal(module.exports.open(action,"dog1"),false,action);
   }
-  assert.equal(toasts.length,5);
+  assert.equal(toasts.length,4);
   // Canine printing is enabled by K4 without opening the rabbit print workflow.
   let caninePrintInvocations=0;
   sandbox.HerdHarborCaninePedigreePrint={openForAnimal:()=>{caninePrintInvocations++;return true;}};
@@ -58,4 +61,32 @@ test("Mixed species retains shared animal directory and only dog metadata opt-in
   const profile=read("flow-phase2-v1.8.2.js");
   assert.match(profile,/const model=profileModel\(state,activeProfile\.animalId\)/);
   assert.match(profile,/backToAnimals/);
+});
+
+test("Female canine profile actions reach the canine engines and reject male, historical, quarantined and rabbit records",()=>{
+  const rows=[
+    {id:"dam",name:"Luna",species:"Dog",sex:"Female",status:"Active"},
+    {id:"sire",name:"Max",species:"Dog",sex:"Male",status:"Active"},
+    {id:"archived",name:"Ada",species:"Dog",sex:"Female",status:"Ancestor Only"},
+    {id:"quarantine",name:"Bea",species:"Dog",sex:"Female",status:"Active"},
+    {id:"rabbit",name:"Clover",species:"Rabbit",sex:"Female",status:"Active"}
+  ];
+  const calls=[],toasts=[],module={exports:{}};
+  const sandbox={module,globalThis:null,HerdHarborCanineIdentity:canine,
+    HerdHarborApp:{getState:()=>({animals:rows}),toast:message=>toasts.push(message)},
+    HerdHarborPhase1Workflow:{profileModel:(_state,id)=>({quarantined:id==="quarantine"})},
+    HerdHarborCanineReproductiveWorkspace:{openForAnimal:id=>{calls.push("cycle:"+id);return true;}},
+    HerdHarborCanineWhelpingWorkspace:{openForAnimal:id=>{calls.push("whelping:"+id);return true;}}
+  };
+  sandbox.globalThis=sandbox;
+  vm.runInNewContext(read("animal-action-router-v1.8.3.js"),sandbox);
+  assert.equal(module.exports.open("breeding","dam"),true);
+  assert.equal(module.exports.open("canine-whelping","dam"),true);
+  for(const id of ["sire","archived","quarantine"]){
+    assert.equal(module.exports.open("breeding",id),false,id);
+    assert.equal(module.exports.open("canine-whelping",id),false,id);
+  }
+  assert.equal(module.exports.open("canine-whelping","rabbit"),false);
+  assert.deepEqual(calls,["cycle:dam","whelping:dam"]);
+  assert.equal(toasts.length,6);
 });

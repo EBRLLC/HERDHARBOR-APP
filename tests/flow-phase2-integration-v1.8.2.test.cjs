@@ -31,7 +31,8 @@ test("all Phase Two profile assets are available offline and network-first", () 
     "flow-phase2-profile-finish-v1.8.2.css"
   ]) {
     const escaped = asset.replace(/[.]/g, "\\.");
-    assert.match(worker, new RegExp(`\\.\\/${escaped}\\?v=1`), `${asset} is in the app shell`);
+    const revision = asset === "flow-phase2-v1.8.2.js" ? 2 : 1;
+    assert.match(worker, new RegExp(`\\.\\/${escaped}\\?v=${revision}`), `${asset} is in the app shell`);
     assert.match(worker, new RegExp(`\\/${escaped}`), `${asset} is network-first`);
   }
 });

@@ -143,8 +143,8 @@
     addScript("hh-v171-stability-hotfix", "herdharbor-v1.7.1-stability-hotfix.js?v=2", () => {
       addScript("hh-phase1-workflow-v171", "workflow-phase1-v1.7.1.js?v=2", () => {
         addScript("hh-flow-phase1-v182", "flow-phase1-v1.8.2.js?v=1", () => {
-          addScript("hh-flow-phase2-v182", "flow-phase2-v1.8.2.js?v=1", () => {
-            addScript("hh-animal-action-router-v183", "animal-action-router-v1.8.3.js?v=1", () => {
+          addScript("hh-flow-phase2-v182", "flow-phase2-v1.8.2.js?v=2", () => {
+            addScript("hh-animal-action-router-v183", "animal-action-router-v1.8.3.js?v=2", () => {
               addScript("hh-flow-phase2-lifecycle-v182", "flow-phase2-lifecycle-v1.8.2.js?v=1", () => {
                 addScript("hh-breeding-litter-workspace-v182", "breeding-litter-workspace-v1.8.2.js?v=2", () => {
                   addScript("hh-breeding-litter-workspace-integration-v182", "breeding-litter-workspace-integration-v1.8.2.js?v=1", () => {

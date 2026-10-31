@@ -10,7 +10,7 @@ const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 test('v1.8.3 router owns the migrated animal profile actions', () => {
   assert.equal(Router.VERSION, '1.8.3');
   assert.deepEqual([...Router.DIRECT_ACTIONS], [
-    'weight', 'health', 'episode', 'care', 'breeding', 'genetics', 'pedigree', 'birth-certificate', 'show-entry', 'analytics', 'print-pedigree', 'edit'
+    'weight', 'health', 'episode', 'care', 'breeding', 'canine-whelping', 'genetics', 'pedigree', 'birth-certificate', 'show-entry', 'analytics', 'print-pedigree', 'edit'
   ]);
   for (const action of Router.DIRECT_ACTIONS) assert.equal(Router.canHandle(action), true);
   assert.equal(Router.returnSurfaceFor('weight'), '#health-form');
@@ -70,8 +70,8 @@ test('guided pedigree builder exposes the canonical subject selector the router 
 
 test('runtime loads the v1.8.3 router after the profile shell and before profile add-ons', () => {
   const build = read('herdharbor-build.js');
-  const profile = build.indexOf('flow-phase2-v1.8.2.js?v=1');
-  const router = build.indexOf('animal-action-router-v1.8.3.js?v=1');
+  const profile = build.indexOf('flow-phase2-v1.8.2.js?v=2');
+  const router = build.indexOf('animal-action-router-v1.8.3.js?v=2');
   const lifecycle = build.indexOf('flow-phase2-lifecycle-v1.8.2.js?v=1');
   assert.ok(profile >= 0, 'animal profile shell must be loaded');
   assert.ok(router > profile, 'animal action router must load after the profile shell API');
@@ -80,7 +80,7 @@ test('runtime loads the v1.8.3 router after the profile shell and before profile
 
 test('PWA shell caches and network-refreshes the v1.8.3 router', () => {
   const worker = read('service-worker.js');
-  assert.match(worker, /\.\/animal-action-router-v1\.8\.3\.js\?v=1/);
+  assert.match(worker, /\.\/animal-action-router-v1\.8\.3\.js\?v=2/);
   assert.match(worker, /"\/animal-action-router-v1\.8\.3\.js"/);
 });
 
