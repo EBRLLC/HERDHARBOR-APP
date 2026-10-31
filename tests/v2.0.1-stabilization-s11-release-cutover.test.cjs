@@ -25,9 +25,9 @@ test("staged candidate release versions are 2.0.2 with a new native code",()=>{
  assert.match(gradle,/versionName "2\.0\.2"/);
  assert.match(gradle,/versionCode 21/);
  assert.match(build,/version: "2\.0\.2"/);
- assert.match(build,/buildId: "v2\.0\.2-release-2"/);
+ assert.match(build,/buildId: "v2\.0\.2-release-1"/);
  assert.match(pwa,/HerdHarborBuild\?\.version \|\| "2\.0\.2"/);
- assert.match(worker,/const CACHE_NAME = "herdharbor-shell-v2\.0\.2-normalized-cloud-2"/);
+ assert.match(worker,/const CACHE_NAME = "herdharbor-shell-v2\.0\.2-normalized-cloud-1"/);
 });
 test("2.0.1 HTML queries match the service-worker preload identities",()=>{
  const shell=worker.slice(worker.indexOf("const REQUIRED_SHELL"),worker.indexOf("const RUNTIME_CACHE_PATHS"));
