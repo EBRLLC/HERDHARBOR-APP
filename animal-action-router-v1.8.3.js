@@ -14,6 +14,7 @@
     "episode",
     "care",
     "breeding",
+    "canine-whelping",
     "genetics",
     "pedigree",
     "birth-certificate",
@@ -285,8 +286,8 @@
     ) === true;
   }
 
-  function watchReturnToProfile(action, animalId, tab = "overview") {
-    const selector = returnSurfaceFor(action);
+  function watchReturnToProfile(action, animalId, tab = "overview", surface = "") {
+    const selector = surface || returnSurfaceFor(action);
     if (!selector || !root.document?.querySelector) return false;
     const token = ++returnWatchToken;
     const context = {
@@ -318,8 +319,31 @@
     const id = clean(animalId);
     if (!id || !canHandle(nextAction)) return false;
     const targetAnimal = animalById(stateNow(), id);
-    const restrictedCanineActions = new Set(["breeding", "genetics", "birth-certificate", "show-entry", "pedigree"]);
-    if (root.HerdHarborCanineIdentity?.isDog(targetAnimal) && restrictedCanineActions.has(nextAction)) {
+    const isDog = Boolean(root.HerdHarborCanineIdentity?.isDog(targetAnimal));
+    if (isDog && (nextAction === "breeding" || nextAction === "canine-whelping")) {
+      const available = breedingAvailability(targetAnimal, isQuarantined(stateNow(), id));
+      if (!available.allowed || lower(targetAnimal.sex) !== "female") {
+        toast("Canine breeding and whelping are available for current, non-quarantined female dogs.", "error");
+        return false;
+      }
+      const workspace = nextAction === "breeding"
+        ? root.HerdHarborCanineReproductiveWorkspace
+        : root.HerdHarborCanineWhelpingWorkspace;
+      if (typeof workspace?.openForAnimal !== "function") {
+        toast("Canine breeding workspace is unavailable. Update HerdHarbor and try again.", "error");
+        return false;
+      }
+      const launched = workspace.openForAnimal(id) === true;
+      if (launched) {
+        const surface = nextAction === "breeding" ? "#hh-canine-repro-workspace" : "#hh-canine-whelping-workspace";
+        watchReturnToProfile(nextAction, id, options.returnTab || "overview", surface);
+        announce(nextAction, id, options.returnTab || "");
+      }
+      return launched;
+    }
+    if (!isDog && nextAction === "canine-whelping") return false;
+    const restrictedCanineActions = new Set(["genetics", "birth-certificate", "show-entry", "pedigree"]);
+    if (isDog && restrictedCanineActions.has(nextAction)) {
       toast("That workflow is not available for dogs in this release. Use the dog profile for manual pedigree and registration records.", "error");
       return false;
     }
