@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v2.0.2-normalized-cloud-1";
+const CACHE_NAME = "herdharbor-shell-v2.0.2-normalized-cloud-2";
 const REQUIRED_SHELL = [
   "./",
   "./index.html",
@@ -110,8 +110,8 @@ const RUNTIME_CACHE_PATHS = [
   "./workflow-phase1-v1.7.1.js?v=2",
   "./workflow-phase1-v1.7.1.css?v=2",
   "./flow-phase1-v1.8.2.js?v=1",
-  "./flow-phase2-v1.8.2.js?v=1",
-  "./animal-action-router-v1.8.3.js?v=1",
+  "./flow-phase2-v1.8.2.js?v=2",
+  "./animal-action-router-v1.8.3.js?v=2",
   "./flow-phase2-v1.8.2.css?v=1",
   "./flow-phase2-lifecycle-v1.8.2.js?v=1",
   "./flow-phase2-lifecycle-v1.8.2.css?v=1",
