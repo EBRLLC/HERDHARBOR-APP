@@ -1090,7 +1090,7 @@
 
     $("#view-dashboard").innerHTML = `
       ${headerHtml(
-        `Good ${greeting()}, ${state.profile.ownerName.split(" ")[0]}.`,
+        `Good ${greeting()}, ${String(state.profile?.ownerName || "").trim().split(/\s+/)[0] || "breeder"}.`,
         "Here is the current picture of your operation.",
         `<button class="button button-ghost" data-action="add-task">+ Add task</button>
          <button class="button button-primary" data-action="add-animal">+ Add animal</button>`
@@ -1169,7 +1169,7 @@
       taskRuntime().setFilterStatus("Today");
       navigate("tasks");
     });
-    $("[data-dashboard-task]", $("#view-dashboard")).forEach((box) => box.addEventListener("change", () => {
+    $$("[data-dashboard-task]", $("#view-dashboard")).forEach((box) => box.addEventListener("change", () => {
       const task = state.tasks.find((item) => item.id === box.dataset.dashboardTask);
       if (!task) return;
       const next = setTaskCompleted(task, box.checked);
