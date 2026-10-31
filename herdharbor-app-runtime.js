@@ -1169,7 +1169,7 @@
       taskRuntime().setFilterStatus("Today");
       navigate("tasks");
     });
-    $("[data-dashboard-task]", $("#view-dashboard")).forEach((box) => box.addEventListener("change", () => {
+    $$("[data-dashboard-task]", $("#view-dashboard")).forEach((box) => box.addEventListener("change", () => {
       const task = state.tasks.find((item) => item.id === box.dataset.dashboardTask);
       if (!task) return;
       const next = setTaskCompleted(task, box.checked);
