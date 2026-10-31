@@ -5,7 +5,7 @@
     dsn: "",
     environment: "",
     release: "HerdHarbor@2.0.2",
-    build: "v2.0.2-release-1",
+    build: "v2.0.2-release-2",
     enableTestCrash: false
   });
 })();
