@@ -118,7 +118,7 @@
   addStyle("hh-litter-sale-transfer-v182-style", "litter-sale-transfer-v1.8.2.css?v=1");
   addStyle("hh-breeding-next-action-v182-style", "breeding-next-action-v1.8.2.css?v=1");
   addStyle("hh-breeding-performance-v182-style", "breeding-performance-dashboard-v1.8.2.css?v=2");
-  addStyle("hh-subscription-engine-v180-style", "subscription-engine-v1.8.0.css?v=1");
+  addStyle("hh-subscription-engine-v180-style", "subscription-engine-v1.8.0.css?v=2");
   addStyle("hh-subscription-member-ui-v180-style", "subscription-member-ui-v1.8.0.css?v=1");
   addStyle("hh-mobile-viewport-v180-style", "mobile-viewport-hotfix-v1.8.0.css?v=1");
   addStyle("hh-direct-transfer-v182-style", "direct-transfer-v1.8.2.css?v=1");
@@ -173,7 +173,7 @@
     });
   });
   addScript("hh-subscription-launch-v181", "subscription-launch-v1.8.1.js?v=3", () => {
-    addScript("hh-subscription-engine-v180", "subscription-engine-v1.8.0.js?v=4", () => {
+    addScript("hh-subscription-engine-v180", "subscription-engine-v1.8.0.js?v=5", () => {
       addScript("hh-subscription-tab-visibility-v180", "subscription-tab-visibility-v1.8.0.js?v=2", () => {
         addScript("hh-subscription-header-copy-v180", "subscription-header-copy-v1.8.0.js?v=3", () => {
           addScript("hh-subscription-stripe-provider-v180", "subscription-stripe-provider-v1.8.0.js?v=3", () => {
