@@ -192,8 +192,17 @@
           .includes(normalize(animal?.status || "active"))).length;
       }
     } catch {}
+    // The subscription engine may initialize after the auth-session event.
+    // Confirm a live cloud session before leaving "Signed in" on Checking…
+    // forever; never infer signed-out from a still-loading session.
+    let signedIn = authSignedIn;
+    if (signedIn == null) {
+      try {
+        if (window.HerdHarborCloud?.getSession?.()?.user?.id) signedIn = true;
+      } catch {}
+    }
     return {
-      signedIn: authSignedIn,
+      signedIn,
       role: normalize(account.accountRole || "user"),
       tier: tier || null,
       planLabel: plans[tier]?.label || (tier ? titleCase(tier) : "Not resolved"),
@@ -620,8 +629,8 @@
         <header class="hh-subscription-header">
           <div>
             <span class="hh-subscription-kicker">HerdHarbor</span>
-            <h2 id="hh-subscription-title">Subscription</h2>
-            <p>Standalone subscription management that reads your HerdHarbor account without replacing existing membership or sign-in systems.</p>
+            <h2 id="hh-subscription-title">Subscriptions</h2>
+            <p>Manage your plan, billing, referral rewards, and subscription credits.</p>
           </div>
           <button type="button" class="icon-button hh-subscription-close" data-hh-subscription-close aria-label="Close subscription">×</button>
         </header>

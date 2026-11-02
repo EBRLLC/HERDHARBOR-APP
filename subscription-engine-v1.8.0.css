@@ -60,3 +60,140 @@
 html.hh-subscription-open{overflow:hidden}
 @media(max-width:900px){.hh-subscription-stat-grid,.hh-subscription-plan-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hh-subscription-diagnostics{grid-template-columns:1fr}}
 @media(max-width:680px){.hh-subscription-shell{inset:0;border-radius:0}.hh-subscription-header,.hh-subscription-content{padding:18px}.hh-subscription-hero,.hh-subscription-danger,.hh-subscription-section-heading{align-items:stretch;flex-direction:column}.hh-subscription-stat-grid,.hh-subscription-plan-grid,.hh-subscription-grid-two{grid-template-columns:1fr}.hh-subscription-actions .button,.hh-subscription-danger .button{width:100%}}
+
+/* Mobile subscription dialog: contain nested grid and flex content within the
+   visual viewport. Do not hide horizontal overflow on the billing table itself:
+   only that table should scroll horizontally when columns require it. */
+#hh-subscription-engine-panel,
+#hh-subscription-engine-panel *,
+#hh-subscription-engine-panel *::before,
+#hh-subscription-engine-panel *::after {
+  box-sizing: border-box;
+}
+.hh-subscription-panel {
+  width: 100%;
+  max-width: 100vw;
+  overflow: hidden;
+}
+.hh-subscription-shell {
+  width: min(calc(100% - 36px), 1180px);
+  max-width: calc(100% - 36px);
+  min-width: 0;
+  max-height: 94vh;
+  max-height: 94dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.hh-subscription-content {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+.hh-subscription-content > *,
+.hh-subscription-header > div,
+.hh-subscription-hero > div,
+.hh-subscription-danger > div,
+.hh-subscription-section-heading > *,
+.hh-subscription-stat-grid article,
+.hh-subscription-plan-card,
+.hh-subscription-grid-two > *,
+.hh-subscription-details,
+.hh-subscription-details dd {
+  min-width: 0;
+  max-width: 100%;
+}
+.hh-subscription-header p,
+.hh-subscription-hero p,
+.hh-subscription-section,
+.hh-subscription-card,
+.hh-subscription-plan-card,
+.hh-subscription-stat-grid strong,
+.hh-subscription-diagnostics li,
+.hh-subscription-details dd {
+  overflow-wrap: anywhere;
+}
+.hh-subscription-actions .button {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+}
+.hh-subscription-table-wrap {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 680px) {
+  .hh-subscription-shell {
+    inset: 0;
+    width: 100%;
+    max-width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border: 0;
+  }
+  .hh-subscription-header {
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+  }
+  .hh-subscription-header h2 {
+    font-size: clamp(1.5rem, 6vw, 1.85rem);
+    line-height: 1.1;
+  }
+  .hh-subscription-header p {
+    font-size: .88rem;
+    line-height: 1.4;
+  }
+  .hh-subscription-close {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .hh-subscription-content {
+    gap: 14px;
+    padding: 16px;
+  }
+  .hh-subscription-hero {
+    gap: 14px;
+    padding: 16px;
+  }
+  .hh-subscription-status-line {
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .hh-subscription-status-line h3 {
+    font-size: 1.1rem;
+  }
+  .hh-subscription-hero p {
+    font-size: .94rem;
+    line-height: 1.45;
+  }
+  .hh-subscription-actions {
+    width: 100%;
+  }
+  .hh-subscription-actions .button {
+    width: 100%;
+  }
+  .hh-subscription-section,
+  .hh-subscription-card,
+  .hh-subscription-danger {
+    padding: 16px;
+  }
+  .hh-subscription-stat-grid article {
+    padding: 14px;
+  }
+  .hh-subscription-details div {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+  .hh-subscription-details dd {
+    text-align: left;
+  }
+}
