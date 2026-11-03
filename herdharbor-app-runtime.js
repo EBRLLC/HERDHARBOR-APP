@@ -89,8 +89,12 @@
   };
 
   const canonicalStateStore = window.HerdHarborStateStore || null;
+  let localStateLoadError = null;
+  let runtimeInitialized = false;
   let state = loadState();
-  let lastSavedRaw = canonicalStateStore?.getRaw?.() || localStorage.getItem(STORAGE_KEY) || "";
+  let lastSavedRaw = "";
+  try { lastSavedRaw = canonicalStateStore?.getRaw?.() || localStorage.getItem(STORAGE_KEY) || ""; }
+  catch (error) { localStateLoadError = error; }
   const requestedRoute = String(window.location.hash || "").replace(/^#/, "");
   let currentRoute = ["dashboard", "analytics", "animals", "pedigrees", "breeding", "litters", "health", "symptoms", "tasks", "budget", "sales", "settings", "admin"].includes(requestedRoute)
     ? requestedRoute
@@ -148,37 +152,61 @@
   }
 
   const lazyScriptPromises = new Map();
+  let accountEpoch = 0;
+  let lazyRenderRequest = 0;
+  document.addEventListener("herdharbor:auth-boundary", () => { accountEpoch += 1; });
 
   function loadScriptOnce(src, ready = () => false) {
     if (ready()) return Promise.resolve(true);
     if (lazyScriptPromises.has(src)) return lazyScriptPromises.get(src);
 
-    const existing = [...document.scripts].find((script) => {
+    let existing = [...document.scripts].find((script) => {
       try {
         return new URL(script.src, window.location.href).pathname === new URL(src, window.location.href).pathname;
       } catch {
         return false;
       }
     });
+    if (existing?.dataset?.hhLazyState === "failed") {
+      existing.remove();
+      existing = null;
+    }
 
     const promise = new Promise((resolve, reject) => {
       const script = existing || document.createElement("script");
-      const finish = () => {
-        if (ready()) resolve(true);
-        else reject(new Error(`Lazy feature asset loaded without registering: ${src}`));
+      let settled = false;
+      let timer;
+      const settle = (error) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout?.(timer);
+        script.removeEventListener?.("load", finish);
+        script.removeEventListener?.("error", fail);
+        script.dataset.hhLazyState = error ? "failed" : "loaded";
+        if (error) {
+          if (script.dataset.hhLazyAsset) script.remove();
+          reject(error);
+        } else resolve(true);
       };
-      const fail = () => reject(new Error(`Lazy feature asset could not load: ${src}`));
+      const finish = () => {
+        if (ready()) settle();
+        else settle(new Error(`Lazy feature asset loaded without registering: ${src}`));
+      };
+      const fail = () => settle(new Error(`Lazy feature asset could not load: ${src}`));
 
       script.addEventListener("load", finish, { once: true });
       script.addEventListener("error", fail, { once: true });
+      timer = window.setTimeout?.(() => settle(new Error(`Lazy feature asset timed out: ${src}`)), 20_000);
+      timer?.unref?.();
 
       if (!existing) {
         script.src = src;
         script.async = true;
         script.dataset.hhLazyAsset = "true";
+        script.dataset.hhLazyState = "loading";
         document.head.appendChild(script);
       } else if (ready()) {
-        resolve(true);
+        settle();
       }
     }).catch((error) => {
       lazyScriptPromises.delete(src);
@@ -195,16 +223,18 @@
   }
 
   function renderLazyRoute(route, title, loader, render) {
+    const epoch = accountEpoch;
+    const request = ++lazyRenderRequest;
     const target = $(`#view-${route}`);
     if (target) target.innerHTML = lazyRouteLoadingMarkup(title);
 
     void loader()
       .then(() => {
-        if (currentRoute === route) render();
+        if (currentRoute === route && epoch === accountEpoch && request === lazyRenderRequest) render();
       })
       .catch((error) => {
         console.error(`HerdHarbor could not lazy-load ${route}:`, error);
-        if (currentRoute !== route || !target) return;
+        if (currentRoute !== route || epoch !== accountEpoch || request !== lazyRenderRequest || !target) return;
         target.innerHTML = `${headerHtml(title, "This feature could not finish loading.")}
           ${emptyState("Feature unavailable right now.", "Check your connection and try opening this section again.")}`;
       });
@@ -244,7 +274,14 @@
       const parsed = storedState && typeof storedState === "object"
         ? storedState
         : JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-      if (!parsed || typeof parsed !== "object") return structuredClone(defaultState);
+      if (parsed === null) { localStateLoadError = null; return structuredClone(defaultState); }
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("The saved workspace is invalid.");
+      for (const key of Object.keys(defaultState)) {
+        if (Array.isArray(defaultState[key]) && parsed[key] !== undefined && !Array.isArray(parsed[key])) {
+          throw new Error("A saved record collection requires recovery.");
+        }
+      }
+      localStateLoadError = null;
       return {
         ...structuredClone(defaultState),
         ...parsed,
@@ -266,32 +303,64 @@
           }
         }
       };
-    } catch {
+    } catch (error) {
+      localStateLoadError = error;
       return structuredClone(defaultState);
     }
   }
 
+  let lastInheritanceInput = null;
+  let lastInheritanceEngine = null;
+  const rabbitInheritanceInput = (value) => JSON.stringify((value.animals || [])
+    .filter(animal => /^(rabbit|rabbits)$/i.test(String(animal?.species || "").trim()))
+    .map(({ id, species, sireId, damId, color, variety, genetics, viennaStatus, vienna }) =>
+      ({ id, species, sireId, damId, color, variety, genetics, viennaStatus, vienna })));
+
+  function prepareRabbitInheritance(value) {
+    const inheritance = window.HerdHarborRabbitInheritance;
+    const genetics = window.HerdHarborBreedingIntelligenceCore;
+    if (!inheritance?.reconcile || !genetics?.possiblePairsForLocus || !genetics?.crossLocus || !genetics?.LOCI) return value;
+    const input = rabbitInheritanceInput(value);
+    if (lastInheritanceEngine === genetics && input === lastInheritanceInput) return value;
+    const candidate = { ...value, animals: value.animals.map(animal =>
+      /^(rabbit|rabbits)$/i.test(String(animal?.species || "").trim()) ? { ...animal } : animal) };
+    const update = inheritance.reconcile(candidate, genetics);
+    return update.changed > 0 ? candidate : value;
+  }
+
+  function scheduleLoadedGenetics() {
+    const epoch = accountEpoch;
+    const loadedState = state;
+    window.setTimeout(() => {
+      if (epoch !== accountEpoch || loadedState !== state || localStateLoadError || !state.profile) return;
+      try {
+        // Never race a newer durable cloud/local replacement.
+        if (canonicalStateStore?.getRaw?.() !== lastSavedRaw) return;
+        const candidate = prepareRabbitInheritance(state);
+        if (candidate !== state && window.HerdHarborApp.commitState(candidate)) renderCurrentView();
+      } catch (error) { console.warn("Rabbit genetic inference needs another attempt.", error); }
+    }, 0);
+  }
+  window.addEventListener("herdharbor:genetics-ready", scheduleLoadedGenetics);
+
   function saveState(message = "") {
     try {
+      if (localStateLoadError) throw localStateLoadError;
       if (!canonicalStateStore?.commit) {
         throw new Error("The canonical HerdHarbor state store is unavailable.");
       }
       // Recalculate only reversible, evidence-backed rabbit genetics in a
       // private candidate. Never mutate the live in-memory state if storage fails.
       let nextState = state;
-      const inheritance = window.HerdHarborRabbitInheritance;
-      const genetics = window.HerdHarborBreedingIntelligenceCore;
-      if (inheritance?.reconcile && genetics?.normalizeGenetics &&
-          Array.isArray(state.animals) && state.animals.some(animal => /^rabbit$/i.test(String(animal?.species || "")))) {
+      let inferenceFailed = false;
+      if (Array.isArray(state.animals)) {
         try {
           // Shallow-copy only rabbit records; the reconciler creates new
           // genetics objects and never mutates existing nested animal records.
           // Avoid doubling the full account snapshot and attachment metadata.
-          const candidate = { ...state, animals: state.animals.map(animal =>
-            /^rabbit$/i.test(String(animal?.species || "")) ? { ...animal } : animal) };
-          const update = inheritance.reconcile(candidate, genetics);
-          if (update.changed > 0) nextState = candidate;
+          nextState = prepareRabbitInheritance(state);
         } catch (error) {
+          inferenceFailed = true;
           // Genetics is additive; a recalculation failure must never block
           // saving the breeder's primary animal or litter records.
           console.warn("Rabbit genetic inference was skipped for this save.", error);
@@ -304,6 +373,10 @@
       if (!result?.ok) throw result?.error || new Error("The local state commit failed.");
       if (nextState !== state) state = nextState;
       lastSavedRaw = result.rawValue || JSON.stringify(state);
+      if (!inferenceFailed && window.HerdHarborBreedingIntelligenceCore?.possiblePairsForLocus) {
+        lastInheritanceInput = rabbitInheritanceInput(state);
+        lastInheritanceEngine = window.HerdHarborBreedingIntelligenceCore;
+      }
       if (message) toast(message, "success");
       return true;
     } catch (error) {
@@ -762,6 +835,9 @@
   }
 
   function initialize() {
+    if (localStateLoadError) { showLocalStateRecovery(); return; }
+    if (runtimeInitialized) return;
+    runtimeInitialized = true;
     state.settings = { ...defaultState.settings, ...(state.settings || {}) };
     state.settings.marketAnalyticsConsent = {
       ...defaultState.settings.marketAnalyticsConsent,
@@ -880,6 +956,7 @@
     refreshSyncStatus();
     requestDurableDeviceStorage();
     migratePedigreeAttachments();
+    scheduleLoadedGenetics();
 
   }
 
@@ -888,11 +965,29 @@
   // the in-memory state; a storage update alone cannot change onboarding.
   function applyVerifiedCloudState() {
     const next = loadState();
+    if (localStateLoadError) { showLocalStateRecovery(); return false; }
     if (!next?.profile || !String(next.profile.operationName || "").trim()) return false;
     state = next;
+    lastSavedRaw = canonicalStateStore?.getRaw?.() || "";
+    document.getElementById("hh-local-state-recovery")?.remove();
+    if (!runtimeInitialized) initialize();
     showApp();
     refreshSyncStatus();
+    scheduleLoadedGenetics();
     return true;
+  }
+
+  function showLocalStateRecovery() {
+    $("#onboarding")?.classList.add("hidden");
+    $("#app-shell")?.classList.add("hidden");
+    if (document.getElementById("hh-local-state-recovery")) return;
+    const panel = document.createElement("section");
+    panel.id = "hh-local-state-recovery";
+    panel.className = "panel";
+    panel.setAttribute("role", "alert");
+    panel.innerHTML = '<h1>Saved workspace needs recovery</h1><p>This device could not read its saved records. Editing is paused to protect existing records and pending edits. Retry after restoring storage access, or contact support for recovery.</p><button id="hh-local-state-retry" type="button" class="button">Retry loading</button>';
+    panel.querySelector("#hh-local-state-retry").addEventListener("click", () => window.location.reload());
+    document.body.appendChild(panel);
   }
 
   function showOnboarding() {
@@ -3780,4 +3875,4 @@
 
   initialize();
 })();
-  
+

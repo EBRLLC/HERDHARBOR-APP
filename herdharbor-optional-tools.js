@@ -19,6 +19,7 @@
   const testerKey = (accountId) => AI_TESTER_KEY + ":" + accountId;
 
   const inFlight = new Map();
+  let accountEpoch = 0;
 
   function absoluteUrl(path) {
     return new URL(path, document.baseURI || window.location.href).href;
@@ -43,21 +44,35 @@
 
     const promise = new Promise((resolve, reject) => {
       const node = script || document.createElement("script");
-      const fail = (message) => reject(new Error(message));
+      let settled = false;
+      let timer;
+      const finish = (error) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout?.(timer);
+        node.removeEventListener?.("load", onLoad);
+        node.removeEventListener?.("error", onError);
+        if (error) reject(error);
+        else resolve();
+      };
+      const fail = (message) => finish(new Error(message));
 
       const onLoad = () => {
+        if (settled) return;
         if (!validate()) {
           fail(label + " loaded but did not publish its expected API.");
           return;
         }
         node.dataset.hhOptionalState = "loaded";
-        resolve();
+        finish();
       };
 
       const onError = () => fail(label + " could not be loaded. Check your connection and try again.");
 
       node.addEventListener("load", onLoad, { once: true });
       node.addEventListener("error", onError, { once: true });
+      timer = window.setTimeout?.(() => fail(label + " took too long to load. Check your connection and try again."), 20_000);
+      timer?.unref?.();
 
       if (!script) {
         node.src = src;
@@ -148,12 +163,13 @@
 
   async function ensureAiLiveTools() {
     const ownerId = currentAccountId();
+    const epoch = accountEpoch;
     if (!ownerId || !isAiLiveTester()) throw new Error("AI live testing is not enabled for this signed-in account.");
     await Promise.all([
       loadScript(ASSETS.voiceAi, "HerdHarbor voice-assisted entry", () => typeof window.HerdHarborVoiceAssistedEntry?.create === "function"),
       loadScript(ASSETS.photoAi, "HerdHarbor photo-assisted entry", () => typeof window.HerdHarborPhotoAssistedEntry?.create === "function")
     ]);
-    if (ownerId !== currentAccountId() || !isAiLiveTester()) {
+    if (epoch !== accountEpoch || ownerId !== currentAccountId() || !isAiLiveTester()) {
       throw new Error("The signed-in account changed while AI tester tools were loading.");
     }
     return Object.freeze({
@@ -190,6 +206,7 @@
     if (event.key === null || (accountId && event.key === testerKey(accountId))) bootAiLiveTesterGate();
   });
   document.addEventListener?.("herdharbor:auth-boundary", () => {
+    accountEpoch += 1;
     // The cloud bridge sends this before switching the session; hide old
     // tester controls synchronously, even during rapid A->B->A transitions.
     if (document.documentElement?.dataset) document.documentElement.dataset.hhAiLiveTester = "false";

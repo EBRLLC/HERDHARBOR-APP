@@ -2,10 +2,12 @@
   "use strict";
   const moduleApi = factory();
   if (typeof module === "object" && module.exports) module.exports = moduleApi;
-  if (root?.localStorage) {
+  let storage;
+  try { storage = root?.localStorage; } catch {}
+  if (storage) {
     root.HerdHarborStateStore = moduleApi.create({
       root,
-      storage: root.localStorage,
+      storage,
       indexedDB: root.indexedDB
     });
   }
@@ -310,7 +312,13 @@
       // JSON.parse(getRaw()) already returns a fresh detached object on every
       // call. Cloning that parsed object again would stringify and parse the
       // entire farm a second time during startup.
-      return safeParse(getRaw());
+      // A failed read is different from a new workspace. Callers must stop
+      // editing and offer recovery instead of persisting an empty replacement.
+      const raw = storage.getItem(STATE_KEY);
+      if (raw === null || raw === "") return null;
+      const parsed = safeParse(raw);
+      if (!isPlainObject(parsed)) throw new Error("The saved workspace could not be read. Recovery is required.");
+      return parsed;
     }
 
     function getRevision(ownerId = activeOwnerId()) {
@@ -493,9 +501,21 @@
     }
 
     function commit(nextState, commitOptions = {}) {
+      // Validate the durable predecessor before preparing a write. In
+      // particular, never replace unreadable state/outbox data with defaults.
+      let previousRaw;
+      let previousState;
+      try {
+        previousRaw = storage.getItem(STATE_KEY) || "";
+        previousState = previousRaw ? safeParse(previousRaw) : {};
+        if (!isPlainObject(previousState)) throw new Error("The saved workspace requires recovery.");
+        const pending = storage.getItem(outboxKey(String(commitOptions.ownerId || activeOwnerId())));
+        if (pending && !Array.isArray(JSON.parse(pending))) throw new Error("The pending edits require recovery.");
+      } catch (error) {
+        return { ok: false, changed: false, error, mutations: [] };
+      }
       recoverPreparedTransaction();
       const rawValue = JSON.stringify(nextState && typeof nextState === "object" ? nextState : {});
-      const previousRaw = getRaw();
       if (previousRaw === rawValue) {
         return {
           ok: true,
@@ -513,7 +533,6 @@
       const ownerId = String(commitOptions.ownerId || activeOwnerId());
       const revision = getRevision(ownerId) + 1;
       const createdAt = now();
-      const previousState = safeParse(previousRaw) || {};
       // nextState is already the canonical in-memory object that produced
       // rawValue above. Avoid parsing that full JSON payload back into a
       // second object before diffing; cloudComparableState() clones before
