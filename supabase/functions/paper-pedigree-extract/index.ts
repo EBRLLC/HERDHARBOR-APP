@@ -330,6 +330,7 @@ Deno.serve(async (req) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), configuredProviderTimeoutMs());
     let response: Response;
+    let payload: any = null;
     try {
       response = await fetch(OPENAI_API, {
         method: "POST",
@@ -361,6 +362,12 @@ Deno.serve(async (req) => {
           }
         })
       });
+      // fetch resolves at headers; keep the deadline active while reading
+      // the body too. An aborted body must remain a timeout, not empty output.
+      if (response.ok) payload = await response.json().catch((error) => {
+        if (controller.signal.aborted) throw error;
+        return null;
+      });
     } catch (error) {
       await recordMetric(admin, "provider_failure");
       if ((error as Error)?.name === "AbortError") {
@@ -373,7 +380,6 @@ Deno.serve(async (req) => {
       clearTimeout(timeoutId);
     }
 
-    const payload = await response.json().catch(() => null);
     if (!response.ok) {
       if (response.status === 429) {
         await recordMetric(admin, "rate_limit_hit");

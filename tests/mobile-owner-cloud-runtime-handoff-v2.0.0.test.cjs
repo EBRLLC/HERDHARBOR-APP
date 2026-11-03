@@ -21,6 +21,10 @@ test("the live runtime can adopt a verified persisted cloud operation after onbo
   // transition, use a second factory with an exposed state accessor.
   const maker = new Function("loadState", "showApp", "refreshSyncStatus",
     `let state = { profile: null };
+     let localStateLoadError = null, lastSavedRaw = '', runtimeInitialized = true;
+     const canonicalStateStore = { getRaw: () => '' };
+     const document = { getElementById: () => null };
+     const scheduleLoadedGenetics = () => {};
      ${app.slice(start, end)}
      return { applyVerifiedCloudState, current: () => state };`);
   const harness = maker(() => persisted, () => events.push("dashboard"), () => events.push("sync-status"));

@@ -287,6 +287,7 @@ Deno.serve(async (req) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), configuredProviderTimeoutMs());
     let response: Response;
+    let payload: any = null;
     try {
       response = await fetch(OPENAI_API, {
         method: "POST",
@@ -301,6 +302,11 @@ Deno.serve(async (req) => {
           text: { verbosity: "low", format: { type: "json_schema", name: "herdharbor_record_photo_draft", strict: true, schema: OUTPUT_SCHEMA } }
         })
       });
+      // Include response-body consumption in the provider deadline.
+      if (response.ok) payload = await response.json().catch((error) => {
+        if (controller.signal.aborted) throw error;
+        return null;
+      });
     } catch (error) {
       if ((error as Error)?.name === "AbortError") return fail("provider_timeout", "The photo reader timed out. Farm records were not changed. Try again.", 504, true);
       return fail("provider_error", "The photo reader could not be reached. Farm records were not changed.", 502, true);
@@ -309,7 +315,6 @@ Deno.serve(async (req) => {
       if (response.status === 429) return fail("provider_rate_limit", "The photo reader is temporarily busy. Farm records were not changed. Try again.", 429, true);
       return fail("provider_error", "HerdHarbor could not analyze that photo right now. Farm records were not changed.", 502, true);
     }
-    const payload = await response.json().catch(() => null);
     if (payload?.status && payload.status !== "completed") return fail("extraction_incomplete", "The photo reader did not finish. Farm records were not changed.", 502, true);
     const outputText = extractResponseText(payload);
     if (!outputText) return fail("empty_extraction", "The photo reader returned no usable result. Farm records were not changed.", 502, true);

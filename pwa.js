@@ -37,6 +37,7 @@
   };
 
   const pendingDynamicNodes = new Map();
+  const dynamicScriptLoads = new Map();
 
   function dynamicInsertionTarget() {
     return document.head || document.body || document.documentElement || null;
@@ -71,32 +72,63 @@
     appendDynamicNode(id, style);
   }
 
-  function addScript(id, src, onload) {
-    if (document.getElementById(id)) { if (onload) onload(); return; }
-    const script = document.createElement("script");
+  function loadDynamicScript(id, src, done, attempt = 0) {
+    const pending = dynamicScriptLoads.get(id);
+    if (pending) { if (done) pending.push(done); return; }
+    let script = document.getElementById(id);
+    if (script && script.dataset?.hhPwaState !== "loading") { done?.(true); return; }
+    const callbacks = done ? [done] : [];
+    const notify = loaded => callbacks.forEach(callback => {
+      try { callback(loaded); }
+      catch (error) {
+        monitorFailure(error, "module_initialization_failure", "dashboard", { operation: id });
+        console.error("HerdHarbor optional module initialization failed:", error);
+      }
+    });
+    dynamicScriptLoads.set(id, callbacks);
+    script = script || document.createElement("script");
     script.id = id;
     script.src = src;
     script.async = false;
-    if (onload) script.addEventListener("load", onload, { once: true });
+    if (script.dataset) script.dataset.hhPwaState = "loading";
+    let finished = false;
+    let timer;
+    const finish = (loaded, timedOut = false) => {
+      if (finished) return;
+      finished = true;
+      window.clearTimeout?.(timer);
+      script.removeEventListener?.("load", onLoad);
+      script.removeEventListener?.("error", onError);
+      dynamicScriptLoads.delete(id);
+      if (script.dataset) script.dataset.hhPwaState = loaded ? "loaded" : "failed";
+      if (!loaded) {
+        pendingDynamicNodes.delete(id);
+        script.remove();
+        // Retry only a completed network failure. A timed-out script may
+        // still execute later, so it must not be registered twice automatically.
+        if (!timedOut && attempt === 0) {
+          loadDynamicScript(id, src, notify, 1);
+          return;
+        }
+        monitorFailure(new Error("Optional application module could not load"), "module_load_failure", "dashboard", { operation: id });
+      }
+      notify(loaded);
+    };
+    const onLoad = () => finish(true);
+    const onError = () => finish(false);
+    script.addEventListener("load", onLoad, { once: true });
+    script.addEventListener("error", onError, { once: true });
+    timer = window.setTimeout?.(() => finish(false, true), 20_000);
+    timer?.unref?.();
     appendDynamicNode(id, script);
   }
 
+  function addScript(id, src, onload) {
+    loadDynamicScript(id, src, loaded => { if (loaded) onload?.(); });
+  }
+
   function addOptionalScript(id, src, done) {
-    const existing = document.getElementById(id);
-    if (existing) { done?.(true); return; }
-    const script = document.createElement("script");
-    script.id = id;
-    script.src = src;
-    script.async = false;
-    let finished = false;
-    const finish = (loaded) => {
-      if (finished) return;
-      finished = true;
-      done?.(loaded);
-    };
-    script.addEventListener("load", () => finish(true), { once: true });
-    script.addEventListener("error", () => finish(false), { once: true });
-    appendDynamicNode(id, script);
+    loadDynamicScript(id, src, done);
   }
 
   function monitoring() {
