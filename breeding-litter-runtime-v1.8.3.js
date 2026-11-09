@@ -103,8 +103,7 @@
         pregnancyCheckDate: specialized?.pregnancyReviewDate || addDays(breedingDate, rule.checkDays),
         preparationDate: specialized?.preparationDate || addDays(dueDate, -rule.prepareDaysBefore),
         dueDate,
-        dueStartDate: specialized?.dueStartDate || "",
-        dueEndDate: specialized?.dueEndDate || ""
+        ...(specialized ? { dueStartDate: specialized.dueStartDate, dueEndDate: specialized.dueEndDate } : {})
       };
     }
   
