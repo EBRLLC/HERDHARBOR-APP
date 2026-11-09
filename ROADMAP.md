@@ -93,30 +93,35 @@ K0 audit/governance → K1 canine catalog/registry/title model → K2 animal-fir
 
 ---
 
-# Release 2.0.3 — Distribution and Install Quality
+# Release 2.0.3 — Cat and Cavy Breeding
 
-**Goal:** finish platform distribution without mixing store work into feature or storage migration releases.
+**Goal:** first-class, species-specific reproductive and offspring workflows for cats and cavies (guinea pigs) on the same canonical farm account as existing rabbit and dog records.
 
-### Stack 2.0.3-A — Android production release
-- Final Play Console production package review.
-- Validate signing, package/version identity, deep links, install/update behavior, notification/permission behavior, and PWA/TWA fallback.
-- Publish only after store-side production confirmation.
+### Stack 2.0.3-A — Species foundation
+- Add **Cat** and **Guinea Pig** as selectable species for new and existing accounts (Cavy is a lookup alias, not a duplicate stored species).
+- Allow manual/custom breed and observed coat color entry; starter breed names are suggestions, not registry verification.
+- Preserve current-farm species hardlock; a farm with no cat/cavy cannot acquire an unrelated operational species tab.
 
-### Stack 2.0.3-B — iOS distribution path
-- Define the iOS packaging strategy.
-- Add the required iOS project/package and store metadata.
-- Verify sign-in, camera/photo access, file export, offline/update behavior, and account switching on iOS.
-- Do not claim App Store availability before store confirmation.
+### Stack 2.0.3-B — Mating and reproductive observations
+- Support queen/tom and sow/boar pair selection, with explicit same-species, recorded-sex, historical-status and quarantine guards.
+- Record mating dates, method, heat observations, follow-ups, notes and breeder-entered outcome using canonical breeding records.
+- Design dedicated history for *multiple* feline matings/estrus observations and cavy reproductive follow-up without copying canine progesterone or rabbit genetic algorithms.
+- Keep manual recording available without AI and offline.
 
-### Stack 2.0.3-C — Install/update reliability
-- Harden PWA update prompts and stale-cache retirement.
-- Verify recovery does not require clearing browser/site data.
-- Add production install/update smoke tests for desktop, Android, and iOS-supported web install paths.
+### Stack 2.0.3-C — Pregnancy follow-up and birth records
+- Offer *planning windows*, not guaranteed delivery dates: cats approximately day 63–67 after recorded mating; cavies day 59–72. These values must remain editable and explicitly estimated.
+- Make veterinary pregnancy confirmation distinct from calculated estimates or breeder observations.
+- Support queening/kitten and cavy birth/pup records with born-alive, stillborn, losses, fostering, weaning review and individual offspring identities.
+- Record sire/dam and litter links on each offspring, and preserve all historical links and user-entered records.
 
-### 2.0.3 exit criteria
-- Store availability claims match actual store status.
-- App updates preserve user data/session boundaries.
-- PWA and packaged-app release identities remain traceable to reviewed commits.
+### Stack 2.0.3-D — Quality, migration and release
+- Reuse the current canonical animals, breedings, litters and health records. No new save authority, forced migration, or legacy-retirement work.
+- Protect species isolation from dog/rabbit/cavy contamination, account and profile boundaries, pending offline work, and outdated PWA clients.
+- Add deterministic and UI integration tests plus full CI, real browser responsive validation and offline/update acceptance before release.
+- Do not imply DNA-tested genetics, verified registries, medical diagnoses or proof of pregnancy from a scheduling calculation.
+- Keep 2.0.3 on a review branch; no release identity promotion or production deployment until required gates pass.
+
+**Scope supersession:** the former 2.0.3 Android/iOS distribution and install-quality plan is deferred to an independently scheduled platform release. It is **not** silently included in this breeding feature release.
 
 ---
 
