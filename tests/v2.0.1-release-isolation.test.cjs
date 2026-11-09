@@ -74,5 +74,5 @@ test("release instructions authorize #505 only and keep 2.0.2 migration deferred
   assert.doesNotMatch(owner, /Only #497 may|merge of #497|exact green #497/);
   assert.match(stability, /S17-B-LEGACY-TIMER remains an unresolved production upgrade blocker/);
   assert.match(roadmap, /# Release 2\.0\.2 — Normalized Cloud Replacement/);
-  assert.match(roadmap, /# Release 2\.0\.3 — Distribution and Install Quality/);
+  assert.match(roadmap, /# Release 2\.0\.3 — Cat and Cavy Breeding/);
 });
