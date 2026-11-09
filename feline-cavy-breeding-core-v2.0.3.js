@@ -116,7 +116,14 @@
     }
     if (options.allowHistorical !== true && (female && !isCurrent(female) || male && !isCurrent(male)))
       issues.push("Historical animals cannot start a new breeding.");
-    if (options.allowQuarantine !== true && (isQuarantined(state, idA) || isQuarantined(state, idB)))
+    const quarantined = id => {
+      // Phase 2 health views may hold quarantine in a derived read model.
+      if (isQuarantined(state, id)) return true;
+      if (typeof options.isAnimalQuarantined !== "function") return false;
+      try { return options.isAnimalQuarantined(id) === true; }
+      catch { return true; } // Fail closed if the health state cannot be read.
+    };
+    if (options.allowQuarantine !== true && (quarantined(idA) || quarantined(idB)))
       issues.push("Quarantined animals cannot start a new breeding.");
     return { valid: issues.length === 0, issues: [...new Set(issues)], species, female, male };
   }
