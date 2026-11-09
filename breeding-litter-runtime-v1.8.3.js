@@ -423,6 +423,7 @@
         return;
       }
       const breeding = id ? (stateNow().breedings.find((record) => record.id === id) || {}) : { ...defaults };
+      const familyRecord = breeding.felineCavy && typeof breeding.felineCavy === "object" ? breeding.felineCavy : {};
       openModal(id ? "Edit breeding" : "Add breeding", `
         <form id="breeding-form">
           <div class="form-grid two">
@@ -438,6 +439,25 @@
             ${field("Additional follow-up date", "followUpDate", breeding.followUpDate || "", false, "date")}
             ${selectField("Status", "status", BREEDING_STATUS_OPTIONS, normalizeBreedingStatus(breeding.status), true)}
           </div>
+          <fieldset id="hh-fc-reproductive" disabled hidden>
+            <legend>Cat and cavy reproductive details</legend>
+            <p class="task-repeat-note" id="hh-fc-guidance"></p>
+            <div class="form-grid two">
+              ${textareaField("Additional mating dates (YYYY-MM-DD, one per line)", "additionalMatingDates", (familyRecord.matingDates || []).filter(date => date !== breeding.breedingDate).join("\n"))}
+              <div data-hh-fc-cat>${field("Estrus signs observed on", "estrusObservedDate", familyRecord.estrusObservedDate || "", false, "date")}</div>
+              <div data-hh-fc-cavy>${field("Boar separated on", "boarSeparatedDate", familyRecord.boarSeparatedDate || "", false, "date")}</div>
+              <label>Pregnancy assessment source<select name="assessmentSource"><option value="not_assessed" ${!familyRecord.pregnancyAssessment?.source || familyRecord.pregnancyAssessment.source === "not_assessed" ? "selected" : ""}>Not assessed</option><option value="breeder_observation" ${familyRecord.pregnancyAssessment?.source === "breeder_observation" ? "selected" : ""}>Breeder observation (not confirmed)</option><option value="veterinarian_documented" ${familyRecord.pregnancyAssessment?.source === "veterinarian_documented" ? "selected" : ""}>Veterinarian documented</option></select></label>
+              ${field("Assessment date", "assessmentDate", familyRecord.pregnancyAssessment?.date || "", false, "date")}
+              ${field("Veterinarian", "assessmentVeterinarian", familyRecord.pregnancyAssessment?.veterinarian || "")}
+              ${field("Veterinary evidence / record reference", "assessmentEvidenceReference", familyRecord.pregnancyAssessment?.evidenceReference || "")}
+              ${textareaField("Pregnancy assessment notes", "assessmentNotes", familyRecord.pregnancyAssessment?.notes || "")}
+              ${field("New observation date", "observationDate", "", false, "date")}
+              <label>New observation type<select name="observationType"><option value="other">Other</option><option value="estrus_signs">Estrus signs</option><option value="observed_mating">Observed mating</option><option value="behavior">Behavior</option><option value="boar_separation">Boar separation</option><option value="housing">Housing</option><option value="veterinary_visit">Veterinary visit</option></select></label>
+              ${textareaField("New observation notes (saved as a dated history entry)", "observationNotes", "")}
+            </div>
+            <p class="muted">Veterinary documentation is breeder-entered; HerdHarbor cannot verify a veterinarian or diagnose pregnancy.</p>
+            ${(familyRecord.reproductiveObservations || []).length ? `<p class="muted"><strong>Saved observations:</strong> ${(familyRecord.reproductiveObservations || []).map(row => `${esc(row.date)} · ${esc(row.type)}: ${esc(row.notes)}`).join(" | ")}</p>` : ""}
+          </fieldset>
           <p class="task-repeat-note" id="breeding-schedule-note">Choose a dam and breeding date to calculate the schedule.</p>
           ${textareaField("Notes", "notes", breeding.notes)}
           <div class="modal-actions">
