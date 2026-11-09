@@ -44,7 +44,7 @@ test("2.0.2 integrates the separately gated migration without dropping 2.0.1 fea
   assert.match(read("index.html"), /cloud-normalized-upgrade-v2\.0\.1\.js\?v=2/);
   assert.match(read("herdharbor-cloud.js"), /hh_normalized_signup_client: "record-cas-v1"/);
   assert.match(read("herdharbor-cloud.js"), /herdharbor_normalized_signup_ready/);
-  assert.match(read("service-worker.js"), /herdharbor-shell-v2\.0\.2-normalized-cloud-1/);
+  assert.match(read("service-worker.js"), /herdharbor-shell-v2\.0\.2-normalized-cloud-2-feline-cavy-preview/);
   assert.match(read("service-worker.js"), /canine-reproductive-workspace-v2\.0\.1\.js/);
   assert.match(read("supabase/v2.0.1-s20-normalized-only-signup.sql"), /HH_S20_CLIENT_UPDATE_REQUIRED/);
   assert.match(read("supabase/v2.0.1-s20-normalized-only-signup.sql"), /security invoker/);
@@ -74,5 +74,5 @@ test("release instructions authorize #505 only and keep 2.0.2 migration deferred
   assert.doesNotMatch(owner, /Only #497 may|merge of #497|exact green #497/);
   assert.match(stability, /S17-B-LEGACY-TIMER remains an unresolved production upgrade blocker/);
   assert.match(roadmap, /# Release 2\.0\.2 — Normalized Cloud Replacement/);
-  assert.match(roadmap, /# Release 2\.0\.3 — Distribution and Install Quality/);
+  assert.match(roadmap, /# Release 2\.0\.3 — Cat and Cavy Breeding/);
 });
