@@ -539,9 +539,27 @@
         const male = stateNow().animals.find((animal) => animal.id === data.maleId);
         if (data.femaleId === data.maleId) return toast("Select two different animals.", "error");
         if (female?.species && male?.species && female.species !== male.species) return toast("The sire and dam must be the same species.", "error");
-        if (data.pregnancyCheckStatus === "Positive" && ["Planned", "Bred", "Pregnancy check due"].includes(data.status)) data.status = "Confirmed pregnant";
-        if (data.pregnancyCheckStatus === "Negative") data.status = "Not pregnant";
+        const isFelineCavy = Boolean(familyCore?.isSupported?.(female?.species));
         const now = new Date().toISOString();
+        if (isFelineCavy) {
+          if (id && (String(breeding.femaleId) !== String(data.femaleId) || String(breeding.maleId) !== String(data.maleId)))
+            return toast("Changing parents of a saved cat/cavy breeding is not allowed. Record a separate mating.", "error");
+          const prepared = familyCore.prepareReproductiveDetails(female.species, data, breeding.felineCavy || {}, {
+            now, idFactory: () => uid("reproductive-observation")
+          });
+          if (!prepared.valid) return toast(prepared.issues[0], "error");
+          data.felineCavy = prepared.fields;
+          if (data.pregnancyCheckStatus === "Positive" && prepared.fields.pregnancyAssessment.source === "veterinarian_documented") {
+            data.status = "Confirmed pregnant";
+            data.confirmedDate = prepared.fields.pregnancyAssessment.date;
+          } else {
+            data.confirmedDate = "";
+          }
+        } else {
+          if (data.pregnancyCheckStatus === "Positive" && ["Planned", "Bred", "Pregnancy check due"].includes(data.status)) data.status = "Confirmed pregnant";
+          if (data.pregnancyCheckStatus === "Negative") data.status = "Not pregnant";
+        }
+        for (const fieldName of ["additionalMatingDates", "estrusObservedDate", "boarSeparatedDate", "assessmentSource", "assessmentDate", "assessmentVeterinarian", "assessmentEvidenceReference", "assessmentNotes", "observationDate", "observationType", "observationNotes"]) delete data[fieldName];
         let saved = breeding;
         const committed = persistMutation(id ? "Breeding and reminders updated." : "Breeding and reminders added.", () => {
           if (id) Object.assign(saved, data, { updatedAt: now });
