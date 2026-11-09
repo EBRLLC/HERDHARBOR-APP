@@ -100,8 +100,8 @@ test("stable carried-forward component identities remain present", () => {
   ]) assert.equal(exists(p), true, p);
 });
 
-test("PWA shell and bootstrap retain the integrated 2.0.2 upgrade identity", () => {
-  assert.match(worker, /herdharbor-shell-v2\.0\.2-normalized-cloud-1/);
+test("2.0.2 bootstrap remains stable while the 2.0.3 preview receives a distinct offline cache", () => {
+  assert.match(worker, /herdharbor-shell-v2\.0\.2-normalized-cloud-2-feline-cavy-preview/);
   assert.doesNotMatch(worker, /const CACHE_NAME = "herdharbor-shell-v1\.8\.4/);
   assert.match(index, /manifest\.json\?v=2\.0\.2/);
   assert.match(index, /herdharbor-build\.js\?v=2\.0\.2/);
