@@ -20,7 +20,7 @@ test("core loads before breeding runtime in browser and is available offline", (
   assert.ok(html.includes(coreScript));
   assert.ok(html.indexOf(coreScript) < html.indexOf("breeding-litter-runtime-v1.8.3.js"));
   assert.ok(worker.includes("./" + coreScript));
-  assert.match(worker, /feline-cavy-preview/);
+  assert.match(worker, /herdharbor-shell-v2\\.0\\.2-normalized-cloud-1/);
 });
 
 test("actual breeding and litter saves invoke the species safety checks", () => {
