@@ -48,7 +48,7 @@
     budgetMonthSettings: {},
     activity: [],
     settings: {
-      species: ["Rabbit", "Chicken", "Duck", "Turkey", "Dog", "Horse", "Goat", "Sheep", "Cattle", "Pig", "Other"],
+      species: ["Rabbit", "Chicken", "Duck", "Turkey", "Dog", "Cat", "Guinea Pig", "Horse", "Goat", "Sheep", "Cattle", "Pig", "Other"],
       breedsBySpecies: {},
       analyticsColors: {},
       preferredWeightDisplay: "lb",
@@ -115,6 +115,8 @@
     Duck: ["American Pekin", "Ancona", "Cayuga", "Indian Runner", "Khaki Campbell", "Mallard", "Muscovy", "Rouen", "Swedish"],
     Turkey: ["Beltsville Small White", "Black", "Blue Slate", "Bourbon Red", "Broad Breasted White", "Bronze", "Narragansett", "Royal Palm"],
     Dog: ["Australian Cattle Dog", "Australian Shepherd", "Beagle", "Belgian Malinois", "Bernese Mountain Dog", "Border Collie", "Boston Terrier", "Boxer", "Bulldog", "Cane Corso", "Chihuahua", "Dachshund", "Doberman Pinscher", "English Shepherd", "German Shepherd Dog", "Golden Retriever", "Great Dane", "Great Pyrenees", "Labrador Retriever", "Mastiff", "Miniature Schnauzer", "Poodle", "Rottweiler", "Siberian Husky", "Yorkshire Terrier"],
+    Cat: ["Abyssinian", "American Shorthair", "Bengal", "Birman", "British Shorthair", "Domestic Longhair", "Domestic Shorthair", "Maine Coon", "Norwegian Forest Cat", "Persian", "Ragdoll", "Russian Blue", "Siamese", "Siberian", "Sphynx"],
+    "Guinea Pig": ["Abyssinian", "American", "Baldwin", "Coronet", "Peruvian", "Satin", "Silkie", "Skinny Pig", "Teddy", "Texel", "White Crested"],
     Horse: ["American Paint Horse", "American Quarter Horse", "American Saddlebred", "Andalusian", "Appaloosa", "Arabian", "Belgian", "Clydesdale", "Friesian", "Gypsy Vanner", "Haflinger", "Hanoverian", "Icelandic Horse", "Kentucky Mountain Saddle Horse", "Miniature Horse", "Missouri Fox Trotter", "Morgan", "Mustang", "Paso Fino", "Percheron", "Shetland Pony", "Standardbred", "Tennessee Walking Horse", "Thoroughbred", "Welsh Pony"],
     Goat: ["Alpine", "Angora", "Boer", "Kiko", "LaMancha", "Myotonic", "Nigerian Dwarf", "Nubian", "Pygmy", "Saanen", "Spanish", "Toggenburg"],
     Sheep: ["Cheviot", "Corriedale", "Dorper", "Dorset", "Finnsheep", "Hampshire", "Katahdin", "Lincoln", "Merino", "Rambouillet", "Shetland", "Southdown", "Suffolk"],
@@ -850,7 +852,7 @@
       ? [...state.settings.species]
       : [...defaultState.settings.species];
     let settingsMigrated = false;
-    ["Dog", "Horse"].forEach((requiredSpecies) => {
+    ["Dog", "Cat", "Guinea Pig", "Horse"].forEach((requiredSpecies) => {
       if (state.settings.species.some((species) => String(species).toLowerCase() === requiredSpecies.toLowerCase())) return;
       const otherIndex = state.settings.species.findIndex((species) => String(species).toLowerCase() === "other");
       if (otherIndex >= 0) state.settings.species.splice(otherIndex, 0, requiredSpecies);
