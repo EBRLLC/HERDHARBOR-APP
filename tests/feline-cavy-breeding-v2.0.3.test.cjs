@@ -78,6 +78,16 @@ test("no new breeding may use sold, archived, deceased or quarantined animal", (
   assert.equal(core.validatePair(state, "queen", "tom").valid, true);
 });
 
+test("derived profile quarantine is honored and unreadable health fails closed", () => {
+  const state = base();
+  const opts = { isAnimalQuarantined: id => id === "queen" };
+  assert.equal(core.validatePair(state, "queen", "tom", opts).valid, false);
+  assert.equal(core.validatePair(state, "sow", "boar", opts).valid, true);
+  assert.equal(core.validatePair(state, "queen", "tom", {
+    isAnimalQuarantined: () => { throw new Error("health unavailable"); }
+  }).valid, false);
+});
+
 test("new breeding dates cannot be invalid or precede mating", () => {
   const state = base();
   assert.equal(core.validateBreeding(state, { femaleId: "queen", maleId: "tom", breedingDate: "2026-11-01", dueDate: "2027-01-05" }).valid, true);
