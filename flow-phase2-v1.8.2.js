@@ -437,7 +437,11 @@
     }
     const rows=(model.breedings||[]).slice().sort((a,b)=>String(b.breedingDate||"").localeCompare(String(a.breedingDate||""))).map(record=>({title:`${animalName(state,record.femaleId)} × ${animalName(state,record.maleId)}`,detail:record.dueDate?`Due ${formatDate(record.dueDate)}`:"",meta:`${formatDate(record.breedingDate)} · ${record.status||"Recorded"}`}));
     const blocked=model.quarantined?"Breeding is unavailable while this animal is quarantined.":!model.current?"Historical animals cannot start a new breeding.":"Pairings and birth outcomes remain part of one animal lifecycle.";
-    return`<div class="hh-p2-panel-head"><div><h3>Breeding lifecycle</h3><p>${esc(blocked)}</p></div>${model.current&&!model.quarantined?'<button class="button button-primary button-small" data-hh-p2-action="breeding">Start breeding</button>':""}</div>${recordList(rows,"No breeding history is connected to this animal yet.")}`;
+    const family = root.HerdHarborFelineCavyCore?.profileFor?.(model.animal?.species);
+    const title = family ? `${family.species} breeding` : "Breeding lifecycle";
+    const introduction = family ? `${family.femaleLabel} / ${family.maleLabel} mating records and ${family.offspringLabel.toLowerCase()} birth records. ${root.HerdHarborFelineCavyCore.guidance(family.species)}` : blocked;
+    const label = family ? "Record mating" : "Start breeding";
+    return`<div class="hh-p2-panel-head"><div><h3>${esc(title)}</h3><p>${esc(model.current&&!model.quarantined?introduction:blocked)}</p></div>${model.current&&!model.quarantined?`<button class="button button-primary button-small" data-hh-p2-action="breeding">${esc(label)}</button>`:""}</div>${recordList(rows,"No breeding history is connected to this animal yet.")}`;
   }
 
   function geneticsPanel(model){
