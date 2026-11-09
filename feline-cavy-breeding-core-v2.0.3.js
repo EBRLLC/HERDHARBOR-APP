@@ -164,6 +164,91 @@
     }
     return { valid: issues.length === 0, issues: [...new Set(issues)], species: pair.species };
   }
+  const ASSESSMENT_SOURCES = Object.freeze(["not_assessed", "breeder_observation", "veterinarian_documented"]);
+  const OBSERVATION_TYPES = Object.freeze({
+    Cat: Object.freeze(["estrus_signs", "observed_mating", "behavior", "veterinary_visit", "other"]),
+    "Guinea Pig": Object.freeze(["estrus_signs", "observed_mating", "boar_separation", "housing", "veterinary_visit", "other"])
+  });
+
+  function prepareReproductiveDetails(species, input = {}, previous = {}, options = {}) {
+    const profile = profileFor(species);
+    const issues = [];
+    if (!profile) return { valid: false, issues: ["This species does not have a feline/cavy reproductive workflow."] };
+    const breedingDate = clean(input.breedingDate);
+    if (!isDateOnly(breedingDate)) issues.push("Enter a valid primary breeding date.");
+    const extraRaw = clean(input.additionalMatingDates);
+    const extras = extraRaw ? extraRaw.split(/[\n,;]+/).map(clean).filter(Boolean) : [];
+    if (extras.length > 64) issues.push("At most 64 additional mating dates may be recorded.");
+    for (const date of extras) {
+      if (!isDateOnly(date)) issues.push("Each additional mating date must be YYYY-MM-DD.");
+      else if (isDateOnly(breedingDate) && date < breedingDate)
+        issues.push("Additional mating dates cannot precede the primary breeding date.");
+    }
+    const matingDates = [...new Set([breedingDate, ...extras].filter(isDateOnly))].sort();
+    const estrusDate = clean(input.estrusObservedDate);
+    const boarSeparatedDate = clean(input.boarSeparatedDate);
+    if (estrusDate && !isDateOnly(estrusDate)) issues.push("Estrus observation date is invalid.");
+    if (boarSeparatedDate && !isDateOnly(boarSeparatedDate)) issues.push("Boar separation date is invalid.");
+    if (profile.species === "Cat" && boarSeparatedDate)
+      issues.push("Boar-separation data cannot be saved on a Cat record.");
+    if (profile.species === "Guinea Pig" && estrusDate)
+      issues.push("Cat estrus dates cannot be saved on a Cavy record.");
+
+    const assessmentSource = clean(input.assessmentSource) || "not_assessed";
+    const assessmentDate = clean(input.assessmentDate);
+    const veterinarian = clean(input.assessmentVeterinarian).slice(0, 200);
+    const evidenceReference = clean(input.assessmentEvidenceReference).slice(0, 200);
+    const assessmentNotes = clean(input.assessmentNotes).slice(0, 2000);
+    if (!ASSESSMENT_SOURCES.includes(assessmentSource)) issues.push("Unknown pregnancy assessment source.");
+    if (assessmentDate && !isDateOnly(assessmentDate)) issues.push("Pregnancy assessment date is invalid.");
+    if (assessmentSource === "veterinarian_documented" && (!isDateOnly(assessmentDate) || !veterinarian || !evidenceReference))
+      issues.push("Veterinary pregnancy assessment requires a date, veterinarian, and evidence reference.");
+    const status = clean(input.status);
+    if (status === "Confirmed pregnant" && (assessmentSource !== "veterinarian_documented" || clean(input.pregnancyCheckStatus) !== "Positive"))
+      issues.push("Confirmed pregnant requires a recorded positive veterinary assessment.");
+    if (status === "Not pregnant" && assessmentSource !== "veterinarian_documented")
+      issues.push("Not pregnant requires a recorded veterinary assessment for cats and cavies.");
+
+    const observationDate = clean(input.observationDate);
+    const observationType = clean(input.observationType);
+    const observationNotes = clean(input.observationNotes).slice(0, 2000);
+    const hasObservation = Boolean(observationDate || observationNotes);
+    if (hasObservation && (!isDateOnly(observationDate) || !observationNotes))
+      issues.push("A reproductive observation needs a valid date and notes.");
+    if (hasObservation && !OBSERVATION_TYPES[profile.species].includes(observationType))
+      issues.push("Observation type is not available for this species.");
+    const previousObservations = list(previous.reproductiveObservations).filter(item => item && typeof item === "object");
+    const observations = previousObservations.slice(0, 200);
+    if (previousObservations.length > 200) issues.push("Observation history exceeds the supported record limit.");
+    if (hasObservation && !issues.length) {
+      const makeId = typeof options.idFactory === "function" ? options.idFactory : () => "observation_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+      observations.push({
+        id: clean(makeId()), date: observationDate, type: observationType,
+        notes: observationNotes, recordedAt: clean(options.now)
+      });
+    }
+    const window = matingDates.length ? {
+      dueStartDate: addDays(matingDates[0], profile.gestationMinDays),
+      dueEndDate: addDays(matingDates[matingDates.length - 1], profile.gestationMaxDays),
+      source: "observed_mating_dates",
+      certainty: "planning_estimate_only"
+    } : null;
+    return {
+      valid: issues.length === 0, issues: [...new Set(issues)],
+      fields: {
+        matingDates,
+        ...(profile.species === "Cat" ? { estrusObservedDate: estrusDate } : { boarSeparatedDate }),
+        pregnancyAssessment: {
+          source: assessmentSource, date: assessmentDate, veterinarian,
+          evidenceReference, notes: assessmentNotes,
+          independentlyVerified: false
+        },
+        reproductiveObservations: observations,
+        estimatedBirthWindow: window
+      }
+    };
+  }
+
   function guidance(species) {
     switch (canonicalSpecies(species)) {
       case "Cat": return "Record each observed mating and heat cycle in the notes. Cats are induced ovulators; a mating or calculated due date does not confirm pregnancy.";
@@ -175,6 +260,7 @@
   return Object.freeze({
     VERSION, PROFILES, BREEDS, canonicalSpecies, profileFor, isSupported,
     isDateOnly, addDays, estimateDates, weaningReviewDate, isCurrent,
-    isQuarantined, validatePair, validateBreeding, validateBirth, guidance
+    isQuarantined, validatePair, validateBreeding, validateBirth,
+    prepareReproductiveDetails, ASSESSMENT_SOURCES, OBSERVATION_TYPES, guidance
   });
 });
