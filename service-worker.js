@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "herdharbor-shell-";
-const CACHE_NAME = "herdharbor-shell-v2.0.2-normalized-cloud-1";
+const CACHE_NAME = "herdharbor-shell-v2.0.2-normalized-cloud-2-feline-cavy-preview";
 const REQUIRED_SHELL = [
   "./",
   "./index.html",
@@ -40,6 +40,7 @@ const REQUIRED_SHELL = [
   "./canine-lineage-v2.0.1.js?v=1",
   "./canine-pedigree-print-v2.0.1.js?v=1",
   "./canine-reproductive-core-v2.0.1.js?v=1",
+  "./feline-cavy-breeding-core-v2.0.3.js?v=1",
   "./canine-whelping-workspace-v2.0.1.js?v=2",
   "./canine-reproductive-workspace-v2.0.1.js?v=2",
   "./canine-reproductive-workspace-v2.0.1.css?v=1",
