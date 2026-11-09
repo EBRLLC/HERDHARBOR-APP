@@ -96,7 +96,7 @@ test("essential startup identity agrees with the bounded offline shell, while do
   const required = worker.slice(worker.indexOf("const REQUIRED_SHELL = ["), worker.indexOf("const RUNTIME_CACHE_PATHS = ["));
   const runtime = worker.slice(worker.indexOf("const RUNTIME_CACHE_PATHS = ["), worker.indexOf("];", worker.indexOf("const RUNTIME_CACHE_PATHS = [")));
   const requiredAssets = [...required.matchAll(/"\.\/([^"]+)"/g)].map((match) => match[1]);
-  assert.ok(requiredAssets.length <= 50, "do not grow the required PWA install beyond the bounded operational shell");
+  assert.ok(requiredAssets.length <= 51, "do not grow the required PWA install beyond the bounded operational shell");
   for (const asset of [
     "cloud-normalized-upgrade-v2.0.1.js?v=2",
     "herdharbor-cloud.js?v=48",
@@ -107,6 +107,7 @@ test("essential startup identity agrees with the bounded offline shell, while do
     "task-runtime-v1.8.3.js?v=2",
     "canine-lineage-v2.0.1.js?v=1",
     "canine-reproductive-core-v2.0.1.js?v=1",
+    "feline-cavy-breeding-core-v2.0.3.js?v=1",
     "canine-whelping-workspace-v2.0.1.js?v=2",
     "canine-reproductive-workspace-v2.0.1.js?v=2",
     "canine-reproductive-workspace-v2.0.1.css?v=1"
