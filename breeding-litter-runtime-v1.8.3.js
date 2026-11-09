@@ -502,7 +502,19 @@
         const familyCore = root?.HerdHarborFelineCavyCore;
         if (["cat", "guinea pig", "cavy", "cavies"].includes(String(female?.species || "").toLowerCase()) || familyCore?.isSupported?.(male?.species)) {
           if (typeof familyCore?.validateBreeding !== "function") return toast("The cat/cavy breeding engine is unavailable. Update the app before saving.", "error");
-          const validation = familyCore.validateBreeding(stateNow(), data, { allowHistorical: Boolean(id), allowQuarantine: Boolean(id) });
+          const validation = familyCore.validateBreeding(stateNow(), data, {
+            allowHistorical: Boolean(id), allowQuarantine: Boolean(id),
+            isAnimalQuarantined: animalId => {
+              try {
+                const model = root?.HerdHarborPhase1Workflow?.profileModel?.(stateNow(), animalId);
+                if (model?.quarantined === true) return true;
+                const readModel = root?.HerdHarborHealthIntelligence?.readHealthState?.();
+                return Array.isArray(readModel?.episodes) && readModel.episodes.some(
+                  episode => String(episode?.animalId) === String(animalId) && episode?.quarantined === true && episode?.resolved !== true
+                );
+              } catch { return true; }
+            }
+          });
           if (!validation.valid) return toast(validation.issues[0], "error");
         }
         if (data.pregnancyCheckStatus === "Positive" && ["Planned", "Bred", "Pregnancy check due"].includes(data.status)) data.status = "Confirmed pregnant";
