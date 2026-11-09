@@ -17,6 +17,9 @@
   const BIRTH_TYPE_OPTIONS = ["Unassisted", "Assisted", "Cesarean", "Induced", "Unknown"];
   const GESTATION_RULES = {
     Rabbit: { gestationDays: 31, checkDays: 14, prepareDaysBefore: 3, weanDays: 42, birthLabel: "kindling", prepareLabel: "Place nest box" },
+    // Cat and cavy values are planning estimates, not confirmed delivery dates.
+    Cat: { gestationDays: 65, checkDays: 24, prepareDaysBefore: 7, weanDays: 56, birthLabel: "queening", prepareLabel: "Prepare kittening space" },
+    "Guinea Pig": { gestationDays: 68, checkDays: 28, prepareDaysBefore: 10, weanDays: 21, birthLabel: "birth", prepareLabel: "Prepare cavy birthing space" },
     Cattle: { gestationDays: 283, checkDays: 30, prepareDaysBefore: 14, weanDays: 205, birthLabel: "calving", prepareLabel: "Prepare calving area" },
     Goat: { gestationDays: 150, checkDays: 30, prepareDaysBefore: 14, weanDays: 60, birthLabel: "kidding", prepareLabel: "Prepare kidding area" },
     Sheep: { gestationDays: 147, checkDays: 30, prepareDaysBefore: 14, weanDays: 60, birthLabel: "lambing", prepareLabel: "Prepare lambing area" },
@@ -87,17 +90,21 @@
   
     function breedingSchedule(femaleId, breedingDate) {
       const female = stateNow().animals.find((animal) => animal.id === femaleId);
-      const rule = GESTATION_RULES[female?.species];
+      const species = root?.HerdHarborFelineCavyCore?.canonicalSpecies?.(female?.species) || female?.species;
+      const rule = GESTATION_RULES[species];
       if (!rule || !/^\d{4}-\d{2}-\d{2}$/.test(String(breedingDate || ""))) {
         return { species: female?.species || "", rule: null, pregnancyCheckDate: "", preparationDate: "", dueDate: "" };
       }
-      const dueDate = addDays(breedingDate, rule.gestationDays);
+      const specialized = root?.HerdHarborFelineCavyCore?.estimateDates?.(species, breedingDate);
+      const dueDate = specialized?.dueDate || addDays(breedingDate, rule.gestationDays);
       return {
         species: female.species,
         rule,
-        pregnancyCheckDate: addDays(breedingDate, rule.checkDays),
-        preparationDate: addDays(dueDate, -rule.prepareDaysBefore),
-        dueDate
+        pregnancyCheckDate: specialized?.pregnancyReviewDate || addDays(breedingDate, rule.checkDays),
+        preparationDate: specialized?.preparationDate || addDays(dueDate, -rule.prepareDaysBefore),
+        dueDate,
+        dueStartDate: specialized?.dueStartDate || "",
+        dueEndDate: specialized?.dueEndDate || ""
       };
     }
   
@@ -469,6 +476,9 @@
         if (force || !prepareInput.value) prepareInput.value = schedule.preparationDate;
         if (force || !dueDateInput.value) dueDateInput.value = schedule.dueDate;
         note.textContent = `${schedule.species}: ${schedule.rule.gestationDays}-day estimate · check ${formatDate(checkDateInput.value)} · ${schedule.rule.prepareLabel.toLowerCase()} ${formatDate(prepareInput.value)} · expected ${schedule.rule.birthLabel} ${formatDate(dueDateInput.value)}. Every date can be adjusted.`;
+        if (schedule.dueStartDate && schedule.dueEndDate) {
+          note.textContent = `${schedule.species}: estimated ${schedule.rule.birthLabel} window ${formatDate(schedule.dueStartDate)}–${formatDate(schedule.dueEndDate)}. Review pregnancy ${formatDate(checkDateInput.value)}. ${root.HerdHarborFelineCavyCore.guidance(schedule.species)} This is not a pregnancy diagnosis; dates are editable.`;
+        }
       };
       femaleInput.addEventListener("change", () => calculateDates(true));
       breedingDateInput.addEventListener("change", () => calculateDates(true));
@@ -489,6 +499,12 @@
         const male = stateNow().animals.find((animal) => animal.id === data.maleId);
         if (data.femaleId === data.maleId) return toast("Select two different animals.", "error");
         if (female?.species && male?.species && female.species !== male.species) return toast("The sire and dam must be the same species.", "error");
+        const familyCore = root?.HerdHarborFelineCavyCore;
+        if (["cat", "guinea pig", "cavy", "cavies"].includes(String(female?.species || "").toLowerCase()) || familyCore?.isSupported?.(male?.species)) {
+          if (typeof familyCore?.validateBreeding !== "function") return toast("The cat/cavy breeding engine is unavailable. Update the app before saving.", "error");
+          const validation = familyCore.validateBreeding(stateNow(), data, { allowHistorical: Boolean(id), allowQuarantine: Boolean(id) });
+          if (!validation.valid) return toast(validation.issues[0], "error");
+        }
         if (data.pregnancyCheckStatus === "Positive" && ["Planned", "Bred", "Pregnancy check due"].includes(data.status)) data.status = "Confirmed pregnant";
         if (data.pregnancyCheckStatus === "Negative") data.status = "Not pregnant";
         const now = new Date().toISOString();
@@ -683,6 +699,12 @@
         const selectedDam = stateNow().animals.find((animal) => animal.id === data.damId);
         const selectedSire = stateNow().animals.find((animal) => animal.id === data.sireId);
         if (selectedDam?.species && selectedSire?.species && selectedDam.species !== selectedSire.species) return toast("The sire and dam must be the same species.", "error");
+        const familyCore = root?.HerdHarborFelineCavyCore;
+        if (["cat", "guinea pig", "cavy", "cavies"].includes(String(selectedDam?.species || "").toLowerCase()) || familyCore?.isSupported?.(selectedSire?.species)) {
+          if (typeof familyCore?.validateBirth !== "function") return toast("The cat/cavy birth engine is unavailable. Update HerdHarbor and retry.", "error");
+          const validation = familyCore.validateBirth(stateNow(), data, { currentLitterId: id });
+          if (!validation.valid) return toast(validation.issues[0], "error");
+        }
         const linkedRecord = stateNow().breedings.find((record) => record.id === data.breedingId);
         if (linkedRecord && (linkedRecord.femaleId !== data.damId || linkedRecord.maleId !== data.sireId)) return toast("The selected parents must match the linked breeding record.", "error");
         if (data.breedingId && stateNow().litters.some((record) => record.id !== id && record.breedingId === data.breedingId)) return toast("That breeding already has a linked birth record. Edit the existing birth instead.", "error");
