@@ -476,6 +476,34 @@
       const confirmationInput = $('[name="confirmedDate"]', form);
       const femaleInput = $('[name="femaleId"]', form);
       const statusInput = $('[name="status"]', form);
+      const specialFields = $("#hh-fc-reproductive");
+      const specialCore = root?.HerdHarborFelineCavyCore;
+      const syncSpecialSpecies = () => {
+        const selected = stateNow().animals.find(animal => String(animal.id) === String(femaleInput.value));
+        const profile = specialCore?.profileFor?.(selected?.species);
+        const enabled = Boolean(profile);
+        specialFields.disabled = !enabled;
+        specialFields.hidden = !enabled;
+        specialFields.querySelectorAll("[data-hh-fc-cat]").forEach(node => {
+          node.hidden = profile?.species !== "Cat";
+          node.querySelectorAll("input").forEach(input => { input.disabled = profile?.species !== "Cat"; });
+        });
+        specialFields.querySelectorAll("[data-hh-fc-cavy]").forEach(node => {
+          node.hidden = profile?.species !== "Guinea Pig";
+          node.querySelectorAll("input").forEach(input => { input.disabled = profile?.species !== "Guinea Pig"; });
+        });
+        const observationType = specialFields.querySelector('[name="observationType"]');
+        [...observationType.options].forEach(option => {
+          option.disabled = enabled && option.value !== "other" && !specialCore.OBSERVATION_TYPES[profile.species].includes(option.value);
+        });
+        if (observationType.selectedOptions[0]?.disabled) observationType.value = "other";
+        const guidance = $("#hh-fc-guidance");
+        guidance.textContent = profile ? specialCore.guidance(profile.species) : "";
+        const confirmationLabel = confirmationInput.closest("label");
+        if (confirmationLabel) confirmationLabel.hidden = enabled;
+        confirmationInput.disabled = enabled;
+      };
+      syncSpecialSpecies();
       const note = $("#breeding-schedule-note");
       const calculateDates = (force = false) => {
         const schedule = breedingSchedule(femaleInput.value, breedingDateInput.value);
@@ -490,9 +518,11 @@
         if (force || !dueDateInput.value) dueDateInput.value = schedule.dueDate;
         note.textContent = `${schedule.species}: ${schedule.rule.gestationDays}-day estimate · check ${formatDate(checkDateInput.value)} · ${schedule.rule.prepareLabel.toLowerCase()} ${formatDate(prepareInput.value)} · expected ${schedule.rule.birthLabel} ${formatDate(dueDateInput.value)}. Every date can be adjusted.`;
       };
-      femaleInput.addEventListener("change", () => calculateDates(true));
+      femaleInput.addEventListener("change", () => { syncSpecialSpecies(); calculateDates(true); });
       breedingDateInput.addEventListener("change", () => calculateDates(true));
       checkResultInput.addEventListener("change", () => {
+        const selected = stateNow().animals.find(animal => String(animal.id) === String(femaleInput.value));
+        if (specialCore?.isSupported?.(selected?.species)) return; // Do not infer feline/cavy pregnancy from breeder-entered check results.
         if (checkResultInput.value === "Positive") {
           if (!confirmationInput.value) confirmationInput.value = todayISO();
           if (["Planned", "Bred", "Pregnancy check due"].includes(statusInput.value)) statusInput.value = "Confirmed pregnant";
