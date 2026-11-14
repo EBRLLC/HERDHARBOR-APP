@@ -69,6 +69,12 @@
       }
       try {
         mutate();
+        // Validate only new/edited records, allowing historical imported data
+        // to remain visible and correctable without silent destructive repair.
+        const integrity = root?.HerdHarborBreedingIntegrity203;
+        if (!integrity?.validateMutation) throw new Error("Breeding integrity safeguards are unavailable.");
+        const assessment = integrity.validateMutation(snapshot, stateNow());
+        if (!assessment.ok) throw new Error(assessment.errors[0].detail);
         if (saveState(message) === true) return true;
       } catch (error) {
         restoreState(snapshot);
