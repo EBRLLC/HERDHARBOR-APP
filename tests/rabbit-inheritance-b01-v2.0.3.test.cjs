@@ -80,6 +80,6 @@ test('installed shell loads inheritance before application runtime and runtime i
   const appScript=index.indexOf('herdharbor-app-runtime.js');
   assert.ok(geneticsScript>=0 && appScript>geneticsScript);
   assert.match(runtime,/HerdHarborRabbitInheritance/);
-  assert.match(runtime,/inheritance\\.reconcile\\(candidate, genetics\\)/);
-  assert.match(runtime,/canonicalStateStore\\.commit\\(nextState/);
+  assert.match(runtime,/inheritance\.reconcile\(candidate, genetics\)/);
+  assert.match(runtime,/canonicalStateStore\.commit\(nextState/);
 });
