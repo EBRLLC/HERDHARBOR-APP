@@ -14,7 +14,16 @@ const engine = {
   possiblePairsForLocus(animal) {
     const p = animal?.genetics?.loci?.B?.alleles;
     if (!p || p.every(a => a === '_')) return allPairs;
-    return allPairs.filter(candidate => p.every(a => a === '_' || candidate.includes(a)));
+    return allPairs.filter(candidate => {
+      const remaining = candidate.slice();
+      return p.every(allele => {
+        if (allele === '_') return true;
+        const index = remaining.indexOf(allele);
+        if (index < 0) return false;
+        remaining.splice(index, 1);
+        return true;
+      });
+    });
   },
   crossLocus(locus, sire, dam) {
     const results = new Map();
