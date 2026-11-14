@@ -555,6 +555,44 @@
       return stateNow().animals.filter((animal) => ids.has(animal.id) || animal.sourceBirthId === litter?.id);
     }
   
+    function openRabbitKitGrowth(litterId) {
+      const rabbitBreeder = root?.HerdHarborRabbitBreeder203;
+      const litter = stateNow().litters.find(record => record.id === litterId);
+      const kits = litter ? offspringForLitter(litter).filter(animal => rabbitBreeder?.isRabbit(animal)) : [];
+      if (!rabbitBreeder?.addKitWeight || !kits.length) {
+        toast("Create individual rabbit kit records before tracking growth.", "error");
+        return;
+      }
+      openModal("Rabbit kit growth", `
+        <form id="rabbit-kit-growth-form">
+          <label>Kit <select name="kitId" required>${kits.map(kit => `<option value="${esc(kit.id)}">${esc(kit.name || kit.tag || kit.id)}</option>`).join("")}</select></label>
+          ${field("Measurement date", "measurementDate", todayISO(), true, "date")}
+          ${field("Weight (grams)", "grams", "", true, "number")}
+          ${textareaField("Notes", "notes", "")}
+          <div class="modal-actions">
+            <button type="button" class="button button-ghost" id="cancel-rabbit-growth">Cancel</button>
+            <button type="submit" class="button button-primary">Save growth measurement</button>
+          </div>
+        </form>`, "Rabbit kit measurements are stored individually; existing dates can be corrected.");
+      const form = $("#rabbit-kit-growth-form");
+      $("#cancel-rabbit-growth")?.addEventListener("click", closeModal);
+      form?.addEventListener("submit", event => {
+        event.preventDefault();
+        const values = Object.fromEntries(new FormData(form));
+        const kit = stateNow().animals.find(animal => animal.id === values.kitId);
+        if (!kit || !offspringForLitter(litter).some(animal => animal.id === kit.id)) {
+          toast("That kit is no longer associated with this litter.", "error");
+          return;
+        }
+        const saved = persistMutation("Rabbit kit growth measurement saved.", () => {
+          rabbitBreeder.addKitWeight(kit, values.measurementDate, values.grams, values.notes);
+        });
+        if (!saved) return;
+        closeModal();
+        renderCurrentView();
+      });
+    }
+
     function renderLitters() {
       const snapshot = stateNow();
       const rows = snapshot.litters.slice().sort((left, right) => (right.birthDate || "").localeCompare(left.birthDate || ""));
@@ -600,13 +638,16 @@
             <div class="meta">Expected weaning: ${formatDate(litter.expectedWeanDate)}</div>
             <div class="animal-card-footer">
               <button class="button button-ghost button-small" data-create-offspring="${litter.id}">${litter.canineWhelping ? "Manage puppies" : offspringCount ? "Add offspring" : "Create offspring"}</button>
+              <button class="button button-ghost button-small" data-rabbit-kit-growth="${litter.id}" ${!stateNow().animals.some(animal => animal.id === litter.damId && root?.HerdHarborRabbitBreeder203?.isRabbit(animal)) ? "hidden" : ""}>Kit growth</button>
               <button class="button button-ghost button-small" data-edit-litter="${litter.id}">Edit</button>
             </div>
           </article>`;
         }).join("")}</div>` : emptyState("No births recorded.", "Record the result of a breeding when offspring arrive.")}`;
   
       $("#add-litter").addEventListener("click", () => openLitterForm());
-      $$('[data-edit-litter]', $("#view-litters")).forEach((button) =>
+      $('[data-rabbit-kit-growth]', $("#view-litters")).forEach(button =>
+        button.addEventListener("click", () => openRabbitKitGrowth(button.dataset.rabbitKitGrowth)));
+      $('[data-edit-litter]', $("#view-litters")).forEach((button) =>
         button.addEventListener("click", () => openLitterForm(button.dataset.editLitter)));
       $$('[data-create-offspring]', $("#view-litters")).forEach((button) =>
         button.addEventListener("click", () => {
