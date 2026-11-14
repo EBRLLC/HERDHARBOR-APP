@@ -1234,7 +1234,7 @@
             <span class="badge ${task.dueDate < today ? "danger" : "green"}">${task.dueDate < today ? "Overdue" : "Today"}</span>
           </div>`).join("")}</div>` : emptyState("Today is clear.", "New and recurring work due today will appear here.")}
       </div>
-      ${window.HerdHarborBreederDashboard203?.panelHtml?.(state, esc, formatDate, today) || ""}
+      ${globalThis.HerdHarborBreederDashboard203?.panelHtml?.(state, esc, formatDate, today) || ""}
       <div class="dashboard-grid">
         <div class="panel">
           <div class="panel-header">

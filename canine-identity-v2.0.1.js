@@ -69,7 +69,7 @@
     const identifiers = new Set();
     if ((input?.healthEvidence?.length || 0) > 60) errors.push("Too many canine health evidence records.");
     for (const record of value.healthEvidence) {
-      if (!record.type || !record.name || !record.reference || !/^\\d{4}-\\d{2}-\\d{2}$/.test(record.date))
+      if (!record.type || !record.name || !record.reference || !/^\d{4}-\d{2}-\d{2}$/.test(record.date))
         errors.push("Dog health records require type, name, date, and evidence reference.");
     }
     value.registrations.forEach((r, i) => {

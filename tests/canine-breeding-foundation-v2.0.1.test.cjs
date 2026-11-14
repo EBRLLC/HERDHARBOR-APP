@@ -90,8 +90,11 @@ for (const litterCount of [0, 1, 3]) {
     assert.match(view.innerHTML, /HEADER:Births and litters/);
     if (litterCount === 0) assert.match(view.innerHTML, /No births recorded/);
     else assert.equal((view.innerHTML.match(/class="animal-card"/g) || []).length, litterCount);
-    assert.deepEqual(collections, [litterCount, litterCount]);
-    assert.deepEqual(selectors, ["[data-edit-litter]", "[data-create-offspring]"]);
+    assert.deepEqual(collections, Array(5).fill(litterCount));
+    assert.deepEqual(selectors, [
+      "[data-cavy-pup-care]", "[data-kitten-care]", "[data-rabbit-kit-growth]",
+      "[data-edit-litter]", "[data-create-offspring]"
+    ]);
   });
 }
 
@@ -148,7 +151,13 @@ test("legacy generic workflow does not assign an exact canine due date from mati
 
 test("all breeding/litter CRUD and puppy generation paths use the transactional persistence boundary", () => {
   const source = fs.readFileSync(path.join(__dirname, "..", "breeding-litter-runtime-v1.8.3.js"), "utf8");
-  assert.equal((source.match(/persistMutation\(/g) || []).length, 6);
+  assert.equal((source.match(/persistMutation\(/g) || []).length, 11,
+    "Original CRUD and all species care/generation operations must preserve transactions.");
+  for (const pattern of [
+    /persistMutation\("Rabbit kit growth measurement saved\."/,
+    /persistMutation\("Kitten observation saved\."/,
+    /persistMutation\("Cavy pup record saved\."/
+  ]) assert.match(source, pattern);
   const start = source.indexOf("    function renderLitters() {");
   const end = source.indexOf("\n    function openLitterForm", start);
   const renderer = source.slice(start, end);

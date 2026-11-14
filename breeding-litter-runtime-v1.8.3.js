@@ -71,7 +71,8 @@
         mutate();
         // Validate only new/edited records, allowing historical imported data
         // to remain visible and correctable without silent destructive repair.
-        const integrity = root?.HerdHarborBreedingIntegrity203;
+        const integrity = root?.HerdHarborBreedingIntegrity203 ||
+          (typeof require === "function" ? require("./breeding-integrity-v2.0.3.js") : null);
         if (!integrity?.validateMutation) throw new Error("Breeding integrity safeguards are unavailable.");
         const assessment = integrity.validateMutation(snapshot, stateNow());
         if (!assessment.ok) throw new Error(assessment.errors[0].detail);
@@ -706,9 +707,9 @@
         button.addEventListener("click",()=>openCavyPupCare(button.dataset.cavyPupCare)));
       $$('[data-kitten-care]', $("#view-litters")).forEach(button =>
         button.addEventListener("click", () => openKittenCare(button.dataset.kittenCare)));
-      $('[data-rabbit-kit-growth]', $("#view-litters")).forEach(button =>
+      $$('[data-rabbit-kit-growth]', $("#view-litters")).forEach(button =>
         button.addEventListener("click", () => openRabbitKitGrowth(button.dataset.rabbitKitGrowth)));
-      $('[data-edit-litter]', $("#view-litters")).forEach((button) =>
+      $$('[data-edit-litter]', $("#view-litters")).forEach((button) =>
         button.addEventListener("click", () => openLitterForm(button.dataset.editLitter)));
       $$('[data-create-offspring]', $("#view-litters")).forEach((button) =>
         button.addEventListener("click", () => {
