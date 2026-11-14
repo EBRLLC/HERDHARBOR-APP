@@ -14,6 +14,15 @@ function generatePups(state,litterId,entries){
  const linked=animals.filter(a=>isCavy(a)&&(a.sourceBirthId===litterId||arr(litter.offspringIds).includes(a.id)));
  const slots=Number(litter.bornAlive)-linked.length,issues=[],ids=new Set(animals.map(a=>a.id));
  if(!Array.isArray(entries)||entries.length>slots||slots<0)issues.push("Pup count exceeds recorded live births.");
+ const recordedExposures=arr(sow.cavyReproduction?.records).filter(event=>{
+  if(event.type!=="exposure"||!date(event.date)||!date(event.endDate))return false;
+  const born=Date.parse(litter.birthDate+"T00:00:00Z");
+  return born>=Date.parse(event.date+"T00:00:00Z")+59*86400000 &&
+         born<=Date.parse(event.endDate+"T00:00:00Z")+72*86400000;
+ });
+ const possible=[...new Set([...arr(litter.potentialSireIds),...recordedExposures.map(e=>
+  txt(e.boarId)||(txt(e.externalBoar)?"external:"+txt(e.externalBoar):"unknown")),
+  ...(txt(litter.sireId)?[txt(litter.sireId)]:[])].filter(Boolean))];
  const born=[];
  for(const entry of arr(entries)){
   const id=txt(entry.id);
@@ -21,13 +30,13 @@ function generatePups(state,litterId,entries){
   ids.add(id);
   if(!txt(entry.name))issues.push("Pup name required.");
   if(!["Female","Male","Unknown"].includes(entry.sex||"Unknown"))issues.push("Invalid pup sex.");
-  const potentialBoars=arr(litter.potentialSireIds).filter(Boolean);
-  const boarId=txt(entry.confirmedSireId)||(!potentialBoars.length?txt(litter.sireId):"");
+  const potentialBoars=possible;
+  const boarId=txt(entry.confirmedSireId)||(potentialBoars.length===1&&!potentialBoars[0].startsWith("external:")&&potentialBoars[0]!=="unknown"?potentialBoars[0]:"");
   if(entry.confirmedSireId&&potentialBoars.length&&!potentialBoars.includes(boarId))issues.push("Unrecorded sire confirmation.");
   born.push({id,name:txt(entry.name),species:"Cavy",sex:entry.sex||"Unknown",
    breed:txt(entry.breed)||sow.breed||"",color:txt(entry.color),tag:txt(entry.tag),
    dob:litter.birthDate,status:"Growing",sireId:boarId,damId:sow.id,sourceBirthId:litterId,
-   potentialSireIds:potentialBoars,paternityStatus:potentialBoars.length>1&&!entry.confirmedSireId?"unresolved":"breeder-recorded",
+   potentialSireIds:potentialBoars,paternityStatus:entry.confirmedSireId?"breeder-confirmed":potentialBoars.length>1?"unresolved":potentialBoars.length===0?"unknown":"recorded-unverified",
    cavyGrowth:[],cavyCare:[],createdAt:new Date().toISOString()});
  }
  if(issues.length)return {valid:false,issues,state};
