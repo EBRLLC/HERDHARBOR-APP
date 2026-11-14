@@ -93,6 +93,8 @@
   
     function breedingSchedule(femaleId, breedingDate) {
       const female = stateNow().animals.find((animal) => animal.id === femaleId);
+      const planner = root?.HerdHarborBreedingSchedule203;
+      if (planner?.schedule) return planner.schedule(female, breedingDate);
       const rule = GESTATION_RULES[female?.species];
       if (!rule || !/^\d{4}-\d{2}-\d{2}$/.test(String(breedingDate || ""))) {
         return { species: female?.species || "", rule: null, pregnancyCheckDate: "", preparationDate: "", dueDate: "" };
@@ -434,13 +436,13 @@
           <div class="form-grid two">
             ${selectAnimalField("Female / dam", "femaleId", breeding.femaleId, "Female", true)}
             ${selectAnimalField("Male / sire", "maleId", breeding.maleId, "Male", true)}
-            ${field("Breeding date", "breedingDate", breeding.breedingDate || todayISO(), true, "date")}
+            ${field("Breeding date (unknown permitted)", "breedingDate", breeding.breedingDate || "", false, "date")}
             ${selectField("Breeding method", "method", BREEDING_METHOD_OPTIONS, breeding.method || "Natural service", true)}
             ${field("Pregnancy-check date", "pregnancyCheckDate", breeding.pregnancyCheckDate || "", false, "date")}
             ${selectField("Pregnancy-check result", "pregnancyCheckStatus", PREGNANCY_CHECK_OPTIONS, breeding.pregnancyCheckStatus || "Not checked", true)}
             ${field("Confirmation date", "confirmedDate", breeding.confirmedDate || "", false, "date")}
             ${field("Birth / nest preparation date", "nestBoxDate", breeding.nestBoxDate || breeding.preparationDate || "", false, "date")}
-            ${field("Expected due date", "dueDate", breeding.dueDate || "", true, "date")}
+            ${field("Expected due date", "dueDate", breeding.dueDate || "", false, "date")}
             ${field("Additional follow-up date", "followUpDate", breeding.followUpDate || "", false, "date")}
             ${selectField("Status", "status", BREEDING_STATUS_OPTIONS, normalizeBreedingStatus(breeding.status), true)}
           </div>
@@ -465,8 +467,15 @@
       const note = $("#breeding-schedule-note");
       const calculateDates = (force = false) => {
         const schedule = breedingSchedule(femaleInput.value, breedingDateInput.value);
-        if (!schedule.rule) {
-          note.textContent = schedule.species
+        if (!schedule.rule || !breedingDateInput.value || schedule.estimated === false) {
+          if (force && !breedingDateInput.value) {
+            checkDateInput.value = "";
+            prepareInput.value = "";
+            dueDateInput.value = "";
+          }
+          note.textContent = schedule.rule && (!breedingDateInput.value || schedule.estimated === false)
+            ? "Breeding date is unknown. No pregnancy or due date has been inferred."
+            : schedule.species
             ? `${schedule.species} does not have a built-in gestation schedule. Enter the dates supplied by your veterinarian or breeding plan.`
             : "Choose a dam and breeding date to calculate the schedule.";
           return;
@@ -474,7 +483,7 @@
         if (force || !checkDateInput.value) checkDateInput.value = schedule.pregnancyCheckDate;
         if (force || !prepareInput.value) prepareInput.value = schedule.preparationDate;
         if (force || !dueDateInput.value) dueDateInput.value = schedule.dueDate;
-        note.textContent = `${schedule.species}: ${schedule.rule.gestationDays}-day estimate · check ${formatDate(checkDateInput.value)} · ${schedule.rule.prepareLabel.toLowerCase()} ${formatDate(prepareInput.value)} · expected ${schedule.rule.birthLabel} ${formatDate(dueDateInput.value)}. Every date can be adjusted.`;
+        note.textContent = `${schedule.species}: estimated ${schedule.rule.gestationDays}-day gestation from recorded mating (not pregnancy confirmation) · expected ${schedule.rule.birthLabel} ${formatDate(dueDateInput.value)} · range ${formatDate(schedule.dueRange?.earliest)}–${formatDate(schedule.dueRange?.latest)} · check ${formatDate(checkDateInput.value)} · ${schedule.rule.prepareLabel.toLowerCase()} ${formatDate(prepareInput.value)}. Dates are adjustable.`;
       };
       femaleInput.addEventListener("change", () => calculateDates(true));
       breedingDateInput.addEventListener("change", () => calculateDates(true));
@@ -494,6 +503,10 @@
         const female = stateNow().animals.find((animal) => animal.id === data.femaleId);
         const male = stateNow().animals.find((animal) => animal.id === data.maleId);
         if (data.femaleId === data.maleId) return toast("Select two different animals.", "error");
+        const eligibility = root?.HerdHarborBreedingSchedule203?.pairingEligibility;
+        if (!id && eligibility && [female, male].some(animal => !eligibility(animal).eligible)) {
+          return toast("The selected animals are not both eligible for an active breeding plan. Review their status and reproductive eligibility.", "error");
+        }
         if (female?.species && male?.species && female.species !== male.species) return toast("The sire and dam must be the same species.", "error");
         if (data.pregnancyCheckStatus === "Positive" && ["Planned", "Bred", "Pregnancy check due"].includes(data.status)) data.status = "Confirmed pregnant";
         if (data.pregnancyCheckStatus === "Negative") data.status = "Not pregnant";
