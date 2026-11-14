@@ -47,7 +47,7 @@ test("release identities agree across app, PWA, manifest and Android package",()
 });
 test("cold PWA install preloads every versioned canine script and style",async()=>{
   const canine=getCanineAssets();
-  assert.equal(canine.length,9);
+  assert.equal(canine.length,11,"Two additional 2.0.3 canine script assets must preload offline.");
   const h=installHarness();await h.pending;
   for(const asset of canine){
     const expected="https://app.herdharbor.com/"+asset;
