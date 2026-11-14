@@ -52,6 +52,8 @@ const REQUIRED_SHELL = [
   "./herdharbor-app-runtime.js?v=6",
   "./herdharbor-monitoring-config.js?v=2.0.2",
   "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.2"
+  "./canine-care-v2.0.3.js?v=1",
+  "./canine-identity-audit-v2.0.3.js?v=1",
 ];
 
 const RUNTIME_CACHE_PATHS = [
@@ -65,8 +67,6 @@ const RUNTIME_CACHE_PATHS = [
   "./breeding-integrity-v2.0.3.js?v=1",
   "./breeding-scheduling-v2.0.3.js?v=1",
   "./rabbit-breeder-v2.0.3.js?v=1",
-  "./canine-care-v2.0.3.js?v=1",
-  "./canine-identity-audit-v2.0.3.js?v=1",
   "./feline-identity-v2.0.3.js?v=1",
   "./feline-reproduction-v2.0.3.js?v=1",
   "./feline-kittens-v2.0.3.js?v=1",
