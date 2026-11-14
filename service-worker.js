@@ -53,7 +53,7 @@ const REQUIRED_SHELL = [
   "./herdharbor-monitoring-config.js?v=2.0.2",
   "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.2",
   "./canine-care-v2.0.3.js?v=1",
-  "./canine-identity-audit-v2.0.3.js?v=1",
+  "./canine-identity-audit-v2.0.3.js?v=1"
 ];
 
 const RUNTIME_CACHE_PATHS = [
