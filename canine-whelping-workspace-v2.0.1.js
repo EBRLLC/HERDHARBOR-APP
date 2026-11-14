@@ -277,7 +277,17 @@
     const candidates = potentialSireRefs(plan);
     const sireName = ref => ref?.type === "owned_dog" ? arr(state.animals).find(row=>row.id===ref.id)?.name || "Missing Dog" : ref?.type === "external_stud" ? arr(state.canineExternalStuds).find(row=>row.id===ref.id)?.registeredName || arr(state.canineExternalStuds).find(row=>row.id===ref.id)?.displayName || "External stud" : "Unknown / unresolved";
     const options = `<option value="unknown">Unknown / unresolved</option>${candidates.filter(ref=>ref.type!=="unknown").map(ref=>`<option value="${esc(ref.type+":"+ref.id)}">${esc(sireName(ref))}</option>`).join("")}`;
-    return `<article class="hh-canine-repro-plan"><h4>${esc(whelping.litterName || litter?.litterName || "Whelping")} · ${esc(whelping.birthDate)}</h4><p>${Number(litter?.bornAlive||0)} born alive · ${Number(litter?.stillborn||0)} stillborn · ${Number(litter?.lostBeforeWeaning||0)} neonatal losses. ${candidates.length>1?"Multiple potential sires; no sire was assigned automatically.":`Recorded sire: ${esc(sireName(whelping.sireRef))}.`}</p><p>${puppies.length} individual puppy record${puppies.length===1?"":"s"} · recorded total ${Number(litter?.bornAlive||0)}. Correcting totals does not delete existing puppy profiles.</p><div class="modal-actions"><button type="button" class="button button-primary" data-generate="${esc(whelping.id)}">Generate / reconcile puppy records</button><button type="button" class="button button-ghost" data-manage-litter="${esc(whelping.litterId)}">Manage puppy development</button></div>${puppies.map(puppy=>`<form data-form="parentage" data-puppy="${esc(puppy.id)}" class="hh-canine-repro-inline"><strong>${esc(puppy.name)} · ${esc(puppy.sex)} · ${esc(puppy.status)}</strong><label>Confirmed individual sire<select name="sireRef">${options}</select></label><label>Evidence / breeder note<input name="evidenceNote" maxlength="2000" placeholder="Required when assigning a sire"></label><button type="submit" class="button button-ghost">Save individual parentage</button></form>`).join("")}</article>`;
+    return `<article class="hh-canine-repro-plan"><h4>${esc(whelping.litterName || litter?.litterName || "Whelping")} · ${esc(whelping.birthDate)}</h4><p>${Number(litter?.bornAlive||0)} born alive · ${Number(litter?.stillborn||0)} stillborn · ${Number(litter?.lostBeforeWeaning||0)} neonatal losses. ${candidates.length>1?"Multiple potential sires; no sire was assigned automatically.":`Recorded sire: ${esc(sireName(whelping.sireRef))}.`}</p><p>${puppies.length} individual puppy record${puppies.length===1?"":"s"} · recorded total ${Number(litter?.bornAlive||0)}. Correcting totals does not delete existing puppy profiles.</p><div class="modal-actions"><button type="button" class="button button-primary" data-generate="${esc(whelping.id)}">Generate / reconcile puppy records</button><button type="button" class="button button-ghost" data-manage-litter="${esc(whelping.litterId)}">Manage puppy development</button></div>${puppies.map(puppy=>`<form data-form="parentage" data-puppy="${esc(puppy.id)}" class="hh-canine-repro-inline"><strong>${esc(puppy.name)} · ${esc(puppy.sex)} · ${esc(puppy.status)}</strong><label>Confirmed individual sire<select name="sireRef">${options}</select></label><label>Evidence / breeder note<input name="evidenceNote" maxlength="2000" placeholder="Required when assigning a sire"></label><button type="submit" class="button button-ghost">Save individual parentage</button></form>
+      <form data-form="puppy-care" data-puppy="${esc(puppy.id)}" class="hh-canine-repro-inline">
+        <strong>Puppy care: ${esc(puppy.name)}</strong>
+        <label>Record type<select name="kind"><option value="weight">Weight</option><option value="development">Development</option><option value="health">Health observation</option><option value="veterinary-test">Veterinary test</option></select></label>
+        <label>Date<input name="date" type="date" value="${esc(dateToday())}" required></label>
+        <label>Weight, grams<input name="grams" type="number" min="0.1" step="0.1"></label>
+        <label>Note<input name="notes" maxlength="2000" placeholder="Evidence or observation"></label>
+        <label>Test name<input name="testName" maxlength="200"></label>
+        <label>Evidence reference<input name="evidenceRef" maxlength="500" placeholder="Record/document reference"></label>
+        <button type="submit" class="button button-ghost">Save puppy observation</button>
+      </form>`).join("")}</article>`;
   }
   function whelpingFormValues(state, planId) {
     const empty = { birthDate: "", time: "", method: "unknown", bornAlive: "0", stillborn: "0",
@@ -319,6 +329,11 @@
     if (kind === "whelping") result=recordWhelping(live,key,values,{ownerId:active.ownerId});
     else if (kind === "generate") result=generatePuppies(live,key,{ownerId:active.ownerId});
     else if (kind === "parentage") result=updatePuppyParentage(live,key,values.sireRef?parseSireRef(values.sireRef):{type:"unknown"},values.evidenceNote,{ownerId:active.ownerId});
+    else if (kind === "puppy-care") {
+      const care=root?.HerdHarborCanineCare203;
+      if(!care?.addPuppyObservation){toast("Puppy observation safeguards are unavailable.","error");return false;}
+      result=care.addPuppyObservation(live,key,values,{ownerId:active.ownerId});
+    }
     else return false;
     if (!result.valid) { toast(result.issues.join(" "),"error");return false; }
     if (!root.HerdHarborApp?.commitState?.(result.state, kind==="generate"?"Puppy records saved on this device; cloud synchronization may still be pending.":"Canine whelping record saved on this device; cloud synchronization may still be pending.")) { toast("The local save failed. Existing whelping and puppy records were retained; retry when this device can save.","error");return false; }
