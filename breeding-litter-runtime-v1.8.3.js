@@ -593,6 +593,32 @@
       });
     }
 
+    function openCavyPupCare(litterId) {
+      const api=root?.HerdHarborCavyOffspring203,litter=stateNow().litters.find(row=>row.id===litterId);
+      const pups=offspringForLitter(litter).filter(row=>root?.HerdHarborCavyIdentity203?.isCavy(row));
+      if(!api?.observe||!pups.length)return toast("Create individual cavy pup records first.","error");
+      openModal("Cavy pup growth, housing & show",`
+        <form id="hh-cavy-care-form">
+          <label>Pup<select name="pupId">${pups.map(pup=>`<option value="${esc(pup.id)}">${esc(pup.name||pup.id)}</option>`).join("")}</select></label>
+          <label>Observation<select name="kind"><option value="weight">Weight</option><option value="development">Development</option><option value="health">Health</option><option value="housing">Housing</option><option value="separation">Separation</option><option value="coat">Coat</option><option value="show">Show result</option></select></label>
+          ${field("Date","date",todayISO(),true,"date")}
+          ${field("Weight (grams)","grams","",false,"number")}
+          ${field("Document reference","evidenceRef","")}
+          ${textareaField("Notes","notes","")}
+          <div class="modal-actions"><button id="hh-cavy-cancel" type="button">Cancel</button><button type="submit">Save record</button></div>
+        </form>`,"Species-specific evidence retained with each pup");
+      const form=$("#hh-cavy-care-form");
+      $("#hh-cavy-cancel")?.addEventListener("click",closeModal);
+      form?.addEventListener("submit",event=>{
+        event.preventDefault();const data=Object.fromEntries(new FormData(form));
+        const result=api.observe(stateNow(),data.pupId,data);
+        if(!result.valid)return toast(result.issues.join(" "),"error");
+        const saved=persistMutation("Cavy pup record saved.",()=>{stateNow().animals=result.state.animals;});
+        if(!saved)return;
+        closeModal();renderCurrentView();
+      });
+    }
+
     function openKittenCare(litterId) {
       const feline = root?.HerdHarborFelineKittens203;
       const litter = stateNow().litters.find(row => row.id === litterId);
@@ -667,6 +693,7 @@
             <div class="meta">Expected weaning: ${formatDate(litter.expectedWeanDate)}</div>
             <div class="animal-card-footer">
               <button class="button button-ghost button-small" data-create-offspring="${litter.id}">${litter.canineWhelping ? "Manage puppies" : offspringCount ? "Add offspring" : "Create offspring"}</button>
+              <button class="button button-ghost button-small" data-cavy-pup-care="${litter.id}" ${!stateNow().animals.some(animal=>animal.id===litter.damId&&root?.HerdHarborCavyIdentity203?.isCavy(animal))?"hidden":""}>Pup care</button>
               <button class="button button-ghost button-small" data-kitten-care="${litter.id}" ${!stateNow().animals.some(animal => animal.id === litter.damId && root?.HerdHarborFelineIdentity203?.isCat(animal)) ? "hidden" : ""}>Kitten care</button>
               <button class="button button-ghost button-small" data-rabbit-kit-growth="${litter.id}" ${!stateNow().animals.some(animal => animal.id === litter.damId && root?.HerdHarborRabbitBreeder203?.isRabbit(animal)) ? "hidden" : ""}>Kit growth</button>
               <button class="button button-ghost button-small" data-edit-litter="${litter.id}">Edit</button>
@@ -675,7 +702,9 @@
         }).join("")}</div>` : emptyState("No births recorded.", "Record the result of a breeding when offspring arrive.")}`;
   
       $("#add-litter").addEventListener("click", () => openLitterForm());
-      $('[data-kitten-care]', $("#view-litters")).forEach(button =>
+      $$('[data-cavy-pup-care]', $("#view-litters")).forEach(button=>
+        button.addEventListener("click",()=>openCavyPupCare(button.dataset.cavyPupCare)));
+      $$('[data-kitten-care]', $("#view-litters")).forEach(button =>
         button.addEventListener("click", () => openKittenCare(button.dataset.kittenCare)));
       $('[data-rabbit-kit-growth]', $("#view-litters")).forEach(button =>
         button.addEventListener("click", () => openRabbitKitGrowth(button.dataset.rabbitKitGrowth)));
@@ -934,6 +963,19 @@
             updatedAt: now
           };
           created.push(animal);
+        }
+        if (root?.HerdHarborCavyOffspring203 && root?.HerdHarborCavyIdentity203?.isCavy(dam)) {
+          const cavy = root.HerdHarborCavyOffspring203.generatePups(stateNow(),litterId,
+            created.map(animal => ({id:animal.id,name:animal.name,tag:animal.tag,sex:animal.sex,breed:animal.breed,color:animal.color})));
+          if(!cavy.valid)return toast(cavy.issues.join(" "),"error");
+          if(!allowsAnimalTransition(stateNow().animals,cavy.state.animals))return;
+          const committed=persistMutation(`${cavy.created.length} cavy pup records created.`,()=>{
+            stateNow().animals=cavy.state.animals;
+            stateNow().litters=cavy.state.litters;
+            recordActivity(`Created ${cavy.created.length} cavy pups from birth record.`,"animal");
+          });
+          if(!committed)return;
+          closeModal();renderCurrentView();return;
         }
         if (root?.HerdHarborFelineKittens203 && root?.HerdHarborFelineIdentity203?.isCat(dam)) {
           const feline = root.HerdHarborFelineKittens203.createKittens(stateNow(), litterId,
