@@ -30,9 +30,7 @@ const REQUIRED_SHELL = [
   "./herdharbor-admin-v1.6.1.js?v=2",
   "./pwa.js?v=38",
   "./pedigree-engine-v2.0.0.js?v=1",
-  "./pedigree-customization-v2.0.0.css?v=1",
   "./pedigree-customization-v2.0.0.js?v=1",
-  "./pedigree-renderer-v2.0.0.css?v=1",
   "./pedigree-renderer-v2.0.0.js?v=1",
   "./canine-identity-v2.0.1.css?v=1",
   "./canine-breeds-v2.0.1.js?v=4",
@@ -57,6 +55,8 @@ const REQUIRED_SHELL = [
 ];
 
 const RUNTIME_CACHE_PATHS = [
+  "./pedigree-customization-v2.0.0.css?v=1",
+  "./pedigree-renderer-v2.0.0.css?v=1",
   "./breeding-intelligence-core-v1.6.1.js?v=2.0.3-b01",
   "./rabbit-genetics-engine-advanced-v1.6.1.js?v=2.0.3-b01",
   "./rabbit-genetics-engine-compat-v1.6.1.js?v=2.0.3-b01",
