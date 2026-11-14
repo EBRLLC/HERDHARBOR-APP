@@ -27,7 +27,7 @@
 
   function reconcile(state, engine) {
     if (!state || !Array.isArray(state.animals) || !engine?.possiblePairsForLocus ||
-        !engine?.crossLocus || !engine?.LOCI || !engine?.normalizeGenetics) {
+        !engine?.crossLocus || !(engine?.RABBIT_LOCI || engine?.LOCI) || !engine?.normalizeGenetics) {
       return { changed: 0, conflicts: 0, skipped: true };
     }
     const rabbits = state.animals.filter(isRabbit);
@@ -50,7 +50,10 @@
       }
     }
     const base = new Map(rabbits.map(a => [id(a.id), stripAuto(a)]));
-    const loci = engine.EDITABLE_LOCI || Object.keys(engine.LOCI);
+    const locusDefinitions = engine.RABBIT_LOCI || engine.LOCI;
+    const loci = engine.RABBIT_LOCI
+      ? (engine.DISPLAY_LOCI || Object.keys(locusDefinitions))
+      : (engine.EDITABLE_LOCI || Object.keys(locusDefinitions));
     const optionsCache = new Map();
     const options = (animal, locus) => {
       if (!animal) return [];
@@ -83,7 +86,7 @@
       const familyEvidence = [];
       const familyConflicts = [];
       for (const locus of loci) {
-        if (engine.LOCI[locus]?.predictionModel !== "mendelian") continue;
+        if (!engine.RABBIT_LOCI && locusDefinitions[locus]?.predictionModel !== "mendelian") continue;
         const original = updatedLoci[locus];
         const oldIsAuto = auto(original);
         const baseOptions = options(animal, locus);
