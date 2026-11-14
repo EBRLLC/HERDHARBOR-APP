@@ -158,3 +158,34 @@ test('no 2.0.3 module silently asserts pregnancy from a scheduling estimate',()=
  assert.equal(felineRepro.calculateMatingWindow('2026-11-14').pregnancyConfirmed,false);
  assert.equal(cavyRepro.windowFromExposure('2026-11-14','2026-11-20').confirmedPregnancy,false);
 });
+
+
+test('actual normalized-cloud mapper preserves species evidence and relationship metadata across read-back',()=>{
+ const normalizer=require('../cloud-state-normalizer-v1.8.3.js');
+ const state={animals:[
+  {id:'rabbit',species:'Rabbit',genetics:{evidence:[{source:'family-inferred',locus:'B',status:'strongly-inferred'}]}},
+  {id:'dog',species:'Dog',canine:{healthEvidence:[{id:'dna',type:'dna-test',reference:'doc-01',status:'breeder-entered-unverified'}]},puppyObservations:[{id:'weight',kind:'weight',grams:200}]},
+  {id:'queen',species:'Cat',feline:{registeredName:'Cat Registered'},felineReproduction:{events:[{id:'m1',kind:'mating',sireId:''}]}},
+  {id:'kit',species:'Cat',sourceBirthId:'cat-l',damId:'queen',potentialSireIds:['t1','t2'],paternityStatus:'unresolved-multiple-sires',kittenCare:[{id:'w1',kind:'weight',grams:120}]},
+  {id:'sow',species:'Cavy',cavy:{coatType:'Abyssinian'},cavyReproduction:{records:[{id:'e1',type:'exposure',date:'2026-11-14'}]}},
+  {id:'pup',species:'Cavy',sourceBirthId:'cavy-l',damId:'sow',cavyCare:[{id:'s1',kind:'separation',notes:'documented'}]}
+ ],breedings:[],litters:[
+  {id:'cat-l',damId:'queen',offspringIds:['kit']},
+  {id:'cavy-l',damId:'sow',offspringIds:['pup']}
+ ],settings:{species:['Rabbit','Dog','Cat','Cavy']}};
+ const mapped=normalizer.mapLegacySnapshot(state);
+ const rows=mapped.records.map(record=>({
+  namespace:record.namespace,record_id:record.record_id,payload:record.payload,
+  payload_checksum:record.payload_checksum,record_version:1,deleted_at:null
+ }));
+ assert.deepEqual(normalizer.reassembleLegacySnapshot(rows),state);
+ const after=structuredClone(state);
+ after.animals.find(x=>x.id==='kit').kittenCare.push({id:'w2',kind:'weight',grams:130});
+ const update=normalizer.mapLegacySnapshot(after);
+ const updateRows=update.records.map(record=>({
+  namespace:record.namespace,record_id:record.record_id,payload:record.payload,
+  payload_checksum:record.payload_checksum,record_version:1,deleted_at:null
+ }));
+ assert.deepEqual(normalizer.reassembleLegacySnapshot(updateRows),after);
+ assert.notEqual(mapped.checksum,update.checksum);
+});
