@@ -189,3 +189,32 @@ test('actual normalized-cloud mapper preserves species evidence and relationship
  assert.deepEqual(normalizer.reassembleLegacySnapshot(updateRows),after);
  assert.notEqual(mapped.checksum,update.checksum);
 });
+
+
+test('recorded queen matings within birthing window prevent false single-sire assignment',()=>{
+ const state={animals:[{id:'queen',species:'Cat',sex:'Female',felineReproduction:{events:[
+  {id:'e1',kind:'mating',date:'2026-11-14',sireId:'tomA'},
+  {id:'e2',kind:'mating',date:'2026-11-15',sireId:'tomB'},
+  {id:'old',kind:'mating',date:'2025-01-01',sireId:'historical'}
+ ]}}],litters:[{id:'l',damId:'queen',sireId:'tomA',birthDate:'2027-01-18',bornAlive:1}]};
+ const result=kittens.createKittens(state,'l',[{id:'k',name:'Kitten'}]);
+ assert.equal(result.valid,true);
+ assert.equal(result.created[0].sireId,'');
+ assert.equal(result.created[0].paternityStatus,'unresolved-multiple-sires');
+ assert.deepEqual(result.created[0].potentialSireIds.slice().sort(),['tomA','tomB']);
+ assert.equal(state.animals.length,1);
+});
+
+test('sow exposure history in birth window retains multiple possible boars and excludes stale exposures',()=>{
+ const state={animals:[{id:'sow',species:'Cavy',sex:'Female',cavyReproduction:{records:[
+  {id:'ex1',type:'exposure',date:'2026-11-14',endDate:'2026-11-15',boarId:'boarA'},
+  {id:'ex2',type:'exposure',date:'2026-11-16',endDate:'2026-11-18',boarId:'boarB'},
+  {id:'old',type:'exposure',date:'2024-01-01',endDate:'2024-01-02',boarId:'historic'}
+ ]}}],litters:[{id:'l',damId:'sow',sireId:'boarA',birthDate:'2027-01-21',bornAlive:1}]};
+ const result=pups.generatePups(state,'l',[{id:'p',name:'Pup'}]);
+ assert.equal(result.valid,true);
+ assert.equal(result.created[0].sireId,'');
+ assert.equal(result.created[0].paternityStatus,'unresolved');
+ assert.deepEqual(result.created[0].potentialSireIds.slice().sort(),['boarA','boarB']);
+ assert.equal(state.animals.length,1);
+});
