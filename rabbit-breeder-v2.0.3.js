@@ -7,8 +7,12 @@
   "use strict";
   const text=value=>String(value==null?"":value).trim();
   const isRabbit=animal=>/^(rabbit|rabbits)$/i.test(text(animal?.species));
-  const knownDate=value=>/^\d{4}-\d{2}-\d{2}$/.test(text(value)) &&
-    new Date(text(value)+"T00:00:00Z").toISOString().slice(0,10)===text(value);
+  const knownDate=value=>{
+    const literal=text(value);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(literal))return false;
+    const parsed=new Date(literal+"T00:00:00Z");
+    return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0,10)===literal;
+  };
   const byUniqueId=animals=>{
     const result=new Map(),duplicates=new Set();
     for(const animal of animals||[]){
