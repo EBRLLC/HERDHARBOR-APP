@@ -73,7 +73,9 @@
 .hh-pedigree-photo {
   width: 42px;
   height: 42px;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
+  background: #fff;
   border: 1px solid var(--border);
   border-radius: 8px;
 }
