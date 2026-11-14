@@ -27,21 +27,33 @@
 
   function reconcile(state, engine) {
     if (!state || !Array.isArray(state.animals) || !engine?.possiblePairsForLocus ||
-        !engine?.crossLocus || !engine?.LOCI || !engine?.normalizeGenetics) {
+        !engine?.crossLocus || !(engine?.RABBIT_LOCI || engine?.LOCI) || !engine?.normalizeGenetics) {
       return { changed: 0, conflicts: 0, skipped: true };
     }
     const rabbits = state.animals.filter(isRabbit);
-    const byId = new Map(rabbits.map(a => [id(a.id), a]));
+    // Parentage is not trustworthy when an animal ID is empty or duplicated.
+    // Never let Map's last-write-wins behavior attach a kit to an arbitrary rabbit.
+    const counts = new Map();
+    for (const animal of rabbits) {
+      const animalId = id(animal.id);
+      if (animalId) counts.set(animalId, (counts.get(animalId) || 0) + 1);
+    }
+    const uniqueId = animalId => !!animalId && counts.get(animalId) === 1;
+    const safeRabbits = rabbits.filter(a => uniqueId(id(a.id)));
+    const byId = new Map(safeRabbits.map(a => [id(a.id), a]));
     const childrenByParent = new Map();
-    for (const child of rabbits) {
+    for (const child of safeRabbits) {
       for (const parentId of new Set([id(child.sireId), id(child.damId)])) {
-        if (!parentId || parentId === id(child.id) || !byId.has(parentId)) continue;
+        if (!uniqueId(parentId) || parentId === id(child.id) || !byId.has(parentId)) continue;
         if (!childrenByParent.has(parentId)) childrenByParent.set(parentId, []);
         childrenByParent.get(parentId).push(child);
       }
     }
     const base = new Map(rabbits.map(a => [id(a.id), stripAuto(a)]));
-    const loci = engine.EDITABLE_LOCI || Object.keys(engine.LOCI);
+    const locusDefinitions = engine.RABBIT_LOCI || engine.LOCI;
+    const loci = engine.RABBIT_LOCI
+      ? (engine.DISPLAY_LOCI || Object.keys(locusDefinitions))
+      : (engine.EDITABLE_LOCI || Object.keys(locusDefinitions));
     const optionsCache = new Map();
     const options = (animal, locus) => {
       if (!animal) return [];
@@ -57,7 +69,7 @@
       return pairs;
     };
     let changed = 0, conflicts = 0;
-    for (const animal of rabbits) {
+    for (const animal of safeRabbits) {
       const parents = [byId.get(id(animal.sireId)), byId.get(id(animal.damId))]
         .filter(p => p && id(p.id) !== id(animal.id));
       const children = childrenByParent.get(id(animal.id)) || [];
@@ -74,7 +86,7 @@
       const familyEvidence = [];
       const familyConflicts = [];
       for (const locus of loci) {
-        if (engine.LOCI[locus]?.predictionModel !== "mendelian") continue;
+        if (!engine.RABBIT_LOCI && locusDefinitions[locus]?.predictionModel !== "mendelian") continue;
         const original = updatedLoci[locus];
         const oldIsAuto = auto(original);
         const baseOptions = options(animal, locus);
