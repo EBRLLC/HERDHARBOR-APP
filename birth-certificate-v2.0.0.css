@@ -75,7 +75,9 @@
   width: 96px;
   height: 96px;
   flex: 0 0 auto;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
+  background: #fff;
   border: 1px solid #cdd5da;
   border-radius: 10px;
 }
