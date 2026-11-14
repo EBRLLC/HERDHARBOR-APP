@@ -51,6 +51,11 @@
       callName: trim(obj.callName, 160),
       registeredName: trim(obj.registeredName, 200),
       coatMarkings: trim(obj.coatMarkings, 160),
+      healthEvidence: (Array.isArray(obj.healthEvidence) ? obj.healthEvidence : []).slice(0, 60).map(item => ({
+        id: trim(item.id, 120), type: trim(item.type, 80), name: trim(item.name, 180), date: trim(item.date, 20),
+        reference: trim(item.reference, 300), result: trim(item.result, 300), issuer: trim(item.issuer, 180),
+        status: "breeder-entered-unverified"
+      })),
       preferredRegistrationId: trim(obj.preferredRegistrationId, 90),
       registrations: regs.map(registration).filter(r => r.registry || r.number),
       titles: titles.map(title).filter(t => t.abbreviation || t.fullLabel)
@@ -62,6 +67,11 @@
     if ((input?.registrations?.length || 0) > MAX_REGISTRATIONS) errors.push("Too many registrations.");
     if ((input?.titles?.length || 0) > MAX_TITLES) errors.push("Too many titles.");
     const identifiers = new Set();
+    if ((input?.healthEvidence?.length || 0) > 60) errors.push("Too many canine health evidence records.");
+    for (const record of value.healthEvidence) {
+      if (!record.type || !record.name || !record.reference || !/^\\d{4}-\\d{2}-\\d{2}$/.test(record.date))
+        errors.push("Dog health records require type, name, date, and evidence reference.");
+    }
     value.registrations.forEach((r, i) => {
       if (!r.registry || !r.number) errors.push("Registration " + (i + 1) + " requires both registry and number.");
       const key = canonical(r.registry) + "|" + canonical(r.number);
@@ -116,6 +126,20 @@
       '<input type="hidden" data-title-field="id" value="' + esc(t.id) + '">' +
       '<button type="button" class="button button-ghost button-small" data-remove-canine-row>Remove title</button></div>';
   }
+  function healthRow(item = {}) {
+    return '<div class="canine-entry" data-canine-health-row>' +
+      '<label>Type<select data-health-field="type">' +
+      ["screening","dna-test","veterinary-exam","vaccination"].map(type =>
+        '<option value="' + type + '"' + (item.type === type ? ' selected' : '') + '>' + type + '</option>').join("") +
+      '</select></label>' +
+      '<label>Test or record name<input data-health-field="name" maxlength="180" value="' + esc(item.name) + '"></label>' +
+      '<label>Date<input type="date" data-health-field="date" value="' + esc(item.date) + '"></label>' +
+      '<label>Document/evidence reference<input data-health-field="reference" maxlength="300" value="' + esc(item.reference) + '"></label>' +
+      '<label>Result (owner reported)<input data-health-field="result" maxlength="300" value="' + esc(item.result) + '"></label>' +
+      '<label>Issuing provider<input data-health-field="issuer" maxlength="180" value="' + esc(item.issuer) + '"></label>' +
+      '<input type="hidden" data-health-field="id" value="' + esc(item.id) + '">' +
+      '<button type="button" data-remove-canine-row class="button button-ghost button-small">Remove health record</button></div>';
+  }
   function editorHtml(animal = {}) {
     const meta = normalize(animal.canine);
     return '<section class="canine-identity-panel' + (isDog(animal) ? '' : ' hidden') + '" data-canine-panel' + (isDog(animal) ? '' : ' hidden') + '>' +
@@ -126,7 +150,11 @@
       '<h4>Registry records</h4><div data-canine-reg-list>' + meta.registrations.map(regRow).join("") + '</div>' +
       '<button type="button" class="button button-ghost button-small" data-add-canine-reg>+ Registration</button>' +
       '<h4>Earned titles</h4><div data-canine-title-list>' + meta.titles.map(titleRow).join("") + '</div>' +
-      '<button type="button" class="button button-ghost button-small" data-add-canine-title>+ Title</button></section>';
+      '<button type="button" class="button button-ghost button-small" data-add-canine-title>+ Title</button>' +
+      '<h4>Health screenings & test references (owner-entered)</h4>' +
+      '<p class="muted">Record the named test and evidence reference. These entries are not verified or certified.</p>' +
+      '<div data-canine-health-list>' + meta.healthEvidence.map(healthRow).join("") + '</div>' +
+      '<button type="button" class="button button-ghost button-small" data-add-canine-health>+ Health record</button></section>';
   }
   function bindEditor(form, speciesSelect) {
     const panel = form?.querySelector('[data-canine-panel]');
@@ -139,13 +167,17 @@
     };
     speciesSelect?.addEventListener("change", toggle);
     panel.addEventListener("click", (event) => {
-      const action = event.target.closest('[data-add-canine-reg],[data-add-canine-title],[data-remove-canine-row]');
+      const action = event.target.closest('[data-add-canine-reg],[data-add-canine-title],[data-add-canine-health],[data-remove-canine-row]');
       if (!action) return;
       if (action.hasAttribute("data-remove-canine-row")) action.closest(".canine-entry")?.remove();
       else if (action.hasAttribute("data-add-canine-reg")) {
         const list = panel.querySelector('[data-canine-reg-list]');
         if (list.children.length < MAX_REGISTRATIONS)
           list.insertAdjacentHTML("beforeend", regRow({id:"reg-" + Date.now() + "-" + list.children.length},list.children.length));
+      } else if (action.hasAttribute("data-add-canine-health")) {
+        const list = panel.querySelector('[data-canine-health-list]');
+        if (list.children.length < 60)
+          list.insertAdjacentHTML("beforeend", healthRow({ id:"health-" + Date.now() + "-" + list.children.length }));
       } else {
         const list = panel.querySelector('[data-canine-title-list]');
         if (list.children.length < MAX_TITLES)
@@ -170,7 +202,14 @@
         result[key] = field(row, "data-title-field", key);
       return result;
     });
+    const healthEvidence = [...panel.querySelectorAll('[data-canine-health-row]')].map(row => {
+      const result = {};
+      for (const key of ["id","type","name","date","reference","result","issuer"])
+        result[key] = field(row, "data-health-field", key);
+      return result;
+    });
     return validate({
+      healthEvidence,
       callName: panel.querySelector('[data-canine-call-name]')?.value,
       registeredName: panel.querySelector('[data-canine-registered-name]')?.value,
       coatMarkings: form?.querySelector?.('[data-hh-canine-markings-value]')?.value ?? previous?.coatMarkings ?? "",
