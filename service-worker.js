@@ -51,7 +51,7 @@ const REQUIRED_SHELL = [
   "./mobile-capture-v1.8.3.js?v=1",
   "./herdharbor-app-runtime.js?v=6",
   "./herdharbor-monitoring-config.js?v=2.0.2",
-  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.2"
+  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.2",
   "./canine-care-v2.0.3.js?v=1",
   "./canine-identity-audit-v2.0.3.js?v=1",
 ];
@@ -74,7 +74,6 @@ const RUNTIME_CACHE_PATHS = [
   "./cavy-reproduction-v2.0.3.js?v=1",
   "./cavy-offspring-v2.0.3.js?v=1",
   "./breeder-dashboard-v2.0.3.js?v=1",
-  "./rabbit-genetics-inheritance-v2.0.3.js?v=1",
   "./how-to/",
   "./icon-192.png",
   "./icon-512.png",
