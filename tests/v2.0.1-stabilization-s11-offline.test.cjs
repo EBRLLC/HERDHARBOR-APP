@@ -47,11 +47,12 @@ test("release identities agree across app, PWA, manifest and Android package",()
 });
 test("cold PWA install preloads every versioned canine script and style",async()=>{
   const canine=getCanineAssets();
-  assert.equal(canine.length,11,"Two additional 2.0.3 canine script assets must preload offline.");
+  assert.equal(canine.length,11,"Two 2.0.3 canine scripts extend the original shell.");
   const h=installHarness();await h.pending;
   for(const asset of canine){
     const expected="https://app.herdharbor.com/"+asset;
-    assert.ok(h.added.includes(expected),asset);
+    if (asset.includes("v2.0.3")) assert.ok(!h.added.includes(expected), "2.0.3 feature bundles remain runtime-cacheable: "+asset);
+    else assert.ok(h.added.includes(expected),asset);
   }
   assert.deepEqual(h.opened,["herdharbor-shell-v2.0.2-normalized-cloud-1"]);
 });
