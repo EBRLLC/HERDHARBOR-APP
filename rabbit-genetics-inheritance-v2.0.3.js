@@ -31,11 +31,20 @@
       return { changed: 0, conflicts: 0, skipped: true };
     }
     const rabbits = state.animals.filter(isRabbit);
-    const byId = new Map(rabbits.map(a => [id(a.id), a]));
+    // Parentage is not trustworthy when an animal ID is empty or duplicated.
+    // Never let Map's last-write-wins behavior attach a kit to an arbitrary rabbit.
+    const counts = new Map();
+    for (const animal of rabbits) {
+      const animalId = id(animal.id);
+      if (animalId) counts.set(animalId, (counts.get(animalId) || 0) + 1);
+    }
+    const uniqueId = animalId => !!animalId && counts.get(animalId) === 1;
+    const safeRabbits = rabbits.filter(a => uniqueId(id(a.id)));
+    const byId = new Map(safeRabbits.map(a => [id(a.id), a]));
     const childrenByParent = new Map();
-    for (const child of rabbits) {
+    for (const child of safeRabbits) {
       for (const parentId of new Set([id(child.sireId), id(child.damId)])) {
-        if (!parentId || parentId === id(child.id) || !byId.has(parentId)) continue;
+        if (!uniqueId(parentId) || parentId === id(child.id) || !byId.has(parentId)) continue;
         if (!childrenByParent.has(parentId)) childrenByParent.set(parentId, []);
         childrenByParent.get(parentId).push(child);
       }
@@ -57,7 +66,7 @@
       return pairs;
     };
     let changed = 0, conflicts = 0;
-    for (const animal of rabbits) {
+    for (const animal of safeRabbits) {
       const parents = [byId.get(id(animal.sireId)), byId.get(id(animal.damId))]
         .filter(p => p && id(p.id) !== id(animal.id));
       const children = childrenByParent.get(id(animal.id)) || [];
