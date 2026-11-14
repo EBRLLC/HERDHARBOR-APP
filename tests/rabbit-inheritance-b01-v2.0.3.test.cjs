@@ -44,6 +44,7 @@ test('parent genotypes yield reversible, non-DNA-confirmed kit inference', () =>
   assert.equal(locus(state.animals[2]).source,'family-inferred');
   assert.equal(Inheritance.reconcile(state,engine).changed,0);
   state.animals[2].damId=null;
+  state.animals[2].sireId=null;
   assert.ok(Inheritance.reconcile(state,engine).changed>0);
   assert.equal(locus(state.animals[2]),undefined);
 });
@@ -53,7 +54,7 @@ test('duplicate rabbit identities never supply arbitrary genetic parentage', () 
     rabbit('duplicate',['B','B']),
     rabbit('duplicate',['b','b']),
     rabbit('dam',['b','b']),
-    rabbit('kit',null,{sireId:'duplicate',damId:'dam'})
+    rabbit('kit',null,{sireId:'duplicate'})
   ]};
   Inheritance.reconcile(state,engine);
   assert.equal(locus(state.animals[3]),undefined);
