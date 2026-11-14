@@ -167,7 +167,7 @@
             ${deps.field("Tattoo / ear number", "tattoo", animal.tattoo)}
             ${deps.field("Registration number", "registrationNumber", animal.registrationNumber)}
             ${deps.field("Breeder name", "breeder", animal.breeder)}
-            ${deps.selectField("Species", "species", state.settings?.species || [], animal.species || "Rabbit", true)}
+            ${deps.selectField("Species", "species", [...new Set([...(state.settings?.species || []), "Cat", "Cavy"])], animal.species || "Rabbit", true)}
             <label class="cattle-ear-field ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "hidden"}" ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "hidden"}>Ear tag number<input name="earTagNumber" value="${esc(animal.earTagNumber || "")}" ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "disabled"}></label>
             <label class="cattle-ear-field ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "hidden"}" ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "hidden"}>Ear tag color<input name="earTagColor" value="${esc(animal.earTagColor || "")}" placeholder="Blue, yellow, green, or other" ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "disabled"}></label>
             ${deps.breedComboboxField(animal.species || "Rabbit", animal.breed)}
@@ -188,6 +188,7 @@
           </div>
           ${canineIdentity?.editorHtml?.(animal) || ""}
           ${root.HerdHarborFelineIdentity203?.editorHtml?.(animal) || ""}
+          ${root.HerdHarborCavyIdentity203?.editorHtml?.(animal) || ""}
           ${deps.textareaField("Notes", "notes", animal.notes)}
           <div class="modal-actions">
             ${id ? '<button type="button" class="button button-danger" id="delete-animal">Delete</button>' : ""}
@@ -254,6 +255,7 @@
       });
       canineIdentity?.bindEditor?.($("#animal-form"), speciesSelect);
       root.HerdHarborFelineIdentity203?.bindEditor?.($("#animal-form"), speciesSelect);
+      root.HerdHarborCavyIdentity203?.bindEditor?.($("#animal-form"), speciesSelect);
       root.HerdHarborCanineBreeds?.bindPicker?.($("#animal-form"), speciesSelect);
       root.HerdHarborCanineBreeds?.bindCoatColor?.($("#animal-form"), speciesSelect);
       root.HerdHarborCanineBreeds?.bindMarkings?.($("#animal-form"), speciesSelect);
@@ -327,6 +329,11 @@
           if (!checked.valid) { deps.toast(checked.errors.join(" "), "error"); return; }
           data.feline = checked.value;
         }
+        if (root.HerdHarborCavyIdentity203?.isCavy(data.species)) {
+          const checked = root.HerdHarborCavyIdentity203.readEditor(form, animal.cavy);
+          if (!checked.valid) { deps.toast(checked.errors.join(" "), "error"); return; }
+          data.cavy = checked.value;
+        }
         if (canineIdentity?.isDog(data.species)) {
           const checked = canineIdentity.readEditor(form, animal.canine);
           if (!checked?.valid) {
@@ -396,6 +403,8 @@
           if (leavingDog) delete nextAnimal.canine;
           if (root.HerdHarborFelineIdentity203?.isCat(currentAnimal) &&
               !root.HerdHarborFelineIdentity203?.isCat(nextAnimal)) delete nextAnimal.feline;
+          if (root.HerdHarborCavyIdentity203?.isCavy(currentAnimal) &&
+              !root.HerdHarborCavyIdentity203?.isCavy(nextAnimal)) delete nextAnimal.cavy;
           const nextAnimals = liveState.animals.map((item) => item.id === id ? nextAnimal : item);
           if (!deps.allowsAnimalTransition(liveState.animals, nextAnimals)) return;
           const original = { ...currentAnimal };
