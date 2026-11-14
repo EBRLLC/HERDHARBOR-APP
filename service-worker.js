@@ -51,12 +51,12 @@ const REQUIRED_SHELL = [
   "./mobile-capture-v1.8.3.js?v=1",
   "./herdharbor-app-runtime.js?v=6",
   "./herdharbor-monitoring-config.js?v=2.0.2",
-  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.2",
-  "./canine-care-v2.0.3.js?v=1",
-  "./canine-identity-audit-v2.0.3.js?v=1"
+  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.2"
 ];
 
 const RUNTIME_CACHE_PATHS = [
+  "./canine-care-v2.0.3.js?v=1",
+  "./canine-identity-audit-v2.0.3.js?v=1",
   "./pedigree-customization-v2.0.0.css?v=1",
   "./pedigree-renderer-v2.0.0.css?v=1",
   "./breeding-intelligence-core-v1.6.1.js?v=2.0.3-b01",
