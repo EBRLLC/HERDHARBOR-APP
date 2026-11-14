@@ -43,6 +43,20 @@ const REQUIRED_SHELL = [
   "./canine-whelping-workspace-v2.0.1.js?v=2",
   "./canine-reproductive-workspace-v2.0.1.js?v=2",
   "./canine-reproductive-workspace-v2.0.1.css?v=1",
+  "./animal-profile-runtime-v1.8.3.js?v=7",
+  "./breeding-litter-runtime-v1.8.3.js?v=1",
+  "./task-automation-v1.8.3.js?v=1",
+  "./health-runtime-v1.8.3.js?v=1",
+  "./task-runtime-v1.8.3.js?v=2",
+  "./sales-customer-runtime-v1.8.3.js?v=1",
+  "./production-reporting-runtime-v1.8.3.js?v=1",
+  "./mobile-capture-v1.8.3.js?v=1",
+  "./herdharbor-app-runtime.js?v=6",
+  "./herdharbor-monitoring-config.js?v=2.0.2",
+  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.2"
+];
+
+const RUNTIME_CACHE_PATHS = [
   "./breeding-intelligence-core-v1.6.1.js?v=2.0.3-b01",
   "./rabbit-genetics-engine-advanced-v1.6.1.js?v=2.0.3-b01",
   "./rabbit-genetics-engine-compat-v1.6.1.js?v=2.0.3-b01",
@@ -60,20 +74,6 @@ const REQUIRED_SHELL = [
   "./cavy-reproduction-v2.0.3.js?v=1",
   "./cavy-offspring-v2.0.3.js?v=1",
   "./breeder-dashboard-v2.0.3.js?v=1",
-  "./animal-profile-runtime-v1.8.3.js?v=7",
-  "./breeding-litter-runtime-v1.8.3.js?v=1",
-  "./task-automation-v1.8.3.js?v=1",
-  "./health-runtime-v1.8.3.js?v=1",
-  "./task-runtime-v1.8.3.js?v=2",
-  "./sales-customer-runtime-v1.8.3.js?v=1",
-  "./production-reporting-runtime-v1.8.3.js?v=1",
-  "./mobile-capture-v1.8.3.js?v=1",
-  "./herdharbor-app-runtime.js?v=6",
-  "./herdharbor-monitoring-config.js?v=2.0.2",
-  "./vendor/herdharbor-monitoring-v1.6.1.min.js?v=2.0.2"
-];
-
-const RUNTIME_CACHE_PATHS = [
   "./rabbit-genetics-inheritance-v2.0.3.js?v=1",
   "./how-to/",
   "./icon-192.png",
