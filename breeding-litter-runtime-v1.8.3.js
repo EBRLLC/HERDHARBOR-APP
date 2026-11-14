@@ -467,8 +467,13 @@
       const note = $("#breeding-schedule-note");
       const calculateDates = (force = false) => {
         const schedule = breedingSchedule(femaleInput.value, breedingDateInput.value);
-        if (!schedule.rule || !schedule.estimated) {
-          note.textContent = schedule.rule && !schedule.estimated
+        if (!schedule.rule || !breedingDateInput.value || schedule.estimated === false) {
+          if (force && !breedingDateInput.value) {
+            checkDateInput.value = "";
+            prepareInput.value = "";
+            dueDateInput.value = "";
+          }
+          note.textContent = schedule.rule && (!breedingDateInput.value || schedule.estimated === false)
             ? "Breeding date is unknown. No pregnancy or due date has been inferred."
             : schedule.species
             ? `${schedule.species} does not have a built-in gestation schedule. Enter the dates supplied by your veterinarian or breeding plan.`
