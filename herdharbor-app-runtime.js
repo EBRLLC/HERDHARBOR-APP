@@ -319,7 +319,7 @@
   function prepareRabbitInheritance(value) {
     const inheritance = window.HerdHarborRabbitInheritance;
     const genetics = window.HerdHarborBreedingIntelligenceCore;
-    if (!inheritance?.reconcile || !genetics?.possiblePairsForLocus || !genetics?.crossLocus || !genetics?.LOCI) return value;
+    if (!inheritance?.reconcile || !genetics?.possiblePairsForLocus || !genetics?.crossLocus || !(genetics?.RABBIT_LOCI || genetics?.LOCI)) return value;
     const input = rabbitInheritanceInput(value);
     if (lastInheritanceEngine === genetics && input === lastInheritanceInput) return value;
     const candidate = { ...value, animals: value.animals.map(animal =>
