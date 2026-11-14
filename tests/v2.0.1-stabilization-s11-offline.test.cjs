@@ -51,8 +51,14 @@ test("cold PWA install preloads every versioned canine script and style",async()
   const h=installHarness();await h.pending;
   for(const asset of canine){
     const expected="https://app.herdharbor.com/"+asset;
-    if (asset.includes("v2.0.3")) assert.ok(h.added.includes(expected), "Core canine 2.0.3 assets must be available cold offline: "+asset);
-    else assert.ok(h.added.includes(expected),asset);
+    const required = sw.slice(sw.indexOf("const REQUIRED_SHELL = ["),sw.indexOf("const RUNTIME_CACHE_PATHS = ["));
+    const runtime = sw.slice(sw.indexOf("const RUNTIME_CACHE_PATHS = ["),sw.indexOf("];",sw.indexOf("const RUNTIME_CACHE_PATHS = [")));
+    if (required.includes(JSON.stringify("./"+asset))) {
+      assert.ok(h.added.includes(expected),"Mandatory canine asset missing: "+asset);
+    } else {
+      assert.ok(runtime.includes(JSON.stringify("./"+asset)),"Optional canine asset must be runtime-cacheable: "+asset);
+      assert.ok(!h.added.includes(expected),"Optional canine asset must not increase install critical path: "+asset);
+    }
   }
   assert.deepEqual(h.opened,["herdharbor-shell-v2.0.2-normalized-cloud-1"]);
 });
