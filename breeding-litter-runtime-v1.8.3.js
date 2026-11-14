@@ -593,6 +593,35 @@
       });
     }
 
+    function openKittenCare(litterId) {
+      const feline = root?.HerdHarborFelineKittens203;
+      const litter = stateNow().litters.find(row => row.id === litterId);
+      const kittens = offspringForLitter(litter).filter(item => root?.HerdHarborFelineIdentity203?.isCat(item));
+      if (!feline?.addObservation || !kittens.length) return toast("Create individual kitten records first.", "error");
+      openModal("Kitten development & health", `
+        <form id="hh-kitten-care-form">
+          <label>Kitten<select name="kittenId">${kittens.map(kitten=>`<option value="${esc(kitten.id)}">${esc(kitten.name||kitten.id)}</option>`).join("")}</select></label>
+          <label>Record type<select name="kind"><option value="weight">Weight</option><option value="development">Development</option><option value="health">Health</option><option value="veterinary">Veterinary</option><option value="coat">Coat development</option></select></label>
+          ${field("Date","date",todayISO(),true,"date")}
+          ${field("Weight (grams)","grams","",false,"number")}
+          ${textareaField("Notes","notes","")}
+          <div class="modal-actions"><button id="hh-kitten-care-close" type="button">Cancel</button><button type="submit">Save observation</button></div>
+        </form>`, "Birth-linked kitten records");
+      const form = $("#hh-kitten-care-form");
+      $("#hh-kitten-care-close")?.addEventListener("click",closeModal);
+      form?.addEventListener("submit",event=>{
+        event.preventDefault();
+        const data=Object.fromEntries(new FormData(form));
+        const proposal=feline.addObservation(stateNow(),data.kittenId,data);
+        if(!proposal.valid)return toast(proposal.issues.join(" "), "error");
+        const committed=persistMutation("Kitten observation saved.",()=>{
+          stateNow().animals=proposal.state.animals;
+        });
+        if(!committed)return;
+        closeModal();renderCurrentView();
+      });
+    }
+
     function renderLitters() {
       const snapshot = stateNow();
       const rows = snapshot.litters.slice().sort((left, right) => (right.birthDate || "").localeCompare(left.birthDate || ""));
@@ -638,6 +667,7 @@
             <div class="meta">Expected weaning: ${formatDate(litter.expectedWeanDate)}</div>
             <div class="animal-card-footer">
               <button class="button button-ghost button-small" data-create-offspring="${litter.id}">${litter.canineWhelping ? "Manage puppies" : offspringCount ? "Add offspring" : "Create offspring"}</button>
+              <button class="button button-ghost button-small" data-kitten-care="${litter.id}" ${!stateNow().animals.some(animal => animal.id === litter.damId && root?.HerdHarborFelineIdentity203?.isCat(animal)) ? "hidden" : ""}>Kitten care</button>
               <button class="button button-ghost button-small" data-rabbit-kit-growth="${litter.id}" ${!stateNow().animals.some(animal => animal.id === litter.damId && root?.HerdHarborRabbitBreeder203?.isRabbit(animal)) ? "hidden" : ""}>Kit growth</button>
               <button class="button button-ghost button-small" data-edit-litter="${litter.id}">Edit</button>
             </div>
@@ -645,6 +675,8 @@
         }).join("")}</div>` : emptyState("No births recorded.", "Record the result of a breeding when offspring arrive.")}`;
   
       $("#add-litter").addEventListener("click", () => openLitterForm());
+      $('[data-kitten-care]', $("#view-litters")).forEach(button =>
+        button.addEventListener("click", () => openKittenCare(button.dataset.kittenCare)));
       $('[data-rabbit-kit-growth]', $("#view-litters")).forEach(button =>
         button.addEventListener("click", () => openRabbitKitGrowth(button.dataset.rabbitKitGrowth)));
       $('[data-edit-litter]', $("#view-litters")).forEach((button) =>
@@ -902,6 +934,20 @@
             updatedAt: now
           };
           created.push(animal);
+        }
+        if (root?.HerdHarborFelineKittens203 && root?.HerdHarborFelineIdentity203?.isCat(dam)) {
+          const feline = root.HerdHarborFelineKittens203.createKittens(stateNow(), litterId,
+            created.map(animal => ({ id: animal.id, name: animal.name, tag: animal.tag,
+              sex: animal.sex, breed: animal.breed, color: animal.color })));
+          if (!feline.valid) return toast(feline.issues.join(" "), "error");
+          if (!allowsAnimalTransition(stateNow().animals, feline.state.animals)) return;
+          const committed = persistMutation(`${feline.created.length} kitten records added.`, () => {
+            stateNow().animals = feline.state.animals;
+            stateNow().litters = feline.state.litters;
+            recordActivity(`Created ${feline.created.length} birth-linked kitten profiles.`, "animal");
+          });
+          if (!committed) return;
+          closeModal();renderCurrentView();return;
         }
         if (!allowsAnimalTransition(stateNow().animals, [...stateNow().animals, ...created])) return;
         const committed = persistMutation(`${created.length} offspring record${created.length === 1 ? "" : "s"} created with parent and pedigree links.`, () => {
