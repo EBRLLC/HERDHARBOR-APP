@@ -92,3 +92,33 @@ test('installed shell loads inheritance before application runtime and runtime i
   assert.match(runtime,/inheritance\.reconcile\(candidate, genetics\)/);
   assert.match(runtime,/canonicalStateStore\.commit\(nextState/);
 });
+
+test('installed production genetics engine performs reversible inheritance with real allele normalization', () => {
+  const realEngine = require('../rabbit-genetics-runtime-v1.6.1.js');
+  const state = {animals: [
+    rabbit('real-sire', ['B','B']),
+    rabbit('real-dam', ['b','b']),
+    rabbit('real-kit', null, {sireId:'real-sire',damId:'real-dam'})
+  ]};
+  assert.equal(typeof realEngine.possiblePairsForLocus, 'function');
+  assert.equal(typeof realEngine.crossLocus, 'function');
+  assert.ok(Inheritance.reconcile(state, realEngine).changed > 0);
+  assert.deepEqual(locus(state.animals[2]).alleles, ['B','b']);
+  assert.equal(locus(state.animals[2]).source, 'family-inferred');
+  assert.equal(Inheritance.reconcile(state, realEngine).changed, 0);
+  state.animals[2].sireId = null;
+  state.animals[2].damId = null;
+  assert.ok(Inheritance.reconcile(state, realEngine).changed > 0);
+  assert.equal(locus(state.animals[2]), undefined);
+});
+
+test('browser script dependencies are ordered before app execution', () => {
+  const index = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
+  const advanced = index.indexOf('rabbit-genetics-engine-advanced-v1.6.1.js');
+  const compat = index.indexOf('rabbit-genetics-engine-compat-v1.6.1.js');
+  const runtimeEngine = index.indexOf('rabbit-genetics-runtime-v1.6.1.js');
+  const inheritance = index.indexOf('rabbit-genetics-inheritance-v2.0.3.js');
+  const app = index.indexOf('herdharbor-app-runtime.js');
+  assert.ok(advanced >= 0 && compat > advanced && runtimeEngine > compat);
+  assert.ok(inheritance > runtimeEngine && app > inheritance);
+});
