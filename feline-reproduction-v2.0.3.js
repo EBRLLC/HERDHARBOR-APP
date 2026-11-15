@@ -22,6 +22,7 @@ function appendEvent(state,queenId,event,options={}){
  const kind=clean(event?.kind),date=clean(event?.date);
  if(!["heat","mating","pregnancy-assessment","outcome"].includes(kind))errors.push("Unknown feline reproductive event.");
  if(!validDate(date))errors.push("Enter a valid date.");
+ if(clean(event?.followUpDate)&&!validDate(event.followUpDate))errors.push("Enter a valid follow-up date or leave it blank.");
  if(kind==="mating"&&!clean(event?.sireId)&&!clean(event?.externalSireName))errors.push("Record an owned or external sire; do not invent parentage.");
  if(kind==="pregnancy-assessment"&&!["positive","negative","inconclusive","not-assessed"].includes(clean(event?.result)))errors.push("A pregnancy assessment result is required.");
  if(errors.length)return {valid:false,issues:errors,state};
@@ -33,7 +34,7 @@ function appendEvent(state,queenId,event,options={}){
  const item={id,kind,date,notes:clean(event.notes),sireId:kind==="mating"?clean(event.sireId):"",
    externalSireName:kind==="mating"?clean(event.externalSireName):"",
    result:kind==="pregnancy-assessment"?clean(event.result):"",
-   evidenceRef:clean(event.evidenceRef),source:"breeder-entered"};
+   evidenceRef:clean(event.evidenceRef),followUpDate:clean(event.followUpDate),source:"breeder-entered"};
  const prior=events.find(x=>x.id===id);
  if(prior){
   if(prior.kind!==item.kind||prior.date!==item.date)return {valid:false,issues:["Event identity conflict."],state};
@@ -75,7 +76,7 @@ function openForAnimal(id){
  '<label>Owned sire ID (mating only)<input name="sireId" placeholder="Existing male Cat ID"></label>'+
  '<label>External sire (mating only)<input name="externalSireName"></label>'+
  '<label>Assessment<select name="result"><option value="not-assessed">Not assessed</option><option value="positive">Positive</option><option value="negative">Negative</option><option value="inconclusive">Inconclusive</option></select></label>'+
- '<label>Evidence reference<input name="evidenceRef"></label><label>Notes<textarea name="notes"></textarea></label>'+
+ '<label>Breeding follow-up date<input type="date" name="followUpDate"></label><label>Evidence reference<input name="evidenceRef"></label><label>Notes<textarea name="notes"></textarea></label>'+
  '<p id="hh-feline-repro-error" role="alert"></p>'+
  '<button type="submit">Save event</button><button type="button" id="hh-feline-repro-close">Close</button></form>';
  overlay.appendChild(box);root.document.body.appendChild(overlay);
