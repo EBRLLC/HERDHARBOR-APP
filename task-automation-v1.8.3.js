@@ -135,10 +135,46 @@
     };
   }
 
+  function reproductiveDefinitions(state = {}) {
+    const definitions = [];
+    const historical = new Set(["sold", "deceased", "archived", "ancestor only"]);
+    for (const animal of array(state, "animals")) {
+      const species = clean(animal?.species).toLowerCase();
+      const feline = ["cat", "cats", "feline"].includes(species);
+      const cavy = ["cavy", "cavies", "guinea pig", "guinea pigs"].includes(species);
+      if (!feline && !cavy) continue;
+      const rows = feline ? animal.felineReproduction?.events : animal.cavyReproduction?.records;
+      const sourceType = feline ? "feline-reproduction" : "cavy-reproduction";
+      const reminderType = feline ? "feline-reproductive-follow-up" : "cavy-reproductive-follow-up";
+      for (const row of Array.isArray(rows) ? rows : []) {
+        if (!clean(row?.id)) continue;
+        const sourceRecordId = clean(animal.id) + ":" + clean(row.id);
+        const id = workflowTaskId("repro", sourceRecordId, reminderType);
+        const existing = array(state, "tasks").some(task => task.automationManaged && task.id === id);
+        // Historical animals cannot acquire new proactive tasks, but existing
+        // managed tasks are retained for safe completion/reschedule reconciliation.
+        if (historical.has(clean(animal.status).toLowerCase()) && !existing) continue;
+        const kind = clean(row.kind || row.type) || "record";
+        definitions.push({
+          id, title: (feline ? "Cat" : "Cavy") + " breeding follow-up: " + clean(animal.name || "Animal"),
+          category: "Breeding", dueDate: clean(row.followUpDate),
+          animalId: clean(animal.id),
+          notes: "Breeder-entered follow-up for " + kind + "; no pregnancy confirmation inferred.",
+          sourceType, sourceRecordId, reminderType,
+          recurrence: "None", recurrenceDays: "",
+          completed: clean(row.status).toLowerCase() === "cancelled" ||
+            clean(row.status).toLowerCase() === "completed"
+        });
+      }
+    }
+    return definitions;
+  }
+
   function deriveTaskDefinitions(state = {}) {
     const definitions = [];
     array(state, "breedings").forEach((record) => definitions.push(...breedingDefinitions(state, record)));
     array(state, "litters").forEach((record) => definitions.push(...litterDefinitions(state, record)));
+    definitions.push(...reproductiveDefinitions(state));
     array(state, "health").forEach((record) => {
       const definition = healthDefinition(state, record);
       if (definition) definitions.push(definition);
@@ -160,6 +196,7 @@
     breedingDefinitions,
     litterDefinitions,
     healthDefinition,
+    reproductiveDefinitions,
     deriveTaskDefinitions
   });
 });
