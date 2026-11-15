@@ -61,6 +61,12 @@
       titles: titles.map(title).filter(t => t.abbreviation || t.fullLabel)
     };
   }
+  function validHealthDate(value) {
+    const date=trim(value,20);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return false;
+    const parsed=new Date(date+"T00:00:00Z");
+    return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===date;
+  }
   function validate(input = {}) {
     const value = normalize(input);
     const errors = [];
@@ -69,7 +75,7 @@
     const identifiers = new Set();
     if ((input?.healthEvidence?.length || 0) > 60) errors.push("Too many canine health evidence records.");
     for (const record of value.healthEvidence) {
-      if (!record.type || !record.name || !record.reference || !/^\\d{4}-\\d{2}-\\d{2}$/.test(record.date))
+      if (!record.type || !record.name || !record.reference || !validHealthDate(record.date))
         errors.push("Dog health records require type, name, date, and evidence reference.");
     }
     value.registrations.forEach((r, i) => {
