@@ -1,0 +1,20 @@
+{
+  "product": "HerdHarbor",
+  "release": "2.0.3",
+  "candidate": "v2.0.3-rc1",
+  "status": "prepared-not-activated",
+  "currentInstalledIdentity": "2.0.2",
+  "proposedWeb": {
+    "version": "2.0.3",
+    "buildId": "v2.0.3-rc1",
+    "cacheName": "herdharbor-shell-v2.0.3-rc1"
+  },
+  "requiredPreActivation": [
+    "All 2.0.2 release safety regressions retained and migrated to independently verified version-aware assertions",
+    "Real staged 2.0.2-to-2.0.3 PWA update with unsynced edits and multiple tabs",
+    "Isolated Supabase Auth/REST/RPC write/read-back and RLS account isolation",
+    "Android/TWA 2.0.3 compatibility/metadata acceptance",
+    "Owner separate merge/deployment authorization"
+  ],
+  "productionChanged": false
+}
