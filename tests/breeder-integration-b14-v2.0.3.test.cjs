@@ -249,3 +249,22 @@ test('explicit sire attribution remains qualified and rejects cross-species anim
  const bad=kittens.createKittens({...state,litters:[{...state.litters[0],potentialSireIds:[]}]},'l',[{id:'kit',name:'Kitten',confirmedSireId:'rabbit'}]);
  assert.equal(bad.valid,false);
 });
+test('Cat and Cavy birth certificates distinguish possible, attributed and evidence-recorded sires',()=>{
+ const cert=require('../birth-certificate-v2.0.0.js');
+ const possible=cert.certificateBodyHtml({animal:{name:'Kit',species:'Cat',potentialSireIds:['a','b']}});
+ assert.match(possible,/Possible sires \(unverified\)/);
+ assert.match(possible,/2 recorded; identity unresolved/);
+ const attributed=cert.certificateBodyHtml({animal:{name:'Pup',species:'Cavy',sireId:'boar',paternityStatus:'breeder-attributed'},sire:{name:'Boar'}});
+ assert.match(attributed,/Sire \(attributed \/ not independently verified\)/);
+ const documented=cert.certificateBodyHtml({animal:{name:'Pup',species:'Cavy',sireId:'boar',paternityStatus:'documented-parentage'},sire:{name:'Boar'}});
+ assert.doesNotMatch(documented,/not independently verified/);
+});
+test('pedigree node cards disclose breeder-attributed and unverified sire provenance',()=>{
+ const print=require('../standard-pedigree-print-v2.0.0.js');
+ const config={rootFields:['name'],ancestorFields:['name'],unknownDisplay:'label'};
+ const opts={subject:{species:'Cat'},speciesIcon:()=>'',formatDate:x=>x};
+ const card=print.cardHtml({generation:0,animal:{id:'kit',name:'Kit',species:'Cat',sireId:'tom',paternityStatus:'breeder-attributed'}},config,opts);
+ assert.match(card,/breeder-attributed; not independently verified/);
+ const historical=print.cardHtml({generation:0,animal:{id:'old',name:'Older',species:'Cavy',sireId:'boar'}},config,opts);
+ assert.match(historical,/historical record; verification not documented/);
+});
