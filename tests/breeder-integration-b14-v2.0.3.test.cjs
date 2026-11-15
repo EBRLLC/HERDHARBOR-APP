@@ -218,3 +218,34 @@ test('sow exposure history in birth window retains multiple possible boars and e
  assert.deepEqual(result.created[0].potentialSireIds.slice().sort(),['boarA','boarB']);
  assert.equal(state.animals.length,1);
 });
+
+test('2.0.3 species catalogs include Cat and Cavy and migrate built-in aliases without removing custom species',()=>{
+ const src=fs.readFileSync(path.join(base,'herdharbor-app-runtime.js'),'utf8');
+ assert.match(src,/species: \["Rabbit"[^\n]+"Cat", "Cavy"/);
+ assert.match(src,/\["Dog", "Horse", "Cat", "Cavy"\]\.forEach/);
+ assert.match(src,/speciesKeys\.has\(key\)/);
+ assert.match(src,/guinea\[ -\]\?pigs/);
+});
+test('one recorded candidate never becomes a proven kitten or cavy sire',()=>{
+ const cat={animals:[{id:'queen',species:'Cat',sex:'Female'}],litters:[{id:'lcat',damId:'queen',sireId:'tom',potentialSireIds:['tom'],birthDate:'2026-11-14',bornAlive:1}]};
+ const kit=kittens.createKittens(cat,'lcat',[{id:'kit-single',name:'Single sire kitten'}]);
+ assert.equal(kit.valid,true);
+ assert.equal(kit.created[0].sireId,'');
+ assert.deepEqual(kit.created[0].potentialSireIds,['tom']);
+ assert.equal(kit.created[0].paternityStatus,'recorded-unverified');
+ const cavyState={animals:[{id:'sow',species:'Cavy',sex:'Female'}],litters:[{id:'lcavy',damId:'sow',sireId:'boar',potentialSireIds:['boar'],birthDate:'2026-11-14',bornAlive:1}]};
+ const pup=pups.generatePups(cavyState,'lcavy',[{id:'pup-single',name:'Single sire pup'}]);
+ assert.equal(pup.valid,true);
+ assert.equal(pup.created[0].sireId,'');
+ assert.deepEqual(pup.created[0].potentialSireIds,['boar']);
+ assert.equal(pup.created[0].paternityStatus,'recorded-unverified');
+});
+test('explicit sire attribution remains qualified and rejects cross-species animals',()=>{
+ const state={animals:[{id:'queen',species:'Cat',sex:'Female'},{id:'tom',species:'Cat',sex:'Male'},{id:'rabbit',species:'Rabbit',sex:'Male'}],litters:[{id:'l',damId:'queen',birthDate:'2026-11-14',bornAlive:1,potentialSireIds:['tom']}]};
+ const entered=kittens.createKittens(state,'l',[{id:'kit',name:'Kitten',confirmedSireId:'tom',parentageEvidenceRef:'owner statement'}]);
+ assert.equal(entered.valid,true);assert.equal(entered.created[0].sireId,'tom');
+ assert.equal(entered.created[0].paternityStatus,'breeder-attributed');
+ assert.equal(entered.created[0].paternityEvidence.basis,'breeder-attributed');
+ const bad=kittens.createKittens({...state,litters:[{...state.litters[0],potentialSireIds:[]}]},'l',[{id:'kit',name:'Kitten',confirmedSireId:'rabbit'}]);
+ assert.equal(bad.valid,false);
+});
