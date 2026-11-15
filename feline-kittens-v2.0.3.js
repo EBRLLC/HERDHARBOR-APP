@@ -29,6 +29,8 @@ function createKittens(state,litterId,items){
   if(confirmedSire&&existing.filter(a=>a.id===confirmedSire).length!==1)issues.push("Attributed sire must have one unambiguous internal animal record.");
   const attributed=existing.find(a=>a.id===confirmedSire);
   if(attributed&&(!isCat(attributed)||attributed.id===dam.id))issues.push("Attributed sire must be a distinct Cat.");
+  if(attributed&&txt(attributed.sex).toLowerCase()!=="male")issues.push("Attributed sire must be recorded as male.");
+  if(attributed&&txt(dam.ownerId)&&txt(attributed.ownerId)&&txt(dam.ownerId)!==txt(attributed.ownerId))issues.push("Attributed sire belongs to another recorded owner.");
   created.push({id,name:txt(item.name),species:"Cat",breed:txt(item.breed)||dam.breed||"",sex:item.sex||"Unknown",
    color:txt(item.color),tag:txt(item.tag),status:"Growing",dob:litter.birthDate,
    damId:dam.id,sireId:confirmedSire,
