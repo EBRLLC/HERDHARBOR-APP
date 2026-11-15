@@ -36,6 +36,8 @@ function generatePups(state,litterId,entries){
    if(boarId&&animals.filter(a=>a.id===boarId).length!==1)issues.push("Attributed boar must have a unique internal record.");
    const attributed=animals.find(a=>a.id===boarId);
    if(attributed&&(!isCavy(attributed)||attributed.id===sow.id))issues.push("Attributed boar must be a distinct Cavy.");
+   if(attributed&&txt(attributed.sex).toLowerCase()!=="male")issues.push("Attributed boar must be recorded as male.");
+   if(attributed&&txt(sow.ownerId)&&txt(attributed.ownerId)&&txt(sow.ownerId)!==txt(attributed.ownerId))issues.push("Attributed boar belongs to another recorded owner.");
   born.push({id,name:txt(entry.name),species:"Cavy",sex:entry.sex||"Unknown",
    breed:txt(entry.breed)||sow.breed||"",color:txt(entry.color),tag:txt(entry.tag),
    dob:litter.birthDate,status:"Growing",sireId:boarId,damId:sow.id,sourceBirthId:litterId,

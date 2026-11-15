@@ -36,3 +36,17 @@ test('live UI links pup growth and existing litter creation with collection sele
  assert.match(runtime,/data-cavy-pup-care/);
  assert.match(runtime,/\$\$\('\[data-edit-litter\]'/);
 });
+
+test('explicitly attributed cavy boar must be male and match sow owner',()=>{
+ const state=initial();state.animals[0].ownerId='farm-a';
+ const boar={id:'b1',species:'Cavy',sex:'Female',ownerId:'farm-a'};
+ state.animals.push(boar);
+ const create=()=>pup.generatePups(state,'l1',[{id:'p',name:'Pup',confirmedSireId:'b1'}]);
+ assert.equal(create().valid,false,'female boar must fail');
+ boar.sex='Male';boar.ownerId='farm-b';
+ assert.equal(create().valid,false,'cross-owner boar must fail');
+ boar.ownerId='farm-a';
+ const result=create();assert.equal(result.valid,true);
+ assert.equal(result.created[0].sireId,'b1');
+ assert.equal(result.created[0].paternityStatus,'breeder-attributed');
+});
