@@ -77,6 +77,22 @@
     return clean(node?.relation) || "Ancestor";
   }
 
+  function parentageQualifier(animal) {
+    if (!animal) return "";
+    const species = clean(animal.species).toLowerCase();
+    if (!["cat", "cats", "feline", "cavy", "cavies", "guinea pig", "guinea pigs"].includes(species)) return "";
+    const status = clean(animal.paternityStatus).toLowerCase();
+    if (status === "dna-confirmed") return "Sire: DNA-confirmed (breeder-recorded evidence)";
+    if (status === "documented-parentage") return "Sire: documented (breeder-recorded evidence)";
+    if (status === "breeder-attributed") return "Sire: breeder-attributed; not independently verified";
+    if (status === "recorded-unverified" || status === "unresolved" ||
+        status === "unresolved-multiple-sires") return "Sire: potential, not confirmed";
+    if (clean(animal.sireId)) return "Sire: historical record; verification not documented";
+    if (Array.isArray(animal.potentialSireIds) && animal.potentialSireIds.length)
+      return "Sire: unresolved possible candidates";
+    return "Sire: unknown";
+  }
+
   function cardHtml(node, config, options = {}) {
     const animal = node?.animal || null;
     const subject = options.subject || null;
@@ -99,6 +115,7 @@
         <div class="node-title"><span class="species-mark">${options.speciesIcon(animal?.species || subject?.species)}</span><div><span class="relation">${escapeHtml(relation)}</span><strong>${escapeHtml(title)}</strong></div></div>
         ${showSex ? `<div class="sex-mark"><span>${symbol}</span><small>${label}</small></div>` : ""}
       </div>
+      ${parentageQualifier(animal) ? `<div class="node-parentage-note">${escapeHtml(parentageQualifier(animal))}</div>` : ""}
       ${rows.length ? `<div class="node-details">${rows.map(([fieldLabel, value, field]) => {
         const protectedValue = ["color", "prefix", "genotype"].includes(field) ? " pedigree-protected-value" : "";
         return `<div data-field="${escapeHtml(field)}"><b>${escapeHtml(fieldLabel)}:</b><span class="${protectedValue.trim()}" title="${escapeHtml(value)}">${escapeHtml(value)}</span></div>`;
@@ -205,6 +222,7 @@
       }
       .pedigree-node { min-width: 0; align-self: center; padding: 2px 0; }
       .pedigree-node-card { width: 100%; padding: 6px 7px; background: #fff; border: 1px solid #c9d0d5; border-radius: 5px; box-shadow: 0 1px 1px rgba(20,31,39,.035); }
+      .node-parentage-note { font-size: 7px; line-height: 1.12; color: #5d4326; margin-top: 2px; overflow-wrap: anywhere; }
       .pedigree-node-card.subject-card { border-color: #7d8991; border-left: 3px solid ${accent}; }
       .pedigree-node-card.unknown { color: #747d84; background: #fafbfb; border-style: dashed; }
       .node-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; padding-bottom: 4px; border-bottom: 1px solid #eef0f2; }
