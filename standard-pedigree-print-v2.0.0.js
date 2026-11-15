@@ -192,7 +192,7 @@
       .print-subject strong { display: block; color: #242b30; font-size: 14px; }
       .print-subject small { display: block; margin-top: 3px; color: #747d84; font-size: 8px; }
       .print-animal-photo { width: 52px; height: 52px; display: grid; place-items: center; overflow: hidden; color: #fff; background: #40505a; border: 1px solid #cfd5d9; border-radius: 6px; font-size: 24px; }
-      .print-animal-photo img { width: 100%; height: 100%; object-fit: cover; }
+      .print-animal-photo img { width: 100%; height: 100%; object-fit: contain; object-position: center; background: #fff; }
 
       .pedigree-tree {
         flex: 1 1 auto;
