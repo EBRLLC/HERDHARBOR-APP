@@ -35,15 +35,15 @@ function installHarness(failAsset=""){
 }
 test("release identities agree across app, PWA, manifest and Android package",()=>{
   assert.equal(pkg.version,"2.0.2");
-  assert.equal(manifest.version,"2.0.3");
+  assert.equal(manifest.version,"2.0.2");
   assert.equal(twa.appVersion,"2.0.2");
   assert.equal(twa.appVersionCode,21);
-  assert.match(build,/version:\s*"2\.0\.3"/);
-  assert.match(build,/buildId:\s*"v2\.0\.3-rc1"/);
-  assert.match(read("pwa.js"),/const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.3"/);
-  assert.match(index,/manifest\.json\?v=2\.0\.3/);
-  assert.match(index,/herdharbor-build\.js\?v=2\.0\.3/);
-  assert.match(sw,/const CACHE_NAME = "herdharbor-shell-v2\.0\.3-rc1"/);
+  assert.match(build,/version:\s*"2\.0\.2"/);
+  assert.match(build,/buildId:\s*"v2\.0\.2-release-1"/);
+  assert.match(read("pwa.js"),/const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.2"/);
+  assert.match(index,/manifest\.json\?v=2\.0\.2/);
+  assert.match(index,/herdharbor-build\.js\?v=2\.0\.2/);
+  assert.match(sw,/const CACHE_NAME = "herdharbor-shell-v2\.0\.2-normalized-cloud-1"/);
 });
 test("cold PWA install preloads every versioned canine script and style",async()=>{
   const canine=getCanineAssets();
@@ -60,7 +60,7 @@ test("cold PWA install preloads every versioned canine script and style",async()
       assert.ok(!h.added.includes(expected),"Optional canine asset must not increase install critical path: "+asset);
     }
   }
-  assert.deepEqual(h.opened,["herdharbor-shell-v2.0.3-rc1"]);
+  assert.deepEqual(h.opened,["herdharbor-shell-v2.0.2-normalized-cloud-1"]);
 });
 test("incomplete canine asset download rejects PWA shell installation",async()=>{
   const h=installHarness("canine-pedigree-print-v2.0.1.js");

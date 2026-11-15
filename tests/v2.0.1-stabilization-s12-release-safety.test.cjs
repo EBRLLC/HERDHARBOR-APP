@@ -101,8 +101,8 @@ test("essential startup identity agrees with the bounded offline shell, while do
     "cloud-normalized-upgrade-v2.0.1.js?v=2",
     "herdharbor-cloud.js?v=48",
     "cloud-sync-rollout-runtime-v1.8.4.js?v=6",
-    "herdharbor-app-runtime.js?v=7",
-    "animal-profile-runtime-v1.8.3.js?v=8",
+    "herdharbor-app-runtime.js?v=6",
+    "animal-profile-runtime-v1.8.3.js?v=7",
     "health-runtime-v1.8.3.js?v=1",
     "task-runtime-v1.8.3.js?v=2",
     "canine-lineage-v2.0.1.js?v=1",
@@ -116,7 +116,7 @@ test("essential startup identity agrees with the bounded offline shell, while do
   }
   for (const asset of [
     "document-export-v2.0.0.js?v=1",
-    "birth-certificate-v2.0.0.js?v=2",
+    "birth-certificate-v2.0.0.js?v=1",
     "animal-documents-v2.0.0.js?v=1"
   ]) {
     assert.ok(!requiredAssets.includes(asset), "optional document module must not block startup: " + asset);

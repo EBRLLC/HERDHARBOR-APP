@@ -1,10 +1,10 @@
 (() => {
   "use strict";
 
-  // Current release contract: const APP_VERSION = "2.0.3";
-  // Current candidate contract: const BUILD_ID = "v2.0.3-rc1";
-  const APP_VERSION = window.HerdHarborBuild?.version || "2.0.3";
-  const BUILD_ID = window.HerdHarborBuild?.buildId || "v2.0.3-rc1";
+  // Current release contract: const APP_VERSION = "2.0.2";
+  // Current build contract: const BUILD_ID = "cloud-sync-v2-state-integrity-1";
+  const APP_VERSION = window.HerdHarborBuild?.version || "2.0.2";
+  const BUILD_ID = window.HerdHarborBuild?.buildId || "v2.0.2-release-1";
   const PWA_BUILD = `${APP_VERSION}-${BUILD_ID}`;
   const UPDATE_CHECK_MIN_INTERVAL_MS = 60_000;
   const UPDATE_ACTIVATION_TIMEOUT_MS = 12_000;
