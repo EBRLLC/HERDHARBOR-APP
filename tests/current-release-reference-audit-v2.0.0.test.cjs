@@ -21,24 +21,24 @@ const worker = read("service-worker.js");
 const monitoring = read("herdharbor-monitoring-config.js");
 const index = read("index.html");
 
-test("all authoritative whole-app release owners identify the 2.0.2 candidate", () => {
+test("web 2.0.3 RC identity is explicit while Android remains on 2.0.2 until its own acceptance", () => {
   assert.equal(pkg.version, "2.0.2");
   assert.equal(lock.version, "2.0.2");
   assert.equal(lock.packages[""].version, "2.0.2");
-  assert.equal(manifest.version, "2.0.2");
+  assert.equal(manifest.version, "2.0.3");
   assert.equal(embeddedManifest.version, "2.0.2");
   assert.equal(String(twa.appVersion), "2.0.2");
   assert.equal(Number(twa.appVersionCode), 21);
-  assert.match(build, /channel:\s*"Stable"/);
-  assert.match(build, /version:\s*"2\.0\.2"/);
-  assert.match(build, /buildId:\s*"v2\.0\.2-release-1"/);
+  assert.match(build, /channel:\s*"Release Candidate"/);
+  assert.match(build, /version:\s*"2\.0\.3"/);
+  assert.match(build, /buildId:\s*"v2\.0\.3-rc1"/);
   assert.match(gradle, /versionName\s+"2\.0\.2"/);
   assert.match(gradle, /versionCode\s+21/);
 });
 
-test("runtime and monitoring identify the 2.0.0 release", () => {
-  assert.match(pwa, /version \|\| "2\.0\.2"/);
-  assert.match(pwa, /buildId \|\| "v2\.0\.2-release-1"/);
+test("PWA identifies the web RC while monitoring remains on the deployed 2.0.2 configuration", () => {
+  assert.match(pwa, /version \|\| "2\.0\.3"/);
+  assert.match(pwa, /buildId \|\| "v2\.0\.3-rc1"/);
   assert.match(pwa, /PWA_BUILD = `\$\{APP_VERSION\}-\$\{BUILD_ID\}`/);
   assert.match(monitoring, /release:\s*"HerdHarbor@2\.0\.2"/);
   assert.match(monitoring, /build:\s*"v2\.0\.2-release-1"/);
@@ -100,12 +100,12 @@ test("stable carried-forward component identities remain present", () => {
   ]) assert.equal(exists(p), true, p);
 });
 
-test("PWA shell and bootstrap retain the integrated 2.0.2 upgrade identity", () => {
-  assert.match(worker, /herdharbor-shell-v2\.0\.2-normalized-cloud-1/);
+test("web 2.0.3 RC receives a separate PWA cache and bootstrap fingerprint", () => {
+  assert.match(worker, /herdharbor-shell-v2\.0\.3-rc1/);
   assert.doesNotMatch(worker, /const CACHE_NAME = "herdharbor-shell-v1\.8\.4/);
-  assert.match(index, /manifest\.json\?v=2\.0\.2/);
-  assert.match(index, /herdharbor-build\.js\?v=2\.0\.2/);
-  assert.match(index, /pwa\.js\?v=38/);
+  assert.match(index, /manifest\.json\?v=2\.0\.3/);
+  assert.match(index, /herdharbor-build\.js\?v=2\.0\.3/);
+  assert.match(index, /pwa\.js\?v=39/);
   assert.match(pkg.scripts["test:v2.0.0-regression"], /v2\.0\.0-pwa-cutover/);
 });
 
