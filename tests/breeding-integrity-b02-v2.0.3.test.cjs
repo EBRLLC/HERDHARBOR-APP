@@ -52,3 +52,17 @@ test('browser loads integrity API before breeding-litter runtime and runtime val
   assert.match(source,/integrity\.validateMutation\(snapshot, stateNow\(\)\)/);
   assert.match(source,/restoreState\(snapshot\)/);
 });
+
+test('historic Feline and Guinea Pig aliases preserve same-species parentage',()=>{
+ const before={animals:[
+  {id:'tom',species:'Feline'},{id:'queen',species:'Cat'},
+  {id:'boar',species:'Guinea Pig'},{id:'sow',species:'Cavies'},
+  {id:'rabbit',species:'Rabbit'}
+ ],breedings:[],litters:[]};
+ const after=structuredClone(before);
+ after.animals.push({id:'kitten',species:'Cats',sireId:'tom',damId:'queen'});
+ after.animals.push({id:'pup',species:'Cavy',sireId:'boar',damId:'sow'});
+ assert.equal(contract.validateMutation(before,after).ok,true);
+ after.animals.find(a=>a.id==='pup').sireId='rabbit';
+ assert.ok(contract.validateMutation(before,after).errors.some(e=>e.code==='cross-species-parent'));
+});
