@@ -56,3 +56,24 @@ test('production shell installs planner before breeding UI and validates pair el
   assert.match(runtime,/planner\.schedule\(female, breedingDate\)/);
   assert.match(runtime,/pairingEligibility/);
 });
+
+test('recorded cat and cavy reproductive follow-ups use the existing task automation contract',()=>{
+ const automation=require('../task-automation-v1.8.3.js');
+ const state={animals:[
+  {id:'queen',name:'Queen',species:'Cat',status:'Active',felineReproduction:{events:[{id:'mating',kind:'mating',followUpDate:'2026-12-01'}]}},
+  {id:'sow',name:'Sow',species:'Cavy',status:'Active',cavyReproduction:{records:[{id:'exposure',type:'exposure',followUpDate:'2026-12-02'}]}}
+ ],breedings:[],litters:[],health:[],tasks:[]};
+ const first=automation.deriveTaskDefinitions(state).filter(x=>x.sourceType.endsWith('-reproduction'));
+ assert.equal(first.length,2);
+ assert.equal(new Set(first.map(x=>x.id)).size,2);
+ assert.deepEqual(first.map(x=>x.dueDate).sort(),['2026-12-01','2026-12-02']);
+ assert.ok(first.every(x=>x.automationFingerprint&&x.automationManaged!==true));
+ const delayed=structuredClone(state);
+ delayed.animals[0].felineReproduction.events[0].followUpDate='2026-12-04';
+ const next=automation.deriveTaskDefinitions(delayed).filter(x=>x.sourceType==='feline-reproduction')[0];
+ assert.equal(next.id,first.find(x=>x.sourceType==='feline-reproduction').id);
+ assert.notEqual(next.automationFingerprint,first.find(x=>x.sourceType==='feline-reproduction').automationFingerprint);
+ const retired=structuredClone(state);
+ retired.animals[0].status='Archived';
+ assert.equal(automation.deriveTaskDefinitions(retired).filter(x=>x.sourceType==='feline-reproduction').length,0);
+});
