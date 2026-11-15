@@ -14,6 +14,13 @@
     status: "Active"
   });
 
+  function canonicalSpeciesLabel(value) {
+    const raw = String(value || "").trim();
+    if (/^(cat|cats|feline)$/i.test(raw)) return "Cat";
+    if (/^(cavy|cavies|guinea[ -]?pigs?)$/i.test(raw)) return "Cavy";
+    return raw;
+  }
+
   function create(deps = {}) {
     const required = [
       "getState", "getCurrentRoute", "scheduleUiWork", "$", "$$", "esc", "headerHtml",
@@ -44,7 +51,7 @@
       const status = String(view.status || "");
       return (Array.isArray(animals) ? animals : []).filter((animal) => {
         if (
-          (species && animal?.species !== species) ||
+          (species && canonicalSpeciesLabel(animal?.species) !== canonicalSpeciesLabel(species)) ||
           (sex && animal?.sex !== sex) ||
           (status && animal?.status !== status)
         ) return false;
