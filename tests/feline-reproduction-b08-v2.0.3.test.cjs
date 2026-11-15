@@ -36,3 +36,17 @@ test('installed shell links queen profile to account-safe feline workspace',()=>
  assert.match(profile,/detail-feline-repro/);
  assert.match(profile,/FelineReproduction203\?\.openForAnimal/);
 });
+
+test('a breeder-entered feline follow-up date persists as evidence and can be rescheduled',()=>{
+ const state={animals:[{id:'queen',species:'Cat',sex:'Female'}],litters:[],breedings:[],tasks:[]};
+ const entered=repro.appendEvent(state,'queen',{kind:'heat',date:'2026-11-14',followUpDate:'2026-11-21'},{accountId:''});
+ assert.equal(entered.valid,true);
+ assert.equal(entered.event.followUpDate,'2026-11-21');
+ const tasks=require('../task-automation-v1.8.3.js').deriveTaskDefinitions(entered.state);
+ assert.equal(tasks.filter(x=>x.sourceType==='feline-reproduction').length,1);
+ assert.equal(tasks.find(x=>x.sourceType==='feline-reproduction').dueDate,'2026-11-21');
+ const revised=repro.appendEvent(entered.state,'queen',{...entered.event,followUpDate:'2026-11-22'},{accountId:''});
+ assert.equal(revised.valid,true);
+ assert.equal(revised.state.animals[0].felineReproduction.events.length,1);
+ assert.equal(repro.appendEvent(state,'queen',{kind:'heat',date:'2026-11-14',followUpDate:'2026-11-31'},{accountId:''}).valid,false);
+});
