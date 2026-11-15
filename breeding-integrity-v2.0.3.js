@@ -6,7 +6,18 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
   const clean = value => String(value == null ? "" : value).trim();
-  const species = record => clean(record?.species).toLowerCase().replace(/s$/, "");
+  const species = record => {
+    const value=clean(record?.species).toLowerCase();
+    const aliases={
+      "rabbit":"rabbit","rabbits":"rabbit",
+      "dog":"dog","dogs":"dog","canine":"dog",
+      "cat":"cat","cats":"cat","feline":"cat",
+      "cavy":"cavy","cavies":"cavy",
+      "guinea pig":"cavy","guinea pigs":"cavy",
+      "guinea-pig":"cavy","guinea-pigs":"cavy"
+    };
+    return aliases[value]||value.replace(/s$/, "");
+  };
   const error = (code, collection, id, detail) => ({ code, collection, id, detail });
   const index = records => {
     const byId = new Map(), duplicateIds = new Set();
