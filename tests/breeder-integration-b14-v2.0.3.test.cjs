@@ -281,3 +281,15 @@ test('animal filtering includes imported Feline and Guinea Pig aliases under Cat
  assert.deepEqual(runtime.filterAnimals(animals,{species:'Cavy',status:'Active'}).map(x=>x.id),['g']);
  assert.deepEqual(runtime.filterAnimals(animals,{species:'Rabbit',status:'Active'}).map(x=>x.id),['r']);
 });
+
+test('2.0.3 candidate metadata is prepared but active PWA release remains 2.0.2 until acceptance',()=>{
+ const candidate=JSON.parse(fs.readFileSync(path.join(base,'docs/2.0.3-release-candidate.json'),'utf8'));
+ const build=fs.readFileSync(path.join(base,'herdharbor-build.js'),'utf8');
+ const worker=fs.readFileSync(path.join(base,'service-worker.js'),'utf8');
+ assert.equal(candidate.release,'2.0.3');
+ assert.equal(candidate.status,'prepared-not-activated');
+ assert.equal(candidate.productionChanged,false);
+ assert.match(build,/version: "2\.0\.2"/);
+ assert.match(worker,/const CACHE_NAME = "herdharbor-shell-v2\.0\.2-normalized-cloud-1"/);
+ assert.match(worker,/allOpenClientsReadyForUpdate\(\)/);
+});
