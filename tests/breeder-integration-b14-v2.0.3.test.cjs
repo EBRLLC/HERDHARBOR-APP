@@ -268,3 +268,16 @@ test('pedigree node cards disclose breeder-attributed and unverified sire proven
  const historical=print.cardHtml({generation:0,animal:{id:'old',name:'Older',species:'Cavy',sireId:'boar'}},config,opts);
  assert.match(historical,/historical record; verification not documented/);
 });
+test('animal filtering includes imported Feline and Guinea Pig aliases under Cat/Cavy',()=>{
+ const profile=require('../animal-profile-runtime-v1.8.3.js');
+ const deps=new Proxy({getState:()=>({animals:[]})},{get:(target,key)=>key in target?target[key]:(()=>null)});
+ const runtime=profile.create(deps);
+ const animals=[
+  {id:'f',species:'Feline',status:'Active',sex:'Female'},
+  {id:'g',species:'Guinea Pig',status:'Active',sex:'Male'},
+  {id:'r',species:'Rabbit',status:'Active',sex:'Female'}
+ ];
+ assert.deepEqual(runtime.filterAnimals(animals,{species:'Cat',status:'Active'}).map(x=>x.id),['f']);
+ assert.deepEqual(runtime.filterAnimals(animals,{species:'Cavy',status:'Active'}).map(x=>x.id),['g']);
+ assert.deepEqual(runtime.filterAnimals(animals,{species:'Rabbit',status:'Active'}).map(x=>x.id),['r']);
+});
