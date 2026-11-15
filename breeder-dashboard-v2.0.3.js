@@ -75,19 +75,46 @@ function build(state,filter={}){
  }
  return {calendar:selected,counts,birthsBySpecies,review,sourceCount:calendar.length};
 }
+function growthReport(state,filter={}){
+ const animals=arr(state?.animals),counts=new Map(),bySpecies={},latestByAnimal=[];
+ for(const a of animals)if(text(a?.id))counts.set(text(a.id),(counts.get(text(a.id))||0)+1);
+ for(const animal of animals){
+  const id=text(animal?.id),label=species(animal?.species);
+  if(!id||counts.get(id)!==1||!text(animal?.sourceBirthId)||!["Rabbit","Dog","Cat","Cavy"].includes(label))continue;
+  if(filter.species&&label!==species(filter.species))continue;
+  const source=label==="Rabbit"?animal.growthRecords:label==="Dog"?animal.puppyObservations:label==="Cat"?animal.kittenCare:animal.cavyCare;
+  const valid=arr(source).filter(row=>(label==="Rabbit"||text(row?.kind)==="weight")&&dateOnly(row?.date)&&
+    Number.isFinite(Number(row?.grams))&&Number(row.grams)>0&&Number(row.grams)<1000000);
+  if(!valid.length)continue;
+  valid.sort((a,b)=>a.date.localeCompare(b.date)||text(a.id).localeCompare(text(b.id)));
+  const latest=valid[valid.length-1];
+  const row=bySpecies[label]||{animals:0,measurements:0};
+  row.animals++;row.measurements+=valid.length;bySpecies[label]=row;
+  latestByAnimal.push({animalId:id,species:label,date:latest.date,grams:Number(latest.grams),measurements:valid.length});
+ }
+ latestByAnimal.sort((a,b)=>b.date.localeCompare(a.date)||a.animalId.localeCompare(b.animalId));
+ return {bySpecies,latestByAnimal,animalsWithWeights:latestByAnimal.length,
+  measurements:latestByAnimal.reduce((sum,row)=>sum+row.measurements,0)};
+}
 function panelHtml(state,escapeHtml,formatDate,today=""){
  const esc=typeof escapeHtml==="function"?escapeHtml:x=>text(x).replace(/&/g,"&amp;").replace(/</g,"&lt;");
  const fmt=typeof formatDate==="function"?formatDate:x=>x;
  const result=build(state,{from:today||undefined});
  const events=result.calendar.slice(0,12);
+ const growth=growthReport(state),recentGrowth=growth.latestByAnimal.slice(0,6);
+ const litters=Object.entries(result.birthsBySpecies).sort((a,b)=>a[0].localeCompare(b[0]));
  return '<section class="panel" data-hh-breeder-dashboard aria-label="Unified breeding calendar" style="margin-bottom:20px">'+
  '<div class="panel-header"><div><h3>Unified breeding calendar</h3><small>Breeder-entered dates, follow-ups & estimates across species</small></div></div>'+
  (events.length?'<div class="data-table-wrap"><table class="data-table compact-table"><thead><tr><th>Date</th><th>Species</th><th>Next action</th><th>Basis</th></tr></thead><tbody>'+
  events.map(x=>'<tr><td>'+esc(fmt(x.date))+'</td><td>'+esc(x.species)+'</td><td>'+esc(x.label)+'</td><td>'+esc(x.evidence.replace(/-/g," "))+'</td></tr>').join("")+
  '</tbody></table></div>':'<p class="muted">No upcoming breeder events recorded.</p>')+
+ (litters.length?'<h4>Recorded litter outcomes</h4><div class="data-table-wrap"><table class="data-table compact-table"><thead><tr><th>Species</th><th>Litters</th><th>Born alive</th><th>Weaned</th></tr></thead><tbody>'+
+ litters.map(([key,row])=>'<tr><td>'+esc(key)+'</td><td>'+row.litters+'</td><td>'+row.bornAlive+'</td><td>'+row.weaned+'</td></tr>').join("")+'</tbody></table></div>':'')+
+ (recentGrowth.length?'<h4>Latest offspring weights</h4><div class="data-table-wrap"><table class="data-table compact-table"><thead><tr><th>Animal ID</th><th>Species</th><th>Date</th><th>Weight (g)</th></tr></thead><tbody>'+
+ recentGrowth.map(row=>'<tr><td>'+esc(row.animalId)+'</td><td>'+esc(row.species)+'</td><td>'+esc(fmt(row.date))+'</td><td>'+row.grams+'</td></tr>').join("")+'</tbody></table></div>':'')+
  '<p class="muted">Dates are planning estimates. They do not establish pregnancy, paternity or veterinary diagnoses.</p>'+
  (result.review.length?'<p class="muted">Records needing identity review: '+result.review.length+'</p>':'')+
  '</section>';
 }
-return Object.freeze({VERSION:"2.0.3",build,panelHtml});
+return Object.freeze({VERSION:"2.0.3",build,growthReport,panelHtml});
 });
