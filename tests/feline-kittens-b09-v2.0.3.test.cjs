@@ -36,3 +36,17 @@ test('installed generic litter UI uses feline generation and captures care trans
  assert.match(runtime,/feline\.addObservation/);
  assert.match(runtime,/\$\$\('\[data-rabbit-kit-growth\]'/);
 });
+
+test('explicitly attributed kitten sire must be male and match queen owner',()=>{
+ const state=base();state.animals[0].ownerId='farm-a';
+ const sire={id:'tom1',species:'Cat',sex:'Female',ownerId:'farm-a'};
+ state.animals.push(sire);
+ const create=()=>kittens.createKittens(state,'l1',[{id:'kit',name:'Kitten',confirmedSireId:'tom1'}]);
+ assert.equal(create().valid,false,'female sire must fail');
+ sire.sex='Male';sire.ownerId='farm-b';
+ assert.equal(create().valid,false,'cross-owner sire must fail');
+ sire.ownerId='farm-a';
+ const result=create();assert.equal(result.valid,true);
+ assert.equal(result.created[0].sireId,'tom1');
+ assert.equal(result.created[0].paternityStatus,'breeder-attributed');
+});
