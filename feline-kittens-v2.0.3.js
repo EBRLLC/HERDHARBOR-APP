@@ -33,11 +33,15 @@ function createKittens(state,litterId,items){
   if(!["Male","Female","Unknown"].includes(item.sex||"Unknown"))issues.push("Kitten sex must be recorded as male, female or unknown.");
   const potential=possible;
   const confirmedSire=txt(item.confirmedSireId);
-  if(confirmedSire&&potential.length&&!potential.includes(confirmedSire))issues.push("Confirmed sire is not among recorded potential sires.");
+  if(confirmedSire&&potential.length&&!potential.includes(confirmedSire))issues.push("Attributed sire is not among recorded potential sires.");
+   if(confirmedSire&&existing.filter(a=>a.id===confirmedSire).length!==1)issues.push("Attributed sire must have one unambiguous internal animal record.");
+   const attributed=existing.find(a=>a.id===confirmedSire);
+   if(attributed&&(!isCat(attributed)||attributed.id===dam.id))issues.push("Attributed sire must be a distinct Cat.");
   created.push({id,name:txt(item.name),species:"Cat",breed:txt(item.breed)||dam.breed||"",sex:item.sex||"Unknown",
    color:txt(item.color),tag:txt(item.tag),status:"Growing",dob:litter.birthDate,
-   damId:dam.id,sireId:confirmedSire || (potential.length===1 && !potential[0].startsWith("external:") && potential[0]!=="unknown" ? potential[0] : ""),
-   potentialSireIds:potential.slice(),paternityStatus:confirmedSire?"breeder-confirmed":potential.length>1?"unresolved-multiple-sires":potential.length===0?"unknown":"recorded-unverified",
+   damId:dam.id,sireId:confirmedSire,
+   potentialSireIds:potential.slice(),paternityStatus:confirmedSire?"breeder-attributed":potential.length>1?"unresolved-multiple-sires":potential.length===0?"unknown":"recorded-unverified",
+    paternityEvidence:confirmedSire?{basis:"breeder-attributed",reference:txt(item.parentageEvidenceRef),recordedAt:new Date().toISOString()}:null,
    sourceBirthId:litterId,kittenCare:[],createdAt:new Date().toISOString()});
  }
  if(issues.length)return {valid:false,issues,state};

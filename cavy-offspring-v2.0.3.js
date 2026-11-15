@@ -31,12 +31,16 @@ function generatePups(state,litterId,entries){
   if(!txt(entry.name))issues.push("Pup name required.");
   if(!["Female","Male","Unknown"].includes(entry.sex||"Unknown"))issues.push("Invalid pup sex.");
   const potentialBoars=possible;
-  const boarId=txt(entry.confirmedSireId)||(potentialBoars.length===1&&!potentialBoars[0].startsWith("external:")&&potentialBoars[0]!=="unknown"?potentialBoars[0]:"");
-  if(entry.confirmedSireId&&potentialBoars.length&&!potentialBoars.includes(boarId))issues.push("Unrecorded sire confirmation.");
+  const boarId=txt(entry.confirmedSireId);
+  if(boarId&&potentialBoars.length&&!potentialBoars.includes(boarId))issues.push("Attributed sire is not among recorded possible sires.");
+   if(boarId&&animals.filter(a=>a.id===boarId).length!==1)issues.push("Attributed boar must have a unique internal record.");
+   const attributed=animals.find(a=>a.id===boarId);
+   if(attributed&&(!isCavy(attributed)||attributed.id===sow.id))issues.push("Attributed boar must be a distinct Cavy.");
   born.push({id,name:txt(entry.name),species:"Cavy",sex:entry.sex||"Unknown",
    breed:txt(entry.breed)||sow.breed||"",color:txt(entry.color),tag:txt(entry.tag),
    dob:litter.birthDate,status:"Growing",sireId:boarId,damId:sow.id,sourceBirthId:litterId,
-   potentialSireIds:potentialBoars,paternityStatus:entry.confirmedSireId?"breeder-confirmed":potentialBoars.length>1?"unresolved":potentialBoars.length===0?"unknown":"recorded-unverified",
+   potentialSireIds:potentialBoars,paternityStatus:boarId?"breeder-attributed":potentialBoars.length>1?"unresolved":potentialBoars.length===0?"unknown":"recorded-unverified",
+    paternityEvidence:boarId?{basis:"breeder-attributed",reference:txt(entry.parentageEvidenceRef),recordedAt:new Date().toISOString()}:null,
    cavyGrowth:[],cavyCare:[],createdAt:new Date().toISOString()});
  }
  if(issues.length)return {valid:false,issues,state};
