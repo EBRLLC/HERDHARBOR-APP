@@ -9,6 +9,7 @@ const species=x=>{const value=text(x).toLowerCase();
  return text(x);};
 const dateOnly=x=>{x=text(x);if(!/^\d{4}-\d{2}-\d{2}$/.test(x))return false;
  const d=new Date(x+"T00:00:00Z");return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===x;};
+const inactive=a=>["sold","archived","deceased","transferred"].includes(text(a?.status).toLowerCase())||a?.ancestorOnly===true||a?.isAncestorOnly===true;
 function build(state,filter={}){
  const animals=arr(state?.animals),byId=new Map(),duplicates=new Set();
  for(const animal of animals){const id=text(animal?.id);if(!id)continue;if(byId.has(id))duplicates.add(id);else byId.set(id,animal);}
@@ -24,6 +25,7 @@ function build(state,filter={}){
  for(const record of arr(state?.breedings)){
   const id=text(record?.id),dam=byId.get(text(record?.femaleId));
   if(!id||!dam){if(id)review.push({id,reason:"Breeding dam missing or ambiguous."});continue;}
+  if(inactive(dam))continue;
   const label=species(dam.species);
   if(dateOnly(record.pregnancyCheckDate)&&!["Delivered","Cancelled","Not pregnant"].includes(record.status))
    push({id:"breeding:"+id+":check",date:record.pregnancyCheckDate,species:label,
@@ -34,7 +36,7 @@ function build(state,filter={}){
     source:"breeding",evidence:"due-date-estimate-not-confirmation"});
  }
  for(const animal of animals){
-  const id=text(animal?.id);if(!id||duplicates.has(id))continue;
+  const id=text(animal?.id);if(!id||duplicates.has(id)||inactive(animal))continue;
   if(species(animal.species)==="Cat")for(const record of arr(animal.felineReproduction?.events)){
    if(record.kind!=="mating"||!dateOnly(record.date))continue;
    const d=new Date(record.date+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+65);
@@ -51,8 +53,9 @@ function build(state,filter={}){
     animalId:id,label:"Estimated cavy birth",source:"cavy",evidence:"exposure-date-estimate-not-confirmation"});
   }
  }
- for(const task of arr(state?.tasks))if(!task.completed&&dateOnly(task.dueDate)&&text(task.id)){
+ for(const task of arr(state?.tasks))if(!task.completed&&!task.cancelled&&!["cancelled","canceled","completed","archived"].includes(text(task.status).toLowerCase())&&dateOnly(task.dueDate)&&text(task.id)){
   const animal=byId.get(text(task.animalId));
+  if(animal&&inactive(animal))continue;
   push({id:"task:"+task.id,date:task.dueDate,species:species(animal?.species||"Farm"),
    animalId:animal?.id||"",label:task.title||"Follow-up",source:"task",evidence:"user-task"});
  }

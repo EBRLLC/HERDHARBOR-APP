@@ -39,3 +39,23 @@ test('dashboard HTML escapes breeder-entered source values and is loaded before 
  assert.ok(index.indexOf('breeder-dashboard-v2.0.3.js')<index.indexOf('herdharbor-app-runtime.js'));
  assert.match(runtime,/HerdHarborBreederDashboard203\?\.panelHtml/);
 });
+
+test('inactive animals and cancelled tasks do not generate future work but preserve historic litter totals',()=>{
+ const s=make();
+ s.animals.find(a=>a.id==='queen').status='Sold';
+ s.animals.find(a=>a.id==='sow').ancestorOnly=true;
+ s.animals.find(a=>a.id==='doe').status='Archived';
+ s.tasks.push({id:'cancelled',animalId:'doe',title:'Obsolete',dueDate:'2026-12-11',status:'Cancelled'});
+ const r=dash.build(s);
+ assert.equal(r.calendar.length,0);
+ assert.equal(r.birthsBySpecies.Rabbit.litters,1);
+ assert.equal(r.birthsBySpecies.Rabbit.bornAlive,4);
+});
+test('completed and cancelled tasks are excluded, active animals remain actionable',()=>{
+ const s=make();
+ s.tasks.push({id:'cancelled',title:'Obsolete task',dueDate:'2026-12-03',status:'canceled'});
+ s.tasks.push({id:'done',title:'Completed task',dueDate:'2026-12-04',status:'completed'});
+ const r=dash.build(s);
+ assert.ok(r.calendar.some(x=>x.source==='task'&&x.id==='task:t1'));
+ assert.ok(!r.calendar.some(x=>x.id==='task:cancelled'||x.id==='task:done'));
+});
