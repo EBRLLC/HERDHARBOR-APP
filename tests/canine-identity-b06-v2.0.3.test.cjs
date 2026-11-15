@@ -46,3 +46,12 @@ test('load canine audit before identity editor in the installed shell',()=>{
   assert.ok(html.indexOf('canine-identity-audit-v2.0.3.js')>=0);
   assert.ok(html.indexOf('canine-identity-audit-v2.0.3.js')<html.indexOf('canine-identity-v2.0.1.js'));
 });
+
+test('canine health evidence accepts real ISO dates and rejects impossible days',()=>{
+ const record=date=>({healthEvidence:[{id:'health1',type:'screening',name:'Cardiac test',date,reference:'document-1'}]});
+ assert.equal(identity.validate(record('2026-11-14')).valid,true);
+ assert.equal(identity.validate(record('2026-02-30')).valid,false);
+ assert.equal(identity.validate(record('2024-02-29')).valid,true);
+ assert.equal(identity.validate(record('2025-02-29')).valid,false);
+ assert.equal(identity.validate(record('not-a-date')).valid,false);
+});
