@@ -14,6 +14,13 @@
     status: "Active"
   });
 
+  function canonicalSpeciesLabel(value) {
+    const raw = String(value || "").trim();
+    if (/^(cat|cats|feline)$/i.test(raw)) return "Cat";
+    if (/^(cavy|cavies|guinea[ -]?pigs?)$/i.test(raw)) return "Cavy";
+    return raw;
+  }
+
   function create(deps = {}) {
     const required = [
       "getState", "getCurrentRoute", "scheduleUiWork", "$", "$$", "esc", "headerHtml",
@@ -44,7 +51,7 @@
       const status = String(view.status || "");
       return (Array.isArray(animals) ? animals : []).filter((animal) => {
         if (
-          (species && animal?.species !== species) ||
+          (species && canonicalSpeciesLabel(animal?.species) !== canonicalSpeciesLabel(species)) ||
           (sex && animal?.sex !== sex) ||
           (status && animal?.status !== status)
         ) return false;
@@ -553,8 +560,6 @@
             '<button class="button button-ghost" id="detail-compare-pedigree">Linebreeding Coefficient</button>'}
           ${root.HerdHarborFelineIdentity203?.isCat(animal) && String(animal.sex||"").toLowerCase()==="female" ?
             '<button class="button button-primary" id="detail-feline-repro">Cat heat & mating</button>' : ""}
-          ${root.HerdHarborCavyIdentity203?.isCavy(animal) && String(animal.sex||"").toLowerCase()==="female" ?
-            '<button class="button button-primary" id="detail-cavy-repro">Cavy mating & exposure</button>' : ""}
           <button class="button button-primary" id="detail-edit">Edit animal</button>
         </div>
       `, `${animal.species || "Animal"} record`);
@@ -577,7 +582,6 @@
       $("#detail-print-canine")?.addEventListener("click", () => root.HerdHarborCaninePedigreePrint?.openForAnimal?.(id));
       $("#detail-canine-repro")?.addEventListener("click", () => root.HerdHarborCanineReproductiveWorkspace?.openForAnimal?.(id));
       $("#detail-feline-repro")?.addEventListener("click", () => root.HerdHarborFelineReproduction203?.openForAnimal?.(id));
-      $("#detail-cavy-repro")?.addEventListener("click", () => root.HerdHarborCavyReproduction203?.openForAnimal?.(id));
       $("#detail-import-pedigree")?.addEventListener("click", () => deps.openPedigreeImport(id));
       $("#detail-birth-certificate")?.addEventListener("click", () => deps.openBirthCertificateForm(id));
       $("#detail-compare-pedigree")?.addEventListener("click", () => {
