@@ -281,3 +281,22 @@ test('animal filtering includes imported Feline and Guinea Pig aliases under Cat
  assert.deepEqual(runtime.filterAnimals(animals,{species:'Cavy',status:'Active'}).map(x=>x.id),['g']);
  assert.deepEqual(runtime.filterAnimals(animals,{species:'Rabbit',status:'Active'}).map(x=>x.id),['r']);
 });
+test('2.0.3 release candidate IDs and PWA fingerprints agree without bypassing unsynced-edit guard',()=>{
+ const build=fs.readFileSync(path.join(base,'herdharbor-build.js'),'utf8');
+ const manifest=JSON.parse(fs.readFileSync(path.join(base,'manifest.json'),'utf8'));
+ const html=fs.readFileSync(path.join(base,'index.html'),'utf8');
+ const pwa=fs.readFileSync(path.join(base,'pwa.js'),'utf8');
+ const worker=fs.readFileSync(path.join(base,'service-worker.js'),'utf8');
+ assert.equal(manifest.version,'2.0.3');
+ assert.match(build,/version: "2\.0\.3"/);
+ assert.match(build,/buildId: "v2\.0\.3-rc1"/);
+ assert.match(worker,/herdharbor-shell-v2\.0\.3-rc1/);
+ assert.match(pwa,/const APP_VERSION = window\.HerdHarborBuild\?\.version \|\| "2\.0\.3"/);
+ for(const asset of ['herdharbor-build.js?v=2.0.3','pwa.js?v=39','animal-profile-runtime-v1.8.3.js?v=8','feline-kittens-v2.0.3.js?v=2','cavy-offspring-v2.0.3.js?v=2']){
+  assert.ok(html.includes(asset),asset+' must be loaded by HTML');
+  assert.ok(worker.includes(asset),asset+' must be listed in offline/runtime cache');
+ }
+ assert.match(worker,/allOpenClientsReadyForUpdate\(\)/);
+ assert.match(worker,/HH_UPDATE_DEFERRED/);
+ assert.match(worker,/HH_UPDATE_READINESS_QUERY/);
+});
