@@ -59,3 +59,35 @@ test('completed and cancelled tasks are excluded, active animals remain actionab
  assert.ok(r.calendar.some(x=>x.source==='task'&&x.id==='task:t1'));
  assert.ok(!r.calendar.some(x=>x.id==='task:cancelled'||x.id==='task:done'));
 });
+
+test('multi-species offspring growth report uses recorded evidence without inventing weights',()=>{
+ const s=make();s.animals.push(
+  {id:'kit',species:'Rabbit',sourceBirthId:'l1',growthRecords:[{id:'g1',date:'2026-11-14',grams:100},{id:'g2',date:'2026-11-15',grams:112}]},
+  {id:'kitten',species:'Feline',sourceBirthId:'cat-l',kittenCare:[{id:'w1',kind:'weight',date:'2026-11-16',grams:95},{kind:'health',date:'2026-11-17',notes:'OK'}]},
+  {id:'cavy-pup',species:'Cavy',sourceBirthId:'cavy-l',cavyCare:[{kind:'weight',date:'2026-11-14',grams:0}]},
+  {id:'dog-pup',species:'Dog',sourceBirthId:'dog-l',puppyObservations:[{kind:'weight',date:'2026-11-14',grams:250}]}
+ );
+ const before=JSON.stringify(s),r=dash.growthReport(s);
+ assert.equal(r.animalsWithWeights,3);
+ assert.equal(r.measurements,4);
+ assert.deepEqual(r.bySpecies.Rabbit,{animals:1,measurements:2});
+ assert.equal(r.bySpecies.Cat.measurements,1);
+ assert.equal(r.latestByAnimal[0].animalId,'kitten');
+ assert.equal(dash.growthReport(s,{species:'Cat'}).measurements,1);
+ assert.equal(JSON.stringify(s),before);
+});
+test('offspring reporting excludes ambiguous IDs and escapes animal references in dashboard',()=>{
+ const s=make();s.animals.push(
+  {id:'duplicate',species:'Rabbit',sourceBirthId:'l1',growthRecords:[{date:'2026-11-14',grams:80}]},
+  {id:'duplicate',species:'Rabbit',sourceBirthId:'l1',growthRecords:[{date:'2026-11-15',grams:81}]},
+  {id:'<unsafe>',species:'Rabbit',sourceBirthId:'l1',growthRecords:[{date:'2026-11-15',grams:90}]}
+ );
+ const r=dash.growthReport(s);
+ assert.equal(r.animalsWithWeights,1);
+ const esc=x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+ const html=dash.panelHtml(s,esc,x=>x,'2026-11-01');
+ assert.ok(html.includes('Recorded litter outcomes'));
+ assert.ok(html.includes('Latest offspring weights'));
+ assert.ok(html.includes('&lt;unsafe&gt;'));
+ assert.ok(!html.includes('<unsafe>'));
+});
