@@ -105,3 +105,26 @@ test('imported species aliases and real overdue statuses appear in dashboard',()
  assert.ok(html.includes('<th>Status</th>'));
  assert.ok(html.includes('overdue'));
 });
+
+test('actual Cat and Cavy births retire only matching estimated birth events',()=>{
+ const state=make();
+ const start=dash.build(state);
+ assert.equal(start.calendar.filter(x=>x.label==='Estimated queening').length,1);
+ assert.equal(start.calendar.filter(x=>x.label==='Estimated cavy birth').length,1);
+ state.litters.push({id:'cat-birth',damId:'queen',birthDate:'2027-01-18',bornAlive:2});
+ state.litters.push({id:'cavy-birth',damId:'sow',birthDate:'2027-01-27',bornAlive:3});
+ const after=dash.build(state);
+ assert.equal(after.calendar.filter(x=>x.label==='Estimated queening').length,0);
+ assert.equal(after.calendar.filter(x=>x.label==='Estimated cavy birth').length,0);
+ assert.ok(after.calendar.some(x=>x.source==='task'),'Unrelated follow-up remains actionable');
+ const unrelated=make();unrelated.litters.push({id:'unrelated',damId:'queen',birthDate:'2027-05-01'});
+ assert.ok(dash.build(unrelated).calendar.some(x=>x.label==='Estimated queening'),'Nonmatching birth must not suppress a different cycle');
+});
+
+test('recorded Cavy birth outcome also completes a matching exposure estimate',()=>{
+ const state=make();
+ state.animals.find(a=>a.id==='sow').cavyReproduction.records.push({id:'birth',type:'birth',date:'2027-01-27',bornAlive:3});
+ const r=dash.build(state);
+ assert.equal(r.calendar.filter(x=>x.label==='Estimated cavy birth').length,0);
+ assert.ok(r.calendar.some(x=>x.label==='Sow follow-up'));
+});
