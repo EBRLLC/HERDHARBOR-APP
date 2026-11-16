@@ -50,6 +50,33 @@ window.addEventListener("load",()=>{
   const next={...baseline,animals:[...baseline.animals,{id:"kit",species:"Cats",sireId:"tom",damId:"queen"}]};
   check(window.HerdHarborBreedingIntegrity203.validateMutation(baseline,next).ok,"Imported feline aliases rejected");
 
+  // Exercise real identity-editor controls, not only the module's validation helpers.
+  const catForm=document.createElement("form");
+  catForm.innerHTML=window.HerdHarborFelineIdentity203.editorHtml({species:"Cat"});
+  const catSelect=document.createElement("select");catSelect.innerHTML='<option>Cat</option><option>Dog</option>';catSelect.value="Cat";
+  window.HerdHarborFelineIdentity203.bindEditor(catForm,catSelect);
+  catForm.querySelector("[data-feline-health-add]").click();
+  const health=catForm.querySelector("[data-feline-health-row]");
+  check(Boolean(health),"Cat health record control did not create a row");
+  for(const [key,value] of Object.entries({name:"Eye check",date:"2026-11-15",reference:"veterinary-note",result:"normal"})){
+   health.querySelector('[data-feline-health-field="'+key+'"]').value=value;
+  }
+  const catSaved=window.HerdHarborFelineIdentity203.readEditor(catForm,{});
+  check(catSaved.valid&&catSaved.value.healthTests.length===1&&catSaved.value.healthTests[0].reference==="veterinary-note","Cat health evidence form did not round trip");
+  const cavyForm=document.createElement("form");
+  cavyForm.innerHTML=window.HerdHarborCavyIdentity203.editorHtml({species:"Cavy"});
+  const cavySelect=document.createElement("select");cavySelect.innerHTML='<option>Cavy</option><option>Rabbit</option>';cavySelect.value="Cavy";
+  window.HerdHarborCavyIdentity203.bindEditor(cavyForm,cavySelect);
+  cavyForm.querySelector('[data-cavy-add="show"]').click();
+  cavyForm.querySelector('[data-cavy-add="vet"]').click();
+  for(const [kind,fields] of [["show",{event:"County show",date:"2026-11-15",reference:"show-certificate"}],["vet",{name:"Health exam",date:"2026-11-15",reference:"vet-report"}]]){
+   const row=cavyForm.querySelector('[data-cavy-evidence-row="'+kind+'"]');
+   check(Boolean(row),"Cavy "+kind+" evidence controls absent");
+   for(const [key,value] of Object.entries(fields))row.querySelector('[data-cavy-evidence-field="'+key+'"]').value=value;
+  }
+  const cavySaved=window.HerdHarborCavyIdentity203.readEditor(cavyForm,{});
+  check(cavySaved.valid&&cavySaved.value.showResults.length===1&&cavySaved.value.veterinaryEvidence.length===1,"Cavy evidence forms did not round trip");
+
   // Real DOM events drive the installed litter runtime and canonical Cat/Cavy engines.
   const uiState={animals:[
    {id:"queen-ui",name:"Queen",species:"Cat",sex:"Female",ownerId:"farm"},
