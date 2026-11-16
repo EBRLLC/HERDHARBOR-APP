@@ -25,7 +25,8 @@ test('reservation and sales cannot bypass recorded customer',()=>{
  const s=pup.generatePups(initial(),'l1',[{id:'p',name:'Pup'}]).state;
  assert.equal(pup.changeStatus(s,'p','Sold').valid,false);
  assert.equal(pup.changeStatus(s,'p','Reserved','missing').valid,false);
- const x=pup.changeStatus(s,'p','Sold','customer-1');
+ assert.equal(pup.changeStatus(s,'p','Sold','customer-1').valid,false,'Must complete sale in canonical Sales workflow');
+ const x=pup.changeStatus(s,'p','Reserved','customer-1');
  assert.equal(x.valid,true);assert.equal(x.state.animals[1].buyerId,'customer-1');
 });
 test('live UI links pup growth and existing litter creation with collection selector',()=>{
