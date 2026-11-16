@@ -67,3 +67,10 @@ test('Cavy offspring reservation rejects cross-owner and ambiguous customer IDs'
  result.state.customers.push({...result.state.customers[0]});
  assert.equal(pup.changeStatus(result.state,'p','Reserved','customer-1').valid,false);
 });
+
+test('generated offspring inherits recorded maternal owner for account-safe placement',()=>{
+ const s=initial();s.animals[0].ownerId='farm-a';
+ const x=pup.generatePups(s,'l1',[{id:'pup',name:'Young animal'}]);
+ assert.equal(x.valid,true);
+ assert.equal(x.created[0].ownerId,'farm-a');
+});
