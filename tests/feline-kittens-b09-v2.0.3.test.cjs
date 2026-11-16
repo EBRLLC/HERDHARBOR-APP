@@ -41,7 +41,7 @@ test('explicitly attributed kitten sire must be male and match queen owner',()=>
  const state=base();state.animals[0].ownerId='farm-a';
  const sire={id:'tom1',species:'Cat',sex:'Female',ownerId:'farm-a'};
  state.animals.push(sire);
- const create=()=>kittens.createKittens(state,'l1',[{id:'kit',name:'Kitten',confirmedSireId:'tom1'}]);
+ const create=()=>kittens.createKittens(state,'l1',[{id:'kit',name:'Kitten',confirmedSireId:'tom1',parentageEvidenceRef:'breeding-log-1'}]);
  assert.equal(create().valid,false,'female sire must fail');
  sire.sex='Male';sire.ownerId='farm-b';
  assert.equal(create().valid,false,'cross-owner sire must fail');
@@ -95,4 +95,17 @@ test('kitten creator exposes optional recorded sire attribution with evidence an
  assert.match(runtime,/confirmedSireId:/);
  assert.match(runtime,/eligibleMatingIds/);
  assert.match(runtime,/formIndexById/);
+});
+
+test('Cat sire attribution requires documented recorded candidate at engine boundary',()=>{
+ const state=base();
+ state.animals.push({id:'tom1',species:'Cat',sex:'Male'});
+ const item={id:'newborn',name:'Newborn',confirmedSireId:'tom1'};
+ assert.equal(kittens.createKittens(state,'l1',[item]).valid,false,'No evidence reference is not enough');
+ const valid=kittens.createKittens(state,'l1',[{...item,parentageEvidenceRef:'breeder-log-1'}]);
+ assert.equal(valid.valid,true);
+ assert.equal(valid.created[0].paternityEvidence.reference,'breeder-log-1');
+ state.litters[0].potentialSireIds=[];
+ state.litters[0].sireId='';
+ assert.equal(kittens.createKittens(state,'l1',[{...item,parentageEvidenceRef:'breeder-log-1'}]).valid,false,'Unrecorded parentage cannot be attributed');
 });
