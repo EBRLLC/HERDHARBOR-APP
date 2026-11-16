@@ -10,6 +10,8 @@
 <script src="../../canine-identity-v2.0.1.js"></script>
 <script src="../../feline-identity-v2.0.3.js"></script>
 <script src="../../cavy-identity-v2.0.3.js"></script>
+<script src="../../feline-reproduction-v2.0.3.js"></script>
+<script src="../../cavy-reproduction-v2.0.3.js"></script>
 <script src="../../breeding-litter-runtime-v1.8.3.js"></script>
 <script>
 window.addEventListener("load",()=>{
@@ -87,6 +89,33 @@ window.addEventListener("load",()=>{
    {id:"cat-ui",damId:"queen-ui",sireId:"",birthDate:"2026-11-15",bornAlive:1,potentialSireIds:["tom-ui"]},
    {id:"cavy-ui",damId:"sow-ui",sireId:"",birthDate:"2026-11-15",bornAlive:1,potentialSireIds:["boar-ui"]}
   ],tasks:[],customers:[{id:"buyer-ui",name:"Buyer",ownerId:"farm"}],profile:{}};
+  // Record reproductive events through installed on-screen forms and canonical app save API.
+  window.HerdHarborCloud={getSession:()=>({user:{id:"farm"}})};
+  window.HerdHarborApp={
+   getState:()=>uiState,
+   commitState:next=>{uiState.animals=next.animals;return true;}
+  };
+  const matingOpened=window.HerdHarborFelineReproduction203.openForAnimal("queen-ui");
+  check(matingOpened,"Real Cat mating form not reachable");
+  const matingForm=document.querySelector("#hh-feline-repro-form");
+  check(Boolean(matingForm),"Cat mating form missing");
+  matingForm.querySelector('[name="kind"]').value="mating";
+  matingForm.querySelector('[name="date"]').value="2026-09-11";
+  matingForm.querySelector('[name="sireId"]').value="tom-ui";
+  matingForm.querySelector('[name="evidenceRef"]').value="mating-log";
+  matingForm.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
+  check(uiState.animals.find(a=>a.id==="queen-ui").felineReproduction?.events?.length===1,"Cat mating did not save in canonical state");
+  const exposureOpened=window.HerdHarborCavyReproduction203.openForAnimal("sow-ui");
+  check(exposureOpened,"Real Cavy exposure form not reachable");
+  const exposureForm=document.querySelector("#hh-cavy-repro-form");
+  check(Boolean(exposureForm),"Cavy exposure form missing");
+  exposureForm.querySelector('[name="type"]').value="exposure";
+  exposureForm.querySelector('[name="date"]').value="2026-09-01";
+  exposureForm.querySelector('[name="endDate"]').value="2026-09-07";
+  exposureForm.querySelector('[name="boarId"]').value="boar-ui";
+  exposureForm.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
+  check(uiState.animals.find(a=>a.id==="sow-ui").cavyReproduction?.records?.length===1,"Cavy exposure did not save in canonical state");
+  uiState.litters.forEach(litter=>{litter.potentialSireIds=[];});
   const q=(selector,scope=document)=>scope.querySelector(selector);
   const qa=(selector,scope=document)=>[...scope.querySelectorAll(selector)];
   const notices=[];
