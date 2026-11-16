@@ -113,3 +113,16 @@ test('Cavy sire attribution requires documented recorded candidate at engine bou
  state.litters[0].sireId='';
  assert.equal(pup.generatePups(state,'l1',[{...item,parentageEvidenceRef:'breeder-log-1'}]).valid,false,'Unrecorded parentage cannot be attributed');
 });
+
+test('Cavy breeder placement cannot reopen a completed canonical sale',()=>{
+ const created=pup.generatePups(initial(),'l1',[{id:'p',name:'Young'}]);
+ assert.equal(created.valid,true);
+ const state=created.state,animal=state.animals.find(a=>a.id==='p');
+ animal.status='Sold';
+ assert.equal(pup.changeStatus(state,'p','Reserved','customer-1').valid,false);
+ animal.status='Available';
+ state.sales=[{id:'sale-1',status:'Completed',customerId:'customer-1',items:[{animalId:'p'}]}];
+ const before=JSON.stringify(state);
+ assert.equal(pup.changeStatus(state,'p','Retained').valid,false);
+ assert.equal(JSON.stringify(state),before,'refused edit must not mutate canonical state');
+});
