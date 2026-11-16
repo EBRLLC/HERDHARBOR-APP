@@ -78,7 +78,9 @@ function catteryStatus(state,id,status,buyerId=""){
  const animal=arr(state?.animals).find(a=>a.id===id);
  if(!isCat(animal)||!animal.sourceBirthId)return {valid:false,issues:["Recorded birth-linked kitten required."],state};
  if(["Reserved","Sold"].includes(status)&&!txt(buyerId))return {valid:false,issues:["Buyer record required for reserved or sold kittens."],state};
- if(buyerId&&!arr(state.customers).some(x=>x.id===buyerId))return {valid:false,issues:["Selected buyer does not exist."],state};
+ const buyers=buyerId?arr(state.customers).filter(x=>x.id===buyerId):[];
+ if(buyerId&&buyers.length!==1)return {valid:false,issues:["Selected buyer record must exist and be unique."],state};
+ if(buyerId&&txt(animal.ownerId)&&txt(buyers[0].ownerId)&&txt(animal.ownerId)!==txt(buyers[0].ownerId))return {valid:false,issues:["Buyer belongs to another recorded owner."],state};
  const next={...animal,status,buyerId:buyerId||"",updatedAt:new Date().toISOString()};
  return {valid:true,issues:[],state:{...state,animals:state.animals.map(a=>a===animal?next:a)}};
 }

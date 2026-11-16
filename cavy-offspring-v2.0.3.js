@@ -75,8 +75,9 @@ function changeStatus(state,pupId,nextStatus,buyerId=""){
   return {valid:false,issues:["Invalid pup or status."],state};
  if(["Reserved","Sold"].includes(nextStatus)&&!txt(buyerId))
   return {valid:false,issues:["Buyer required for reservation or sale."],state};
- if(buyerId&&!arr(state.customers).some(x=>x.id===buyerId))
-  return {valid:false,issues:["Buyer is missing from Customers."],state};
+ const buyers=buyerId?arr(state.customers).filter(x=>x.id===buyerId):[];
+ if(buyerId&&buyers.length!==1)return {valid:false,issues:["Buyer record must exist and be unique."],state};
+ if(buyerId&&txt(pup.ownerId)&&txt(buyers[0].ownerId)&&txt(pup.ownerId)!==txt(buyers[0].ownerId))return {valid:false,issues:["Buyer belongs to another recorded owner."],state};
  return {valid:true,issues:[],state:{...state,animals:state.animals.map(a=>a===pup?{...a,status:nextStatus,buyerId,updatedAt:new Date().toISOString()}:a)}};
 }
 function weightSeries(animal){
