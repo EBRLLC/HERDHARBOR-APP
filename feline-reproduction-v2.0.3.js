@@ -28,7 +28,8 @@ function syncFollowUpTasks(state,queen,record){
    dueDate:record.followUpDate,animalId:queen.id,notes:"Breeder-scheduled follow-up for "+record.kind+".",
    sourceType:"feline-reproduction",sourceRecordId:record.id,reminderType:"follow-up"};
  if(prior){
-  if(!prior.completed)Object.assign(prior,fields,{updatedAt:now});
+  if(prior.completed&&prior.status==="Cancelled")Object.assign(prior,fields,{completed:false,completedAt:"",status:"Scheduled",updatedAt:now});
+  else if(!prior.completed)Object.assign(prior,fields,{updatedAt:now});
  }else tasks.push({...fields,id:taskId,recurrence:"None",recurrenceDays:"",completed:false,createdAt:now,updatedAt:now});
  return tasks;
 }

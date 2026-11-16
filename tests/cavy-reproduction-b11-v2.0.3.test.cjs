@@ -46,3 +46,14 @@ test('Cavy exposure follow-ups update canonical tasks and cancel without duplica
  assert.equal(canceled.state.tasks[0].status,'Cancelled');
  assert.equal(cavy.addRecord(s,'sow',{...entry,followUpDate:'2026-02-30'},{ownerId:'user'}).valid,false);
 });
+
+test('Cavy canceled follow-up can be reinstated without duplicate tasks',()=>{
+ const entry={type:'follow-up',date:'2026-11-14',followUpDate:'2026-11-20'};
+ let s=cavy.addRecord({...base(),tasks:[]},'sow',entry,{ownerId:'user'}).state;
+ s=cavy.addRecord(s,'sow',{...entry,followUpDate:''},{ownerId:'user'}).state;
+ assert.equal(s.tasks[0].completed,true);
+ s=cavy.addRecord(s,'sow',{...entry,followUpDate:'2026-11-24'},{ownerId:'user'}).state;
+ assert.equal(s.tasks.length,1);
+ assert.equal(s.tasks[0].completed,false);
+ assert.equal(s.tasks[0].dueDate,'2026-11-24');
+});
