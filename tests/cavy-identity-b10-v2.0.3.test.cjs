@@ -44,3 +44,10 @@ test('Cavy animal editor exposes show and veterinary evidence with record valida
  assert.match(source,/x\.showResults=collect\("show"\)/);
  assert.match(source,/x\.veterinaryEvidence=collect\("vet"\)/);
 });
+
+test('Cavy animal detail exposes canonical pedigree printing',()=>{
+ const src=fs.readFileSync(path.join(__dirname,'../animal-profile-runtime-v1.8.3.js'),'utf8');
+ assert.match(src,/detail-print-cavy/);
+ assert.match(src,/HerdHarborCavyIdentity203\?\.isCavy\(animal\)/);
+ assert.match(src,/\$\("#detail-print-cavy"\)\?\.addEventListener\("click", \(\) => deps\.openPrintPedigreeForm\(id\)\)/);
+});
