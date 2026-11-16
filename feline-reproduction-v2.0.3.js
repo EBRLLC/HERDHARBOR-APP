@@ -14,6 +14,24 @@ function calculateMatingWindow(matingDate){
    centralDueDate:addDays(matingDate,65),earliestDueDate:addDays(matingDate,63),
    latestDueDate:addDays(matingDate,71)};
 }
+function syncFollowUpTasks(state,queen,record){
+ const tasks=arr(state?.tasks).map(task=>({...task}));
+ const taskId="task_feline_"+encodeURIComponent(clean(queen.id))+"_"+encodeURIComponent(clean(record.id))+"_followup";
+ const prior=tasks.find(task=>task.id===taskId);
+ if(!record.followUpDate&&!prior)return tasks;
+ const now=new Date().toISOString();
+ if(!record.followUpDate){
+  if(prior&&!prior.completed){prior.completed=true;prior.completedAt=now;prior.status="Cancelled";prior.updatedAt=now;}
+  return tasks;
+ }
+ const fields={title:"Cat reproduction follow-up: "+clean(queen.name||queen.id),category:"Breeding",
+   dueDate:record.followUpDate,animalId:queen.id,notes:"Breeder-scheduled follow-up for "+record.kind+".",
+   sourceType:"feline-reproduction",sourceRecordId:record.id,reminderType:"follow-up"};
+ if(prior){
+  if(!prior.completed)Object.assign(prior,fields,{updatedAt:now});
+ }else tasks.push({...fields,id:taskId,recurrence:"None",recurrenceDays:"",completed:false,createdAt:now,updatedAt:now});
+ return tasks;
+}
 function appendEvent(state,queenId,event,options={}){
  const errors=[],account=clean(options.accountId),animals=arr(state?.animals);
  const source=animals.find(a=>a?.id===queenId);
@@ -42,7 +60,7 @@ function appendEvent(state,queenId,event,options={}){
  }else events.push(item);
  events.sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
  const changed={...source,felineReproduction:{...(source.felineReproduction||{}),events}};
- const next={...state,animals:animals.map(a=>a===source?changed:a)};
+ const next={...state,animals:animals.map(a=>a===source?changed:a),tasks:syncFollowUpTasks(state,source,item)};
  return {valid:true,issues:[],state:next,event:item,
     estimatedWindow:kind==="mating"?calculateMatingWindow(date):null};
 }
