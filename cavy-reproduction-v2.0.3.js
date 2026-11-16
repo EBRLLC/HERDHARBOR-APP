@@ -13,6 +13,21 @@ function windowFromExposure(from,to=from){
  return {estimated:true,confirmedPregnancy:false,reference:"recorded-sow-boar-exposure-only",
   earliest:offset(from,59),latest:offset(to,72),central:offset(to,68)};
 }
+function syncFollowUpTasks(state,sow,record){
+ const tasks=arr(state?.tasks).map(task=>({...task}));
+ const id="task_cavy_"+encodeURIComponent(text(sow.id))+"_"+encodeURIComponent(text(record.id))+"_followup";
+ const existing=tasks.find(task=>task.id===id),now=new Date().toISOString();
+ if(!record.followUpDate){
+  if(existing&&!existing.completed){existing.completed=true;existing.completedAt=now;existing.status="Cancelled";existing.updatedAt=now;}
+  return tasks;
+ }
+ const fields={title:"Cavy reproduction follow-up: "+text(sow.name||sow.id),category:"Breeding",dueDate:record.followUpDate,
+  animalId:sow.id,notes:"Breeder-scheduled follow-up for "+record.type+".",
+  sourceType:"cavy-reproduction",sourceRecordId:record.id,reminderType:"follow-up"};
+ if(existing){if(!existing.completed)Object.assign(existing,fields,{updatedAt:now});}
+ else tasks.push({...fields,id,recurrence:"None",recurrenceDays:"",completed:false,createdAt:now,updatedAt:now});
+ return tasks;
+}
 function addRecord(state,sowId,entry,options={}){
  const animals=arr(state?.animals),sow=animals.find(a=>a.id===sowId),user=text(options.ownerId),issues=[];
  if(!sow||!isCavy(sow)||text(sow.sex).toLowerCase()!=="female")issues.push("Select an existing female Cavy sow.");
@@ -21,6 +36,7 @@ function addRecord(state,sowId,entry,options={}){
  if(!["planned-pairing","exposure","pregnancy-observation","pregnancy-assessment","birth","follow-up"].includes(type))issues.push("Unknown cavy reproduction record type.");
  if(!date(entry?.date))issues.push("Enter a valid record date.");
  if(type==="exposure"&&(!date(entry?.endDate)||text(entry.endDate)<text(entry.date)))issues.push("Exposure end date must be on or after its start date.");
+ if(text(entry?.followUpDate)&&!date(entry.followUpDate))issues.push("Cavy follow-up must be a real calendar date.");
  if(type==="pregnancy-assessment"&&!["positive","negative","inconclusive","not-assessed"].includes(text(entry?.result)))issues.push("Record the observed assessment outcome.");
  if(["planned-pairing","exposure"].includes(type)&&!text(entry?.boarId)&&!text(entry?.externalBoar))issues.push("Record an owned or external boar.");
  const boar=animals.find(a=>a.id===entry?.boarId);
@@ -43,7 +59,7 @@ function addRecord(state,sowId,entry,options={}){
  const changed={...sow,cavyReproduction:{...sow.cavyReproduction,records:prior}};
  return {valid:true,issues:[],record,
   estimate:type==="exposure"?windowFromExposure(record.date,record.endDate):null,
-  state:{...state,animals:animals.map(a=>a===sow?changed:a)}};
+  state:{...state,animals:animals.map(a=>a===sow?changed:a),tasks:syncFollowUpTasks(state,sow,record)}};
 }
 function summary(sow){
  if(!isCavy(sow))return {supported:false};
