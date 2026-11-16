@@ -41,7 +41,7 @@ test('explicitly attributed cavy boar must be male and match sow owner',()=>{
  const state=initial();state.animals[0].ownerId='farm-a';
  const boar={id:'b1',species:'Cavy',sex:'Female',ownerId:'farm-a'};
  state.animals.push(boar);
- const create=()=>pup.generatePups(state,'l1',[{id:'p',name:'Pup',confirmedSireId:'b1'}]);
+ const create=()=>pup.generatePups(state,'l1',[{id:'p',name:'Pup',confirmedSireId:'b1',parentageEvidenceRef:'breeding-log-1'}]);
  assert.equal(create().valid,false,'female boar must fail');
  boar.sex='Male';boar.ownerId='farm-b';
  assert.equal(create().valid,false,'cross-owner boar must fail');
@@ -98,4 +98,17 @@ test('litter form offers optional Cat/Cavy sire attribution only with evidence r
  assert.match(runtime,/Provide an evidence reference for every breeder-attributed kitten sire/);
  assert.match(runtime,/confirmedSireId:/);
  assert.match(runtime,/formIndexById/);
+});
+
+test('Cavy sire attribution requires documented recorded candidate at engine boundary',()=>{
+ const state=initial();
+ state.animals.push({id:'b1',species:'Cavy',sex:'Male'});
+ const item={id:'newborn',name:'Newborn',confirmedSireId:'b1'};
+ assert.equal(pup.generatePups(state,'l1',[item]).valid,false,'No evidence reference is not enough');
+ const valid=pup.generatePups(state,'l1',[{...item,parentageEvidenceRef:'breeder-log-1'}]);
+ assert.equal(valid.valid,true);
+ assert.equal(valid.created[0].paternityEvidence.reference,'breeder-log-1');
+ state.litters[0].potentialSireIds=[];
+ state.litters[0].sireId='';
+ assert.equal(pup.generatePups(state,'l1',[{...item,parentageEvidenceRef:'breeder-log-1'}]).valid,false,'Unrecorded parentage cannot be attributed');
 });
