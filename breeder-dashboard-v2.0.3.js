@@ -12,6 +12,10 @@ const species=x=>{const value=text(x).toLowerCase();
 const dateOnly=x=>{x=text(x);if(!/^\d{4}-\d{2}-\d{2}$/.test(x))return false;
  const d=new Date(x+"T00:00:00Z");return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===x;};
 const inactive=a=>["sold","archived","deceased","transferred"].includes(text(a?.status).toLowerCase())||a?.ancestorOnly===true||a?.isAncestorOnly===true;
+const plusDays=(date,n)=>{if(!dateOnly(date))return "";const d=new Date(date+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
+const birthInWindow=(state,damId,earliest,latest)=>
+ arr(state?.litters).some(litter=>text(litter?.damId)===text(damId)&&dateOnly(litter?.birthDate)&&
+  litter.birthDate>=earliest&&litter.birthDate<=latest);
 function build(state,filter={}){
  const animals=arr(state?.animals),byId=new Map(),duplicates=new Set();
  for(const animal of animals){const id=text(animal?.id);if(!id)continue;if(byId.has(id))duplicates.add(id);else byId.set(id,animal);}
@@ -42,6 +46,7 @@ function build(state,filter={}){
   const id=text(animal?.id);if(!id||duplicates.has(id)||inactive(animal))continue;
   if(species(animal.species)==="Cat")for(const record of arr(animal.felineReproduction?.events)){
    if(record.kind!=="mating"||!dateOnly(record.date))continue;
+   if(birthInWindow(state,id,plusDays(record.date,63),plusDays(record.date,71)))continue;
    const d=new Date(record.date+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+65);
    push({id:"feline:"+id+":"+record.id+":due",date:d.toISOString().slice(0,10),species:"Cat",
     animalId:id,label:"Estimated queening",evidence:"mating-date-estimate-not-confirmation",source:"feline"});
@@ -50,7 +55,11 @@ function build(state,filter={}){
    if(dateOnly(record.followUpDate))
     push({id:"cavy:"+id+":"+record.id+":followup",date:record.followUpDate,species:"Cavy",
      animalId:id,label:"Sow follow-up",source:"cavy",evidence:"breeder-scheduled"});
-   if(record.type!=="exposure"||!dateOnly(record.endDate))continue;
+   if(record.type!=="exposure"||!dateOnly(record.date)||!dateOnly(record.endDate)||record.endDate<record.date)continue;
+   const earliest=plusDays(record.date,59),latest=plusDays(record.endDate,72);
+   if(birthInWindow(state,id,earliest,latest)||
+      arr(animal.cavyReproduction?.records).some(outcome=>outcome.type==="birth"&&dateOnly(outcome.date)&&
+        outcome.date>=earliest&&outcome.date<=latest))continue;
    const d=new Date(record.endDate+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+68);
    push({id:"cavy:"+id+":"+record.id+":due",date:d.toISOString().slice(0,10),species:"Cavy",
     animalId:id,label:"Estimated cavy birth",source:"cavy",evidence:"exposure-date-estimate-not-confirmation"});
