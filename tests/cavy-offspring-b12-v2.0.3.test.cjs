@@ -50,3 +50,20 @@ test('explicitly attributed cavy boar must be male and match sow owner',()=>{
  assert.equal(result.created[0].sireId,'b1');
  assert.equal(result.created[0].paternityStatus,'breeder-attributed');
 });
+
+test('Cavy offspring reservation rejects cross-owner and ambiguous customer IDs',()=>{
+ const s=initial();s.animals[0].ownerId='farm-a';
+ s.customers[0].ownerId='farm-b';
+ const result=pup.generatePups(s,'l1',[{id:'p',name:'Young animal'}]);
+ assert.equal(result.valid,true);
+ result.state.animals.find(a=>a.id==='p').ownerId='farm-a';
+ const first=pup.changeStatus(result.state,'p','Reserved','customer-1');
+ assert.equal(first.valid,false);
+ assert.equal(result.state.animals.find(a=>a.id==='p').status,'Growing');
+ const owned=result.state.animals.find(a=>a.id==='p');
+ owned.ownerId='farm-a';
+ result.state.customers[0].ownerId='farm-a';
+ assert.equal(pup.changeStatus(result.state,'p','Reserved','customer-1').valid,true);
+ result.state.customers.push({...result.state.customers[0]});
+ assert.equal(pup.changeStatus(result.state,'p','Reserved','customer-1').valid,false);
+});

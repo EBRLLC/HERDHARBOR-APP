@@ -50,3 +50,20 @@ test('explicitly attributed kitten sire must be male and match queen owner',()=>
  assert.equal(result.created[0].sireId,'tom1');
  assert.equal(result.created[0].paternityStatus,'breeder-attributed');
 });
+
+test('Cat offspring reservation rejects cross-owner and ambiguous customer IDs',()=>{
+ const s=base();s.animals[0].ownerId='farm-a';
+ s.customers[0].ownerId='farm-b';
+ const result=kittens.createKittens(s,'l1',[{id:'kit',name:'Young animal'}]);
+ assert.equal(result.valid,true);
+ result.state.animals.find(a=>a.id==='kit').ownerId='farm-a';
+ const first=kittens.catteryStatus(result.state,'kit','Reserved','buyer');
+ assert.equal(first.valid,false);
+ assert.equal(result.state.animals.find(a=>a.id==='kit').status,'Growing');
+ const owned=result.state.animals.find(a=>a.id==='kit');
+ owned.ownerId='farm-a';
+ result.state.customers[0].ownerId='farm-a';
+ assert.equal(kittens.catteryStatus(result.state,'kit','Reserved','buyer').valid,true);
+ result.state.customers.push({...result.state.customers[0]});
+ assert.equal(kittens.catteryStatus(result.state,'kit','Reserved','buyer').valid,false);
+});
