@@ -1074,7 +1074,7 @@
               confirmedSireId:String(data.get(`offspringSire_${formIndexById.get(animal.id)}`)||"").trim(),
               parentageEvidenceRef:String(data.get(`offspringSireEvidence_${formIndexById.get(animal.id)}`)||"").trim() })));
           if(created.some(animal=>data.get(`offspringSire_${formIndexById.get(animal.id)}`)&&!String(data.get(`offspringSireEvidence_${formIndexById.get(animal.id)}`)||"").trim()))
-            return toast("Provide evidence for every breeder-attributed kitten sire.","error");
+            return toast("Provide an evidence reference for every breeder-attributed kitten sire.","error");
           if (!feline.valid) return toast(feline.issues.join(" "), "error");
           if (!allowsAnimalTransition(stateNow().animals, feline.state.animals)) return;
           const committed = persistMutation(`${feline.created.length} kitten records added.`, () => {
