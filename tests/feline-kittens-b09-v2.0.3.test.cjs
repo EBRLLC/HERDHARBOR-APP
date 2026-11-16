@@ -74,3 +74,14 @@ test('generated offspring inherits recorded maternal owner for account-safe plac
  assert.equal(x.valid,true);
  assert.equal(x.created[0].ownerId,'farm-a');
 });
+
+test('birth and litter UI exposes kitten placement and routes completed sales to canonical Sales',()=>{
+ const runtime=fs.readFileSync(path.join(__dirname,'../breeding-litter-runtime-v1.8.3.js'),'utf8');
+ assert.match(runtime,/data-kitten-placement=/);
+ assert.match(runtime,/function openKittenPlacement\(/);
+ assert.match(runtime,/HerdHarborFelineKittens203/);
+ assert.match(runtime,/feline\.catteryStatus\(stateNow\(\)/);
+ assert.match(runtime,/navigate\("sales"\)/);
+ assert.match(runtime,/persistMutation\("Kitten placement updated\."/);
+ assert.match(runtime,/Sold status and ownership transfers must be completed through the existing Sales workflow/);
+});
