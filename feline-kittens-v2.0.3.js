@@ -71,6 +71,8 @@ function catteryStatus(state,id,status,buyerId=""){
  if(!allowed.has(status))return {valid:false,issues:["Invalid cattery status."],state};
  const animal=arr(state?.animals).find(a=>a.id===id);
  if(!isCat(animal)||!animal.sourceBirthId)return {valid:false,issues:["Recorded birth-linked kitten required."],state};
+ const completedSale=arr(state?.sales).some(sale=>sale.status==="Completed"&&arr(sale.items).some(line=>line.animalId===id));
+ if(txt(animal.status)==="Sold"||completedSale)return {valid:false,issues:["Animal is linked to a completed sale. Correct status through Sales."],state};
  if(["Reserved","Sold"].includes(status)&&!txt(buyerId))return {valid:false,issues:["Buyer record required for reserved or sold kittens."],state};
  const buyers=buyerId?arr(state.customers).filter(x=>x.id===buyerId):[];
  if(buyerId&&buyers.length!==1)return {valid:false,issues:["Selected buyer record must exist and be unique."],state};
