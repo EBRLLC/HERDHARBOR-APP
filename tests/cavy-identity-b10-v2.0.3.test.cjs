@@ -26,3 +26,21 @@ test('animal form supports cats and cavies even on older account custom species 
  assert.match(profile,/CavyIdentity203\.readEditor/);
  assert.match(profile,/\[\.\.\.new Set\(\[\.\.\.\(state\.settings\?\.species \|\| \[\]\), "Cat", "Cavy"\]\)\]/);
 });
+
+test('Cavy animal editor exposes show and veterinary evidence with record validation',()=>{
+ const item={showResults:[{event:'County show',date:'2026-11-15',placement:'First',reference:'photo-1'}],
+ veterinaryEvidence:[{name:'Health exam',date:'2026-11-15',reference:'vet-1',result:'normal'}]};
+ const outcome=cavy.validate(item);
+ assert.equal(outcome.valid,true);
+ assert.equal(outcome.value.showResults[0].status,'breeder-entered-unverified');
+ assert.equal(outcome.value.veterinaryEvidence[0].result,'normal');
+ assert.equal(cavy.validate({showResults:[{...item.showResults[0],date:'2026-02-30'}]}).valid,false);
+ assert.equal(cavy.validate({veterinaryEvidence:[{...item.veterinaryEvidence[0],reference:''}]}).valid,false);
+ const html=cavy.editorHtml({species:'Cavy',cavy:item});
+ assert.match(html,/data-cavy-add="show"/);
+ assert.match(html,/data-cavy-add="vet"/);
+ assert.match(html,/photo-1/);
+ const source=fs.readFileSync(path.join(__dirname,'../cavy-identity-v2.0.3.js'),'utf8');
+ assert.match(source,/x\.showResults=collect\("show"\)/);
+ assert.match(source,/x\.veterinaryEvidence=collect\("vet"\)/);
+});
