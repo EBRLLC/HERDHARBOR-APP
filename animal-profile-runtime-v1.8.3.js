@@ -562,6 +562,8 @@
             '<button class="button button-primary" id="detail-feline-repro">Cat heat & mating</button>' : ""}
           ${globalThis.HerdHarborCavyIdentity203?.isCavy(animal) && String(animal.sex||"").toLowerCase()==="female" ?
             '<button class="button button-primary" id="detail-cavy-repro">Cavy mating & exposure</button>' : ""}
+          ${globalThis.HerdHarborFelineIdentity203?.isCat(animal)?'<button class="button button-ghost" id="detail-print-feline">Print Cat Pedigree</button>':""}
+          ${globalThis.HerdHarborCavyIdentity203?.isCavy(animal)?'<button class="button button-ghost" id="detail-print-cavy">Print Cavy Pedigree</button>':""}
           <button class="button button-primary" id="detail-edit">Edit animal</button>
         </div>
       `, `${animal.species || "Animal"} record`);
@@ -582,6 +584,8 @@
       );
       $("#detail-print-qr")?.addEventListener("click", (event) => openAnimalQrCardForm(id, event.currentTarget));
       $("#detail-print-canine")?.addEventListener("click", () => root.HerdHarborCaninePedigreePrint?.openForAnimal?.(id));
+      $("#detail-print-feline")?.addEventListener("click", () => deps.openPrintPedigreeForm(id));
+      $("#detail-print-cavy")?.addEventListener("click", () => deps.openPrintPedigreeForm(id));
       $("#detail-canine-repro")?.addEventListener("click", () => root.HerdHarborCanineReproductiveWorkspace?.openForAnimal?.(id));
       $("#detail-feline-repro")?.addEventListener("click", () => root.HerdHarborFelineReproduction203?.openForAnimal?.(id));
       $("#detail-cavy-repro")?.addEventListener("click", () => root.HerdHarborCavyReproduction203?.openForAnimal?.(id));
