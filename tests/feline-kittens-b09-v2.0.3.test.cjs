@@ -67,3 +67,10 @@ test('Cat offspring reservation rejects cross-owner and ambiguous customer IDs',
  result.state.customers.push({...result.state.customers[0]});
  assert.equal(kittens.catteryStatus(result.state,'kit','Reserved','buyer').valid,false);
 });
+
+test('generated offspring inherits recorded maternal owner for account-safe placement',()=>{
+ const s=base();s.animals[0].ownerId='farm-a';
+ const x=kittens.createKittens(s,'l1',[{id:'kit',name:'Young animal'}]);
+ assert.equal(x.valid,true);
+ assert.equal(x.created[0].ownerId,'farm-a');
+});
