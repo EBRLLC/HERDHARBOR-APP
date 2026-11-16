@@ -952,7 +952,7 @@
         const birth=Date.parse(litter.birthDate+"T00:00:00Z");
         const a=Date.parse(String(from||"")+"T00:00:00Z"),b=Date.parse(String(to||"")+"T00:00:00Z");
         return Number.isFinite(birth)&&Number.isFinite(a)&&Number.isFinite(b)&&
-          birth-a>=min*86400000&&birth-b<=max*86400000;
+          b>=a&&birth>=b&&birth-a>=min*86400000&&birth-b<=max*86400000;
       };
       const matingIds=kittenGeneration?(Array.isArray(dam?.felineReproduction?.events)?dam.felineReproduction.events:[])
         .filter(e=>e.kind==="mating"&&validBreedingWindow(e.date,e.date,63,71)).map(e=>e.sireId).filter(Boolean):[];
