@@ -82,8 +82,10 @@
     const species = clean(animal.species).toLowerCase();
     if (!["cat", "cats", "feline", "cavy", "cavies", "guinea pig", "guinea pigs"].includes(species)) return "";
     const status = clean(animal.paternityStatus).toLowerCase();
-    if (status === "dna-confirmed") return "Sire: DNA-confirmed (breeder-recorded evidence)";
-    if (status === "documented-parentage") return "Sire: documented (breeder-recorded evidence)";
+    const evidenceReference = clean(animal.paternityEvidence?.reference || animal.paternityEvidence?.evidenceRef || animal.parentageEvidenceRef);
+    if (status === "dna-confirmed" && evidenceReference) return "Sire: DNA-confirmed (breeder-recorded evidence)";
+    if (status === "documented-parentage" && evidenceReference) return "Sire: documented (breeder-recorded evidence)";
+    if (status === "dna-confirmed" || status === "documented-parentage") return "Sire: evidence claimed; supporting reference missing";
     if (status === "breeder-attributed") return "Sire: breeder-attributed; not independently verified";
     if (status === "recorded-unverified" || status === "unresolved" ||
         status === "unresolved-multiple-sires") return "Sire: potential, not confirmed";
