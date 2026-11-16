@@ -110,3 +110,16 @@ test('Cat sire attribution requires documented recorded candidate at engine boun
  state.litters[0].sireId='';
  assert.equal(kittens.createKittens(state,'l1',[{...item,parentageEvidenceRef:'breeder-log-1'}]).valid,false,'Unrecorded parentage cannot be attributed');
 });
+
+test('Cat breeder placement cannot reopen a completed canonical sale',()=>{
+ const created=kittens.createKittens(base(),'l1',[{id:'kit',name:'Young'}]);
+ assert.equal(created.valid,true);
+ const state=created.state,animal=state.animals.find(a=>a.id==='kit');
+ animal.status='Sold';
+ assert.equal(kittens.catteryStatus(state,'kit','Reserved','buyer').valid,false);
+ animal.status='Available';
+ state.sales=[{id:'sale-1',status:'Completed',customerId:'buyer',items:[{animalId:'kit'}]}];
+ const before=JSON.stringify(state);
+ assert.equal(kittens.catteryStatus(state,'kit','Retained').valid,false);
+ assert.equal(JSON.stringify(state),before,'refused edit must not mutate canonical state');
+});
