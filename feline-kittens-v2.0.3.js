@@ -33,7 +33,8 @@ function createKittens(state,litterId,items){
   if(!["Male","Female","Unknown"].includes(item.sex||"Unknown"))issues.push("Kitten sex must be recorded as male, female or unknown.");
   const potential=possible;
   const confirmedSire=txt(item.confirmedSireId);
-  if(confirmedSire&&potential.length&&!potential.includes(confirmedSire))issues.push("Attributed sire is not among recorded potential sires.");
+  if(confirmedSire&&!txt(item.parentageEvidenceRef))issues.push("Breeder-attributed sire requires a supporting evidence reference.");
+  if(confirmedSire&&!potential.includes(confirmedSire))issues.push("Attributed sire is not among recorded potential sires.");
    if(confirmedSire&&existing.filter(a=>a.id===confirmedSire).length!==1)issues.push("Attributed sire must have one unambiguous internal animal record.");
    const attributed=existing.find(a=>a.id===confirmedSire);
    if(attributed&&(!isCat(attributed)||attributed.id===dam.id))issues.push("Attributed sire must be a distinct Cat.");
