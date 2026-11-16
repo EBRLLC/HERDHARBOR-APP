@@ -885,6 +885,11 @@
       if (!litter) return;
       const dam = stateNow().animals.find((animal) => animal.id === litter.damId);
       const sire = stateNow().animals.find((animal) => animal.id === litter.sireId);
+      const kittenGeneration=Boolean(root?.HerdHarborFelineIdentity203?.isCat(dam));
+      const candidateSires=kittenGeneration?[...new Set([...(litter.potentialSireIds||[]),litter.sireId].filter(Boolean))]
+        .map(id=>stateNow().animals.find(a=>a.id===id&&root.HerdHarborFelineIdentity203.isCat(a)&&String(a.sex||"").toLowerCase()==="male"))
+        .filter(a=>a&&(!dam.ownerId||!a.ownerId||a.ownerId===dam.ownerId)):[];
+
       const existing = offspringForLitter(litter);
       const available = Math.max(0, birthLiveRemaining(litter));
       const availableSlots = Math.max(0, available - existing.length);
@@ -900,7 +905,7 @@
         <form id="offspring-form">
           <div class="offspring-creator-header">
             <label>Number to create<input id="offspring-count" type="number" min="1" max="${maxCount}" step="1" value="${defaultCount}" required></label>
-            <p class="muted">Each new animal receives this dam, sire, birth date, species, and pedigree connection automatically. Review names, tags, and sex before saving.</p>
+            <p class="muted">${kittenGeneration?"Each kitten receives its dam automatically. Sire stays unverified unless you explicitly attribute a recorded possible sire.":"Each new animal receives this dam, sire, birth date, species, and pedigree connection automatically."} Review names, tags, and sex before saving.</p>
           </div>
           <div id="offspring-fields"></div>
           <div class="modal-actions">
@@ -926,6 +931,8 @@
             <label>Name<input name="offspringName_${index}" value="${esc(`${dam?.name || "Offspring"} offspring ${sequence}`)}" required></label>
             <label>ID or tag<input name="offspringTag_${index}" value="${esc(prefix ? `${prefix}-${sequence}` : "")}"></label>
             <label>Sex<select name="offspringSex_${index}"><option>Unknown</option><option>Female</option><option>Male</option></select></label>
+            ${kittenGeneration?`<label>Breeder-attributed sire (optional)<select name="offspringSire_${index}"><option value="">Unverified / unknown</option>${candidateSires.map(s=>`<option value="${esc(s.id)}">${esc(s.name||s.id)}</option>`).join("")}</select></label>
+            <label>Parentage evidence reference (if attributed)<input name="offspringSireEvidence_${index}" placeholder="Recorded breeding or supporting evidence"></label>`:""}
           </div>`;
         }).join("")}</div>`;
       };
@@ -970,8 +977,12 @@
         }
         if (root?.HerdHarborFelineKittens203 && root?.HerdHarborFelineIdentity203?.isCat(dam)) {
           const feline = root.HerdHarborFelineKittens203.createKittens(stateNow(), litterId,
-            created.map(animal => ({ id: animal.id, name: animal.name, tag: animal.tag,
-              sex: animal.sex, breed: animal.breed, color: animal.color })));
+            created.map((animal,index) => ({ id: animal.id, name: animal.name, tag: animal.tag,
+              sex: animal.sex, breed: animal.breed, color: animal.color,
+              confirmedSireId: String(data.get(`offspringSire_${index}`)||"").trim(),
+              parentageEvidenceRef: String(data.get(`offspringSireEvidence_${index}`)||"").trim() })));
+          if (created.some((animal,index)=>data.get(`offspringSire_${index}`)&&!String(data.get(`offspringSireEvidence_${index}`)||"").trim()))
+            return toast("Provide an evidence reference for every breeder-attributed kitten sire.","error");
           if (!feline.valid) return toast(feline.issues.join(" "), "error");
           if (!allowsAnimalTransition(stateNow().animals, feline.state.animals)) return;
           const committed = persistMutation(`${feline.created.length} kitten records added.`, () => {
