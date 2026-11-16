@@ -23,6 +23,7 @@ test('kitten weight and health observations remain individual and idempotent',()
 test('reserved or sold kittens require recorded customer, otherwise no mutation',()=>{
  const s=kittens.createKittens(base(),'l1',[{id:'kit',name:'Cat'}]).state;
  assert.equal(kittens.catteryStatus(s,'kit','Sold').valid,false);
+ assert.equal(kittens.catteryStatus(s,'kit','Sold','buyer').valid,false,'Sale must be completed in canonical Sales workflow');
  const x=kittens.catteryStatus(s,'kit','Reserved','buyer');
  assert.equal(x.valid,true);assert.equal(x.state.animals[1].buyerId,'buyer');
  assert.equal(s.animals[1].status,'Growing');
