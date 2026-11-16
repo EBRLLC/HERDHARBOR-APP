@@ -40,7 +40,7 @@ function createKittens(state,litterId,items){
    if(attributed&&txt(attributed.sex).toLowerCase()!=="male")issues.push("Attributed sire must be recorded as male.");
    if(attributed&&txt(dam.ownerId)&&txt(attributed.ownerId)&&txt(dam.ownerId)!==txt(attributed.ownerId))issues.push("Attributed sire belongs to another recorded owner.");
   created.push({id,name:txt(item.name),species:"Cat",breed:txt(item.breed)||dam.breed||"",sex:item.sex||"Unknown",
-   color:txt(item.color),tag:txt(item.tag),status:"Growing",dob:litter.birthDate,
+   color:txt(item.color),tag:txt(item.tag),status:"Growing",dob:litter.birthDate,ownerId:txt(dam.ownerId),
    damId:dam.id,sireId:confirmedSire,
    potentialSireIds:potential.slice(),paternityStatus:confirmedSire?"breeder-attributed":potential.length>1?"unresolved-multiple-sires":potential.length===0?"unknown":"recorded-unverified",
     paternityEvidence:confirmedSire?{basis:"breeder-attributed",reference:txt(item.parentageEvidenceRef),recordedAt:new Date().toISOString()}:null,
