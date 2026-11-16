@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>HerdHarbor 2.0.3 browser integration smoke</title></head>
+<body>
+<label>Species <select id="species"><option>Rabbit</option><option>Dog</option><option>Cat</option><option>Cavy</option></select></label>
+<p id="context"></p><output id="hh203-result" data-status="pending">Running</output>
+<script src="../../breeding-integrity-v2.0.3.js"></script>
+<script src="../../feline-kittens-v2.0.3.js"></script>
+<script src="../../cavy-offspring-v2.0.3.js"></script>
+<script src="../../breeder-dashboard-v2.0.3.js"></script>
+<script src="../../canine-identity-v2.0.1.js"></script>
+<script>
+window.addEventListener("load",()=>{
+ const output=document.querySelector("#hh203-result");
+ const check=(condition,message)=>{if(!condition)throw Error(message);};
+ try{
+  const selector=document.querySelector("#species"),context=document.querySelector("#context");
+  selector.addEventListener("change",()=>{context.textContent=selector.value;});
+  for(const value of ["Rabbit","Dog","Cat","Cavy"]){
+   selector.value=value;selector.dispatchEvent(new Event("change",{bubbles:true}));
+   check(context.textContent===value,"Species selection failed: "+value);
+  }
+  const cat={animals:[{id:"queen",species:"Cat",sex:"Female"}],
+   litters:[{id:"cat-l",damId:"queen",birthDate:"2026-11-15",bornAlive:1,potentialSireIds:["tom1","tom2"]}]};
+  const bornCat=window.HerdHarborFelineKittens203.createKittens(cat,"cat-l",[{id:"kitten",name:"Kitten"}]);
+  check(bornCat.valid&&bornCat.created[0].sireId===""&&bornCat.created[0].paternityStatus==="unresolved-multiple-sires","Unverified kitten sire promoted");
+  const weighedCat=window.HerdHarborFelineKittens203.addObservation(bornCat.state,"kitten",{kind:"weight",date:"2026-11-16",grams:105});
+  check(weighedCat.valid,"Kitten growth not recorded");
+  const cavy={animals:[{id:"sow",species:"Guinea Pig",sex:"Female"}],
+   litters:[{id:"cavy-l",damId:"sow",birthDate:"2026-11-15",bornAlive:1,potentialSireIds:["boar1","boar2"]}]};
+  const bornCavy=window.HerdHarborCavyOffspring203.generatePups(cavy,"cavy-l",[{id:"pup",name:"Pup"}]);
+  check(bornCavy.valid&&bornCavy.created[0].sireId==="","Unverified cavy sire promoted");
+  const weighedCavy=window.HerdHarborCavyOffspring203.observe(bornCavy.state,"pup",{kind:"weight",date:"2026-11-16",grams:85});
+  check(weighedCavy.valid,"Cavy growth not recorded");
+  const state={animals:[...weighedCat.state.animals,...weighedCavy.state.animals],litters:[...weighedCat.state.litters,...weighedCavy.state.litters]};
+  const growth=window.HerdHarborBreederDashboard203.growthReport(state);
+  check(growth.measurements===2&&growth.animalsWithWeights===2,"Browser dashboard growth report mismatch");
+  const panel=window.HerdHarborBreederDashboard203.panelHtml(state,x=>String(x).replace(/&/g,"&amp;").replace(/</g,"&lt;"),x=>x,"2026-11-15");
+  check(panel.includes("Latest offspring weights"),"Browser dashboard growth UI absent");
+  check(window.HerdHarborCanineIdentity.validate({healthEvidence:[{type:"screening",name:"Eye exam",date:"2026-11-15",reference:"doc"}]}).valid,"Canine valid health date rejected");
+  check(!window.HerdHarborCanineIdentity.validate({healthEvidence:[{type:"screening",name:"Eye exam",date:"2026-02-30",reference:"doc"}]}).valid,"Impossible health date accepted");
+  const baseline={animals:[{id:"queen",species:"Cat"},{id:"tom",species:"Feline"}],breedings:[],litters:[]};
+  const next={...baseline,animals:[...baseline.animals,{id:"kit",species:"Cats",sireId:"tom",damId:"queen"}]};
+  check(window.HerdHarborBreedingIntegrity203.validateMutation(baseline,next).ok,"Imported feline aliases rejected");
+  output.dataset.status="pass";output.textContent="PASS: browser modules, DOM species selection, offspring evidence, health dates and dashboard";
+ }catch(error){output.dataset.status="fail";output.textContent="FAIL: "+error.message;}
+});
+</script></body></html>
