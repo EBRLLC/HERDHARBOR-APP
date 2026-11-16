@@ -771,9 +771,9 @@
         button.addEventListener("click", () => openKittenPlacement(button.dataset.kittenPlacement)));
       $$('[data-kitten-care]', $("#view-litters")).forEach(button =>
         button.addEventListener("click", () => openKittenCare(button.dataset.kittenCare)));
-      $('[data-rabbit-kit-growth]', $("#view-litters")).forEach(button =>
+      $$('[data-rabbit-kit-growth]', $("#view-litters")).forEach(button =>
         button.addEventListener("click", () => openRabbitKitGrowth(button.dataset.rabbitKitGrowth)));
-      $('[data-edit-litter]', $("#view-litters")).forEach((button) =>
+      $$('[data-edit-litter]', $("#view-litters")).forEach((button) =>
         button.addEventListener("click", () => openLitterForm(button.dataset.editLitter)));
       $$('[data-create-offspring]', $("#view-litters")).forEach((button) =>
         button.addEventListener("click", () => {
