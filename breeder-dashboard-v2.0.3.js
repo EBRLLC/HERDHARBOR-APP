@@ -4,8 +4,10 @@ if(root)root.HerdHarborBreederDashboard203=api;
 })(typeof globalThis!=="undefined"?globalThis:this,function(){"use strict";
 const text=x=>String(x==null?"":x).trim(),arr=x=>Array.isArray(x)?x:[];
 const species=x=>{const value=text(x).toLowerCase();
+ if(["rabbit","rabbits"].includes(value))return "Rabbit";
+ if(["dog","dogs","canine"].includes(value))return "Dog";
  if(["cat","cats","feline"].includes(value))return "Cat";
- if(["cavy","cavies","guinea pig","guinea pigs"].includes(value))return "Cavy";
+ if(["cavy","cavies","guinea pig","guinea pigs","guinea-pig","guinea-pigs"].includes(value))return "Cavy";
  return text(x);};
 const dateOnly=x=>{x=text(x);if(!/^\d{4}-\d{2}-\d{2}$/.test(x))return false;
  const d=new Date(x+"T00:00:00Z");return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===x;};
@@ -15,12 +17,13 @@ function build(state,filter={}){
  for(const animal of animals){const id=text(animal?.id);if(!id)continue;if(byId.has(id))duplicates.add(id);else byId.set(id,animal);}
  for(const id of duplicates)byId.delete(id);
  const calendar=[],review=[],seen=new Set();
+ const today=dateOnly(filter.today)?filter.today:"";
  const push=(event)=>{
   if(!event||!dateOnly(event.date))return;
   const id=text(event.id);if(!id||seen.has(id))return;seen.add(id);
   calendar.push({id,date:event.date,species:event.species||"Unknown",animalId:event.animalId||"",
    label:event.label||"",evidence:event.evidence||"breeder-recorded",
-   source:event.source||"",status:event.status||"scheduled"});
+   source:event.source||"",status:event.status||(today&&event.date<today?"overdue":"scheduled")});
  };
  for(const record of arr(state?.breedings)){
   const id=text(record?.id),dam=byId.get(text(record?.femaleId));
@@ -99,14 +102,16 @@ function growthReport(state,filter={}){
 function panelHtml(state,escapeHtml,formatDate,today=""){
  const esc=typeof escapeHtml==="function"?escapeHtml:x=>text(x).replace(/&/g,"&amp;").replace(/</g,"&lt;");
  const fmt=typeof formatDate==="function"?formatDate:x=>x;
- const result=build(state,{from:today||undefined});
- const events=result.calendar.slice(0,12);
+ const result=build(state,{today});
+ const overdue=result.calendar.filter(x=>x.status==="overdue");
+ const upcoming=result.calendar.filter(x=>x.status!=="overdue");
+ const events=[...overdue.slice(-4),...upcoming.slice(0,8)];
  const growth=growthReport(state),recentGrowth=growth.latestByAnimal.slice(0,6);
  const litters=Object.entries(result.birthsBySpecies).sort((a,b)=>a[0].localeCompare(b[0]));
  return '<section class="panel" data-hh-breeder-dashboard aria-label="Unified breeding calendar" style="margin-bottom:20px">'+
  '<div class="panel-header"><div><h3>Unified breeding calendar</h3><small>Breeder-entered dates, follow-ups & estimates across species</small></div></div>'+
- (events.length?'<div class="data-table-wrap"><table class="data-table compact-table"><thead><tr><th>Date</th><th>Species</th><th>Next action</th><th>Basis</th></tr></thead><tbody>'+
- events.map(x=>'<tr><td>'+esc(fmt(x.date))+'</td><td>'+esc(x.species)+'</td><td>'+esc(x.label)+'</td><td>'+esc(x.evidence.replace(/-/g," "))+'</td></tr>').join("")+
+ (events.length?'<div class="data-table-wrap"><table class="data-table compact-table"><thead><tr><th>Date</th><th>Species</th><th>Next action</th><th>Basis</th><th>Status</th></tr></thead><tbody>'+
+ events.map(x=>'<tr><td>'+esc(fmt(x.date))+'</td><td>'+esc(x.species)+'</td><td>'+esc(x.label)+'</td><td>'+esc(x.evidence.replace(/-/g," "))+'</td><td>'+esc(x.status)+'</td></tr>').join("")+
  '</tbody></table></div>':'<p class="muted">No upcoming breeder events recorded.</p>')+
  (litters.length?'<h4>Recorded litter outcomes</h4><div class="data-table-wrap"><table class="data-table compact-table"><thead><tr><th>Species</th><th>Litters</th><th>Born alive</th><th>Weaned</th></tr></thead><tbody>'+
  litters.map(([key,row])=>'<tr><td>'+esc(key)+'</td><td>'+row.litters+'</td><td>'+row.bornAlive+'</td><td>'+row.weaned+'</td></tr>').join("")+'</tbody></table></div>':'')+
