@@ -256,8 +256,12 @@ test('Cat and Cavy birth certificates distinguish possible, attributed and evide
  assert.match(possible,/2 recorded; identity unresolved/);
  const attributed=cert.certificateBodyHtml({animal:{name:'Pup',species:'Cavy',sireId:'boar',paternityStatus:'breeder-attributed'},sire:{name:'Boar'}});
  assert.match(attributed,/Sire \(attributed \/ not independently verified\)/);
- const documented=cert.certificateBodyHtml({animal:{name:'Pup',species:'Cavy',sireId:'boar',paternityStatus:'documented-parentage'},sire:{name:'Boar'}});
+ const documented=cert.certificateBodyHtml({animal:{name:'Pup',species:'Cavy',sireId:'boar',paternityStatus:'documented-parentage',paternityEvidence:{reference:'registry-document-01'}},sire:{name:'Boar'}});
  assert.doesNotMatch(documented,/not independently verified/);
+ const claimedWithoutDocument=cert.certificateBodyHtml({animal:{name:'Pup',species:'Cavy',sireId:'boar',paternityStatus:'documented-parentage'},sire:{name:'Boar'}});
+ assert.match(claimedWithoutDocument,/attributed \/ not independently verified/);
+ const missingProofCard=printableWithoutProof();
+ assert.match(missingProofCard,/supporting reference missing/);
 });
 test('pedigree node cards disclose breeder-attributed and unverified sire provenance',()=>{
  const print=require('../standard-pedigree-print-v2.0.0.js');
@@ -268,6 +272,11 @@ test('pedigree node cards disclose breeder-attributed and unverified sire proven
  const historical=print.cardHtml({generation:0,animal:{id:'old',name:'Older',species:'Cavy',sireId:'boar'}},config,opts);
  assert.match(historical,/historical record; verification not documented/);
 });
+function printableWithoutProof(){
+ const print=require('../standard-pedigree-print-v2.0.0.js');
+ const config={rootFields:['name'],ancestorFields:['name'],unknownDisplay:'label'};
+ return print.cardHtml({generation:0,animal:{id:'cavy',name:'Cavy',species:'Cavy',sireId:'boar',paternityStatus:'dna-confirmed'}},config,{subject:{species:'Cavy'},speciesIcon:()=>'',formatDate:x=>x});
+}
 test('animal filtering includes imported Feline and Guinea Pig aliases under Cat/Cavy',()=>{
  const profile=require('../animal-profile-runtime-v1.8.3.js');
  const deps=new Proxy({getState:()=>({animals:[]})},{get:(target,key)=>key in target?target[key]:(()=>null)});
