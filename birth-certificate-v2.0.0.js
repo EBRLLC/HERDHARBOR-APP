@@ -179,7 +179,8 @@
       const species = clean(animal.species).toLowerCase();
       const evidenceRequired = ["cat", "cats", "feline", "cavy", "cavies", "guinea pig", "guinea pigs"].includes(species);
       const status = clean(animal.paternityStatus).toLowerCase();
-      const verified = status === "dna-confirmed" || status === "documented-parentage";
+      const evidenceReference = clean(animal.paternityEvidence?.reference || animal.paternityEvidence?.evidenceRef || animal.parentageEvidenceRef);
+      const verified = (status === "dna-confirmed" || status === "documented-parentage") && Boolean(evidenceReference);
       const candidateIds = Array.isArray(animal.potentialSireIds) ? [...new Set(animal.potentialSireIds.filter(Boolean))] : [];
       const label = evidenceRequired && sire && !verified
         ? "Sire (attributed / not independently verified)" : "Sire";
