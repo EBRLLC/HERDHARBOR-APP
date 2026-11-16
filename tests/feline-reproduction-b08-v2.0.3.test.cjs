@@ -69,3 +69,14 @@ test('Cat breeder follow-ups create, reschedule and cancel canonical tasks witho
  assert.equal(removed.state.tasks[0].status,'Cancelled');
  assert.equal(state().animals[0].felineReproduction,undefined);
 });
+
+test('Cat canceled follow-up can be reinstated without creating a new task',()=>{
+ const entry={kind:'heat',date:'2026-11-14',followUpDate:'2026-11-20'};
+ let s=repro.appendEvent({...state(),tasks:[]},'queen',entry,{accountId:'owner'}).state;
+ s=repro.appendEvent(s,'queen',{...entry,followUpDate:''},{accountId:'owner'}).state;
+ assert.equal(s.tasks[0].completed,true);
+ s=repro.appendEvent(s,'queen',{...entry,followUpDate:'2026-11-24'},{accountId:'owner'}).state;
+ assert.equal(s.tasks.length,1);
+ assert.equal(s.tasks[0].completed,false);
+ assert.equal(s.tasks[0].dueDate,'2026-11-24');
+});
