@@ -648,6 +648,65 @@
       });
     }
 
+    function openKittenPlacement(litterId) {
+      const feline=root?.HerdHarborFelineKittens203;
+      const litter=stateNow().litters.find(row=>row.id===litterId);
+      const kittens=offspringForLitter(litter).filter(animal=>root?.HerdHarborFelineIdentity203?.isCat(animal));
+      if(!feline?.catteryStatus||!kittens.length)return toast("Create individual kitten records first.","error");
+      const buyers=stateNow().customers||[];
+      openModal("Kitten reservation & placement",`
+        <form id="hh-kitten-placement-form">
+          <label>Kitten<select name="kittenId">${kittens.map(a=>`<option value="${esc(a.id)}">${esc(a.name||a.id)} — ${esc(a.status||"Growing")}</option>`).join("")}</select></label>
+          <label>Status<select name="status"><option>Growing</option><option>Retained</option><option>Available</option><option>Reserved</option></select></label>
+          <label>Buyer/customer (required for Reserved)<select name="buyerId"><option value="">No buyer assigned</option>${buyers.map(customer=>`<option value="${esc(customer.id)}">${esc(customer.name||customer.fullName||customer.id)}</option>`).join("")}</select></label>
+          <p class="muted">Sold status and ownership transfers must be completed through the existing Sales workflow.</p>
+          <div class="modal-actions"><button type="button" id="hh-kitten-placement-cancel">Cancel</button><button type="submit">Save placement</button><button type="button" id="hh-kitten-placement-sales">Open Sales</button></div>
+        </form>`,"Breeder reservation records; Sales remains the authority for completed transfers.");
+      const form=$("#hh-kitten-placement-form");
+      $("#hh-kitten-placement-cancel")?.addEventListener("click",closeModal);
+      $("#hh-kitten-placement-sales")?.addEventListener("click",()=>{closeModal();navigate("sales");});
+      form?.addEventListener("submit",event=>{
+        event.preventDefault();
+        const values=Object.fromEntries(new FormData(form));
+        if(values.status==="Reserved"&&!values.buyerId)return toast("Choose an existing buyer for the reservation.","error");
+        if(!offspringForLitter(stateNow().litters.find(row=>row.id===litterId)).some(a=>a.id===values.kittenId))
+          return toast("Kitten no longer belongs to this litter.","error");
+        const result=feline.catteryStatus(stateNow(),values.kittenId,values.status,values.status==="Reserved"?values.buyerId:"");
+        if(!result.valid)return toast(result.issues.join(" "),"error");
+        if(!persistMutation("Kitten placement updated.",()=>{stateNow().animals=result.state.animals;}))return;
+        closeModal();renderCurrentView();
+      });
+    }
+
+    function openCavyPupPlacement(litterId) {
+      const cavy=root?.HerdHarborCavyOffspring203;
+      const litter=stateNow().litters.find(row=>row.id===litterId);
+      const pups=offspringForLitter(litter).filter(animal=>root?.HerdHarborCavyIdentity203?.isCavy(animal));
+      if(!cavy?.changeStatus||!pups.length)return toast("Create individual cavy pup records first.","error");
+      const buyers=stateNow().customers||[];
+      openModal("Cavy pup reservation & placement",`
+        <form id="hh-cavy-placement-form">
+          <label>Pup<select name="pupId">${pups.map(a=>`<option value="${esc(a.id)}">${esc(a.name||a.id)} — ${esc(a.status||"Growing")}</option>`).join("")}</select></label>
+          <label>Status<select name="status"><option>Growing</option><option>Retained</option><option>Available</option><option>Reserved</option></select></label>
+          <label>Buyer/customer (required for Reserved)<select name="buyerId"><option value="">No buyer assigned</option>${buyers.map(customer=>`<option value="${esc(customer.id)}">${esc(customer.name||customer.fullName||customer.id)}</option>`).join("")}</select></label>
+          <p class="muted">Sold status and ownership transfers must be completed through the existing Sales workflow.</p>
+          <div class="modal-actions"><button type="button" id="hh-cavy-placement-cancel">Cancel</button><button type="submit">Save placement</button><button type="button" id="hh-cavy-placement-sales">Open Sales</button></div>
+        </form>`,"Breeder reservation records; Sales remains the authority for completed transfers.");
+      const form=$("#hh-cavy-placement-form");
+      $("#hh-cavy-placement-cancel")?.addEventListener("click",closeModal);
+      $("#hh-cavy-placement-sales")?.addEventListener("click",()=>{closeModal();navigate("sales");});
+      form?.addEventListener("submit",event=>{
+        event.preventDefault();const values=Object.fromEntries(new FormData(form));
+        if(values.status==="Reserved"&&!values.buyerId)return toast("Choose an existing buyer for the reservation.","error");
+        if(!offspringForLitter(stateNow().litters.find(row=>row.id===litterId)).some(a=>a.id===values.pupId))
+          return toast("Pup no longer belongs to this litter.","error");
+        const result=cavy.changeStatus(stateNow(),values.pupId,values.status,values.status==="Reserved"?values.buyerId:"");
+        if(!result.valid)return toast(result.issues.join(" "),"error");
+        if(!persistMutation("Cavy pup placement updated.",()=>{stateNow().animals=result.state.animals;}))return;
+        closeModal();renderCurrentView();
+      });
+    }
+
     function renderLitters() {
       const snapshot = stateNow();
       const rows = snapshot.litters.slice().sort((left, right) => (right.birthDate || "").localeCompare(left.birthDate || ""));
@@ -693,7 +752,9 @@
             <div class="meta">Expected weaning: ${formatDate(litter.expectedWeanDate)}</div>
             <div class="animal-card-footer">
               <button class="button button-ghost button-small" data-create-offspring="${litter.id}">${litter.canineWhelping ? "Manage puppies" : offspringCount ? "Add offspring" : "Create offspring"}</button>
+              <button class="button button-ghost button-small" data-cavy-placement="${litter.id}" ${!stateNow().animals.some(animal=>animal.id===litter.damId&&root?.HerdHarborCavyIdentity203?.isCavy(animal))?"hidden":""}>Pup placement</button>
               <button class="button button-ghost button-small" data-cavy-pup-care="${litter.id}" ${!stateNow().animals.some(animal=>animal.id===litter.damId&&root?.HerdHarborCavyIdentity203?.isCavy(animal))?"hidden":""}>Pup care</button>
+              <button class="button button-ghost button-small" data-kitten-placement="${litter.id}" ${!stateNow().animals.some(animal=>animal.id===litter.damId&&root?.HerdHarborFelineIdentity203?.isCat(animal))?"hidden":""}>Kitten placement</button>
               <button class="button button-ghost button-small" data-kitten-care="${litter.id}" ${!stateNow().animals.some(animal => animal.id === litter.damId && root?.HerdHarborFelineIdentity203?.isCat(animal)) ? "hidden" : ""}>Kitten care</button>
               <button class="button button-ghost button-small" data-rabbit-kit-growth="${litter.id}" ${!stateNow().animals.some(animal => animal.id === litter.damId && root?.HerdHarborRabbitBreeder203?.isRabbit(animal)) ? "hidden" : ""}>Kit growth</button>
               <button class="button button-ghost button-small" data-edit-litter="${litter.id}">Edit</button>
@@ -702,9 +763,13 @@
         }).join("")}</div>` : emptyState("No births recorded.", "Record the result of a breeding when offspring arrive.")}`;
   
       $("#add-litter").addEventListener("click", () => openLitterForm());
-      $$('[data-cavy-pup-care]', $("#view-litters")).forEach(button=>
+      $('[data-cavy-placement]', $("#view-litters")).forEach(button=>
+        button.addEventListener("click",()=>openCavyPupPlacement(button.dataset.cavyPlacement)));
+      $('[data-cavy-pup-care]', $("#view-litters")).forEach(button=>
         button.addEventListener("click",()=>openCavyPupCare(button.dataset.cavyPupCare)));
-      $$('[data-kitten-care]', $("#view-litters")).forEach(button =>
+      $('[data-kitten-placement]', $("#view-litters")).forEach(button =>
+        button.addEventListener("click", () => openKittenPlacement(button.dataset.kittenPlacement)));
+      $('[data-kitten-care]', $("#view-litters")).forEach(button =>
         button.addEventListener("click", () => openKittenCare(button.dataset.kittenCare)));
       $('[data-rabbit-kit-growth]', $("#view-litters")).forEach(button =>
         button.addEventListener("click", () => openRabbitKitGrowth(button.dataset.rabbitKitGrowth)));

@@ -74,3 +74,15 @@ test('generated offspring inherits recorded maternal owner for account-safe plac
  assert.equal(x.valid,true);
  assert.equal(x.created[0].ownerId,'farm-a');
 });
+
+test('litter UI exposes cavy and kitten reservations while Sales owns completed transfers',()=>{
+ const runtime=fs.readFileSync(path.join(__dirname,'../breeding-litter-runtime-v1.8.3.js'),'utf8');
+ assert.match(runtime,/function openCavyPupPlacement\(/);
+ assert.match(runtime,/data-cavy-placement=/);
+ assert.match(runtime,/cavy\.changeStatus\(stateNow\(\)/);
+ assert.match(runtime,/function openKittenPlacement\(/);
+ assert.match(runtime,/data-kitten-placement=/);
+ assert.match(runtime,/navigate\("sales"\)/);
+ assert.match(runtime,/persistMutation\("Cavy pup placement updated\."/);
+ assert.match(runtime,/Sold status and ownership transfers must be completed through the existing Sales workflow/);
+});
