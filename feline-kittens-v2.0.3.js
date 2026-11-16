@@ -74,7 +74,8 @@ function addObservation(state,id,item){
  return {valid:true,issues:[],record,state:{...state,animals:state.animals.map(a=>a===target?next:a)}};
 }
 function catteryStatus(state,id,status,buyerId=""){
- const allowed=new Set(["Growing","Retained","Available","Reserved","Sold"]);
+ const allowed=new Set(["Growing","Retained","Available","Reserved"]);
+ if(status==="Sold")return {valid:false,issues:["Complete animal sales and ownership transfers through the existing Sales workflow."],state};
  if(!allowed.has(status))return {valid:false,issues:["Invalid cattery status."],state};
  const animal=arr(state?.animals).find(a=>a.id===id);
  if(!isCat(animal)||!animal.sourceBirthId)return {valid:false,issues:["Recorded birth-linked kitten required."],state};

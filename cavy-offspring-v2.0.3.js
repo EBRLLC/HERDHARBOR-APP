@@ -71,7 +71,8 @@ function observe(state,pupId,input){
  return {valid:true,issues:[],state:{...state,animals:state.animals.map(a=>a===animal?next:a)},record:row};
 }
 function changeStatus(state,pupId,nextStatus,buyerId=""){
- const permitted=["Growing","Retained","Available","Reserved","Sold"],pup=arr(state?.animals).find(a=>a.id===pupId);
+ const permitted=["Growing","Retained","Available","Reserved"],pup=arr(state?.animals).find(a=>a.id===pupId);
+ if(nextStatus==="Sold")return {valid:false,issues:["Complete animal sales and ownership transfers through the existing Sales workflow."],state};
  if(!isCavy(pup)||!pup.sourceBirthId||!permitted.includes(nextStatus))
   return {valid:false,issues:["Invalid pup or status."],state};
  if(["Reserved","Sold"].includes(nextStatus)&&!txt(buyerId))
