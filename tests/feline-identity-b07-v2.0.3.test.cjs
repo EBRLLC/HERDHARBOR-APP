@@ -22,3 +22,20 @@ test('cat editor is isolated and wired before animal-profile runtime',()=>{
  assert.match(profile,/FelineIdentity203\.readEditor/);
  assert.match(profile,/delete nextAnimal\.feline/);
 });
+
+test('Cat identity editor retains breeder-entered health history and requires actual dated evidence',()=>{
+ const data={healthTests:[{name:'Cardiac screening',date:'2026-11-15',reference:'document-42',result:'normal',provider:'Vet'}]};
+ const result=cat.validate(data);
+ assert.equal(result.valid,true);
+ assert.equal(result.value.healthTests[0].result,'normal');
+ assert.equal(result.value.healthTests[0].status,'breeder-entered-unverified');
+ assert.equal(cat.validate({healthTests:[{...data.healthTests[0],date:'2026-02-30'}]}).valid,false);
+ assert.equal(cat.validate({healthTests:[{...data.healthTests[0],reference:''}]}).valid,false);
+ const html=cat.editorHtml({species:'Cat',feline:data});
+ assert.match(html,/data-feline-health-row/);
+ assert.match(html,/data-feline-health-add/);
+ assert.match(html,/document-42/);
+ const formSource=fs.readFileSync(path.join(__dirname,'../feline-identity-v2.0.3.js'),'utf8');
+ assert.match(formSource,/data-feline-health-field/);
+ assert.match(formSource,/value\.healthTests=\[\.\.\.panel\.querySelectorAll/);
+});
