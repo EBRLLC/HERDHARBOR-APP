@@ -66,6 +66,8 @@ function changeStatus(state,pupId,nextStatus,buyerId=""){
  if(nextStatus==="Sold")return {valid:false,issues:["Complete animal sales and ownership transfers through the existing Sales workflow."],state};
  if(!isCavy(pup)||!pup.sourceBirthId||!permitted.includes(nextStatus))
   return {valid:false,issues:["Invalid pup or status."],state};
+ const completedSale=arr(state?.sales).some(sale=>sale.status==="Completed"&&arr(sale.items).some(line=>line.animalId===pupId));
+ if(txt(pup.status)==="Sold"||completedSale)return {valid:false,issues:["Animal is linked to a completed sale. Correct status through Sales."],state};
  if(["Reserved","Sold"].includes(nextStatus)&&!txt(buyerId))
   return {valid:false,issues:["Buyer required for reservation or sale."],state};
  const buyers=buyerId?arr(state.customers).filter(x=>x.id===buyerId):[];
