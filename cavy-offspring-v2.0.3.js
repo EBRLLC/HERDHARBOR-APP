@@ -31,7 +31,7 @@ function generatePups(state,litterId,entries){
   if(attributed&&txt(sow.ownerId)&&txt(attributed.ownerId)&&txt(sow.ownerId)!==txt(attributed.ownerId))issues.push("Attributed boar belongs to another recorded owner.");
   born.push({id,name:txt(entry.name),species:"Cavy",sex:entry.sex||"Unknown",
    breed:txt(entry.breed)||sow.breed||"",color:txt(entry.color),tag:txt(entry.tag),
-   dob:litter.birthDate,status:"Growing",sireId:boarId,damId:sow.id,sourceBirthId:litterId,
+   dob:litter.birthDate,status:"Growing",ownerId:txt(sow.ownerId),sireId:boarId,damId:sow.id,sourceBirthId:litterId,
    potentialSireIds:potentialBoars,paternityStatus:boarId?"breeder-attributed":potentialBoars.length>1?"unresolved":potentialBoars.length?"recorded-unverified":"unknown",
    paternityEvidence:boarId?{basis:"breeder-attributed",reference:txt(entry.parentageEvidenceRef),recordedAt:new Date().toISOString()}:null,
    cavyGrowth:[],cavyCare:[],createdAt:new Date().toISOString()});
