@@ -24,7 +24,10 @@ function syncFollowUpTasks(state,sow,record){
  const fields={title:"Cavy reproduction follow-up: "+text(sow.name||sow.id),category:"Breeding",dueDate:record.followUpDate,
   animalId:sow.id,notes:"Breeder-scheduled follow-up for "+record.type+".",
   sourceType:"cavy-reproduction",sourceRecordId:record.id,reminderType:"follow-up"};
- if(existing){if(!existing.completed)Object.assign(existing,fields,{updatedAt:now});}
+ if(existing){
+  if(existing.completed&&existing.status==="Cancelled")Object.assign(existing,fields,{completed:false,completedAt:"",status:"Scheduled",updatedAt:now});
+  else if(!existing.completed)Object.assign(existing,fields,{updatedAt:now});
+ }
  else tasks.push({...fields,id,recurrence:"None",recurrenceDays:"",completed:false,createdAt:now,updatedAt:now});
  return tasks;
 }
