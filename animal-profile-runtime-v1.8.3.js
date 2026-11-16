@@ -544,6 +544,7 @@
             '<button class="button button-ghost" id="detail-compare-pedigree">Linebreeding Coefficient</button>'}
           ${root.HerdHarborFelineIdentity203?.isCat(animal) && String(animal.sex||"").toLowerCase()==="female" ?
             '<button class="button button-primary" id="detail-feline-repro">Cat heat & mating</button>' : ""}
+          ${root.HerdHarborFelineIdentity203?.isCat(animal) ? '<button class="button button-ghost" id="detail-print-feline">Print Cat Pedigree</button>' : ""}
           <button class="button button-primary" id="detail-edit">Edit animal</button>
         </div>
       `, `${animal.species || "Animal"} record`);
@@ -564,6 +565,7 @@
       );
       $("#detail-print-qr")?.addEventListener("click", (event) => openAnimalQrCardForm(id, event.currentTarget));
       $("#detail-print-canine")?.addEventListener("click", () => root.HerdHarborCaninePedigreePrint?.openForAnimal?.(id));
+      $("#detail-print-feline")?.addEventListener("click", () => deps.openPrintPedigreeForm(id));
       $("#detail-canine-repro")?.addEventListener("click", () => root.HerdHarborCanineReproductiveWorkspace?.openForAnimal?.(id));
       $("#detail-feline-repro")?.addEventListener("click", () => root.HerdHarborFelineReproduction203?.openForAnimal?.(id));
       $("#detail-import-pedigree")?.addEventListener("click", () => deps.openPedigreeImport(id));
