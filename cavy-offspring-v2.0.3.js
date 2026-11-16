@@ -23,7 +23,8 @@ function generatePups(state,litterId,entries){
   if(!["Female","Male","Unknown"].includes(entry.sex||"Unknown"))issues.push("Invalid pup sex.");
   const potentialBoars=[...new Set([...arr(litter.potentialSireIds),...(txt(litter.sireId)?[txt(litter.sireId)]:[])].filter(Boolean))];
   const boarId=txt(entry.confirmedSireId);
-  if(boarId&&potentialBoars.length&&!potentialBoars.includes(boarId))issues.push("Attributed sire is not among recorded possible sires.");
+  if(boarId&&!txt(entry.parentageEvidenceRef))issues.push("Breeder-attributed sire requires a supporting evidence reference.");
+  if(boarId&&!potentialBoars.includes(boarId))issues.push("Attributed sire is not among recorded possible sires.");
   if(boarId&&animals.filter(a=>a.id===boarId).length!==1)issues.push("Attributed boar must have a unique internal record.");
   const attributed=animals.find(a=>a.id===boarId);
   if(attributed&&(!isCavy(attributed)||attributed.id===sow.id))issues.push("Attributed boar must be a distinct Cavy.");
