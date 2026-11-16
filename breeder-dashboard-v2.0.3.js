@@ -47,6 +47,10 @@ function build(state,filter={}){
   if(species(animal.species)==="Cat")for(const record of arr(animal.felineReproduction?.events)){
    if(record.kind!=="mating"||!dateOnly(record.date))continue;
    if(birthInWindow(state,id,plusDays(record.date,63),plusDays(record.date,71)))continue;
+   const latestAssessment=arr(animal.felineReproduction?.events).filter(e=>e.kind==="pregnancy-assessment"&&
+     dateOnly(e.date)&&e.date>=record.date&&e.date<=plusDays(record.date,71))
+     .sort((a,b)=>a.date.localeCompare(b.date)).at(-1);
+   if(text(latestAssessment?.result).toLowerCase()==="negative")continue;
    const d=new Date(record.date+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+65);
    push({id:"feline:"+id+":"+record.id+":due",date:d.toISOString().slice(0,10),species:"Cat",
     animalId:id,label:"Estimated queening",evidence:"mating-date-estimate-not-confirmation",source:"feline"});
@@ -60,6 +64,10 @@ function build(state,filter={}){
    if(birthInWindow(state,id,earliest,latest)||
       arr(animal.cavyReproduction?.records).some(outcome=>outcome.type==="birth"&&dateOnly(outcome.date)&&
         outcome.date>=earliest&&outcome.date<=latest))continue;
+   const latestAssessment=arr(animal.cavyReproduction?.records).filter(e=>e.type==="pregnancy-assessment"&&
+     dateOnly(e.date)&&e.date>=record.date&&e.date<=latest)
+     .sort((a,b)=>a.date.localeCompare(b.date)).at(-1);
+   if(text(latestAssessment?.result).toLowerCase()==="negative")continue;
    const d=new Date(record.endDate+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+68);
    push({id:"cavy:"+id+":"+record.id+":due",date:d.toISOString().slice(0,10),species:"Cavy",
     animalId:id,label:"Estimated cavy birth",source:"cavy",evidence:"exposure-date-estimate-not-confirmation"});
