@@ -29,3 +29,20 @@ test('installed profile opens dedicated cavy workflow with immutable save',()=>{
  assert.ok(html.indexOf('cavy-reproduction-v2.0.3.js')<html.indexOf('animal-profile-runtime-v1.8.3.js'));
  assert.match(profile,/detail-cavy-repro/);assert.match(profile,/CavyReproduction203\?\.openForAnimal/);
 });
+
+test('Cavy exposure follow-ups update canonical tasks and cancel without duplicate reminders',()=>{
+ const s={...base(),tasks:[]};
+ const entry={type:'exposure',date:'2026-11-14',endDate:'2026-11-15',boarId:'boar',followUpDate:'2026-11-22'};
+ const first=cavy.addRecord(s,'sow',entry,{ownerId:'user'});
+ assert.equal(first.valid,true);
+ assert.equal(first.state.tasks.length,1);
+ assert.equal(first.state.tasks[0].sourceType,'cavy-reproduction');
+ const retry=cavy.addRecord(first.state,'sow',entry,{ownerId:'user'});
+ assert.equal(retry.state.tasks.length,1);
+ const moved=cavy.addRecord(retry.state,'sow',{...entry,followUpDate:'2026-11-25'},{ownerId:'user'});
+ assert.equal(moved.state.tasks[0].dueDate,'2026-11-25');
+ const canceled=cavy.addRecord(moved.state,'sow',{...entry,followUpDate:''},{ownerId:'user'});
+ assert.equal(canceled.state.tasks[0].completed,true);
+ assert.equal(canceled.state.tasks[0].status,'Cancelled');
+ assert.equal(cavy.addRecord(s,'sow',{...entry,followUpDate:'2026-02-30'},{ownerId:'user'}).valid,false);
+});
