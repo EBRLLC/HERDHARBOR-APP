@@ -95,7 +95,7 @@ test('litter form offers optional Cat/Cavy sire attribution only with evidence r
  assert.match(runtime,/candidateSires|const candidates=/);
  assert.match(runtime,/exposureIds/);
  assert.match(runtime,/Provide evidence for every breeder-attributed cavy sire/);
- assert.match(runtime,/Provide evidence for every breeder-attributed kitten sire/);
+ assert.match(runtime,/Provide an evidence reference for every breeder-attributed kitten sire/);
  assert.match(runtime,/confirmedSireId:/);
  assert.match(runtime,/formIndexById/);
 });
