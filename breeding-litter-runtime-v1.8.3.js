@@ -706,9 +706,9 @@
         }).join("")}</div>` : emptyState("No births recorded.", "Record the result of a breeding when offspring arrive.")}`;
   
       $("#add-litter").addEventListener("click", () => openLitterForm());
-      $('[data-kitten-placement]', $("#view-litters")).forEach(button =>
+      $$('[data-kitten-placement]', $("#view-litters")).forEach(button =>
         button.addEventListener("click", () => openKittenPlacement(button.dataset.kittenPlacement)));
-      $('[data-kitten-care]', $("#view-litters")).forEach(button =>
+      $$('[data-kitten-care]', $("#view-litters")).forEach(button =>
         button.addEventListener("click", () => openKittenCare(button.dataset.kittenCare)));
       $('[data-rabbit-kit-growth]', $("#view-litters")).forEach(button =>
         button.addEventListener("click", () => openRabbitKitGrowth(button.dataset.rabbitKitGrowth)));
