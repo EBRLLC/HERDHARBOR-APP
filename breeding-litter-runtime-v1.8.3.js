@@ -763,13 +763,13 @@
         }).join("")}</div>` : emptyState("No births recorded.", "Record the result of a breeding when offspring arrive.")}`;
   
       $("#add-litter").addEventListener("click", () => openLitterForm());
-      $('[data-cavy-placement]', $("#view-litters")).forEach(button=>
+      $$('[data-cavy-placement]', $("#view-litters")).forEach(button=>
         button.addEventListener("click",()=>openCavyPupPlacement(button.dataset.cavyPlacement)));
-      $('[data-cavy-pup-care]', $("#view-litters")).forEach(button=>
+      $$('[data-cavy-pup-care]', $("#view-litters")).forEach(button=>
         button.addEventListener("click",()=>openCavyPupCare(button.dataset.cavyPupCare)));
-      $('[data-kitten-placement]', $("#view-litters")).forEach(button =>
+      $$('[data-kitten-placement]', $("#view-litters")).forEach(button =>
         button.addEventListener("click", () => openKittenPlacement(button.dataset.kittenPlacement)));
-      $('[data-kitten-care]', $("#view-litters")).forEach(button =>
+      $$('[data-kitten-care]', $("#view-litters")).forEach(button =>
         button.addEventListener("click", () => openKittenCare(button.dataset.kittenCare)));
       $('[data-rabbit-kit-growth]', $("#view-litters")).forEach(button =>
         button.addEventListener("click", () => openRabbitKitGrowth(button.dataset.rabbitKitGrowth)));
