@@ -93,7 +93,7 @@ window.addEventListener("load",()=>{
   window.HerdHarborCloud={getSession:()=>({user:{id:"farm"}})};
   window.HerdHarborApp={
    getState:()=>uiState,
-   commitState:next=>{uiState.animals=next.animals;return true;}
+   commitState:next=>{uiState.animals=next.animals;uiState.tasks=next.tasks;return true;}
   };
   const matingOpened=window.HerdHarborFelineReproduction203.openForAnimal("queen-ui");
   check(matingOpened,"Real Cat mating form not reachable");
@@ -122,7 +122,7 @@ window.addEventListener("load",()=>{
   let runtime;
   const stub=()=>null;
   const deps={
-    getState:()=>uiState,$:q,$:qa,esc:x=>String(x??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;"),
+    getState:()=>uiState,$:q,$$:qa,esc:x=>String(x??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;"),
     headerHtml:(heading,sub,buttons)=>'<h2>'+heading+'</h2>'+buttons,
     statCard:()=>"",emptyState:()=>"",animalName:id=>uiState.animals.find(a=>a.id===id)?.name||"Unknown",
     formatDate:x=>x||"",daysFromNow:()=>0,ensureSpreadsheetToolsReady:stub,
