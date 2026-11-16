@@ -102,6 +102,8 @@ jobs:
             echo "::endgroup::"
           done
           exit "${failed}"
+      - name: Run actual Chromium browser integration smoke for 2.0.3
+        run: node scripts/v2.0.3-browser-smoke.mjs
       - name: Build production monitoring bundle
         run: NODE_ENV=production npm run build:monitoring
       - name: Verify bundled monitoring architecture
