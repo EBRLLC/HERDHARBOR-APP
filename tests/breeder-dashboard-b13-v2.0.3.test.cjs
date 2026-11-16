@@ -128,3 +128,15 @@ test('recorded Cavy birth outcome also completes a matching exposure estimate',(
  assert.equal(r.calendar.filter(x=>x.label==='Estimated cavy birth').length,0);
  assert.ok(r.calendar.some(x=>x.label==='Sow follow-up'));
 });
+
+test('latest documented negative assessment suppresses only its Cat/Cavy estimated delivery',()=>{
+ const state=make();
+ state.animals.find(a=>a.id==='queen').felineReproduction.events.push({id:'assessment',kind:'pregnancy-assessment',date:'2026-12-01',result:'negative'});
+ state.animals.find(a=>a.id==='sow').cavyReproduction.records.push({id:'assessment',type:'pregnancy-assessment',date:'2026-12-10',result:'negative'});
+ const result=dash.build(state);
+ assert.ok(!result.calendar.some(e=>e.label==='Estimated queening'));
+ assert.ok(!result.calendar.some(e=>e.label==='Estimated cavy birth'));
+ assert.ok(result.calendar.some(e=>e.source==='task'),'Existing canonical tasks remain');
+ state.animals.find(a=>a.id==='queen').felineReproduction.events.push({id:'later',kind:'pregnancy-assessment',date:'2026-12-02',result:'positive'});
+ assert.ok(dash.build(state).calendar.some(e=>e.label==='Estimated queening'),'Latest assessment takes precedence');
+});
