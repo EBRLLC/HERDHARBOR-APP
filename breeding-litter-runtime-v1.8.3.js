@@ -886,7 +886,13 @@
       const dam = stateNow().animals.find((animal) => animal.id === litter.damId);
       const sire = stateNow().animals.find((animal) => animal.id === litter.sireId);
       const kittenGeneration=Boolean(root?.HerdHarborFelineIdentity203?.isCat(dam));
-      const candidateSires=kittenGeneration?[...new Set([...(litter.potentialSireIds||[]),litter.sireId].filter(Boolean))]
+      const eligibleMatingIds=kittenGeneration?(Array.isArray(dam?.felineReproduction?.events)?dam.felineReproduction.events:[])
+        .filter(event=>event.kind==="mating"&&/^\d{4}-\d{2}-\d{2}$/.test(event.date||"")&&
+          Number.isFinite(Date.parse(litter.birthDate))&&
+          (Date.parse(litter.birthDate)-Date.parse(event.date))/86400000>=63&&
+          (Date.parse(litter.birthDate)-Date.parse(event.date))/86400000<=71)
+        .map(event=>event.sireId).filter(Boolean):[];
+      const candidateSires=kittenGeneration?[...new Set([...(Array.isArray(litter.potentialSireIds)?litter.potentialSireIds:[]),litter.sireId,...eligibleMatingIds].filter(Boolean))]
         .map(id=>stateNow().animals.find(a=>a.id===id&&root.HerdHarborFelineIdentity203.isCat(a)&&String(a.sex||"").toLowerCase()==="male"))
         .filter(a=>a&&(!dam.ownerId||!a.ownerId||a.ownerId===dam.ownerId)):[];
 
@@ -946,10 +952,11 @@
         const data = new FormData(event.currentTarget);
         const now = new Date().toISOString();
         const created = [];
+        const formIndexById = new Map();
         for (let index = 0; index < count; index += 1) {
           const sequence = startSequence + index;
           const animalId = offspringAnimalId(litter.id, sequence);
-          if (stateNow().animals.some((animal) => animal.id === animalId)) continue;
+          if (stateNow().animals.some((animal) => animal.id === animalId)) return toast("Offspring identifier conflict. Reopen the litter before retrying.","error");
           const name = String(data.get(`offspringName_${index}`) || "").trim();
           if (!name) return toast("Every offspring record needs a name.", "error");
           const animal = {
@@ -974,14 +981,15 @@
             updatedAt: now
           };
           created.push(animal);
+          formIndexById.set(animal.id,index);
         }
         if (root?.HerdHarborFelineKittens203 && root?.HerdHarborFelineIdentity203?.isCat(dam)) {
           const feline = root.HerdHarborFelineKittens203.createKittens(stateNow(), litterId,
             created.map((animal,index) => ({ id: animal.id, name: animal.name, tag: animal.tag,
               sex: animal.sex, breed: animal.breed, color: animal.color,
-              confirmedSireId: String(data.get(`offspringSire_${index}`)||"").trim(),
-              parentageEvidenceRef: String(data.get(`offspringSireEvidence_${index}`)||"").trim() })));
-          if (created.some((animal,index)=>data.get(`offspringSire_${index}`)&&!String(data.get(`offspringSireEvidence_${index}`)||"").trim()))
+              confirmedSireId: String(data.get(`offspringSire_${formIndexById.get(animal.id)}`)||"").trim(),
+              parentageEvidenceRef: String(data.get(`offspringSireEvidence_${formIndexById.get(animal.id)}`)||"").trim() })));
+          if (created.some(animal=>data.get(`offspringSire_${formIndexById.get(animal.id)}`)&&!String(data.get(`offspringSireEvidence_${formIndexById.get(animal.id)}`)||"").trim()))
             return toast("Provide an evidence reference for every breeder-attributed kitten sire.","error");
           if (!feline.valid) return toast(feline.issues.join(" "), "error");
           if (!allowsAnimalTransition(stateNow().animals, feline.state.animals)) return;
