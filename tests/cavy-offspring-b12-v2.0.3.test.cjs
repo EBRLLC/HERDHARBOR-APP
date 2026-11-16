@@ -86,3 +86,16 @@ test('litter UI exposes cavy and kitten reservations while Sales owns completed 
  assert.match(runtime,/persistMutation\("Cavy pup placement updated\."/);
  assert.match(runtime,/Sold status and ownership transfers must be completed through the existing Sales workflow/);
 });
+
+test('litter form offers optional Cat/Cavy sire attribution only with evidence references',()=>{
+ const runtime=fs.readFileSync(path.join(__dirname,'../breeding-litter-runtime-v1.8.3.js'),'utf8');
+ assert.match(runtime,/name="offspringSire_\$\{index\}"/);
+ assert.match(runtime,/name="offspringSireEvidence_\$\{index\}"/);
+ assert.match(runtime,/Unverified \/ unknown/);
+ assert.match(runtime,/candidateSires|const candidates=/);
+ assert.match(runtime,/exposureIds/);
+ assert.match(runtime,/Provide evidence for every breeder-attributed cavy sire/);
+ assert.match(runtime,/Provide evidence for every breeder-attributed kitten sire/);
+ assert.match(runtime,/confirmedSireId:/);
+ assert.match(runtime,/formIndexById/);
+});

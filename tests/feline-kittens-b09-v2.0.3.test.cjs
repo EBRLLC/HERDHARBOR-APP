@@ -85,3 +85,14 @@ test('birth and litter UI exposes kitten placement and routes completed sales to
  assert.match(runtime,/persistMutation\("Kitten placement updated\."/);
  assert.match(runtime,/Sold status and ownership transfers must be completed through the existing Sales workflow/);
 });
+
+test('kitten creator exposes optional recorded sire attribution with evidence and no forced paternity',()=>{
+ const runtime=fs.readFileSync(path.join(__dirname,'../breeding-litter-runtime-v1.8.3.js'),'utf8');
+ assert.match(runtime,/name="offspringSire_\$\{index\}"/);
+ assert.match(runtime,/name="offspringSireEvidence_\$\{index\}"/);
+ assert.match(runtime,/Unverified \/ unknown/);
+ assert.match(runtime,/Provide an evidence reference for every breeder-attributed kitten sire/);
+ assert.match(runtime,/confirmedSireId:/);
+ assert.match(runtime,/eligibleMatingIds/);
+ assert.match(runtime,/formIndexById/);
+});
