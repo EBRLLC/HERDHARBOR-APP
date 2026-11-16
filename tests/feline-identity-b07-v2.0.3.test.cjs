@@ -39,3 +39,10 @@ test('Cat identity editor retains breeder-entered health history and requires ac
  assert.match(formSource,/data-feline-health-field/);
  assert.match(formSource,/value\.healthTests=\[\.\.\.panel\.querySelectorAll/);
 });
+
+test('Cat animal detail reaches existing pedigree print workflow',()=>{
+ const profile=fs.readFileSync(path.join(__dirname,'../animal-profile-runtime-v1.8.3.js'),'utf8');
+ assert.match(profile,/detail-print-feline/);
+ assert.match(profile,/HerdHarborFelineIdentity203\?\.isCat\(animal\)/);
+ assert.match(profile,/\$\("#detail-print-feline"\)\?\.addEventListener\("click", \(\) => deps\.openPrintPedigreeForm\(id\)\)/);
+});
