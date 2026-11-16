@@ -954,11 +954,11 @@
         return Number.isFinite(birth)&&Number.isFinite(a)&&Number.isFinite(b)&&
           b>=a&&birth>=b&&birth-a>=min*86400000&&birth-b<=max*86400000;
       };
-      const matingIds=kittenGeneration?(Array.isArray(dam?.felineReproduction?.events)?dam.felineReproduction.events:[])
+      const eligibleMatingIds=kittenGeneration?(Array.isArray(dam?.felineReproduction?.events)?dam.felineReproduction.events:[])
         .filter(e=>e.kind==="mating"&&validBreedingWindow(e.date,e.date,63,71)).map(e=>e.sireId).filter(Boolean):[];
       const exposureIds=cavyGeneration?(Array.isArray(dam?.cavyReproduction?.records)?dam.cavyReproduction.records:[])
         .filter(e=>e.type==="exposure"&&validBreedingWindow(e.date,e.endDate,59,72)).map(e=>e.boarId).filter(Boolean):[];
-      const candidates=[...new Set([...(Array.isArray(litter.potentialSireIds)?litter.potentialSireIds:[]),litter.sireId,...matingIds,...exposureIds].filter(Boolean))]
+      const candidates=[...new Set([...(Array.isArray(litter.potentialSireIds)?litter.potentialSireIds:[]),litter.sireId,...eligibleMatingIds,...exposureIds].filter(Boolean))]
         .map(id=>stateNow().animals.find(a=>a.id===id&&
           (kittenGeneration?root?.HerdHarborFelineIdentity203?.isCat(a):root?.HerdHarborCavyIdentity203?.isCavy(a))&&
           String(a.sex||"").toLowerCase()==="male")).filter(a=>a&&(!dam.ownerId||!a.ownerId||a.ownerId===dam.ownerId));
