@@ -91,3 +91,17 @@ test('offspring reporting excludes ambiguous IDs and escapes animal references i
  assert.ok(html.includes('&lt;unsafe&gt;'));
  assert.ok(!html.includes('<unsafe>'));
 });
+
+test('imported species aliases and real overdue statuses appear in dashboard',()=>{
+ const state=make();
+ state.animals.find(a=>a.id==='queen').species='Feline';
+ state.animals.find(a=>a.id==='sow').species='Guinea-pig';
+ state.animals.find(a=>a.id==='doe').species='Rabbits';
+ const result=dash.build(state,{today:'2026-12-12'});
+ assert.ok(result.calendar.some(x=>x.species==='Cat'&&x.status==='overdue'));
+ assert.ok(result.calendar.some(x=>x.species==='Cavy'));
+ assert.ok(result.calendar.some(x=>x.species==='Rabbit'));
+ const html=dash.panelHtml(state,x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;'),x=>x,'2026-12-12');
+ assert.ok(html.includes('<th>Status</th>'));
+ assert.ok(html.includes('overdue'));
+});
