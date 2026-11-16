@@ -50,3 +50,22 @@ test('a breeder-entered feline follow-up date persists as evidence and can be re
  assert.equal(revised.state.animals[0].felineReproduction.events.length,1);
  assert.equal(repro.appendEvent(state,'queen',{kind:'heat',date:'2026-11-14',followUpDate:'2026-11-31'},{accountId:''}).valid,false);
 });
+test('Cat breeder follow-ups create, reschedule and cancel canonical tasks without duplication',()=>{
+ const first=repro.appendEvent({...state(),tasks:[]},'queen',
+  {kind:'heat',date:'2026-11-14',followUpDate:'2026-11-20'}, {accountId:'owner'});
+ assert.equal(first.valid,true);
+ assert.equal(first.state.tasks.length,1);
+ assert.equal(first.state.tasks[0].sourceType,'feline-reproduction');
+ assert.equal(first.state.tasks[0].dueDate,'2026-11-20');
+ const repeat=repro.appendEvent(first.state,'queen',
+  {kind:'heat',date:'2026-11-14',followUpDate:'2026-11-20'}, {accountId:'owner'});
+ assert.equal(repeat.state.tasks.length,1);
+ const changed=repro.appendEvent(repeat.state,'queen',
+  {kind:'heat',date:'2026-11-14',followUpDate:'2026-11-23'}, {accountId:'owner'});
+ assert.equal(changed.state.tasks[0].dueDate,'2026-11-23');
+ const removed=repro.appendEvent(changed.state,'queen',
+  {kind:'heat',date:'2026-11-14',followUpDate:''}, {accountId:'owner'});
+ assert.equal(removed.state.tasks[0].completed,true);
+ assert.equal(removed.state.tasks[0].status,'Cancelled');
+ assert.equal(state().animals[0].felineReproduction,undefined);
+});
