@@ -13,6 +13,8 @@
 <script src="../../feline-reproduction-v2.0.3.js"></script>
 <script src="../../cavy-reproduction-v2.0.3.js"></script>
 <script src="../../breeding-litter-runtime-v1.8.3.js"></script>
+<script src="../../standard-pedigree-print-v2.0.0.js"></script>
+<script src="../../birth-certificate-v2.0.0.js"></script>
 <script>
 window.addEventListener("load",()=>{
  const output=document.querySelector("#hh203-result");
@@ -170,6 +172,30 @@ window.addEventListener("load",()=>{
   };
   exercise("cat-ui","tom-ui","cat");
   exercise("cavy-ui","boar-ui","cavy");
+
+  // The existing print modules must not promote uncertain ancestry into certified parentage.
+  for(const species of ["Cat","Cavy"]){
+    const unresolved={id:"unknown-"+species,name:"Unresolved "+species,species,paternityStatus:"unresolved",
+      potentialSireIds:["potential-only"],sireId:""};
+    const graph={root:{animal:unresolved},nodes:[{generation:0,animal:unresolved,relation:"Subject"}]};
+    const html=window.HerdHarborStandardPedigreePrint.buildHtml({graph,subject:unresolved,
+      config:{generations:4,rootFields:["name"],ancestorFields:["name"],photos:false,unknownDisplay:"label"},
+      speciesIcon:()=>"-",generatedDate:"2026-11-15"});
+    const parsed=new DOMParser().parseFromString(html,"text/html");
+    check(parsed.querySelector(".node-parentage-note")?.textContent.includes("potential, not confirmed"),
+      species+" pedigree print promoted uncertain sire");
+    const certificate=window.HerdHarborBirthCertificate.certificateBodyHtml({animal:unresolved});
+    check(certificate.includes("Possible sires (unverified)")&&certificate.includes("identity unresolved"),
+      species+" birth certificate promoted uncertain sire");
+  }
+  for(const animal of uiState.animals.filter(a=>a.sourceBirthId)){
+    const graph={root:{animal},nodes:[{generation:0,animal,relation:"Subject"}]};
+    const html=window.HerdHarborStandardPedigreePrint.buildHtml({graph,subject:animal,
+      config:{generations:4,rootFields:["name"],ancestorFields:["name"],photos:false,unknownDisplay:"label"},
+      speciesIcon:()=>"-"});
+    check(html.includes("breeder-attributed; not independently verified"),
+      animal.species+" print failed to disclose attribution");
+  }
 
   output.dataset.status="pass";output.textContent="PASS: browser modules, DOM species selection, offspring evidence, health dates and dashboard";
  }catch(error){output.dataset.status="fail";output.textContent="FAIL: "+error.message;}
