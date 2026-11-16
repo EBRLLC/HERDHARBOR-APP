@@ -2,12 +2,15 @@
 <html lang="en"><head><meta charset="utf-8"><title>HerdHarbor 2.0.3 browser integration smoke</title><link rel="stylesheet" href="../../birth-certificate-v2.0.0.css"><link rel="stylesheet" href="../../pedigree-renderer-v2.0.0.css"><link rel="stylesheet" href="../../pedigree-visual.css"></head>
 <body>
 <label>Species <select id="species"><option>Rabbit</option><option>Dog</option><option>Cat</option><option>Cavy</option></select></label>
-<p id="context"></p><div aria-hidden="true"><img id="portrait-birth" class="hh-birth-photo" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%22160%22/%3E"><img id="landscape-birth" class="hh-birth-photo" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%2280%22/%3E"><img id="portrait-pedigree" class="hh-pedigree-thumb" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%22160%22/%3E"></div><output id="hh203-result" data-status="pending">Running</output>
+<p id="context"></p><div aria-hidden="true"><img id="portrait-birth" class="hh-birth-photo" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%22160%22/%3E"><img id="landscape-birth" class="hh-birth-photo" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%2280%22/%3E"><img id="portrait-pedigree" class="hh-pedigree-thumb" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%22160%22/%3E"></div><div id="view-litters"></div><div class="modal" id="fixture-modal"></div><output id="hh203-result" data-status="pending">Running</output>
 <script src="../../breeding-integrity-v2.0.3.js"></script>
 <script src="../../feline-kittens-v2.0.3.js"></script>
 <script src="../../cavy-offspring-v2.0.3.js"></script>
 <script src="../../breeder-dashboard-v2.0.3.js"></script>
 <script src="../../canine-identity-v2.0.1.js"></script>
+<script src="../../feline-identity-v2.0.3.js"></script>
+<script src="../../cavy-identity-v2.0.3.js"></script>
+<script src="../../breeding-litter-runtime-v1.8.3.js"></script>
 <script>
 window.addEventListener("load",()=>{
  const output=document.querySelector("#hh203-result");
@@ -46,6 +49,68 @@ window.addEventListener("load",()=>{
   const baseline={animals:[{id:"queen",species:"Cat"},{id:"tom",species:"Feline"}],breedings:[],litters:[]};
   const next={...baseline,animals:[...baseline.animals,{id:"kit",species:"Cats",sireId:"tom",damId:"queen"}]};
   check(window.HerdHarborBreedingIntegrity203.validateMutation(baseline,next).ok,"Imported feline aliases rejected");
+
+  // Real DOM events drive the installed litter runtime and canonical Cat/Cavy engines.
+  const uiState={animals:[
+   {id:"queen-ui",name:"Queen",species:"Cat",sex:"Female",ownerId:"farm"},
+   {id:"tom-ui",name:"Tom",species:"Cat",sex:"Male",ownerId:"farm"},
+   {id:"sow-ui",name:"Sow",species:"Cavy",sex:"Female",ownerId:"farm"},
+   {id:"boar-ui",name:"Boar",species:"Cavy",sex:"Male",ownerId:"farm"}
+  ],breedings:[],litters:[
+   {id:"cat-ui",damId:"queen-ui",sireId:"",birthDate:"2026-11-15",bornAlive:1,potentialSireIds:["tom-ui"]},
+   {id:"cavy-ui",damId:"sow-ui",sireId:"",birthDate:"2026-11-15",bornAlive:1,potentialSireIds:["boar-ui"]}
+  ],tasks:[],customers:[{id:"buyer-ui",name:"Buyer",ownerId:"farm"}],profile:{}};
+  const q=(selector,scope=document)=>scope.querySelector(selector);
+  const qa=(selector,scope=document)=>[...scope.querySelectorAll(selector)];
+  const notices=[];
+  let runtime;
+  const stub=()=>null;
+  const deps={
+    getState:()=>uiState,$:q,$:qa,esc:x=>String(x??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;"),
+    headerHtml:(heading,sub,buttons)=>'<h2>'+heading+'</h2>'+buttons,
+    statCard:()=>"",emptyState:()=>"",animalName:id=>uiState.animals.find(a=>a.id===id)?.name||"Unknown",
+    formatDate:x=>x||"",daysFromNow:()=>0,ensureSpreadsheetToolsReady:stub,
+    openModal:(title,html)=>{q("#fixture-modal").innerHTML=html;},
+    closeModal:()=>{q("#fixture-modal").innerHTML="";},
+    selectAnimalField:stub,field:stub,selectField:stub,textareaField:stub,
+    todayISO:()=>"2026-11-15",toast:(msg)=>notices.push(msg),
+    navigate:route=>notices.push("navigate:"+route),uid:()=>String(Math.random()),
+    recordActivity:stub,saveState:()=>true,renderCurrentView:stub,addDays:stub,
+    allowsAnimalTransition:()=>true,rememberBreed:stub,completeWorkflowTasks:stub
+  };
+  runtime=window.HerdHarborBreedingLitterRuntime.create(deps);
+  const submit=(form)=>{check(Boolean(form),"Missing expected installed application form");form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));};
+  const exercise=(litterId,sireId,kind)=>{
+    runtime.renderLitters();
+    const create=qa('[data-create-offspring]').find(button=>button.dataset.createOffspring===litterId);
+    check(Boolean(create),"Missing "+kind+" offspring creation control");
+    create.click();
+    const form=q("#offspring-form");
+    check(Boolean(form),"Missing "+kind+" offspring form");
+    check(Boolean(q('[name="offspringSire_0"]',form)),"Missing "+kind+" explicit sire selector");
+    q('[name="offspringSire_0"]',form).value=sireId;
+    q('[name="offspringSireEvidence_0"]',form).value="breeder-record-1";
+    submit(form);
+    const child=uiState.animals.find(a=>a.sourceBirthId===litterId);
+    check(Boolean(child)&&child.sireId===sireId&&child.paternityStatus==="breeder-attributed",kind+" evidence-based sire was not saved");
+    check(child.ownerId==="farm",kind+" owner association was lost");
+    runtime.renderLitters();
+    const selector=kind==="cat"?'[data-kitten-placement]':'[data-cavy-placement]';
+    const placement=qa(selector).find(button=>(kind==="cat"?button.dataset.kittenPlacement:button.dataset.cavyPlacement)===litterId);
+    check(Boolean(placement),"Missing "+kind+" placement control");
+    placement.click();
+    const placeForm=q(kind==="cat"?"#hh-kitten-placement-form":"#hh-cavy-placement-form");
+    check(Boolean(placeForm),"Missing "+kind+" placement form");
+    check(![...q('[name="status"]',placeForm).options].some(o=>o.value==="Sold"),"Placement bypasses canonical sale");
+    q('[name="status"]',placeForm).value="Reserved";
+    q('[name="buyerId"]',placeForm).value="buyer-ui";
+    submit(placeForm);
+    const saved=uiState.animals.find(a=>a.id===child.id);
+    check(saved.status==="Reserved"&&saved.buyerId==="buyer-ui",kind+" reservation did not persist");
+  };
+  exercise("cat-ui","tom-ui","cat");
+  exercise("cavy-ui","boar-ui","cavy");
+
   output.dataset.status="pass";output.textContent="PASS: browser modules, DOM species selection, offspring evidence, health dates and dashboard";
  }catch(error){output.dataset.status="fail";output.textContent="FAIL: "+error.message;}
 });
