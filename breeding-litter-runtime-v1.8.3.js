@@ -593,6 +593,65 @@
       });
     }
 
+    function openKittenCare(litterId) {
+      const feline = root?.HerdHarborFelineKittens203;
+      const litter = stateNow().litters.find(row => row.id === litterId);
+      const kittens = offspringForLitter(litter).filter(item => root?.HerdHarborFelineIdentity203?.isCat(item));
+      if (!feline?.addObservation || !kittens.length) return toast("Create individual kitten records first.", "error");
+      openModal("Kitten development & health", `
+        <form id="hh-kitten-care-form">
+          <label>Kitten<select name="kittenId">${kittens.map(kitten=>`<option value="${esc(kitten.id)}">${esc(kitten.name||kitten.id)}</option>`).join("")}</select></label>
+          <label>Record type<select name="kind"><option value="weight">Weight</option><option value="development">Development</option><option value="health">Health</option><option value="veterinary">Veterinary</option><option value="coat">Coat development</option></select></label>
+          ${field("Date","date",todayISO(),true,"date")}
+          ${field("Weight (grams)","grams","",false,"number")}
+          ${textareaField("Notes","notes","")}
+          <div class="modal-actions"><button id="hh-kitten-care-close" type="button">Cancel</button><button type="submit">Save observation</button></div>
+        </form>`, "Birth-linked kitten records");
+      const form = $("#hh-kitten-care-form");
+      $("#hh-kitten-care-close")?.addEventListener("click",closeModal);
+      form?.addEventListener("submit",event=>{
+        event.preventDefault();
+        const data=Object.fromEntries(new FormData(form));
+        const proposal=feline.addObservation(stateNow(),data.kittenId,data);
+        if(!proposal.valid)return toast(proposal.issues.join(" "), "error");
+        const committed=persistMutation("Kitten observation saved.",()=>{
+          stateNow().animals=proposal.state.animals;
+        });
+        if(!committed)return;
+        closeModal();renderCurrentView();
+      });
+    }
+
+    function openKittenPlacement(litterId) {
+      const feline=root?.HerdHarborFelineKittens203;
+      const litter=stateNow().litters.find(row=>row.id===litterId);
+      const kittens=offspringForLitter(litter).filter(animal=>root?.HerdHarborFelineIdentity203?.isCat(animal));
+      if(!feline?.catteryStatus||!kittens.length)return toast("Create individual kitten records first.","error");
+      const buyers=stateNow().customers||[];
+      openModal("Kitten reservation & placement",`
+        <form id="hh-kitten-placement-form">
+          <label>Kitten<select name="kittenId">${kittens.map(a=>`<option value="${esc(a.id)}">${esc(a.name||a.id)} — ${esc(a.status||"Growing")}</option>`).join("")}</select></label>
+          <label>Status<select name="status"><option>Growing</option><option>Retained</option><option>Available</option><option>Reserved</option></select></label>
+          <label>Buyer/customer (required for Reserved)<select name="buyerId"><option value="">No buyer assigned</option>${buyers.map(customer=>`<option value="${esc(customer.id)}">${esc(customer.name||customer.fullName||customer.id)}</option>`).join("")}</select></label>
+          <p class="muted">Sold status and ownership transfers must be completed through the existing Sales workflow.</p>
+          <div class="modal-actions"><button type="button" id="hh-kitten-placement-cancel">Cancel</button><button type="submit">Save placement</button><button type="button" id="hh-kitten-placement-sales">Open Sales</button></div>
+        </form>`,"Breeder reservation records; Sales remains the authority for completed transfers.");
+      const form=$("#hh-kitten-placement-form");
+      $("#hh-kitten-placement-cancel")?.addEventListener("click",closeModal);
+      $("#hh-kitten-placement-sales")?.addEventListener("click",()=>{closeModal();navigate("sales");});
+      form?.addEventListener("submit",event=>{
+        event.preventDefault();
+        const values=Object.fromEntries(new FormData(form));
+        if(values.status==="Reserved"&&!values.buyerId)return toast("Choose an existing buyer for the reservation.","error");
+        if(!offspringForLitter(stateNow().litters.find(row=>row.id===litterId)).some(a=>a.id===values.kittenId))
+          return toast("Kitten no longer belongs to this litter.","error");
+        const result=feline.catteryStatus(stateNow(),values.kittenId,values.status,values.status==="Reserved"?values.buyerId:"");
+        if(!result.valid)return toast(result.issues.join(" "),"error");
+        if(!persistMutation("Kitten placement updated.",()=>{stateNow().animals=result.state.animals;}))return;
+        closeModal();renderCurrentView();
+      });
+    }
+
     function renderLitters() {
       const snapshot = stateNow();
       const rows = snapshot.litters.slice().sort((left, right) => (right.birthDate || "").localeCompare(left.birthDate || ""));
@@ -638,6 +697,8 @@
             <div class="meta">Expected weaning: ${formatDate(litter.expectedWeanDate)}</div>
             <div class="animal-card-footer">
               <button class="button button-ghost button-small" data-create-offspring="${litter.id}">${litter.canineWhelping ? "Manage puppies" : offspringCount ? "Add offspring" : "Create offspring"}</button>
+              <button class="button button-ghost button-small" data-kitten-placement="${litter.id}" ${!stateNow().animals.some(animal=>animal.id===litter.damId&&root?.HerdHarborFelineIdentity203?.isCat(animal))?"hidden":""}>Kitten placement</button>
+              <button class="button button-ghost button-small" data-kitten-care="${litter.id}" ${!stateNow().animals.some(animal => animal.id === litter.damId && root?.HerdHarborFelineIdentity203?.isCat(animal)) ? "hidden" : ""}>Kitten care</button>
               <button class="button button-ghost button-small" data-rabbit-kit-growth="${litter.id}" ${!stateNow().animals.some(animal => animal.id === litter.damId && root?.HerdHarborRabbitBreeder203?.isRabbit(animal)) ? "hidden" : ""}>Kit growth</button>
               <button class="button button-ghost button-small" data-edit-litter="${litter.id}">Edit</button>
             </div>
@@ -645,9 +706,13 @@
         }).join("")}</div>` : emptyState("No births recorded.", "Record the result of a breeding when offspring arrive.")}`;
   
       $("#add-litter").addEventListener("click", () => openLitterForm());
-      $('[data-rabbit-kit-growth]', $("#view-litters")).forEach(button =>
+      $$('[data-kitten-placement]', $("#view-litters")).forEach(button =>
+        button.addEventListener("click", () => openKittenPlacement(button.dataset.kittenPlacement)));
+      $$('[data-kitten-care]', $("#view-litters")).forEach(button =>
+        button.addEventListener("click", () => openKittenCare(button.dataset.kittenCare)));
+      $$('[data-rabbit-kit-growth]', $("#view-litters")).forEach(button =>
         button.addEventListener("click", () => openRabbitKitGrowth(button.dataset.rabbitKitGrowth)));
-      $('[data-edit-litter]', $("#view-litters")).forEach((button) =>
+      $$('[data-edit-litter]', $("#view-litters")).forEach((button) =>
         button.addEventListener("click", () => openLitterForm(button.dataset.editLitter)));
       $$('[data-create-offspring]', $("#view-litters")).forEach((button) =>
         button.addEventListener("click", () => {
@@ -820,6 +885,17 @@
       if (!litter) return;
       const dam = stateNow().animals.find((animal) => animal.id === litter.damId);
       const sire = stateNow().animals.find((animal) => animal.id === litter.sireId);
+      const kittenGeneration=Boolean(root?.HerdHarborFelineIdentity203?.isCat(dam));
+      const eligibleMatingIds=kittenGeneration?(Array.isArray(dam?.felineReproduction?.events)?dam.felineReproduction.events:[])
+        .filter(event=>event.kind==="mating"&&/^\d{4}-\d{2}-\d{2}$/.test(event.date||"")&&
+          Number.isFinite(Date.parse(litter.birthDate))&&
+          (Date.parse(litter.birthDate)-Date.parse(event.date))/86400000>=63&&
+          (Date.parse(litter.birthDate)-Date.parse(event.date))/86400000<=71)
+        .map(event=>event.sireId).filter(Boolean):[];
+      const candidateSires=kittenGeneration?[...new Set([...(Array.isArray(litter.potentialSireIds)?litter.potentialSireIds:[]),litter.sireId,...eligibleMatingIds].filter(Boolean))]
+        .map(id=>stateNow().animals.find(a=>a.id===id&&root.HerdHarborFelineIdentity203.isCat(a)&&String(a.sex||"").toLowerCase()==="male"))
+        .filter(a=>a&&(!dam.ownerId||!a.ownerId||a.ownerId===dam.ownerId)):[];
+
       const existing = offspringForLitter(litter);
       const available = Math.max(0, birthLiveRemaining(litter));
       const availableSlots = Math.max(0, available - existing.length);
@@ -835,7 +911,7 @@
         <form id="offspring-form">
           <div class="offspring-creator-header">
             <label>Number to create<input id="offspring-count" type="number" min="1" max="${maxCount}" step="1" value="${defaultCount}" required></label>
-            <p class="muted">Each new animal receives this dam, sire, birth date, species, and pedigree connection automatically. Review names, tags, and sex before saving.</p>
+            <p class="muted">${kittenGeneration?"Each kitten receives its dam automatically. Sire stays unverified unless you explicitly attribute a recorded possible sire.":"Each new animal receives this dam, sire, birth date, species, and pedigree connection automatically."} Review names, tags, and sex before saving.</p>
           </div>
           <div id="offspring-fields"></div>
           <div class="modal-actions">
@@ -861,6 +937,8 @@
             <label>Name<input name="offspringName_${index}" value="${esc(`${dam?.name || "Offspring"} offspring ${sequence}`)}" required></label>
             <label>ID or tag<input name="offspringTag_${index}" value="${esc(prefix ? `${prefix}-${sequence}` : "")}"></label>
             <label>Sex<select name="offspringSex_${index}"><option>Unknown</option><option>Female</option><option>Male</option></select></label>
+            ${kittenGeneration?`<label>Breeder-attributed sire (optional)<select name="offspringSire_${index}"><option value="">Unverified / unknown</option>${candidateSires.map(s=>`<option value="${esc(s.id)}">${esc(s.name||s.id)}</option>`).join("")}</select></label>
+            <label>Parentage evidence reference (if attributed)<input name="offspringSireEvidence_${index}" placeholder="Recorded breeding or supporting evidence"></label>`:""}
           </div>`;
         }).join("")}</div>`;
       };
@@ -874,10 +952,11 @@
         const data = new FormData(event.currentTarget);
         const now = new Date().toISOString();
         const created = [];
+        const formIndexById = new Map();
         for (let index = 0; index < count; index += 1) {
           const sequence = startSequence + index;
           const animalId = offspringAnimalId(litter.id, sequence);
-          if (stateNow().animals.some((animal) => animal.id === animalId)) continue;
+          if (stateNow().animals.some((animal) => animal.id === animalId)) return toast("Offspring identifier conflict. Reopen the litter before retrying.","error");
           const name = String(data.get(`offspringName_${index}`) || "").trim();
           if (!name) return toast("Every offspring record needs a name.", "error");
           const animal = {
@@ -902,6 +981,25 @@
             updatedAt: now
           };
           created.push(animal);
+          formIndexById.set(animal.id,index);
+        }
+        if (root?.HerdHarborFelineKittens203 && root?.HerdHarborFelineIdentity203?.isCat(dam)) {
+          const feline = root.HerdHarborFelineKittens203.createKittens(stateNow(), litterId,
+            created.map((animal,index) => ({ id: animal.id, name: animal.name, tag: animal.tag,
+              sex: animal.sex, breed: animal.breed, color: animal.color,
+              confirmedSireId: String(data.get(`offspringSire_${formIndexById.get(animal.id)}`)||"").trim(),
+              parentageEvidenceRef: String(data.get(`offspringSireEvidence_${formIndexById.get(animal.id)}`)||"").trim() })));
+          if (created.some(animal=>data.get(`offspringSire_${formIndexById.get(animal.id)}`)&&!String(data.get(`offspringSireEvidence_${formIndexById.get(animal.id)}`)||"").trim()))
+            return toast("Provide an evidence reference for every breeder-attributed kitten sire.","error");
+          if (!feline.valid) return toast(feline.issues.join(" "), "error");
+          if (!allowsAnimalTransition(stateNow().animals, feline.state.animals)) return;
+          const committed = persistMutation(`${feline.created.length} kitten records added.`, () => {
+            stateNow().animals = feline.state.animals;
+            stateNow().litters = feline.state.litters;
+            recordActivity(`Created ${feline.created.length} birth-linked kitten profiles.`, "animal");
+          });
+          if (!committed) return;
+          closeModal();renderCurrentView();return;
         }
         if (!allowsAnimalTransition(stateNow().animals, [...stateNow().animals, ...created])) return;
         const committed = persistMutation(`${created.length} offspring record${created.length === 1 ? "" : "s"} created with parent and pedigree links.`, () => {
