@@ -68,7 +68,7 @@ test('uncertain sire, duplicates, unrelated species and owner conflicts do not t
  const sow={...cavy('s','',['rn','rn']),sex:'Female',ownerId:'one'};
  const boar={...cavy('b','',['rn','rn']),sex:'Male',ownerId:'two'};
  const pup={id:'p',species:'Cavy',sourceBirthId:'l',damId:'s',sireId:'b'};
- assert.equal(genetics.reconcile({animals:[sow,boar,pup]}).changed,1); // ownerless pup has no tenant evidence
+ assert.equal(genetics.reconcile({animals:[sow,boar,pup]}).changed,0);
  assert.equal(genetics.reconcile({animals:[sow,boar,{...pup,ownerId:'one'}]}).changed,0);
  assert.equal(genetics.reconcile({animals:[sow,boar,{...pup,paternityStatus:'unresolved'}]}).changed,0);
  assert.equal(genetics.reconcile({animals:[sow,boar,boar,pup]}).changed,0);
