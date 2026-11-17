@@ -187,6 +187,7 @@
             ${deps.selectAnimalField("Dam", "damId", animal.damId, "Female")}
           </div>
           ${canineIdentity?.editorHtml?.(animal) || ""}
+          ${root.HerdHarborFelineIdentity203?.editorHtml?.(animal) || ""}
           ${deps.textareaField("Notes", "notes", animal.notes)}
           <div class="modal-actions">
             ${id ? '<button type="button" class="button button-danger" id="delete-animal">Delete</button>' : ""}
@@ -252,6 +253,7 @@
         refreshCanineParents();
       });
       canineIdentity?.bindEditor?.($("#animal-form"), speciesSelect);
+      root.HerdHarborFelineIdentity203?.bindEditor?.($("#animal-form"), speciesSelect);
       root.HerdHarborCanineBreeds?.bindPicker?.($("#animal-form"), speciesSelect);
       root.HerdHarborCanineBreeds?.bindCoatColor?.($("#animal-form"), speciesSelect);
       root.HerdHarborCanineBreeds?.bindMarkings?.($("#animal-form"), speciesSelect);
@@ -320,6 +322,11 @@
         const liveState = stateNow();
         const data = Object.fromEntries(new FormData(form));
         data.breed = String(data.breed || "").trim();
+        if (root.HerdHarborFelineIdentity203?.isCat(data.species)) {
+          const checked = root.HerdHarborFelineIdentity203.readEditor(form, animal.feline);
+          if (!checked.valid) { deps.toast(checked.errors.join(" "), "error"); return; }
+          data.feline = checked.value;
+        }
         if (canineIdentity?.isDog(data.species)) {
           const checked = canineIdentity.readEditor(form, animal.canine);
           if (!checked?.valid) {
@@ -387,6 +394,8 @@
           const nextAnimal = { ...currentAnimal, ...data, updatedAt: new Date().toISOString() };
           const leavingDog = canineIdentity?.isDog(currentAnimal) && !canineIdentity?.isDog(nextAnimal);
           if (leavingDog) delete nextAnimal.canine;
+          if (root.HerdHarborFelineIdentity203?.isCat(currentAnimal) &&
+              !root.HerdHarborFelineIdentity203?.isCat(nextAnimal)) delete nextAnimal.feline;
           const nextAnimals = liveState.animals.map((item) => item.id === id ? nextAnimal : item);
           if (!deps.allowsAnimalTransition(liveState.animals, nextAnimals)) return;
           const original = { ...currentAnimal };
@@ -533,6 +542,7 @@
             '<button class="button button-ghost" id="detail-import-pedigree">Build / import pedigree</button>' +
             '<button class="button button-ghost" id="detail-birth-certificate">Create Birth Certificate</button>' +
             '<button class="button button-ghost" id="detail-compare-pedigree">Linebreeding Coefficient</button>'}
+          ${root.HerdHarborFelineIdentity203?.isCat(animal) ? '<button class="button button-ghost" id="detail-print-feline">Print Cat Pedigree</button>' : ""}
           <button class="button button-primary" id="detail-edit">Edit animal</button>
         </div>
       `, `${animal.species || "Animal"} record`);
@@ -553,6 +563,7 @@
       );
       $("#detail-print-qr")?.addEventListener("click", (event) => openAnimalQrCardForm(id, event.currentTarget));
       $("#detail-print-canine")?.addEventListener("click", () => root.HerdHarborCaninePedigreePrint?.openForAnimal?.(id));
+      $("#detail-print-feline")?.addEventListener("click", () => deps.openPrintPedigreeForm(id));
       $("#detail-canine-repro")?.addEventListener("click", () => root.HerdHarborCanineReproductiveWorkspace?.openForAnimal?.(id));
       $("#detail-import-pedigree")?.addEventListener("click", () => deps.openPedigreeImport(id));
       $("#detail-birth-certificate")?.addEventListener("click", () => deps.openBirthCertificateForm(id));
