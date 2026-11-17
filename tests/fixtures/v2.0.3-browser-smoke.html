@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>HerdHarbor 2.0.3 browser integration smoke</title><link rel="stylesheet" href="../../birth-certificate-v2.0.0.css"><link rel="stylesheet" href="../../pedigree-renderer-v2.0.0.css"><link rel="stylesheet" href="../../pedigree-visual.css"></head>
+<body>
+<label>Species <select id="species"><option>Rabbit</option><option>Dog</option><option>Cat</option><option>Cavy</option></select></label>
+<p id="context"></p><div aria-hidden="true"><img id="portrait-birth" class="hh-birth-photo" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%22160%22/%3E"><img id="landscape-birth" class="hh-birth-photo" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%2280%22/%3E"><img id="portrait-pedigree" class="hh-pedigree-thumb" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%22160%22/%3E"></div><div id="view-litters"></div><div class="modal" id="fixture-modal"></div><output id="hh203-result" data-status="pending">Running</output>
+<script src="../../breeding-integrity-v2.0.3.js"></script>
+<script src="../../feline-kittens-v2.0.3.js"></script>
+<script src="../../cavy-offspring-v2.0.3.js"></script>
+<script src="../../breeder-dashboard-v2.0.3.js"></script>
+<script src="../../canine-identity-v2.0.1.js"></script>
+<script src="../../feline-identity-v2.0.3.js"></script>
+<script src="../../cavy-identity-v2.0.3.js"></script>
+<script src="../../feline-reproduction-v2.0.3.js"></script>
+<script src="../../cavy-reproduction-v2.0.3.js"></script>
+<script src="../../breeding-litter-runtime-v1.8.3.js"></script>
+<script src="../../standard-pedigree-print-v2.0.0.js"></script>
+<script src="../../birth-certificate-v2.0.0.js"></script>
+<script>
+window.addEventListener("load",()=>{
+ const output=document.querySelector("#hh203-result");
+ const check=(condition,message)=>{if(!condition)throw Error(message);};
+ try{
+  const selector=document.querySelector("#species"),context=document.querySelector("#context");
+  const portrait=document.querySelector("#portrait-birth"),landscape=document.querySelector("#landscape-birth"),pedigree=document.querySelector("#portrait-pedigree");
+  check(portrait.complete&&landscape.complete&&portrait.naturalHeight>portrait.naturalWidth&&landscape.naturalWidth>landscape.naturalHeight,"Real portrait and landscape fixtures did not load");
+  for(const image of [portrait,landscape,pedigree]){
+   check(getComputedStyle(image).objectFit==="contain","Photo crop protection missing for "+image.id);
+  }
+  selector.addEventListener("change",()=>{context.textContent=selector.value;});
+  for(const value of ["Rabbit","Dog","Cat","Cavy"]){
+   selector.value=value;selector.dispatchEvent(new Event("change",{bubbles:true}));
+   check(context.textContent===value,"Species selection failed: "+value);
+  }
+  const cat={animals:[{id:"queen",species:"Cat",sex:"Female"}],
+   litters:[{id:"cat-l",damId:"queen",birthDate:"2026-11-15",bornAlive:1,potentialSireIds:["tom1","tom2"]}]};
+  const bornCat=window.HerdHarborFelineKittens203.createKittens(cat,"cat-l",[{id:"kitten",name:"Kitten"}]);
+  check(bornCat.valid&&bornCat.created[0].sireId===""&&bornCat.created[0].paternityStatus==="unresolved-multiple-sires","Unverified kitten sire promoted");
+  const weighedCat=window.HerdHarborFelineKittens203.addObservation(bornCat.state,"kitten",{kind:"weight",date:"2026-11-16",grams:105});
+  check(weighedCat.valid,"Kitten growth not recorded");
+  const cavy={animals:[{id:"sow",species:"Guinea Pig",sex:"Female"}],
+   litters:[{id:"cavy-l",damId:"sow",birthDate:"2026-11-15",bornAlive:1,potentialSireIds:["boar1","boar2"]}]};
+  const bornCavy=window.HerdHarborCavyOffspring203.generatePups(cavy,"cavy-l",[{id:"pup",name:"Pup"}]);
+  check(bornCavy.valid&&bornCavy.created[0].sireId==="","Unverified cavy sire promoted");
+  const weighedCavy=window.HerdHarborCavyOffspring203.observe(bornCavy.state,"pup",{kind:"weight",date:"2026-11-16",grams:85});
+  check(weighedCavy.valid,"Cavy growth not recorded");
+  const state={animals:[...weighedCat.state.animals,...weighedCavy.state.animals],litters:[...weighedCat.state.litters,...weighedCavy.state.litters]};
+  const growth=window.HerdHarborBreederDashboard203.growthReport(state);
+  check(growth.measurements===2&&growth.animalsWithWeights===2,"Browser dashboard growth report mismatch");
+  const panel=window.HerdHarborBreederDashboard203.panelHtml(state,x=>String(x).replace(/&/g,"&amp;").replace(/</g,"&lt;"),x=>x,"2026-11-15");
+  check(panel.includes("Latest offspring weights"),"Browser dashboard growth UI absent");
+  check(window.HerdHarborCanineIdentity.validate({healthEvidence:[{type:"screening",name:"Eye exam",date:"2026-11-15",reference:"doc"}]}).valid,"Canine valid health date rejected");
+  check(!window.HerdHarborCanineIdentity.validate({healthEvidence:[{type:"screening",name:"Eye exam",date:"2026-02-30",reference:"doc"}]}).valid,"Impossible health date accepted");
+  const baseline={animals:[{id:"queen",species:"Cat"},{id:"tom",species:"Feline"}],breedings:[],litters:[]};
+  const next={...baseline,animals:[...baseline.animals,{id:"kit",species:"Cats",sireId:"tom",damId:"queen"}]};
+  check(window.HerdHarborBreedingIntegrity203.validateMutation(baseline,next).ok,"Imported feline aliases rejected");
+
+  // Exercise real identity-editor controls, not only the module's validation helpers.
+  const catForm=document.createElement("form");
+  catForm.innerHTML=window.HerdHarborFelineIdentity203.editorHtml({species:"Cat"});
+  const catSelect=document.createElement("select");catSelect.innerHTML='<option>Cat</option><option>Dog</option>';catSelect.value="Cat";
+  window.HerdHarborFelineIdentity203.bindEditor(catForm,catSelect);
+  catForm.querySelector("[data-feline-health-add]").click();
+  const health=catForm.querySelector("[data-feline-health-row]");
+  check(Boolean(health),"Cat health record control did not create a row");
+  for(const [key,value] of Object.entries({name:"Eye check",date:"2026-11-15",reference:"veterinary-note",result:"normal"})){
+   health.querySelector('[data-feline-health-field="'+key+'"]').value=value;
+  }
+  const catSaved=window.HerdHarborFelineIdentity203.readEditor(catForm,{});
+  check(catSaved.valid&&catSaved.value.healthTests.length===1&&catSaved.value.healthTests[0].reference==="veterinary-note","Cat health evidence form did not round trip");
+  const cavyForm=document.createElement("form");
+  cavyForm.innerHTML=window.HerdHarborCavyIdentity203.editorHtml({species:"Cavy"});
+  const cavySelect=document.createElement("select");cavySelect.innerHTML='<option>Cavy</option><option>Rabbit</option>';cavySelect.value="Cavy";
+  window.HerdHarborCavyIdentity203.bindEditor(cavyForm,cavySelect);
+  cavyForm.querySelector('[data-cavy-add="show"]').click();
+  cavyForm.querySelector('[data-cavy-add="vet"]').click();
+  for(const [kind,fields] of [["show",{event:"County show",date:"2026-11-15",reference:"show-certificate"}],["vet",{name:"Health exam",date:"2026-11-15",reference:"vet-report"}]]){
+   const row=cavyForm.querySelector('[data-cavy-evidence-row="'+kind+'"]');
+   check(Boolean(row),"Cavy "+kind+" evidence controls absent");
+   for(const [key,value] of Object.entries(fields))row.querySelector('[data-cavy-evidence-field="'+key+'"]').value=value;
+  }
+  const cavySaved=window.HerdHarborCavyIdentity203.readEditor(cavyForm,{});
+  check(cavySaved.valid&&cavySaved.value.showResults.length===1&&cavySaved.value.veterinaryEvidence.length===1,"Cavy evidence forms did not round trip");
+
+  // Real DOM events drive the installed litter runtime and canonical Cat/Cavy engines.
+  const uiState={animals:[
+   {id:"queen-ui",name:"Queen",species:"Cat",sex:"Female",ownerId:"farm"},
+   {id:"tom-ui",name:"Tom",species:"Cat",sex:"Male",ownerId:"farm"},
+   {id:"sow-ui",name:"Sow",species:"Cavy",sex:"Female",ownerId:"farm"},
+   {id:"boar-ui",name:"Boar",species:"Cavy",sex:"Male",ownerId:"farm"}
+  ],breedings:[],litters:[
+   {id:"cat-ui",damId:"queen-ui",sireId:"",birthDate:"2026-11-15",bornAlive:1,potentialSireIds:["tom-ui"]},
+   {id:"cavy-ui",damId:"sow-ui",sireId:"",birthDate:"2026-11-15",bornAlive:1,potentialSireIds:["boar-ui"]}
+  ],tasks:[],customers:[{id:"buyer-ui",name:"Buyer",ownerId:"farm"}],profile:{}};
+  // Record reproductive events through installed on-screen forms and canonical app save API.
+  window.HerdHarborCloud={getSession:()=>({user:{id:"farm"}})};
+  window.HerdHarborApp={
+   getState:()=>uiState,
+   commitState:next=>{uiState.animals=next.animals;uiState.tasks=next.tasks;return true;}
+  };
+  const matingOpened=window.HerdHarborFelineReproduction203.openForAnimal("queen-ui");
+  check(matingOpened,"Real Cat mating form not reachable");
+  const matingForm=document.querySelector("#hh-feline-repro-form");
+  check(Boolean(matingForm),"Cat mating form missing");
+  matingForm.querySelector('[name="kind"]').value="mating";
+  matingForm.querySelector('[name="date"]').value="2026-09-11";
+  matingForm.querySelector('[name="sireId"]').value="tom-ui";
+  matingForm.querySelector('[name="evidenceRef"]').value="mating-log";
+  matingForm.querySelector('[name="followUpDate"]').value="2026-11-21";
+  matingForm.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
+  check(uiState.animals.find(a=>a.id==="queen-ui").felineReproduction?.events?.length===1,"Cat mating did not save in canonical state");
+  check(uiState.tasks.some(t=>t.sourceType==="feline-reproduction"&&t.dueDate==="2026-11-21"),"Cat follow-up did not reach canonical tasks");
+  const exposureOpened=window.HerdHarborCavyReproduction203.openForAnimal("sow-ui");
+  check(exposureOpened,"Real Cavy exposure form not reachable");
+  const exposureForm=document.querySelector("#hh-cavy-repro-form");
+  check(Boolean(exposureForm),"Cavy exposure form missing");
+  exposureForm.querySelector('[name="type"]').value="exposure";
+  exposureForm.querySelector('[name="date"]').value="2026-09-01";
+  exposureForm.querySelector('[name="endDate"]').value="2026-09-07";
+  exposureForm.querySelector('[name="boarId"]').value="boar-ui";
+  exposureForm.querySelector('[name="followUpDate"]').value="2026-11-22";
+  exposureForm.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
+  check(uiState.animals.find(a=>a.id==="sow-ui").cavyReproduction?.records?.length===1,"Cavy exposure did not save in canonical state");
+  check(uiState.tasks.some(t=>t.sourceType==="cavy-reproduction"&&t.dueDate==="2026-11-22"),"Cavy follow-up did not reach canonical tasks");
+  uiState.litters.forEach(litter=>{litter.potentialSireIds=[];});
+  const q=(selector,scope=document)=>scope.querySelector(selector);
+  const qa=(selector,scope=document)=>[...scope.querySelectorAll(selector)];
+  const notices=[];
+  let runtime;
+  const stub=()=>null;
+  const deps={
+    getState:()=>uiState,$:q,$$:qa,esc:x=>String(x??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;"),
+    headerHtml:(heading,sub,buttons)=>'<h2>'+heading+'</h2>'+buttons,
+    statCard:()=>"",emptyState:()=>"",animalName:id=>uiState.animals.find(a=>a.id===id)?.name||"Unknown",
+    formatDate:x=>x||"",daysFromNow:()=>0,ensureSpreadsheetToolsReady:stub,
+    openModal:(title,html)=>{q("#fixture-modal").innerHTML=html;},
+    closeModal:()=>{q("#fixture-modal").innerHTML="";},
+    selectAnimalField:stub,field:stub,selectField:stub,textareaField:stub,
+    todayISO:()=>"2026-11-15",toast:(msg)=>notices.push(msg),
+    navigate:route=>notices.push("navigate:"+route),uid:()=>String(Math.random()),
+    recordActivity:stub,saveState:()=>true,renderCurrentView:stub,addDays:stub,
+    allowsAnimalTransition:()=>true,rememberBreed:stub,completeWorkflowTasks:stub
+  };
+  runtime=window.HerdHarborBreedingLitterRuntime.create(deps);
+  const submit=(form)=>{check(Boolean(form),"Missing expected installed application form");form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));};
+  const exercise=(litterId,sireId,kind)=>{
+    runtime.renderLitters();
+    const create=qa('[data-create-offspring]').find(button=>button.dataset.createOffspring===litterId);
+    check(Boolean(create),"Missing "+kind+" offspring creation control");
+    create.click();
+    const form=q("#offspring-form");
+    check(Boolean(form),"Missing "+kind+" offspring form");
+    check(Boolean(q('[name="offspringSire_0"]',form)),"Missing "+kind+" explicit sire selector");
+    q('[name="offspringSire_0"]',form).value=sireId;
+    q('[name="offspringSireEvidence_0"]',form).value="breeder-record-1";
+    submit(form);
+    const child=uiState.animals.find(a=>a.sourceBirthId===litterId);
+    check(Boolean(child)&&child.sireId===sireId&&child.paternityStatus==="breeder-attributed",kind+" evidence-based sire was not saved");
+    check(child.ownerId==="farm",kind+" owner association was lost");
+    runtime.renderLitters();
+    const selector=kind==="cat"?'[data-kitten-placement]':'[data-cavy-placement]';
+    const placement=qa(selector).find(button=>(kind==="cat"?button.dataset.kittenPlacement:button.dataset.cavyPlacement)===litterId);
+    check(Boolean(placement),"Missing "+kind+" placement control");
+    placement.click();
+    const placeForm=q(kind==="cat"?"#hh-kitten-placement-form":"#hh-cavy-placement-form");
+    check(Boolean(placeForm),"Missing "+kind+" placement form");
+    check(![...q('[name="status"]',placeForm).options].some(o=>o.value==="Sold"),"Placement bypasses canonical sale");
+    q('[name="status"]',placeForm).value="Reserved";
+    q('[name="buyerId"]',placeForm).value="buyer-ui";
+    submit(placeForm);
+    const saved=uiState.animals.find(a=>a.id===child.id);
+    check(saved.status==="Reserved"&&saved.buyerId==="buyer-ui",kind+" reservation did not persist");
+  };
+  exercise("cat-ui","tom-ui","cat");
+  exercise("cavy-ui","boar-ui","cavy");
+
+  // The existing print modules must not promote uncertain ancestry into certified parentage.
+  for(const species of ["Cat","Cavy"]){
+    const unresolved={id:"unknown-"+species,name:"Unresolved "+species,species,paternityStatus:"unresolved",
+      potentialSireIds:["potential-only"],sireId:""};
+    const graph={root:{animal:unresolved},nodes:[{generation:0,animal:unresolved,relation:"Subject"}]};
+    const html=window.HerdHarborStandardPedigreePrint.buildHtml({graph,subject:unresolved,
+      config:{generations:4,rootFields:["name"],ancestorFields:["name"],photos:false,unknownDisplay:"label"},
+      speciesIcon:()=>"-",generatedDate:"2026-11-15"});
+    const parsed=new DOMParser().parseFromString(html,"text/html");
+    check(parsed.querySelector(".node-parentage-note")?.textContent.includes("potential, not confirmed"),
+      species+" pedigree print promoted uncertain sire");
+    const certificate=window.HerdHarborBirthCertificate.certificateBodyHtml({animal:unresolved});
+    check(certificate.includes("Possible sires (unverified)")&&certificate.includes("identity unresolved"),
+      species+" birth certificate promoted uncertain sire");
+  }
+  for(const animal of uiState.animals.filter(a=>a.sourceBirthId)){
+    const graph={root:{animal},nodes:[{generation:0,animal,relation:"Subject"}]};
+    const html=window.HerdHarborStandardPedigreePrint.buildHtml({graph,subject:animal,
+      config:{generations:4,rootFields:["name"],ancestorFields:["name"],photos:false,unknownDisplay:"label"},
+      speciesIcon:()=>"-"});
+    check(html.includes("breeder-attributed; not independently verified"),
+      animal.species+" print failed to disclose attribution");
+  }
+
+  output.dataset.status="pass";output.textContent="PASS: browser modules, DOM species selection, offspring evidence, health dates and dashboard";
+ }catch(error){output.dataset.status="fail";output.textContent="FAIL: "+error.message;}
+});
+</script></body></html>

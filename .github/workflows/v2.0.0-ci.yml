@@ -2,7 +2,7 @@ name: HerdHarbor 2.0.2 release-candidate CI
 
 on:
   pull_request:
-    branches: [main, 'feature/2.0.1-canine-*', 'herdharbor-2.0.1/**', 'release-2.0.0-phase-*', 'breeder-docs/phase-*', 'breeding-intel/phase-*', 'marketplace-site/app-*', 'marketplace-comms/app-*', 'ownership-transfer/phase-*']
+    branches: [main, 'feature/2.0.3-*', 'feature/2.0.1-canine-*', 'herdharbor-2.0.1/**', 'release-2.0.0-phase-*', 'breeder-docs/phase-*', 'breeding-intel/phase-*', 'marketplace-site/app-*', 'marketplace-comms/app-*', 'ownership-transfer/phase-*']
   workflow_dispatch:
     inputs:
       run_staging_auth:
@@ -102,6 +102,8 @@ jobs:
             echo "::endgroup::"
           done
           exit "${failed}"
+      - name: Run actual Chromium browser integration smoke for 2.0.3
+        run: node scripts/v2.0.3-browser-smoke.mjs
       - name: Build production monitoring bundle
         run: NODE_ENV=production npm run build:monitoring
       - name: Verify bundled monitoring architecture
@@ -243,7 +245,17 @@ jobs:
 
   staging-authenticated-http:
     name: Real GoTrue staging Auth/REST/RPC (manual isolated gate)
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/release/2.0.2-normalized-cloud' && inputs.run_staging_auth
+    # Run against synthetic users in the isolated staging environment for an
+    # explicitly dispatched 2.0.2/2.0.3 validation or the repository-owned B14 PR.
+    # External/fork PRs never receive staging credentials.
+    if: >-
+      (github.event_name == 'workflow_dispatch' &&
+       inputs.run_staging_auth &&
+       (github.ref == 'refs/heads/release/2.0.2-normalized-cloud' ||
+        github.ref == 'refs/heads/feature/2.0.3-b14-integration-hardening')) ||
+      (github.event_name == 'pull_request' &&
+       github.head_ref == 'feature/2.0.3-b14-integration-hardening' &&
+       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     permissions:
       contents: read

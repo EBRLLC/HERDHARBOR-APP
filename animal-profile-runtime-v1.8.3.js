@@ -194,8 +194,8 @@
             ${deps.selectAnimalField("Dam", "damId", animal.damId, "Female")}
           </div>
           ${canineIdentity?.editorHtml?.(animal) || ""}
-          ${root.HerdHarborFelineIdentity203?.editorHtml?.(animal) || ""}
-          ${root.HerdHarborCavyIdentity203?.editorHtml?.(animal) || ""}
+          ${globalThis.HerdHarborFelineIdentity203?.editorHtml?.(animal) || ""}
+          ${globalThis.HerdHarborCavyIdentity203?.editorHtml?.(animal) || ""}
           ${deps.textareaField("Notes", "notes", animal.notes)}
           <div class="modal-actions">
             ${id ? '<button type="button" class="button button-danger" id="delete-animal">Delete</button>' : ""}
@@ -261,8 +261,8 @@
         refreshCanineParents();
       });
       canineIdentity?.bindEditor?.($("#animal-form"), speciesSelect);
-      root.HerdHarborFelineIdentity203?.bindEditor?.($("#animal-form"), speciesSelect);
-      root.HerdHarborCavyIdentity203?.bindEditor?.($("#animal-form"), speciesSelect);
+      globalThis.HerdHarborFelineIdentity203?.bindEditor?.($("#animal-form"), speciesSelect);
+      globalThis.HerdHarborCavyIdentity203?.bindEditor?.($("#animal-form"), speciesSelect);
       root.HerdHarborCanineBreeds?.bindPicker?.($("#animal-form"), speciesSelect);
       root.HerdHarborCanineBreeds?.bindCoatColor?.($("#animal-form"), speciesSelect);
       root.HerdHarborCanineBreeds?.bindMarkings?.($("#animal-form"), speciesSelect);
@@ -331,13 +331,13 @@
         const liveState = stateNow();
         const data = Object.fromEntries(new FormData(form));
         data.breed = String(data.breed || "").trim();
-        if (root.HerdHarborFelineIdentity203?.isCat(data.species)) {
-          const checked = root.HerdHarborFelineIdentity203.readEditor(form, animal.feline);
+        if (globalThis.HerdHarborFelineIdentity203?.isCat(data.species)) {
+          const checked = globalThis.HerdHarborFelineIdentity203.readEditor(form, animal.feline);
           if (!checked.valid) { deps.toast(checked.errors.join(" "), "error"); return; }
           data.feline = checked.value;
         }
-        if (root.HerdHarborCavyIdentity203?.isCavy(data.species)) {
-          const checked = root.HerdHarborCavyIdentity203.readEditor(form, animal.cavy);
+        if (globalThis.HerdHarborCavyIdentity203?.isCavy(data.species)) {
+          const checked = globalThis.HerdHarborCavyIdentity203.readEditor(form, animal.cavy);
           if (!checked.valid) { deps.toast(checked.errors.join(" "), "error"); return; }
           data.cavy = checked.value;
         }
@@ -408,10 +408,10 @@
           const nextAnimal = { ...currentAnimal, ...data, updatedAt: new Date().toISOString() };
           const leavingDog = canineIdentity?.isDog(currentAnimal) && !canineIdentity?.isDog(nextAnimal);
           if (leavingDog) delete nextAnimal.canine;
-          if (root.HerdHarborFelineIdentity203?.isCat(currentAnimal) &&
-              !root.HerdHarborFelineIdentity203?.isCat(nextAnimal)) delete nextAnimal.feline;
-          if (root.HerdHarborCavyIdentity203?.isCavy(currentAnimal) &&
-              !root.HerdHarborCavyIdentity203?.isCavy(nextAnimal)) delete nextAnimal.cavy;
+          if (globalThis.HerdHarborFelineIdentity203?.isCat(currentAnimal) &&
+              !globalThis.HerdHarborFelineIdentity203?.isCat(nextAnimal)) delete nextAnimal.feline;
+          if (globalThis.HerdHarborCavyIdentity203?.isCavy(currentAnimal) &&
+              !globalThis.HerdHarborCavyIdentity203?.isCavy(nextAnimal)) delete nextAnimal.cavy;
           const nextAnimals = liveState.animals.map((item) => item.id === id ? nextAnimal : item);
           if (!deps.allowsAnimalTransition(liveState.animals, nextAnimals)) return;
           const original = { ...currentAnimal };
@@ -558,10 +558,12 @@
             '<button class="button button-ghost" id="detail-import-pedigree">Build / import pedigree</button>' +
             '<button class="button button-ghost" id="detail-birth-certificate">Create Birth Certificate</button>' +
             '<button class="button button-ghost" id="detail-compare-pedigree">Linebreeding Coefficient</button>'}
-          ${root.HerdHarborFelineIdentity203?.isCat(animal) && String(animal.sex||"").toLowerCase()==="female" ?
+          ${globalThis.HerdHarborFelineIdentity203?.isCat(animal) && String(animal.sex||"").toLowerCase()==="female" ?
             '<button class="button button-primary" id="detail-feline-repro">Cat heat & mating</button>' : ""}
-          ${root.HerdHarborCavyIdentity203?.isCavy(animal) ? '<button class="button button-ghost" id="detail-print-cavy">Print Cavy Pedigree</button>' : ""}
-          ${root.HerdHarborFelineIdentity203?.isCat(animal) ? '<button class="button button-ghost" id="detail-print-feline">Print Cat Pedigree</button>' : ""}
+          ${globalThis.HerdHarborCavyIdentity203?.isCavy(animal) && String(animal.sex||"").toLowerCase()==="female" ?
+            '<button class="button button-primary" id="detail-cavy-repro">Cavy mating & exposure</button>' : ""}
+          ${globalThis.HerdHarborFelineIdentity203?.isCat(animal)?'<button class="button button-ghost" id="detail-print-feline">Print Cat Pedigree</button>':""}
+          ${globalThis.HerdHarborCavyIdentity203?.isCavy(animal)?'<button class="button button-ghost" id="detail-print-cavy">Print Cavy Pedigree</button>':""}
           <button class="button button-primary" id="detail-edit">Edit animal</button>
         </div>
       `, `${animal.species || "Animal"} record`);
@@ -586,6 +588,7 @@
       $("#detail-print-cavy")?.addEventListener("click", () => deps.openPrintPedigreeForm(id));
       $("#detail-canine-repro")?.addEventListener("click", () => root.HerdHarborCanineReproductiveWorkspace?.openForAnimal?.(id));
       $("#detail-feline-repro")?.addEventListener("click", () => root.HerdHarborFelineReproduction203?.openForAnimal?.(id));
+      $("#detail-cavy-repro")?.addEventListener("click", () => root.HerdHarborCavyReproduction203?.openForAnimal?.(id));
       $("#detail-import-pedigree")?.addEventListener("click", () => deps.openPedigreeImport(id));
       $("#detail-birth-certificate")?.addEventListener("click", () => deps.openBirthCertificateForm(id));
       $("#detail-compare-pedigree")?.addEventListener("click", () => {

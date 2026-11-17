@@ -175,7 +175,20 @@
     if (fields.identity) details.push(field("ID / tattoo", identity));
     if (fields.birthWeight) details.push(field("Birth weight", birthWeight));
     if (fields.currentWeight) details.push(field("Current weight", currentWeight));
-    if (fields.sire) details.push(field("Sire", sire?.name));
+    if (fields.sire) {
+      const species = clean(animal.species).toLowerCase();
+      const evidenceRequired = ["cat", "cats", "feline", "cavy", "cavies", "guinea pig", "guinea pigs"].includes(species);
+      const status = clean(animal.paternityStatus).toLowerCase();
+      const evidenceReference = clean(animal.paternityEvidence?.reference || animal.paternityEvidence?.evidenceRef || animal.parentageEvidenceRef);
+      const verified = (status === "dna-confirmed" || status === "documented-parentage") && Boolean(evidenceReference);
+      const candidateIds = Array.isArray(animal.potentialSireIds) ? [...new Set(animal.potentialSireIds.filter(Boolean))] : [];
+      const label = evidenceRequired && sire && !verified
+        ? "Sire (attributed / not independently verified)" : "Sire";
+      details.push(field(label, sire?.name));
+      if (evidenceRequired && !sire && candidateIds.length) {
+        details.push(field("Possible sires (unverified)", candidateIds.length + " recorded; identity unresolved"));
+      }
+    }
     if (fields.dam) details.push(field("Dam", dam?.name));
     if (fields.breeder) details.push(field("Rabbitry / breeder", breeder));
     if (fields.newOwner) details.push(field("New owner", options.newOwner));

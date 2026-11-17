@@ -9,7 +9,23 @@ const require = createRequire(import.meta.url);
 const normalizer = require("../cloud-state-normalizer-v1.8.3.js");
 
 const expectedProject = "vaxsrkhiidoxctrtzkug";
-const url = new URL(process.env.HH_STAGE_SUPABASE_URL || "");
+// Fail with safe, actionable configuration diagnostics before attempting any
+// network requests. Never print secret values or use production as fallback.
+const requiredSettings = [
+  "HH_STAGE_SUPABASE_URL", "HH_STAGE_PUBLISHABLE_KEY",
+  "HH_STAGE_USER_A_EMAIL", "HH_STAGE_USER_A_PASSWORD",
+  "HH_STAGE_USER_B_EMAIL", "HH_STAGE_USER_B_PASSWORD",
+  "HH_STAGE_USER_C_EMAIL", "HH_STAGE_USER_C_PASSWORD"
+];
+const missingSettings = requiredSettings.filter(key => !String(process.env[key] || "").trim());
+assert.deepEqual(missingSettings, [],
+  "GitHub staging environment has missing required variables/secrets; configure the named settings before running this isolated Auth/RLS gate");
+let url;
+try {
+  url = new URL(process.env.HH_STAGE_SUPABASE_URL);
+} catch {
+  throw new Error("HH_STAGE_SUPABASE_URL is invalid; expected the exact isolated staging HTTPS project URL");
+}
 const apiKey = process.env.HH_STAGE_PUBLISHABLE_KEY || "";
 assert.equal(url.hostname, expectedProject + ".supabase.co",
   "2.0.2 staging Auth acceptance refuses any non-staging Supabase target");
