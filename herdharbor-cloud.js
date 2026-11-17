@@ -2673,7 +2673,7 @@
         if (hasPendingCloudMutations(userId)) {
           // A deferred read is not an active save. Keep the device dirty,
           // expose an actionable failure, and avoid a permanent Syncing badge.
-          setSyncState("Cloud refresh deferred; unsynced device records need a successful save or recovery.", "error");
+          setSyncState("Cloud refresh deferred; this device still has unsynced records. Save or recover local changes before refreshing.", "error");
           return false;
         }
         if (activeRaw && sameState(activeRaw, remoteRaw)) {
