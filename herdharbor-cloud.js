@@ -2403,8 +2403,39 @@
         originalGetItem.call(localStorage, dirtyKey(syncUserIdAtStart)) === "1" &&
         !(canonicalStateStore?.getOutbox?.(syncUserIdAtStart)?.length > 0);
       if (legacyDirtyWithoutOutbox) {
-        setSyncState("Older unsynced local records need recovery before normalized cloud saving can continue.", "error");
-        return false;
+        // A previous client may have left a legacy dirty marker after its
+        // normalized record-level save succeeded. Never discard it solely
+        // because the outbox is empty: only a verified authoritative read
+        // matching the unchanged local state can prove it is redundant.
+        const beforeRecoveryRaw = activeStateRaw();
+        let verified = null;
+        try {
+          verified = await normalizedRollout.refreshAuthoritative();
+        } catch (error) {
+          console.warn("HerdHarbor could not verify inherited legacy work:", error?.code || error?.message || error);
+        }
+        if (!syncAccountCurrent()) return false;
+        const stillNoRecordMutations =
+          !(canonicalStateStore?.getOutbox?.(syncUserIdAtStart)?.length > 0) &&
+          !pendingSync;
+        const matched = verified?.ok === true &&
+          verified?.skipped !== true &&
+          verified?.source === "normalized" &&
+          verified?.snapshot &&
+          beforeRecoveryRaw &&
+          activeStateRaw() === beforeRecoveryRaw &&
+          stillNoRecordMutations &&
+          sameState(beforeRecoveryRaw, JSON.stringify(verified.snapshot));
+        if (!matched) {
+          setSyncState("Older unsynced local records differ from verified normalized cloud records; local recovery is required. No data was overwritten.", "error");
+          return false;
+        }
+        safeStorageRemove(dirtyKey(syncUserIdAtStart));
+        if (originalGetItem.call(localStorage, dirtyKey(syncUserIdAtStart)) === "1") {
+          setSyncState("Verified cloud records match, but this device could not finish its local recovery marker.", "error");
+          return false;
+        }
+        recordVerifiedNormalizedSync(syncUserIdAtStart);
       }
       clearTimeout(syncTimer);
       syncTimer = null;
