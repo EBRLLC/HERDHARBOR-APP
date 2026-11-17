@@ -418,7 +418,7 @@
           const originalAnimals = liveState.animals.slice();
           if (leavingDog) delete currentAnimal.canine;
           Object.assign(currentAnimal, nextAnimal);
-          const cavyRefresh = root.HerdHarborCavyGenetics?.reconcile?.(liveState);
+          const cavyRefresh = globalThis.HerdHarborCavyGenetics?.reconcile?.(liveState);
           if (cavyRefresh?.state?.animals) liveState.animals = cavyRefresh.state.animals;
           deps.rememberBreed(data.species, data.breed);
           deps.recordActivity(`Updated ${data.name}.`, "animal");
@@ -434,7 +434,7 @@
           if (!deps.allowsAnimalTransition(liveState.animals || [], [...(liveState.animals || []), newAnimal])) return;
           const originalAnimals = liveState.animals.slice();
           liveState.animals.push(newAnimal);
-          const cavyRefresh = root.HerdHarborCavyGenetics?.reconcile?.(liveState);
+          const cavyRefresh = globalThis.HerdHarborCavyGenetics?.reconcile?.(liveState);
           if (cavyRefresh?.state?.animals) liveState.animals = cavyRefresh.state.animals;
           deps.rememberBreed(data.species, data.breed);
           deps.recordActivity(`Added ${data.name} to animal records.`, "animal");
