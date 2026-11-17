@@ -1,7 +1,7 @@
-(function(root,factory){"use strict";const api=factory();
+(function(root,factory){"use strict";const api=factory(root);
 if(typeof module==="object"&&module.exports)module.exports=api;
 if(root)root.HerdHarborCavyOffspring203=api;
-})(typeof globalThis!=="undefined"?globalThis:this,function(){"use strict";
+})(typeof globalThis!=="undefined"?globalThis:this,function(root){"use strict";
 const txt=x=>String(x==null?"":x).trim(),arr=x=>Array.isArray(x)?x:[];
 const isCavy=a=>/^(cavy|cavies|guinea pigs?|guinea-pigs?)$/i.test(txt(a?.species));
 const date=x=>{x=txt(x);if(!/^\d{4}-\d{2}-\d{2}$/.test(x))return false;
@@ -47,8 +47,12 @@ function generatePups(state,litterId,entries){
    cavyGrowth:[],cavyCare:[],createdAt:new Date().toISOString()});
  }
  if(issues.length)return {valid:false,issues,state};
- return {valid:true,issues:[],created:born,state:{...state,
-  animals:animals.concat(born),litters:state.litters.map(l=>l===litter?{...l,offspringIds:[...new Set([...arr(l.offspringIds),...born.map(x=>x.id)])]}:l)}};
+ const next={...state,animals:animals.concat(born),
+  litters:state.litters.map(l=>l===litter?{...l,offspringIds:[...new Set([...arr(l.offspringIds),...born.map(x=>x.id)])]}:l)};
+ const genetics=root?.HerdHarborCavyGenetics||(typeof module==="object"&&module.exports?require("./cavy-genetics-v2.0.4.js"):null);
+ const recomputed=genetics?.reconcile?.(next);
+ return {valid:true,issues:[],created:recomputed?.state?.animals?.filter(a=>born.some(x=>x.id===a.id))||born,
+  state:recomputed?.state||next};
 }
 function observe(state,pupId,input){
  const animal=arr(state?.animals).find(a=>a.id===pupId);
