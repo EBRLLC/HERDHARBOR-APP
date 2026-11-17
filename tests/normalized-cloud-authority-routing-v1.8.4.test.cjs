@@ -159,7 +159,7 @@ test("normalized UI timestamp uses verified receipt rather than stale legacy ver
 test("deferred normalized refresh reports an error without clearing pending mutations", () => {
   const refresh = body("  async function checkNormalizedAuthorityChanges() {", "\n  async function refreshDualWriteBaselineForRemoteState()");
   assert.match(refresh, /hasPendingCloudMutations\(userId\)/);
-  assert.match(refresh, /Cloud refresh deferred; unsynced device records need a successful save or recovery\.", "error"/);
+  assert.match(refresh, /Cloud refresh deferred; this device still has unsynced records. Save or recover local changes before refreshing\.", "error"/);
   assert.doesNotMatch(refresh, /Cloud refresh deferred[^\n]*"working"/);
   const sync = body("  async function syncNow() {", "\n  async function invokeFunction");
   assert.match(sync, /legacyDirtyWithoutOutbox/);
