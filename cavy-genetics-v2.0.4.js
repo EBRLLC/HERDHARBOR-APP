@@ -3,8 +3,7 @@ const VERSION="2.0.4";
 const clean=v=>String(v==null?"":v).trim();
 const isCavy=a=>/^(cavy|cavies|guinea pigs?|guinea-pigs?)$/i.test(clean(typeof a==="string"?a:a?.species));
 const LOCI=Object.freeze({
-  roan: Object.freeze({alleles:["Rn","rn"],note:"Dominant roan/Dalmatian factor; homozygous Rn/Rn is associated with lethal-white syndrome."}),
-  agouti: Object.freeze({alleles:["A","a"],note:"Simple two-allele teaching model only; does not resolve cavy agouti allelic series or complete coat phenotype."})
+  roan: Object.freeze({alleles:["Rn","rn"],note:"Conventional dominant roan/Dalmatian inheritance model; homozygous Rn/Rn is associated with lethal-white syndrome. Genotypes must be evidenced, not inferred from coat color alone."})
 });
 const PHENOTYPE_SAFETY=/\b(roan|dalmatian)\b/i;
 function roanSafety(sire,dam){
