@@ -152,7 +152,7 @@ test("normalized UI timestamp uses verified receipt rather than stale legacy ver
   assert.match(status, /originalGetItem\.call\(localStorage, versionKey\(userId\)\)/);
   const sync = body("  async function syncNow() {", "\n  async function invokeFunction");
   assert.match(sync, /if \(result\?\.ok\) \{[\s\S]*recordVerifiedNormalizedSync\(syncUserIdAtStart\)/);
-  const hydrate = body("  async function hydrateUserData(", "\n  async function handleAuthStateChange");
+  const hydrate = body("  async function hydrateUserData(", "\n  // A stale/empty onboarding");
   assert.match(hydrate, /recordVerifiedNormalizedSync\(userId\)/);
 });
 
