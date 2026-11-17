@@ -163,5 +163,12 @@ test("deferred normalized refresh reports an error without clearing pending muta
   assert.doesNotMatch(refresh, /Cloud refresh deferred[^\n]*"working"/);
   const sync = body("  async function syncNow() {", "\n  async function invokeFunction");
   assert.match(sync, /legacyDirtyWithoutOutbox/);
-  assert.match(sync, /Older unsynced local records need recovery/);
+  assert.match(sync, /beforeRecoveryRaw = activeStateRaw\(\)/);
+  assert.match(sync, /await normalizedRollout\.refreshAuthoritative\(\)/);
+  assert.match(sync, /verified\?\.source === "normalized"/);
+  assert.match(sync, /activeStateRaw\(\) === beforeRecoveryRaw/);
+  assert.match(sync, /sameState\(beforeRecoveryRaw, JSON\.stringify\(verified\.snapshot\)\)/);
+  assert.match(sync, /if \(!matched\) \{[\s\S]*local recovery is required/);
+  assert.ok(sync.indexOf("safeStorageRemove(dirtyKey(syncUserIdAtStart))", sync.indexOf("if (legacyDirtyWithoutOutbox)")) > sync.indexOf("if (!matched)"));
+  assert.match(sync, /if \(originalGetItem\.call\(localStorage, dirtyKey\(syncUserIdAtStart\)\) === "1"\)/);
 });
