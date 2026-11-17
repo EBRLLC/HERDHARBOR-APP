@@ -48,6 +48,7 @@ function harness(options = {}) {
       return options.installOk !== false;
     },
     safeStorageRemove: () => { counts.cleared++; },
+    recordVerifiedNormalizedSync: () => true,
     dirtyKey: userId => "dirty-" + userId,
     setSyncState: (message, status) => states.push({ message, status }),
     window: { location: { reload: () => { counts.reloads++; } } }

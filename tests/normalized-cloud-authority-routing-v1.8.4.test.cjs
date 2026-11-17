@@ -130,3 +130,45 @@ test("internal retry logic still sees normalized dual-write outbox maintenance",
     /function hasPendingCloudMutations[\s\S]*normalizedOutboxPending\(userId\)/
   );
 });
+
+
+test("cached legacy revision cannot bypass server authority verification before a legacy write", () => {
+  const sync = body("  async function syncNow() {", "\n  async function invokeFunction");
+  const guard = sync.indexOf("if (!normalizedAuthorityActive() && syncUserIdAtStart)");
+  const serverCheck = sync.indexOf("await getNormalizedSyncCohortStatus({ force: true })");
+  const normalizedSync = sync.indexOf("await normalizedRollout.syncNormalizedNow()");
+  const legacyWriter = sync.indexOf("const raw = activeStateRaw()");
+  assert.ok(guard >= 0 && serverCheck > guard);
+  assert.ok(normalizedSync > serverCheck && legacyWriter > normalizedSync);
+  assert.doesNotMatch(sync, /localStageNormalized \|\| \(syncUserIdAtStart && !legacyVersionConfirmed\)/);
+  assert.match(sync, /if \(!serverAuthority \|\| serverAuthority\.schemaVerified !== true/);
+  assert.match(sync, /serverAuthority\.stage === "normalized"/);
+  assert.match(sync, /if \(!normalizedAuthorityActive\(\)\) \{[\s\S]*local changes remain protected/);
+});
+
+test("normalized UI timestamp uses verified receipt rather than stale legacy version", () => {
+  const status = body("  function getSyncDetails() {", "\n  function dispatchSyncStatus()");
+  assert.match(status, /normalizedAuthorityActive\(\)[\s\S]*NORMALIZED_SYNC_RECEIPT_PREFIX \+ userId/);
+  assert.match(status, /originalGetItem\.call\(localStorage, versionKey\(userId\)\)/);
+  const sync = body("  async function syncNow() {", "\n  async function invokeFunction");
+  assert.match(sync, /if \(result\?\.ok\) \{[\s\S]*recordVerifiedNormalizedSync\(syncUserIdAtStart\)/);
+  const hydrate = body("  async function hydrateUserDataOnce(", "\n  async function hydrateUserData(");
+  assert.match(hydrate, /recordVerifiedNormalizedSync\(userId\)/);
+});
+
+test("deferred normalized refresh reports an error without clearing pending mutations", () => {
+  const refresh = body("  async function checkNormalizedAuthorityChanges() {", "\n  async function refreshDualWriteBaselineForRemoteState()");
+  assert.match(refresh, /hasPendingCloudMutations\(userId\)/);
+  assert.match(refresh, /Cloud refresh deferred; this device still has unsynced records. Save or recover local changes before refreshing\.", "error"/);
+  assert.doesNotMatch(refresh, /Cloud refresh deferred[^\n]*"working"/);
+  const sync = body("  async function syncNow() {", "\n  async function invokeFunction");
+  assert.match(sync, /legacyDirtyWithoutOutbox/);
+  assert.match(sync, /beforeRecoveryRaw = activeStateRaw\(\)/);
+  assert.match(sync, /await normalizedRollout\.refreshAuthoritative\(\)/);
+  assert.match(sync, /verified\?\.source === "normalized"/);
+  assert.match(sync, /activeStateRaw\(\) === beforeRecoveryRaw/);
+  assert.match(sync, /sameState\(beforeRecoveryRaw, JSON\.stringify\(verified\.snapshot\)\)/);
+  assert.match(sync, /if \(!matched\) \{[\s\S]*local recovery is required/);
+  assert.ok(sync.indexOf("safeStorageRemove(dirtyKey(syncUserIdAtStart))", sync.indexOf("if (legacyDirtyWithoutOutbox)")) > sync.indexOf("if (!matched)"));
+  assert.match(sync, /if \(originalGetItem\.call\(localStorage, dirtyKey\(syncUserIdAtStart\)\) === "1"\)/);
+});
