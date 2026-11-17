@@ -48,7 +48,7 @@
     budgetMonthSettings: {},
     activity: [],
     settings: {
-      species: ["Rabbit", "Chicken", "Duck", "Turkey", "Dog", "Cat", "Horse", "Goat", "Sheep", "Cattle", "Pig", "Other"],
+      species: ["Rabbit", "Chicken", "Duck", "Turkey", "Dog", "Cat", "Cavy", "Horse", "Goat", "Sheep", "Cattle", "Pig", "Other"],
       breedsBySpecies: {},
       analyticsColors: {},
       preferredWeightDisplay: "lb",
@@ -850,8 +850,13 @@
       ? [...state.settings.species]
       : [...defaultState.settings.species];
     let settingsMigrated = false;
-    // Preserve imported labels and custom species while normalizing built-in Cat aliases.
-    const canonicalSpecies = (label) => /^(cat|cats|feline)$/i.test(String(label || "").trim()) ? "Cat" : String(label || "").trim();
+    // Normalize built-in aliases, preserving unrelated imported species and user additions.
+    const canonicalSpecies = (label) => {
+      const value = String(label || "").trim();
+      if (/^(cat|cats|feline)$/i.test(value)) return "Cat";
+      if (/^(cavy|cavies|guinea[ -]?pigs?)$/i.test(value)) return "Cavy";
+      return value;
+    };
     const migratedSpecies = [];
     const speciesKeys = new Set();
     state.settings.species.forEach((label) => {
@@ -863,7 +868,7 @@
       if (normalized !== label) settingsMigrated = true;
     });
     state.settings.species = migratedSpecies;
-    ["Dog", "Horse", "Cat"].forEach((requiredSpecies) => {
+    ["Dog", "Horse", "Cat", "Cavy"].forEach((requiredSpecies) => {
       if (state.settings.species.some((species) => String(species).toLowerCase() === requiredSpecies.toLowerCase())) return;
       const otherIndex = state.settings.species.findIndex((species) => String(species).toLowerCase() === "other");
       if (otherIndex >= 0) state.settings.species.splice(otherIndex, 0, requiredSpecies);

@@ -14,6 +14,13 @@
     status: "Active"
   });
 
+  function canonicalSpeciesLabel(value) {
+    const raw = String(value || "").trim();
+    if (/^(cat|cats|feline)$/i.test(raw)) return "Cat";
+    if (/^(cavy|cavies|guinea[ -]?pigs?)$/i.test(raw)) return "Cavy";
+    return raw;
+  }
+
   function create(deps = {}) {
     const required = [
       "getState", "getCurrentRoute", "scheduleUiWork", "$", "$$", "esc", "headerHtml",
@@ -44,7 +51,7 @@
       const status = String(view.status || "");
       return (Array.isArray(animals) ? animals : []).filter((animal) => {
         if (
-          (species && animal?.species !== species) ||
+          (species && canonicalSpeciesLabel(animal?.species) !== canonicalSpeciesLabel(species)) ||
           (sex && animal?.sex !== sex) ||
           (status && animal?.status !== status)
         ) return false;
@@ -167,7 +174,7 @@
             ${deps.field("Tattoo / ear number", "tattoo", animal.tattoo)}
             ${deps.field("Registration number", "registrationNumber", animal.registrationNumber)}
             ${deps.field("Breeder name", "breeder", animal.breeder)}
-            ${deps.selectField("Species", "species", state.settings?.species || [], animal.species || "Rabbit", true)}
+            ${deps.selectField("Species", "species", [...new Set([...(state.settings?.species || []), "Cat", "Cavy"])], animal.species || "Rabbit", true)}
             <label class="cattle-ear-field ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "hidden"}" ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "hidden"}>Ear tag number<input name="earTagNumber" value="${esc(animal.earTagNumber || "")}" ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "disabled"}></label>
             <label class="cattle-ear-field ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "hidden"}" ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "hidden"}>Ear tag color<input name="earTagColor" value="${esc(animal.earTagColor || "")}" placeholder="Blue, yellow, green, or other" ${String(animal.species || "Rabbit").toLowerCase() === "cattle" ? "" : "disabled"}></label>
             ${deps.breedComboboxField(animal.species || "Rabbit", animal.breed)}
@@ -188,6 +195,7 @@
           </div>
           ${canineIdentity?.editorHtml?.(animal) || ""}
           ${root.HerdHarborFelineIdentity203?.editorHtml?.(animal) || ""}
+          ${root.HerdHarborCavyIdentity203?.editorHtml?.(animal) || ""}
           ${deps.textareaField("Notes", "notes", animal.notes)}
           <div class="modal-actions">
             ${id ? '<button type="button" class="button button-danger" id="delete-animal">Delete</button>' : ""}
@@ -254,6 +262,7 @@
       });
       canineIdentity?.bindEditor?.($("#animal-form"), speciesSelect);
       root.HerdHarborFelineIdentity203?.bindEditor?.($("#animal-form"), speciesSelect);
+      root.HerdHarborCavyIdentity203?.bindEditor?.($("#animal-form"), speciesSelect);
       root.HerdHarborCanineBreeds?.bindPicker?.($("#animal-form"), speciesSelect);
       root.HerdHarborCanineBreeds?.bindCoatColor?.($("#animal-form"), speciesSelect);
       root.HerdHarborCanineBreeds?.bindMarkings?.($("#animal-form"), speciesSelect);
@@ -327,6 +336,11 @@
           if (!checked.valid) { deps.toast(checked.errors.join(" "), "error"); return; }
           data.feline = checked.value;
         }
+        if (root.HerdHarborCavyIdentity203?.isCavy(data.species)) {
+          const checked = root.HerdHarborCavyIdentity203.readEditor(form, animal.cavy);
+          if (!checked.valid) { deps.toast(checked.errors.join(" "), "error"); return; }
+          data.cavy = checked.value;
+        }
         if (canineIdentity?.isDog(data.species)) {
           const checked = canineIdentity.readEditor(form, animal.canine);
           if (!checked?.valid) {
@@ -396,6 +410,8 @@
           if (leavingDog) delete nextAnimal.canine;
           if (root.HerdHarborFelineIdentity203?.isCat(currentAnimal) &&
               !root.HerdHarborFelineIdentity203?.isCat(nextAnimal)) delete nextAnimal.feline;
+          if (root.HerdHarborCavyIdentity203?.isCavy(currentAnimal) &&
+              !root.HerdHarborCavyIdentity203?.isCavy(nextAnimal)) delete nextAnimal.cavy;
           const nextAnimals = liveState.animals.map((item) => item.id === id ? nextAnimal : item);
           if (!deps.allowsAnimalTransition(liveState.animals, nextAnimals)) return;
           const original = { ...currentAnimal };
@@ -544,6 +560,7 @@
             '<button class="button button-ghost" id="detail-compare-pedigree">Linebreeding Coefficient</button>'}
           ${root.HerdHarborFelineIdentity203?.isCat(animal) && String(animal.sex||"").toLowerCase()==="female" ?
             '<button class="button button-primary" id="detail-feline-repro">Cat heat & mating</button>' : ""}
+          ${root.HerdHarborCavyIdentity203?.isCavy(animal) ? '<button class="button button-ghost" id="detail-print-cavy">Print Cavy Pedigree</button>' : ""}
           ${root.HerdHarborFelineIdentity203?.isCat(animal) ? '<button class="button button-ghost" id="detail-print-feline">Print Cat Pedigree</button>' : ""}
           <button class="button button-primary" id="detail-edit">Edit animal</button>
         </div>
@@ -566,6 +583,7 @@
       $("#detail-print-qr")?.addEventListener("click", (event) => openAnimalQrCardForm(id, event.currentTarget));
       $("#detail-print-canine")?.addEventListener("click", () => root.HerdHarborCaninePedigreePrint?.openForAnimal?.(id));
       $("#detail-print-feline")?.addEventListener("click", () => deps.openPrintPedigreeForm(id));
+      $("#detail-print-cavy")?.addEventListener("click", () => deps.openPrintPedigreeForm(id));
       $("#detail-canine-repro")?.addEventListener("click", () => root.HerdHarborCanineReproductiveWorkspace?.openForAnimal?.(id));
       $("#detail-feline-repro")?.addEventListener("click", () => root.HerdHarborFelineReproduction203?.openForAnimal?.(id));
       $("#detail-import-pedigree")?.addEventListener("click", () => deps.openPedigreeImport(id));
