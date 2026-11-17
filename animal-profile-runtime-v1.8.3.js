@@ -415,24 +415,31 @@
           const nextAnimals = liveState.animals.map((item) => item.id === id ? nextAnimal : item);
           if (!deps.allowsAnimalTransition(liveState.animals, nextAnimals)) return;
           const original = { ...currentAnimal };
+          const originalAnimals = liveState.animals.slice();
           if (leavingDog) delete currentAnimal.canine;
           Object.assign(currentAnimal, nextAnimal);
+          const cavyRefresh = root.HerdHarborCavyGenetics?.reconcile?.(liveState);
+          if (cavyRefresh?.state?.animals) liveState.animals = cavyRefresh.state.animals;
           deps.rememberBreed(data.species, data.breed);
           deps.recordActivity(`Updated ${data.name}.`, "animal");
           if (!deps.saveState("Animal updated.")) {
             Object.keys(currentAnimal).forEach((key) => delete currentAnimal[key]);
             Object.assign(currentAnimal, original);
+            liveState.animals = originalAnimals;
             rollbackAuxiliarySaveState();
             return;
           }
         } else {
           const newAnimal = { id: deps.uid("animal"), ...data, createdAt: new Date().toISOString() };
           if (!deps.allowsAnimalTransition(liveState.animals || [], [...(liveState.animals || []), newAnimal])) return;
+          const originalAnimals = liveState.animals.slice();
           liveState.animals.push(newAnimal);
+          const cavyRefresh = root.HerdHarborCavyGenetics?.reconcile?.(liveState);
+          if (cavyRefresh?.state?.animals) liveState.animals = cavyRefresh.state.animals;
           deps.rememberBreed(data.species, data.breed);
           deps.recordActivity(`Added ${data.name} to animal records.`, "animal");
           if (!deps.saveState("Animal added.")) {
-            liveState.animals = liveState.animals.filter((item) => item.id !== newAnimal.id);
+            liveState.animals = originalAnimals;
             rollbackAuxiliarySaveState();
             return;
           }
