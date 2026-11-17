@@ -12,6 +12,39 @@ const normalize=x=>{const v=x&&typeof x==="object"?x:{};return {
  registrationNumber:clean(v.registrationNumber).slice(0,150),showResults:Array.isArray(v.showResults)?v.showResults.slice(0,30).map(row=>({...row,event:clean(row.event),date:clean(row.date),placement:clean(row.placement),judge:clean(row.judge),reference:clean(row.reference),status:"breeder-entered-unverified"})):[],
  veterinaryEvidence:Array.isArray(v.veterinaryEvidence)?v.veterinaryEvidence.slice(0,30).map(row=>({...row,name:clean(row.name),date:clean(row.date),result:clean(row.result),reference:clean(row.reference),status:"breeder-entered-unverified"})):[],
  verification:"breeder-entered-unverified"};};
+
+// Cavy terminology follows ARBA's January 2026 breed ID guide. These are
+// breeder-friendly catalog choices, not proof of show eligibility for every breed.
+const COAT_COLORS=Object.freeze([
+ "Beige","Black","Blue","Chocolate","Cream","Gold","Golden","Lilac",
+ "Orange","Red","Red-Eyed Orange","Slate","White",
+ "Golden Agouti","Silver Agouti","Dilute Agouti",
+ "Golden Solid","Silver Solid","Dilute Solid",
+ "Black Otter","Chocolate Otter","Slate Otter",
+ "Black Tan","Chocolate Tan","Slate Tan",
+ "Black Marten","Chocolate Marten","Slate Marten",
+ "Custom / Other","Unknown"
+]);
+const COAT_PATTERNS=Object.freeze([
+ "Self / Solid","Agouti","Solid Agouti","Brindle","Roan",
+ "Broken Color","Dalmatian","Dutch","Himalayan",
+ "Tortoiseshell","Tortoiseshell and White","Tan Pattern",
+ "Otter","Marten","Cal Pattern","Ticked Solid",
+ "Tricolor","Bicolor","Custom / Other","Unknown"
+]);
+const COAT_TYPES=Object.freeze([
+ "Smooth / Short","Abyssinian / Rosetted","Longhair","Peruvian",
+ "Silkie","Coronet","Texel","Teddy","Rex","Satin",
+ "Crested","Skinny / Hairless","Baldwin / Hairless",
+ "Custom / Other","Unknown"
+]);
+const choiceList=(field,values)=>'<datalist id="hh-cavy-'+field+'">'+values.map(x=>'<option value="'+esc(x)+'"></option>').join("")+'</datalist>';
+const inputField=(key,value)=>{
+ const choices=key==="coatColor"?COAT_COLORS:key==="coatPattern"?COAT_PATTERNS:key==="coatType"?COAT_TYPES:null;
+ return '<label>'+esc(key.replace(/([A-Z])/g," $1"))+
+ '<input data-cavy-field="'+key+'"'+(choices?' list="hh-cavy-'+key+'"':'')+
+ ' maxlength="200" value="'+esc(value)+'"></label>'+(choices?choiceList(key,choices):'');
+};
 const validEvidenceDate=d=>{d=clean(d);if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return false;const x=new Date(d+"T00:00:00Z");return Number.isFinite(x.getTime())&&x.toISOString().slice(0,10)===d;};
 function validate(value){
  const v=normalize(value),errors=[];
@@ -47,7 +80,7 @@ function evidenceRow(kind,item={}){
  '<button type="button" data-cavy-evidence-remove>Remove</button></div>';
 }
 function editorHtml(animal){const m=normalize(animal?.cavy);return '<section data-cavy-panel'+(isCavy(animal)?"":" hidden")+'><h3>Cavy breeding & show identity</h3><p class="muted">Cavy is the professional breeder name for guinea pigs. Breed, variety, coat, show and registry details are breeder-entered, unverified.</p>'+
- ["registeredName","breederId","breed","variety","coatColor","coatPattern","coatType","registry","registrationNumber"].map(k=>'<label>'+esc(k.replace(/([A-Z])/g," $1"))+'<input data-cavy-field="'+k+'" maxlength="200" value="'+esc(m[k])+'"></label>').join("")+
+ ["registeredName","breederId","breed","variety","coatColor","coatPattern","coatType","registry","registrationNumber"].map(k=>inputField(k,m[k])).join("")+
  '<h4>Show and registration history</h4><p class="muted">Evidence is breeder-entered, not independently verified.</p>'+
  '<div data-cavy-show-list>'+m.showResults.map(row=>evidenceRow("show",row)).join("")+'</div>'+
  '<button type="button" data-cavy-add="show">Add show record</button>'+
@@ -75,5 +108,5 @@ function readEditor(form,previous={}){
  x.showResults=collect("show");x.veterinaryEvidence=collect("vet");
  return validate(x);
 }
-return Object.freeze({VERSION:"2.0.3",isCavy,normalize,validate,pedigree,editorHtml,bindEditor,readEditor});
+return Object.freeze({VERSION:"2.0.3",isCavy,normalize,validate,pedigree,editorHtml,bindEditor,readEditor,COAT_COLORS,COAT_PATTERNS,COAT_TYPES});
 });
