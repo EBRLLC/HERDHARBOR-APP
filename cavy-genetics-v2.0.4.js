@@ -68,7 +68,7 @@ function reconcile(state){
   let passChanges=0;
   const next=animals.map(animal=>{
    if(!isCavy(animal)||!unique(clean(animal.id)))return animal;
-   const current=animal.genetics?.loci||{},isPup=!!clean(animal.sourceBirthId);
+   const current=animal.genetics?.loci||{},isPup=!!clean(animal.sourceBirthId)||(!!clean(animal.sireId)&&!!clean(animal.damId));
    const sire=byId.get(clean(animal.sireId)),dam=byId.get(clean(animal.damId));
    const uncertain=["unresolved","unknown"].includes(animal.paternityStatus)||
     (!clean(animal.sireId)&&Array.isArray(animal.potentialSireIds)&&animal.potentialSireIds.length>0);
