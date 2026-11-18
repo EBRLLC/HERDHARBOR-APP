@@ -6,10 +6,10 @@ const LOCI=Object.freeze({
   roan: Object.freeze({label:"Roan / Dalmatian factor",alleles:["Rn","rn"],note:"Conventional roan/Dalmatian inheritance model; Rn/Rn is associated with lethal-white syndrome."}),
   "asip-del4": Object.freeze({label:"ASIP recessive-black variant (c.181_184delTTCA)",alleles:["N","del4"],gene:"ASIP",variant:"c.181_184delTTCA",scientificStatus:"published-variant",sourceUrl:"https://omia.org/OMIA000201/10141/",note:"Published recessive black associated variant. The named deletion does not establish full visible coat phenotype."})
 });
-const PHENOTYPE_SAFETY=/\b(roan|dalmatian)\b/i;
+const PHENOTYPE_SAFETY=/\b(roan|dalmatian|dalmation)\b/i;
 function roanSafety(sire,dam){
-  const a=clean(sire?.cavy?.coatPattern||sire?.coatPattern||sire?.variety);
-  const b=clean(dam?.cavy?.coatPattern||dam?.coatPattern||dam?.variety);
+  const phenotype=a=>[a?.cavy?.coatPattern,a?.cavy?.variety,a?.cavy?.coatColor,a?.coatPattern,a?.variety,a?.color].map(clean).filter(Boolean).join(" ");
+  const a=phenotype(sire),b=phenotype(dam);
   const genotype=r=>r?.genetics?.loci?.roan?.alleles||r?.cavy?.genetics?.loci?.roan?.alleles||[];
   const hasRisk=r=>Array.isArray(genotype(r))&&genotype(r).includes("Rn");
   const risks=[PHENOTYPE_SAFETY.test(a)||hasRisk(sire),PHENOTYPE_SAFETY.test(b)||hasRisk(dam)];
@@ -112,7 +112,7 @@ function openForAnimal(animalId){
  overlay.style.cssText="position:fixed;inset:0;z-index:100003;background:rgba(0,0,0,.7);display:grid;place-items:center;padding:16px";
  const box=doc.createElement("section");
  box.style.cssText="background:var(--card,#fff);color:var(--text,#222);border-radius:12px;padding:20px;width:min(680px,100%);max-height:90vh;overflow:auto";
- const candidates=(initial.animals||[]).filter(x=>isCavy(x)&&clean(x.id)!==clean(target.id)&&
+ const candidates=(initial.animals||[]).filter(x=>isCavy(x)&&["male","female"].includes(clean(target.sex).toLowerCase())&&clean(x.id)!==clean(target.id)&&
    clean(x.sex).toLowerCase()!==clean(target.sex).toLowerCase()&&
    ["male","female"].includes(clean(x.sex).toLowerCase())&&
    (!clean(x.ownerId)||clean(x.ownerId)===sessionId)&&
