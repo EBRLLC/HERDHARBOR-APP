@@ -154,3 +154,12 @@ test('the cavy genetics UI renders both labeled evidence fields and variant scop
  assert.match(src,/not full coat-color predictions/);
  assert.match(src,/ASIP recessive-black variant/);
 });
+
+test('ownerless imported descendants do not receive account-owned alleles',()=>{
+ const male={...cavy('male','',['rn','rn']),sex:'Male',ownerId:'owner-1'};
+ const female={...cavy('female','',['rn','rn']),sex:'Female',ownerId:'owner-1'};
+ const kid={id:'kid',species:'Cavy',sireId:'male',damId:'female'};
+ const out=genetics.reconcile({animals:[male,female,kid]});
+ assert.equal(out.changed,0);
+ assert.equal(out.state.animals[2].genetics,undefined);
+});
