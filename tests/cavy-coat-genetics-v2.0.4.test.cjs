@@ -163,3 +163,11 @@ test('ownerless imported descendants do not receive account-owned alleles',()=>{
  assert.equal(out.changed,0);
  assert.equal(out.state.animals[2].genetics,undefined);
 });
+
+test('risk detection checks historic variety and top-level color, not only coatPattern',()=>{
+ const boar={...cavy('b','Self / Solid'),variety:'Dalmatian',sex:'Male'};
+ const sow={...cavy('s','Self / Solid'),color:'Roan',sex:'Female'};
+ assert.equal(genetics.roanSafety(boar,sow).status,'do-not-pair');
+ const typo={...cavy('t','Dalmation'),sex:'Male'};
+ assert.equal(genetics.roanSafety(typo,sow).status,'do-not-pair');
+});
