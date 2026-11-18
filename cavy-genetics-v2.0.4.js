@@ -76,7 +76,9 @@ function reconcile(state){
     !uncertain&&clean(sire.sex).toLowerCase()==="male"&&clean(dam.sex).toLowerCase()==="female"&&
     (!clean(sire.ownerId)||!clean(dam.ownerId)||clean(sire.ownerId)===clean(dam.ownerId))&&
     (!clean(animal.ownerId)||!clean(sire.ownerId)||clean(animal.ownerId)===clean(sire.ownerId))&&
-    (!clean(animal.ownerId)||!clean(dam.ownerId)||clean(animal.ownerId)===clean(dam.ownerId));
+    (!clean(animal.ownerId)||!clean(dam.ownerId)||clean(animal.ownerId)===clean(dam.ownerId))&&
+    // Never assign another account's genetics into an animal with no owner identity.
+    (!(clean(sire.ownerId)||clean(dam.ownerId))||clean(animal.ownerId));
    let loci=null;
    for(const locus of Object.keys(LOCI)){
     const previous=current[locus],auto=previous?.source===familySource;
@@ -113,6 +115,7 @@ function openForAnimal(animalId){
  const candidates=(initial.animals||[]).filter(x=>isCavy(x)&&clean(x.id)!==clean(target.id)&&
    clean(x.sex).toLowerCase()!==clean(target.sex).toLowerCase()&&
    ["male","female"].includes(clean(x.sex).toLowerCase())&&
+   (!clean(x.ownerId)||clean(x.ownerId)===sessionId)&&
    (!clean(target.ownerId)||!clean(x.ownerId)||clean(target.ownerId)===clean(x.ownerId))&&
    initial.animals.filter(y=>clean(y.id)===clean(x.id)).length===1&&
    !["sold","archived","deceased","ancestor only"].includes(clean(x.status).toLowerCase()));
