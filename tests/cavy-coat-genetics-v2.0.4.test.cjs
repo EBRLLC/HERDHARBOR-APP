@@ -100,3 +100,57 @@ test('cavy genetics is wired to the profile and main script before animal runtim
  assert.ok(html.indexOf('cavy-genetics-v2.0.4.js')>0);
  assert.ok(html.indexOf('cavy-genetics-v2.0.4.js')<html.indexOf('animal-profile-runtime-v1.8.3.js'));
 });
+
+test('ASIP 2019 deletion variant predicts genotype inheritance, not whole coat color',()=>{
+ const parents=[{...cavy('boar',''),sex:'Male'},{...cavy('sow',''),sex:'Female'}];
+ for(const p of parents)p.genetics.loci['asip-del4']={alleles:['N','del4'],source:'dna-reported',evidenceRef:'ASIP report'};
+ const result=genetics.predict(...parents);
+ const row=result.outcomes.find(x=>x.locus==='asip-del4');
+ assert.equal(row.probabilities,true);
+ assert.deepEqual(Object.fromEntries(row.outcomes.map(x=>[x.genotype,x.probability])),{'N/N':0.25,'N/del4':0.5,'del4/del4':0.25});
+ assert.match(row.outcomes.find(x=>x.genotype==='del4/del4').interpretation,/associated with recessive black/);
+ assert.equal(result.coatColorPercentages,null);
+ assert.equal(genetics.LOCI['asip-del4'].variant,'c.181_184delTTCA');
+});
+test('missing or malformed ASIP variants never produce calculated percentages',()=>{
+ const boar={...cavy('b',''),sex:'Male',genetics:{loci:{'asip-del4':{alleles:['N','?']}}}};
+ const sow={...cavy('s',''),sex:'Female',genetics:{loci:{'asip-del4':{alleles:['N','del4']}}}};
+ assert.equal(genetics.predict(boar,sow).outcomes.find(x=>x.locus==='asip-del4').probabilities,false);
+});
+test('manually entered cavy with known parents inherits both supported loci',()=>{
+ const boar={...cavy('b','',['rn','rn']),sex:'Male',ownerId:'one'};
+ const sow={...cavy('s','',['rn','rn']),sex:'Female',ownerId:'one'};
+ for(const a of [boar,sow])a.genetics.loci['asip-del4']={alleles:['del4','del4'],source:'breeder-reported'};
+ const pup={id:'p',species:'Cavy',sex:'Female',sireId:'b',damId:'s',ownerId:'one'};
+ const output=genetics.reconcile({animals:[boar,sow,pup]}).state.animals[2].genetics.loci;
+ assert.deepEqual(output.roan.alleles,['rn','rn']);
+ assert.deepEqual(output['asip-del4'].alleles,['del4','del4']);
+});
+test('second and third generation of fixed alleles are updated as data changes',()=>{
+ const boar={...cavy('b','',['rn','rn']),sex:'Male'};
+ const sow={...cavy('s','',['rn','rn']),sex:'Female'};
+ const offspring1={id:'f1',species:'Cavy',sex:'Female',sireId:'b',damId:'s'};
+ const child2={id:'f2',species:'Cavy',sex:'Female',sireId:'b',damId:'f1'};
+ let result=genetics.reconcile({animals:[boar,sow,offspring1,child2]});
+ assert.deepEqual(result.state.animals[2].genetics.loci.roan.alleles,['rn','rn']);
+ assert.deepEqual(result.state.animals[3].genetics.loci.roan.alleles,['rn','rn']);
+ const updated=result.state.animals.map(x=>x.id==='b'?{...x,genetics:{loci:{}}}:x);
+ result=genetics.reconcile({animals:updated});
+ assert.equal(result.state.animals[2].genetics.loci.roan,undefined);
+ assert.equal(result.state.animals[3].genetics.loci.roan,undefined);
+});
+test('ASIP inference does not overwrite breeder-reported or DNA-confirmed test evidence',()=>{
+ const male={...cavy('b',''),sex:'Male',genetics:{loci:{'asip-del4':{alleles:['N','N']}}}};
+ const female={...cavy('s',''),sex:'Female',genetics:{loci:{'asip-del4':{alleles:['N','N']}}}};
+ const kid={id:'p',species:'Cavy',sireId:'b',damId:'s',genetics:{loci:{'asip-del4':{alleles:['del4','del4'],source:'dna-confirmed',evidenceRef:'report'}}}};
+ const result=genetics.reconcile({animals:[male,female,kid]});
+ assert.equal(result.changed,0);
+ assert.deepEqual(kid.genetics.loci['asip-del4'].alleles,['del4','del4']);
+});
+test('the cavy genetics UI renders both labeled evidence fields and variant scope warnings',()=>{
+ const src=fs.readFileSync(path.join(__dirname,'../cavy-genetics-v2.0.4.js'),'utf8');
+ assert.match(src,/data-cavy-genotype/);
+ assert.match(src,/data-cavy-evidence/);
+ assert.match(src,/not full coat-color predictions/);
+ assert.match(src,/ASIP recessive-black variant/);
+});
