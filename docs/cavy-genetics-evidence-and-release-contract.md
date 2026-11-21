@@ -7,8 +7,8 @@ Match the dependable Rabbit breeder workflow while using **Cavy-only** inheritan
 
 | Internal locus | Alleles | Basis | Guaranteed by model | Not claimed |
 | --- | --- | --- | --- | --- |
-| `roan` | `Rn`, `rn` | Conventional Roan/Dalmatian breeding genetics | Per-locus Mendelian offspring percentages from two known genotypes and lethal-white-associated warning for `Rn/Rn` | That absent visible roan means absence of the factor, or phenotype certainty |
-| `asip-del4` | `N`, `del4` | Lai et al. (2019), ASIP `c.181_184delTTCA` | Transmission frequency of a specific published recessive-black-associated deletion | All agouti variants; entire-coat black, brown, or mixed-color percentages |
+| `roan` | `Rn`, `rn` | **Historical breeding-model symbols**, not a validated cavy molecular marker; the British Cavy Council discusses distinct Roan/Dalmatian alleles and competing explanations | Conditional Mendelian scenario only, plus lethal-white pairing warning | DNA-confirmed `Rn`, a complete allelic series, reliably known genotype from coat appearance, or exact real-world litter outcomes |
+| `asip-del4` | `N`, `del4` | **Molecularly characterized** ASIP `c.181_184delTTCA`, Lai et al. (2019), OMIA 1119 | Conditional transmission probability of the specific deletion from recorded parental calls | `N` excludes all other ASIP variants; complete black/brown/agouti phenotype, lab assay validation for every population |
 
 Primary reference: [OMIA ASIP cavy agouti / deletion](https://omia.org/OMIA000201/10141/). Additional cavy MC1R alleles are documented separately by [OMIA extension locus](https://omia.org/OMIA001199/10141/) but **not yet modeled** because the complete allelic series and interactions require further explicit validation.
 
@@ -30,3 +30,10 @@ Primary reference: [OMIA ASIP cavy agouti / deletion](https://omia.org/OMIA00020
 - Real browser signed-in flows, multi-device cloud round-trip, offline upgrade recovery, staging RLS and full UX acceptance
 
 No production rollout or comprehensive phenotype calculator should be claimed on the basis of this incremental work.
+
+## Scientific validation update — November 2026
+- **OMIA ASIP**: [OMIA:000201-10141](https://omia.org/OMIA000201/10141/), cites Lai et al. (2019), DOI 10.1111/age.12766. Its entry cautions that inclusion in OMIA does not automatically validate a genetic test for every breed. The model only predicts transmission of the 4-bp deletion, not coat appearance.
+- **Roan/Dalmatian**: [British Cavy Council genetics discussion, pp. 12–13](https://www.britishcavycouncil.org.uk/Resources/Cavy%20Genetics%20Article%20October%202008%20rev%20A.pdf) describes the Wh / wh^mi / wh model and alternative mechanisms. The software's Rn/rn shorthand is a **conditional two-allele teaching/breeding model**, not a sequence-confirmed marker. Warnings against Roan × Roan / Dalmatian × Dalmatian / cross-pairings are supported by [PNW 573 Cavy 4-H guide, p. 23](https://ucanr.edu/sites/default/files/2023-03/381917.pdf).
+- **MC1R**: [OMIA:001199-10141](https://omia.org/OMIA001199/10141/) describes c.749T>C and a distinct 2,760-bp gene deletion. They are **not** implemented in the predictor. No extrapolation to all chocolate/red/white color combinations without validated gene interactions.
+- **Evidence conflicts**: a recorded offspring genotype impossible under the entered parental calls is now identified by a non-destructive pedigree review function. The parentage/genotype is **not** silently corrected because the source record or the genetic model may be wrong.
+- **Percentage interpretation**: displayed Mendelian 25/50/25 percentages are conditional model outcomes **per conception**, not guaranteed live-birth frequencies, especially with the Roan/Dalmatian lethal-white-associated category.
