@@ -37,3 +37,14 @@ No production rollout or comprehensive phenotype calculator should be claimed on
 - **MC1R**: [OMIA:001199-10141](https://omia.org/OMIA001199/10141/) describes c.749T>C and a distinct 2,760-bp gene deletion. They are **not** implemented in the predictor. No extrapolation to all chocolate/red/white color combinations without validated gene interactions.
 - **Evidence conflicts**: a recorded offspring genotype impossible under the entered parental calls is now identified by a non-destructive pedigree review function. The parentage/genotype is **not** silently corrected because the source record or the genetic model may be wrong.
 - **Percentage interpretation**: displayed Mendelian 25/50/25 percentages are conditional model outcomes **per conception**, not guaranteed live-birth frequencies, especially with the Roan/Dalmatian lethal-white-associated category.
+
+## Added evidence: FGF5 hair length (November 2026)
+- **Yu et al., 2018:** FGF5 `c.403C>T`, nonsense `p.Arg135*`, is associated with recessive long hair in domestic cavies. In the cited sample, 70/70 long-haired animals were `T/T`, while 141 short-haired animals were `C/C` or `C/T`. Primary source: https://pubmed.ncbi.nlm.nih.gov/29603294/ ; OMIA: https://omia.org/OMIA000439/10141/ .
+- A 2026 follow-up independently supports an FGF5 long-hair variant association and reports a separate dominant rough-coat-associated CELSR1 allele: https://pubmed.ncbi.nlm.nih.gov/43060089/ . **CELSR1 is not implemented** until the exact reported insertion, genotype encoding, and population limitations have been independently checked.
+- `fgf5-c403t` is a third per-locus transmission model (`C/C`, `C/T`, `T/T`). `T/T` is **associated** with recessive long hair, but does not predict Peruvian/Silkie/Coronet breed identity, hair direction, rosettes, or all hair texture factors.
+- OMIA explicitly notes that listing a variant does not automatically validate a commercial DNA assay or its use in every population.
+
+## Data integrity additions
+- `recorded-unverified` sire status is not sufficient for inheritance into a pup. Mere candidate paternity must never become a calculated two-allele genotype.
+- If a parent has a probability-bearing possible Roan genotype, the mating risk status requires pedigree review even when the parent lacks visible Roan markings. The UI must not call the pairing safe by default.
+- The genotype editor preserves any locus not explicitly edited or cleared. It does not downgrade a `dna-confirmed` record into a breeder claim. An explicit clear control is required for non-DNA evidence.
