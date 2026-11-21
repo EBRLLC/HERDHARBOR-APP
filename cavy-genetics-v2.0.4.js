@@ -3,8 +3,8 @@ const VERSION="2.0.4";
 const clean=v=>String(v==null?"":v).trim();
 const isCavy=a=>/^(cavy|cavies|guinea pigs?|guinea-pigs?)$/i.test(clean(typeof a==="string"?a:a?.species));
 const LOCI=Object.freeze({
-  roan: Object.freeze({label:"Roan / Dalmatian factor",alleles:["Rn","rn"],note:"Conventional roan/Dalmatian inheritance model; Rn/Rn is associated with lethal-white syndrome."}),
-  "asip-del4": Object.freeze({label:"ASIP recessive-black variant (c.181_184delTTCA)",alleles:["N","del4"],gene:"ASIP",variant:"c.181_184delTTCA",scientificStatus:"published-variant",sourceUrl:"https://omia.org/OMIA000201/10141/",note:"Published recessive black associated variant. The named deletion does not establish full visible coat phenotype."})
+  roan: Object.freeze({label:"Roan / Dalmatian factor (conventional model)",alleles:["Rn","rn"],scientificStatus:"historical-breeding-model",molecularMarker:false,sourceUrl:"https://www.britishcavycouncil.org.uk/Resources/Cavy%20Genetics%20Article%20October%202008%20rev%20A.pdf",note:"Conventional two-allele breeding model only, not a laboratory-validated molecular Rn marker. Roan/Dalmatian inheritance may involve a broader allelic series; the homozygous risk class is associated with lethal-white syndrome."}),
+  "asip-del4": Object.freeze({label:"ASIP recessive-black variant (c.181_184delTTCA)",alleles:["N","del4"],gene:"ASIP",variant:"c.181_184delTTCA",scientificStatus:"published-variant",molecularMarker:true,sourceUrl:"https://omia.org/OMIA000201/10141/",note:"Published recessive black associated variant. The named deletion does not establish full visible coat phenotype."})
 });
 const PHENOTYPE_SAFETY=/\b(roan|dalmatian|dalmation)\b/i;
 function roanSafety(sire,dam){
@@ -33,14 +33,14 @@ function exactCross(locus,sire,dam){
    const pair=[x,y].sort((x,y)=>definition.alleles.indexOf(x)-definition.alleles.indexOf(y));
    const name=pair.join("/");frequencies.set(name,(frequencies.get(name)||0)+0.25);
  }
- return {locus,status:"exact-mendelian-model",probabilities:true,outcomes:[...frequencies].map(([genotype,probability])=>({genotype,probability,risk:locus==="roan"&&genotype==="Rn/Rn"?"lethal-white-associated":null,interpretation:locus==="asip-del4"?(genotype==="del4/del4"?"two deletion copies; associated with recessive black":genotype==="N/del4"?"carrier of the named deletion":"no copy of the named deletion"):"roan-locus genotype only"})),note:definition.note};
+ return {locus,status:"conditional-mendelian-model",probabilities:true,evidenceLevel:definition.scientificStatus,conditionalOn:"Recorded parental genotype calls and the stated inheritance model; not verified phenotype or DNA confirmation.",outcomes:[...frequencies].map(([genotype,probability])=>({genotype,probability,risk:locus==="roan"&&genotype==="Rn/Rn"?"lethal-white-associated":null,interpretation:locus==="asip-del4"?(genotype==="del4/del4"?"two deletion copies; associated with recessive black":genotype==="N/del4"?"carrier of the named deletion":"no copy of the named deletion"):"roan-locus genotype only"})),note:definition.note};
 }
 function predict(sire,dam){
  if(!isCavy(sire)||!isCavy(dam))return {supported:false,error:"Both animals must be cavies."};
  const safety=roanSafety(sire,dam);
  const outcomes=Object.keys(LOCI).map(locus=>exactCross(locus,sire,dam));
  return {supported:true,species:"cavy",safety,outcomes,coatColorPercentages:null,
-   notice:"Independent locus probabilities are calculated only from recorded, complete genotypes. Coat color, pattern and hair texture are not reliably predictable from phenotype labels alone. No combined coat-color percentages are asserted."};
+   notice:"Conditional per-locus Mendelian probabilities assume both parental genotypes were correctly identified. Roan uses historical breeder notation, not an established DNA marker. ASIP tracks only the specified deletion. Neither establishes full coat-color probabilities."};
 }
 
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
@@ -51,10 +51,10 @@ function familyLocus(locus,sire,dam){
  if(!result.probabilities)return null;
  const candidates=result.outcomes.map(row=>({genotype:row.genotype,probability:row.probability,risk:row.risk}));
  const deterministic=candidates.length===1?candidates[0].genotype.split("/"):null;
- return {source:familySource,status:deterministic?"strongly-inferred":"possible",
+ return {source:familySource,status:deterministic?"model-inferred":"possible",
    alleles:deterministic||[],possibleGenotypes:candidates,
    relatedAnimalIds:[String(sire.id),String(dam.id)],
-   note:"Recalculated from recorded parental "+locus+" genotypes; not DNA-confirmed."};
+   note:"Conditionally inferred from recorded parental "+locus+" genotypes under the locus model; not DNA-confirmed."};
 }
 function reconcile(state){
  if(!state||!Array.isArray(state.animals))return {state,changed:0,skipped:true};
@@ -99,6 +99,35 @@ function reconcile(state){
  return {state:changed?{...state,animals}:state,changed,skipped:false};
 }
 const familyRoan=(sire,dam)=>familyLocus("roan",sire,dam);
+
+function pedigreeConflicts(state){
+ const animals=Array.isArray(state?.animals)?state.animals:[];
+ const counts=new Map();
+ for(const a of animals){const id=clean(a?.id);if(id)counts.set(id,(counts.get(id)||0)+1);}
+ const byId=new Map(animals.filter(a=>clean(a?.id)&&counts.get(clean(a.id))===1).map(a=>[clean(a.id),a]));
+ const conflicts=[];
+ for(const animal of animals){
+  if(!isCavy(animal)||counts.get(clean(animal.id))!==1)continue;
+  if(["unknown","unresolved","recorded-unverified"].includes(clean(animal.paternityStatus)))continue;
+  const sire=byId.get(clean(animal.sireId)),dam=byId.get(clean(animal.damId));
+  if(!sire||!dam||!isCavy(sire)||!isCavy(dam)||sire===animal||dam===animal||sire===dam)continue;
+  if(clean(sire.sex).toLowerCase()!=="male"||clean(dam.sex).toLowerCase()!=="female")continue;
+  if(clean(sire.ownerId)&&clean(dam.ownerId)&&clean(sire.ownerId)!==clean(dam.ownerId))continue;
+  for(const locus of Object.keys(LOCI)){
+    const observed=alleles(animal,locus);
+    if(observed.length!==2||observed.some(a=>!LOCI[locus].alleles.includes(a)))continue;
+    const predicted=exactCross(locus,sire,dam);
+    if(!predicted.probabilities)continue;
+    const sameGenotype=(a,b)=>a.length===2&&b.length===2&&a.slice().sort().join("|")===b.slice().sort().join("|");
+    if(predicted.outcomes.some(row=>sameGenotype(row.genotype.split("/"),observed)))continue;
+    conflicts.push({source:"cavy-family-review",status:"review-required",animalId:clean(animal.id),
+      sireId:clean(sire.id),damId:clean(dam.id),locus,genotype:observed.slice(),
+      reason:"Recorded genotype is incompatible with the listed parental genotypes under the stated model. Review evidence and parentage; no records were changed."});
+  }
+ }
+ return conflicts;
+}
+
 const escapeHtml=x=>clean(x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function openForAnimal(animalId){
  const app=typeof globalThis!=="undefined"?globalThis.HerdHarborApp:null,doc=globalThis.document;
@@ -177,5 +206,5 @@ function openForAnimal(animalId){
  render();return true;
 }
 
-return Object.freeze({VERSION,LOCI,isCavy,roanSafety,exactCross,predict,familyRoan,familyLocus,reconcile,openForAnimal});
+return Object.freeze({VERSION,LOCI,isCavy,roanSafety,exactCross,predict,familyRoan,familyLocus,reconcile,pedigreeConflicts,openForAnimal});
 });
