@@ -158,9 +158,13 @@ function openForAnimal(animalId){
  const genotypeFields=Object.entries(LOCI).map(([locus,def])=>{
   const values=locus==="roan"?["","Rn/rn","rn/rn","Rn/Rn"]:locus==="asip-del4"?["","N/N","N/del4","del4/del4"]:["","C/C","C/T","T/T"];
   const current=alleles(target,locus).join("/");
-  const reference=target.genetics?.loci?.[locus]?.evidenceRef||"";
-  return '<div><label>'+escapeHtml(def.label)+'<select data-cavy-genotype="'+escapeHtml(locus)+'">'+values.map(v=>'<option value="'+escapeHtml(v)+'"'+(v===current?' selected':'')+'>'+(v||"Unknown / not recorded")+'</option>').join("")+'</select></label>'+
-   '<label>Evidence reference<input maxlength="200" data-cavy-evidence="'+escapeHtml(locus)+'" value="'+escapeHtml(reference)+'" placeholder="Genetic test or breeder record"></label></div>';
+  const existing=target.genetics?.loci?.[locus]||{};
+  const reference=existing.evidenceRef||"";
+  const locked=existing.source==="dna-confirmed"||existing.status==="dna-confirmed";
+  return '<div><label>'+escapeHtml(def.label)+'<select data-cavy-genotype="'+escapeHtml(locus)+'"'+(locked?' disabled':'')+'>'+values.map(v=>'<option value="'+escapeHtml(v)+'"'+(v===current?' selected':'')+'>'+(v||"Unknown / not recorded")+'</option>').join("")+'</select></label>'+
+   '<label>Evidence reference<input maxlength="200" data-cavy-evidence="'+escapeHtml(locus)+'" value="'+escapeHtml(reference)+'" placeholder="Genetic test or breeder record"'+(locked?' disabled':'')+'></label>'+
+   (locked?'<p>DNA-confirmed evidence is read-only here; use the dedicated evidence-correction workflow to change it.</p>':
+    '<label><input type="checkbox" data-cavy-clear="'+escapeHtml(locus)+'"> Clear this locus record</label>')+'</div>';
  }).join("");
  box.innerHTML='<h2>Cavy genetics · '+escapeHtml(target.name)+'</h2>'+
  '<p>Breeder-reported genotype is not a DNA confirmation. Leave unknown alleles blank. Roan/Dalmatian pairings may produce lethal-white pups.</p>'+
@@ -198,12 +202,18 @@ function openForAnimal(animalId){
    if(!live){error.textContent="Account or animal record changed; reopen genetics.";return;}
    const profile=clone(target.genetics||{}),loci={...(profile.loci||{})};
    for(const [locus,definition] of Object.entries(LOCI)){
+      const previous=loci[locus];
+      if(previous?.source==="dna-confirmed"||previous?.status==="dna-confirmed")continue;
       const choice=box.querySelector('[data-cavy-genotype="'+locus+'"]').value;
       const evidence=clean(box.querySelector('[data-cavy-evidence="'+locus+'"]').value);
-      if(choice&&!evidence){error.textContent="Evidence reference required for "+definition.label;return;}
-      if(choice&&choice.split("/").some(a=>!definition.alleles.includes(a))){error.textContent="Invalid alleles.";return;}
-      if(choice)loci[locus]={alleles:choice.split("/"),status:"breeder-reported",source:"breeder-reported",evidenceRef:evidence};
-      else delete loci[locus];
+      const clear=box.querySelector('[data-cavy-clear="'+locus+'"]')?.checked===true;
+      if(clear){delete loci[locus];continue;}
+      if(!choice)continue; // Blank is not an instruction to delete historical or inferred evidence.
+      if(!evidence){error.textContent="Evidence reference required for "+definition.label;return;}
+      if(choice.split("/").some(a=>!definition.alleles.includes(a))){error.textContent="Invalid alleles.";return;}
+      const proposed=choice.split("/");
+      if(previous&&proposed.join("/")===alleles(target,locus).join("/")&&evidence===clean(previous.evidenceRef))continue;
+      loci[locus]={alleles:proposed,status:"breeder-reported",source:"breeder-reported",evidenceRef:evidence};
    }
    profile.loci=loci;
    const edited={...target,genetics:profile,updatedAt:new Date().toISOString()};
