@@ -220,7 +220,7 @@ function openForAnimal(animalId){
    !["sold","archived","deceased","ancestor only"].includes(clean(x.status).toLowerCase()));
  const genotypeFields=Object.entries(LOCI).map(([locus,def])=>{
   const values=locus==="roan"?["","Rn/rn","rn/rn","Rn/Rn"]:locus==="asip-del4"?["","N/N","N/del4","del4/del4"]:["","C/C","C/T","T/T"];
-  const current=alleles(target,locus).join("/");
+  const current=alleles(target,locus).slice().sort((a,b)=>def.alleles.indexOf(a)-def.alleles.indexOf(b)).join("/");
   const existing=target.genetics?.loci?.[locus]||{};
   const reference=existing.evidenceRef||"";
   const locked=existing.source==="dna-confirmed"||existing.status==="dna-confirmed";
