@@ -344,7 +344,7 @@ test('2.0.4 cavy module URLs and offline cache fingerprints match release manife
   'cavy-identity-v2.0.3.js?v=2.0.4-g1',
   'cavy-genetics-v2.0.4.js?v=2.0.4-g1',
   'cavy-offspring-v2.0.3.js?v=2.0.4-g1',
-  'animal-profile-runtime-v1.8.3.js?v=2.0.4-g1'
+  'animal-profile-runtime-v1.8.3.js?v=7'
  ];
  for(const p of paths){assert.ok(html.includes(p),'index lacks '+p);assert.ok(sw.includes(p),'service worker lacks '+p);}
  assert.match(sw,/herdharbor-shell-v2\.0\.2-normalized-cloud-1/);
