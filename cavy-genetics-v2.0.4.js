@@ -4,7 +4,8 @@ const clean=v=>String(v==null?"":v).trim();
 const isCavy=a=>/^(cavy|cavies|guinea pigs?|guinea-pigs?)$/i.test(clean(typeof a==="string"?a:a?.species));
 const LOCI=Object.freeze({
   roan: Object.freeze({label:"Roan / Dalmatian factor (conventional model)",alleles:["Rn","rn"],scientificStatus:"historical-breeding-model",molecularMarker:false,sourceUrl:"https://www.britishcavycouncil.org.uk/Resources/Cavy%20Genetics%20Article%20October%202008%20rev%20A.pdf",note:"Conventional two-allele breeding model only, not a laboratory-validated molecular Rn marker. Roan/Dalmatian inheritance may involve a broader allelic series; the homozygous risk class is associated with lethal-white syndrome."}),
-  "asip-del4": Object.freeze({label:"ASIP recessive-black variant (c.181_184delTTCA)",alleles:["N","del4"],gene:"ASIP",variant:"c.181_184delTTCA",scientificStatus:"published-variant",molecularMarker:true,sourceUrl:"https://omia.org/OMIA000201/10141/",note:"Published recessive black associated variant. The named deletion does not establish full visible coat phenotype."})
+  "asip-del4": Object.freeze({label:"ASIP recessive-black variant (c.181_184delTTCA)",alleles:["N","del4"],gene:"ASIP",variant:"c.181_184delTTCA",scientificStatus:"published-variant",molecularMarker:true,sourceUrl:"https://omia.org/OMIA000201/10141/",note:"Published recessive black associated variant. The named deletion does not establish full visible coat phenotype."}),
+  "fgf5-c403t": Object.freeze({label:"FGF5 long-hair variant (c.403C>T)",alleles:["C","T"],gene:"FGF5",variant:"c.403C>T",scientificStatus:"published-variant",molecularMarker:true,sourceUrl:"https://omia.org/OMIA000439/10141/",note:"Yu et al. (2018) found a recessive long-hair association: all 70 long-haired cavies in the sample were T/T, while 141 short-haired cavies were C/C or C/T. Transmission of this specific variant does not determine every coat texture or all long-hair genetic causes."})
 });
 const PHENOTYPE_SAFETY=/\b(roan|dalmatian|dalmation)\b/i;
 function roanSafety(sire,dam){
@@ -33,14 +34,14 @@ function exactCross(locus,sire,dam){
    const pair=[x,y].sort((x,y)=>definition.alleles.indexOf(x)-definition.alleles.indexOf(y));
    const name=pair.join("/");frequencies.set(name,(frequencies.get(name)||0)+0.25);
  }
- return {locus,status:"conditional-mendelian-model",probabilities:true,evidenceLevel:definition.scientificStatus,conditionalOn:"Recorded parental genotype calls and the stated inheritance model; not verified phenotype or DNA confirmation.",outcomes:[...frequencies].map(([genotype,probability])=>({genotype,probability,risk:locus==="roan"&&genotype==="Rn/Rn"?"lethal-white-associated":null,interpretation:locus==="asip-del4"?(genotype==="del4/del4"?"two deletion copies; associated with recessive black":genotype==="N/del4"?"carrier of the named deletion":"no copy of the named deletion"):"roan-locus genotype only"})),note:definition.note};
+ return {locus,status:"conditional-mendelian-model",probabilities:true,evidenceLevel:definition.scientificStatus,conditionalOn:"Recorded parental genotype calls and the stated inheritance model; not verified phenotype or DNA confirmation.",outcomes:[...frequencies].map(([genotype,probability])=>({genotype,probability,risk:locus==="roan"&&genotype==="Rn/Rn"?"lethal-white-associated":null,interpretation:locus==="asip-del4"?(genotype==="del4/del4"?"two deletion copies; associated with recessive black":genotype==="N/del4"?"carrier of the named deletion":"no copy of the named deletion"):locus==="fgf5-c403t"?(genotype==="T/T"?"homozygous variant; associated with recessive long hair":genotype==="C/T"?"heterozygous variant carrier":"two reference allele copies at this variant"):"roan-locus genotype only"})),note:definition.note};
 }
 function predict(sire,dam){
  if(!isCavy(sire)||!isCavy(dam))return {supported:false,error:"Both animals must be cavies."};
  const safety=roanSafety(sire,dam);
  const outcomes=Object.keys(LOCI).map(locus=>exactCross(locus,sire,dam));
  return {supported:true,species:"cavy",safety,outcomes,coatColorPercentages:null,
-   notice:"Conditional per-locus Mendelian probabilities assume both parental genotypes were correctly identified. Roan uses historical breeder notation, not an established DNA marker. ASIP tracks only the specified deletion. Neither establishes full coat-color probabilities."};
+   notice:"Conditional per-locus Mendelian probabilities assume both parental genotypes were correctly identified. Roan uses historical breeder notation, not an established DNA marker. ASIP and FGF5 each track only their specified molecular variant. None establishes full coat-color or texture probabilities."};
 }
 
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
@@ -70,7 +71,7 @@ function reconcile(state){
    if(!isCavy(animal)||!unique(clean(animal.id)))return animal;
    const current=animal.genetics?.loci||{},isPup=!!clean(animal.sourceBirthId)||(!!clean(animal.sireId)&&!!clean(animal.damId));
    const sire=byId.get(clean(animal.sireId)),dam=byId.get(clean(animal.damId));
-   const uncertain=["unresolved","unknown"].includes(animal.paternityStatus)||
+   const uncertain=["unresolved","unknown","recorded-unverified"].includes(animal.paternityStatus)||
     (!clean(animal.sireId)&&Array.isArray(animal.potentialSireIds)&&animal.potentialSireIds.length>0);
    const safe=sire&&dam&&sire!==dam&&sire!==animal&&dam!==animal&&isCavy(sire)&&isCavy(dam)&&
     !uncertain&&clean(sire.sex).toLowerCase()==="male"&&clean(dam.sex).toLowerCase()==="female"&&
@@ -149,7 +150,7 @@ function openForAnimal(animalId){
    initial.animals.filter(y=>clean(y.id)===clean(x.id)).length===1&&
    !["sold","archived","deceased","ancestor only"].includes(clean(x.status).toLowerCase()));
  const genotypeFields=Object.entries(LOCI).map(([locus,def])=>{
-  const values=locus==="roan"?["","Rn/rn","rn/rn","Rn/Rn"]:["","N/N","N/del4","del4/del4"];
+  const values=locus==="roan"?["","Rn/rn","rn/rn","Rn/Rn"]:locus==="asip-del4"?["","N/N","N/del4","del4/del4"]:["","C/C","C/T","T/T"];
   const current=alleles(target,locus).join("/");
   const reference=target.genetics?.loci?.[locus]?.evidenceRef||"";
   return '<div><label>'+escapeHtml(def.label)+'<select data-cavy-genotype="'+escapeHtml(locus)+'">'+values.map(v=>'<option value="'+escapeHtml(v)+'"'+(v===current?' selected':'')+'>'+(v||"Unknown / not recorded")+'</option>').join("")+'</select></label>'+
