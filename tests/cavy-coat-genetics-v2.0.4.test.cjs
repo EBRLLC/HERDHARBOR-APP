@@ -204,3 +204,37 @@ test('pedigree review does not assume missing parent genotype or unverified sire
  kid.paternityStatus='recorded-unverified';
  assert.equal(genetics.pedigreeConflicts({animals:[sire,dam,kid]}).length,0);
 });
+
+test('FGF5 c.403C>T heterozygous parents yield per-locus 1:2:1 Mendelian genotypes',()=>{
+ const sire={...cavy('s',''),sex:'Male',genetics:{loci:{'fgf5-c403t':{alleles:['C','T'],source:'test-reported'}}}};
+ const dam={...cavy('d',''),sex:'Female',genetics:{loci:{'fgf5-c403t':{alleles:['T','C'],source:'test-reported'}}}};
+ const row=genetics.exactCross('fgf5-c403t',sire,dam);
+ assert.equal(row.probabilities,true);
+ assert.deepEqual(Object.fromEntries(row.outcomes.map(x=>[x.genotype,x.probability])),{'C/C':0.25,'C/T':0.5,'T/T':0.25});
+ assert.match(row.outcomes.find(x=>x.genotype==='T/T').interpretation,/recessive long hair/);
+ assert.equal(genetics.predict(sire,dam).coatColorPercentages,null);
+ assert.equal(genetics.LOCI['fgf5-c403t'].variant,'c.403C>T');
+ assert.equal(genetics.LOCI['fgf5-c403t'].molecularMarker,true);
+});
+test('FGF5 unknown allele cannot generate percentages',()=>{
+ const a={...cavy('s',''),genetics:{loci:{'fgf5-c403t':{alleles:['T','?']}}}};
+ const b={...cavy('d',''),genetics:{loci:{'fgf5-c403t':{alleles:['T','T']}}}};
+ assert.equal(genetics.exactCross('fgf5-c403t',a,b).status,'insufficient-genotypes');
+});
+test('FGF5 can be inherited in cavy descendants but remains labeled as inferred',()=>{
+ const sire={...cavy('s',''),sex:'Male',ownerId:'o',genetics:{loci:{'fgf5-c403t':{alleles:['T','T'],source:'test-reported'}}}};
+ const dam={...cavy('d',''),sex:'Female',ownerId:'o',genetics:{loci:{'fgf5-c403t':{alleles:['T','T'],source:'test-reported'}}}};
+ const child={id:'p',species:'Cavy',sireId:'s',damId:'d',ownerId:'o'};
+ const result=genetics.reconcile({animals:[sire,dam,child]});
+ assert.deepEqual(result.state.animals[2].genetics.loci['fgf5-c403t'].alleles,['T','T']);
+ assert.equal(result.state.animals[2].genetics.loci['fgf5-c403t'].source,'cavy-family-inferred');
+ assert.equal(result.state.animals[2].genetics.loci['fgf5-c403t'].status,'model-inferred');
+});
+test('recorded-unverified sire must not produce inferred genotype, but attributed evidence can',()=>{
+ const sire={...cavy('s','',['rn','rn']),sex:'Male',ownerId:'o'};
+ const dam={...cavy('d','',['rn','rn']),sex:'Female',ownerId:'o'};
+ const pup={id:'p',species:'Cavy',sourceBirthId:'l',sireId:'s',damId:'d',ownerId:'o',paternityStatus:'recorded-unverified'};
+ assert.equal(genetics.reconcile({animals:[sire,dam,pup]}).changed,0);
+ const attributed={...pup,paternityStatus:'breeder-attributed'};
+ assert.deepEqual(genetics.reconcile({animals:[sire,dam,attributed]}).state.animals[2].genetics.loci.roan.alleles,['rn','rn']);
+});
