@@ -336,3 +336,18 @@ test('removing parental source evidence clears stale inferred descendants in one
  assert.equal(out.state.animals.find(a=>a.id==='p').genetics.loci.roan,undefined);
  assert.equal(out.state.animals.find(a=>a.id==='g').genetics.loci.roan,undefined);
 });
+
+test('2.0.4 cavy module URLs and offline cache fingerprints match release manifest',()=>{
+ const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
+ const sw=fs.readFileSync(path.join(__dirname,'../service-worker.js'),'utf8');
+ const paths=[
+  'cavy-identity-v2.0.3.js?v=2.0.4-g1',
+  'cavy-genetics-v2.0.4.js?v=2.0.4-g1',
+  'cavy-offspring-v2.0.3.js?v=2.0.4-g1',
+  'animal-profile-runtime-v1.8.3.js?v=2.0.4-g1'
+ ];
+ for(const p of paths){assert.ok(html.includes(p),'index lacks '+p);assert.ok(sw.includes(p),'service worker lacks '+p);}
+ assert.match(sw,/herdharbor-shell-v2\.0\.4-cavy-genetics-1/);
+ const required=sw.slice(sw.indexOf('const REQUIRED_SHELL = ['),sw.indexOf('const RUNTIME_CACHE_PATHS'));
+ assert.match(required,/cavy-genetics-v2\.0\.4\.js\?v=2\.0\.4-g1/);
+});
