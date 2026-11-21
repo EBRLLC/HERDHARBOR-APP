@@ -53,6 +53,37 @@ function predict(sire,dam){
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const clone=value=>value==null?value:JSON.parse(JSON.stringify(value));
 const familySource="cavy-family-inferred";
+// A pedigree, even an imported one, is not a trusted source if a parent path cycles.
+// Return "unsafe" for abnormally deep chains rather than silently using a truncated tree.
+function ancestryCycle(id,byId){
+ const visiting=new Set(),visited=new Set();
+ const visit=(animalId,depth)=>{
+   if(!animalId||!byId.has(animalId))return false;
+   if(depth>128||visiting.has(animalId))return true;
+   if(visited.has(animalId))return false;
+   visiting.add(animalId);
+   const animal=byId.get(animalId);
+   const cyclic=[clean(animal.sireId),clean(animal.damId)].some(parentId=>visit(parentId,depth+1));
+   visiting.delete(animalId);visited.add(animalId);
+   return cyclic;
+ };
+ return visit(id,0);
+}
+function sharedAccount(animal,sire,dam){
+ const ids=[animal,sire,dam].map(a=>clean(a?.ownerId));
+ return ids.every(v=>!v)||ids.every(v=>!!v&&v===ids[0]);
+}
+function parentageSupported(animal){
+ const status=clean(animal?.paternityStatus).toLowerCase();
+ if(["unresolved","unknown","recorded-unverified"].includes(status))return false;
+ const potential=Array.isArray(animal?.potentialSireIds)?animal.potentialSireIds.filter(Boolean):[];
+ if(!clean(animal?.sireId)&&potential.length)return false;
+ // A birth-linked pup must have explicit, traceable paternity to inherit
+ // a specific model genotype; old records without evidence remain unverified.
+ if(clean(animal?.sourceBirthId))return status==="breeder-attributed"&&
+   !!clean(animal?.paternityEvidence?.reference||animal?.parentageEvidenceRef);
+ return true;
+}
 function familyLocus(locus,sire,dam){
  const result=exactCross(locus,sire,dam);
  if(!result.probabilities)return null;
@@ -77,15 +108,10 @@ function reconcile(state){
    if(!isCavy(animal)||!unique(clean(animal.id)))return animal;
    const current=animal.genetics?.loci||{},isPup=!!clean(animal.sourceBirthId)||(!!clean(animal.sireId)&&!!clean(animal.damId));
    const sire=byId.get(clean(animal.sireId)),dam=byId.get(clean(animal.damId));
-   const uncertain=["unresolved","unknown","recorded-unverified"].includes(animal.paternityStatus)||
-    (!clean(animal.sireId)&&Array.isArray(animal.potentialSireIds)&&animal.potentialSireIds.length>0);
+   const safeParentage=parentageSupported(animal);
    const safe=sire&&dam&&sire!==dam&&sire!==animal&&dam!==animal&&isCavy(sire)&&isCavy(dam)&&
-    !uncertain&&clean(sire.sex).toLowerCase()==="male"&&clean(dam.sex).toLowerCase()==="female"&&
-    (!clean(sire.ownerId)||!clean(dam.ownerId)||clean(sire.ownerId)===clean(dam.ownerId))&&
-    (!clean(animal.ownerId)||!clean(sire.ownerId)||clean(animal.ownerId)===clean(sire.ownerId))&&
-    (!clean(animal.ownerId)||!clean(dam.ownerId)||clean(animal.ownerId)===clean(dam.ownerId))&&
-    // Never assign another account's genetics into an animal with no owner identity.
-    (!(clean(sire.ownerId)||clean(dam.ownerId))||clean(animal.ownerId));
+    safeParentage&&clean(sire.sex).toLowerCase()==="male"&&clean(dam.sex).toLowerCase()==="female"&&
+    sharedAccount(animal,sire,dam)&&!ancestryCycle(clean(animal.id),byId);
    let loci=null;
    for(const locus of Object.keys(LOCI)){
     const previous=current[locus],auto=previous?.source===familySource;
@@ -115,11 +141,11 @@ function pedigreeConflicts(state){
  const conflicts=[];
  for(const animal of animals){
   if(!isCavy(animal)||counts.get(clean(animal.id))!==1)continue;
-  if(["unknown","unresolved","recorded-unverified"].includes(clean(animal.paternityStatus)))continue;
+  if(!parentageSupported(animal)||ancestryCycle(clean(animal.id),byId))continue;
   const sire=byId.get(clean(animal.sireId)),dam=byId.get(clean(animal.damId));
   if(!sire||!dam||!isCavy(sire)||!isCavy(dam)||sire===animal||dam===animal||sire===dam)continue;
   if(clean(sire.sex).toLowerCase()!=="male"||clean(dam.sex).toLowerCase()!=="female")continue;
-  if(clean(sire.ownerId)&&clean(dam.ownerId)&&clean(sire.ownerId)!==clean(dam.ownerId))continue;
+  if(!sharedAccount(animal,sire,dam))continue;
   for(const locus of Object.keys(LOCI)){
     const observed=alleles(animal,locus);
     if(observed.length!==2||observed.some(a=>!LOCI[locus].alleles.includes(a)))continue;
