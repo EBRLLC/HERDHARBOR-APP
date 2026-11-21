@@ -13,6 +13,9 @@
   const MAX_SYNC_DEBOUNCE_MS = 15000;
   const ACTIVE_OWNER_KEY = "herdharbor_active_user_v1";
   const LEGACY_ACTIVE_OWNER_KEY = "herdharbor_active_user_id";
+  // Only verified normalized writes/reads may update this per-device receipt.
+  // The legacy version key is not a normalized cloud-sync timestamp.
+  const NORMALIZED_SYNC_RECEIPT_PREFIX = "hh_normalized_sync_receipt_v1_";
   const ACCOUNT_BOUNDARY_RECOVERY_MARKER_PREFIX = "herdharbor_account_boundary_recovery_v1";
   const UNATTRIBUTED_RECOVERY_USER_ID = "__unattributed__";
   const RECOVERY_DB_NAME = "herdharbor_recovery_v1";
@@ -582,6 +585,11 @@
     return legacyPending;
   }
 
+  function recordVerifiedNormalizedSync(userId) {
+    if (!userId || !normalizedAuthorityActive()) return false;
+    return safeStorageSet(NORMALIZED_SYNC_RECEIPT_PREFIX + userId, new Date().toISOString());
+  }
+
   function getSyncDetails() {
     const userId = session?.user?.id || "";
     const unsynced = hasPendingAuthoritativeCloudMutations(userId);
@@ -599,7 +607,9 @@
       ),
       conflict: Boolean(syncConflict),
       lastSyncedAt: userId
-        ? originalGetItem.call(localStorage, versionKey(userId)) || ""
+        ? (normalizedAuthorityActive()
+          ? originalGetItem.call(localStorage, NORMALIZED_SYNC_RECEIPT_PREFIX + userId) || ""
+          : originalGetItem.call(localStorage, versionKey(userId)) || "")
         : ""
     };
   }
@@ -2326,8 +2336,10 @@
       ? Boolean(originalGetItem.call(localStorage, versionKey(syncUserIdAtStart)))
       : false;
     const localStageNormalized = normalizedRolloutStage() === "normalized";
-    if (!normalizedAuthorityActive() &&
-        (localStageNormalized || (syncUserIdAtStart && !legacyVersionConfirmed))) {
+    // The cached legacy version is NOT proof of current legacy authority.
+    // After cutover a stale/installed client may still have that revision;
+    // verify the server manifest before ANY legacy full-state write.
+    if (!normalizedAuthorityActive() && syncUserIdAtStart) {
       let serverAuthority = null;
       try {
         serverAuthority = await getNormalizedSyncCohortStatus({ force: true });
@@ -2391,8 +2403,39 @@
         originalGetItem.call(localStorage, dirtyKey(syncUserIdAtStart)) === "1" &&
         !(canonicalStateStore?.getOutbox?.(syncUserIdAtStart)?.length > 0);
       if (legacyDirtyWithoutOutbox) {
-        setSyncState("Older unsynced local records need recovery before normalized cloud saving can continue.", "error");
-        return false;
+        // A previous client may have left a legacy dirty marker after its
+        // normalized record-level save succeeded. Never discard it solely
+        // because the outbox is empty: only a verified authoritative read
+        // matching the unchanged local state can prove it is redundant.
+        const beforeRecoveryRaw = activeStateRaw();
+        let verified = null;
+        try {
+          verified = await normalizedRollout.refreshAuthoritative();
+        } catch (error) {
+          console.warn("HerdHarbor could not verify inherited legacy work:", error?.code || error?.message || error);
+        }
+        if (!syncAccountCurrent()) return false;
+        const stillNoRecordMutations =
+          !(canonicalStateStore?.getOutbox?.(syncUserIdAtStart)?.length > 0) &&
+          !pendingSync;
+        const matched = verified?.ok === true &&
+          verified?.skipped !== true &&
+          verified?.source === "normalized" &&
+          verified?.snapshot &&
+          beforeRecoveryRaw &&
+          activeStateRaw() === beforeRecoveryRaw &&
+          stillNoRecordMutations &&
+          sameState(beforeRecoveryRaw, JSON.stringify(verified.snapshot));
+        if (!matched) {
+          setSyncState("Older unsynced local records differ from verified normalized cloud records; local recovery is required. No data was overwritten.", "error");
+          return false;
+        }
+        safeStorageRemove(dirtyKey(syncUserIdAtStart));
+        if (originalGetItem.call(localStorage, dirtyKey(syncUserIdAtStart)) === "1") {
+          setSyncState("Verified cloud records match, but this device could not finish its local recovery marker.", "error");
+          return false;
+        }
+        recordVerifiedNormalizedSync(syncUserIdAtStart);
       }
       clearTimeout(syncTimer);
       syncTimer = null;
@@ -2412,6 +2455,7 @@
         if (result?.ok) {
           // CAS/outbox has confirmed this account's normalized cloud write.
           safeStorageRemove(dirtyKey(syncUserIdAtStart));
+          recordVerifiedNormalizedSync(syncUserIdAtStart);
           setSyncState("Saved to cloud", "success");
           return true;
         }
@@ -2627,10 +2671,13 @@
         // was acknowledged. A queued mutation must never be advertised as
         // "Saved to cloud" simply because the two snapshots compare equal.
         if (hasPendingCloudMutations(userId)) {
-          setSyncState("Cloud refresh deferred; this device still has unsynced records.", "working");
+          // A deferred read is not an active save. Keep the device dirty,
+          // expose an actionable failure, and avoid a permanent Syncing badge.
+          setSyncState("Cloud refresh deferred; this device still has unsynced records. Save or recover local changes before refreshing.", "error");
           return false;
         }
         if (activeRaw && sameState(activeRaw, remoteRaw)) {
+          recordVerifiedNormalizedSync(userId);
           setSyncState("Saved to cloud", "success");
           return false;
         }
@@ -2670,6 +2717,7 @@
           return false;
         }
         safeStorageRemove(dirtyKey(userId));
+        recordVerifiedNormalizedSync(userId);
         setSyncState("Newer normalized cloud records found; reloading…", "success");
         if (stillCurrent()) window.location.reload();
         return true;
@@ -4041,6 +4089,7 @@
       if (!hydrationInputCurrent()) return deferHydrationForNewEdit();
       setActiveUserData(userId, deviceCloudRaw, "normalized-authority-hydration");
       safeStorageRemove(dirtyKey(userId));
+      recordVerifiedNormalizedSync(userId);
       pendingSync = null;
       syncConflict = null;
 

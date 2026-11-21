@@ -17,10 +17,12 @@ function harness(options = {}) {
   let statusCalls = 0;
   let legacyMarkerCleared = 0;
   let legacySourceChecks = 0;
+  let normalizedReadChecks = 0;
+  let dirtyMarker = options.dirty === false ? null : "1";
   const states = [];
   const identity = "new-breeder-account";
   const getItem = { call(_storage, key) {
-    if (key === "dirty-" + identity) return options.dirty === false ? null : "1";
+    if (key === "dirty-" + identity) return dirtyMarker;
     if (key === "version-" + identity) return options.legacyVersion || null;
     return null;
   }};
@@ -31,7 +33,7 @@ function harness(options = {}) {
     "normalizedOutboxPending", "deferNormalizedDualWriteCleanup", "clearTimeout",
     "syncTimer", "syncDebounceStartedAt", "normalizedRollout", "versionKey",
     "getNormalizedSyncCohortStatus", "safeStorageRemove", "canonicalStateStore",
-    "fetchCloudRecord"
+    "fetchCloudRecord", "activeStateRaw", "sameState", "recordVerifiedNormalizedSync", "console"
   ];
   const vals = [
     { user: { id: identity } }, ()=>({}), ()=>true, options.pending === true ? { rawValue:"{}" } : null,
@@ -41,10 +43,16 @@ function harness(options = {}) {
       return authorized;
     }, (message,status)=>states.push({message,status}),
     ()=>false, ()=>{}, ()=>{}, null, 0,
-    { syncNormalizedNow: async()=>{
-      normalizedWrites++;
-      return options.normalizedResult || {ok:true,reason:null};
-    } },
+    {
+      syncNormalizedNow: async()=>{
+        normalizedWrites++;
+        return options.normalizedResult || {ok:true,reason:null};
+      },
+      refreshAuthoritative: async()=>{
+        normalizedReadChecks++;
+        return {ok:true,source:"normalized",snapshot:{profile:{operationName:"Test"},animals:[]}};
+      }
+    },
     id=>"version-"+id,
     async()=>{
       statusCalls++;
@@ -55,7 +63,7 @@ function harness(options = {}) {
           ? null
           : {schemaVerified:true,...options.serverStatus};
     },
-    () => {legacyMarkerCleared++;},
+    () => {legacyMarkerCleared++;dirtyMarker=null;},
     { getOutbox: () => options.noOutbox ? [] : [{mutationId:"first-edit"}] },
     async () => {
       legacySourceChecks++;
@@ -65,12 +73,16 @@ function harness(options = {}) {
         : options.legacySourceError
           ? { data: null, error: { message: "unavailable" } }
           : { data: { app_state: {}, updated_at: "2026-10-20T10:00:00Z" }, error: null };
-    }
+    },
+    () => JSON.stringify({profile:{operationName:"Test"},animals:[]}),
+    () => options.matched === true,
+    () => true,
+    {warn:()=>{}}
   ];
   const execute = new Function(...deps, initialSaveSource + "\nreturn syncNow;")(...vals);
   return {
     execute, states,
-    get stats(){return {statusCalls, normalizedWrites,legacyMarkerCleared,legacySourceChecks};}
+    get stats(){return {statusCalls, normalizedWrites,legacyMarkerCleared,legacySourceChecks,normalizedReadChecks};}
   };
 }
 
@@ -154,10 +166,10 @@ test("S22 legacy-first-save fallback remains available only after an actual lega
   assert.equal(h.stats.legacySourceChecks,1);
 });
 
-test("S20 existing legacy account with a known CAS revision saves without delaying for extra authority preflight",async()=>{
+test("S20 cached legacy CAS revision still requires current server authority confirmation",async()=>{
   const h=harness({serverStatus:{stage:"legacy"},legacyVersion:"2026-10-20T12:00:00Z"});
   assert.equal(await h.execute(),"legacy-fallthrough");
-  assert.equal(h.stats.statusCalls,0);
+  assert.equal(h.stats.statusCalls,1);
 });
 
 test("S20 confirmed normalized save clears old dirty marker only after a successful record sync",async()=>{
@@ -173,5 +185,14 @@ test("S20 never claims a normalized save for an unmatched legacy dirty marker", 
   assert.equal(result,false);
   assert.equal(h.stats.normalizedWrites,0);
   assert.equal(h.stats.legacyMarkerCleared,0);
-  assert.match(h.states.at(-1).message,/unsynced local records need recovery/i);
+  assert.match(h.states.at(-1).message,/local recovery is required/i);
+});
+
+test("S20 a stranded legacy marker is cleared only after normalized readback matches an unchanged local snapshot", async () => {
+  const h = harness({noOutbox:true,matched:true});
+  assert.equal(await h.execute(),true);
+  assert.equal(h.stats.normalizedReadChecks,1);
+  assert.equal(h.stats.legacyMarkerCleared,2);
+  assert.equal(h.stats.normalizedWrites,1);
+  assert.match(h.states.at(-1).message,/Saved to cloud/);
 });
