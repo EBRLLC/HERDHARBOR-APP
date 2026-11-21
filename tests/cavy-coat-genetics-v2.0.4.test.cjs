@@ -384,3 +384,12 @@ test('generated pups preserve legacy sow account identity and isolate attributed
  assert.equal(allowed.created[0].ownerId,'farm-a');
  assert.deepEqual(allowed.created[0].genetics.loci.roan.alleles,['rn','rn']);
 });
+
+test('pairing UI recalculates from provisional edited records and refuses unsupported evidence',()=>{
+ const src=fs.readFileSync(path.join(__dirname,'../cavy-genetics-v2.0.4.js'),'utf8');
+ assert.match(src,/const draftLoci=/);
+ assert.match(src,/const draft=\{\.\.\.target,genetics:/);
+ assert.match(src,/PROVISIONAL UNSAVED GENOTYPE CHOICES/);
+ assert.match(src,/missingEvidence\.length/);
+ assert.match(src,/data-cavy-evidence.*input.*render/);
+});
