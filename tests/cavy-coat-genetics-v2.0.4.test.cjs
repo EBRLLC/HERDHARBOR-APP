@@ -47,7 +47,7 @@ const fs=require('node:fs'),path=require('node:path');
 test('offspring family genotype is deterministic only for fixed parental genotypes',()=>{
  const sow={...cavy('s','Self / Solid',['rn','rn']),sex:'Female',ownerId:'o'};
  const boar={...cavy('b','Self / Solid',['rn','rn']),sex:'Male',ownerId:'o'};
- const child={id:'p',species:'Cavy',sex:'Female',ownerId:'o',sourceBirthId:'l',damId:'s',sireId:'b'};
+ const child={id:'p',species:'Cavy',sex:'Female',ownerId:'o',sourceBirthId:'l',damId:'s',sireId:'b',paternityStatus:'breeder-attributed',paternityEvidence:{reference:'breeder-mating-record'}};
  const result=genetics.reconcile({animals:[sow,boar,child]});
  assert.equal(result.changed,1);
  assert.deepEqual(result.state.animals[2].genetics.loci.roan.alleles,['rn','rn']);
@@ -58,7 +58,7 @@ test('offspring family genotype is deterministic only for fixed parental genotyp
 test('ambiguous parental outcomes have possibilities but never a fabricated genotype',()=>{
  const sow={...cavy('s','Self / Solid',['rn','rn']),sex:'Female'};
  const boar={...cavy('b','Roan',['Rn','rn']),sex:'Male'};
- const child={id:'p',species:'Cavy',sourceBirthId:'l',damId:'s',sireId:'b'};
+ const child={id:'p',species:'Cavy',sourceBirthId:'l',damId:'s',sireId:'b',paternityStatus:'breeder-attributed',paternityEvidence:{reference:'breeder-mating-record'}};
  const row=genetics.reconcile({animals:[sow,boar,child]}).state.animals[2].genetics.loci.roan;
  assert.deepEqual(row.alleles,[]);
  assert.equal(row.possibleGenotypes.length,2);
@@ -235,7 +235,7 @@ test('recorded-unverified sire must not produce inferred genotype, but attribute
  const dam={...cavy('d','',['rn','rn']),sex:'Female',ownerId:'o'};
  const pup={id:'p',species:'Cavy',sourceBirthId:'l',sireId:'s',damId:'d',ownerId:'o',paternityStatus:'recorded-unverified'};
  assert.equal(genetics.reconcile({animals:[sire,dam,pup]}).changed,0);
- const attributed={...pup,paternityStatus:'breeder-attributed'};
+ const attributed={...pup,paternityStatus:'breeder-attributed',paternityEvidence:{reference:'observed-mating'}};
  assert.deepEqual(genetics.reconcile({animals:[sire,dam,attributed]}).state.animals[2].genetics.loci.roan.alleles,['rn','rn']);
 });
 
@@ -257,4 +257,36 @@ test('genotype editor requires explicit locus clear and protects DNA-confirmed c
  assert.match(src,/if\(!choice\)continue; \/\/ Blank is not an instruction to delete/);
  assert.match(src,/previous\?\.source==="dna-confirmed"/);
  assert.match(src,/DNA-confirmed evidence is read-only here/);
+});
+
+test('birth-linked pup requires documented sire attribution, not a matching ID alone',()=>{
+ const sire={...cavy('s','',['rn','rn']),sex:'Male',ownerId:'o'};
+ const dam={...cavy('d','',['rn','rn']),sex:'Female',ownerId:'o'};
+ const pup={id:'p',species:'Cavy',sourceBirthId:'l',sireId:'s',damId:'d',ownerId:'o'};
+ const inferred=genetics.reconcile({animals:[sire,dam,pup]});
+ assert.equal(inferred.changed,0);
+ assert.equal(genetics.pedigreeConflicts({animals:[sire,dam,{...pup,genetics:{loci:{roan:{alleles:['Rn','Rn']}}}}]}).length,0);
+ const claimed={...pup,paternityStatus:'breeder-attributed'};
+ assert.equal(genetics.reconcile({animals:[sire,dam,claimed]}).changed,0);
+ const evidenced={...claimed,paternityEvidence:{reference:'recorded breeding'}};
+ assert.deepEqual(genetics.reconcile({animals:[sire,dam,evidenced]}).state.animals[2].genetics.loci.roan.alleles,['rn','rn']);
+});
+test('pedigree cycles prevent inferred transmission and false conflicts',()=>{
+ const male={...cavy('b','',['rn','rn']),sex:'Male'};
+ const female={...cavy('s','',['rn','rn']),sex:'Female'};
+ const child={id:'c',species:'Cavy',sex:'Female',damId:'s',sireId:'b'};
+ const grandchild={id:'g',species:'Cavy',sex:'Female',damId:'c',sireId:'b'};
+ const acyclic=genetics.reconcile({animals:[male,female,child,grandchild]});
+ assert.deepEqual(acyclic.state.animals[3].genetics.loci.roan.alleles,['rn','rn']);
+ const cyclicMale={...male,damId:'g'};
+ const cyclic=genetics.reconcile({animals:[cyclicMale,female,child,grandchild]});
+ assert.equal(cyclic.changed,0);
+ const observed={...grandchild,genetics:{loci:{roan:{alleles:['Rn','rn'],source:'breeder-reported'}}}};
+ assert.equal(genetics.pedigreeConflicts({animals:[cyclicMale,female,child,observed]}).length,0);
+});
+test('partially owned pedigrees are not safe account-isolated evidence',()=>{
+ const male={...cavy('b','',['rn','rn']),sex:'Male',ownerId:'owner1'};
+ const female={...cavy('s','',['rn','rn']),sex:'Female'};
+ const child={id:'c',species:'Cavy',sireId:'b',damId:'s',ownerId:'owner1'};
+ assert.equal(genetics.reconcile({animals:[male,female,child]}).changed,0);
 });
