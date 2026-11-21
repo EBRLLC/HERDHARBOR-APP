@@ -250,3 +250,11 @@ test('a possible inferred roan carrier triggers pedigree review rather than safe
  assert.equal(genetics.roanSafety(sire,both).status,'requires-pedigree-review');
  assert.equal(genetics.roanSafety({...sire,cavy:{coatPattern:'Roan'}},both).status,'do-not-pair');
 });
+
+test('genotype editor requires explicit locus clear and protects DNA-confirmed calls',()=>{
+ const src=fs.readFileSync(path.join(__dirname,'../cavy-genetics-v2.0.4.js'),'utf8');
+ assert.match(src,/data-cavy-clear/);
+ assert.match(src,/if\(!choice\)continue; \/\/ Blank is not an instruction to delete/);
+ assert.match(src,/previous\?\.source==="dna-confirmed"/);
+ assert.match(src,/DNA-confirmed evidence is read-only here/);
+});
