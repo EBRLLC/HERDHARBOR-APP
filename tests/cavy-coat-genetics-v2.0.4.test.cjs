@@ -238,3 +238,15 @@ test('recorded-unverified sire must not produce inferred genotype, but attribute
  const attributed={...pup,paternityStatus:'breeder-attributed'};
  assert.deepEqual(genetics.reconcile({animals:[sire,dam,attributed]}).state.animals[2].genetics.loci.roan.alleles,['rn','rn']);
 });
+
+test('a possible inferred roan carrier triggers pedigree review rather than safe pairing',()=>{
+ const sire={...cavy('s',''),genetics:{loci:{roan:{source:'cavy-family-inferred',status:'possible',alleles:[],possibleGenotypes:[{genotype:'Rn/rn',probability:0.5},{genotype:'rn/rn',probability:0.5}]}}}};
+ const dam={...cavy('d','Self / Solid'),genetics:{loci:{}}};
+ const risk=genetics.roanSafety(sire,dam);
+ assert.equal(risk.status,'requires-pedigree-review');
+ assert.equal(risk.possibleRisk,true);
+ assert.equal(risk.highRisk,false);
+ const both={...dam,cavy:{coatPattern:'Dalmatian'}};
+ assert.equal(genetics.roanSafety(sire,both).status,'requires-pedigree-review');
+ assert.equal(genetics.roanSafety({...sire,cavy:{coatPattern:'Roan'}},both).status,'do-not-pair');
+});
