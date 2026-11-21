@@ -290,3 +290,49 @@ test('partially owned pedigrees are not safe account-isolated evidence',()=>{
  const child={id:'c',species:'Cavy',sireId:'b',damId:'s',ownerId:'owner1'};
  assert.equal(genetics.reconcile({animals:[male,female,child]}).changed,0);
 });
+
+test('inheritance follows a twelve-generation pedigree without a five-pass cutoff',()=>{
+ const sire={...cavy('boar','',['rn','rn']),sex:'Male'};
+ const dam={...cavy('dam','',['rn','rn']),sex:'Female'};
+ const animals=[sire,dam];
+ for(let i=1;i<=12;i++)animals.push({
+   id:'gen'+i,species:'Cavy',sex:'Female',sireId:'boar',
+   damId:i===1?'dam':'gen'+(i-1)
+ });
+ // Deliberately reverse descendant order to disallow dependence on array ordering.
+ const input={animals:animals.slice(0,2).concat(animals.slice(2).reverse())};
+ const out=genetics.reconcile(input);
+ assert.equal(out.changed,12);
+ for(let i=1;i<=12;i++)assert.deepEqual(
+   out.state.animals.find(a=>a.id==='gen'+i).genetics.loci.roan.alleles,['rn','rn']);
+ assert.equal(genetics.reconcile(out.state).changed,0);
+});
+test('uncertain upstream genotypes propagate as possibilities, not invented percentages',()=>{
+ const sire={...cavy('boar','',['Rn','rn']),sex:'Male'};
+ const dam={...cavy('dam','',['rn','rn']),sex:'Female'};
+ const sibling={id:'p',species:'Cavy',sex:'Female',sireId:'boar',damId:'dam'};
+ const descendant={id:'q',species:'Cavy',sex:'Female',sireId:'boar',damId:'p'};
+ const state=genetics.reconcile({animals:[sire,dam,sibling,descendant]}).state;
+ const first=state.animals.find(a=>a.id==='p').genetics.loci.roan;
+ const second=state.animals.find(a=>a.id==='q').genetics.loci.roan;
+ assert.equal(first.possibleGenotypes.length,2);
+ assert.equal(first.possibleGenotypes.reduce((n,x)=>n+x.probability,0),1);
+ assert.equal(second.status,'possible');
+ assert.deepEqual(second.alleles,[]);
+ assert.ok(second.possibleGenotypes.length>1);
+ assert.ok(second.possibleGenotypes.every(x=>x.probability===null));
+ assert.equal(genetics.roanSafety(state.animals.find(a=>a.id==='q'),dam).status,'requires-pedigree-review');
+ assert.equal(genetics.reconcile(state).changed,0);
+});
+test('removing parental source evidence clears stale inferred descendants in one traversal',()=>{
+ const sire={...cavy('boar','',['rn','rn']),sex:'Male'};
+ const dam={...cavy('dam','',['rn','rn']),sex:'Female'};
+ const child={id:'p',species:'Cavy',sex:'Female',sireId:'boar',damId:'dam'};
+ const grandchild={id:'g',species:'Cavy',sex:'Female',sireId:'boar',damId:'p'};
+ let state=genetics.reconcile({animals:[sire,dam,child,grandchild]}).state;
+ state={...state,animals:state.animals.map(a=>a.id==='dam'?{...a,genetics:{loci:{}}}:a)};
+ const out=genetics.reconcile(state);
+ assert.equal(out.changed,2);
+ assert.equal(out.state.animals.find(a=>a.id==='p').genetics.loci.roan,undefined);
+ assert.equal(out.state.animals.find(a=>a.id==='g').genetics.loci.roan,undefined);
+});
