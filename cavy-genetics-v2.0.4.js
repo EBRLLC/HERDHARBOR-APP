@@ -178,10 +178,12 @@ function openForAnimal(animalId){
       out.textContent="Record changed; reopen genetics to compare current records.";return;
    }
    const result=predict(clean(target.sex).toLowerCase()==="male"?target:p,clean(target.sex).toLowerCase()==="female"?target:p);
-   out.textContent=result.safety.message+" "+result.outcomes.map(row=>row.probabilities?
-     LOCI[row.locus].label+": "+row.outcomes.map(x=>x.genotype+": "+Math.round(x.probability*100)+"%").join("; "):
-     LOCI[row.locus].label+": unknown parental genotypes (no exact percentages).").join(" ")+
-     " These per-locus probabilities are not full coat-color predictions.";
+   const contradictions=pedigreeConflicts(live).filter(x=>[clean(target.id),clean(p.id)].includes(x.animalId));
+   out.textContent=(contradictions.length?"GENETIC RECORD CONFLICT: "+contradictions.map(x=>x.animalId+" / "+x.locus).join(", ")+". Review ancestry and genotype evidence before relying on a prediction. ":"")+
+     result.safety.message+" "+result.outcomes.map(row=>row.probabilities?
+     LOCI[row.locus].label+" ("+LOCI[row.locus].scientificStatus+"): "+row.outcomes.map(x=>x.genotype+": "+Math.round(x.probability*100)+"%").join("; "):
+     LOCI[row.locus].label+": parental allele records incomplete (no percentages).").join(" ")+
+     " These probabilities are conditional on the recorded genotypes and the inheritance model, not full coat-color predictions.";
  };
  box.querySelector("#hh-cavy-partner").addEventListener("change",render);
  box.querySelector("#hh-cavy-genotype-save").addEventListener("click",()=>{
