@@ -14,7 +14,7 @@ function roanSafety(sire,dam){
   const record=r=>r?.genetics?.loci?.roan||r?.cavy?.genetics?.loci?.roan||{};
   const observed=(r,coat)=>PHENOTYPE_SAFETY.test(coat)||(Array.isArray(record(r).alleles)&&record(r).alleles.includes("Rn"));
   const possible=r=>Array.isArray(record(r).possibleGenotypes)&&record(r).possibleGenotypes.some(row=>
-    Number(row.probability)>0&&String(row.genotype).split("/").includes("Rn"));
+    (row.probability==null||Number(row.probability)>0)&&String(row.genotype).split("/").includes("Rn"));
   const riskKnown=[observed(sire,a),observed(dam,b)],riskPossible=[possible(sire),possible(dam)];
   const highRisk=riskKnown.every(Boolean),uncertainRisk=!highRisk&&
     (riskKnown.some(Boolean)||riskPossible.some(Boolean));
@@ -85,51 +85,88 @@ function parentageSupported(animal){
  return true;
 }
 function familyLocus(locus,sire,dam){
- const result=exactCross(locus,sire,dam);
- if(!result.probabilities)return null;
- const candidates=result.outcomes.map(row=>({genotype:row.genotype,probability:row.probability,risk:row.risk}));
- const deterministic=candidates.length===1?candidates[0].genotype.split("/"):null;
+ const definition=LOCI[locus];
+ if(!definition)return null;
+ const valid=pair=>Array.isArray(pair)&&pair.length===2&&pair.every(a=>definition.alleles.includes(a));
+ const name=pair=>pair.slice().sort((a,b)=>definition.alleles.indexOf(a)-definition.alleles.indexOf(b)).join("/");
+ const options=record=>{
+   const fixed=alleles(record,locus);
+   if(valid(fixed))return [fixed];
+   const inferred=record?.genetics?.loci?.[locus]||record?.cavy?.genetics?.loci?.[locus];
+   if(inferred?.source!==familySource||!Array.isArray(inferred.possibleGenotypes))return [];
+   return inferred.possibleGenotypes.filter(row=>row.probability==null||Number(row.probability)>0)
+     .map(row=>clean(row.genotype).split("/")).filter(valid);
+ };
+ const a=options(sire),b=options(dam);
+ if(!a.length||!b.length)return null;
+ const exact=a.length===1&&b.length===1;
+ const genotypeWeights=new Map();
+ if(exact){
+   for(const x of a[0])for(const y of b[0]){
+     const genotype=name([x,y]);genotypeWeights.set(genotype,(genotypeWeights.get(genotype)||0)+0.25);
+   }
+ }else{
+   // Ancestral genotypes are ambiguous. Do NOT multiply marginal probabilities:
+   // linked pedigree branches may be genetically correlated. Keep a possible set.
+   for(const left of a)for(const right of b)for(const x of left)for(const y of right)
+     genotypeWeights.set(name([x,y]),null);
+ }
+ const candidates=[...genotypeWeights].map(([genotype,probability])=>({
+   genotype,probability,risk:locus==="roan"&&genotype==="Rn/Rn"?"lethal-white-associated":null
+ }));
+ const deterministic=exact&&candidates.length===1?candidates[0].genotype.split("/"):null;
  return {source:familySource,status:deterministic?"model-inferred":"possible",
    alleles:deterministic||[],possibleGenotypes:candidates,
-   relatedAnimalIds:[String(sire.id),String(dam.id)],
-   note:"Conditionally inferred from recorded parental "+locus+" genotypes under the locus model; not DNA-confirmed."};
+   relatedAnimalIds:[clean(sire.id),clean(dam.id)],
+   note:exact?"Conditional Mendelian model from recorded parental genotypes; not independently DNA-confirmed.":
+     "Only possible genotypes are shown: inferred ancestor genotypes or linked pedigree branches are uncertain, so no exact probabilities can be justified."};
 }
 function reconcile(state){
  if(!state||!Array.isArray(state.animals))return {state,changed:0,skipped:true};
  const counts=new Map();
  for(const a of state.animals){const id=clean(a?.id);if(id)counts.set(id,(counts.get(id)||0)+1);}
  const unique=id=>!!id&&counts.get(id)===1;
- let animals=state.animals,changed=0;
- // Iterate at most five passes to support multigeneration inheritance without unbounded work.
- for(let depth=0;depth<5;depth++){
-  const byId=new Map(animals.filter(a=>unique(clean(a?.id))).map(a=>[clean(a.id),a]));
-  let passChanges=0;
-  const next=animals.map(animal=>{
-   if(!isCavy(animal)||!unique(clean(animal.id)))return animal;
-   const current=animal.genetics?.loci||{},isPup=!!clean(animal.sourceBirthId)||(!!clean(animal.sireId)&&!!clean(animal.damId));
-   const sire=byId.get(clean(animal.sireId)),dam=byId.get(clean(animal.damId));
-   const safeParentage=parentageSupported(animal);
-   const safe=sire&&dam&&sire!==dam&&sire!==animal&&dam!==animal&&isCavy(sire)&&isCavy(dam)&&
-    safeParentage&&clean(sire.sex).toLowerCase()==="male"&&clean(dam.sex).toLowerCase()==="female"&&
-    sharedAccount(animal,sire,dam)&&!ancestryCycle(clean(animal.id),byId);
+ const byId=new Map(state.animals.filter(a=>unique(clean(a?.id))).map(a=>[clean(a.id),a]));
+ const resolved=new Map(),visiting=new Set();
+ let changed=0;
+ const resolve=id=>{
+   if(!byId.has(id))return null;
+   if(resolved.has(id))return resolved.get(id);
+   if(visiting.has(id))return byId.get(id); // no inferred use from a cyclic pedigree
+   visiting.add(id);
+   const animal=byId.get(id);
+   for(const parentId of [clean(animal.sireId),clean(animal.damId)]){
+     if(parentId&&unique(parentId))resolve(parentId);
+   }
+   visiting.delete(id);
+   if(!isCavy(animal)){resolved.set(id,animal);return animal;}
+   const sire=resolved.get(clean(animal.sireId)),dam=resolved.get(clean(animal.damId));
+   const birthLinked=!!clean(animal.sourceBirthId);
+   const eligible=birthLinked||(!!clean(animal.sireId)&&!!clean(animal.damId));
+   const safe=sire&&dam&&sire!==dam&&sire!==animal&&dam!==animal&&
+     isCavy(sire)&&isCavy(dam)&&parentageSupported(animal)&&
+     clean(sire.sex).toLowerCase()==="male"&&clean(dam.sex).toLowerCase()==="female"&&
+     sharedAccount(animal,sire,dam)&&!ancestryCycle(id,byId);
+   const oldLoci=animal.genetics?.loci||{};
    let loci=null;
    for(const locus of Object.keys(LOCI)){
-    const previous=current[locus],auto=previous?.source===familySource;
-    if((!isPup&&!auto)||(previous&&!auto))continue;
-    const derived=safe?familyLocus(locus,sire,dam):null;
-    if(!derived&&!auto)continue;
-    if(same(previous,derived||undefined))continue;
-    if(!loci)loci={...current};
-    if(derived)loci[locus]=derived;else delete loci[locus];
+     const previous=oldLoci[locus],automatic=previous?.source===familySource;
+     if((!eligible&&!automatic)||(previous&&!automatic))continue;
+     const derived=safe?familyLocus(locus,sire,dam):null;
+     if(!derived&&!automatic)continue;
+     if(same(previous,derived||undefined))continue;
+     if(!loci)loci={...oldLoci};
+     if(derived)loci[locus]=derived;else delete loci[locus];
    }
-   if(!loci)return animal;
-   passChanges++;
-   return {...animal,genetics:{...(animal.genetics||{}),loci}};
-  });
-  if(!passChanges)break;
-  changed+=passChanges;animals=next;
- }
- return {state:changed?{...state,animals}:state,changed,skipped:false};
+   const next=loci?{...animal,genetics:{...(animal.genetics||{}),loci}}:animal;
+   if(loci)changed++;
+   resolved.set(id,next);
+   return next;
+ };
+ for(const id of byId.keys())resolve(id);
+ if(!changed)return {state,changed:0,skipped:false};
+ const animals=state.animals.map(a=>unique(clean(a?.id))?resolved.get(clean(a.id))||a:a);
+ return {state:{...state,animals},changed,skipped:false};
 }
 const familyRoan=(sire,dam)=>familyLocus("roan",sire,dam);
 
