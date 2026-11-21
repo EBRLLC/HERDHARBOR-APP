@@ -364,3 +364,23 @@ test('pup creation refuses ambiguous litter/dam identifiers before changing stat
  assert.equal(before.animals.length,1);
  assert.equal(before.litters.length,1);
 });
+
+test('legacy userId and accountId identities still enforce family account isolation',()=>{
+ const sire={...cavy('s','',['rn','rn']),sex:'Male',userId:'farm-a'};
+ const dam={...cavy('d','',['rn','rn']),sex:'Female',accountId:'farm-b'};
+ const child={id:'p',species:'Cavy',sireId:'s',damId:'d',userId:'farm-a'};
+ assert.equal(genetics.reconcile({animals:[sire,dam,child]}).changed,0);
+ const compatible={...dam,accountId:'farm-a'};
+ assert.deepEqual(genetics.reconcile({animals:[sire,compatible,child]}).state.animals[2].genetics.loci.roan.alleles,['rn','rn']);
+});
+test('generated pups preserve legacy sow account identity and isolate attributed sires',()=>{
+ const sow={...cavy('s','',['rn','rn']),sex:'Female',userId:'farm-a'};
+ const boar={...cavy('b','',['rn','rn']),sex:'Male',accountId:'farm-b'};
+ const state={animals:[sow,boar],litters:[{id:'l',damId:'s',birthDate:'2026-11-01',bornAlive:1,potentialSireIds:['b']}]};
+ const entries=[{id:'p',name:'Pup',confirmedSireId:'b',parentageEvidenceRef:'mating-record'}];
+ assert.equal(offspring.generatePups(state,'l',entries).valid,false);
+ const allowed=offspring.generatePups({...state,animals:[sow,{...boar,accountId:'farm-a'}]},'l',entries);
+ assert.equal(allowed.valid,true);
+ assert.equal(allowed.created[0].ownerId,'farm-a');
+ assert.deepEqual(allowed.created[0].genetics.loci.roan.alleles,['rn','rn']);
+});
