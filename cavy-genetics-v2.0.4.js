@@ -53,6 +53,7 @@ function predict(sire,dam){
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const clone=value=>value==null?value:JSON.parse(JSON.stringify(value));
 const familySource="cavy-family-inferred";
+const recordOwner=a=>clean(a?.ownerId||a?.userId||a?.accountId);
 // A pedigree, even an imported one, is not a trusted source if a parent path cycles.
 // Return "unsafe" for abnormally deep chains rather than silently using a truncated tree.
 function ancestryCycle(id,byId){
@@ -70,7 +71,7 @@ function ancestryCycle(id,byId){
  return visit(id,0);
 }
 function sharedAccount(animal,sire,dam){
- const ids=[animal,sire,dam].map(a=>clean(a?.ownerId));
+ const ids=[animal,sire,dam].map(recordOwner);
  return ids.every(v=>!v)||ids.every(v=>!!v&&v===ids[0]);
 }
 function parentageSupported(animal){
@@ -204,7 +205,7 @@ function openForAnimal(animalId){
  const initial=app?.getState?.(),animal=initial?.animals?.filter(a=>clean(a?.id)===clean(animalId));
  if(!doc||!app?.commitState||!animal||animal.length!==1||!isCavy(animal[0]))return false;
  const target=animal[0],sessionId=clean(globalThis.HerdHarborCloud?.getSession?.()?.user?.id);
- if(clean(target.ownerId)&&clean(target.ownerId)!==sessionId)return false;
+ if(recordOwner(target)&&recordOwner(target)!==sessionId)return false;
  const base=JSON.stringify(target);
  doc.getElementById("hh-cavy-genetics")?.remove();
  const overlay=doc.createElement("div");overlay.id="hh-cavy-genetics";
@@ -214,8 +215,8 @@ function openForAnimal(animalId){
  const candidates=(initial.animals||[]).filter(x=>isCavy(x)&&["male","female"].includes(clean(target.sex).toLowerCase())&&clean(x.id)!==clean(target.id)&&
    clean(x.sex).toLowerCase()!==clean(target.sex).toLowerCase()&&
    ["male","female"].includes(clean(x.sex).toLowerCase())&&
-   (!clean(x.ownerId)||clean(x.ownerId)===sessionId)&&
-   (!clean(target.ownerId)||!clean(x.ownerId)||clean(target.ownerId)===clean(x.ownerId))&&
+   (!recordOwner(x)||recordOwner(x)===sessionId)&&
+   (!recordOwner(target)||!recordOwner(x)||recordOwner(target)===recordOwner(x))&&
    initial.animals.filter(y=>clean(y.id)===clean(x.id)).length===1&&
    !["sold","archived","deceased","ancestor only"].includes(clean(x.status).toLowerCase()));
  const genotypeFields=Object.entries(LOCI).map(([locus,def])=>{
