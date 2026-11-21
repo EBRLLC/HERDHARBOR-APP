@@ -7,10 +7,12 @@ const isCavy=a=>/^(cavy|cavies|guinea pigs?|guinea-pigs?)$/i.test(txt(a?.species
 const date=x=>{x=txt(x);if(!/^\d{4}-\d{2}-\d{2}$/.test(x))return false;
  const d=new Date(x+"T00:00:00Z");return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===x;};
 function generatePups(state,litterId,entries){
- const litter=arr(state?.litters).find(row=>row.id===litterId);
- const sow=arr(state?.animals).find(a=>a.id===litter?.damId);
- if(!litter||!isCavy(sow)||!date(litter.birthDate))return {valid:false,issues:["Valid cavy birth and sow required."],state};
- const animals=arr(state.animals);
+ const litters=arr(state?.litters).filter(row=>row.id===litterId),litter=litters.length===1?litters[0]:null;
+ const animals=arr(state?.animals);
+ const sows=animals.filter(a=>a.id===litter?.damId),sow=sows.length===1?sows[0]:null;
+ if(!litter||!sow||!isCavy(sow)||txt(sow.sex).toLowerCase()!=="female"||
+    !date(litter.birthDate)||!Number.isSafeInteger(Number(litter.bornAlive))||Number(litter.bornAlive)<0)
+   return {valid:false,issues:["Unique cavy birth, uniquely identified female sow, and a valid live-birth count required."],state};
  const linked=animals.filter(a=>isCavy(a)&&(a.sourceBirthId===litterId||arr(litter.offspringIds).includes(a.id)));
  const slots=Number(litter.bornAlive)-linked.length,issues=[],ids=new Set(animals.map(a=>a.id));
  if(!Array.isArray(entries)||entries.length>slots||slots<0)issues.push("Pup count exceeds recorded live births.");
