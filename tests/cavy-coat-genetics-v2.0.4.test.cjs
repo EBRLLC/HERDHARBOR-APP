@@ -351,3 +351,16 @@ test('2.0.4 cavy module URLs and offline cache fingerprints match release manife
  const required=sw.slice(sw.indexOf('const REQUIRED_SHELL = ['),sw.indexOf('const RUNTIME_CACHE_PATHS'));
  assert.match(required,/cavy-genetics-v2\.0\.4\.js\?v=2\.0\.4-g1/);
 });
+
+test('pup creation refuses ambiguous litter/dam identifiers before changing state',()=>{
+ const dam={...cavy('s',''),sex:'Female'};
+ const litter={id:'l',damId:'s',birthDate:'2026-11-01',bornAlive:1};
+ const before={animals:[dam],litters:[litter]};
+ const entry=[{id:'p',name:'New pup'}];
+ assert.equal(offspring.generatePups({...before,animals:[dam,{...dam}]},'l',entry).valid,false);
+ assert.equal(offspring.generatePups({...before,litters:[litter,{...litter}]},'l',entry).valid,false);
+ assert.equal(offspring.generatePups({...before,litters:[{...litter,bornAlive:1.5}]},'l',entry).valid,false);
+ assert.equal(offspring.generatePups({...before,animals:[{...dam,sex:'Male'}]},'l',entry).valid,false);
+ assert.equal(before.animals.length,1);
+ assert.equal(before.litters.length,1);
+});
