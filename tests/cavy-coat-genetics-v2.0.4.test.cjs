@@ -171,3 +171,36 @@ test('risk detection checks historic variety and top-level color, not only coatP
  const typo={...cavy('t','Dalmation'),sex:'Male'};
  assert.equal(genetics.roanSafety(typo,sow).status,'do-not-pair');
 });
+
+test('ASIP molecular variant and roan breeder model have distinct scientific statuses',()=>{
+ assert.equal(genetics.LOCI.roan.molecularMarker,false);
+ assert.equal(genetics.LOCI.roan.scientificStatus,'historical-breeding-model');
+ assert.equal(genetics.LOCI['asip-del4'].molecularMarker,true);
+ const sire={...cavy('s','Roan',['Rn','rn']),sex:'Male'};
+ const dam={...cavy('d','Roan',['Rn','rn']),sex:'Female'};
+ const prediction=genetics.predict(sire,dam);
+ assert.equal(prediction.outcomes[0].status,'conditional-mendelian-model');
+ assert.match(prediction.outcomes[0].conditionalOn,/not verified/);
+ assert.match(prediction.notice,/historical breeder notation/);
+});
+test('pedigree contradictions are reported without rewriting recorded genotype',()=>{
+ const sire={...cavy('s','',['rn','rn']),sex:'Male',ownerId:'o'};
+ const dam={...cavy('d','',['rn','rn']),sex:'Female',ownerId:'o'};
+ const child={...cavy('p','',['Rn','rn']),sireId:'s',damId:'d',sex:'Female',ownerId:'o',
+   genetics:{loci:{roan:{alleles:['Rn','rn'],source:'dna-confirmed',evidenceRef:'lab'}}}};
+ const state={animals:[sire,dam,child]};
+ const conflicts=genetics.pedigreeConflicts(state);
+ assert.equal(conflicts.length,1);
+ assert.equal(conflicts[0].status,'review-required');
+ assert.equal(conflicts[0].locus,'roan');
+ assert.deepEqual(state.animals[2].genetics.loci.roan.alleles,['Rn','rn']);
+ assert.equal(genetics.reconcile(state).changed,0);
+});
+test('pedigree review does not assume missing parent genotype or unverified sire identity',()=>{
+ const sire={...cavy('s',''),sex:'Male'},dam={...cavy('d','',['rn','rn']),sex:'Female'};
+ const kid={...cavy('p','',['Rn','rn']),sireId:'s',damId:'d'};
+ assert.equal(genetics.pedigreeConflicts({animals:[sire,dam,kid]}).length,0);
+ sire.genetics.loci.roan={alleles:['rn','rn']};
+ kid.paternityStatus='recorded-unverified';
+ assert.equal(genetics.pedigreeConflicts({animals:[sire,dam,kid]}).length,0);
+});
