@@ -393,3 +393,25 @@ test('pairing UI recalculates from provisional edited records and refuses unsupp
  assert.match(src,/missingEvidence\.length/);
  assert.match(src,/data-cavy-evidence.*input.*render/);
 });
+
+test('normalized record serializer round-trips cavy genotype evidence and inferred possibilities',()=>{
+ const normalizer=require('../cloud-state-normalizer-v1.8.3.js');
+ const sire={...cavy('s','',['Rn','rn']),sex:'Male',ownerId:'o',
+   genetics:{loci:{roan:{alleles:['Rn','rn'],source:'breeder-reported',evidenceRef:'record-123'}}}};
+ const dam={...cavy('d','',['rn','rn']),sex:'Female',ownerId:'o'};
+ const pup={id:'p',species:'Cavy',sex:'Female',ownerId:'o',sireId:'s',damId:'d'};
+ const state=genetics.reconcile({animals:[sire,dam,pup],litters:[],settings:{theme:'dark'}}).state;
+ const mapped=normalizer.mapLegacySnapshot(state);
+ const rows=mapped.records.map(row=>({namespace:row.namespace,record_id:row.record_id,payload:row.payload,
+   payload_checksum:row.payload_checksum,record_version:1,deleted_at:null}));
+ const restored=normalizer.reassembleLegacySnapshot(rows);
+ assert.deepEqual(restored,state);
+ const source=restored.animals.find(a=>a.id==='s').genetics.loci.roan;
+ const inferred=restored.animals.find(a=>a.id==='p').genetics.loci.roan;
+ assert.equal(source.evidenceRef,'record-123');
+ assert.equal(source.source,'breeder-reported');
+ assert.equal(inferred.source,'cavy-family-inferred');
+ assert.deepEqual(inferred.alleles,[]);
+ assert.ok(inferred.possibleGenotypes.every(row=>row.probability>=0));
+ assert.equal(genetics.reconcile(restored).changed,0);
+});
