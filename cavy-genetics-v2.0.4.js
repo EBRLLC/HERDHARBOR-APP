@@ -252,15 +252,41 @@ function openForAnimal(animalId){
    if(!check()||match.length!==1||JSON.stringify(match[0])!==JSON.stringify(p)){
       out.textContent="Record changed; reopen genetics to compare current records.";return;
    }
-   const result=predict(clean(target.sex).toLowerCase()==="male"?target:p,clean(target.sex).toLowerCase()==="female"?target:p);
+   const draftLoci={...(target.genetics?.loci||{})},missingEvidence=[];
+   let hasDraftEdits=false;
+   for(const [locus,definition] of Object.entries(LOCI)){
+     const previous=draftLoci[locus];
+     if(previous?.source==="dna-confirmed"||previous?.status==="dna-confirmed")continue;
+     const clear=box.querySelector('[data-cavy-clear="'+locus+'"]')?.checked===true;
+     const choice=box.querySelector('[data-cavy-genotype="'+locus+'"]').value;
+     const evidence=clean(box.querySelector('[data-cavy-evidence="'+locus+'"]').value);
+     if(clear){if(previous){delete draftLoci[locus];hasDraftEdits=true;}continue;}
+     if(!choice)continue;
+     const ordered=choice.split("/");
+     const previousOrdered=alleles(target,locus).slice().sort((a,b)=>definition.alleles.indexOf(a)-definition.alleles.indexOf(b));
+     if(choice===previousOrdered.join("/")&&evidence===clean(previous?.evidenceRef))continue;
+     if(!evidence){missingEvidence.push(definition.label);continue;}
+     hasDraftEdits=true;
+     draftLoci[locus]={alleles:ordered,source:"breeder-reported",status:"breeder-reported",evidenceRef:evidence};
+   }
+   if(missingEvidence.length){
+     out.textContent="Enter an evidence reference for "+missingEvidence.join(", ")+" before calculating new unsaved genotype selections.";return;
+   }
+   const draft={...target,genetics:{...(target.genetics||{}),loci:draftLoci}};
+   const result=predict(clean(target.sex).toLowerCase()==="male"?draft:p,clean(target.sex).toLowerCase()==="female"?draft:p);
    const contradictions=pedigreeConflicts(live).filter(x=>[clean(target.id),clean(p.id)].includes(x.animalId));
-   out.textContent=(contradictions.length?"GENETIC RECORD CONFLICT: "+contradictions.map(x=>x.animalId+" / "+x.locus).join(", ")+". Review ancestry and genotype evidence before relying on a prediction. ":"")+
+   out.textContent=(hasDraftEdits?"PROVISIONAL UNSAVED GENOTYPE CHOICES — Save evidence to keep them. ":"")+
+     (contradictions.length?"GENETIC RECORD CONFLICT: "+contradictions.map(x=>x.animalId+" / "+x.locus).join(", ")+". Review ancestry and genotype evidence before relying on a prediction. ":"")+
      result.safety.message+" "+result.outcomes.map(row=>row.probabilities?
      LOCI[row.locus].label+" ("+LOCI[row.locus].scientificStatus+"): "+row.outcomes.map(x=>x.genotype+": "+Math.round(x.probability*100)+"%").join("; "):
      LOCI[row.locus].label+": parental allele records incomplete (no percentages).").join(" ")+
      " These probabilities are conditional on the recorded genotypes and the inheritance model, not full coat-color predictions.";
  };
  box.querySelector("#hh-cavy-partner").addEventListener("change",render);
+ for(const input of box.querySelectorAll("[data-cavy-genotype], [data-cavy-evidence], [data-cavy-clear]")){
+   input.addEventListener("change",render);
+   if(input.hasAttribute("data-cavy-evidence"))input.addEventListener("input",render);
+ }
  box.querySelector("#hh-cavy-genotype-save").addEventListener("click",()=>{
    const live=check();
    if(!live){error.textContent="Account or animal record changed; reopen genetics.";return;}
