@@ -11,12 +11,18 @@ const PHENOTYPE_SAFETY=/\b(roan|dalmatian|dalmation)\b/i;
 function roanSafety(sire,dam){
   const phenotype=a=>[a?.cavy?.coatPattern,a?.cavy?.variety,a?.cavy?.coatColor,a?.coatPattern,a?.variety,a?.color].map(clean).filter(Boolean).join(" ");
   const a=phenotype(sire),b=phenotype(dam);
-  const genotype=r=>r?.genetics?.loci?.roan?.alleles||r?.cavy?.genetics?.loci?.roan?.alleles||[];
-  const hasRisk=r=>Array.isArray(genotype(r))&&genotype(r).includes("Rn");
-  const risks=[PHENOTYPE_SAFETY.test(a)||hasRisk(sire),PHENOTYPE_SAFETY.test(b)||hasRisk(dam)];
-  return {flagged:risks.some(Boolean),highRisk:risks.every(Boolean),
-   status:risks.every(Boolean)?"do-not-pair":risks.some(Boolean)?"requires-pedigree-review":"not-excluded",
-   message:risks.every(Boolean)?"Both parents show or record the roan/Dalmatian factor. Avoid this mating due to lethal-white risk.":risks.some(Boolean)?"Roan/Dalmatian factor indicated. Review the other parent's family history and genotype; an unmarked animal is not proof of a safe pairing.":"No roan/Dalmatian factor recorded; absence of a record is not proof of genetic absence."};
+  const record=r=>r?.genetics?.loci?.roan||r?.cavy?.genetics?.loci?.roan||{};
+  const observed=(r,coat)=>PHENOTYPE_SAFETY.test(coat)||(Array.isArray(record(r).alleles)&&record(r).alleles.includes("Rn"));
+  const possible=r=>Array.isArray(record(r).possibleGenotypes)&&record(r).possibleGenotypes.some(row=>
+    Number(row.probability)>0&&String(row.genotype).split("/").includes("Rn"));
+  const riskKnown=[observed(sire,a),observed(dam,b)],riskPossible=[possible(sire),possible(dam)];
+  const highRisk=riskKnown.every(Boolean),uncertainRisk=!highRisk&&
+    (riskKnown.some(Boolean)||riskPossible.some(Boolean));
+  return {flagged:highRisk||uncertainRisk,highRisk,possibleRisk:riskPossible.some(Boolean),
+   status:highRisk?"do-not-pair":uncertainRisk?"requires-pedigree-review":"not-excluded",
+   message:highRisk?"Both parents show or record the roan/Dalmatian factor. Avoid this mating due to lethal-white risk.":
+     uncertainRisk?"Roan/Dalmatian factor indicated or possible by parentage. Treat untested partners as uncertain; do not assume a mating is safe without pedigree and genotype review.":
+     "No roan/Dalmatian factor recorded; absence of a record is not proof of genetic absence."};
 }
 function alleles(record,locus){
  const item=record?.genetics?.loci?.[locus]||record?.cavy?.genetics?.loci?.[locus];
