@@ -313,7 +313,23 @@
   function bind(overlay) {
     overlay.querySelectorAll("[data-close]").forEach(button=>button.addEventListener("click",close));
     overlay.querySelectorAll("[data-generate]").forEach(button=>button.addEventListener("click",()=>mutate("generate",button.dataset.generate)));
-    overlay.querySelectorAll("[data-manage-litter]").forEach(button=>button.addEventListener("click",()=>{const id=button.dataset.manageLitter;close();root.HerdHarborBreedingWorkspace?.open?.(id);}));
+    overlay.querySelectorAll("[data-manage-litter]").forEach(button=>button.addEventListener("click",()=>{
+      const id=button.dataset.manageLitter;
+      const workspace=root.HerdHarborBreedingWorkspace;
+      if(typeof workspace?.open!=="function"){
+        toast("Litter management is unavailable. Reload HerdHarbor and try again.","error");
+        return;
+      }
+      try{
+        if(workspace.open(id)===false){
+          toast("Litter management could not open this record.","error");
+          return;
+        }
+        close();
+      }catch(error){
+        toast("Litter management failed to open. Reload HerdHarbor and try again.","error");
+      }
+    }));
     overlay.querySelectorAll('select[name="planId"]').forEach(select=>select.addEventListener("change",()=>{
       const form=select.closest("form");
       const values=whelpingFormValues(stateNow(),select.value);
