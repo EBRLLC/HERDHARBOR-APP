@@ -138,7 +138,10 @@ for (const asset of [
   "rabbit-genetics-engine-advanced-v1.6.1.js", "rabbit-genetics-runtime-v1.6.1.js",
   "rabbit-genetics-ui-compat-v1.6.1.js",
   "shows-v1.6.1.css", "shows-v1.6.1.js", "shows-v1.6.1-hardening.js"
-]) assert.ok(serviceWorker.includes(`${asset}?v=1.7.1`), `${asset} is not cached with preserved v1.7.1 identity`);
+]) {
+  const version = asset === "breeding-intelligence-v1.6.1.js" ? "2.0.4-r1" : "1.7.1";
+  assert.ok(serviceWorker.includes(`${asset}?v=${version}`), `${asset} is not cached at its expected identity`);
+}
 assert.match(serviceWorker, /pedigree-genetics-v1\.6\.1\.js\?v=2/);
 assert.match(serviceWorker, /herdharbor-release-v1\.6\.1\.js\?v=2/);
 assert.match(serviceWorker, /rabbit-genetics-v1\.6\.1\.js\?v=3/);
