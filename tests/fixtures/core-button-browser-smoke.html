@@ -133,7 +133,9 @@ try{
    sales.openSaleDetail("sale-1");check(!!$("#sale-complete"),"draft sale missing completion action");
  });
  run("animal view detail",()=>{
-   animals.renderAnimals();click('[data-view-animal="a1"]');check(!!$("#detail-edit"),"animal detail action missing");
+   animals.renderAnimals();
+   const select=$("#animal-status");select.value="For Sale";select.dispatchEvent(new Event("change",{bubbles:true}));
+   click('[data-view-animal="a1"]');check(!!$("#detail-edit"),"animal detail action missing");
  });
  run("animal edit from detail",()=>{
    animals.openAnimalDetail("a1");click("#detail-edit");modalHas("#animal-form");
@@ -178,12 +180,12 @@ try{
    finally{state.tasks=state.tasks.filter(x=>x.id!=="t1");}
  });
  run("budget transaction edit",()=>{
-   state.transactions.push({id:"tx1",date:"2026-10-19",type:"Expense",category:"Feed",classification:"Operating",scope:"Operation",amount:"15.00"});
+   state.transactions.push({id:"tx1",date:new Date().toISOString().slice(0,10),type:"Expense",category:"Feed",classification:"Operating",scope:"Operation",amount:"15.00"});
    try{reporting.renderBudget();click('[data-edit-transaction="tx1"]');modalHas("#transaction-form");}
    finally{state.transactions=state.transactions.filter(x=>x.id!=="tx1");}
  });
  run("production record edit",()=>{
-   state.productionRecords.push({id:"p1",date:"2026-10-19",product:"Eggs",unit:"eggs",quantityProduced:"12",quantitySold:"2",quantityFarmUse:"0",quantityWaste:"0",species:"Chicken",scope:"Species"});
+   state.productionRecords.push({id:"p1",date:new Date().toISOString().slice(0,10),product:"Eggs",unit:"eggs",quantityProduced:"12",quantitySold:"2",quantityFarmUse:"0",quantityWaste:"0",species:"Chicken",scope:"Species"});
    try{reporting.renderBudget();click('[data-edit-production="p1"]');modalHas("#production-form");}
    finally{state.productionRecords=state.productionRecords.filter(x=>x.id!=="p1");}
  });
