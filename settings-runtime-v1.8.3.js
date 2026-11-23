@@ -313,12 +313,26 @@
             saved ? "Cloud sync confirmed." : "Sync was not confirmed. Your records remain protected on this device.",
             saved ? "success" : "error"
           );
+        } catch (error) {
+          refreshSyncStatus();
+          toast("Cloud sync failed: " + String(error?.message || "retry when the connection is available") +
+            ". Your unsynced records remain on this device.", "error");
         } finally {
           button.disabled = false;
           button.textContent = originalText;
         }
       });
-      $("#settings-safety-backup").addEventListener("click", () => root.HerdHarborCloud?.downloadSafetyBackup?.());
+      $("#settings-safety-backup").addEventListener("click", async () => {
+        if (typeof root.HerdHarborCloud?.downloadSafetyBackup !== "function") {
+          toast("Safety backup is unavailable. Reload HerdHarbor and try again.", "error");
+          return;
+        }
+        try {
+          await root.HerdHarborCloud.downloadSafetyBackup();
+        } catch (error) {
+          toast("Safety backup failed: " + String(error?.message || "unable to download") + ".", "error");
+        }
+      });
       $("#refresh-device-storage").addEventListener("click", refreshDeviceStorageSummary);
       $("#download-spreadsheet-template").addEventListener("click", async (event) => {
         const button = event.currentTarget;
