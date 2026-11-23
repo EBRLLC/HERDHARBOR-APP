@@ -1,16 +1,19 @@
-(function(root,factory){"use strict";const api=factory();
+(function(root,factory){"use strict";const api=factory(root);
 if(typeof module==="object"&&module.exports)module.exports=api;
 if(root)root.HerdHarborCavyOffspring203=api;
-})(typeof globalThis!=="undefined"?globalThis:this,function(){"use strict";
+})(typeof globalThis!=="undefined"?globalThis:this,function(root){"use strict";
 const txt=x=>String(x==null?"":x).trim(),arr=x=>Array.isArray(x)?x:[];
+const recordOwner=a=>txt(a?.ownerId||a?.userId||a?.accountId);
 const isCavy=a=>/^(cavy|cavies|guinea pigs?|guinea-pigs?)$/i.test(txt(a?.species));
 const date=x=>{x=txt(x);if(!/^\d{4}-\d{2}-\d{2}$/.test(x))return false;
  const d=new Date(x+"T00:00:00Z");return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===x;};
 function generatePups(state,litterId,entries){
- const litter=arr(state?.litters).find(row=>row.id===litterId);
- const sow=arr(state?.animals).find(a=>a.id===litter?.damId);
- if(!litter||!isCavy(sow)||!date(litter.birthDate))return {valid:false,issues:["Valid cavy birth and sow required."],state};
- const animals=arr(state.animals);
+ const litters=arr(state?.litters).filter(row=>row.id===litterId),litter=litters.length===1?litters[0]:null;
+ const animals=arr(state?.animals);
+ const sows=animals.filter(a=>a.id===litter?.damId),sow=sows.length===1?sows[0]:null;
+ if(!litter||!sow||!isCavy(sow)||txt(sow.sex).toLowerCase()!=="female"||
+    !date(litter.birthDate)||!Number.isSafeInteger(Number(litter.bornAlive))||Number(litter.bornAlive)<0)
+   return {valid:false,issues:["Unique cavy birth, uniquely identified female sow, and a valid live-birth count required."],state};
  const linked=animals.filter(a=>isCavy(a)&&(a.sourceBirthId===litterId||arr(litter.offspringIds).includes(a.id)));
  const slots=Number(litter.bornAlive)-linked.length,issues=[],ids=new Set(animals.map(a=>a.id));
  if(!Array.isArray(entries)||entries.length>slots||slots<0)issues.push("Pup count exceeds recorded live births.");
@@ -38,17 +41,21 @@ function generatePups(state,litterId,entries){
    const attributed=animals.find(a=>a.id===boarId);
    if(attributed&&(!isCavy(attributed)||attributed.id===sow.id))issues.push("Attributed boar must be a distinct Cavy.");
    if(attributed&&txt(attributed.sex).toLowerCase()!=="male")issues.push("Attributed boar must be recorded as male.");
-   if(attributed&&txt(sow.ownerId)&&txt(attributed.ownerId)&&txt(sow.ownerId)!==txt(attributed.ownerId))issues.push("Attributed boar belongs to another recorded owner.");
+   if(attributed&&(recordOwner(sow)||recordOwner(attributed))&&recordOwner(sow)!==recordOwner(attributed))issues.push("Attributed boar belongs to another account or lacks owner evidence.");
   born.push({id,name:txt(entry.name),species:"Cavy",sex:entry.sex||"Unknown",
    breed:txt(entry.breed)||sow.breed||"",color:txt(entry.color),tag:txt(entry.tag),
-   dob:litter.birthDate,status:"Growing",ownerId:txt(sow.ownerId),sireId:boarId,damId:sow.id,sourceBirthId:litterId,
+   dob:litter.birthDate,status:"Growing",ownerId:recordOwner(sow),sireId:boarId,damId:sow.id,sourceBirthId:litterId,
    potentialSireIds:potentialBoars,paternityStatus:boarId?"breeder-attributed":potentialBoars.length>1?"unresolved":potentialBoars.length===0?"unknown":"recorded-unverified",
     paternityEvidence:boarId?{basis:"breeder-attributed",reference:txt(entry.parentageEvidenceRef),recordedAt:new Date().toISOString()}:null,
    cavyGrowth:[],cavyCare:[],createdAt:new Date().toISOString()});
  }
  if(issues.length)return {valid:false,issues,state};
- return {valid:true,issues:[],created:born,state:{...state,
-  animals:animals.concat(born),litters:state.litters.map(l=>l===litter?{...l,offspringIds:[...new Set([...arr(l.offspringIds),...born.map(x=>x.id)])]}:l)}};
+ const next={...state,animals:animals.concat(born),
+  litters:state.litters.map(l=>l===litter?{...l,offspringIds:[...new Set([...arr(l.offspringIds),...born.map(x=>x.id)])]}:l)};
+ const genetics=root?.HerdHarborCavyGenetics||(typeof module==="object"&&module.exports?require("./cavy-genetics-v2.0.4.js"):null);
+ const recomputed=genetics?.reconcile?.(next);
+ return {valid:true,issues:[],created:recomputed?.state?.animals?.filter(a=>born.some(x=>x.id===a.id))||born,
+  state:recomputed?.state||next};
 }
 function observe(state,pupId,input){
  const animal=arr(state?.animals).find(a=>a.id===pupId);

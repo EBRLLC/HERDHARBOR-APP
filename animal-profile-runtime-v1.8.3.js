@@ -415,24 +415,31 @@
           const nextAnimals = liveState.animals.map((item) => item.id === id ? nextAnimal : item);
           if (!deps.allowsAnimalTransition(liveState.animals, nextAnimals)) return;
           const original = { ...currentAnimal };
+          const originalAnimals = liveState.animals.slice();
           if (leavingDog) delete currentAnimal.canine;
           Object.assign(currentAnimal, nextAnimal);
+          const cavyRefresh = globalThis.HerdHarborCavyGenetics?.reconcile?.(liveState);
+          if (cavyRefresh?.state?.animals) liveState.animals = cavyRefresh.state.animals;
           deps.rememberBreed(data.species, data.breed);
           deps.recordActivity(`Updated ${data.name}.`, "animal");
           if (!deps.saveState("Animal updated.")) {
             Object.keys(currentAnimal).forEach((key) => delete currentAnimal[key]);
             Object.assign(currentAnimal, original);
+            liveState.animals = originalAnimals;
             rollbackAuxiliarySaveState();
             return;
           }
         } else {
           const newAnimal = { id: deps.uid("animal"), ...data, createdAt: new Date().toISOString() };
           if (!deps.allowsAnimalTransition(liveState.animals || [], [...(liveState.animals || []), newAnimal])) return;
+          const originalAnimals = liveState.animals.slice();
           liveState.animals.push(newAnimal);
+          const cavyRefresh = globalThis.HerdHarborCavyGenetics?.reconcile?.(liveState);
+          if (cavyRefresh?.state?.animals) liveState.animals = cavyRefresh.state.animals;
           deps.rememberBreed(data.species, data.breed);
           deps.recordActivity(`Added ${data.name} to animal records.`, "animal");
           if (!deps.saveState("Animal added.")) {
-            liveState.animals = liveState.animals.filter((item) => item.id !== newAnimal.id);
+            liveState.animals = originalAnimals;
             rollbackAuxiliarySaveState();
             return;
           }
@@ -564,6 +571,7 @@
             '<button class="button button-primary" id="detail-cavy-repro">Cavy mating & exposure</button>' : ""}
           ${globalThis.HerdHarborFelineIdentity203?.isCat(animal)?'<button class="button button-ghost" id="detail-print-feline">Print Cat Pedigree</button>':""}
           ${globalThis.HerdHarborCavyIdentity203?.isCavy(animal)?'<button class="button button-ghost" id="detail-print-cavy">Print Cavy Pedigree</button>':""}
+          ${globalThis.HerdHarborCavyIdentity203?.isCavy(animal)?'<button class="button button-primary" id="detail-cavy-genetics">Cavy genetics &amp; pair prediction</button>':""}
           <button class="button button-primary" id="detail-edit">Edit animal</button>
         </div>
       `, `${animal.species || "Animal"} record`);
@@ -589,6 +597,7 @@
       $("#detail-canine-repro")?.addEventListener("click", () => root.HerdHarborCanineReproductiveWorkspace?.openForAnimal?.(id));
       $("#detail-feline-repro")?.addEventListener("click", () => root.HerdHarborFelineReproduction203?.openForAnimal?.(id));
       $("#detail-cavy-repro")?.addEventListener("click", () => root.HerdHarborCavyReproduction203?.openForAnimal?.(id));
+       $("#detail-cavy-genetics")?.addEventListener("click", () => root.HerdHarborCavyGenetics?.openForAnimal?.(id));
       $("#detail-import-pedigree")?.addEventListener("click", () => deps.openPedigreeImport(id));
       $("#detail-birth-certificate")?.addEventListener("click", () => deps.openBirthCertificateForm(id));
       $("#detail-compare-pedigree")?.addEventListener("click", () => {
