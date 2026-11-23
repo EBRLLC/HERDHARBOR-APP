@@ -24,6 +24,37 @@
   };
   const unique = pairs => [...new Map((pairs || []).map(p => [key(p), p])).values()];
   const has = (p, allele) => p.includes(allele);
+  const ownerKey = animal => id(animal?.ownerId || animal?.userId || animal?.accountId).trim();
+  const parentageAllowed = child => {
+    const status = id(child?.paternityStatus).trim().toLowerCase();
+    if (["unknown", "unresolved", "recorded-unverified", "disputed"].includes(status)) return false;
+    if (!id(child?.sireId).trim() || !id(child?.damId).trim() ||
+        id(child?.sireId) === id(child?.damId)) return false;
+    const choices = Array.isArray(child?.potentialSireIds)
+      ? child.potentialSireIds.filter(Boolean).map(id) : [];
+    return !choices.length || (choices.length === 1 && choices[0] === id(child.sireId));
+  };
+  const safeFamily = (child, sire, dam, byId) => {
+    if (!child || !sire || !dam || !parentageAllowed(child)) return false;
+    if (sire === dam || child === sire || child === dam) return false;
+    if (sire.sex && !/^(male|buck)$/i.test(String(sire.sex).trim())) return false;
+    if (dam.sex && !/^(female|doe)$/i.test(String(dam.sex).trim())) return false;
+    const owners = [child, sire, dam].map(ownerKey);
+    if (owners.some(Boolean) && (!owners.every(Boolean) || !owners.every(o => o === owners[0]))) return false;
+    // Ancestry loops cannot be treated as independent Mendelian evidence.
+    const seen = new Set(), pending = [id(child.sireId), id(child.damId)];
+    while (pending.length) {
+      const next = pending.pop();
+      if (!next) continue;
+      if (next === id(child.id)) return false;
+      if (seen.has(next)) continue;
+      seen.add(next);
+      if (seen.size > 256) return false;
+      const parent = byId.get(next);
+      if (parent) pending.push(id(parent.sireId), id(parent.damId));
+    }
+    return true;
+  };
 
   function reconcile(state, engine) {
     if (!state || !Array.isArray(state.animals) || !engine?.possiblePairsForLocus ||
@@ -34,8 +65,8 @@
     // Parentage is not trustworthy when an animal ID is empty or duplicated.
     // Never let Map's last-write-wins behavior attach a kit to an arbitrary rabbit.
     const counts = new Map();
-    for (const animal of rabbits) {
-      const animalId = id(animal.id);
+    for (const animal of state.animals) {
+      const animalId = id(animal?.id);
       if (animalId) counts.set(animalId, (counts.get(animalId) || 0) + 1);
     }
     const uniqueId = animalId => !!animalId && counts.get(animalId) === 1;
@@ -43,6 +74,7 @@
     const byId = new Map(safeRabbits.map(a => [id(a.id), a]));
     const childrenByParent = new Map();
     for (const child of safeRabbits) {
+      if (!safeFamily(child, byId.get(id(child.sireId)), byId.get(id(child.damId)), byId)) continue;
       for (const parentId of new Set([id(child.sireId), id(child.damId)])) {
         if (!uniqueId(parentId) || parentId === id(child.id) || !byId.has(parentId)) continue;
         if (!childrenByParent.has(parentId)) childrenByParent.set(parentId, []);
@@ -95,14 +127,25 @@
         const notes = [];
         const sire = byId.get(id(animal.sireId));
         const dam = byId.get(id(animal.damId));
-        const safeSire = sire && sire !== animal ? sire : null;
-        const safeDam = dam && dam !== animal && dam !== sire ? dam : null;
+        const validParents = safeFamily(animal, sire, dam, byId);
+        const safeSire = validParents ? sire : null;
+        const safeDam = validParents ? dam : null;
         const sireOptions = options(safeSire, locus), damOptions = options(safeDam, locus);
-        if (safeSire && safeDam && sireOptions.length === 1 && damOptions.length === 1) {
-          const cross = engine.crossLocus(locus, sireOptions[0], damOptions[0]);
-          if (cross?.exact && Array.isArray(cross.outcomes)) {
-            const possible = new Set(cross.outcomes.filter(o => o.probability > 0).map(o => key(o.alleles)));
-            candidates = candidates.filter(p => possible.has(key(p)));
+        const crossWeight = new Map();
+        const exactParents = safeSire && safeDam && sireOptions.length === 1 && damOptions.length === 1;
+        if (safeSire && safeDam && sireOptions.length && damOptions.length) {
+          for (const a of sireOptions) for (const b of damOptions) {
+            const cross = engine.crossLocus(locus, a, b);
+            if (!cross?.exact) continue;
+            for (const outcome of cross.outcomes || []) {
+              if (outcome.probability <= 0) continue;
+              const genotype = key(outcome.alleles);
+              crossWeight.set(genotype, exactParents
+                ? (crossWeight.get(genotype) || 0) + outcome.probability : null);
+            }
+          }
+          if (crossWeight.size) {
+            candidates = candidates.filter(p => crossWeight.has(key(p)));
             constrained = true;
             notes.push("parent genotypes");
           }
@@ -150,10 +193,22 @@
               ". Recomputed when family records change; not DNA-confirmed."
           };
         }
-        if (next) familyEvidence.push({
+        // A recorded parent cross also provides useful *possible* genotype
+        // evidence even when it cannot identify one genotype for the kit.
+        // Store this separately from exact locus alleles so unknowns stay unknown.
+        const possibleRows = constrained && candidates.length && !manual
+          ? candidates.map(p => ({
+              alleles: p.slice(),
+              probability: exactParents && crossWeight.has(key(p))
+                ? crossWeight.get(key(p)) : null
+            })) : [];
+        if (next || possibleRows.length) familyEvidence.push({
           id: SOURCE + ":" + id(animal.id) + ":" + locus,
-          source: SOURCE, status: next.status, locus, alleles: next.alleles.slice(),
-          note: next.note, relatedAnimalIds: [...new Set([
+          source: SOURCE, status: next?.status || "possible", locus,
+          alleles: next ? next.alleles.slice() : [UNKNOWN, UNKNOWN],
+          possibleGenotypes: possibleRows,
+          note: next?.note || "Recorded parent and offspring evidence allows these genotype possibilities, not an individual DNA-confirmed genotype.",
+          relatedAnimalIds: [...new Set([
             ...(notes.some(note => note === "parent genotypes" || note.startsWith("fixed allele"))
               ? [id(animal.sireId), id(animal.damId)] : []),
             ...children.filter(child => notes.includes("homozygous offspring " + id(child.id)))
