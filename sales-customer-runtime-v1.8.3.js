@@ -730,7 +730,7 @@
       <section class="totals"><div>${billDetails}</div><div class="summary"><div><span>Subtotal</span><strong>${formatMoney(saleSubtotal(sale))}</strong></div><div><span>Discount</span><strong>−${formatMoney(sale.discount)}</strong></div><div><span>Tax / fees</span><strong>${formatMoney(sale.tax)}</strong></div><div><span>Paid</span><strong>${formatMoney(salePaid(sale.id))}</strong></div><div class="grand"><span>Balance due</span><strong>${formatMoney(saleBalance(sale))}</strong></div></div></section>
       <div class="terms"><strong>Terms and notes</strong><p>${esc([sale.terms, sale.notes].filter(Boolean).join(" · ") || "No additional terms recorded.")}</p></div>
       ${documentType === "Bill of Sale" ? '<section class="signatures"><div class="signature">Seller signature / date</div><div class="signature">Buyer signature / date</div></section>' : ""}
-      <script>root.addEventListener('load',()=>setTimeout(()=>root.print(),120));<\/script></body></html>`);
+      <script>window.addEventListener('load',()=>setTimeout(()=>window.print(),120));<\/script></body></html>`);
       popup.document.close();
     }
   
