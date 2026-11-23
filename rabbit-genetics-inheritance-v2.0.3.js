@@ -144,7 +144,12 @@
                 ? (crossWeight.get(genotype) || 0) + outcome.probability : null);
             }
           }
-          if (crossWeight.size) {
+          const alleleCount = locusDefinitions[locus]?.dominance?.length || 0;
+          const unrestrictedPairs = alleleCount * (alleleCount + 1) / 2;
+          // Both parents having entirely unknown alleles is NOT family evidence.
+          const informative = unrestrictedPairs > 0 &&
+            (sireOptions.length < unrestrictedPairs || damOptions.length < unrestrictedPairs);
+          if (crossWeight.size && informative) {
             candidates = candidates.filter(p => crossWeight.has(key(p)));
             constrained = true;
             notes.push("parent genotypes");
