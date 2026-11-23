@@ -151,5 +151,5 @@ test("button uses canonical state rather than the legacy snapshot",()=>{
  assert.match(ui,/await writeState\(state\)/);
  assert.match(ui,/Offspring Genetics Not Saved/);
  assert.match(ui,/Recorded family and offspring inheritance/);
- assert.doesNotMatch(ui.slice(ui.indexOf("async function learnFromOffspring"),ui.indexOf("function snapshotParents")),_re=/offspringEvidenceForParent|localStorage\.setItem/);
+ assert.doesNotMatch(ui.slice(ui.indexOf("async function learnFromOffspring"),ui.indexOf("function snapshotParents")),/offspringEvidenceForParent|localStorage\.setItem/);
 });
