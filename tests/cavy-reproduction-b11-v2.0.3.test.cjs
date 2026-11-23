@@ -27,7 +27,7 @@ test('installed profile opens dedicated cavy workflow with immutable save',()=>{
  const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
  const profile=fs.readFileSync(path.join(__dirname,'../animal-profile-runtime-v1.8.3.js'),'utf8');
  assert.ok(html.indexOf('cavy-reproduction-v2.0.3.js')<html.indexOf('animal-profile-runtime-v1.8.3.js'));
- assert.match(profile,/detail-cavy-repro/);assert.match(profile,/CavyReproduction203\?\.openForAnimal/);
+ assert.match(profile,/detail-cavy-repro/);assert.match(profile,/launchAnimalFeature\(root\.HerdHarborCavyReproduction203, "Cavy breeding"\)/);assert.match(profile,/typeof moduleApi\?\.openForAnimal !== "function"/);
 });
 
 test('Cavy exposure follow-ups update canonical tasks and cancel without duplicate reminders',()=>{
