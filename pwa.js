@@ -258,7 +258,7 @@
                 addScript("hh-pedigree-genetics-v151-script", "pedigree-genetics-v1.6.1.js?v=2", () => {
                   window.HerdHarborPedigreeGenetics?.start?.(window);
                   window.dispatchEvent(new CustomEvent("herdharbor:genetics-ready", { detail: { releaseVersion: APP_VERSION, schemaVersion: 3 } }));
-                  addScript("hh-breeding-intelligence-script", "breeding-intelligence-v1.6.1.js?v=1.7.1", () => {
+                  addScript("hh-breeding-intelligence-script", "breeding-intelligence-v1.6.1.js?v=2.0.4-r1", () => {
                     addScript("hh-breeding-pair-hotfix-script", "breeding-pair-v1.6.1.js?v=1.7.1", () => {
                       addScript("hh-rabbit-genetics-v151-ui", "rabbit-genetics-ui-compat-v1.6.1.js?v=1.7.1", () => {
                         addScript("hh-rabbit-genetics-v2-ui", "rabbit-genetics-ui-advanced-v1.6.1.js?v=4", () => {
