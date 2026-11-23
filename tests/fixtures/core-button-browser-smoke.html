@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>HerdHarbor core UI action smoke</title></head>
+<body>
+<div id="view-animals"></div><div id="view-breeding"></div><div id="view-litters"></div>
+<div id="view-health"></div><div id="view-tasks"></div><div id="view-budget"></div>
+<div id="view-settings"></div><div id="view-sales"></div>
+<div class="modal"><div id="modal-content"></div></div>
+<output id="hh-core-actions-result" data-status="pending"></output>
+<script src="../../animal-profile-runtime-v1.8.3.js"></script>
+<script src="../../breeding-litter-runtime-v1.8.3.js"></script>
+<script src="../../health-runtime-v1.8.3.js"></script>
+<script src="../../task-runtime-v1.8.3.js"></script>
+<script src="../../production-reporting-runtime-v1.8.3.js"></script>
+<script src="../../settings-runtime-v1.8.3.js"></script>
+<script src="../../sales-customer-runtime-v1.8.3.js"></script>
+<script>
+(function(){
+"use strict";
+const failures=[],results=[];
+window.addEventListener("error",event=>failures.push("Uncaught: "+event.message+(event.error?.stack?" | "+event.error.stack:"")));
+window.addEventListener("unhandledrejection",event=>failures.push("Rejection: "+String(event.reason)));
+const esc=value=>String(value==null?"":value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+const $=(selector,scope=document)=>scope?.querySelector(selector)||null;
+const $$=(selector,scope=document)=>[...(scope?.querySelectorAll(selector)||[])];
+const field=(label,name,value="",required=false,type="text")=>
+  '<label>'+esc(label)+'<input type="'+esc(type)+'" name="'+esc(name)+'" value="'+esc(value)+'"'+(required?" required":"")+'></label>';
+const selectField=(label,name,choices=[],selected="",required=false)=>
+  '<label>'+esc(label)+'<select name="'+esc(name)+'"'+(required?" required":"")+'>'+
+  choices.map(x=>{const value=typeof x==="string"?x:(x?.value||"");return '<option value="'+esc(value)+'"'+(value===selected?" selected":"")+'>'+esc(value)+'</option>';}).join("")+'</select></label>';
+const state={
+  profile:{operationName:"Browser Test",ownerName:"Tester",email:"test@example.invalid",phone:"",address:""},
+  animals:[
+    {id:"a1",name:"Judy",species:"Rabbit",sex:"Female",status:"For Sale",askingPrice:"120.00",breed:"Holland Lop"},
+    {id:"a2",name:"Butter-Ball",species:"Rabbit",sex:"Male",status:"For Sale",askingPrice:"125.00",breed:"Holland Lop"}
+  ],
+  settings:{species:["Rabbit","Cavy","Dog","Cat"],breedsBySpecies:{},preferredWeightDisplay:"lb",
+    analyticsColors:{},marketAnalyticsConsent:{},theme:"light"},
+  sales:[{id:"sale-1",saleNumber:"HH-2026-TMOUD1",customerId:"buyer",status:"Draft",
+    saleDate:"2026-10-19",dueDate:"2026-10-19",items:[{animalId:"a1",quantity:"1",unitPrice:"120.00"},
+    {animalId:"a2",quantity:"1",unitPrice:"125.00"}],tax:"0.00",discount:"20.00"}],
+  customers:[{id:"buyer",name:"Hop Along Ranch"}],
+  breedings:[],litters:[],health:[],tasks:[],payments:[],transactions:[],
+  transfers:[],productionRecords:[],budgetPlans:[],annualBudgetPlans:[],budgetMonthSettings:{},
+  activity:[],pedigrees:[],pedigreeDrafts:[]
+};
+const defaults={
+  getState:()=>state,replaceState:newState=>Object.assign(state,newState),
+  getCurrentRoute:()=>"sales",getAppVersion:()=>"2.0.2",getDefaultSettings:()=>state.settings,
+  $,$$,esc,
+  headerHtml:(title,description,actions="")=>'<header><h2>'+esc(title)+'</h2>'+actions+'</header>',
+  statCard:() =>'<div></div>',
+  detailField:(label,value)=>'<div>'+esc(label)+': '+esc(value)+'</div>',
+  emptyState:(title,desc)=>'<p>'+esc(title)+'</p>',
+  field,textareaField:(label,name,value="")=>'<textarea name="'+esc(name)+'">'+esc(value)+'</textarea>',
+  selectField,selectAnimalField:(label,name,value="",sex="",required=false)=>
+    selectField(label,name,[{value:""},...state.animals.filter(a=>!sex||a.sex===sex).map(a=>({value:a.id}))],value,required),
+  breedComboboxField:()=>'<input name="breed"><datalist id="animal-breed-options"></datalist>',
+  speciesIcon:()=>'<span>🐇</span>',animalVisualHtml:()=>'<span>🐇</span>',
+  ageText:()=>"1 year",breedOptionsFor:()=>["Holland Lop"],
+  currentMonthKey:()=>"2026-10",budgetPeriodLabel:value=>String(value),
+  monthLabel:()=> "October",budgetSummary:()=>({operating:0,income:0,expenses:0,capital:0,net:0,balance:0}),
+  activeAnimals:()=>state.animals,effectiveHeadCount:()=>2,
+  monthTransactions:()=>[],operatingExpenseTransactions:()=>[],
+  transactionSpecies:()=>"",transactionScopeLabel:()=>"Operation",
+  animalName:id=>state.animals.find(a=>a.id===id)?.name||"",
+  currentSyncDetails:()=>({type:"info",message:"Test",lastSyncedAt:null,online:true,unsynced:false}),
+  formatSyncTimestamp:()=> "Not synced",refreshSyncStatus:()=>{},
+  formatDate:value=>String(value||""),
+  formatMoney:value=>"$"+Number(value||0).toFixed(2),
+  daysFromNow:()=>5,todayISO:()=>"2026-10-19",
+  addDays:(date,days)=>{const d=new Date(date+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+Number(days));return d.toISOString().slice(0,10);},
+  uid:kind=>kind+"-generated",toast:()=>{},recordActivity:()=>{},saveState:()=>true,
+  openModal:(title,html)=>{$("#modal-content").innerHTML=html;},
+  closeModal:()=>{$("#modal-content").innerHTML="";},
+  scheduleUiWork:(_name,cb)=>cb?.(),renderCurrentView:()=>{},navigate:()=>{},
+  allowsAnimalTransition:()=>true,rememberBreed:()=>{},completeWorkflowTasks:()=>{},
+  ensureQrToolsReady:async()=>()=>{},ensureSpreadsheetToolsReady:async()=>({}),
+  openPedigreeImport:()=>{},openPrintPedigreeForm:()=>{},openBirthCertificateForm:()=>{},
+  openNewOwnerPackageForm:()=>{},prepareProfileImage:async()=>"",
+  getPedigreeCustomization:()=>({}),getPedigreeDocumentContext:()=>({}),
+  applyTheme:()=>{},showApp:()=>{},loadDemoData:()=>{},exportData:()=>{},
+  importData:()=>{},handleSpreadsheetImport:()=>{},clearData:()=>{},
+  refreshDeviceStorageSummary:()=>{},setSymptomSearch:()=>{}
+};
+const deps=new Proxy(defaults,{get(target,key){return key in target?target[key]:(()=>null);}});
+function check(condition,message){if(!condition)throw Error(message);}
+function click(selector){
+ const node=$(selector);check(!!node,"Missing visible button "+selector);
+ check(!node.disabled,"Unexpectedly disabled button "+selector);
+ node.click();
+}
+function modalHas(selector){check(!!$("#modal-content "+selector),"Click did not open "+selector);}
+function run(name,fn){
+ const count=failures.length;
+ try{
+  $("#modal-content").innerHTML="";
+  fn();
+  check(failures.length===count,"Uncaught handler exception: "+failures.slice(count).join("; "));
+  results.push(name+" PASS");
+ }catch(error){failures.push(name+": "+String(error?.message||error));results.push(name+" FAIL");}
+}
+try{
+ const sales=window.HerdHarborSalesCustomerRuntime.create(deps);
+ run("sales add customer",()=>{sales.renderSales();click("#add-customer");modalHas("#customer-form");});
+ run("sales add sale",()=>{sales.renderSales();click("#add-sale");modalHas("#sale-form");});
+ run("sales edit existing",()=>{sales.openSaleDetail("sale-1");click("#sale-edit");modalHas("#sale-form");});
+ run("sales payment",()=>{sales.openSaleDetail("sale-1");click("#sale-payment");modalHas("#payment-form");
+   check($("#payment-form [name=method]")?.options.length===6,"Payment methods unavailable");});
+ const animals=window.HerdHarborAnimalProfileRuntime.create(deps);
+ run("animal add",()=>{animals.renderAnimals();click("#add-animal");modalHas("#animal-form");});
+ const breedings=window.HerdHarborBreedingLitterRuntime.create(deps);
+ run("breeding add",()=>{breedings.renderBreedings();click("#add-breeding");modalHas("#breeding-form");});
+ run("birth add",()=>{breedings.renderLitters();click("#add-litter");modalHas("#litter-form");});
+ const health=window.HerdHarborHealthRuntime.create(deps);
+ run("health add",()=>{health.renderHealth();click("#add-health");modalHas("#health-form");});
+ const tasks=window.HerdHarborTaskRuntime.create(deps);
+ run("task add",()=>{tasks.renderTasks();click("#add-task");modalHas("#task-form");});
+ const reporting=window.HerdHarborProductionReportingRuntime.create(deps);
+ run("budget add income",()=>{reporting.renderBudget();click("#add-income");modalHas("#transaction-form");});
+ run("budget add expense",()=>{reporting.renderBudget();click("#add-expense");modalHas("#transaction-form");});
+ run("production add",()=>{reporting.renderBudget();click("#add-production");modalHas("#production-form");});
+ const settings=window.HerdHarborSettingsRuntime.create(deps);
+ run("settings profile edit",()=>{settings.renderSettings();click("#edit-profile");modalHas("#profile-form");});
+ run("settings feedback",()=>{settings.renderSettings();click("#settings-feedback");modalHas("#feedback-form");});
+}catch(error){failures.push("Fixture setup: "+String(error?.stack||error));}
+const output=$("#hh-core-actions-result");
+output.dataset.status=failures.length?"fail":"pass";
+output.textContent=JSON.stringify({results,failures});
+})();
+</script>
+</body></html>

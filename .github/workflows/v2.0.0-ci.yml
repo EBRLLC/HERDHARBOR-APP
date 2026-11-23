@@ -104,6 +104,8 @@ jobs:
           exit "${failed}"
       - name: Run actual Chromium browser integration smoke for 2.0.3
         run: node scripts/v2.0.3-browser-smoke.mjs
+      - name: Real Chromium click smoke for core buttons and sales payments
+        run: node scripts/core-button-browser-smoke.mjs
       - name: Build production monitoring bundle
         run: NODE_ENV=production npm run build:monitoring
       - name: Verify bundled monitoring architecture

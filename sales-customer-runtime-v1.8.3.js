@@ -8,6 +8,10 @@
 
   const VERSION = "1.8.3";
   const SALE_STATUS_OPTIONS = ["Draft", "Reserved", "Pending", "Completed", "Cancelled"];
+  // Sales runs in its own module. These choices used to be defined only in the
+  // application composer, where the extracted payment form cannot access them.
+  const PAYMENT_TYPE_OPTIONS = ["Deposit", "Payment"];
+  const PAYMENT_METHOD_OPTIONS = ["Cash", "Check", "Card", "Bank transfer", "PayPal / Venmo", "Other"];
 
   function create(deps = {}) {
     const required = [
@@ -486,6 +490,89 @@
       $("#delete-sale")?.addEventListener("click", () => deleteSaleRecord(saleId));
     }
   
+    // A sale may be completed with money still outstanding. Completion means
+    // the animals are sold; it must never manufacture a payment or Budget income.
+    function completeSale(saleId) {
+      const snapshot = stateNow();
+      const matches = (snapshot.sales || []).filter((row) => row.id === saleId);
+      if (matches.length !== 1) {
+        toast("Sale record is missing or duplicated. No changes were made.", "error");
+        return false;
+      }
+      const sale = matches[0];
+      if (!["Draft", "Reserved", "Pending"].includes(sale.status)) {
+        toast("Only an open draft, reserved, or pending sale can be completed.", "error");
+        return false;
+      }
+      const customerMatches = (snapshot.customers || []).filter((row) => row.id === sale.customerId);
+      if (customerMatches.length !== 1) {
+        toast("This sale must have one valid buyer before it can be completed.", "error");
+        return false;
+      }
+      const items = saleItems(sale);
+      const ids = items.map((item) => String(item.animalId || "").trim());
+      if (!ids.length || ids.some((id) => !id) || new Set(ids).size !== ids.length) {
+        toast("Sale animals are missing or duplicated. Fix the sale before completing it.", "error");
+        return false;
+      }
+      const blocked = new Set(["Sold", "Deceased", "Archived", "Ancestor Only"]);
+      for (const animalId of ids) {
+        const animals = (snapshot.animals || []).filter((animal) => animal.id === animalId);
+        if (animals.length !== 1 || blocked.has(animals[0].status) ||
+            (animals[0].saleRecordId && animals[0].saleRecordId !== saleId)) {
+          toast("One sale animal is missing, unavailable, or belongs to another sale. No changes were made.", "error");
+          return false;
+        }
+      }
+      const conflict = snapshot.sales.find((other) => other.id !== saleId && other.status !== "Cancelled" &&
+        saleItems(other).some((item) => ids.includes(item.animalId)));
+      if (conflict) {
+        toast(`One selected animal is already connected to ${conflict.saleNumber || "another active sale"}.`, "error");
+        return false;
+      }
+      const balance = saleBalance(sale);
+      if (!Number.isFinite(balance) || !Number.isFinite(saleTotal(sale))) {
+        toast("Sale amounts could not be verified. No changes were made.", "error");
+        return false;
+      }
+      const proposedAnimals = snapshot.animals.map((animal) => ids.includes(animal.id)
+        ? { ...animal, status: "Sold", saleRecordId: saleId }
+        : animal);
+      if (!allowsAnimalTransition(snapshot.animals, proposedAnimals)) {
+        toast("The animal status transition was rejected. No changes were made.", "error");
+        return false;
+      }
+      const explanation = balance > 0
+        ? `Complete ${sale.saleNumber} with ${formatMoney(balance)} still unpaid? The animals will be marked Sold; the balance will remain due and no payment will be recorded.`
+        : `Complete ${sale.saleNumber} and mark its ${ids.length} animal(s) Sold?`;
+      if (!confirm(explanation)) return false;
+      const previousState = structuredClone(snapshot);
+      const previousSale = structuredClone(sale);
+      const now = new Date().toISOString();
+      sale.status = "Completed";
+      sale.completedAt = now;
+      sale.updatedAt = now;
+      applySaleAnimalStatuses(sale, previousSale);
+      recordActivity(`Completed sale ${sale.saleNumber} for ${customerName(sale.customerId)}.`, "sales");
+      let persisted = false;
+      try {
+        persisted = !!saveState("Sale completed.");
+      } catch (error) {
+        root?.console?.error?.("HerdHarbor sale completion save failed:", error);
+      }
+      if (!persisted) {
+        replaceState(previousState);
+        toast("Sale completion could not be saved. The sale and animal statuses were restored.", "error");
+        return false;
+      }
+      root.HerdHarborMarket?.recordSaleChange?.(sale, previousSale, stateNow());
+      openSaleDetail(saleId);
+      toast(balance > 0
+        ? `Sale completed. ${formatMoney(balance)} remains due; record a payment when received.`
+        : "Sale completed. Animal transfer file is now available.", "success");
+      return true;
+    }
+
     function openSaleDetail(saleId) {
       const sale = stateNow().sales.find((record) => record.id === saleId);
       if (!sale) return;
@@ -511,9 +598,10 @@
           <button class="button button-ghost" id="sale-invoice">Invoice</button>
           <button class="button button-ghost" id="sale-receipt">Receipt</button>
           <button class="button button-ghost" id="sale-bill">Bill of sale</button>
-          <button class="button button-ghost" id="sale-transfer" ${sale.status === "Completed" ? "" : "disabled"}>Transfer file</button>
+          <button class="button button-ghost" id="sale-transfer" ${sale.status === "Completed" ? "" : 'disabled title="Complete the sale before creating a transfer file"'}>Transfer file</button>
           <button class="button button-secondary" id="sale-payment" ${sale.status === "Cancelled" ? "disabled" : ""}>+ Payment</button>
-          <button class="button button-primary" id="sale-edit">Edit sale</button>
+          ${["Draft", "Reserved", "Pending"].includes(sale.status) ? '<button type="button" class="button button-primary" id="sale-complete">Complete sale</button>' : ""}
+          <button class="button button-ghost" id="sale-edit">Edit sale</button>
         </div>`, "Customer, payment, and transfer record");
       $(".modal").classList.add("modal-wide");
       $("#sale-close").addEventListener("click", () => { closeModal(); renderSales(); });
@@ -523,6 +611,7 @@
       $("#sale-transfer").addEventListener("click", () => exportAnimalTransfer(sale.id));
       $("#sale-payment").addEventListener("click", () => openPaymentForm(sale.id));
       $("#sale-edit").addEventListener("click", () => openSaleForm(sale.id));
+      $("#sale-complete")?.addEventListener("click", () => completeSale(sale.id));
       $$('[data-edit-payment]', $("#modal-content")).forEach((button) => button.addEventListener("click", () => openPaymentForm(sale.id, button.dataset.editPayment)));
     }
   
@@ -641,7 +730,7 @@
       <section class="totals"><div>${billDetails}</div><div class="summary"><div><span>Subtotal</span><strong>${formatMoney(saleSubtotal(sale))}</strong></div><div><span>Discount</span><strong>−${formatMoney(sale.discount)}</strong></div><div><span>Tax / fees</span><strong>${formatMoney(sale.tax)}</strong></div><div><span>Paid</span><strong>${formatMoney(salePaid(sale.id))}</strong></div><div class="grand"><span>Balance due</span><strong>${formatMoney(saleBalance(sale))}</strong></div></div></section>
       <div class="terms"><strong>Terms and notes</strong><p>${esc([sale.terms, sale.notes].filter(Boolean).join(" · ") || "No additional terms recorded.")}</p></div>
       ${documentType === "Bill of Sale" ? '<section class="signatures"><div class="signature">Seller signature / date</div><div class="signature">Buyer signature / date</div></section>' : ""}
-      <script>root.addEventListener('load',()=>setTimeout(()=>root.print(),120));<\/script></body></html>`);
+      <script>window.addEventListener('load',()=>setTimeout(()=>window.print(),120));<\/script></body></html>`);
       popup.document.close();
     }
   
@@ -839,6 +928,7 @@
       openCustomerForm,
       openSaleForm,
       openSaleDetail,
+      completeSale,
       openPaymentForm,
       deleteSaleRecord,
       printSaleDocument,
