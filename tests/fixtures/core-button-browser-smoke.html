@@ -4,7 +4,7 @@
 <div id="view-animals"></div><div id="view-breeding"></div><div id="view-litters"></div>
 <div id="view-health"></div><div id="view-tasks"></div><div id="view-budget"></div>
 <div id="view-settings"></div><div id="view-sales"></div>
-<div id="modal-content"></div>
+<div class="modal"><div id="modal-content"></div></div>
 <output id="hh-core-actions-result" data-status="pending"></output>
 <script src="../../animal-profile-runtime-v1.8.3.js"></script>
 <script src="../../breeding-litter-runtime-v1.8.3.js"></script>
@@ -17,7 +17,7 @@
 (function(){
 "use strict";
 const failures=[],results=[];
-window.addEventListener("error",event=>failures.push("Uncaught: "+event.message));
+window.addEventListener("error",event=>failures.push("Uncaught: "+event.message+(event.error?.stack?" | "+event.error.stack:"")));
 window.addEventListener("unhandledrejection",event=>failures.push("Rejection: "+String(event.reason)));
 const esc=value=>String(value==null?"":value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
 const $=(selector,scope=document)=>scope?.querySelector(selector)||null;
