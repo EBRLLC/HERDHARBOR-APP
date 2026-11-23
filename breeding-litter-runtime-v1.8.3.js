@@ -780,7 +780,17 @@
         button.addEventListener("click", () => {
           const litter = stateNow().litters.find((record) => record.id === button.dataset.createOffspring);
           if (litter?.canineWhelping) {
-            root.HerdHarborCanineWhelpingWorkspace?.openForAnimal?.(litter.damId);
+            const workspace = root.HerdHarborCanineWhelpingWorkspace;
+            if (typeof workspace?.openForAnimal !== "function") {
+              toast("Puppy management is unavailable. Reload HerdHarbor and try again.", "error");
+              return;
+            }
+            try {
+              if (workspace.openForAnimal(litter.damId) === false)
+                toast("Puppy management could not open for this birth record.", "error");
+            } catch (error) {
+              toast("Puppy management failed to open. Reload HerdHarbor and try again.", "error");
+            }
             return;
           }
           openOffspringCreator(button.dataset.createOffspring);
