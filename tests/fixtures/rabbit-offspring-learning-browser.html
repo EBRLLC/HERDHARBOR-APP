@@ -71,7 +71,9 @@ window.addEventListener("load",async()=>{
    const evidence=uncertain?.genetics?.evidence?.find(x=>x.source==="family-inferred"&&x.locus==="D");
    verify(!!evidence,"unobserved kit missing possible genotype evidence");
    verify(evidence.possibleGenotypes.length===2,"unobserved kit wrongly given exact genotype");
-   verify(uncertain?.genetics?.loci?.D===undefined,"unobserved kit received unsupported exact locus");
+   const partial=uncertain?.genetics?.loci?.D;
+   verify(partial?.alleles?.includes("d")&&partial?.alleles?.includes("_")&&
+     partial?.source==="family-inferred","unobserved kit must retain only the inherited d allele with its second allele unknown");
    verify(state.animals.length===4&&!state.animals.some(x=>x.id==="legacy"),"stale legacy data replaced account records");
    verify(document.body.textContent.includes("Offspring Genetics Saved"),"saved confirmation not displayed");
    changes.push("canonical save and two kit profiles PASS");
