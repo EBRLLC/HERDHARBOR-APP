@@ -147,8 +147,9 @@
           const alleleCount = locusDefinitions[locus]?.dominance?.length || 0;
           const unrestrictedPairs = alleleCount * (alleleCount + 1) / 2;
           // Both parents having entirely unknown alleles is NOT family evidence.
-          const informative = unrestrictedPairs > 0 &&
-            (sireOptions.length < unrestrictedPairs || damOptions.length < unrestrictedPairs);
+          const informative = unrestrictedPairs > 0
+            ? (sireOptions.length < unrestrictedPairs || damOptions.length < unrestrictedPairs)
+            : (sireOptions.length === 1 || damOptions.length === 1);
           if (crossWeight.size && informative) {
             candidates = candidates.filter(p => crossWeight.has(key(p)));
             constrained = true;
