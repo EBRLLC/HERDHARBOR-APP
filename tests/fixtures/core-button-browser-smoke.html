@@ -16,7 +16,7 @@
 <script>
 (function(){
 "use strict";
-const failures=[],results=[];
+const failures=[],results=[],toasts=[],lateChecks=[];
 window.addEventListener("error",event=>failures.push("Uncaught: "+event.message+(event.error?.stack?" | "+event.error.stack:"")));
 window.addEventListener("unhandledrejection",event=>failures.push("Rejection: "+String(event.reason)));
 const esc=value=>String(value==null?"":value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
@@ -69,7 +69,7 @@ const defaults={
   formatMoney:value=>"$"+Number(value||0).toFixed(2),
   daysFromNow:()=>5,todayISO:()=>"2026-10-19",
   addDays:(date,days)=>{const d=new Date(date+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+Number(days));return d.toISOString().slice(0,10);},
-  uid:kind=>kind+"-generated",toast:()=>{},recordActivity:()=>{},saveState:()=>true,
+  uid:kind=>kind+"-generated",toast:(message,type)=>toasts.push({message,type}),recordActivity:()=>{},saveState:()=>true,
   openModal:(title,html)=>{$("#modal-content").innerHTML=html;},
   closeModal:()=>{$("#modal-content").innerHTML="";},
   scheduleUiWork:(_name,cb)=>cb?.(),renderCurrentView:()=>{},navigate:()=>{},
@@ -99,6 +99,13 @@ function run(name,fn){
   results.push(name+" PASS");
  }catch(error){failures.push(name+": "+String(error?.message||error));results.push(name+" FAIL");}
 }
+window.HerdHarborCavyIdentity203={isCavy:animal=>animal?.species==="Cavy"};
+window.HerdHarborFelineIdentity203={isCat:animal=>animal?.species==="Cat"};
+window.HerdHarborCanineIdentity={
+ isDog:animal=>animal?.species==="Dog",
+ normalize:()=>({registeredName:"",titles:[],registrations:[]}),
+ preferredRegistration:()=>null
+};
 try{
  const sales=window.HerdHarborSalesCustomerRuntime.create(deps);
  run("sales add customer",()=>{sales.renderSales();click("#add-customer");modalHas("#customer-form");});
@@ -196,10 +203,106 @@ try{
    settings.renderSettings();click("#refresh-device-storage");check(!!$("#view-settings"),"settings view disappeared");
  });
 
+ run("cavy genetics unavailable action displays an error",()=>{
+   state.animals.push({id:"c1",name:"Cavy doe",species:"Cavy",sex:"Female",status:"Active"});
+   try{
+     animals.openAnimalDetail("c1");const n=toasts.length;
+     click("#detail-cavy-genetics");
+     check(toasts.length===n+1&&toasts.at(-1).type==="error"&&/genetics.*unavailable/i.test(toasts.at(-1).message),
+       "missing cavy genetics module silently ignored click");
+   }finally{state.animals=state.animals.filter(x=>x.id!=="c1");}
+ });
+ run("cavy genetics healthy action launches workspace",()=>{
+   state.animals.push({id:"c1",name:"Cavy doe",species:"Cavy",sex:"Female",status:"Active"});
+   let opened="";
+   window.HerdHarborCavyGenetics={openForAnimal:id=>{opened=id;return true;}};
+   try{
+     animals.openAnimalDetail("c1");click("#detail-cavy-genetics");
+     check(opened==="c1","cavy genetics handler did not invoke available workspace");
+   }finally{delete window.HerdHarborCavyGenetics;state.animals=state.animals.filter(x=>x.id!=="c1");}
+ });
+ run("cavy breeding missing feature displays an error",()=>{
+   state.animals.push({id:"c1",name:"Cavy doe",species:"Cavy",sex:"Female",status:"Active"});
+   try{
+     animals.openAnimalDetail("c1");const n=toasts.length;
+     click("#detail-cavy-repro");
+     check(toasts.length===n+1&&toasts.at(-1).type==="error",
+       "missing cavy reproduction module silently ignored click");
+   }finally{state.animals=state.animals.filter(x=>x.id!=="c1");}
+ });
+ run("cat breeding missing feature displays an error",()=>{
+   state.animals.push({id:"cat1",name:"Queen",species:"Cat",sex:"Female",status:"Active"});
+   try{
+     animals.openAnimalDetail("cat1");const n=toasts.length;
+     click("#detail-feline-repro");
+     check(toasts.length===n+1&&toasts.at(-1).type==="error",
+       "missing cat reproduction module silently ignored click");
+   }finally{state.animals=state.animals.filter(x=>x.id!=="cat1");}
+ });
+ run("dog pedigree missing feature displays an error",()=>{
+   state.animals.push({id:"d1",name:"Dam",species:"Dog",sex:"Female",status:"Active"});
+   try{
+     animals.openAnimalDetail("d1");const n=toasts.length;
+     click("#detail-print-canine");
+     check(toasts.length===n+1&&toasts.at(-1).type==="error",
+       "missing dog pedigree module silently ignored click");
+   }finally{state.animals=state.animals.filter(x=>x.id!=="d1");}
+ });
+ run("dog breeding missing feature displays an error",()=>{
+   state.animals.push({id:"d1",name:"Dam",species:"Dog",sex:"Female",status:"Active"});
+   try{
+     animals.openAnimalDetail("d1");const n=toasts.length;
+     click("#detail-canine-repro");
+     check(toasts.length===n+1&&toasts.at(-1).type==="error",
+       "missing canine breeding module silently ignored click");
+   }finally{state.animals=state.animals.filter(x=>x.id!=="d1");}
+ });
+ run("animal analytics missing feature displays an error",()=>{
+   animals.openAnimalDetail("a1");const n=toasts.length;
+   click("#detail-analytics");
+   check(toasts.length===n+1&&toasts.at(-1).type==="error",
+     "missing analytics module silently ignored click");
+ });
+ run("puppy management missing feature displays an error",()=>{
+   state.animals.push({id:"d1",name:"Dam",species:"Dog",sex:"Female",status:"Active"});
+   state.litters.push({id:"l-dog",canineWhelping:true,damId:"d1",birthDate:"2026-10-10",bornAlive:1,stillborn:0});
+   try{
+     breedings.renderLitters();const n=toasts.length;
+     click('[data-create-offspring="l-dog"]');
+     check(toasts.length===n+1&&toasts.at(-1).type==="error",
+       "missing puppy management module silently ignored click");
+   }finally{state.litters=state.litters.filter(x=>x.id!=="l-dog");state.animals=state.animals.filter(x=>x.id!=="d1");}
+ });
+ run("settings safety backup missing feature displays an error",()=>{
+   const before=window.HerdHarborCloud;
+   delete window.HerdHarborCloud;
+   try{
+     settings.renderSettings();const n=toasts.length;
+     click("#settings-safety-backup");
+     check(toasts.length===n+1&&toasts.at(-1).type==="error",
+       "missing backup module silently ignored click");
+   }finally{if(before!==undefined)window.HerdHarborCloud=before;}
+ });
+ run("settings sync rejected promise produces user error and restores button",()=>{
+   const before=window.HerdHarborCloud;
+   window.HerdHarborCloud={syncNow:()=>Promise.reject(new Error("simulated connection loss"))};
+   settings.renderSettings();const button=$("#settings-sync-now"),n=toasts.length;
+   click("#settings-sync-now");
+   lateChecks.push(()=>{
+     check(!button.disabled&&button.textContent==="Sync now","rejected sync permanently disabled button");
+     check(toasts.slice(n).some(x=>x.type==="error"&&x.message.includes("simulated connection loss")),
+       "rejected sync never displayed an error");
+   });
+   if(before===undefined)delete window.HerdHarborCloud;else window.HerdHarborCloud=before;
+ });
+
 }catch(error){failures.push("Fixture setup: "+String(error?.stack||error));}
-const output=$("#hh-core-actions-result");
-output.dataset.status=failures.length?"fail":"pass";
-output.textContent=JSON.stringify({results,failures});
+setTimeout(()=>{
+ for(const checkLate of lateChecks){try{checkLate();results.push("asynchronous error handling PASS");}catch(error){failures.push("asynchronous error handling: "+String(error.message||error));results.push("asynchronous error handling FAIL");}}
+ const output=$("#hh-core-actions-result");
+ output.dataset.status=failures.length?"fail":"pass";
+ output.textContent=JSON.stringify({results,failures});
+},25);
 })();
 </script>
 </body></html>
