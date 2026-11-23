@@ -56,7 +56,8 @@ test("partially known parent alleles result in possible genotypes without false 
  assert.ok(d);
  assert.ok(d.possibleGenotypes.length>1);
  assert.ok(d.possibleGenotypes.every(row=>row.probability===null));
- assert.equal(locus(kit,"D"),undefined);
+ assert.deepEqual(locus(kit,"D").alleles,["d","_"],"the kit must carry one d allele, but its second allele is unknown");
+ assert.equal(locus(kit,"D").status,"strongly-inferred");
 });
 
 test("no recorded parent genotypes and no informative color do not fabricate family evidence",()=>{
