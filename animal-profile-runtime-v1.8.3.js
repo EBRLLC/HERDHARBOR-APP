@@ -576,11 +576,43 @@
         </div>
       `, `${animal.species || "Animal"} record`);
 
+      // Optional feature modules may fail to initialize after an interrupted update.
+      // Never leave a visible action silently inert when its module is missing.
+      const launchAnimalFeature = (moduleApi, name) => {
+        if (typeof moduleApi?.openForAnimal !== "function") {
+          deps.toast(`${name} is unavailable. Reload HerdHarbor and try again.`, "error");
+          return false;
+        }
+        try {
+          const result = moduleApi.openForAnimal(id);
+          if (result === false) {
+            deps.toast(`${name} could not open for this animal. Check the animal details and try again.`, "error");
+            return false;
+          }
+          return true;
+        } catch (error) {
+          root.HerdHarborMonitoring?.captureError?.(error, { module: "animal_profile", action: "open_feature", feature: name });
+          deps.toast(`${name} failed to open. Reload HerdHarbor and try again.`, "error");
+          return false;
+        }
+      };
       $("#detail-close")?.addEventListener("click", deps.closeModal);
       $("#detail-analytics")?.addEventListener("click", () => {
-        deps.closeModal();
-        root.HerdHarborAnalytics?.openAnimal?.(id);
-        deps.navigate("analytics");
+        if (typeof root.HerdHarborAnalytics?.openAnimal !== "function") {
+          deps.toast("Animal analytics is unavailable. Reload HerdHarbor and try again.", "error");
+          return;
+        }
+        try {
+          const opened = root.HerdHarborAnalytics.openAnimal(id);
+          if (opened === false) {
+            deps.toast("Animal analytics could not open for this record.", "error");
+            return;
+          }
+          deps.closeModal();
+          deps.navigate("analytics");
+        } catch (error) {
+          deps.toast("Animal analytics failed to open. Reload HerdHarbor and try again.", "error");
+        }
       });
       if (!isCanine) root.HerdHarborAnimalDocuments?.bindCenter?.(
         document.querySelector("[data-hh-animal-documents]"),
@@ -591,13 +623,13 @@
         }
       );
       $("#detail-print-qr")?.addEventListener("click", (event) => openAnimalQrCardForm(id, event.currentTarget));
-      $("#detail-print-canine")?.addEventListener("click", () => root.HerdHarborCaninePedigreePrint?.openForAnimal?.(id));
+      $("#detail-print-canine")?.addEventListener("click", () => launchAnimalFeature(root.HerdHarborCaninePedigreePrint, "Dog pedigree printing"));
       $("#detail-print-feline")?.addEventListener("click", () => deps.openPrintPedigreeForm(id));
       $("#detail-print-cavy")?.addEventListener("click", () => deps.openPrintPedigreeForm(id));
-      $("#detail-canine-repro")?.addEventListener("click", () => root.HerdHarborCanineReproductiveWorkspace?.openForAnimal?.(id));
-      $("#detail-feline-repro")?.addEventListener("click", () => root.HerdHarborFelineReproduction203?.openForAnimal?.(id));
-      $("#detail-cavy-repro")?.addEventListener("click", () => root.HerdHarborCavyReproduction203?.openForAnimal?.(id));
-       $("#detail-cavy-genetics")?.addEventListener("click", () => root.HerdHarborCavyGenetics?.openForAnimal?.(id));
+      $("#detail-canine-repro")?.addEventListener("click", () => launchAnimalFeature(root.HerdHarborCanineReproductiveWorkspace, "Dog breeding"));
+      $("#detail-feline-repro")?.addEventListener("click", () => launchAnimalFeature(root.HerdHarborFelineReproduction203, "Cat breeding"));
+      $("#detail-cavy-repro")?.addEventListener("click", () => launchAnimalFeature(root.HerdHarborCavyReproduction203, "Cavy breeding"));
+      $("#detail-cavy-genetics")?.addEventListener("click", () => launchAnimalFeature(root.HerdHarborCavyGenetics, "Cavy genetics"));
       $("#detail-import-pedigree")?.addEventListener("click", () => deps.openPedigreeImport(id));
       $("#detail-birth-certificate")?.addEventListener("click", () => deps.openBirthCertificateForm(id));
       $("#detail-compare-pedigree")?.addEventListener("click", () => {

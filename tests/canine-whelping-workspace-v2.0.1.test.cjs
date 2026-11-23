@@ -167,7 +167,9 @@ test("shared Births/Litters guards prevent canine identity edits and generic del
   const runtime = fs.readFileSync(path.join(__dirname, "../breeding-litter-runtime-v1.8.3.js"), "utf8");
   assert.match(runtime, /if \(litter\.canineWhelping\) return toast\("Canine whelping records cannot be deleted from the generic litter form/);
   assert.match(runtime, /Canine whelping identity and date are linked to the reproductive plan/);
-  assert.match(runtime, /HerdHarborCanineWhelpingWorkspace\?\.openForAnimal\?\.\(litter\.damId\)/);
+  assert.match(runtime, /typeof workspace\?\.openForAnimal !== "function"/);
+  assert.match(runtime, /workspace\.openForAnimal\(litter\.damId\)/);
+  assert.match(runtime, /Puppy management is unavailable/);
   assert.match(runtime, /litter\.canineWhelping \? "Manage puppies"/);
 });
 

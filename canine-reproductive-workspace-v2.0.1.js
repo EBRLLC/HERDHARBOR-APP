@@ -181,7 +181,23 @@
 
   function bind(overlay) {
     overlay.querySelectorAll("[data-close]").forEach(button => button.addEventListener("click", close));
-    overlay.querySelectorAll("[data-open-whelping]").forEach(button => button.addEventListener("click", () => { const id=active?.animalId; close(); root.HerdHarborCanineWhelpingWorkspace?.openForAnimal?.(id); }));
+    overlay.querySelectorAll("[data-open-whelping]").forEach(button => button.addEventListener("click", () => {
+      const id = active?.animalId;
+      const whelping = root.HerdHarborCanineWhelpingWorkspace;
+      if (typeof whelping?.openForAnimal !== "function") {
+        toast("Puppy management is unavailable. Reload HerdHarbor and try again.", "error");
+        return;
+      }
+      try {
+        if (whelping.openForAnimal(id) === false) {
+          toast("Puppy management could not open for this animal.", "error");
+          return;
+        }
+        close();
+      } catch (error) {
+        toast("Puppy management failed to open. Reload HerdHarbor and try again.", "error");
+      }
+    }));
     overlay.querySelectorAll("[data-tab]").forEach(button => button.addEventListener("click", () => { active.tab = button.dataset.tab; active.selectedCycle = ""; render(); }));
     overlay.querySelectorAll("[data-cycle]").forEach(button => button.addEventListener("click", () => { active.selectedCycle = button.dataset.cycle; render(); }));
     overlay.querySelectorAll("form").forEach(form => form.addEventListener("submit", event => {

@@ -34,7 +34,7 @@ test('installed shell links queen profile to account-safe feline workspace',()=>
  const profile=fs.readFileSync(path.join(__dirname,'../animal-profile-runtime-v1.8.3.js'),'utf8');
  assert.ok(html.indexOf('feline-reproduction-v2.0.3.js')<html.indexOf('animal-profile-runtime-v1.8.3.js'));
  assert.match(profile,/detail-feline-repro/);
- assert.match(profile,/FelineReproduction203\?\.openForAnimal/);
+ assert.match(profile,/launchAnimalFeature\(root\.HerdHarborFelineReproduction203, "Cat breeding"\)/);assert.match(profile,/typeof moduleApi\?\.openForAnimal !== "function"/);
 });
 
 test('a breeder-entered feline follow-up date persists as evidence and can be rescheduled',()=>{
