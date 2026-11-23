@@ -8,6 +8,10 @@
 
   const VERSION = "1.8.3";
   const SALE_STATUS_OPTIONS = ["Draft", "Reserved", "Pending", "Completed", "Cancelled"];
+  // Sales runs in its own module. These choices used to be defined only in the
+  // application composer, where the extracted payment form cannot access them.
+  const PAYMENT_TYPE_OPTIONS = ["Deposit", "Payment"];
+  const PAYMENT_METHOD_OPTIONS = ["Cash", "Check", "Card", "Bank transfer", "PayPal / Venmo", "Other"];
 
   function create(deps = {}) {
     const required = [
