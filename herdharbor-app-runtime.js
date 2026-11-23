@@ -313,8 +313,10 @@
   let lastInheritanceEngine = null;
   const rabbitInheritanceInput = (value) => JSON.stringify((value.animals || [])
     .filter(animal => /^(rabbit|rabbits)$/i.test(String(animal?.species || "").trim()))
-    .map(({ id, species, sireId, damId, color, variety, genetics, viennaStatus, vienna }) =>
-      ({ id, species, sireId, damId, color, variety, genetics, viennaStatus, vienna })));
+    .map(({ id, species, sex, sireId, damId, sourceBirthId, paternityStatus,
+      potentialSireIds, ownerId, userId, accountId, color, variety, genetics, viennaStatus, vienna }) =>
+      ({ id, species, sex, sireId, damId, sourceBirthId, paternityStatus,
+        potentialSireIds, ownerId, userId, accountId, color, variety, genetics, viennaStatus, vienna })));
 
   function prepareRabbitInheritance(value) {
     const inheritance = window.HerdHarborRabbitInheritance;
