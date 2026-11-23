@@ -160,3 +160,33 @@ test("cancelled completion and failed save do not mark animals sold",()=>{
   }finally{h.restore();}
  }
 });
+
+test("invoice, receipt and bill-of-sale print buttons target the popup window, not the parent module scope",()=>{
+ const vm=require("node:vm");
+ const originalOpen=globalThis.open;
+ let popupHTML="",wasClosed=false;
+ globalThis.open=()=>({document:{write(value){popupHTML=String(value);},close(){wasClosed=true;}},opener:null});
+ const h=harness();
+ try{
+  for(const kind of ["Invoice","Receipt","Bill of Sale"]){
+   popupHTML="";wasClosed=false;
+   h.sale.openSaleDetail("sale-1");
+   const selector=kind==="Invoice"?"#sale-invoice":kind==="Receipt"?"#sale-receipt":"#sale-bill";
+   h.click(selector);
+   assert.ok(wasClosed,kind+" popup document did not finish");
+   assert.match(popupHTML,new RegExp("<h1>"+kind.replace(/ /g," " )+"</h1>"));
+   assert.doesNotMatch(popupHTML,/root\.addEventListener|root\.print/);
+   assert.match(popupHTML,/window\.addEventListener\('load'/);
+   const match=popupHTML.match(/<script>([\s\S]*?)<\/script>/i);
+   assert.ok(match,kind+" missing print script");
+   let onload,printed=0;
+   vm.runInNewContext(match[1],{
+     window:{addEventListener:(name,cb)=>{assert.equal(name,"load");onload=cb;},print:()=>{printed++;}},
+     setTimeout:(cb)=>cb()
+   });
+   assert.equal(typeof onload,"function");
+   onload();
+   assert.equal(printed,1,kind+" never invoked the popup print function");
+  }
+ }finally{h.restore();globalThis.open=originalOpen;}
+});
