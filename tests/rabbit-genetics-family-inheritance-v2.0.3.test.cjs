@@ -83,9 +83,9 @@ test("core app and PWA load the same inheritance script before saving animal rec
   const worker = read("service-worker.js");
   const runtime = read("herdharbor-app-runtime.js");
   const ui = read("rabbit-genetics-ui-advanced-v1.6.1.js");
-  assert.ok(html.indexOf('rabbit-genetics-inheritance-v2.0.3.js?v=1') <
+  assert.ok(html.indexOf('rabbit-genetics-inheritance-v2.0.3.js?v=2.0.4-r1') <
             html.indexOf('herdharbor-app-runtime.js?v=6'));
-  assert.match(worker, /rabbit-genetics-inheritance-v2\.0\.3\.js\?v=1/);
+  assert.match(worker, /rabbit-genetics-inheritance-v2\.0\.3\.js\?v=2\.0\.4-r1/);
   assert.match(runtime, /HerdHarborRabbitInheritance/);
   assert.match(runtime, /canonicalStateStore\.commit\(nextState/);
   assert.match(ui, /app\.commitState\(state\)/);

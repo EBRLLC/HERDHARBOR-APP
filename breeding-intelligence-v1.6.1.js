@@ -10,7 +10,11 @@
 
   function readState() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY), parsed = raw ? JSON.parse(raw) : {};
+      const live = window.HerdHarborApp?.getState?.();
+      // Normalized cloud's canonical account snapshot is authoritative.
+      // Only the legacy standalone shell may use the historical local store.
+      const raw = live && typeof live === "object" ? null : localStorage.getItem(STORAGE_KEY);
+      const parsed = live && typeof live === "object" ? deepClone(live) : raw ? JSON.parse(raw) : {};
       if (!Array.isArray(parsed.animals)) parsed.animals = [];
       if (!Array.isArray(parsed.breedings)) parsed.breedings = [];
       if (!Array.isArray(parsed.births)) parsed.births = [];
@@ -119,7 +123,19 @@
       return `<div class="hh-bi-locus" data-locus="${locus}"><div><strong>${locus} locus</strong><span>${esc(config.name)}${config.group?` · ${esc(config.group)}`:""}</span></div><div class="hh-bi-alleles"><select data-allele="0">${alleleOptions(record.alleles[0])}</select><select data-allele="1">${alleleOptions(record.alleles[1])}</select></div><select data-status>${["tested","confirmed","inferred","possible","unknown"].map((status) => `<option value="${status}" ${record.status === status ? "selected" : ""}>${status[0].toUpperCase()+status.slice(1)}</option>`).join("")}</select><input type="text" data-note value="${esc(record.note || "")}" placeholder="Evidence or note (recommended for confirmed/inferred)"></div>`;
     }).join("");
     const pedigree = Core.pedigreeEvidence(animal, state.animals, 3);
-    openModal("Rabbit Genetic Profile", `<div class="hh-bi-form-row"><label>Rabbit<select id="bi-profile-animal">${selectOptions(rabbits,animal.id)}</select></label></div><div class="hh-bi-profile-summary"><strong>${esc(animalLabel(animal))}</strong><span>Color-derived starting pattern: ${esc(Core.patternLabelForColor(animal.color || animal.variety))}</span><span>${esc(performanceSummary(state,animal))}</span></div><p class="hh-bi-note">Unknown alleles stay unknown. A recorded color can constrain what is possible, but HerdHarbor will not invent a hidden carrier allele.</p><div class="hh-bi-loci">${locusRows}</div><div class="hh-bi-evidence-panel"><h3>Pedigree evidence</h3>${pedigree.length ? `<ul>${pedigree.map((e) => `<li><strong>${esc(e.status)}</strong> — ${esc(e.note)}</li>`).join("")}</ul>` : '<p>No pedigree evidence currently establishes a core recessive allele.</p>'}</div>${genetics.conflicts.length ? `<div class="hh-bi-warning"><strong>${genetics.conflicts.length} genetics conflict(s) need review.</strong> Confirmed data is never silently overwritten by lower-confidence evidence.</div>` : ""}<div class="hh-bi-modal-actions"><button type="button" class="primary" id="bi-save-profile">Save genetic profile</button></div>`);
+    const inherited = (genetics.evidence || []).filter(e => e.source === "family-inferred");
+    const inheritedHtml = '<div class="hh-bi-evidence-panel"><h3>Recorded family and offspring inheritance</h3>' +
+      (inherited.length ? '<ul>' + inherited.map(row => {
+        const possibilities = (row.possibleGenotypes || []).map(item =>
+          item.alleles.join("/") + (item.probability == null ? "" :
+            " (cross expectation " + (item.probability * 100).toFixed(1) + "%)")).join(", ");
+        return '<li><strong>' + esc(row.locus + ": " + (row.status || "possible")) +
+          '</strong> — ' + esc(possibilities || row.alleles?.join("/") || "unknown") +
+          '<small> ' + esc(row.note || "Inferred from recorded family, not DNA-confirmed.") + '</small></li>';
+      }).join("") + '</ul>' :
+        '<p>No linked family evidence establishes this rabbit\'s genotype yet. Record parents, coat observations, or DNA evidence.</p>') +
+      '<p class="hh-bi-note">Cross percentages are population-level Mendelian expectations, not a test result or a guaranteed individual kit genotype.</p></div>';
+    openModal("Rabbit Genetic Profile", `<div class="hh-bi-form-row"><label>Rabbit<select id="bi-profile-animal">${selectOptions(rabbits,animal.id)}</select></label></div><div class="hh-bi-profile-summary"><strong>${esc(animalLabel(animal))}</strong><span>Color-derived starting pattern: ${esc(Core.patternLabelForColor(animal.color || animal.variety))}</span><span>${esc(performanceSummary(state,animal))}</span></div><p class="hh-bi-note">Unknown alleles stay unknown. A recorded color can constrain what is possible, but HerdHarbor will not invent a hidden carrier allele.</p><div class="hh-bi-loci">${locusRows}</div><div class="hh-bi-evidence-panel"><h3>Pedigree evidence</h3>${pedigree.length ? `<ul>${pedigree.map((e) => `<li><strong>${esc(e.status)}</strong> — ${esc(e.note)}</li>`).join("")}</ul>` : '<p>No pedigree evidence currently establishes a core recessive allele.</p>'}</div>${inheritedHtml}${genetics.conflicts.length ? `<div class="hh-bi-warning"><strong>${genetics.conflicts.length} genetics conflict(s) need review.</strong> Confirmed data is never silently overwritten by lower-confidence evidence.</div>` : ""}<div class="hh-bi-modal-actions"><button type="button" class="primary" id="bi-save-profile">Save genetic profile</button></div>`);
     modal.querySelector("#bi-profile-animal").addEventListener("change", (e) => renderProfileModal(e.target.value));
     modal.querySelector("#bi-save-profile").addEventListener("click", async () => { const fresh = readState(), target = fresh.animals.find((a) => String(a.id) === String(animal.id)); if (!target) return; const next = Core.normalizeGenetics(target.genetics); modal.querySelectorAll(".hh-bi-locus").forEach((row) => { const locus = row.dataset.locus; const oldFamilyRecord={...next.loci[locus],alleles:[...next.loci[locus].alleles]}; next.loci[locus].alleles=[row.querySelector('[data-allele="0"]').value,row.querySelector('[data-allele="1"]').value]; next.loci[locus].status=row.querySelector("[data-status]").value; next.loci[locus].note=row.querySelector("[data-note]").value.trim(); next.loci[locus].source = next.loci[locus].status === "confirmed" || (oldFamilyRecord.source === "family-inferred" && (JSON.stringify(oldFamilyRecord.alleles) !== JSON.stringify(next.loci[locus].alleles) || oldFamilyRecord.note !== next.loci[locus].note)) ? "breeder" : (next.loci[locus].source || "breeder"); }); next.updatedAt=new Date().toISOString(); target.genetics=next; await writeState(fresh); renderProfileModal(animal.id); renderCard(); });
   }
@@ -367,10 +383,56 @@
     modal.querySelector("#bi-save-analysis")?.addEventListener("click", async(event)=>{const button=event.currentTarget,confirmation=modal.querySelector("#bi-save-confirmation");if(button.disabled||!lastAnalysis||!lastPair)return;const prediction={analysis:deepClone(lastAnalysis),generatedAt:new Date().toISOString(),buck:{id:buck.id,name:buck.name||"Buck",color:buck.color||buck.variety||"",genetics:geneticsSnapshotForAnimal(buck,state)},doe:{id:doe.id,name:doe.name||"Doe",color:doe.color||doe.variety||"",genetics:geneticsSnapshotForAnimal(doe,state)}};button.disabled=true;button.textContent="Saving…";try{await savePredictionSnapshot(prediction);button.textContent="Prediction Saved";confirmation.hidden=false;confirmation.textContent="Prediction saved to history.";lastAnalysis=null;lastPair=null;}catch(error){console.error("Prediction snapshot could not be saved:",error);button.disabled=false;button.textContent="Save Prediction Snapshot";confirmation.hidden=false;confirmation.textContent="Prediction could not be saved. Try again.";confirmation.classList.add("error");}});
   }
 
+  let offspringLearningInFlight = false;
   async function learnFromOffspring() {
-    const state=readState(), rabbits=rabbitAnimals(state); let changed=0;
-    rabbits.forEach((parent)=>{const children=rabbits.filter((child)=>String(child.sireId||"")===String(parent.id)||String(child.damId||"")===String(parent.id));if(!children.length)return;const mates=new Map();children.forEach((child)=>{const mateId=String(child.sireId||"")===String(parent.id)?child.damId:child.sireId;if(!mates.has(String(mateId||"")))mates.set(String(mateId||""),[]);mates.get(String(mateId||"")).push(child);});let genetics=Core.normalizeGenetics(parent.genetics);mates.forEach((offspring,mateId)=>{const mate=rabbits.find((a)=>String(a.id)===mateId),evidence=Core.offspringEvidenceForParent(parent,mate,offspring);if(evidence.length){const before=JSON.stringify(genetics);genetics=Core.applyEvidenceToGenetics(genetics,evidence);if(JSON.stringify(genetics)!==before)changed+=1;}});if(genetics.evidence.length)parent.genetics=genetics;});
-    await writeState(state); renderCard(); openModal("Offspring Evidence Updated",`<p>HerdHarbor reviewed recorded rabbit offspring and updated <strong>${changed}</strong> parental genetic profile${changed===1?"":"s"} with inheritance evidence.</p><p class="hh-bi-note">Lower-confidence evidence never silently replaces conflicting confirmed genetics. Any conflict remains flagged for breeder review.</p>`);
+    if (offspringLearningInFlight) return false;
+    const app = window.HerdHarborApp;
+    const inheritance = window.HerdHarborRabbitInheritance;
+    if (typeof app?.getState !== "function" || typeof app?.commitState !== "function") {
+      openModal("Offspring Learning Unavailable",
+        "<p>The canonical HerdHarbor account store is not ready. Sign in or reload the app before learning from offspring; no legacy data was written.</p>");
+      return false;
+    }
+    if (typeof inheritance?.reconcile !== "function") {
+      openModal("Offspring Learning Unavailable",
+        "<p>The rabbit inheritance module did not load. Reload HerdHarbor and try again. No animal records were changed.</p>");
+      return false;
+    }
+    offspringLearningInFlight = true;
+    const button = document.querySelector('[data-bi-action="learn"]');
+    if (button) button.disabled = true;
+    try {
+      // Read a fresh immutable candidate from the active account, never the
+      // obsolete legacy snapshot. The reconciler updates both kits and parents.
+      const state = readState(), rabbits = rabbitAnimals(state);
+      const before = new Map(rabbits.map(animal => [String(animal.id), JSON.stringify(animal.genetics || {})]));
+      const updates = inheritance.reconcile(state, Core);
+      if (updates?.skipped) throw new Error("Rabbit inheritance engine was not available.");
+      const changedRabbits = rabbitAnimals(state).filter(animal =>
+        before.get(String(animal.id)) !== JSON.stringify(animal.genetics || {}));
+      if (!changedRabbits.length) {
+        openModal("Offspring Evidence Already Current",
+          "<p>No new scientifically supported genetic evidence was found. To refine a kit, record its sire, dam, observed coat color, or a genuine genetic test.</p>" +
+          "<p>Uncertain genotypes remain unknown; the engine will not invent alleles.</p>");
+        return false;
+      }
+      await writeState(state);
+      const kits = changedRabbits.filter(animal => animal.sireId && animal.damId);
+      renderCard();
+      app.refresh?.();
+      openModal("Offspring Genetics Saved",
+        `<p>Saved inherited genetics for <strong>${kits.length}</strong> rabbit${kits.length === 1 ? "" : "s"} with recorded parents and updated <strong>${changedRabbits.length}</strong> rabbit genetic profile${changedRabbits.length === 1 ? "" : "s"} overall.</p>` +
+        "<p>Exact genotypes are assigned only when supported; unresolved possibilities are retained as reversible family evidence. DNA-confirmed records are not overwritten.</p>");
+      return true;
+    } catch (error) {
+      console.error("Learning from rabbit offspring failed:", error);
+      openModal("Offspring Genetics Not Saved",
+        `<p>Rabbit genetic records were not saved: ${esc(error?.message || "the canonical save failed")}.</p><p>No legacy fallback or partial genetics write was attempted.</p>`);
+      return false;
+    } finally {
+      offspringLearningInFlight = false;
+      if (button?.isConnected) button.disabled = false;
+    }
   }
 
   function snapshotParents(snapshot) {

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Rabbit offspring learning real click smoke</title></head>
+<body>
+<section id="view-breeding"></section>
+<output id="rabbit-learning-result" data-status="pending"></output>
+<script>
+(function(){
+ "use strict";
+ const changes=[],errors=[];
+ window.addEventListener("error",event=>errors.push(event.message||"script exception"));
+ window.addEventListener("unhandledrejection",event=>errors.push(String(event.reason)));
+ const rabbit=(id,color,loci={},extra={})=>({
+   id,name:id,species:"Rabbit",color,
+   genetics:{loci:Object.fromEntries(Object.entries(loci).map(([name,alleles])=>
+     [name,{alleles,status:"confirmed",source:"breeder"}]))},...extra
+ });
+ let canonical={
+   animals:[
+     rabbit("sire","Black",{D:["D","d"]},{sex:"Male"}),
+     rabbit("dam","Blue",{D:["d","d"]},{sex:"Female"}),
+     rabbit("kit","Black",{}, {sireId:"sire",damId:"dam",sourceBirthId:"l1"}),
+     rabbit("unknownKit","",{}, {sireId:"sire",damId:"dam",sourceBirthId:"l1"})
+   ],
+   litters:[{id:"l1",damId:"dam",sireId:"sire",bornAlive:2}],
+   births:[],breedings:[],settings:{theme:"light"},profile:{operationName:"Rabbit testing"}
+ };
+ let saves=0,failSave=false;
+ window.HerdHarborApp={
+   getState:()=>canonical,
+   commitState:(next)=>{if(failSave)return false;saves++;canonical=structuredClone(next);return true;},
+   toast:()=>{},refresh:()=>{},getCurrentRoute:()=>"breeding"
+ };
+ window.HerdHarborPedigreeEngine={sharedAncestorAnalysis:()=>({sharedAncestors:[],status:"not-calculated"})};
+ try{localStorage.setItem("herdharbor_pre_alpha_v1",JSON.stringify({animals:[
+   rabbit("legacy","White",{D:["D","D"]})],litters:[]}));}catch(error){}
+ window.__rabbitBrowserTest={
+   getState:()=>canonical,getSaves:()=>saves,setFail:v=>{failSave=v;},
+   errors,changes
+ };
+})();
+</script>
+<script src="../../breeding-intelligence-core-v1.6.1.js"></script>
+<script src="../../rabbit-genetics-engine-advanced-v1.6.1.js"></script>
+<script src="../../rabbit-genetics-engine-compat-v1.6.1.js"></script>
+<script src="../../rabbit-genetics-runtime-v1.6.1.js"></script>
+<script src="../../rabbit-genetics-v1.6.1.js"></script>
+<script src="../../rabbit-genetics-inheritance-v2.0.3.js"></script>
+<script src="../../breeding-intelligence-v1.6.1.js"></script>
+<script>
+window.addEventListener("load",async()=>{
+ const T=window.__rabbitBrowserTest,errors=T.errors,changes=T.changes;
+ const result=document.getElementById("rabbit-learning-result");
+ const verify=(condition,message)=>{if(!condition)throw Error(message);};
+ const click=async()=>{
+   const button=document.querySelector('[data-bi-action="learn"]');
+   verify(!!button,"learn from recorded offspring button not rendered");
+   verify(!button.disabled,"learn action stuck disabled");
+   button.click();
+   // Async save resolution and DOM modal update.
+   await new Promise(resolve=>setTimeout(resolve,35));
+ };
+ try{
+   verify(!!window.HerdHarborBreedingIntelligence,"Breeding Intelligence did not boot");
+   verify(!!window.HerdHarborRabbitInheritance?.reconcile,"Inheritance module unavailable");
+   await click();
+   const state=T.getState(),kit=state.animals.find(x=>x.id==="kit");
+   const uncertain=state.animals.find(x=>x.id==="unknownKit");
+   verify(T.getSaves()===1,"learning click did not commit exactly once to canonical state");
+   verify(kit?.genetics?.loci?.D?.alleles?.join("/")==="D/d","observed black kit D/d inference not saved");
+   verify(kit.genetics.loci.D.source==="family-inferred","kit inference source misclassified");
+   const evidence=uncertain?.genetics?.evidence?.find(x=>x.source==="family-inferred"&&x.locus==="D");
+   verify(!!evidence,"unobserved kit missing possible genotype evidence");
+   verify(evidence.possibleGenotypes.length===2,"unobserved kit wrongly given exact genotype");
+   const partial=uncertain?.genetics?.loci?.D;
+   verify(partial?.alleles?.includes("d")&&partial?.alleles?.includes("_")&&
+     partial?.source==="family-inferred","unobserved kit must retain only the inherited d allele with its second allele unknown");
+   verify(state.animals.length===4&&!state.animals.some(x=>x.id==="legacy"),"stale legacy data replaced account records");
+   verify(document.body.textContent.includes("Offspring Genetics Saved"),"saved confirmation not displayed");
+   changes.push("canonical save and two kit profiles PASS");
+   window.HerdHarborBreedingIntelligence.openGeneticProfile("unknownKit");
+   verify(document.body.textContent.includes("Recorded family and offspring inheritance"),
+     "kit genetic profile omitted saved genotype possibilities");
+   verify(document.body.textContent.includes("cross expectation"),"expected conditional genotype display missing");
+   changes.push("kit genetics readable after reload PASS");
+   await click();
+   verify(T.getSaves()===1,"repeat click made unnecessary duplicate save");
+   verify(document.body.textContent.includes("Offspring Evidence Already Current"),
+     "idempotence message was not displayed");
+   changes.push("idempotence PASS");
+   const raw=JSON.stringify(T.getState());
+   T.getState().animals.find(x=>x.id==="sire").genetics.loci.D={
+     alleles:["d","d"],source:"genetic-test",status:"confirmed"
+   };
+   T.getState().animals.find(x=>x.id==="sire").color="Blue";
+   const beforeFailure=JSON.stringify(T.getState());
+   T.setFail(true);
+   await click();
+   verify(T.getSaves()===1,"failed canonical save incorrectly counted as successful");
+   verify(JSON.stringify(T.getState())===beforeFailure,"failed commit mutated canonical records");
+   verify(document.body.textContent.includes("Offspring Genetics Not Saved"),"failure warning missing");
+   changes.push("failed save atomicity PASS");
+   verify(errors.length===0,"unhandled browser errors: "+errors.join("; "));
+   result.dataset.status="pass";
+   result.textContent=JSON.stringify({changes,saves:T.getSaves(),errors});
+ }catch(error){
+   errors.push(String(error?.stack||error));
+   result.dataset.status="fail";
+   result.textContent=JSON.stringify({changes,saves:T.getSaves(),errors});
+ }
+});
+</script>
+</body></html>

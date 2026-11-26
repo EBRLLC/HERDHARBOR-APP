@@ -106,6 +106,8 @@ jobs:
         run: node scripts/v2.0.3-browser-smoke.mjs
       - name: Real Chromium click smoke for core buttons and sales payments
         run: node scripts/core-button-browser-smoke.mjs
+      - name: Real Chromium click and canonical save for rabbit offspring genetics
+        run: node scripts/rabbit-offspring-learning-browser-smoke.mjs
       - name: Build production monitoring bundle
         run: NODE_ENV=production npm run build:monitoring
       - name: Verify bundled monitoring architecture
